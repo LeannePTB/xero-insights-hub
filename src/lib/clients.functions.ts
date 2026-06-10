@@ -22,13 +22,26 @@ export const getClient = createServerFn({ method: "POST" })
     const { data: client, error } = await context.supabase
       .from("clients")
       .select(
-        "id, name, owner_user_id, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
+        "id, name, notes, owner_user_id, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
       )
       .eq("id", data.clientId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!client) throw new Error("Client not found.");
     return { client: client as any };
+  });
+
+export const updateClientNotes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; notes: string }) => i)
+  .handler(async ({ data, context }) => {
+    if (data.notes.length > 20000) throw new Error("Notes are too long (20,000 char max).");
+    const { error } = await context.supabase
+      .from("clients")
+      .update({ notes: data.notes })
+      .eq("id", data.clientId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 async function clientIsMultiCompany(supabase: any, clientId: string) {
