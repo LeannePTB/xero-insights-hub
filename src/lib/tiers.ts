@@ -26,7 +26,7 @@ export const TIER_LABEL: Record<DashboardTier, string> = {
 
 export const TIER_DESCRIPTION: Record<DashboardTier, string> = {
   basic: "Revenue/expense KPIs and current tax liabilities.",
-  advisory: "Everything in Basic plus full P&L and breakeven analysis.",
+  advisory: "Everything in Standard plus full P&L and breakeven analysis.",
   investigate: "Full advisory view plus aged payables and supplier exposure.",
   multi_company: "Full dashboard across multiple linked Xero organisations. Required to link more than one Xero file to a client.",
 };
