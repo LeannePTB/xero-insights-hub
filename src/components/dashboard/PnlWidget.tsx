@@ -28,7 +28,7 @@ export function PnlWidget({ tenantId, tenantName }: { tenantId: string; tenantNa
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromDate, toDate],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate } }),
+    queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate, widget: "pnl" } }),
   });
 
   const expenseData = (data?.expenseLines ?? []).slice(0, 6).map((e) => ({
