@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { LogOut, Plug, Loader2, Trash2, HardHat } from "lucide-react";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
+import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Traction Advisory" }] }),
@@ -123,6 +124,7 @@ function Dashboard() {
                     <Trash2 className="h-4 w-4" />
                   </button>
                   <PnlWidget tenantId={c.tenant_id} tenantName={c.tenant_name} />
+                  <BreakevenWidget tenantId={c.tenant_id} tenantName={c.tenant_name} />
                 </div>
               ))}
             </div>
