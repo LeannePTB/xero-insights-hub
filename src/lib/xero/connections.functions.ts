@@ -5,6 +5,7 @@ import { randomBytes } from "crypto";
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const SCOPES = [
   "offline_access",
+  "app.connections",
   "accounting.reports.profitandloss.read",
 ].join(" ");
 
