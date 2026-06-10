@@ -119,10 +119,11 @@ function Dashboard() {
                 <div key={c.id} className="group relative space-y-6">
                   <button
                     onClick={() => handleDisconnect(c.tenant_id)}
-                    className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
-                    title="Disconnect"
+                    className="absolute right-3 top-3 z-10 inline-flex items-center gap-1.5 rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition-colors hover:border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+                    title="Disconnect this Xero organisation"
                   >
-                    <Trash2 className="h-4 w-4" />
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Disconnect
                   </button>
                   <PnlWidget tenantId={c.tenant_id} tenantName={c.tenant_name} />
                   <BreakevenWidget tenantId={c.tenant_id} tenantName={c.tenant_name} />
