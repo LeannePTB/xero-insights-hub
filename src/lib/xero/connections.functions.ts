@@ -53,16 +53,29 @@ export const startXeroConnect = createServerFn({ method: "POST" })
 
 function normalizeOrigin(origin: string) {
   const parsed = new URL(origin);
-  if (parsed.protocol !== "https:" && parsed.hostname !== "localhost") {
-    throw new Error("Invalid app origin for Xero connection.");
+  if (parsed.hostname === "localhost") return parsed.origin;
+
+  const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
+  const allowedHosts = projectId
+    ? new Set([
+        `${projectId}.lovableproject.com`,
+        `id-preview--${projectId}.lovable.app`,
+        `project--${projectId}.lovable.app`,
+        `project--${projectId}-dev.lovable.app`,
+      ])
+    : new Set<string>();
+
+  if (parsed.protocol === "https:" && allowedHosts.has(parsed.hostname)) {
+    return parsed.origin;
   }
-  return parsed.origin;
+
+  throw new Error("Invalid app origin for Xero connection.");
 }
 
 function getXeroRedirectOrigin(returnOrigin: string) {
   const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
   const parsed = new URL(returnOrigin);
-  if (projectId && parsed.hostname.endsWith(".lovableproject.com")) {
+  if (projectId && (parsed.hostname.endsWith(".lovableproject.com") || parsed.hostname === `project--${projectId}-dev.lovable.app`)) {
     return `https://id-preview--${projectId}.lovable.app`;
   }
   return returnOrigin;
