@@ -6,7 +6,7 @@ const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const SCOPES = [
   "offline_access",
   "app.connections",
-  "accounting.reports.profitandloss.read",
+  "accounting.reports.read",
   "accounting.transactions.read",
 ].join(" ");
 
