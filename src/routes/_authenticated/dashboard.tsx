@@ -6,7 +6,8 @@ import { listXeroConnections, startXeroConnect, disconnectXero } from "@/lib/xer
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { BarChart3, LogOut, Plug, Loader2, Building2, Trash2 } from "lucide-react";
+import { BarChart3, LogOut, Plug, Loader2, Trash2 } from "lucide-react";
+import { PnlWidget } from "@/components/dashboard/PnlWidget";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Ledgerlight" }] }),
@@ -101,26 +102,17 @@ function Dashboard() {
           ) : connections.length === 0 ? (
             <EmptyState onConnect={handleConnect} />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-6 lg:grid-cols-2">
               {connections.map((c) => (
-                <div key={c.id} className="group rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-                  <div className="flex items-start justify-between">
-                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-accent/15 text-accent-foreground">
-                      <Building2 className="h-5 w-5" />
-                    </div>
-                    <button
-                      onClick={() => handleDisconnect(c.tenant_id)}
-                      className="text-xs text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                      title="Disconnect"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <h3 className="mt-4 font-semibold">{c.tenant_name}</h3>
-                  <p className="text-xs text-muted-foreground">{c.tenant_type ?? "Organisation"}</p>
-                  <div className="mt-6 rounded-lg bg-muted p-3 text-xs text-muted-foreground">
-                    Widgets coming next — P&L summary, revenue vs expenses, top expense categories.
-                  </div>
+                <div key={c.id} className="group relative">
+                  <button
+                    onClick={() => handleDisconnect(c.tenant_id)}
+                    className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                    title="Disconnect"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                  <PnlWidget tenantId={c.tenant_id} tenantName={c.tenant_name} />
                 </div>
               ))}
             </div>
