@@ -13,7 +13,7 @@ import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { TIER_WIDGETS, TIER_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
-export const Route = createFileRoute("/_authenticated/clients/$clientId")({
+export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
   head: () => ({ meta: [{ title: "Client dashboard — Traction Advisory" }] }),
   component: ClientDashboard,
 });
