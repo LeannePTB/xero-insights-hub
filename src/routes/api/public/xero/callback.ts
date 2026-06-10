@@ -12,6 +12,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         const state = url.searchParams.get("state");
         const error = url.searchParams.get("error");
         const origin = `${url.protocol}//${url.host}`;
+        let returnOrigin = origin;
 
         if (error) return redirectTo(`${origin}/dashboard?xero_error=${encodeURIComponent(error)}`);
         if (!code || !state) return redirectTo(`${origin}/dashboard?xero_error=missing_params`);
@@ -27,13 +28,16 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         // Look up the user this state belongs to
         const { data: stateRow, error: stateErr } = await supabaseAdmin
           .from("xero_oauth_states")
-          .select("user_id")
+          .select("user_id, code_verifier")
           .eq("state", state)
           .maybeSingle();
         if (stateErr || !stateRow) {
           return redirectTo(`${origin}/dashboard?xero_error=invalid_state`);
         }
         const userId = stateRow.user_id;
+        if (typeof stateRow.code_verifier === "string" && stateRow.code_verifier.startsWith("https://")) {
+          returnOrigin = stateRow.code_verifier;
+        }
         await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
 
         const redirectUri = `${origin}/api/public/xero/callback`;
@@ -52,7 +56,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         if (!tokenRes.ok) {
           const t = await tokenRes.text();
           console.error("Xero token exchange failed", tokenRes.status, t);
-          return redirectTo(`${origin}/dashboard?xero_error=token_exchange`);
+          return redirectTo(`${returnOrigin}/dashboard?xero_error=token_exchange`);
         }
         const tokens = await tokenRes.json() as {
           access_token: string;
@@ -66,7 +70,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           headers: { Authorization: `Bearer ${tokens.access_token}` },
         });
         if (!tenantsRes.ok) {
-          return redirectTo(`${origin}/dashboard?xero_error=tenants_lookup`);
+          return redirectTo(`${returnOrigin}/dashboard?xero_error=tenants_lookup`);
         }
         const tenants = await tenantsRes.json() as Array<{
           tenantId: string;
@@ -92,11 +96,11 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             .upsert(rows, { onConflict: "user_id,tenant_id" });
           if (upsertErr) {
             console.error("xero_connections upsert failed", upsertErr);
-            return redirectTo(`${origin}/dashboard?xero_error=db`);
+            return redirectTo(`${returnOrigin}/dashboard?xero_error=db`);
           }
         }
 
-        return redirectTo(`${origin}/dashboard?xero=connected`);
+        return redirectTo(`${returnOrigin}/dashboard?xero=connected`);
       },
     },
   },
