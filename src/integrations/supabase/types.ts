@@ -90,6 +90,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          notes: string
           owner_user_id: string
           updated_at: string
         }
@@ -97,6 +98,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          notes?: string
           owner_user_id: string
           updated_at?: string
         }
@@ -104,6 +106,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          notes?: string
           owner_user_id?: string
           updated_at?: string
         }
