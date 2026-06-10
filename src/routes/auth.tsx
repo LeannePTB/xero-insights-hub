@@ -5,7 +5,6 @@ import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { HardHat, Loader2 } from "lucide-react";
 
@@ -26,20 +25,13 @@ function AuthPage() {
     });
   }, [navigate]);
 
-  async function handleEmail(mode: "signin" | "signup") {
+  async function handleSignIn() {
     setLoading(true);
     try {
-      const auth = supabase.auth;
-      const { error } = mode === "signin"
-        ? await auth.signInWithPassword.bind(auth)({ email, password })
-        : await auth.signUp.bind(auth)({
-            email,
-            password,
-            options: { emailRedirectTo: window.location.origin + "/dashboard" },
-          });
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
-      toast.success(mode === "signin" ? "Welcome back" : "Check your inbox to confirm your email");
-      if (mode === "signin") navigate({ to: "/dashboard" });
+      toast.success("Welcome back");
+      navigate({ to: "/dashboard" });
     } catch (e: any) {
       toast.error(e.message ?? "Something went wrong");
     } finally {
@@ -94,28 +86,23 @@ function AuthPage() {
             <div className="h-px flex-1 bg-border" /> or <div className="h-px flex-1 bg-border" />
           </div>
 
-          <Tabs defaultValue="signin">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign in</TabsTrigger>
-              <TabsTrigger value="signup">Sign up</TabsTrigger>
-            </TabsList>
-            {(["signin", "signup"] as const).map((mode) => (
-              <TabsContent key={mode} value={mode} className="space-y-3 pt-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor={`email-${mode}`}>Email</Label>
-                  <Input id={`email-${mode}`} type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor={`password-${mode}`}>Password</Label>
-                  <Input id={`password-${mode}`} type="password" autoComplete={mode === "signin" ? "current-password" : "new-password"} value={password} onChange={(e) => setPassword(e.target.value)} />
-                </div>
-                <Button className="w-full" onClick={() => handleEmail(mode)} disabled={loading || !email || !password}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {mode === "signin" ? "Sign in" : "Create account"}
-                </Button>
-              </TabsContent>
-            ))}
-          </Tabs>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="password">Password</Label>
+              <Input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <Button className="w-full" onClick={handleSignIn} disabled={loading || !email || !password}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Sign in
+            </Button>
+            <p className="pt-1 text-center text-xs text-muted-foreground">
+              Access is invite-only. Ask your advisor for an invite link.
+            </p>
+          </div>
         </div>
       </div>
     </div>
