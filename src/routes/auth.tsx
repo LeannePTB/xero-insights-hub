@@ -55,22 +55,27 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">
-      <div className="hidden flex-col justify-between bg-primary p-12 text-primary-foreground md:flex">
-        <Link to="/" className="flex items-center gap-2">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent text-accent-foreground">
-            <BarChart3 className="h-4 w-4" />
+      <div className="hidden flex-col justify-between p-12 text-primary-foreground md:flex" style={{ background: "var(--gradient-hero)" }}>
+        <Link to="/" className="flex items-center gap-2.5">
+          <div className="grid h-9 w-9 place-items-center rounded-lg bg-accent text-primary">
+            <HardHat className="h-4.5 w-4.5" />
           </div>
-          <span className="font-display text-lg font-semibold">Ledgerlight</span>
+          <div className="leading-tight">
+            <div className="text-sm font-bold uppercase tracking-[0.18em]">Traction</div>
+            <div className="-mt-0.5 text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Advisory</div>
+          </div>
         </Link>
         <div>
-          <h2 className="font-display text-3xl font-semibold leading-tight">
-            Xero dashboards your clients will actually open.
+          <h2 className="text-3xl font-bold leading-tight">
+            Built for builders.
+            <br />
+            <span className="font-serif italic text-accent">Backed by numbers.</span>
           </h2>
-          <p className="mt-3 max-w-md text-sm text-primary-foreground/70">
-            Clean, fast and built around the metrics each client cares about.
+          <p className="mt-4 max-w-md text-sm text-primary-foreground/75">
+            Clean Xero dashboards your clients will actually open — built around the metrics that matter on every job.
           </p>
         </div>
-        <p className="text-xs text-primary-foreground/50">© {new Date().getFullYear()} Ledgerlight</p>
+        <p className="text-xs text-primary-foreground/55">© {new Date().getFullYear()} Positive Traction</p>
       </div>
 
       <div className="flex items-center justify-center p-6">
