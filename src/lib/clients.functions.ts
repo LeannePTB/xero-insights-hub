@@ -31,12 +31,28 @@ export const getClient = createServerFn({ method: "POST" })
     return { client: client as any };
   });
 
+async function clientIsMultiCompany(supabase: any, clientId: string) {
+  const { data, error } = await supabase
+    .from("client_access")
+    .select("id")
+    .eq("client_id", clientId)
+    .eq("tier", "multi_company")
+    .limit(1);
+  if (error) throw new Error(error.message);
+  return (data?.length ?? 0) > 0;
+}
+
 export const createClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { name: string; xeroConnectionIds: string[] }) => i)
   .handler(async ({ data, context }) => {
     const name = data.name.trim();
     if (!name) throw new Error("Client name is required.");
+    if (data.xeroConnectionIds.length > 1) {
+      throw new Error(
+        "Only the Multi company tier can link more than one Xero organisation. Create the client with one org, then grant a viewer the Multi company tier to link more.",
+      );
+    }
     const { data: client, error } = await context.supabase
       .from("clients")
       .insert({ name, owner_user_id: context.userId })
@@ -79,6 +95,19 @@ export const attachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; xeroConnectionId: string }) => i)
   .handler(async ({ data, context }) => {
+    const { data: existing, error: countErr } = await context.supabase
+      .from("client_xero_orgs")
+      .select("id")
+      .eq("client_id", data.clientId);
+    if (countErr) throw new Error(countErr.message);
+    if ((existing?.length ?? 0) >= 1) {
+      const multi = await clientIsMultiCompany(context.supabase, data.clientId);
+      if (!multi) {
+        throw new Error(
+          "Only the Multi company tier can link more than one Xero organisation. Grant a viewer the Multi company tier for this client first.",
+        );
+      }
+    }
     const { error } = await context.supabase
       .from("client_xero_orgs")
       .insert({ client_id: data.clientId, xero_connection_id: data.xeroConnectionId });

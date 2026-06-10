@@ -1,0 +1,1 @@
+ALTER TYPE public.dashboard_tier ADD VALUE IF NOT EXISTS 'multi_company';
