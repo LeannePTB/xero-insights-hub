@@ -46,8 +46,10 @@ export const getAgedPayables = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
-    const { getConnection, xeroGet } = await import("./api.server");
-    const conn = await getConnection(context.userId, data.tenantId);
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { assertWidgetAccess } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "payables");
+    const conn = await getConnectionByTenant(data.tenantId);
 
     // Fetch all unpaid bills (ACCPAY = supplier invoices)
     // Paginate up to 5 pages (500 invoices) to keep response fast.

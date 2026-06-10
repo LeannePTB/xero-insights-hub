@@ -84,10 +84,12 @@ function summarise(report: any): PnlReport {
 
 export const getProfitAndLoss = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; fromDate?: string; toDate?: string }) => input)
+  .inputValidator((input: { tenantId: string; fromDate?: string; toDate?: string; widget?: "revenue_kpis" | "pnl" | "breakeven" }) => input)
   .handler(async ({ data, context }) => {
-    const { getConnection, xeroGet } = await import("./api.server");
-    const conn = await getConnection(context.userId, data.tenantId);
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { assertWidgetAccess } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, data.widget ?? "pnl");
+    const conn = await getConnectionByTenant(data.tenantId);
     const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
       fromDate: data.fromDate,
       toDate: data.toDate,
@@ -128,8 +130,10 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { tenantId: string; date?: string }) => input)
   .handler(async ({ data, context }) => {
-    const { getConnection, xeroGet } = await import("./api.server");
-    const conn = await getConnection(context.userId, data.tenantId);
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { assertWidgetAccess } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    const conn = await getConnectionByTenant(data.tenantId);
     const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {
       date: data.date,
     });
