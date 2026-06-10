@@ -47,10 +47,27 @@ function ClientSettings() {
   const invite = useServerFn(inviteClientViewer);
   const updateTier = useServerFn(updateClientAccessTier);
   const revoke = useServerFn(revokeClientAccess);
+  const fetchTierCfg = useServerFn(listTierConfig);
+  const saveTier = useServerFn(saveTierWidgets);
 
   const clientQ = useQuery({ queryKey: ["client", clientId], queryFn: () => fetchClient({ data: { clientId } }) });
   const connQ = useQuery({ queryKey: ["xero-connections"], queryFn: () => fetchConnections() });
   const accessQ = useQuery({ queryKey: ["client-access", clientId], queryFn: () => fetchAccess({ data: { clientId } }) });
+  const tierCfgQ = useQuery({
+    queryKey: ["tier-config", clientId],
+    queryFn: () => fetchTierCfg({ data: { clientId } }),
+  });
+
+  const tierSaveMut = useMutation({
+    mutationFn: (v: { tier: DashboardTier; widgets: WidgetKey[] | null }) =>
+      saveTier({ data: { clientId, tier: v.tier, widgets: v.widgets } }),
+    onSuccess: () => {
+      toast.success("Saved");
+      qc.invalidateQueries({ queryKey: ["tier-config", clientId] });
+      qc.invalidateQueries({ queryKey: ["effective-widgets", clientId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const [name, setName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
