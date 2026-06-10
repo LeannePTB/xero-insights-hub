@@ -115,7 +115,7 @@ function Dashboard() {
           ) : (
             <div className="grid gap-6 lg:grid-cols-2">
               {connections.map((c) => (
-                <div key={c.id} className="group relative">
+                <div key={c.id} className="group relative space-y-6">
                   <button
                     onClick={() => handleDisconnect(c.tenant_id)}
                     className="absolute right-3 top-3 z-10 rounded-md p-1.5 text-xs text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
