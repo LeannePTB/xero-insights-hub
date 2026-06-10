@@ -1,8 +1,13 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { format } from "date-fns";
 import { getTaxLiabilities } from "@/lib/xero/reports.functions";
-import { Loader2, Receipt, RefreshCw } from "lucide-react";
+import { CalendarIcon, Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -12,8 +17,12 @@ function fmt(n: number) {
   }).format(n);
 }
 
-function today() {
-  return new Date().toISOString().slice(0, 10);
+function endOfMonth(d: Date) {
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+
+function iso(d: Date) {
+  return format(d, "yyyy-MM-dd");
 }
 
 const categoryLabel: Record<string, string> = {
@@ -25,26 +34,56 @@ const categoryLabel: Record<string, string> = {
 
 export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
   const fetchTax = useServerFn(getTaxLiabilities);
-  const asAt = today();
+  const [asAt, setAsAt] = useState<Date>(() => endOfMonth(new Date()));
+  const [open, setOpen] = useState(false);
+  const asAtIso = iso(asAt);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-tax", tenantId, asAt],
-    queryFn: () => fetchTax({ data: { tenantId, date: asAt } }),
+    queryKey: ["xero-tax", tenantId, asAtIso],
+    queryFn: () => fetchTax({ data: { tenantId, date: asAtIso } }),
   });
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {tenantName}
           </p>
-          <h3 className="font-display text-lg font-semibold">Tax liabilities</h3>
-          <p className="text-xs text-muted-foreground">As at {asAt}</p>
+          <h3 className="font-display text-lg font-semibold">Tax liabilities · Monthly</h3>
+          <p className="text-xs text-muted-foreground">As at {format(asAt, "d MMM yyyy")}</p>
         </div>
-        <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className={cn("justify-start text-left font-normal")}
+              >
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {format(asAt, "MMM yyyy")}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={asAt}
+                onSelect={(d) => {
+                  if (d) {
+                    setAsAt(endOfMonth(d));
+                    setOpen(false);
+                  }
+                }}
+                initialFocus
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
+          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -69,7 +108,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
 
           {data.lines.length === 0 ? (
             <p className="mt-6 rounded-lg border border-dashed border-border bg-background p-4 text-center text-xs text-muted-foreground">
-              No GST or PAYG accounts found on the balance sheet.
+              No GST or PAYG accounts found on the balance sheet for this month.
             </p>
           ) : (
             <div className="mt-6">
