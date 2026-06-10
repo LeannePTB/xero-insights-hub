@@ -1,63 +1,58 @@
-## Goal
-A multi-tenant web app where each client signs in, connects their own Xero organisation via OAuth 2.0, and views a dashboard of their financials (P&L first, with a flexible widget system to add more views later).
+## What you'll get
 
-## Step 1 — Bring in your existing GitHub code
-Lovable can't import an existing GitHub repo directly. Two practical options:
-1. **Recommended:** Continue building here, then connect this project to GitHub via the **+ menu → GitHub → Connect project**. Once connected, paste your existing files into the matching paths (or share the repo contents in chat and I'll fold the relevant bits in).
-2. Paste your most important files (Xero auth code, any data fetchers, dashboard components) into chat now and I'll wire them in before we move on.
+1. **Login lands on a Clients grid** — one card per client you've set up. Click a card to open that client's dashboard.
+2. **Each client can hold multiple Xero orgs**, all rendered together on that client's dashboard page.
+3. **Client viewers** (read-only people you invite) log in and are taken straight to their own client's dashboard — they can't see other clients.
+4. **Three dashboard tiers** control which widgets appear:
+   - **Basic** — Revenue & Expenses KPIs, Tax Liabilities
+   - **Advisory** — Basic + P&L, Breakeven
+   - **Investigate the Numbers** — Advisory + Payables (everything)
+5. **Per-user access screen** where you (the advisor) pick which client a viewer can see and which tier they get.
 
-I'll pause after the foundation is in place so you can do this without us duplicating work.
+## Pages
 
-## Step 2 — Enable Lovable Cloud
-Needed for: user auth (email/password + Google), and Postgres tables to store each user's Xero connection (tenant id, access/refresh tokens, expiry) and any cached snapshots.
+```text
+/dashboard                       Clients grid (advisor) — viewers redirected to their client
+/clients/new                     Create a client (name + pick Xero orgs)
+/clients/$clientId               Client dashboard — widgets filtered by tier
+/clients/$clientId/settings      Advisor only: rename, attach/detach Xero orgs, manage viewers + tiers
+```
 
-## Step 3 — Xero OAuth 2.0 (per-user)
-Xero is not in Lovable's connector list, so we set up standard OAuth ourselves:
-- You create an app in the Xero Developer portal (App type: Web app). Redirect URI: `https://<your-published-domain>/api/public/xero/callback` (I'll give you the exact URL once we know your project URL).
-- Required scopes for P&L + flexibility: `offline_access openid profile email accounting.reports.read accounting.transactions.read accounting.contacts.read accounting.settings.read`.
-- You give me the **Client ID** and **Client Secret** — I'll request them as Lovable secrets (`XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`).
-- Server routes I'll build:
-  - `GET /api/xero/connect` — starts the OAuth flow (state stored against the logged-in user).
-  - `GET /api/public/xero/callback` — exchanges code for tokens, fetches the list of authorized tenants, stores them.
-  - Token-refresh helper that runs before any Xero API call when the access token is within 60s of expiry.
+## Roles & tiers
 
-## Step 4 — Data layer
-Tables (with RLS so each user only sees their own rows):
-- `xero_connections` — user_id, tenant_id, tenant_name, access_token, refresh_token, expires_at.
-- `dashboard_configs` — user_id, layout JSON (which widgets, order, params).
-- `report_cache` — user_id, tenant_id, report_key, params hash, payload, fetched_at (so we don't hammer Xero on every page load).
+- `advisor` — sees and manages everything.
+- `client_viewer` — sees exactly one client's dashboard, widgets gated by tier. Cannot reach `/clients/new` or settings.
 
-## Step 5 — Dashboard UI
-- **Auth pages**: sign up / sign in / sign out (email + Google).
-- **Connect Xero** screen with a "Connect to Xero" button; if multiple organisations are authorized, a tenant switcher in the header.
-- **Dashboard page** with a widget grid. v1 widget set:
-  - P&L summary (revenue, gross profit, net profit) for a selectable period (this month / last month / quarter / YTD / custom).
-  - Revenue vs expenses trend chart (last 12 months).
-  - Top expense categories.
-- **Widget framework**: each widget is a self-contained React component with `{ key, title, fetcher, render }`. Adding a new dashboard option later = drop in one new widget file and register it. This is the "we will build different options" hook.
+The first user to sign up becomes `advisor` automatically. New viewers are created by sending them an email invite from the settings page (they set their own password on first login).
 
-## Step 6 — Polish & deploy
-- Loading skeletons, error states, empty state for "not connected yet".
-- Manual refresh button per widget + a global "Refresh all".
-- Publish so the Xero redirect URI is stable.
+## Technical details
 
-## Technical notes
-- Stack: TanStack Start (already scaffolded) + Lovable Cloud (Postgres + Auth) + Recharts for charts.
-- All Xero calls happen in `createServerFn` handlers so tokens never reach the browser.
-- The OAuth callback lives under `/api/public/xero/callback` because Xero needs to hit it without our app auth.
-- Token refresh uses Xero's `offline_access` refresh token; refresh tokens rotate on every use, so we always write the new pair back to the DB inside a transaction.
+**New tables**
+- `app_role` enum: `advisor`, `client_viewer`.
+- `dashboard_tier` enum: `basic`, `advisory`, `investigate`.
+- `user_roles(user_id, role)` — role storage (separate table, security-definer `has_role()` function, per project rules).
+- `clients(id, name, owner_user_id, created_at)` — one row per client/company you track.
+- `client_xero_orgs(client_id, xero_connection_id)` — many-to-many; one client can hold multiple Xero orgs.
+- `client_access(id, client_id, user_id, tier)` — which viewer can see which client at which tier. Unique on (client_id, user_id).
+- Invites use Supabase's `inviteUserByEmail` via an admin server fn; we insert the `client_access` row at invite time keyed on the new user id.
 
-## Open questions before I build
-1. Sign-in methods: default to **email/password + Google** — OK, or email only?
-2. Should one user be able to see **multiple Xero organisations** they're connected to (switcher), or strictly one org per user?
-3. Any branding/colours you want from the start, or should I pick a clean professional accountant-friendly look (neutral palette, blue/teal accent) and we iterate?
+**RLS**
+- Advisors: full access via `has_role(auth.uid(), 'advisor')`.
+- Viewers: `SELECT` on their `clients` / `client_xero_orgs` / underlying `xero_connections` rows only when a matching `client_access` row exists.
+- All existing Xero report server fns gain a tier check that throws if the requesting viewer's tier doesn't include the requested widget.
 
-## What I'll do first if you approve
-Foundation only, so you can drop your GitHub code in cleanly:
-1. Enable Lovable Cloud.
-2. Add email + Google auth and a basic protected `/dashboard` route.
-3. Create the three tables above with RLS.
-4. Stub the Xero OAuth start/callback routes (no secrets requested yet — I'll ask for `XERO_CLIENT_ID` / `XERO_CLIENT_SECRET` right after, with instructions on where in Xero to get them).
-5. Render a "Connect your Xero" empty state on the dashboard.
+**Widget gating**
+- A `TIER_WIDGETS` map in `src/lib/tiers.ts` lists which widget keys each tier exposes.
+- The client dashboard renders widgets by mapping over the allowed keys for the viewer's effective tier (advisors always get all).
 
-Then we pause for your GitHub code + Xero credentials before wiring real data and widgets.
+**Routing**
+- `/dashboard` becomes the clients grid. Existing dashboard content moves into `/clients/$clientId`.
+- A `loader` on `/dashboard` redirects viewers to their single client.
+- "Connect Xero" stays in `/clients/new` and `/clients/$clientId/settings` only.
+
+**Migration plan for existing data**
+- One-time backfill: for the current advisor user, create one `clients` row per existing Xero connection (named after the tenant) and link them. You can rename/merge later from settings.
+
+## What I need from you before building
+
+Nothing — defaults above are sensible. If you'd rather invites use a magic-link-only flow (no password), say so and I'll switch it.

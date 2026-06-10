@@ -58,7 +58,7 @@ export function BreakevenWidget({ tenantId, tenantName }: { tenantId: string; te
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr } }),
+    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven" } }),
   });
 
   const income = data?.totalIncome ?? 0;

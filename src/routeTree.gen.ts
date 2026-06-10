@@ -13,7 +13,10 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
+import { Route as AuthenticatedClientsClientIdRouteImport } from './routes/_authenticated/clients.$clientId'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
+import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -34,22 +37,45 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedClientsNewRoute = AuthenticatedClientsNewRouteImport.update({
+  id: '/clients/new',
+  path: '/clients/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedClientsClientIdRoute =
+  AuthenticatedClientsClientIdRouteImport.update({
+    id: '/clients/$clientId',
+    path: '/clients/$clientId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
   id: '/api/public/xero/callback',
   path: '/api/public/xero/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedClientsClientIdSettingsRoute =
+  AuthenticatedClientsClientIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedClientsClientIdRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/clients/$clientId': typeof AuthenticatedClientsClientIdRouteWithChildren
+  '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/clients/$clientId': typeof AuthenticatedClientsClientIdRouteWithChildren
+  '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
 }
 export interface FileRoutesById {
@@ -58,19 +84,39 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/clients/$clientId': typeof AuthenticatedClientsClientIdRouteWithChildren
+  '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
+  '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/dashboard' | '/api/public/xero/callback'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/clients/$clientId'
+    | '/clients/new'
+    | '/clients/$clientId/settings'
+    | '/api/public/xero/callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/dashboard' | '/api/public/xero/callback'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/clients/$clientId'
+    | '/clients/new'
+    | '/clients/$clientId/settings'
+    | '/api/public/xero/callback'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/dashboard'
+    | '/_authenticated/clients/$clientId'
+    | '/_authenticated/clients/new'
+    | '/_authenticated/clients/$clientId/settings'
     | '/api/public/xero/callback'
   fileRoutesById: FileRoutesById
 }
@@ -111,6 +157,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clients/new': {
+      id: '/_authenticated/clients/new'
+      path: '/clients/new'
+      fullPath: '/clients/new'
+      preLoaderRoute: typeof AuthenticatedClientsNewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clients/$clientId': {
+      id: '/_authenticated/clients/$clientId'
+      path: '/clients/$clientId'
+      fullPath: '/clients/$clientId'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/xero/callback': {
       id: '/api/public/xero/callback'
       path: '/api/public/xero/callback'
@@ -118,15 +178,42 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicXeroCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/clients/$clientId/settings': {
+      id: '/_authenticated/clients/$clientId/settings'
+      path: '/settings'
+      fullPath: '/clients/$clientId/settings'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsRouteImport
+      parentRoute: typeof AuthenticatedClientsClientIdRoute
+    }
   }
 }
 
+interface AuthenticatedClientsClientIdRouteChildren {
+  AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+}
+
+const AuthenticatedClientsClientIdRouteChildren: AuthenticatedClientsClientIdRouteChildren =
+  {
+    AuthenticatedClientsClientIdSettingsRoute:
+      AuthenticatedClientsClientIdSettingsRoute,
+  }
+
+const AuthenticatedClientsClientIdRouteWithChildren =
+  AuthenticatedClientsClientIdRoute._addFileChildren(
+    AuthenticatedClientsClientIdRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedClientsClientIdRoute: typeof AuthenticatedClientsClientIdRouteWithChildren
+  AuthenticatedClientsNewRoute: typeof AuthenticatedClientsNewRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedClientsClientIdRoute:
+    AuthenticatedClientsClientIdRouteWithChildren,
+  AuthenticatedClientsNewRoute: AuthenticatedClientsNewRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

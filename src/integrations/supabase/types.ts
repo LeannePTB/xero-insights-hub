@@ -14,6 +14,101 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_access: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          tier: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_access_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_xero_orgs: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          xero_connection_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          xero_connection_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          xero_connection_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_xero_orgs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_xero_orgs_xero_connection_id_fkey"
+            columns: ["xero_connection_id"]
+            isOneToOne: false
+            referencedRelation: "xero_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clients: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          owner_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          owner_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          owner_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       dashboard_configs: {
         Row: {
           created_at: string
@@ -95,6 +190,27 @@ export type Database = {
         }
         Relationships: []
       }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
       xero_connections: {
         Row: {
           access_token: string
@@ -163,10 +279,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_tier: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: Database["public"]["Enums"]["dashboard_tier"]
+      }
+      has_client_access: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      has_tenant_access: {
+        Args: { _tenant_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_advisor: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "advisor" | "client_viewer"
+      dashboard_tier: "basic" | "advisory" | "investigate"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -293,6 +429,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["advisor", "client_viewer"],
+      dashboard_tier: ["basic", "advisory", "investigate"],
+    },
   },
 } as const

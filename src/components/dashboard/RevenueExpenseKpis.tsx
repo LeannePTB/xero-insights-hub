@@ -30,11 +30,11 @@ export function RevenueExpenseKpis({ tenantId, tenantName }: { tenantId: string;
     queries: [
       {
         queryKey: ["xero-pnl-month", tenantId, current.from, current.to],
-        queryFn: () => fetchPnl({ data: { tenantId, fromDate: current.from, toDate: current.to } }),
+        queryFn: () => fetchPnl({ data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis" } }),
       },
       {
         queryKey: ["xero-pnl-month", tenantId, prior.from, prior.to],
-        queryFn: () => fetchPnl({ data: { tenantId, fromDate: prior.from, toDate: prior.to } }),
+        queryFn: () => fetchPnl({ data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis" } }),
       },
     ],
   });

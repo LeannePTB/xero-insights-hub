@@ -74,7 +74,23 @@ export async function getConnection(userId: string, tenantId: string): Promise<C
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Xero connection not found for this organisation.");
 
-  // Refresh 60s before expiry
+  if (new Date(data.expires_at).getTime() - Date.now() < 60_000) {
+    return await refreshAccessToken(data as Connection);
+  }
+  return data as Connection;
+}
+
+// Fetches a Xero connection by tenant only (no user filter). Use this when access
+// has already been authorised via has_tenant_access / assertWidgetAccess.
+export async function getConnectionByTenant(tenantId: string): Promise<Connection> {
+  const { data, error } = await supabaseAdmin
+    .from("xero_connections")
+    .select("id, user_id, tenant_id, tenant_name, access_token, refresh_token, expires_at, scopes")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Xero connection not found for this organisation.");
+
   if (new Date(data.expires_at).getTime() - Date.now() < 60_000) {
     return await refreshAccessToken(data as Connection);
   }
