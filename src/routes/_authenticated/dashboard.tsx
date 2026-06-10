@@ -6,7 +6,8 @@ import { listXeroConnections, startXeroConnect, disconnectXero } from "@/lib/xer
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { BarChart3, LogOut, Plug, Loader2, Building2, Trash2 } from "lucide-react";
+import { BarChart3, LogOut, Plug, Loader2, Trash2 } from "lucide-react";
+import { PnlWidget } from "@/components/dashboard/PnlWidget";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Dashboard — Ledgerlight" }] }),
