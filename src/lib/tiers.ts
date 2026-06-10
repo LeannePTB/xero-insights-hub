@@ -18,7 +18,7 @@ export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
 };
 
 export const TIER_LABEL: Record<DashboardTier, string> = {
-  basic: "Basic",
+  basic: "Standard",
   advisory: "Advisory",
   investigate: "Investigate the Numbers",
   multi_company: "Multi company",
