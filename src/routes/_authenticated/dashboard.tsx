@@ -93,9 +93,14 @@ function Dashboard() {
             </p>
           </div>
           {isAdvisor && (
-            <Button asChild>
-              <Link to="/clients/new"><Plus className="mr-2 h-4 w-4" /> New client</Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/settings/tiers"><SlidersHorizontal className="mr-2 h-4 w-4" /> Tier widgets</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/clients/new"><Plus className="mr-2 h-4 w-4" /> New client</Link>
+              </Button>
+            </div>
           )}
         </div>
 
