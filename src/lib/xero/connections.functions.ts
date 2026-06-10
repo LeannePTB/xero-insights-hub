@@ -5,13 +5,9 @@ import { randomBytes } from "crypto";
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const SCOPES = [
   "offline_access",
-  "openid",
-  "profile",
-  "email",
   "accounting.contacts.read",
   "accounting.transactions.read",
   "accounting.settings.read",
-  "accounting.reports.read",
 ].join(" ");
 
 export const listXeroConnections = createServerFn({ method: "GET" })
@@ -42,6 +38,12 @@ export const startXeroConnect = createServerFn({ method: "POST" })
 
     const redirectOrigin = getXeroRedirectOrigin(returnOrigin);
     const redirectUri = `${redirectOrigin}/api/public/xero/callback`;
+    console.info("Starting Xero OAuth", {
+      redirectUri,
+      returnOrigin,
+      scopes: SCOPES,
+      clientIdPrefix: clientId.slice(0, 8),
+    });
     const url = new URL(XERO_AUTHORIZE_URL);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
