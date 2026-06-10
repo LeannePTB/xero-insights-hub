@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { LogOut, Plug, Loader2, Trash2, HardHat } from "lucide-react";
+import { RevenueExpenseKpis } from "@/components/dashboard/RevenueExpenseKpis";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
@@ -125,6 +126,7 @@ function Dashboard() {
                     <Trash2 className="h-3.5 w-3.5" />
                     Disconnect
                   </button>
+                  <RevenueExpenseKpis tenantId={c.tenant_id} tenantName={c.tenant_name} />
                   <PnlWidget tenantId={c.tenant_id} tenantName={c.tenant_name} />
                   <BreakevenWidget tenantId={c.tenant_id} tenantName={c.tenant_name} />
                   <PayablesWidget tenantId={c.tenant_id} tenantName={c.tenant_name} />
