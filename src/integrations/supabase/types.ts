@@ -14,7 +14,150 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dashboard_configs: {
+        Row: {
+          created_at: string
+          id: string
+          layout: Json
+          tenant_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          layout?: Json
+          tenant_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          layout?: Json
+          tenant_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      report_cache: {
+        Row: {
+          fetched_at: string
+          id: string
+          params_hash: string
+          payload: Json
+          report_key: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          fetched_at?: string
+          id?: string
+          params_hash: string
+          payload: Json
+          report_key: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          params_hash?: string
+          payload?: Json
+          report_key?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      xero_connections: {
+        Row: {
+          access_token: string
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_token: string
+          scopes: string | null
+          tenant_id: string
+          tenant_name: string
+          tenant_type: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          refresh_token: string
+          scopes?: string | null
+          tenant_id: string
+          tenant_name: string
+          tenant_type?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token?: string
+          scopes?: string | null
+          tenant_id?: string
+          tenant_name?: string
+          tenant_type?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      xero_oauth_states: {
+        Row: {
+          code_verifier: string | null
+          created_at: string
+          state: string
+          user_id: string
+        }
+        Insert: {
+          code_verifier?: string | null
+          created_at?: string
+          state: string
+          user_id: string
+        }
+        Update: {
+          code_verifier?: string | null
+          created_at?: string
+          state?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
