@@ -7,6 +7,7 @@ const SCOPES = [
   "offline_access",
   "app.connections",
   "accounting.reports.profitandloss.read",
+  "accounting.transactions.read",
 ].join(" ");
 
 export const listXeroConnections = createServerFn({ method: "GET" })
