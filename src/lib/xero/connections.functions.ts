@@ -12,7 +12,6 @@ const SCOPES = [
   "accounting.transactions.read",
   "accounting.settings.read",
   "accounting.reports.read",
-  "accounting.reports.tenninetynine.read",
 ].join(" ");
 
 export const listXeroConnections = createServerFn({ method: "GET" })
