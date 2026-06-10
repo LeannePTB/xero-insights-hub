@@ -42,10 +42,17 @@ function Dashboard() {
   }, [refetch]);
 
   async function handleConnect() {
+    const authWindow = window.open("about:blank", "_blank");
     try {
       const { authorizeUrl } = await startConnect({ data: { origin: window.location.origin } });
-      window.location.href = authorizeUrl;
+      if (authWindow) {
+        authWindow.opener = null;
+        authWindow.location.href = authorizeUrl;
+      } else {
+        window.location.href = authorizeUrl;
+      }
     } catch (e: any) {
+      authWindow?.close();
       toast.error(e.message ?? "Could not start Xero connection");
     }
   }
