@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -53,12 +54,10 @@ function ClientSettings() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteTier, setInviteTier] = useState<DashboardTier>("basic");
 
-  // Sync name when client loads
-  if (clientQ.data && name === "" ) {
-    // initialise once
-    const n = clientQ.data.client.name as string;
-    if (name !== n) setTimeout(() => setName(n), 0);
-  }
+  useEffect(() => {
+    if (clientQ.data?.client?.name && name === "") setName(clientQ.data.client.name as string);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientQ.data?.client?.name]);
 
   const renameMut = useMutation({
     mutationFn: () => rename({ data: { clientId, name } }),
