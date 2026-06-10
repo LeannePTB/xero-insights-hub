@@ -7,7 +7,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, HardHat, ChevronRight } from "lucide-react";
+import { LogOut, Plus, Loader2, Building2, HardHat, ChevronRight, SlidersHorizontal } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Clients — Traction Advisory" }] }),
@@ -93,9 +93,14 @@ function Dashboard() {
             </p>
           </div>
           {isAdvisor && (
-            <Button asChild>
-              <Link to="/clients/new"><Plus className="mr-2 h-4 w-4" /> New client</Link>
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/settings/tiers"><SlidersHorizontal className="mr-2 h-4 w-4" /> Tier widgets</Link>
+              </Button>
+              <Button asChild>
+                <Link to="/clients/new"><Plus className="mr-2 h-4 w-4" /> New client</Link>
+              </Button>
+            </div>
           )}
         </div>
 

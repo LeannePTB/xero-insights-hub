@@ -11,7 +11,8 @@ import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
-import { TIER_WIDGETS, TIER_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { TIER_LABEL, type DashboardTier } from "@/lib/tiers";
+import { getEffectiveWidgets } from "@/lib/tier-config.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
   head: () => ({ meta: [{ title: "Client dashboard — Traction Advisory" }] }),
@@ -23,6 +24,7 @@ function ClientDashboard() {
   const navigate = useNavigate();
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
+  const fetchWidgets = useServerFn(getEffectiveWidgets);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const clientQ = useQuery({
@@ -33,7 +35,14 @@ function ClientDashboard() {
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
   const viewerEntry = ctxQ.data?.viewerClients.find((c) => c.id === clientId);
   const tier: DashboardTier = isAdvisor ? "investigate" : (viewerEntry?.tier ?? "basic");
-  const widgets = TIER_WIDGETS[tier];
+
+  const widgetsQ = useQuery({
+    queryKey: ["effective-widgets", clientId, tier],
+    queryFn: () => fetchWidgets({ data: { clientId, tier } }),
+    enabled: !!ctxQ.data,
+  });
+  const widgets = widgetsQ.data?.widgets ?? [];
+
 
   async function handleSignOut() {
     await supabase.auth.signOut();

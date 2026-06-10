@@ -190,6 +190,41 @@ export type Database = {
         }
         Relationships: []
       }
+      tier_widget_config: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          id: string
+          tier: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at: string
+          widgets: string[]
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          tier: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at?: string
+          widgets?: string[]
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          id?: string
+          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at?: string
+          widgets?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tier_widget_config_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -279,6 +314,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_tier_widgets: {
+        Args: {
+          _client_id: string
+          _tier: Database["public"]["Enums"]["dashboard_tier"]
+        }
+        Returns: string[]
+      }
       get_user_tier: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["dashboard_tier"]

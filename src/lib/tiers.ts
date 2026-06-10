@@ -1,7 +1,16 @@
 export type DashboardTier = "basic" | "advisory" | "investigate";
 export type WidgetKey = "revenue_kpis" | "tax_liability" | "pnl" | "breakeven" | "payables";
 
-export const TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
+export const ALL_WIDGETS: WidgetKey[] = [
+  "revenue_kpis",
+  "tax_liability",
+  "pnl",
+  "breakeven",
+  "payables",
+];
+
+// Fallback defaults (used only if the DB has no row for a tier).
+export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
   basic: ["revenue_kpis", "tax_liability"],
   advisory: ["revenue_kpis", "tax_liability", "pnl", "breakeven"],
   investigate: ["revenue_kpis", "tax_liability", "pnl", "breakeven", "payables"],
@@ -26,9 +35,5 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   breakeven: "Breakeven",
   payables: "Aged Payables",
 };
-
-export function canAccessWidget(tier: DashboardTier, widget: WidgetKey): boolean {
-  return TIER_WIDGETS[tier].includes(widget);
-}
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate"];

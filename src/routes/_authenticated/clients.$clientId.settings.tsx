@@ -14,6 +14,7 @@ import {
   updateClientAccessTier,
   revokeClientAccess,
 } from "@/lib/clients.functions";
+import { listTierConfig, saveTierWidgets } from "@/lib/tier-config.functions";
 import { listXeroConnections, startXeroConnect } from "@/lib/xero/connections.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { ArrowLeft, Trash2, Loader2, Plug, UserPlus, Link2 } from "lucide-react";
-import { ALL_TIERS, TIER_LABEL, type DashboardTier } from "@/lib/tiers";
+import { ALL_TIERS, TIER_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/settings")({
   head: () => ({ meta: [{ title: "Client settings — Traction Advisory" }] }),
@@ -45,10 +47,27 @@ function ClientSettings() {
   const invite = useServerFn(inviteClientViewer);
   const updateTier = useServerFn(updateClientAccessTier);
   const revoke = useServerFn(revokeClientAccess);
+  const fetchTierCfg = useServerFn(listTierConfig);
+  const saveTier = useServerFn(saveTierWidgets);
 
   const clientQ = useQuery({ queryKey: ["client", clientId], queryFn: () => fetchClient({ data: { clientId } }) });
   const connQ = useQuery({ queryKey: ["xero-connections"], queryFn: () => fetchConnections() });
   const accessQ = useQuery({ queryKey: ["client-access", clientId], queryFn: () => fetchAccess({ data: { clientId } }) });
+  const tierCfgQ = useQuery({
+    queryKey: ["tier-config", clientId],
+    queryFn: () => fetchTierCfg({ data: { clientId } }),
+  });
+
+  const tierSaveMut = useMutation({
+    mutationFn: (v: { tier: DashboardTier; widgets: WidgetKey[] | null }) =>
+      saveTier({ data: { clientId, tier: v.tier, widgets: v.widgets } }),
+    onSuccess: () => {
+      toast.success("Saved");
+      qc.invalidateQueries({ queryKey: ["tier-config", clientId] });
+      qc.invalidateQueries({ queryKey: ["effective-widgets", clientId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   const [name, setName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
@@ -226,6 +245,40 @@ function ClientSettings() {
         </Section>
 
         {/* Danger */}
+        {/* Per-client tier overrides */}
+        <Section title="Dashboard widgets per tier" action={
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/settings/tiers">Edit defaults</Link>
+          </Button>
+        }>
+          <p className="mb-4 text-xs text-muted-foreground">
+            Override which widgets appear for this client. Leave a tier on its global default by clicking "Use default".
+          </p>
+          {tierCfgQ.isLoading ? (
+            <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
+          ) : (
+            <div className="space-y-4">
+              {ALL_TIERS.map((t) => {
+                const override = tierCfgQ.data?.client?.[t] ?? null;
+                const fallback = tierCfgQ.data?.global[t] ?? [];
+                const current = override ?? fallback;
+                return (
+                  <TierEditor
+                    key={t}
+                    tier={t}
+                    initial={current}
+                    saving={tierSaveMut.isPending}
+                    onSave={(widgets) => tierSaveMut.mutate({ tier: t, widgets })}
+                    onReset={override ? () => tierSaveMut.mutate({ tier: t, widgets: null }) : undefined}
+                    resetLabel="Use default"
+                    title={`${TIER_LABEL[t]} ${override ? "· custom for this client" : "· using default"}`}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </Section>
+
         <Section title="Danger zone">
           <Button
             variant="destructive"
