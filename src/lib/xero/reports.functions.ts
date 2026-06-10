@@ -96,3 +96,70 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     if (!report) throw new Error("No P&L report returned by Xero.");
     return summarise(report);
   });
+
+export type TaxLiabilities = {
+  reportDate: string;
+  asAtDate?: string;
+  gst: number;
+  payg: number;
+  superannuation: number;
+  totalTaxLiability: number;
+  lines: { name: string; amount: number; category: "gst" | "payg" | "super" | "other-tax" }[];
+};
+
+function classifyTaxLine(name: string): TaxLiabilities["lines"][number]["category"] | null {
+  const n = name.toLowerCase();
+  if (n.includes("gst") || n.includes("vat") || n.includes("sales tax")) return "gst";
+  if (n.includes("payg") || n.includes("paye") || n.includes("withholding")) return "payg";
+  if (n.includes("super")) return "super";
+  if (n.includes("tax payable") || n.includes("income tax") || n.includes("bas")) return "other-tax";
+  return null;
+}
+
+function walkRows(rows: XeroReportRow[] | undefined, visit: (r: XeroReportRow) => void) {
+  if (!rows) return;
+  for (const r of rows) {
+    visit(r);
+    if (r.Rows) walkRows(r.Rows, visit);
+  }
+}
+
+export const getTaxLiabilities = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string; date?: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { getConnection, xeroGet } = await import("./api.server");
+    const conn = await getConnection(context.userId, data.tenantId);
+    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {
+      date: data.date,
+    });
+    const report = res.Reports?.[0];
+    if (!report) throw new Error("No Balance Sheet returned by Xero.");
+
+    const out: TaxLiabilities = {
+      reportDate: report.ReportDate ?? "",
+      asAtDate: report.ReportTitles?.[2] ?? report.ReportTitles?.[1],
+      gst: 0,
+      payg: 0,
+      superannuation: 0,
+      totalTaxLiability: 0,
+      lines: [],
+    };
+
+    walkRows(report.Rows, (r) => {
+      if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
+      const name = r.Cells[0].Value;
+      if (!name) return;
+      const category = classifyTaxLine(name);
+      if (!category) return;
+      const amount = parseAmount(r.Cells[1].Value);
+      out.lines.push({ name, amount, category });
+      if (category === "gst") out.gst += amount;
+      else if (category === "payg") out.payg += amount;
+      else if (category === "super") out.superannuation += amount;
+    });
+
+    out.totalTaxLiability = out.lines.reduce((s, l) => s + l.amount, 0);
+    out.lines.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+    return out;
+  });
