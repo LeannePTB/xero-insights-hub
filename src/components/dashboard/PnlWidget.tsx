@@ -3,15 +3,6 @@ import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -44,6 +35,7 @@ export function PnlWidget({ tenantId, tenantName }: { tenantId: string; tenantNa
     name: e.name.length > 18 ? e.name.slice(0, 18) + "…" : e.name,
     amount: e.amount,
   }));
+  const maxExpense = Math.max(...expenseData.map((e) => Math.abs(e.amount)), 1);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -90,16 +82,19 @@ export function PnlWidget({ tenantId, tenantName }: { tenantId: string; tenantNa
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Top expense categories
               </p>
-              <div className="h-48">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={expenseData} layout="vertical" margin={{ left: 8, right: 8 }}>
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" />
-                    <XAxis type="number" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} fontSize={11} />
-                    <YAxis type="category" dataKey="name" width={120} fontSize={11} />
-                    <Tooltip formatter={(v: number) => fmt(v)} />
-                    <Bar dataKey="amount" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+              <div className="space-y-3">
+                {expenseData.map((expense) => (
+                  <div key={expense.name} className="grid grid-cols-[7rem_1fr_5rem] items-center gap-3 text-xs">
+                    <span className="truncate text-muted-foreground">{expense.name}</span>
+                    <div className="h-2 rounded-full bg-muted">
+                      <div
+                        className="h-2 rounded-full bg-primary"
+                        style={{ width: `${Math.max(6, (Math.abs(expense.amount) / maxExpense) * 100)}%` }}
+                      />
+                    </div>
+                    <span className="text-right font-medium">{fmt(expense.amount)}</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
