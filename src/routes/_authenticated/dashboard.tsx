@@ -7,7 +7,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, HardHat, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { LogOut, Plus, Loader2, Building2, HardHat, ChevronRight, SlidersHorizontal, Users } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Clients — Traction Advisory" }] }),
@@ -93,7 +93,10 @@ function Dashboard() {
             </p>
           </div>
           {isAdvisor && (
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/settings/advisors"><Users className="mr-2 h-4 w-4" /> Advisors</Link>
+              </Button>
               <Button variant="outline" asChild>
                 <Link to="/settings/tiers"><SlidersHorizontal className="mr-2 h-4 w-4" /> Tier widgets</Link>
               </Button>

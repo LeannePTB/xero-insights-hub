@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSettingsTiersRouteImport } from './routes/_authenticated/settings.tiers'
+import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
@@ -44,6 +45,12 @@ const AuthenticatedSettingsTiersRoute =
     path: '/settings/tiers',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsAdvisorsRoute =
+  AuthenticatedSettingsAdvisorsRouteImport.update({
+    id: '/settings/advisors',
+    path: '/settings/advisors',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsNewRoute = AuthenticatedClientsNewRouteImport.update({
   id: '/clients/new',
   path: '/clients/new',
@@ -72,6 +79,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -82,6 +90,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -94,6 +103,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
+  '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/clients/new'
+    | '/settings/advisors'
     | '/settings/tiers'
     | '/clients/$clientId/settings'
     | '/api/public/xero/callback'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/clients/new'
+    | '/settings/advisors'
     | '/settings/tiers'
     | '/clients/$clientId/settings'
     | '/api/public/xero/callback'
@@ -127,6 +139,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/clients/new'
+    | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/tiers'
     | '/_authenticated/clients/$clientId/settings'
     | '/api/public/xero/callback'
@@ -177,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsTiersRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/advisors': {
+      id: '/_authenticated/settings/advisors'
+      path: '/settings/advisors'
+      fullPath: '/settings/advisors'
+      preLoaderRoute: typeof AuthenticatedSettingsAdvisorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients/new': {
       id: '/_authenticated/clients/new'
       path: '/clients/new'
@@ -211,6 +231,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedClientsNewRoute: typeof AuthenticatedClientsNewRoute
+  AuthenticatedSettingsAdvisorsRoute: typeof AuthenticatedSettingsAdvisorsRoute
   AuthenticatedSettingsTiersRoute: typeof AuthenticatedSettingsTiersRoute
   AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRoute
   AuthenticatedClientsClientIdIndexRoute: typeof AuthenticatedClientsClientIdIndexRoute
@@ -219,6 +240,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedClientsNewRoute: AuthenticatedClientsNewRoute,
+  AuthenticatedSettingsAdvisorsRoute: AuthenticatedSettingsAdvisorsRoute,
   AuthenticatedSettingsTiersRoute: AuthenticatedSettingsTiersRoute,
   AuthenticatedClientsClientIdSettingsRoute:
     AuthenticatedClientsClientIdSettingsRoute,
@@ -238,3 +260,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
