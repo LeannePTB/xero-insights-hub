@@ -29,14 +29,14 @@ function AuthPage() {
   async function handleEmail(mode: "signin" | "signup") {
     setLoading(true);
     try {
-      const { error } =
-        mode === "signin"
-          ? await supabase.auth.signInWithPassword({ email, password })
-          : await supabase.auth.signUp({
-              email,
-              password,
-              options: { emailRedirectTo: window.location.origin + "/dashboard" },
-            });
+      const auth = supabase.auth;
+      const { error } = mode === "signin"
+        ? await auth.signInWithPassword.bind(auth)({ email, password })
+        : await auth.signUp.bind(auth)({
+            email,
+            password,
+            options: { emailRedirectTo: window.location.origin + "/dashboard" },
+          });
       if (error) throw error;
       toast.success(mode === "signin" ? "Welcome back" : "Check your inbox to confirm your email");
       if (mode === "signin") navigate({ to: "/dashboard" });
