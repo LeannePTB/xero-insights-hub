@@ -36,11 +36,11 @@ function SortableItem({ id, children }: { id: string; children: ReactNode }) {
         {...attributes}
         {...listeners}
         aria-label="Drag to reorder"
-        className="absolute right-3 top-3 z-10 grid h-7 w-7 cursor-grab touch-none place-items-center rounded-md bg-muted/60 text-muted-foreground opacity-0 transition-opacity hover:bg-muted active:cursor-grabbing group-hover:opacity-100 focus:opacity-100"
+        className="absolute right-3 top-3 z-10 grid h-7 w-7 cursor-grab touch-none place-items-center rounded-md bg-muted/70 text-muted-foreground opacity-60 transition-opacity hover:bg-muted hover:opacity-100 active:cursor-grabbing focus:opacity-100"
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <div className="group">{children}</div>
+      {children}
     </div>
   );
 }
