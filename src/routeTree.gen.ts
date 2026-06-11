@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedSettingsTiersRouteImport } from './routes/_authenticated/settings.tiers'
 import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
+import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
@@ -52,6 +53,12 @@ const AuthenticatedSettingsAdvisorsRoute =
     path: '/settings/advisors',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSettingsActivityRoute =
+  AuthenticatedSettingsActivityRouteImport.update({
+    id: '/settings/activity',
+    path: '/settings/activity',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsNewRoute = AuthenticatedClientsNewRouteImport.update({
   id: '/clients/new',
   path: '/clients/new',
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
@@ -98,6 +106,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
@@ -112,6 +121,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
+  '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
@@ -126,6 +136,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/clients/new'
+    | '/settings/activity'
     | '/settings/advisors'
     | '/settings/tiers'
     | '/clients/$clientId/settings'
@@ -138,6 +149,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/clients/new'
+    | '/settings/activity'
     | '/settings/advisors'
     | '/settings/tiers'
     | '/clients/$clientId/settings'
@@ -151,6 +163,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/_authenticated/clients/new'
+    | '/_authenticated/settings/activity'
     | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/tiers'
     | '/_authenticated/clients/$clientId/settings'
@@ -210,6 +223,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsAdvisorsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/activity': {
+      id: '/_authenticated/settings/activity'
+      path: '/settings/activity'
+      fullPath: '/settings/activity'
+      preLoaderRoute: typeof AuthenticatedSettingsActivityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients/new': {
       id: '/_authenticated/clients/new'
       path: '/clients/new'
@@ -251,6 +271,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedClientsNewRoute: typeof AuthenticatedClientsNewRoute
+  AuthenticatedSettingsActivityRoute: typeof AuthenticatedSettingsActivityRoute
   AuthenticatedSettingsAdvisorsRoute: typeof AuthenticatedSettingsAdvisorsRoute
   AuthenticatedSettingsTiersRoute: typeof AuthenticatedSettingsTiersRoute
   AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRoute
@@ -261,6 +282,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedClientsNewRoute: AuthenticatedClientsNewRoute,
+  AuthenticatedSettingsActivityRoute: AuthenticatedSettingsActivityRoute,
   AuthenticatedSettingsAdvisorsRoute: AuthenticatedSettingsAdvisorsRoute,
   AuthenticatedSettingsTiersRoute: AuthenticatedSettingsTiersRoute,
   AuthenticatedClientsClientIdSettingsRoute:
