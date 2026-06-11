@@ -1,5 +1,5 @@
 export type DashboardTier = "basic" | "advisory" | "investigate" | "multi_company";
-export type WidgetKey = "revenue_kpis" | "tax_liability" | "pnl" | "breakeven" | "payables";
+export type WidgetKey = "revenue_kpis" | "tax_liability" | "pnl" | "breakeven" | "payables" | "receivables";
 
 export const ALL_WIDGETS: WidgetKey[] = [
   "revenue_kpis",
@@ -7,14 +7,15 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "pnl",
   "breakeven",
   "payables",
+  "receivables",
 ];
 
 // Fallback defaults (used only if the DB has no row for a tier).
 export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
-  basic: ["revenue_kpis", "tax_liability"],
-  advisory: ["revenue_kpis", "tax_liability", "pnl", "breakeven"],
-  investigate: ["revenue_kpis", "tax_liability", "pnl", "breakeven", "payables"],
-  multi_company: ["revenue_kpis", "tax_liability", "pnl", "breakeven", "payables"],
+  basic: ["revenue_kpis", "tax_liability", "receivables"],
+  advisory: ["revenue_kpis", "tax_liability", "pnl", "breakeven", "receivables"],
+  investigate: ["revenue_kpis", "tax_liability", "pnl", "breakeven", "payables", "receivables"],
+  multi_company: ["revenue_kpis", "tax_liability", "pnl", "breakeven", "payables", "receivables"],
 };
 
 export const TIER_LABEL: Record<DashboardTier, string> = {
@@ -37,6 +38,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   pnl: "Profit & Loss",
   breakeven: "Breakeven",
   payables: "Aged Payables",
+  receivables: "Aged Receivables",
 };
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
