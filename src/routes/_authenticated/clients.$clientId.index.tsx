@@ -18,6 +18,7 @@ import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
 import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
+import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
 import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
@@ -162,6 +163,12 @@ function ClientDashboard() {
             </Button>
           )}
         </div>
+
+        {isAdvisor && orgs.length > 0 && (
+          <div className="mt-6">
+            <TransactionSearch clientId={clientId} />
+          </div>
+        )}
 
         <p className="mt-6 text-xs text-muted-foreground">
           Tip: hover any card and grab the handle in its top-right corner to reorder. Your layout is saved automatically.
