@@ -16,7 +16,12 @@ function monthRange(offsetMonths: number): { from: string; to: string; label: st
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth() + offsetMonths, 1);
   const end = new Date(now.getFullYear(), now.getMonth() + offsetMonths + 1, 0);
-  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  const iso = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
   const label = start.toLocaleString(undefined, { month: "short", year: "numeric" });
   return { from: iso(start), to: iso(end), label };
 }
