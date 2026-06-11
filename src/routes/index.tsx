@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { LineChart, ShieldCheck, Zap, HardHat } from "lucide-react";
+import { LineChart, ShieldCheck, Zap } from "lucide-react";
 import ptLogo from "@/assets/pt-logo.png.asset.json";
 
 export const Route = createFileRoute("/")({
