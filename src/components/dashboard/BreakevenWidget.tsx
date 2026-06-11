@@ -74,6 +74,7 @@ export function BreakevenWidget({
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr, basis],
     queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven", basis } }),
+    retry: false,
   });
 
   const income = data?.totalIncome ?? 0;

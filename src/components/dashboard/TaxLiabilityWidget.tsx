@@ -61,6 +61,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-tax", tenantId, asAtIso, fromIso, mode],
     queryFn: () => fetchTax({ data: { tenantId, date: asAtIso, fromDate: fromIso, mode } }),
+    retry: false,
   });
 
   return (
