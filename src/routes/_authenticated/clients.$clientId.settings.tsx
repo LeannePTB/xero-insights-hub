@@ -14,7 +14,7 @@ import {
   updateClientAccessTier,
   revokeClientAccess,
 } from "@/lib/clients.functions";
-import { listTierConfig, saveTierWidgets } from "@/lib/tier-config.functions";
+import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { listXeroConnections, startXeroConnect } from "@/lib/xero/connections.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ function ClientSettings() {
   const revoke = useServerFn(revokeClientAccess);
   const fetchTierCfg = useServerFn(listTierConfig);
   const saveTier = useServerFn(saveTierWidgets);
+  const fetchTierSettings = useServerFn(listTierSettings);
 
   const clientQ = useQuery({ queryKey: ["client", clientId], queryFn: () => fetchClient({ data: { clientId } }) });
   const connQ = useQuery({ queryKey: ["xero-connections"], queryFn: () => fetchConnections() });
@@ -57,6 +58,8 @@ function ClientSettings() {
     queryKey: ["tier-config", clientId],
     queryFn: () => fetchTierCfg({ data: { clientId } }),
   });
+  const tierSettingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchTierSettings() });
+  const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
 
   const tierSaveMut = useMutation({
     mutationFn: (v: { tier: DashboardTier; widgets: WidgetKey[] | null }) =>
@@ -77,6 +80,13 @@ function ClientSettings() {
     if (clientQ.data?.client?.name && name === "") setName(clientQ.data.client.name as string);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientQ.data?.client?.name]);
+
+  useEffect(() => {
+    if (enabledTiers.length && !enabledTiers.includes(inviteTier)) {
+      setInviteTier(enabledTiers[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabledTiers.join(",")]);
 
   const renameMut = useMutation({
     mutationFn: () => rename({ data: { clientId, name } }),
@@ -205,7 +215,7 @@ function ClientSettings() {
             <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as DashboardTier)}>
               <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {ALL_TIERS.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
+                {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
               </SelectContent>
             </Select>
             <Button onClick={() => inviteMut.mutate()} disabled={!inviteEmail.includes("@") || inviteMut.isPending}>
@@ -230,7 +240,7 @@ function ClientSettings() {
                       <Select value={a.tier} onValueChange={(v) => tierMut.mutate({ id: a.id, tier: v as DashboardTier })}>
                         <SelectTrigger className="h-8 w-44"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {ALL_TIERS.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
+                          {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
                         </SelectContent>
                       </Select>
                       <Button variant="ghost" size="sm" onClick={() => revokeMut.mutate(a.id)}>
@@ -258,7 +268,7 @@ function ClientSettings() {
             <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
           ) : (
             <div className="space-y-4">
-              {ALL_TIERS.map((t) => {
+              {enabledTiers.map((t) => {
                 const override = tierCfgQ.data?.client?.[t] ?? null;
                 const fallback = tierCfgQ.data?.global[t] ?? [];
                 const current = override ?? fallback;
