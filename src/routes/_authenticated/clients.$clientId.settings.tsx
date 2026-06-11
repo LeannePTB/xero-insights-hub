@@ -184,6 +184,27 @@ function ClientSettings() {
           </div>
         </Section>
 
+        {/* Report basis */}
+        <Section title="Report basis">
+          <p className="mb-3 text-xs text-muted-foreground">
+            Applies to all financial widgets (P&amp;L, Breakeven, Revenue/Expense KPIs). Receivables and Payables are always invoice-based.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              value={(client as any).report_basis ?? "accrual"}
+              onValueChange={(v) => basisMut.mutate(v as "accrual" | "cash")}
+              disabled={basisMut.isPending}
+            >
+              <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="accrual">Accrual (default)</SelectItem>
+                <SelectItem value="cash">Cash</SelectItem>
+              </SelectContent>
+            </Select>
+            {basisMut.isPending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+          </div>
+        </Section>
+
         {/* Xero orgs */}
         <Section title="Xero organisations" action={
           <Button variant="outline" size="sm" onClick={handleConnect}><Plug className="mr-1.5 h-3.5 w-3.5" /> Connect new</Button>
