@@ -18,7 +18,7 @@ import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
 import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
-import { getEffectiveWidgets } from "@/lib/tier-config.functions";
+import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
   head: () => ({ meta: [{ title: "Client dashboard — Traction Advisory" }] }),
@@ -32,6 +32,7 @@ function ClientDashboard() {
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
   const fetchWidgets = useServerFn(getEffectiveWidgets);
+  const fetchTierSettings = useServerFn(listTierSettings);
   const fetchOrder = useServerFn(getCardOrder);
   const saveOrderFn = useServerFn(saveCardOrder);
 
@@ -40,10 +41,15 @@ function ClientDashboard() {
     queryKey: ["client", clientId],
     queryFn: () => fetchClient({ data: { clientId } }),
   });
+  const tierSettingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchTierSettings() });
 
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
   const viewerEntry = ctxQ.data?.viewerClients.find((c) => c.id === clientId);
-  const tier: DashboardTier = isAdvisor ? "investigate" : (viewerEntry?.tier ?? "basic");
+  // For advisors, pick the highest enabled tier so the label reflects what's actually turned on.
+  const enabledOrder: DashboardTier[] = ["multi_company", "investigate", "advisory", "basic"];
+  const advisorTier: DashboardTier =
+    enabledOrder.find((t) => tierSettingsQ.data?.enabled?.[t]) ?? "investigate";
+  const tier: DashboardTier = isAdvisor ? advisorTier : (viewerEntry?.tier ?? "basic");
 
   const widgetsQ = useQuery({
     queryKey: ["effective-widgets", clientId, tier],
