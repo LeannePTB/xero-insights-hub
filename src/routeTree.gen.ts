@@ -21,6 +21,8 @@ import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
+import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
+import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -87,6 +89,18 @@ const AuthenticatedClientsClientIdSettingsRoute =
     path: '/clients/$clientId/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedClientsClientIdReceivablesTenantIdRoute =
+  AuthenticatedClientsClientIdReceivablesTenantIdRouteImport.update({
+    id: '/clients/$clientId/receivables/$tenantId',
+    path: '/clients/$clientId/receivables/$tenantId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedClientsClientIdPayablesTenantIdRoute =
+  AuthenticatedClientsClientIdPayablesTenantIdRouteImport.update({
+    id: '/clients/$clientId/payables/$tenantId',
+    path: '/clients/$clientId/payables/$tenantId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -100,6 +114,8 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
+  '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
+  '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -113,6 +129,8 @@ export interface FileRoutesByTo {
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdIndexRoute
+  '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
+  '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -128,6 +146,8 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/_authenticated/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
+  '/_authenticated/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
+  '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -143,6 +163,8 @@ export interface FileRouteTypes {
     | '/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
     | '/clients/$clientId/'
+    | '/clients/$clientId/payables/$tenantId'
+    | '/clients/$clientId/receivables/$tenantId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -156,6 +178,8 @@ export interface FileRouteTypes {
     | '/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
     | '/clients/$clientId'
+    | '/clients/$clientId/payables/$tenantId'
+    | '/clients/$clientId/receivables/$tenantId'
   id:
     | '__root__'
     | '/'
@@ -170,6 +194,8 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
     | '/_authenticated/clients/$clientId/'
+    | '/_authenticated/clients/$clientId/payables/$tenantId'
+    | '/_authenticated/clients/$clientId/receivables/$tenantId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -265,6 +291,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clients/$clientId/receivables/$tenantId': {
+      id: '/_authenticated/clients/$clientId/receivables/$tenantId'
+      path: '/clients/$clientId/receivables/$tenantId'
+      fullPath: '/clients/$clientId/receivables/$tenantId'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdReceivablesTenantIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clients/$clientId/payables/$tenantId': {
+      id: '/_authenticated/clients/$clientId/payables/$tenantId'
+      path: '/clients/$clientId/payables/$tenantId'
+      fullPath: '/clients/$clientId/payables/$tenantId'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdPayablesTenantIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -277,6 +317,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRoute
   AuthenticatedClientsClientIdUnreconciledRoute: typeof AuthenticatedClientsClientIdUnreconciledRoute
   AuthenticatedClientsClientIdIndexRoute: typeof AuthenticatedClientsClientIdIndexRoute
+  AuthenticatedClientsClientIdPayablesTenantIdRoute: typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
+  AuthenticatedClientsClientIdReceivablesTenantIdRoute: typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -291,6 +333,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedClientsClientIdUnreconciledRoute,
   AuthenticatedClientsClientIdIndexRoute:
     AuthenticatedClientsClientIdIndexRoute,
+  AuthenticatedClientsClientIdPayablesTenantIdRoute:
+    AuthenticatedClientsClientIdPayablesTenantIdRoute,
+  AuthenticatedClientsClientIdReceivablesTenantIdRoute:
+    AuthenticatedClientsClientIdReceivablesTenantIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

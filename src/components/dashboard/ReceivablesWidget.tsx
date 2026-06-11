@@ -1,8 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
 import { getAgedReceivables } from "@/lib/xero/receivables.functions";
-import { Loader2, RefreshCw, HandCoins, AlertCircle } from "lucide-react";
+import { Loader2, RefreshCw, HandCoins, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -20,7 +22,7 @@ const BUCKET_TONES: Record<string, string> = {
   "90+ days": "bg-rose-600",
 };
 
-export function ReceivablesWidget({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
+export function ReceivablesWidget({ tenantId, tenantName, clientId }: { tenantId: string; tenantName: string; clientId: string }) {
   const fetchAR = useServerFn(getAgedReceivables);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -117,6 +119,16 @@ export function ReceivablesWidget({ tenantId, tenantName }: { tenantId: string; 
                 {fmt(data.totalOverdue)} is past its due date.
               </p>
             )}
+            <div className="mt-4 border-t border-border/60 pt-3">
+              <Link
+                to="/clients/$clientId/receivables/$tenantId"
+                params={{ clientId, tenantId }}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+              >
+                View all receivables <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+
           </>
         )
       ) : null}
