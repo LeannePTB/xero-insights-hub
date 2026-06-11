@@ -17,7 +17,12 @@ export function friendlyXeroError(error: unknown) {
   const message = extractErrorMessage(error);
   const lower = message.toLowerCase();
 
-  if (message.includes("429") || lower.includes("rate limit")) {
+  if (
+    message.includes("429") ||
+    lower.includes("rate limit") ||
+    lower.includes("paused requests") ||
+    lower.includes("too many were sent")
+  ) {
     return "Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.";
   }
   if (message.includes("401") || lower.includes("unauthorized")) {
