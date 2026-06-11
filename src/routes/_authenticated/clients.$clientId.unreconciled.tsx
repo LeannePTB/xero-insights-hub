@@ -225,6 +225,7 @@ function AccountTable({
               <th className="px-4 py-2 font-medium">Reference</th>
               <th className="px-4 py-2 text-right font-medium">Spent</th>
               <th className="px-4 py-2 text-right font-medium">Received</th>
+              <th className="px-4 py-2 font-medium" style={{ minWidth: 200 }}>Comments</th>
               <th className="px-4 py-2 font-medium" style={{ minWidth: 240 }}>Your comments</th>
             </tr>
           </thead>
