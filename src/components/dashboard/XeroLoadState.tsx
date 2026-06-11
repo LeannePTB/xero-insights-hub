@@ -1,8 +1,20 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+function extractErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    const maybe = error as { message?: unknown; error?: unknown; cause?: unknown };
+    if (typeof maybe.message === "string") return maybe.message;
+    if (typeof maybe.error === "string") return maybe.error;
+    if (maybe.cause) return extractErrorMessage(maybe.cause);
+  }
+  return String(error ?? "");
+}
+
 export function friendlyXeroError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error ?? "");
+  const message = extractErrorMessage(error);
   const lower = message.toLowerCase();
 
   if (message.includes("429") || lower.includes("rate limit")) {

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQueries } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
@@ -29,6 +29,10 @@ function monthRange(offsetMonths: number): { from: string; to: string; label: st
   return { from: iso(start), to: iso(end), label };
 }
 
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function RevenueExpenseKpis({
   tenantId,
   tenantName,
@@ -46,32 +50,25 @@ export function RevenueExpenseKpis({
   const prior = monthRange(-1);
   const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
 
-  const results = useQueries({
-    queries: [
-      {
-        queryKey: ["xero-pnl-month", tenantId, current.from, current.to, basis],
-        queryFn: () => fetchPnl({ data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis", basis } }),
-        enabled: shouldLoad,
-        retry: false,
-      },
-      {
-        queryKey: ["xero-pnl-month", tenantId, prior.from, prior.to, basis],
-        queryFn: () => fetchPnl({ data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis", basis } }),
-        enabled: shouldLoad,
-        retry: false,
-      },
-    ],
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ["xero-pnl-month-comparison", tenantId, current.from, current.to, prior.from, prior.to, basis],
+    queryFn: async () => {
+      const currentReport = await fetchPnl({
+        data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis", basis },
+      });
+      await wait(1_500);
+      const priorReport = await fetchPnl({
+        data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis", basis },
+      });
+      return { current: currentReport, prior: priorReport };
+    },
+    enabled: shouldLoad,
+    retry: false,
   });
-
-  const [curQ, prevQ] = results;
-  const isLoading = shouldLoad && (curQ.isLoading || prevQ.isLoading);
-  const isFetching = curQ.isFetching || prevQ.isFetching;
-  const error = curQ.error || prevQ.error;
 
   function refetch() {
     setShouldLoad(true);
-    curQ.refetch();
-    prevQ.refetch();
+    refetch();
   }
 
   return (
