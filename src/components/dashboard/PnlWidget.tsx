@@ -5,6 +5,7 @@ import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
+import { useDelayedReady } from "@/hooks/use-delayed-ready";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -27,12 +28,15 @@ export function PnlWidget({
   tenantId,
   tenantName,
   defaultBasis = "accrual",
+  loadDelayMs = 0,
 }: {
   tenantId: string;
   tenantName: string;
   defaultBasis?: ReportBasis;
+  loadDelayMs?: number;
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
+  const ready = useDelayedReady(loadDelayMs);
   const fromDate = startOfFiscalYear();
   const toDate = today();
   const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
@@ -40,6 +44,7 @@ export function PnlWidget({
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromDate, toDate, basis],
     queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate, widget: "pnl", basis } }),
+    enabled: ready,
     retry: false,
   });
 
@@ -75,7 +80,7 @@ export function PnlWidget({
         </div>
       </div>
 
-      {isLoading ? (
+      {!ready || isLoading ? (
         <div className="flex h-40 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading P&L…
         </div>
