@@ -109,27 +109,17 @@ export function BreakevenWidget({ tenantId, tenantName }: { tenantId: string; te
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" /> Monthly Breakeven
-            {data?.basis && (
-              <span
-                className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                  data.basis === "cash"
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-blue-100 text-blue-800"
-                }`}
-                title={`Report basis: ${data.basis === "cash" ? "Cash" : "Accrual"}`}
-              >
-                {data.basis === "cash" ? "Cash" : "Accrual"}
-              </span>
-            )}
           </h3>
           <p className="text-xs text-muted-foreground">
             Period: {fromStr} → {toStr} ({months.toFixed(1)} mo)
           </p>
-
         </div>
-        <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <BasisSelect value={basis} onChange={setBasis} disabled={isFetching} />
+          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
