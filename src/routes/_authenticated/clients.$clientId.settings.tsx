@@ -81,6 +81,13 @@ function ClientSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientQ.data?.client?.name]);
 
+  useEffect(() => {
+    if (enabledTiers.length && !enabledTiers.includes(inviteTier)) {
+      setInviteTier(enabledTiers[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabledTiers.join(",")]);
+
   const renameMut = useMutation({
     mutationFn: () => rename({ data: { clientId, name } }),
     onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["client", clientId] }); qc.invalidateQueries({ queryKey: ["clients"] }); },
@@ -261,7 +268,7 @@ function ClientSettings() {
             <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
           ) : (
             <div className="space-y-4">
-              {ALL_TIERS.map((t) => {
+              {enabledTiers.map((t) => {
                 const override = tierCfgQ.data?.client?.[t] ?? null;
                 const fallback = tierCfgQ.data?.global[t] ?? [];
                 const current = override ?? fallback;
