@@ -196,6 +196,18 @@ export const renameClient = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const updateClientReportBasis = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; basis: "accrual" | "cash" }) => i)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("clients")
+      .update({ report_basis: data.basis })
+      .eq("id", data.clientId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const attachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; xeroConnectionId: string }) => i)
