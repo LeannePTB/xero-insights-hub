@@ -208,7 +208,7 @@ function ClientSettings() {
             <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as DashboardTier)}>
               <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
               <SelectContent>
-                {ALL_TIERS.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
+                {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
               </SelectContent>
             </Select>
             <Button onClick={() => inviteMut.mutate()} disabled={!inviteEmail.includes("@") || inviteMut.isPending}>
@@ -233,7 +233,7 @@ function ClientSettings() {
                       <Select value={a.tier} onValueChange={(v) => tierMut.mutate({ id: a.id, tier: v as DashboardTier })}>
                         <SelectTrigger className="h-8 w-44"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {ALL_TIERS.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
+                          {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
                         </SelectContent>
                       </Select>
                       <Button variant="ghost" size="sm" onClick={() => revokeMut.mutate(a.id)}>
