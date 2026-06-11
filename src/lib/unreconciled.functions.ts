@@ -49,6 +49,7 @@ type ParsedLine = {
   received: number | null;
   tax: string | null;
   source_comment: string | null;
+  client_comment: string;
 };
 
 function parseStatementCsv(text: string): ParsedLine[] {
@@ -81,11 +82,9 @@ function parseStatementCsv(text: string): ParsedLine[] {
     const iSpent = idx("spent");
     const iReceived = idx("received");
     const iTax = idx("tax");
-    // Comments: prefer "your comments" → "comments" → "description" → "analysis code"
-    let iComment = idx("your comments");
-    if (iComment === -1) iComment = idx("comments");
-    if (iComment === -1) iComment = idx("description");
-    if (iComment === -1) iComment = idx("analysis code");
+    // Xero can export both fields; keep them separate.
+    const iSourceComment = idx("comments");
+    const iClientComment = idx("your comments");
 
     for (let r = 3; r < block.length; r++) {
       const cols = parseCsvRow(block[r]);
@@ -101,7 +100,8 @@ function parseStatementCsv(text: string): ParsedLine[] {
         spent: iSpent >= 0 ? num(cols[iSpent]) : null,
         received: iReceived >= 0 ? num(cols[iReceived]) : null,
         tax: iTax >= 0 ? ((cols[iTax] ?? "").trim() || null) : null,
-        source_comment: iComment >= 0 ? ((cols[iComment] ?? "").trim() || null) : null,
+        source_comment: iSourceComment >= 0 ? ((cols[iSourceComment] ?? "").trim() || null) : null,
+        client_comment: iClientComment >= 0 ? ((cols[iClientComment] ?? "").trim() || "") : "",
       });
     }
   }
