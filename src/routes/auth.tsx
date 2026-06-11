@@ -61,12 +61,12 @@ function AuthPage() {
         </Link>
         <div>
           <h2 className="text-3xl font-bold leading-tight">
-            Built for builders.
+            Built for owners.
             <br />
             <span className="font-serif italic text-accent">Backed by numbers.</span>
           </h2>
           <p className="mt-4 max-w-md text-sm text-primary-foreground/75">
-            Clean Xero dashboards your clients will actually open — built around the metrics that matter on every job.
+            Clean Xero dashboards you will actually open — built around the metrics that matter.
           </p>
         </div>
         <p className="text-xs text-primary-foreground/55">© {new Date().getFullYear()} Positive Traction</p>
