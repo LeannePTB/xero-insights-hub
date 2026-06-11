@@ -1,6 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { DashboardTier } from "@/lib/tiers";
+import { ALL_TIERS, ALL_WIDGETS, DEFAULT_TIER_WIDGETS, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+
+function sanitizeWidgets(widgets: string[] | null | undefined): WidgetKey[] {
+  return (widgets ?? []).filter((w): w is WidgetKey => (ALL_WIDGETS as string[]).includes(w));
+}
 
 export const listClients = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -8,11 +12,44 @@ export const listClients = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("clients")
       .select(
-        "id, name, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
+        "id, name, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
       )
       .order("name");
     if (error) throw new Error(error.message);
-    return { clients: (data ?? []) as any[] };
+
+    const clientIds = (data ?? []).map((c: any) => c.id);
+    let configRows: any[] = [];
+    if (clientIds.length) {
+      const { data: cfg } = await context.supabase
+        .from("tier_widget_config")
+        .select("client_id, tier, widgets")
+        .or(`client_id.is.null,client_id.in.(${clientIds.join(",")})`);
+      configRows = cfg ?? [];
+    }
+    const byKey = new Map<string, WidgetKey[]>();
+    for (const r of configRows) {
+      byKey.set(`${r.client_id ?? "global"}:${r.tier}`, sanitizeWidgets(r.widgets));
+    }
+    function resolveTierWidgets(clientId: string): Record<DashboardTier, WidgetKey[]> {
+      return Object.fromEntries(
+        ALL_TIERS.map((t) => [
+          t,
+          byKey.get(`${clientId}:${t}`) ?? byKey.get(`global:${t}`) ?? DEFAULT_TIER_WIDGETS[t],
+        ]),
+      ) as Record<DashboardTier, WidgetKey[]>;
+    }
+
+    const clients = (data ?? []).map((c: any) => {
+      const grantedTiers = Array.from(
+        new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
+      ) as DashboardTier[];
+      return {
+        ...c,
+        grantedTiers,
+        tierWidgets: resolveTierWidgets(c.id),
+      };
+    });
+    return { clients };
   });
 
 export const getClient = createServerFn({ method: "POST" })
