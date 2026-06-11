@@ -16,7 +16,7 @@ import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
-import { TIER_LABEL, type DashboardTier } from "@/lib/tiers";
+import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
 import { getEffectiveWidgets } from "@/lib/tier-config.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
@@ -47,9 +47,10 @@ function ClientDashboard() {
   const widgetsQ = useQuery({
     queryKey: ["effective-widgets", clientId, tier],
     queryFn: () => fetchWidgets({ data: { clientId, tier } }),
-    enabled: !!ctxQ.data,
+    enabled: !!ctxQ.data && !isAdvisor,
   });
-  const widgets = widgetsQ.data?.widgets ?? [];
+  // Advisors always see every widget, regardless of saved tier config.
+  const widgets = isAdvisor ? ALL_WIDGETS : (widgetsQ.data?.widgets ?? []);
 
   const orderQ = useQuery({
     queryKey: ["card-order", clientId],
