@@ -107,9 +107,9 @@ function ClientDashboard() {
       if (widgets.includes("breakeven"))
         list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} defaultBasis={defaultBasis} loadDelayMs={3600} /> });
       if (widgets.includes("payables"))
-        list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} loadDelayMs={4800} /> });
+        list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
       if (widgets.includes("receivables"))
-        list.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} loadDelayMs={6000} /> });
+        list.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
 
     }
     return list;
