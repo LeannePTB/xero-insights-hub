@@ -147,6 +147,35 @@ export type Database = {
         }
         Relationships: []
       }
+      dashboard_card_order: {
+        Row: {
+          client_id: string
+          order: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          order?: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          order?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dashboard_card_order_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dashboard_configs: {
         Row: {
           created_at: string
@@ -171,6 +200,33 @@ export type Database = {
           tenant_id?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      login_events: {
+        Row: {
+          email: string | null
+          id: string
+          ip: string | null
+          occurred_at: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          email?: string | null
+          id?: string
+          ip?: string | null
+          occurred_at?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          email?: string | null
+          id?: string
+          ip?: string | null
+          occurred_at?: string
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
