@@ -17,7 +17,7 @@ import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
-import { TIER_LABEL, ALL_TIERS, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
+import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
 import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
