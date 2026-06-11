@@ -5,6 +5,7 @@ import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
+import { useDelayedReady } from "@/hooks/use-delayed-ready";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -32,12 +33,15 @@ export function RevenueExpenseKpis({
   tenantId,
   tenantName,
   defaultBasis = "accrual",
+  loadDelayMs = 0,
 }: {
   tenantId: string;
   tenantName: string;
   defaultBasis?: ReportBasis;
+  loadDelayMs?: number;
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
+  const ready = useDelayedReady(loadDelayMs);
   const current = monthRange(0);
   const prior = monthRange(-1);
   const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
@@ -47,18 +51,20 @@ export function RevenueExpenseKpis({
       {
         queryKey: ["xero-pnl-month", tenantId, current.from, current.to, basis],
         queryFn: () => fetchPnl({ data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis", basis } }),
+        enabled: ready,
         retry: false,
       },
       {
         queryKey: ["xero-pnl-month", tenantId, prior.from, prior.to, basis],
         queryFn: () => fetchPnl({ data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis", basis } }),
+        enabled: ready,
         retry: false,
       },
     ],
   });
 
   const [curQ, prevQ] = results;
-  const isLoading = curQ.isLoading || prevQ.isLoading;
+  const isLoading = !ready || curQ.isLoading || prevQ.isLoading;
   const isFetching = curQ.isFetching || prevQ.isFetching;
   const error = curQ.error || prevQ.error;
 

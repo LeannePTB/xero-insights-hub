@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { getAgedReceivables } from "@/lib/xero/receivables.functions";
 import { Loader2, RefreshCw, HandCoins, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useDelayedReady } from "@/hooks/use-delayed-ready";
 
 
 function fmt(n: number) {
@@ -22,12 +23,14 @@ const BUCKET_TONES: Record<string, string> = {
   "90+ days": "bg-rose-600",
 };
 
-export function ReceivablesWidget({ tenantId, tenantName, clientId }: { tenantId: string; tenantName: string; clientId: string }) {
+export function ReceivablesWidget({ tenantId, tenantName, clientId, loadDelayMs = 0 }: { tenantId: string; tenantName: string; clientId: string; loadDelayMs?: number }) {
   const fetchAR = useServerFn(getAgedReceivables);
+  const ready = useDelayedReady(loadDelayMs);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-ar-ageing", tenantId],
     queryFn: () => fetchAR({ data: { tenantId } }),
+    enabled: ready,
     retry: false,
   });
 
@@ -52,7 +55,7 @@ export function ReceivablesWidget({ tenantId, tenantName, clientId }: { tenantId
         </Button>
       </div>
 
-      {isLoading ? (
+      {!ready || isLoading ? (
         <div className="flex h-40 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading receivables…
         </div>

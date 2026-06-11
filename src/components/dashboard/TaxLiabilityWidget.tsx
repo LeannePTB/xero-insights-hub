@@ -6,6 +6,7 @@ import { getTaxLiabilities } from "@/lib/xero/reports.functions";
 import { Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useDelayedReady } from "@/hooks/use-delayed-ready";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -50,8 +51,9 @@ const categoryLabel: Record<string, string> = {
   "other-tax": "Other tax",
 };
 
-export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
+export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { tenantId: string; tenantName: string; loadDelayMs?: number }) {
   const fetchTax = useServerFn(getTaxLiabilities);
+  const ready = useDelayedReady(loadDelayMs);
   const [period, setPeriod] = useState<PeriodKey>("last-month");
   const [mode, setMode] = useState<"balance" | "movement">("movement");
   const range = periodRange(period);
@@ -61,6 +63,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-tax", tenantId, asAtIso, fromIso, mode],
     queryFn: () => fetchTax({ data: { tenantId, date: asAtIso, fromDate: fromIso, mode } }),
+    enabled: ready,
     retry: false,
   });
 
@@ -105,7 +108,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
       </div>
 
 
-      {isLoading ? (
+      {!ready || isLoading ? (
         <div className="flex h-32 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading tax balances…
         </div>
