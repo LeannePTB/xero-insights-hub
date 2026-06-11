@@ -27,7 +27,11 @@ function pct(n: number) {
   return `${(n * 100).toFixed(1)}%`;
 }
 function toISO(d: Date) {
-  return d.toISOString().slice(0, 10);
+  // Format as local YYYY-MM-DD so timezone offsets don't shift the date.
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 function startOfThisMonth() {
   const d = new Date();
