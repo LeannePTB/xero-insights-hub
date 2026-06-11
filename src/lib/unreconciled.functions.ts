@@ -75,13 +75,17 @@ function parseStatementCsv(text: string): ParsedLine[] {
     const idx = (label: string) => headers.findIndex((h) => h === label);
     const iDate = idx("date");
     const iPayee = idx("payee");
-    const iRef = headers.findIndex((h) => h.startsWith("particulars"));
+    // Reference: prefer "reference", fall back to particulars
+    let iRef = idx("reference");
+    if (iRef === -1) iRef = headers.findIndex((h) => h.startsWith("particulars"));
     const iSpent = idx("spent");
     const iReceived = idx("received");
     const iTax = idx("tax");
-    // Prefer "your comments" then "comments"
+    // Comments: prefer "your comments" → "comments" → "description" → "analysis code"
     let iComment = idx("your comments");
     if (iComment === -1) iComment = idx("comments");
+    if (iComment === -1) iComment = idx("description");
+    if (iComment === -1) iComment = idx("analysis code");
 
     for (let r = 3; r < block.length; r++) {
       const cols = parseCsvRow(block[r]);
