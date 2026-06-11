@@ -155,7 +155,13 @@ export function BreakevenWidget({ tenantId, tenantName }: { tenantId: string; te
           </div>
         ) : (
           <>
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <Kpi label="Revenue" value={fmt(income)} />
+              <Kpi label="Cost of Sales" value={fmt(cogs)} />
+              <Kpi label="Operating Expenses" value={fmt(opex)} />
+            </div>
+
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <Kpi label="Breakeven / mo" value={fmt(monthlyBreakeven)} />
               <Kpi label="Gross Margin" value={pct(grossMargin)} />
               <Kpi label="Fixed Costs / mo" value={fmt(monthlyFixed)} />
