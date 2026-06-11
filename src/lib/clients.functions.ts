@@ -22,7 +22,7 @@ export const getClient = createServerFn({ method: "POST" })
     const { data: client, error } = await context.supabase
       .from("clients")
       .select(
-        "id, name, notes, owner_user_id, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
+        "id, name, owner_user_id, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
       )
       .eq("id", data.clientId)
       .maybeSingle();
@@ -31,18 +31,73 @@ export const getClient = createServerFn({ method: "POST" })
     return { client: client as any };
   });
 
-export const updateClientNotes = createServerFn({ method: "POST" })
+export const listClientNotes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { clientId: string; notes: string }) => i)
+  .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
-    if (data.notes.length > 20000) throw new Error("Notes are too long (20,000 char max).");
+    const { data: rows, error } = await context.supabase
+      .from("client_notes")
+      .select("id, body, author_id, created_at, updated_at")
+      .eq("client_id", data.clientId)
+      .order("created_at", { ascending: false });
+    if (error) throw new Error(error.message);
+    const ids = Array.from(new Set((rows ?? []).map((r: any) => r.author_id).filter(Boolean)));
+    let authorMap = new Map<string, { display_name: string | null; email: string | null }>();
+    if (ids.length) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: profiles } = await supabaseAdmin
+        .from("profiles")
+        .select("id, display_name, email")
+        .in("id", ids);
+      authorMap = new Map((profiles ?? []).map((p: any) => [p.id, { display_name: p.display_name, email: p.email }]));
+    }
+    return {
+      notes: (rows ?? []).map((r: any) => ({
+        ...r,
+        author_name: authorMap.get(r.author_id)?.display_name ?? authorMap.get(r.author_id)?.email ?? "Unknown",
+        is_mine: r.author_id === context.userId,
+      })),
+    };
+  });
+
+export const addClientNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; body: string }) => i)
+  .handler(async ({ data, context }) => {
+    const body = data.body.trim();
+    if (!body) throw new Error("Note can't be empty.");
+    if (body.length > 20000) throw new Error("Note is too long (20,000 char max).");
     const { error } = await context.supabase
-      .from("clients")
-      .update({ notes: data.notes })
-      .eq("id", data.clientId);
+      .from("client_notes")
+      .insert({ client_id: data.clientId, body, author_id: context.userId });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const updateClientNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { noteId: string; body: string }) => i)
+  .handler(async ({ data, context }) => {
+    const body = data.body.trim();
+    if (!body) throw new Error("Note can't be empty.");
+    if (body.length > 20000) throw new Error("Note is too long (20,000 char max).");
+    const { error } = await context.supabase
+      .from("client_notes")
+      .update({ body })
+      .eq("id", data.noteId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deleteClientNote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { noteId: string }) => i)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("client_notes").delete().eq("id", data.noteId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 
 async function clientIsMultiCompany(supabase: any, clientId: string) {
   const { data, error } = await supabase

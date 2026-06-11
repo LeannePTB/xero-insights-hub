@@ -49,6 +49,41 @@ export type Database = {
           },
         ]
       }
+      client_notes: {
+        Row: {
+          author_id: string | null
+          body: string
+          client_id: string
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body: string
+          client_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_notes_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_xero_orgs: {
         Row: {
           client_id: string

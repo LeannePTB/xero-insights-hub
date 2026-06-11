@@ -108,7 +108,7 @@ function ClientDashboard() {
         </div>
 
         <div className="mt-8 space-y-6">
-          <NotesCard clientId={clientId} initialNotes={client.notes ?? ""} canEdit={isAdvisor} />
+          <NotesCard clientId={clientId} canEdit={isAdvisor} />
           <UnreconciledCard clientId={clientId} />
 
           {orgs.length === 0 ? (
