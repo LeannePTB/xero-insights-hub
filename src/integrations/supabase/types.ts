@@ -193,6 +193,24 @@ export type Database = {
         }
         Relationships: []
       }
+      tier_settings: {
+        Row: {
+          enabled: boolean
+          tier: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at: string
+        }
+        Insert: {
+          enabled?: boolean
+          tier: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at?: string
+        }
+        Update: {
+          enabled?: boolean
+          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       tier_widget_config: {
         Row: {
           client_id: string | null
