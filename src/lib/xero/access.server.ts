@@ -26,6 +26,17 @@ export async function getEffectiveTier(
   return { isAdvisor: false, tier: (tier as DashboardTier | null) ?? null, clientId };
 }
 
+export async function getClientReportBasis(tenantId: string): Promise<"accrual" | "cash"> {
+  const { data: cxo } = await (supabaseAdmin as any)
+    .from("client_xero_orgs")
+    .select("clients!inner(report_basis), xero_connections!inner(tenant_id)")
+    .eq("xero_connections.tenant_id", tenantId)
+    .limit(1)
+    .maybeSingle();
+  const basis = cxo?.clients?.report_basis;
+  return basis === "cash" ? "cash" : "accrual";
+}
+
 async function effectiveWidgets(clientId: string | null, tier: DashboardTier): Promise<WidgetKey[]> {
   if (!clientId) return DEFAULT_TIER_WIDGETS[tier];
   const { data } = await (supabaseAdmin as any).rpc("get_tier_widgets", {
