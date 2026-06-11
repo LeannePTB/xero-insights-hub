@@ -13,6 +13,7 @@ import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
+import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
