@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { LogOut, Plus, Loader2, Building2, HardHat, ChevronRight, SlidersHorizontal, Users, Activity } from "lucide-react";
+import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Clients — Traction Advisory" }] }),
