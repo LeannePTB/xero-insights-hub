@@ -12,6 +12,7 @@ import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
+import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { TIER_LABEL, type DashboardTier } from "@/lib/tiers";
 import { getEffectiveWidgets } from "@/lib/tier-config.functions";
 
@@ -108,6 +109,7 @@ function ClientDashboard() {
 
         <div className="mt-8 space-y-6">
           <NotesCard clientId={clientId} initialNotes={client.notes ?? ""} canEdit={isAdvisor} />
+          <UnreconciledCard clientId={clientId} />
 
           {orgs.length === 0 ? (
             <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />

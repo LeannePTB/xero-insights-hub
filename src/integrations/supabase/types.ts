@@ -246,6 +246,113 @@ export type Database = {
           },
         ]
       }
+      unreconciled_lines: {
+        Row: {
+          account_name: string
+          account_number: string | null
+          client_comment: string
+          client_id: string
+          created_at: string
+          id: string
+          payee: string | null
+          received: number | null
+          reference: string | null
+          row_index: number
+          source_comment: string | null
+          spent: number | null
+          tax: string | null
+          txn_date: string | null
+          updated_at: string
+          upload_id: string
+        }
+        Insert: {
+          account_name: string
+          account_number?: string | null
+          client_comment?: string
+          client_id: string
+          created_at?: string
+          id?: string
+          payee?: string | null
+          received?: number | null
+          reference?: string | null
+          row_index?: number
+          source_comment?: string | null
+          spent?: number | null
+          tax?: string | null
+          txn_date?: string | null
+          updated_at?: string
+          upload_id: string
+        }
+        Update: {
+          account_name?: string
+          account_number?: string | null
+          client_comment?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          payee?: string | null
+          received?: number | null
+          reference?: string | null
+          row_index?: number
+          source_comment?: string | null
+          spent?: number | null
+          tax?: string | null
+          txn_date?: string | null
+          updated_at?: string
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unreconciled_lines_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "unreconciled_lines_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "unreconciled_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      unreconciled_uploads: {
+        Row: {
+          client_id: string
+          created_at: string
+          filename: string
+          id: string
+          line_count: number
+          uploaded_by: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          filename: string
+          id?: string
+          line_count?: number
+          uploaded_by?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          filename?: string
+          id?: string
+          line_count?: number
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "unreconciled_uploads_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string

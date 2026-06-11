@@ -18,6 +18,7 @@ import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_aut
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
+import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
 
 const AuthRoute = AuthRouteImport.update({
@@ -67,6 +68,12 @@ const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
   path: '/api/public/xero/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedClientsClientIdUnreconciledRoute =
+  AuthenticatedClientsClientIdUnreconciledRouteImport.update({
+    id: '/clients/$clientId/unreconciled',
+    path: '/clients/$clientId/unreconciled',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsClientIdSettingsRoute =
   AuthenticatedClientsClientIdSettingsRouteImport.update({
     id: '/clients/$clientId/settings',
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
+  '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
 }
@@ -93,6 +101,7 @@ export interface FileRoutesByTo {
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
+  '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdIndexRoute
 }
@@ -106,6 +115,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
+  '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/_authenticated/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
 }
@@ -119,6 +129,7 @@ export interface FileRouteTypes {
     | '/settings/advisors'
     | '/settings/tiers'
     | '/clients/$clientId/settings'
+    | '/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
     | '/clients/$clientId/'
   fileRoutesByTo: FileRoutesByTo
@@ -130,6 +141,7 @@ export interface FileRouteTypes {
     | '/settings/advisors'
     | '/settings/tiers'
     | '/clients/$clientId/settings'
+    | '/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
     | '/clients/$clientId'
   id:
@@ -142,6 +154,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/tiers'
     | '/_authenticated/clients/$clientId/settings'
+    | '/_authenticated/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
     | '/_authenticated/clients/$clientId/'
   fileRoutesById: FileRoutesById
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicXeroCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/clients/$clientId/unreconciled': {
+      id: '/_authenticated/clients/$clientId/unreconciled'
+      path: '/clients/$clientId/unreconciled'
+      fullPath: '/clients/$clientId/unreconciled'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdUnreconciledRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients/$clientId/settings': {
       id: '/_authenticated/clients/$clientId/settings'
       path: '/clients/$clientId/settings'
@@ -234,6 +254,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsAdvisorsRoute: typeof AuthenticatedSettingsAdvisorsRoute
   AuthenticatedSettingsTiersRoute: typeof AuthenticatedSettingsTiersRoute
   AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+  AuthenticatedClientsClientIdUnreconciledRoute: typeof AuthenticatedClientsClientIdUnreconciledRoute
   AuthenticatedClientsClientIdIndexRoute: typeof AuthenticatedClientsClientIdIndexRoute
 }
 
@@ -244,6 +265,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsTiersRoute: AuthenticatedSettingsTiersRoute,
   AuthenticatedClientsClientIdSettingsRoute:
     AuthenticatedClientsClientIdSettingsRoute,
+  AuthenticatedClientsClientIdUnreconciledRoute:
+    AuthenticatedClientsClientIdUnreconciledRoute,
   AuthenticatedClientsClientIdIndexRoute:
     AuthenticatedClientsClientIdIndexRoute,
 }
