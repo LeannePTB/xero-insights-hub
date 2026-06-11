@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Search, Loader2, ExternalLink } from "lucide-react";
+import { format } from "date-fns";
+import { Search, Loader2, ExternalLink, CalendarIcon, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { searchClientTransactions, type SearchHit } from "@/lib/xero/search.functions";
 
 function fmt(n: number, ccy: string) {
@@ -14,6 +18,14 @@ function fmt(n: number, ccy: string) {
   }
 }
 
+function toIso(d?: Date) {
+  if (!d) return null;
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${dd}`;
+}
+
 const TYPE_TONE: Record<SearchHit["type"], string> = {
   Invoice: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
   Bill: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
@@ -22,27 +34,65 @@ const TYPE_TONE: Record<SearchHit["type"], string> = {
   Overpayment: "bg-rose-500/10 text-rose-700 dark:text-rose-400",
 };
 
+function DateField({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: Date | undefined;
+  onChange: (d: Date | undefined) => void;
+  placeholder: string;
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          className={cn("w-[160px] justify-start text-left font-normal", !value && "text-muted-foreground")}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {value ? format(value, "d MMM yyyy") : <span>{placeholder}</span>}
+          {value && (
+            <X
+              className="ml-auto h-3.5 w-3.5 opacity-60 hover:opacity-100"
+              onClick={(e) => { e.stopPropagation(); e.preventDefault(); onChange(undefined); }}
+            />
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar mode="single" selected={value} onSelect={onChange} initialFocus className={cn("p-3 pointer-events-auto")} />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export function TransactionSearch({ clientId }: { clientId: string }) {
   const fetchSearch = useServerFn(searchClientTransactions);
   const [q, setQ] = useState("");
+  const [from, setFrom] = useState<Date | undefined>();
+  const [to, setTo] = useState<Date | undefined>();
 
   const mut = useMutation({
-    mutationFn: (query: string) => fetchSearch({ data: { clientId, query } }),
+    mutationFn: (vars: { query: string; fromDate: string | null; toDate: string | null }) =>
+      fetchSearch({ data: { clientId, ...vars } }),
   });
+
+  const canSubmit = !!(q.trim() || from || to);
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const query = q.trim();
-    if (!query) return;
-    mut.mutate(query);
+    if (!canSubmit) return;
+    mut.mutate({ query: q.trim(), fromDate: toIso(from), toDate: toIso(to) });
   }
 
   const hits = mut.data?.hits ?? [];
 
   return (
     <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
-      <form onSubmit={onSubmit} className="flex items-center gap-2">
-        <div className="relative flex-1">
+      <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
+        <div className="relative min-w-[240px] flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
@@ -52,7 +102,9 @@ export function TransactionSearch({ clientId }: { clientId: string }) {
             maxLength={200}
           />
         </div>
-        <Button type="submit" disabled={mut.isPending || !q.trim()}>
+        <DateField value={from} onChange={setFrom} placeholder="From date" />
+        <DateField value={to} onChange={setTo} placeholder="To date" />
+        <Button type="submit" disabled={mut.isPending || !canSubmit}>
           {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
         </Button>
       </form>
@@ -62,6 +114,7 @@ export function TransactionSearch({ clientId }: { clientId: string }) {
           {(mut.error as Error).message}
         </div>
       )}
+
 
       {mut.data && (
         <div className="mt-4">

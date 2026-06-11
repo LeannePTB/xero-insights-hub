@@ -36,11 +36,14 @@ function esc(q: string) {
 
 export const searchClientTransactions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { clientId: string; query: string }) => input)
+  .inputValidator((input: { clientId: string; query: string; fromDate?: string | null; toDate?: string | null }) => input)
   .handler(async ({ data, context }) => {
     const query = data.query.trim();
-    if (!query) return { hits: [] as SearchHit[] };
     if (query.length > 200) throw new Error("Search query is too long.");
+    const isoRe = /^\d{4}-\d{2}-\d{2}$/;
+    const fromDate = data.fromDate && isoRe.test(data.fromDate) ? data.fromDate : null;
+    const toDate = data.toDate && isoRe.test(data.toDate) ? data.toDate : null;
+    if (!query && !fromDate && !toDate) return { hits: [] as SearchHit[] };
 
     // Advisor-only
     const { data: roles } = await context.supabase
@@ -63,12 +66,43 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
 
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
 
+    function dateClauses() {
+      const parts: string[] = [];
+      if (fromDate) {
+        const [y, m, d] = fromDate.split("-").map(Number);
+        parts.push(`Date >= DateTime(${y}, ${m}, ${d})`);
+      }
+      if (toDate) {
+        const [y, m, d] = toDate.split("-").map(Number);
+        parts.push(`Date <= DateTime(${y}, ${m}, ${d})`);
+      }
+      return parts;
+    }
+    function combine(textClause: string | null): string {
+      const parts = dateClauses();
+      if (textClause) parts.push(`(${textClause})`);
+      return parts.join(" AND ");
+    }
+
     const q = esc(query);
     const qLower = esc(query.toLowerCase());
-    const invoicesWhere = `(Contact.Name!=null AND Contact.Name.ToLower().Contains("${qLower}")) OR (InvoiceNumber!=null AND InvoiceNumber.Contains("${q}")) OR (Reference!=null AND Reference.Contains("${q}"))`;
-    const creditNotesWhere = `(Contact.Name!=null AND Contact.Name.ToLower().Contains("${qLower}")) OR (CreditNoteNumber!=null AND CreditNoteNumber.Contains("${q}")) OR (Reference!=null AND Reference.Contains("${q}"))`;
-    const prepaymentsWhere = `(Contact.Name!=null AND Contact.Name.ToLower().Contains("${qLower}")) OR (Reference!=null AND Reference.Contains("${q}"))`;
-    const overpaymentsWhere = `Contact.Name!=null AND Contact.Name.ToLower().Contains("${qLower}")`;
+    const invoicesText = query
+      ? `(Contact.Name!=null AND Contact.Name.ToLower().Contains("${qLower}")) OR (InvoiceNumber!=null AND InvoiceNumber.Contains("${q}")) OR (Reference!=null AND Reference.Contains("${q}"))`
+      : null;
+    const creditNotesText = query
+      ? `(Contact.Name!=null AND Contact.Name.ToLower().Contains("${qLower}")) OR (CreditNoteNumber!=null AND CreditNoteNumber.Contains("${q}")) OR (Reference!=null AND Reference.Contains("${q}"))`
+      : null;
+    const prepaymentsText = query
+      ? `(Contact.Name!=null AND Contact.Name.ToLower().Contains("${qLower}")) OR (Reference!=null AND Reference.Contains("${q}"))`
+      : null;
+    const overpaymentsText = query
+      ? `Contact.Name!=null AND Contact.Name.ToLower().Contains("${qLower}")`
+      : null;
+
+    const invoicesWhere = combine(invoicesText);
+    const creditNotesWhere = combine(creditNotesText);
+    const prepaymentsWhere = combine(prepaymentsText);
+    const overpaymentsWhere = combine(overpaymentsText);
 
     const hits: SearchHit[] = [];
 
