@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { LineChart, ShieldCheck, Zap } from "lucide-react";
-import ptLogo from "@/assets/pt-logo.png.asset.json";
+import { LineChart, ShieldCheck, Zap, HardHat } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -19,11 +18,14 @@ export const Route = createFileRoute("/")({
 
 function BrandMark({ className = "" }: { className?: string }) {
   return (
-    <Link to="/" className={`flex items-center gap-3 ${className}`}>
-      <img src={ptLogo.url} alt="Positive Traction" className="h-10 w-auto" />
-      <span className="hidden border-l border-border pl-3 text-[11px] font-semibold uppercase tracking-[0.32em] text-accent sm:inline-block">
-        Advisory
-      </span>
+    <Link to="/" className={`flex items-center gap-2.5 ${className}`}>
+      <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground shadow-[var(--shadow-soft)]">
+        <HardHat className="h-4.5 w-4.5" />
+      </div>
+      <div className="leading-tight">
+        <div className="text-sm font-bold uppercase tracking-[0.18em] text-primary">Traction</div>
+        <div className="-mt-0.5 text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Advisory</div>
+      </div>
     </Link>
   );
 }
