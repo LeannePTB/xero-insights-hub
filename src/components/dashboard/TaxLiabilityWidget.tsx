@@ -7,6 +7,7 @@ import { CalendarIcon, Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
@@ -35,12 +36,14 @@ const categoryLabel: Record<string, string> = {
 export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
   const fetchTax = useServerFn(getTaxLiabilities);
   const [asAt, setAsAt] = useState<Date>(() => endOfMonth(new Date()));
+  const [mode, setMode] = useState<"balance" | "movement">("movement");
   const [open, setOpen] = useState(false);
   const asAtIso = iso(asAt);
+  const fromIso = iso(new Date(asAt.getFullYear(), asAt.getMonth(), 1));
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-tax", tenantId, asAtIso],
-    queryFn: () => fetchTax({ data: { tenantId, date: asAtIso } }),
+    queryKey: ["xero-tax", tenantId, asAtIso, mode],
+    queryFn: () => fetchTax({ data: { tenantId, date: asAtIso, fromDate: fromIso, mode } }),
   });
 
   return (
@@ -51,9 +54,22 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold">Tax and Superannuation liabilities · Monthly</h3>
-          <p className="text-xs text-muted-foreground">As at {format(asAt, "d MMM yyyy")}</p>
+          <p className="text-xs text-muted-foreground">
+            {mode === "movement"
+              ? `Movement for ${format(asAt, "MMMM yyyy")} (BAS basis)`
+              : `Balance as at ${format(asAt, "d MMM yyyy")}`}
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={mode} onValueChange={(v) => setMode(v as "balance" | "movement")}>
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="movement">Period (BAS)</SelectItem>
+              <SelectItem value="balance">Balance</SelectItem>
+            </SelectContent>
+          </Select>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button

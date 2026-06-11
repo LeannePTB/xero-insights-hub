@@ -117,6 +117,7 @@ export type TaxLiabilities = {
   superannuation: number;
   totalTaxLiability: number;
   lines: { name: string; amount: number; category: "gst" | "payg" | "super" | "other-tax" }[];
+  mode?: "balance" | "movement";
 };
 
 function classifyTaxLine(name: string): TaxLiabilities["lines"][number]["category"] | null {
@@ -136,19 +137,66 @@ function walkRows(rows: XeroReportRow[] | undefined, visit: (r: XeroReportRow) =
   }
 }
 
+function extractTaxLines(report: any) {
+  const lines: TaxLiabilities["lines"] = [];
+  walkRows(report?.Rows, (r) => {
+    if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
+    const name = r.Cells[0].Value;
+    if (!name) return;
+    const category = classifyTaxLine(name);
+    if (!category) return;
+    const amount = parseAmount(r.Cells[1].Value);
+    lines.push({ name, amount, category });
+  });
+  return lines;
+}
+
+function isoDayBefore(dateStr: string): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() - 1);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
 export const getTaxLiabilities = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; date?: string }) => input)
+  .inputValidator(
+    (input: { tenantId: string; date?: string; fromDate?: string; mode?: "balance" | "movement" }) => input,
+  )
   .handler(async ({ data, context }) => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
     const conn = await getConnectionByTenant(data.tenantId);
-    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {
-      date: data.date,
-    });
+    const mode = data.mode ?? "balance";
+
+    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.date });
     const report = res.Reports?.[0];
     if (!report) throw new Error("No Balance Sheet returned by Xero.");
+    const endLines = extractTaxLines(report);
+
+    let lines = endLines;
+    if (mode === "movement" && data.fromDate) {
+      const openingDate = isoDayBefore(data.fromDate);
+      const openRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: openingDate });
+      const openReport = openRes.Reports?.[0];
+      const openLines = openReport ? extractTaxLines(openReport) : [];
+      const openMap = new Map<string, number>();
+      for (const l of openLines) openMap.set(l.name, (openMap.get(l.name) ?? 0) + l.amount);
+      const seen = new Set<string>();
+      const movement: TaxLiabilities["lines"] = [];
+      for (const l of endLines) {
+        seen.add(l.name);
+        const delta = l.amount - (openMap.get(l.name) ?? 0);
+        if (delta !== 0) movement.push({ name: l.name, amount: delta, category: l.category });
+      }
+      for (const l of openLines) {
+        if (seen.has(l.name)) continue;
+        const delta = -l.amount;
+        if (delta !== 0) movement.push({ name: l.name, amount: delta, category: l.category });
+      }
+      lines = movement;
+    }
 
     const out: TaxLiabilities = {
       reportDate: report.ReportDate ?? "",
@@ -157,23 +205,15 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
       payg: 0,
       superannuation: 0,
       totalTaxLiability: 0,
-      lines: [],
+      lines,
+      mode,
     };
-
-    walkRows(report.Rows, (r) => {
-      if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
-      const name = r.Cells[0].Value;
-      if (!name) return;
-      const category = classifyTaxLine(name);
-      if (!category) return;
-      const amount = parseAmount(r.Cells[1].Value);
-      out.lines.push({ name, amount, category });
-      if (category === "gst") out.gst += amount;
-      else if (category === "payg") out.payg += amount;
-      else if (category === "super") out.superannuation += amount;
-    });
-
-    out.totalTaxLiability = out.lines.reduce((s, l) => s + l.amount, 0);
+    for (const l of lines) {
+      if (l.category === "gst") out.gst += l.amount;
+      else if (l.category === "payg") out.payg += l.amount;
+      else if (l.category === "super") out.superannuation += l.amount;
+    }
+    out.totalTaxLiability = lines.reduce((s, l) => s + l.amount, 0);
     out.lines.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
     return out;
   });
