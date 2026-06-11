@@ -158,7 +158,7 @@ function Dashboard() {
 
                     {tierWidgets && (
                       <div className="mt-4 space-y-1.5 border-t border-border/60 pt-3">
-                        {ALL_TIERS.map((t) => {
+                        {enabledTiers.map((t) => {
                           const isOn = granted.includes(t);
                           const widgets = tierWidgets[t] ?? [];
                           return (
