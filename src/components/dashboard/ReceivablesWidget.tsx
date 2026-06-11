@@ -28,6 +28,7 @@ export function ReceivablesWidget({ tenantId, tenantName, clientId }: { tenantId
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-ar-ageing", tenantId],
     queryFn: () => fetchAR({ data: { tenantId } }),
+    retry: false,
   });
 
   const maxBucket = Math.max(...(data?.buckets ?? []).map((b) => b.amount), 1);

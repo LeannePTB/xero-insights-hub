@@ -28,6 +28,7 @@ export function PayablesWidget({ tenantId, tenantName, clientId }: { tenantId: s
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-ap-ageing", tenantId],
     queryFn: () => fetchAP({ data: { tenantId } }),
+    retry: false,
   });
 
   const maxBucket = Math.max(...(data?.buckets ?? []).map((b) => b.amount), 1);
