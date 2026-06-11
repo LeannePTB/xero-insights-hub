@@ -135,6 +135,15 @@ function ClientSettings() {
     onSuccess: () => { toast.success("Access removed"); qc.invalidateQueries({ queryKey: ["client-access", clientId] }); },
     onError: (e: any) => toast.error(e.message),
   });
+  const basisMut = useMutation({
+    mutationFn: (basis: "accrual" | "cash") => updateBasis({ data: { clientId, basis } }),
+    onSuccess: () => {
+      toast.success("Report basis saved");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   async function handleConnect() {
     const authWindow = window.open("about:blank", "_blank");
