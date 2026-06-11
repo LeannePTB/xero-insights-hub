@@ -86,6 +86,7 @@ function ClientDashboard() {
 
   const client = clientQ.data?.client;
   const orgs: any[] = client?.client_xero_orgs ?? [];
+  const defaultBasis = client?.report_basis === "cash" ? "cash" : "accrual";
 
   const cards = useMemo<SortableCard[]>(() => {
     if (!client) return [];
@@ -98,13 +99,13 @@ function ClientDashboard() {
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
       if (widgets.includes("revenue_kpis"))
-        list.push({ id: `${o.id}:revenue_kpis`, node: <RevenueExpenseKpis tenantId={tenantId} tenantName={tenantName} /> });
+        list.push({ id: `${o.id}:revenue_kpis`, node: <RevenueExpenseKpis tenantId={tenantId} tenantName={tenantName} defaultBasis={defaultBasis} /> });
       if (widgets.includes("tax_liability"))
         list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("pnl"))
-        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} /> });
+        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} defaultBasis={defaultBasis} /> });
       if (widgets.includes("breakeven"))
-        list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} /> });
+        list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} defaultBasis={defaultBasis} /> });
       if (widgets.includes("payables"))
         list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
       if (widgets.includes("receivables"))
@@ -112,7 +113,7 @@ function ClientDashboard() {
 
     }
     return list;
-  }, [client, clientId, isAdvisor, orgs, widgets]);
+  }, [client, clientId, defaultBasis, isAdvisor, orgs, widgets]);
 
   if (ctxQ.isLoading || clientQ.isLoading) {
     return (

@@ -38,7 +38,21 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
     }),
   });
   if (!res.ok) {
-    throw new Error(`Xero token refresh failed: ${res.status} ${await res.text()}`);
+    const body = await res.text();
+    const { data: latest } = await supabaseAdmin
+      .from("xero_connections")
+      .select("id, user_id, tenant_id, tenant_name, access_token, refresh_token, expires_at, scopes")
+      .eq("user_id", conn.user_id)
+      .eq("tenant_id", conn.tenant_id)
+      .maybeSingle();
+    if (
+      latest &&
+      latest.refresh_token !== conn.refresh_token &&
+      new Date(latest.expires_at).getTime() - Date.now() >= 60_000
+    ) {
+      return latest as Connection;
+    }
+    throw new Error(`Xero token refresh failed: ${res.status} ${body}`);
   }
   const t = (await res.json()) as {
     access_token: string;
