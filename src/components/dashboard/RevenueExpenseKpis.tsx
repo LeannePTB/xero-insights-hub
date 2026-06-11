@@ -32,16 +32,17 @@ export function RevenueExpenseKpis({ tenantId, tenantName }: { tenantId: string;
   const fetchPnl = useServerFn(getProfitAndLoss);
   const current = monthRange(0);
   const prior = monthRange(-1);
+  const [basis, setBasis] = useState<ReportBasis | undefined>(undefined);
 
   const results = useQueries({
     queries: [
       {
-        queryKey: ["xero-pnl-month", tenantId, current.from, current.to],
-        queryFn: () => fetchPnl({ data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis" } }),
+        queryKey: ["xero-pnl-month", tenantId, current.from, current.to, basis ?? "default"],
+        queryFn: () => fetchPnl({ data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis", basis } }),
       },
       {
-        queryKey: ["xero-pnl-month", tenantId, prior.from, prior.to],
-        queryFn: () => fetchPnl({ data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis" } }),
+        queryKey: ["xero-pnl-month", tenantId, prior.from, prior.to, basis ?? "default"],
+        queryFn: () => fetchPnl({ data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis", basis } }),
       },
     ],
   });
@@ -50,6 +51,10 @@ export function RevenueExpenseKpis({ tenantId, tenantName }: { tenantId: string;
   const isLoading = curQ.isLoading || prevQ.isLoading;
   const isFetching = curQ.isFetching || prevQ.isFetching;
   const error = curQ.error || prevQ.error;
+
+  useEffect(() => {
+    if (basis === undefined && curQ.data?.basis) setBasis(curQ.data.basis);
+  }, [curQ.data?.basis, basis]);
 
   function refetch() {
     curQ.refetch();
