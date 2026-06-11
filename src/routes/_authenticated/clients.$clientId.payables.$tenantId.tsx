@@ -20,6 +20,7 @@ function PayablesPage() {
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-ap-list", tenantId],
     queryFn: () => fetchList({ data: { tenantId } }),
+    retry: false,
   });
 
   return (
