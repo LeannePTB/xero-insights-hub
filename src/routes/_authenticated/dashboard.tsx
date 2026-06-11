@@ -100,6 +100,9 @@ function Dashboard() {
               <Button variant="outline" asChild>
                 <Link to="/settings/tiers"><SlidersHorizontal className="mr-2 h-4 w-4" /> Tier widgets</Link>
               </Button>
+              <Button variant="outline" asChild>
+                <Link to="/settings/activity"><Activity className="mr-2 h-4 w-4" /> Activity</Link>
+              </Button>
               <Button asChild>
                 <Link to="/clients/new"><Plus className="mr-2 h-4 w-4" /> New client</Link>
               </Button>
