@@ -36,12 +36,14 @@ const categoryLabel: Record<string, string> = {
 export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
   const fetchTax = useServerFn(getTaxLiabilities);
   const [asAt, setAsAt] = useState<Date>(() => endOfMonth(new Date()));
+  const [mode, setMode] = useState<"balance" | "movement">("movement");
   const [open, setOpen] = useState(false);
   const asAtIso = iso(asAt);
+  const fromIso = iso(new Date(asAt.getFullYear(), asAt.getMonth(), 1));
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-tax", tenantId, asAtIso],
-    queryFn: () => fetchTax({ data: { tenantId, date: asAtIso } }),
+    queryKey: ["xero-tax", tenantId, asAtIso, mode],
+    queryFn: () => fetchTax({ data: { tenantId, date: asAtIso, fromDate: fromIso, mode } }),
   });
 
   return (
