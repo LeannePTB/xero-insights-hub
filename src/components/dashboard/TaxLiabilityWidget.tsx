@@ -50,7 +50,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {tenantName}
           </p>
-          <h3 className="font-display text-lg font-semibold">Tax liabilities · Monthly</h3>
+          <h3 className="font-display text-lg font-semibold">Tax and Superannuation liabilities · Monthly</h3>
           <p className="text-xs text-muted-foreground">As at {format(asAt, "d MMM yyyy")}</p>
         </div>
         <div className="flex items-center gap-2">
