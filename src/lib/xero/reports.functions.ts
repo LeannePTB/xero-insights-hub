@@ -117,6 +117,7 @@ export type TaxLiabilities = {
   superannuation: number;
   totalTaxLiability: number;
   lines: { name: string; amount: number; category: "gst" | "payg" | "super" | "other-tax" }[];
+  mode?: "balance" | "movement";
 };
 
 function classifyTaxLine(name: string): TaxLiabilities["lines"][number]["category"] | null {
