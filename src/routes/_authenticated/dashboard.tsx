@@ -7,7 +7,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, HardHat, ChevronRight, SlidersHorizontal, Users } from "lucide-react";
+import { LogOut, Plus, Loader2, Building2, HardHat, ChevronRight, SlidersHorizontal, Users, Activity } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Clients — Traction Advisory" }] }),
