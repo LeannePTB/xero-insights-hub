@@ -99,14 +99,15 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
       ? `Contact.Name!=null AND Contact.Name.ToLower().Contains("${qLower}")`
       : null;
 
-    const statusFilter = `Status!="DELETED" AND Status!="VOIDED"`;
-    function withStatus(w: string) {
-      return w ? `${statusFilter} AND ${w}` : statusFilter;
+    const invoicesWhere = combine(invoicesText);
+    const creditNotesWhere = combine(creditNotesText);
+    const prepaymentsWhere = combine(prepaymentsText);
+    const overpaymentsWhere = combine(overpaymentsText);
+
+    function isExcludedStatus(s: any) {
+      const v = String(s ?? "").toUpperCase();
+      return v === "DELETED" || v === "VOIDED";
     }
-    const invoicesWhere = withStatus(combine(invoicesText));
-    const creditNotesWhere = withStatus(combine(creditNotesText));
-    const prepaymentsWhere = withStatus(combine(prepaymentsText));
-    const overpaymentsWhere = withStatus(combine(overpaymentsText));
 
     const hits: SearchHit[] = [];
 
@@ -118,10 +119,22 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
         } catch {
           return;
         }
-        const shortCode = (conn as any).short_code as string | undefined;
-        const orgBase = shortCode ? `https://go.xero.com/organisationlogin/default.aspx?shortcode=${shortCode}&redirecturl=` : null;
-        function deepLink(path: string) {
-          if (orgBase) return `${orgBase}${encodeURIComponent(path)}`;
+
+        // Fetch organisation short code so deep links open the correct org.
+        let shortCode: string | null = null;
+        try {
+          const orgRes = await xeroGet<{ Organisations?: { ShortCode?: string }[] }>(
+            conn,
+            "Organisations",
+          );
+          shortCode = orgRes.Organisations?.[0]?.ShortCode ?? null;
+        } catch {
+          shortCode = null;
+        }
+        function deepLink(path: string): string {
+          if (shortCode) {
+            return `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(path)}`;
+          }
           return `https://go.xero.com${path}`;
         }
 
@@ -133,11 +146,11 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
         ]);
 
         for (const i of invRes.Invoices ?? []) {
-          if (i.Status === "DELETED" || i.Status === "VOIDED") continue;
+          if (isExcludedStatus(i.Status)) continue;
           const isBill = i.Type === "ACCPAY";
           const path = isBill
-            ? `/AccountsPayable/View.aspx?InvoiceID=${i.InvoiceID}`
-            : `/AccountsReceivable/View.aspx?InvoiceID=${i.InvoiceID}`;
+            ? `/AccountsPayable/Edit.aspx?InvoiceID=${i.InvoiceID}`
+            : `/AccountsReceivable/Edit.aspx?InvoiceID=${i.InvoiceID}`;
           hits.push({
             tenantId: t.tenant_id,
             tenantName: t.tenant_name,
@@ -156,7 +169,7 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
           });
         }
         for (const c of cnRes.CreditNotes ?? []) {
-          if (c.Status === "DELETED" || c.Status === "VOIDED") continue;
+          if (isExcludedStatus(c.Status)) continue;
           const isBillCredit = c.Type === "ACCPAYCREDIT";
           const path = isBillCredit
             ? `/AccountsPayable/ViewCreditNote.aspx?creditNoteID=${c.CreditNoteID}`
@@ -179,7 +192,7 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
           });
         }
         for (const p of ppRes.Prepayments ?? []) {
-          if (p.Status === "DELETED" || p.Status === "VOIDED") continue;
+          if (isExcludedStatus(p.Status)) continue;
           hits.push({
             tenantId: t.tenant_id,
             tenantName: t.tenant_name,
@@ -198,7 +211,7 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
           });
         }
         for (const o of opRes.Overpayments ?? []) {
-          if (o.Status === "DELETED" || o.Status === "VOIDED") continue;
+          if (isExcludedStatus(o.Status)) continue;
           hits.push({
             tenantId: t.tenant_id,
             tenantName: t.tenant_name,
