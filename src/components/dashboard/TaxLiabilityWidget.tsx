@@ -52,14 +52,14 @@ const categoryLabel: Record<string, string> = {
 
 export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
   const fetchTax = useServerFn(getTaxLiabilities);
-  const [asAt, setAsAt] = useState<Date>(() => endOfMonth(new Date()));
+  const [period, setPeriod] = useState<PeriodKey>("last-month");
   const [mode, setMode] = useState<"balance" | "movement">("movement");
-  const [open, setOpen] = useState(false);
-  const asAtIso = iso(asAt);
-  const fromIso = iso(new Date(asAt.getFullYear(), asAt.getMonth(), 1));
+  const range = periodRange(period);
+  const asAtIso = iso(range.to);
+  const fromIso = iso(range.from);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-tax", tenantId, asAtIso, mode],
+    queryKey: ["xero-tax", tenantId, asAtIso, fromIso, mode],
     queryFn: () => fetchTax({ data: { tenantId, date: asAtIso, fromDate: fromIso, mode } }),
   });
 
@@ -70,14 +70,24 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {tenantName}
           </p>
-          <h3 className="font-display text-lg font-semibold">Tax and Superannuation liabilities · Monthly</h3>
+          <h3 className="font-display text-lg font-semibold">Tax and Superannuation liabilities</h3>
           <p className="text-xs text-muted-foreground">
             {mode === "movement"
-              ? `Movement for ${format(asAt, "MMMM yyyy")} (BAS basis)`
-              : `Balance as at ${format(asAt, "d MMM yyyy")}`}
+              ? `Movement for ${range.label} (BAS basis)`
+              : `Balance as at ${format(range.to, "d MMM yyyy")}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
+            <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current-month">Current month</SelectItem>
+              <SelectItem value="last-month">Last month</SelectItem>
+              <SelectItem value="last-quarter">Last quarter</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={mode} onValueChange={(v) => setMode(v as "balance" | "movement")}>
             <SelectTrigger className="h-8 w-[130px] text-xs">
               <SelectValue />
@@ -87,37 +97,12 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
               <SelectItem value="balance">Balance</SelectItem>
             </SelectContent>
           </Select>
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn("justify-start text-left font-normal")}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(asAt, "MMM yyyy")}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={asAt}
-                onSelect={(d) => {
-                  if (d) {
-                    setAsAt(endOfMonth(d));
-                    setOpen(false);
-                  }
-                }}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
           <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
+
 
       {isLoading ? (
         <div className="flex h-32 items-center justify-center text-muted-foreground">
