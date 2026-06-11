@@ -100,3 +100,69 @@ export const getAgedReceivables = createServerFn({ method: "POST" })
     };
     return result;
   });
+
+export type ReceivableInvoice = {
+  invoiceId: string;
+  invoiceNumber: string;
+  contact: string;
+  date: string | null;
+  dueDate: string | null;
+  daysOverdue: number;
+  amountDue: number;
+  total: number;
+  status: string;
+  reference: string;
+  currency: string;
+};
+
+export const getReceivablesList = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { assertWidgetAccess } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "receivables");
+    const conn = await getConnectionByTenant(data.tenantId);
+
+    const invoices: any[] = [];
+    for (let page = 1; page <= 10; page++) {
+      const res = await xeroGet<{ Invoices?: any[] }>(conn, "Invoices", {
+        where:
+          'Type=="ACCREC"&&Status!="PAID"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"',
+        page: String(page),
+        order: "DueDate ASC",
+      });
+      const batch = res.Invoices ?? [];
+      invoices.push(...batch);
+      if (batch.length < 100) break;
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const list: ReceivableInvoice[] = invoices
+      .filter((i) => (Number(i.AmountDue) || 0) > 0)
+      .map((i) => {
+        const due = parseXeroDate(i.DueDate);
+        const dt = parseXeroDate(i.Date);
+        const daysOverdue = due
+          ? Math.floor((today.getTime() - due.getTime()) / 86400000)
+          : 0;
+        return {
+          invoiceId: i.InvoiceID,
+          invoiceNumber: i.InvoiceNumber ?? "",
+          contact: i.Contact?.Name ?? "Unknown",
+          date: dt ? dt.toISOString().slice(0, 10) : null,
+          dueDate: due ? due.toISOString().slice(0, 10) : null,
+          daysOverdue,
+          amountDue: Number(i.AmountDue) || 0,
+          total: Number(i.Total) || 0,
+          status: i.Status ?? "",
+          reference: i.Reference ?? "",
+          currency: i.CurrencyCode ?? "AUD",
+        };
+      })
+      .sort((a, b) => b.daysOverdue - a.daysOverdue);
+
+    return { asOf: today.toISOString().slice(0, 10), invoices: list };
+  });
+
