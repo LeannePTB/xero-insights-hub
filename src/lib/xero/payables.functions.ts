@@ -122,6 +122,7 @@ export type PayableInvoice = {
   status: string;
   reference: string;
   currency: string;
+  deepLink: string | null;
 };
 
 export const getPayablesList = createServerFn({ method: "POST" })
@@ -132,6 +133,23 @@ export const getPayablesList = createServerFn({ method: "POST" })
     const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "payables");
     const conn = await getConnectionByTenant(data.tenantId);
+
+    let shortCode: string | null = null;
+    try {
+      const orgRes = await xeroGet<{ Organisations?: { ShortCode?: string }[] }>(
+        conn,
+        "Organisations",
+      );
+      shortCode = orgRes.Organisations?.[0]?.ShortCode ?? null;
+    } catch {
+      shortCode = null;
+    }
+    function deepLink(path: string): string {
+      if (shortCode) {
+        return `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(path)}`;
+      }
+      return `https://go.xero.com${path}`;
+    }
 
     const invoices: any[] = [];
     for (let page = 1; page <= 10; page++) {
@@ -167,6 +185,9 @@ export const getPayablesList = createServerFn({ method: "POST" })
           status: i.Status ?? "",
           reference: i.Reference ?? "",
           currency: i.CurrencyCode ?? "AUD",
+          deepLink: i.InvoiceID
+            ? deepLink(`/AccountsPayable/Edit.aspx?InvoiceID=${i.InvoiceID}`)
+            : null,
         };
       })
       .sort((a, b) => b.daysOverdue - a.daysOverdue);
