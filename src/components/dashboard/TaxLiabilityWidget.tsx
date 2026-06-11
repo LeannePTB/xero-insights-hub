@@ -6,7 +6,7 @@ import { getTaxLiabilities } from "@/lib/xero/reports.functions";
 import { Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useDelayedReady } from "@/hooks/use-delayed-ready";
+import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -53,7 +53,7 @@ const categoryLabel: Record<string, string> = {
 
 export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { tenantId: string; tenantName: string; loadDelayMs?: number }) {
   const fetchTax = useServerFn(getTaxLiabilities);
-  const ready = useDelayedReady(loadDelayMs);
+  const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const [period, setPeriod] = useState<PeriodKey>("last-month");
   const [mode, setMode] = useState<"balance" | "movement">("movement");
   const range = periodRange(period);
@@ -63,7 +63,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-tax", tenantId, asAtIso, fromIso, mode],
     queryFn: () => fetchTax({ data: { tenantId, date: asAtIso, fromDate: fromIso, mode } }),
-    enabled: ready,
+    enabled: shouldLoad,
     retry: false,
   });
 
@@ -101,25 +101,25 @@ export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { 
               <SelectItem value="balance">Balance</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
+          <Button variant="ghost" size="sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh">
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
 
 
-      {!ready || isLoading ? (
+      {!shouldLoad ? (
+        <XeroLoadPrompt
+          label="Load tax balances"
+          description="Load this report only when needed to avoid Xero rate limits."
+          onLoad={() => setShouldLoad(true)}
+        />
+      ) : isLoading ? (
         <div className="flex h-32 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading tax balances…
         </div>
       ) : error ? (
-        <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-          {(error as Error).message}
-          <p className="mt-2 text-xs text-destructive/80">
-            If this says "unauthorized" or mentions a missing scope, disconnect and reconnect Xero
-            to grant Balance Sheet access.
-          </p>
-        </div>
+        <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       ) : data ? (
         <>
           <div className="mt-6 grid grid-cols-3 gap-3">

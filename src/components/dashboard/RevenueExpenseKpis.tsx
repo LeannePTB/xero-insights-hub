@@ -5,7 +5,7 @@ import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
-import { useDelayedReady } from "@/hooks/use-delayed-ready";
+import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -41,7 +41,7 @@ export function RevenueExpenseKpis({
   loadDelayMs?: number;
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
-  const ready = useDelayedReady(loadDelayMs);
+  const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const current = monthRange(0);
   const prior = monthRange(-1);
   const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
@@ -51,24 +51,25 @@ export function RevenueExpenseKpis({
       {
         queryKey: ["xero-pnl-month", tenantId, current.from, current.to, basis],
         queryFn: () => fetchPnl({ data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis", basis } }),
-        enabled: ready,
+        enabled: shouldLoad,
         retry: false,
       },
       {
         queryKey: ["xero-pnl-month", tenantId, prior.from, prior.to, basis],
         queryFn: () => fetchPnl({ data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis", basis } }),
-        enabled: ready,
+        enabled: shouldLoad,
         retry: false,
       },
     ],
   });
 
   const [curQ, prevQ] = results;
-  const isLoading = !ready || curQ.isLoading || prevQ.isLoading;
+  const isLoading = shouldLoad && (curQ.isLoading || prevQ.isLoading);
   const isFetching = curQ.isFetching || prevQ.isFetching;
   const error = curQ.error || prevQ.error;
 
   function refetch() {
+    setShouldLoad(true);
     curQ.refetch();
     prevQ.refetch();
   }
@@ -93,14 +94,18 @@ export function RevenueExpenseKpis({
         </div>
       </div>
 
-      {isLoading ? (
+      {!shouldLoad ? (
+        <XeroLoadPrompt
+          label="Load KPIs"
+          description="Load this card only when needed to avoid Xero rate limits."
+          onLoad={() => setShouldLoad(true)}
+        />
+      ) : isLoading ? (
         <div className="flex h-32 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading KPIs…
         </div>
       ) : error ? (
-        <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-          {(error as Error).message}
-        </div>
+        <XeroErrorNotice error={error} onRetry={refetch} isRetrying={isFetching} />
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <KpiCard
