@@ -14,7 +14,7 @@ import {
   updateClientAccessTier,
   revokeClientAccess,
 } from "@/lib/clients.functions";
-import { listTierConfig, saveTierWidgets } from "@/lib/tier-config.functions";
+import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { listXeroConnections, startXeroConnect } from "@/lib/xero/connections.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,6 +49,7 @@ function ClientSettings() {
   const revoke = useServerFn(revokeClientAccess);
   const fetchTierCfg = useServerFn(listTierConfig);
   const saveTier = useServerFn(saveTierWidgets);
+  const fetchTierSettings = useServerFn(listTierSettings);
 
   const clientQ = useQuery({ queryKey: ["client", clientId], queryFn: () => fetchClient({ data: { clientId } }) });
   const connQ = useQuery({ queryKey: ["xero-connections"], queryFn: () => fetchConnections() });
@@ -57,6 +58,8 @@ function ClientSettings() {
     queryKey: ["tier-config", clientId],
     queryFn: () => fetchTierCfg({ data: { clientId } }),
   });
+  const tierSettingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchTierSettings() });
+  const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
 
   const tierSaveMut = useMutation({
     mutationFn: (v: { tier: DashboardTier; widgets: WidgetKey[] | null }) =>
