@@ -59,7 +59,7 @@ export const getClient = createServerFn({ method: "POST" })
     const { data: client, error } = await context.supabase
       .from("clients")
       .select(
-        "id, name, owner_user_id, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
+        "id, name, owner_user_id, report_basis, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
       )
       .eq("id", data.clientId)
       .maybeSingle();
