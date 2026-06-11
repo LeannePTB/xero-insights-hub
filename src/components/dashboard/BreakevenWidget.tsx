@@ -16,6 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
+import { useDelayedReady } from "@/hooks/use-delayed-ready";
 import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
@@ -58,12 +59,15 @@ export function BreakevenWidget({
   tenantId,
   tenantName,
   defaultBasis = "accrual",
+  loadDelayMs = 0,
 }: {
   tenantId: string;
   tenantName: string;
   defaultBasis?: ReportBasis;
+  loadDelayMs?: number;
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
+  const ready = useDelayedReady(loadDelayMs);
   const [fromDate, setFromDate] = useState<Date>(startOfThisMonth());
   const [toDate, setToDate] = useState<Date>(endOfThisMonth());
   const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
@@ -74,6 +78,7 @@ export function BreakevenWidget({
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr, basis],
     queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven", basis } }),
+    enabled: ready,
     retry: false,
   });
 
@@ -151,7 +156,7 @@ export function BreakevenWidget({
         </div>
       </div>
 
-      {isLoading ? (
+      {!ready || isLoading ? (
         <div className="flex h-40 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Calculating breakeven…
         </div>

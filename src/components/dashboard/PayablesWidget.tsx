@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { getAgedPayables } from "@/lib/xero/payables.functions";
 import { Loader2, RefreshCw, Wallet, AlertCircle, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useDelayedReady } from "@/hooks/use-delayed-ready";
 
 function fmt(n: number) {
 
@@ -22,12 +23,14 @@ const BUCKET_TONES: Record<string, string> = {
   "90+ days": "bg-rose-600",
 };
 
-export function PayablesWidget({ tenantId, tenantName, clientId }: { tenantId: string; tenantName: string; clientId: string }) {
+export function PayablesWidget({ tenantId, tenantName, clientId, loadDelayMs = 0 }: { tenantId: string; tenantName: string; clientId: string; loadDelayMs?: number }) {
   const fetchAP = useServerFn(getAgedPayables);
+  const ready = useDelayedReady(loadDelayMs);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-ap-ageing", tenantId],
     queryFn: () => fetchAP({ data: { tenantId } }),
+    enabled: ready,
     retry: false,
   });
 
@@ -52,7 +55,7 @@ export function PayablesWidget({ tenantId, tenantName, clientId }: { tenantId: s
         </Button>
       </div>
 
-      {isLoading ? (
+      {!ready || isLoading ? (
         <div className="flex h-40 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading payables…
         </div>
