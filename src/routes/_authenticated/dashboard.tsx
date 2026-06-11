@@ -21,9 +21,18 @@ function Dashboard() {
   const fetchClients = useServerFn(listClients);
   const fetchCtx = useServerFn(getMyContext);
 
+  const fetchTierSettings = useServerFn(listTierSettings);
+
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
   const viewerClients = ctxQ.data?.viewerClients ?? [];
+
+  const tierSettingsQ = useQuery({
+    queryKey: ["tier-settings"],
+    queryFn: () => fetchTierSettings(),
+    enabled: isAdvisor,
+  });
+  const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
 
   const clientsQ = useQuery({
     queryKey: ["clients"],
