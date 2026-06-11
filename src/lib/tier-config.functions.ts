@@ -112,3 +112,29 @@ export const getEffectiveWidgets = createServerFn({ method: "POST" })
     const widgets = sanitizeWidgets((override ?? global ?? DEFAULT_TIER_WIDGETS[data.tier]) as string[]);
     return { widgets };
   });
+
+// Global on/off per tier.
+export const listTierSettings = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("tier_settings")
+      .select("tier, enabled");
+    if (error) throw new Error(error.message);
+    const map = Object.fromEntries(ALL_TIERS.map((t) => [t, true])) as Record<DashboardTier, boolean>;
+    for (const r of data ?? []) map[r.tier as DashboardTier] = !!r.enabled;
+    return { enabled: map };
+  });
+
+export const setTierEnabled = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { tier: DashboardTier; enabled: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("tier_settings")
+      .upsert({ tier: data.tier, enabled: data.enabled }, { onConflict: "tier" });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
