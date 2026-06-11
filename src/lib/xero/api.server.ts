@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 const TOKEN_URL = "https://identity.xero.com/connect/token";
 const API_BASE = "https://api.xero.com/api.xro/2.0";
+const XERO_TIMEOUT_MS = 20_000;
 
 type Connection = {
   id: string;
@@ -25,8 +26,23 @@ function basicAuth() {
   return Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
 }
 
+async function fetchWithTimeout(url: string, init: RequestInit = {}) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), XERO_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error("Xero is taking too long to respond. Please try refreshing the card.");
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function refreshAccessToken(conn: Connection): Promise<Connection> {
-  const res = await fetch(TOKEN_URL, {
+  const res = await fetchWithTimeout(TOKEN_URL, {
     method: "POST",
     headers: {
       Authorization: `Basic ${basicAuth()}`,
@@ -115,14 +131,14 @@ export async function xeroGet<T = unknown>(
   conn: Connection,
   path: string,
   params: Record<string, string | undefined> = {},
-  retries = 3,
+  retries = 1,
 ): Promise<T> {
   const clean: Record<string, string> = {};
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
   const q = new URLSearchParams(clean).toString();
   const url = `${API_BASE}/${path}${q ? "?" + q : ""}`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     headers: {
       Authorization: `Bearer ${conn.access_token}`,
       "Xero-tenant-id": conn.tenant_id,
@@ -130,7 +146,7 @@ export async function xeroGet<T = unknown>(
     },
   });
   if (res.status === 429 && retries > 0) {
-    const retryAfter = parseInt(res.headers.get("retry-after") || "10", 10);
+    const retryAfter = Math.min(parseInt(res.headers.get("retry-after") || "5", 10), 10);
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
     return xeroGet<T>(conn, path, params, retries - 1);
   }
