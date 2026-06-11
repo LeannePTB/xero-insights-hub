@@ -225,6 +225,7 @@ function AccountTable({
               <th className="px-4 py-2 font-medium">Reference</th>
               <th className="px-4 py-2 text-right font-medium">Spent</th>
               <th className="px-4 py-2 text-right font-medium">Received</th>
+              <th className="px-4 py-2 font-medium" style={{ minWidth: 200 }}>Comments</th>
               <th className="px-4 py-2 font-medium" style={{ minWidth: 240 }}>Your comments</th>
             </tr>
           </thead>
@@ -262,13 +263,13 @@ function LineRow({ line, clientId }: { line: any; clientId: string }) {
       <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">{fmtDate(line.txn_date)}</td>
       <td className="px-4 py-3">
         <div className="font-medium text-foreground">{line.payee ?? "—"}</div>
-        {line.source_comment && (
-          <div className="mt-0.5 text-xs text-muted-foreground line-clamp-2">{line.source_comment}</div>
-        )}
       </td>
       <td className="px-4 py-3 text-xs text-muted-foreground">{line.reference ?? ""}</td>
       <td className="px-4 py-3 text-right tabular-nums">{line.spent != null ? fmtMoney(line.spent) : ""}</td>
       <td className="px-4 py-3 text-right tabular-nums text-emerald-600">{line.received != null ? fmtMoney(line.received) : ""}</td>
+      <td className="px-4 py-3 text-xs text-muted-foreground" style={{ minWidth: 200 }}>
+        {line.source_comment ? <span className="whitespace-pre-wrap">{line.source_comment}</span> : ""}
+      </td>
       <td className="px-4 py-3" style={{ minWidth: 240 }}>
         {editing ? (
           <div className="space-y-1.5">
