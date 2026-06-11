@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPayablesList } from "@/lib/xero/payables.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, Wallet } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, Wallet, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/payables/$tenantId")({
   head: () => ({ meta: [{ title: "Payables — Traction Advisory" }] }),
@@ -71,7 +71,22 @@ function PayablesPage() {
                   {data.invoices.map((inv) => (
                     <tr key={inv.invoiceId} className="border-t border-border/60">
                       <td className="px-4 py-2.5">{inv.contact}</td>
-                      <td className="px-4 py-2.5 text-muted-foreground">{inv.invoiceNumber || "—"}</td>
+                      <td className="px-4 py-2.5 text-muted-foreground">
+                        {inv.deepLink ? (
+                          <a
+                            href={inv.deepLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                            title="Open in Xero"
+                          >
+                            {inv.invoiceNumber || "—"}
+                            <ExternalLink className="h-3 w-3" />
+                          </a>
+                        ) : (
+                          inv.invoiceNumber || "—"
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 text-muted-foreground">{inv.reference || "—"}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{inv.date ?? "—"}</td>
                       <td className="px-4 py-2.5 text-muted-foreground">{inv.dueDate ?? "—"}</td>
