@@ -3,12 +3,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { getTaxLiabilities } from "@/lib/xero/reports.functions";
-import { CalendarIcon, Loader2, Receipt, RefreshCw } from "lucide-react";
+import { Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -18,12 +15,32 @@ function fmt(n: number) {
   }).format(n);
 }
 
-function endOfMonth(d: Date) {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
-}
-
 function iso(d: Date) {
   return format(d, "yyyy-MM-dd");
+}
+
+type PeriodKey = "current-month" | "last-month" | "last-quarter";
+
+function periodRange(key: PeriodKey): { from: Date; to: Date; label: string } {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  if (key === "current-month") {
+    const from = new Date(y, m, 1);
+    return { from, to: now, label: `${format(from, "MMM yyyy")} (MTD)` };
+  }
+  if (key === "last-month") {
+    const from = new Date(y, m - 1, 1);
+    const to = new Date(y, m, 0);
+    return { from, to, label: format(from, "MMMM yyyy") };
+  }
+  // last quarter: BAS quarters Jan-Mar, Apr-Jun, Jul-Sep, Oct-Dec
+  const currentQ = Math.floor(m / 3);
+  const lastQStartMonth = (currentQ - 1) * 3;
+  const from = new Date(currentQ === 0 ? y - 1 : y, currentQ === 0 ? 9 : lastQStartMonth, 1);
+  const to = new Date(from.getFullYear(), from.getMonth() + 3, 0);
+  const qNum = Math.floor(from.getMonth() / 3) + 1;
+  return { from, to, label: `Q${qNum} ${from.getFullYear()} (${format(from, "MMM")}–${format(to, "MMM yyyy")})` };
 }
 
 const categoryLabel: Record<string, string> = {
@@ -35,14 +52,14 @@ const categoryLabel: Record<string, string> = {
 
 export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
   const fetchTax = useServerFn(getTaxLiabilities);
-  const [asAt, setAsAt] = useState<Date>(() => endOfMonth(new Date()));
+  const [period, setPeriod] = useState<PeriodKey>("last-month");
   const [mode, setMode] = useState<"balance" | "movement">("movement");
-  const [open, setOpen] = useState(false);
-  const asAtIso = iso(asAt);
-  const fromIso = iso(new Date(asAt.getFullYear(), asAt.getMonth(), 1));
+  const range = periodRange(period);
+  const asAtIso = iso(range.to);
+  const fromIso = iso(range.from);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-tax", tenantId, asAtIso, mode],
+    queryKey: ["xero-tax", tenantId, asAtIso, fromIso, mode],
     queryFn: () => fetchTax({ data: { tenantId, date: asAtIso, fromDate: fromIso, mode } }),
   });
 
@@ -53,14 +70,24 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {tenantName}
           </p>
-          <h3 className="font-display text-lg font-semibold">Tax and Superannuation liabilities · Monthly</h3>
+          <h3 className="font-display text-lg font-semibold">Tax and Superannuation liabilities</h3>
           <p className="text-xs text-muted-foreground">
             {mode === "movement"
-              ? `Movement for ${format(asAt, "MMMM yyyy")} (BAS basis)`
-              : `Balance as at ${format(asAt, "d MMM yyyy")}`}
+              ? `Movement for ${range.label} (BAS basis)`
+              : `Balance as at ${format(range.to, "d MMM yyyy")}`}
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={period} onValueChange={(v) => setPeriod(v as PeriodKey)}>
+            <SelectTrigger className="h-8 w-[150px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current-month">Current month</SelectItem>
+              <SelectItem value="last-month">Last month</SelectItem>
+              <SelectItem value="last-quarter">Last quarter</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={mode} onValueChange={(v) => setMode(v as "balance" | "movement")}>
             <SelectTrigger className="h-8 w-[130px] text-xs">
               <SelectValue />
@@ -70,37 +97,12 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
               <SelectItem value="balance">Balance</SelectItem>
             </SelectContent>
           </Select>
-          <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn("justify-start text-left font-normal")}
-              >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {format(asAt, "MMM yyyy")}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={asAt}
-                onSelect={(d) => {
-                  if (d) {
-                    setAsAt(endOfMonth(d));
-                    setOpen(false);
-                  }
-                }}
-                initialFocus
-                className={cn("p-3 pointer-events-auto")}
-              />
-            </PopoverContent>
-          </Popover>
           <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
+
 
       {isLoading ? (
         <div className="flex h-32 items-center justify-center text-muted-foreground">
