@@ -54,9 +54,22 @@ export function TaxLiabilityWidget({ tenantId, tenantName }: { tenantId: string;
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold">Tax and Superannuation liabilities · Monthly</h3>
-          <p className="text-xs text-muted-foreground">As at {format(asAt, "d MMM yyyy")}</p>
+          <p className="text-xs text-muted-foreground">
+            {mode === "movement"
+              ? `Movement for ${format(asAt, "MMMM yyyy")} (BAS basis)`
+              : `Balance as at ${format(asAt, "d MMM yyyy")}`}
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          <Select value={mode} onValueChange={(v) => setMode(v as "balance" | "movement")}>
+            <SelectTrigger className="h-8 w-[130px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="movement">Period (BAS)</SelectItem>
+              <SelectItem value="balance">Balance</SelectItem>
+            </SelectContent>
+          </Select>
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
               <Button
