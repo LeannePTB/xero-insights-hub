@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { HardHat, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — Traction Advisory" }] }),
@@ -50,15 +51,8 @@ function AuthPage() {
   return (
     <div className="grid min-h-screen md:grid-cols-2">
       <div className="hidden flex-col justify-between p-12 text-primary-foreground md:flex" style={{ background: "var(--gradient-hero)" }}>
-        <Link to="/" className="flex items-center gap-2.5">
-          <div className="grid h-9 w-9 place-items-center rounded-lg bg-accent text-primary">
-            <HardHat className="h-4.5 w-4.5" />
-          </div>
-          <div className="leading-tight">
-            <div className="text-sm font-bold uppercase tracking-[0.18em]">Traction</div>
-            <div className="-mt-0.5 text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Advisory</div>
-          </div>
-        </Link>
+        <BrandMark onDark logoHeightClass="h-9" />
+
         <div>
           <h2 className="text-3xl font-bold leading-tight">
             Built for owners.

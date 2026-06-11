@@ -8,7 +8,8 @@ import { listTierSettings } from "@/lib/tier-config.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, HardHat, ChevronRight, SlidersHorizontal, Users, Activity } from "lucide-react";
+import { LogOut, Plus, Loader2, Building2, ChevronRight, SlidersHorizontal, Users, Activity } from "lucide-react";
+import { BrandMark } from "@/components/BrandMark";
 import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -76,15 +77,8 @@ function Dashboard() {
     <div className="min-h-screen bg-background">
       <header className="border-b border-border/60 bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-2.5">
-            <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary text-primary-foreground">
-              <HardHat className="h-4.5 w-4.5" />
-            </div>
-            <div className="leading-tight">
-              <div className="text-sm font-bold uppercase tracking-[0.18em] text-primary">Traction</div>
-              <div className="-mt-0.5 text-[10px] font-semibold uppercase tracking-[0.32em] text-accent">Advisory</div>
-            </div>
-          </div>
+          <BrandMark logoHeightClass="h-9" />
+
           <Button variant="ghost" onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" /> Sign out
           </Button>
