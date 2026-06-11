@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPayablesList } from "@/lib/xero/payables.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, RefreshCw, Wallet } from "lucide-react";
+import { ArrowLeft, Loader2, RefreshCw, Wallet, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/payables/$tenantId")({
   head: () => ({ meta: [{ title: "Payables — Traction Advisory" }] }),
