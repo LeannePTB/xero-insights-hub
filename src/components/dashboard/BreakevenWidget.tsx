@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -54,23 +54,27 @@ function monthsBetween(from: Date, to: Date) {
   return Math.max(0.1, Math.max(months, fractional));
 }
 
-export function BreakevenWidget({ tenantId, tenantName }: { tenantId: string; tenantName: string }) {
+export function BreakevenWidget({
+  tenantId,
+  tenantName,
+  defaultBasis = "accrual",
+}: {
+  tenantId: string;
+  tenantName: string;
+  defaultBasis?: ReportBasis;
+}) {
   const fetchPnl = useServerFn(getProfitAndLoss);
   const [fromDate, setFromDate] = useState<Date>(startOfThisMonth());
   const [toDate, setToDate] = useState<Date>(endOfThisMonth());
-  const [basis, setBasis] = useState<ReportBasis | undefined>(undefined);
+  const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-pnl", tenantId, fromStr, toStr, basis ?? "default"],
+    queryKey: ["xero-pnl", tenantId, fromStr, toStr, basis],
     queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven", basis } }),
   });
-
-  useEffect(() => {
-    if (basis === undefined && data?.basis) setBasis(data.basis);
-  }, [data?.basis, basis]);
 
   const income = data?.totalIncome ?? 0;
   const cogs = data?.totalCostOfSales ?? 0;
