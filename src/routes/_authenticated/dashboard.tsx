@@ -152,7 +152,10 @@ function Dashboard() {
                     <h3 className="mt-4 font-display text-lg font-semibold leading-tight">{c.name}</h3>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {isAdvisor
-                        ? `${orgCount} Xero ${orgCount === 1 ? "org" : "orgs"} linked`
+                        ? ((c.client_xero_orgs ?? [])
+                            .map((o: any) => o.xero_connections?.tenant_name)
+                            .filter(Boolean)
+                            .join(", ") || "No Xero org linked")
                         : `Tier: ${TIER_LABEL[c.tier as DashboardTier] ?? c.tier}`}
                     </p>
 
