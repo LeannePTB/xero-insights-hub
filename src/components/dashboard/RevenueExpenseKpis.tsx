@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -30,16 +32,17 @@ export function RevenueExpenseKpis({ tenantId, tenantName }: { tenantId: string;
   const fetchPnl = useServerFn(getProfitAndLoss);
   const current = monthRange(0);
   const prior = monthRange(-1);
+  const [basis, setBasis] = useState<ReportBasis | undefined>(undefined);
 
   const results = useQueries({
     queries: [
       {
-        queryKey: ["xero-pnl-month", tenantId, current.from, current.to],
-        queryFn: () => fetchPnl({ data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis" } }),
+        queryKey: ["xero-pnl-month", tenantId, current.from, current.to, basis ?? "default"],
+        queryFn: () => fetchPnl({ data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis", basis } }),
       },
       {
-        queryKey: ["xero-pnl-month", tenantId, prior.from, prior.to],
-        queryFn: () => fetchPnl({ data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis" } }),
+        queryKey: ["xero-pnl-month", tenantId, prior.from, prior.to, basis ?? "default"],
+        queryFn: () => fetchPnl({ data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis", basis } }),
       },
     ],
   });
@@ -48,6 +51,10 @@ export function RevenueExpenseKpis({ tenantId, tenantName }: { tenantId: string;
   const isLoading = curQ.isLoading || prevQ.isLoading;
   const isFetching = curQ.isFetching || prevQ.isFetching;
   const error = curQ.error || prevQ.error;
+
+  useEffect(() => {
+    if (basis === undefined && curQ.data?.basis) setBasis(curQ.data.basis);
+  }, [curQ.data?.basis, basis]);
 
   function refetch() {
     curQ.refetch();
@@ -66,9 +73,12 @@ export function RevenueExpenseKpis({ tenantId, tenantName }: { tenantId: string;
             {current.label} vs {prior.label}
           </p>
         </div>
-        <Button variant="ghost" size="sm" onClick={refetch} disabled={isFetching} title="Refresh">
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <BasisSelect value={basis} onChange={setBasis} disabled={isFetching} />
+          <Button variant="ghost" size="sm" onClick={refetch} disabled={isFetching} title="Refresh">
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (

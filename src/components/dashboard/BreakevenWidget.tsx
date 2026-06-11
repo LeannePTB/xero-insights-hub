@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
@@ -57,14 +58,19 @@ export function BreakevenWidget({ tenantId, tenantName }: { tenantId: string; te
   const fetchPnl = useServerFn(getProfitAndLoss);
   const [fromDate, setFromDate] = useState<Date>(startOfThisMonth());
   const [toDate, setToDate] = useState<Date>(endOfThisMonth());
+  const [basis, setBasis] = useState<ReportBasis | undefined>(undefined);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-pnl", tenantId, fromStr, toStr],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven" } }),
+    queryKey: ["xero-pnl", tenantId, fromStr, toStr, basis ?? "default"],
+    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven", basis } }),
   });
+
+  useEffect(() => {
+    if (basis === undefined && data?.basis) setBasis(data.basis);
+  }, [data?.basis, basis]);
 
   const income = data?.totalIncome ?? 0;
   const cogs = data?.totalCostOfSales ?? 0;
@@ -103,27 +109,17 @@ export function BreakevenWidget({ tenantId, tenantName }: { tenantId: string; te
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" /> Monthly Breakeven
-            {data?.basis && (
-              <span
-                className={`ml-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
-                  data.basis === "cash"
-                    ? "bg-amber-100 text-amber-800"
-                    : "bg-blue-100 text-blue-800"
-                }`}
-                title={`Report basis: ${data.basis === "cash" ? "Cash" : "Accrual"}`}
-              >
-                {data.basis === "cash" ? "Cash" : "Accrual"}
-              </span>
-            )}
           </h3>
           <p className="text-xs text-muted-foreground">
             Period: {fromStr} → {toStr} ({months.toFixed(1)} mo)
           </p>
-
         </div>
-        <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <BasisSelect value={basis} onChange={setBasis} disabled={isFetching} />
+          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-2">

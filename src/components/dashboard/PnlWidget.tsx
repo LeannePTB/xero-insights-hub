@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -25,11 +27,16 @@ export function PnlWidget({ tenantId, tenantName }: { tenantId: string; tenantNa
   const fetchPnl = useServerFn(getProfitAndLoss);
   const fromDate = startOfFiscalYear();
   const toDate = today();
+  const [basis, setBasis] = useState<ReportBasis | undefined>(undefined);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-pnl", tenantId, fromDate, toDate],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate, widget: "pnl" } }),
+    queryKey: ["xero-pnl", tenantId, fromDate, toDate, basis ?? "default"],
+    queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate, widget: "pnl", basis } }),
   });
+
+  useEffect(() => {
+    if (basis === undefined && data?.basis) setBasis(data.basis);
+  }, [data?.basis, basis]);
 
   const expenseData = (data?.expenseLines ?? []).slice(0, 6).map((e) => ({
     name: e.name.length > 18 ? e.name.slice(0, 18) + "…" : e.name,
@@ -49,15 +56,18 @@ export function PnlWidget({ tenantId, tenantName }: { tenantId: string; tenantNa
             {fromDate} → {toDate}
           </p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => refetch()}
-          disabled={isFetching}
-          title="Refresh"
-        >
-          <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
-        </Button>
+        <div className="flex items-center gap-2">
+          <BasisSelect value={basis} onChange={setBasis} disabled={isFetching} />
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => refetch()}
+            disabled={isFetching}
+            title="Refresh"
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (

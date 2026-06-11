@@ -84,13 +84,21 @@ function summarise(report: any): PnlReport {
 
 export const getProfitAndLoss = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; fromDate?: string; toDate?: string; widget?: "revenue_kpis" | "pnl" | "breakeven" }) => input)
+  .inputValidator(
+    (input: {
+      tenantId: string;
+      fromDate?: string;
+      toDate?: string;
+      widget?: "revenue_kpis" | "pnl" | "breakeven";
+      basis?: "accrual" | "cash";
+    }) => input,
+  )
   .handler(async ({ data, context }) => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, data.widget ?? "pnl");
     const conn = await getConnectionByTenant(data.tenantId);
-    const basis = await getClientReportBasis(data.tenantId);
+    const basis = data.basis ?? (await getClientReportBasis(data.tenantId));
     const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
       fromDate: data.fromDate,
       toDate: data.toDate,
