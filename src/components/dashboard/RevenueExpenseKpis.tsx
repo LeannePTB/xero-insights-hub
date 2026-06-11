@@ -50,7 +50,7 @@ export function RevenueExpenseKpis({
   const prior = monthRange(-1);
   const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
+  const { data, isLoading, isFetching, error, refetch: refetchReports } = useQuery({
     queryKey: ["xero-pnl-month-comparison", tenantId, current.from, current.to, prior.from, prior.to, basis],
     queryFn: async () => {
       const currentReport = await fetchPnl({
@@ -66,9 +66,9 @@ export function RevenueExpenseKpis({
     retry: false,
   });
 
-  function refetch() {
+  function handleRefetch() {
     setShouldLoad(true);
-    refetch();
+    refetchReports();
   }
 
   return (
@@ -85,7 +85,7 @@ export function RevenueExpenseKpis({
         </div>
         <div className="flex items-center gap-2">
           <BasisSelect value={basis} onChange={setBasis} disabled={isFetching} />
-          <Button variant="ghost" size="sm" onClick={refetch} disabled={isFetching} title="Refresh">
+          <Button variant="ghost" size="sm" onClick={handleRefetch} disabled={isFetching} title="Refresh">
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -102,25 +102,25 @@ export function RevenueExpenseKpis({
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading KPIs…
         </div>
       ) : error ? (
-        <XeroErrorNotice error={error} onRetry={refetch} isRetrying={isFetching} />
+        <XeroErrorNotice error={error} onRetry={handleRefetch} isRetrying={isFetching} />
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <KpiCard
             label="Revenue"
-            current={curQ.data?.totalIncome ?? 0}
-            previous={prevQ.data?.totalIncome ?? 0}
+            current={data?.current.totalIncome ?? 0}
+            previous={data?.prior.totalIncome ?? 0}
             higherIsBetter
           />
           <KpiCard
             label="Expenses"
-            current={curQ.data?.totalExpenses ?? 0}
-            previous={prevQ.data?.totalExpenses ?? 0}
+            current={data?.current.totalExpenses ?? 0}
+            previous={data?.prior.totalExpenses ?? 0}
             higherIsBetter={false}
           />
           <KpiCard
             label="Net Profit"
-            current={curQ.data?.netProfit ?? 0}
-            previous={prevQ.data?.netProfit ?? 0}
+            current={data?.current.netProfit ?? 0}
+            previous={data?.prior.netProfit ?? 0}
             higherIsBetter
           />
         </div>
