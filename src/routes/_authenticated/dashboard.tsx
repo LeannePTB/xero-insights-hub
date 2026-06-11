@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listClients } from "@/lib/clients.functions";
 import { getMyContext } from "@/lib/roles.functions";
+import { listTierSettings } from "@/lib/tier-config.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -20,9 +21,18 @@ function Dashboard() {
   const fetchClients = useServerFn(listClients);
   const fetchCtx = useServerFn(getMyContext);
 
+  const fetchTierSettings = useServerFn(listTierSettings);
+
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
   const viewerClients = ctxQ.data?.viewerClients ?? [];
+
+  const tierSettingsQ = useQuery({
+    queryKey: ["tier-settings"],
+    queryFn: () => fetchTierSettings(),
+    enabled: isAdvisor,
+  });
+  const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
 
   const clientsQ = useQuery({
     queryKey: ["clients"],
@@ -148,7 +158,7 @@ function Dashboard() {
 
                     {tierWidgets && (
                       <div className="mt-4 space-y-1.5 border-t border-border/60 pt-3">
-                        {ALL_TIERS.map((t) => {
+                        {enabledTiers.map((t) => {
                           const isOn = granted.includes(t);
                           const widgets = tierWidgets[t] ?? [];
                           return (
