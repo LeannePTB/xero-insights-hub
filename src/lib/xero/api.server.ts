@@ -150,6 +150,9 @@ export async function xeroGet<T = unknown>(
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
     return xeroGet<T>(conn, path, params, retries - 1);
   }
+  if (res.status === 429) {
+    throw new Error("Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.");
+  }
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
     return xeroGet<T>(refreshed, path, params, retries - 1);

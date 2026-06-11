@@ -16,7 +16,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
-import { useDelayedReady } from "@/hooks/use-delayed-ready";
+import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
@@ -67,7 +67,7 @@ export function BreakevenWidget({
   loadDelayMs?: number;
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
-  const ready = useDelayedReady(loadDelayMs);
+  const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const [fromDate, setFromDate] = useState<Date>(startOfThisMonth());
   const [toDate, setToDate] = useState<Date>(endOfThisMonth());
   const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
@@ -78,7 +78,7 @@ export function BreakevenWidget({
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr, basis],
     queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven", basis } }),
-    enabled: ready,
+    enabled: shouldLoad,
     retry: false,
   });
 
@@ -126,7 +126,7 @@ export function BreakevenWidget({
         </div>
         <div className="flex items-center gap-2">
           <BasisSelect value={basis} onChange={setBasis} disabled={isFetching} />
-          <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
+          <Button variant="ghost" size="sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh">
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
@@ -156,14 +156,18 @@ export function BreakevenWidget({
         </div>
       </div>
 
-      {!ready || isLoading ? (
+      {!shouldLoad ? (
+        <XeroLoadPrompt
+          label="Load breakeven"
+          description="Load this report only when needed to avoid Xero rate limits."
+          onLoad={() => setShouldLoad(true)}
+        />
+      ) : isLoading ? (
         <div className="flex h-40 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Calculating breakeven…
         </div>
       ) : error ? (
-        <div className="mt-4 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">
-          {(error as Error).message}
-        </div>
+        <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       ) : data ? (
         income <= 0 || grossMargin <= 0 ? (
           <div className="mt-6 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
