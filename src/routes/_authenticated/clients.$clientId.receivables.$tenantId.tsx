@@ -20,6 +20,7 @@ function ReceivablesPage() {
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-ar-list", tenantId],
     queryFn: () => fetchList({ data: { tenantId } }),
+    retry: false,
   });
 
   return (
