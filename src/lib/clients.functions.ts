@@ -59,7 +59,7 @@ export const getClient = createServerFn({ method: "POST" })
     const { data: client, error } = await context.supabase
       .from("clients")
       .select(
-        "id, name, owner_user_id, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
+        "id, name, owner_user_id, report_basis, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
       )
       .eq("id", data.clientId)
       .maybeSingle();
@@ -191,6 +191,18 @@ export const renameClient = createServerFn({ method: "POST" })
     const { error } = await context.supabase
       .from("clients")
       .update({ name: data.name.trim() })
+      .eq("id", data.clientId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const updateClientReportBasis = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; basis: "accrual" | "cash" }) => i)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("clients")
+      .update({ report_basis: data.basis })
       .eq("id", data.clientId);
     if (error) throw new Error(error.message);
     return { ok: true };

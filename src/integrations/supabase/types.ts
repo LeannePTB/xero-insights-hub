@@ -127,6 +127,7 @@ export type Database = {
           name: string
           notes: string
           owner_user_id: string
+          report_basis: Database["public"]["Enums"]["report_basis"]
           updated_at: string
         }
         Insert: {
@@ -135,6 +136,7 @@ export type Database = {
           name: string
           notes?: string
           owner_user_id: string
+          report_basis?: Database["public"]["Enums"]["report_basis"]
           updated_at?: string
         }
         Update: {
@@ -143,6 +145,7 @@ export type Database = {
           name?: string
           notes?: string
           owner_user_id?: string
+          report_basis?: Database["public"]["Enums"]["report_basis"]
           updated_at?: string
         }
         Relationships: []
@@ -564,6 +567,7 @@ export type Database = {
     Enums: {
       app_role: "advisor" | "client_viewer"
       dashboard_tier: "basic" | "advisory" | "investigate" | "multi_company"
+      report_basis: "accrual" | "cash"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -693,6 +697,7 @@ export const Constants = {
     Enums: {
       app_role: ["advisor", "client_viewer"],
       dashboard_tier: ["basic", "advisory", "investigate", "multi_company"],
+      report_basis: ["accrual", "cash"],
     },
   },
 } as const

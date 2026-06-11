@@ -13,6 +13,7 @@ import {
   inviteClientViewer,
   updateClientAccessTier,
   revokeClientAccess,
+  updateClientReportBasis,
 } from "@/lib/clients.functions";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { listXeroConnections, startXeroConnect } from "@/lib/xero/connections.functions";
@@ -50,6 +51,7 @@ function ClientSettings() {
   const fetchTierCfg = useServerFn(listTierConfig);
   const saveTier = useServerFn(saveTierWidgets);
   const fetchTierSettings = useServerFn(listTierSettings);
+  const updateBasis = useServerFn(updateClientReportBasis);
 
   const clientQ = useQuery({ queryKey: ["client", clientId], queryFn: () => fetchClient({ data: { clientId } }) });
   const connQ = useQuery({ queryKey: ["xero-connections"], queryFn: () => fetchConnections() });
@@ -133,6 +135,15 @@ function ClientSettings() {
     onSuccess: () => { toast.success("Access removed"); qc.invalidateQueries({ queryKey: ["client-access", clientId] }); },
     onError: (e: any) => toast.error(e.message),
   });
+  const basisMut = useMutation({
+    mutationFn: (basis: "accrual" | "cash") => updateBasis({ data: { clientId, basis } }),
+    onSuccess: () => {
+      toast.success("Report basis saved");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   async function handleConnect() {
     const authWindow = window.open("about:blank", "_blank");
@@ -170,6 +181,27 @@ function ClientSettings() {
             <Button onClick={() => renameMut.mutate()} disabled={!name.trim() || name === client.name || renameMut.isPending}>
               {renameMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save
             </Button>
+          </div>
+        </Section>
+
+        {/* Report basis */}
+        <Section title="Report basis">
+          <p className="mb-3 text-xs text-muted-foreground">
+            Applies to all financial widgets (P&amp;L, Breakeven, Revenue/Expense KPIs). Receivables and Payables are always invoice-based.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Select
+              value={(client as any).report_basis ?? "accrual"}
+              onValueChange={(v) => basisMut.mutate(v as "accrual" | "cash")}
+              disabled={basisMut.isPending}
+            >
+              <SelectTrigger className="w-56"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="accrual">Accrual (default)</SelectItem>
+                <SelectItem value="cash">Cash</SelectItem>
+              </SelectContent>
+            </Select>
+            {basisMut.isPending && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           </div>
         </Section>
 

@@ -87,16 +87,18 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
   .inputValidator((input: { tenantId: string; fromDate?: string; toDate?: string; widget?: "revenue_kpis" | "pnl" | "breakeven" }) => input)
   .handler(async ({ data, context }) => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
-    const { assertWidgetAccess } = await import("./access.server");
+    const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, data.widget ?? "pnl");
     const conn = await getConnectionByTenant(data.tenantId);
+    const basis = await getClientReportBasis(data.tenantId);
     const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
       fromDate: data.fromDate,
       toDate: data.toDate,
+      ...(basis === "cash" ? { paymentsOnly: "true" } : {}),
     });
     const report = res.Reports?.[0];
     if (!report) throw new Error("No P&L report returned by Xero.");
-    return summarise(report);
+    return { ...summarise(report), basis };
   });
 
 export type TaxLiabilities = {
