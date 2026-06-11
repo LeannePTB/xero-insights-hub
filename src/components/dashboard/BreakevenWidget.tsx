@@ -85,6 +85,13 @@ export function BreakevenWidget({ tenantId, tenantName }: { tenantId: string; te
     setFromDate(start);
     setToDate(end);
   }
+  function setLastMonth() {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const end = new Date(now.getFullYear(), now.getMonth(), 0); // last day of prev month
+    setFromDate(start);
+    setToDate(end);
+  }
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -108,7 +115,8 @@ export function BreakevenWidget({ tenantId, tenantName }: { tenantId: string; te
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <DateField label="From" value={fromDate} onChange={setFromDate} />
         <DateField label="To" value={toDate} onChange={setToDate} />
-        <div className="ml-auto flex gap-1">
+        <div className="ml-auto flex flex-wrap gap-1">
+          <PresetBtn onClick={setLastMonth}>Last Month</PresetBtn>
           <PresetBtn onClick={() => setPreset(1)}>1M</PresetBtn>
           <PresetBtn onClick={() => setPreset(3)}>3M</PresetBtn>
           <PresetBtn onClick={() => setPreset(6)}>6M</PresetBtn>
