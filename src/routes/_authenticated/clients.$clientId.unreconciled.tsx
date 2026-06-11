@@ -214,7 +214,7 @@ function AccountTable({
     <section className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)]">
       <header className="flex items-baseline justify-between border-b border-border bg-muted/30 px-5 py-3">
         <h3 className="font-display text-base font-semibold">{name}</h3>
-        {number && <span className="text-xs text-muted-foreground">{number}</span>}
+        {number && <span className="text-xs text-muted-foreground">••••{number.replace(/\D/g, "").slice(-4)}</span>}
       </header>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
