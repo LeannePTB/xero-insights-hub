@@ -122,12 +122,16 @@ function Dashboard() {
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               {clients.map((c: any) => {
                 const orgCount = isAdvisor ? (c.client_xero_orgs?.length ?? 0) : null;
+                const granted: DashboardTier[] = isAdvisor
+                  ? (c.grantedTiers ?? [])
+                  : (c.tier ? [c.tier as DashboardTier] : []);
+                const tierWidgets: Record<DashboardTier, WidgetKey[]> | undefined = c.tierWidgets;
                 return (
                   <Link
                     key={c.id}
                     to="/clients/$clientId"
                     params={{ clientId: c.id }}
-                    className="group rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                    className="group flex flex-col rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
                   >
                     <div className="flex items-start justify-between">
                       <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
@@ -139,8 +143,44 @@ function Dashboard() {
                     <p className="mt-1 text-xs text-muted-foreground">
                       {isAdvisor
                         ? `${orgCount} Xero ${orgCount === 1 ? "org" : "orgs"} linked`
-                        : `Tier: ${c.tier}`}
+                        : `Tier: ${TIER_LABEL[c.tier as DashboardTier] ?? c.tier}`}
                     </p>
+
+                    {tierWidgets && (
+                      <div className="mt-4 space-y-1.5 border-t border-border/60 pt-3">
+                        {ALL_TIERS.map((t) => {
+                          const isOn = granted.includes(t);
+                          const widgets = tierWidgets[t] ?? [];
+                          return (
+                            <div
+                              key={t}
+                              className={`flex items-baseline gap-2 text-[11px] leading-snug ${
+                                isOn ? "text-foreground" : "text-muted-foreground/60"
+                              }`}
+                            >
+                              <span
+                                className={`shrink-0 font-semibold uppercase tracking-wider ${
+                                  isOn ? "text-primary" : ""
+                                }`}
+                              >
+                                {TIER_LABEL[t]}
+                                {isOn ? " ●" : ""}
+                              </span>
+                              <span className="truncate">
+                                {widgets.length
+                                  ? widgets.map((w) => WIDGET_LABEL[w]).join(" · ")
+                                  : "—"}
+                              </span>
+                            </div>
+                          );
+                        })}
+                        {isAdvisor && granted.length === 0 && (
+                          <p className="pt-1 text-[10px] italic text-muted-foreground/70">
+                            No viewers assigned yet
+                          </p>
+                        )}
+                      </div>
+                    )}
                   </Link>
                 );
               })}
