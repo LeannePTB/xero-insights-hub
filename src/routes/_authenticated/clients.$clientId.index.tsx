@@ -99,6 +99,8 @@ function ClientDashboard() {
         list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("payables"))
         list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} /> });
+      if (widgets.includes("receivables"))
+        list.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} /> });
     }
     return list;
   }, [client, clientId, isAdvisor, orgs, widgets]);
