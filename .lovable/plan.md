@@ -1,45 +1,38 @@
-# Add advisor with password + let them change it later
+# Fix Tax & Super liabilities to match the BAS
 
-Right now the only way to add an advisor is to send them an email invite and have them click a link to set a password. This adds a second path: you type their email and a starter password, they're active immediately, and after they log in they can change the password themselves.
+The widget currently diffs Balance Sheet GST/PAYG balances on accrual basis, which won't match a cash-basis Activity Statement (Positive Traction's BAS shows 1A $2,207, 1B $5,050, W2 $3,056, net $213 for May 2026). Switch to Xero's official Activity Statement report so the numbers match the PDF exactly, and keep Super as a separate line sourced from the Balance Sheet.
 
-## What changes
+## Changes
 
-### 1. Advisors settings page — new "Create with password" mode
+### 1. `src/lib/xero/reports.functions.ts`
+- Add `getActivityStatement` server fn (`Reports/GSTReport` for AU orgs, with `fromDate`/`toDate`). Parse the Xero report to extract the BAS boxes by row label/code:
+  - G1 (Total sales), 1A (GST on sales), 1B (GST on purchases), W1, W2, W4, W3, W5, 8A, 8B, line 9 (net payable/refund).
+  - Return `{ periodFrom, periodTo, basis: 'cash'|'accrual', gstOnSales, gstOnPurchases, netGst, paygWithheld, totalOwed, totalRefund, netPayment, lines: [...] }`.
+- Keep existing `getTaxLiabilities` for backward compatibility but mark deprecated.
+- Add `getSuperPayable` server fn that reads Balance Sheet super accounts only (reuse `classifyTaxLine` 'super' branch) for the as-at date, returning `{ balance, lines, asAtDate }`.
 
-The existing invite card gets a small toggle:
+### 2. `src/components/dashboard/TaxLiabilityWidget.tsx`
+- Replace the single fetch with two queries: `getActivityStatement` (period range) + `getSuperPayable` (as-at end of period).
+- Period selector stays: Current month / Last month / Last quarter. Period is always passed as fromDate/toDate — Xero returns the matching Activity Statement (monthly or quarterly depending on the org's BAS frequency; we just pass the range we want).
+- Remove the balance/movement toggle (Activity Statement is always a period report). Keep a small note showing the basis Xero reports ("Cash basis" / "Accrual basis").
+- KPI tiles:
+  - GST on sales (1A)
+  - GST on purchases (1B)
+  - Net GST (1A − 1B, labelled "payable" or "refund")
+  - PAYG Withheld (W2)
+  - Super payable (from Balance Sheet, as-at end of period)
+  - Net BAS payment (line 9)
+- Breakdown list: BAS line items with codes (G1, 1A, 1B, W1, W2, W5, 8A, 8B, 9), plus Super lines underneath in a separate section.
 
-```text
-[ Send email invite  |  Create with password ]
-```
+### 3. Access control
+- Reuse `assertWidgetAccess(userId, tenantId, "tax_liability")` for both new server fns. No schema/migration changes.
 
-- **Send email invite** — current behaviour, unchanged.
-- **Create with password** — shows an email field, a password field (with show/hide toggle), and a "Copy credentials" button after creation that copies `email + password` to the clipboard so you can hand them over via Slack/SMS/etc.
+### 4. Edge cases
+- Non-AU orgs / orgs without an Activity Statement → catch Xero 404 and surface a friendly message "Activity Statement not available for this organisation" instead of erroring.
+- If Xero returns no row for a code (e.g. no PAYG that month), show 0 and keep the line.
+- Cache the report in `report_cache` keyed by `(tenantId, fromDate, toDate, 'activity_statement')` for ~10 min like other reports (if that pattern is already used; otherwise skip).
 
-The new advisor is created already-confirmed (no email click required), gets the advisor role, and appears in "Current advisors" with no "Pending invite" badge — they can sign in immediately at the normal `/auth` page.
-
-### 2. New "Change password" section in Account settings
-
-A new card on `/settings` (or a dedicated `/settings/account` page if you prefer — let me know) with:
-
-- Current password
-- New password (with strength hint)
-- Confirm new password
-- "Update password" button
-
-After update: success toast, fields clear. Any signed-in user (advisor or viewer) can use it.
-
-### 3. Sensible password rules
-
-Minimum 8 characters, at least one letter and one number. Same rule on both the create-advisor form and the change-password form so behaviour is consistent.
-
-## Technical notes
-
-- New server fn `createAdvisorWithPassword({ email, password })` — advisor-gated, uses `supabaseAdmin.auth.admin.createUser` with `email_confirm: true` and the supplied password, then grants the advisor role. Rejects if the email already exists.
-- New server fn `changeMyPassword({ currentPassword, newPassword })` — re-authenticates with the current password (defence against an unlocked laptop), then calls `supabase.auth.updateUser({ password })`.
-- Primary advisor (`admin@positivetraction.com.au`) protections from the previous change are untouched.
-- No DB migration needed.
-
-## Out of scope
-
-- Forgot-password / reset-by-email flow (separate request if you want it).
-- Password strength meter UI beyond the basic rule check.
+## Verification
+1. Open the Positive Traction dashboard, pick "Last month" → confirm 1A=$2,207, 1B=$5,050, W2=$3,056, net=$213, matching the uploaded PDF.
+2. Pick "Last quarter" → confirm it matches the quarterly Activity Statement in Xero.
+3. Pick an org without AU GST → confirm the friendly fallback message renders instead of an error.
