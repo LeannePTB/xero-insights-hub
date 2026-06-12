@@ -70,9 +70,9 @@ function AuthPage() {
 
         <div>
           <h2 className="text-3xl font-bold leading-tight">
-            Built for owners.
+            Built for decisions.
             <br />
-            <span className="font-serif italic text-accent">Backed by numbers.</span>
+            <span className="font-serif italic text-accent">Backed by data.</span>
           </h2>
           <p className="mt-4 max-w-md text-sm text-primary-foreground/75">
             Clean Xero dashboards you will actually open — built around the metrics that matter.
