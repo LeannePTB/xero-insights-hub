@@ -91,7 +91,7 @@ function ClientDashboard() {
   const cards = useMemo<SortableCard[]>(() => {
     if (!client) return [];
     const list: SortableCard[] = [
-      { id: "notes", node: <NotesCard clientId={clientId} canEdit={isAdvisor} /> },
+      { id: "notes", node: <NotesCard clientId={clientId} canEdit={isAdvisor} />, fullWidth: true },
       { id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> },
     ];
     for (const o of orgs) {
