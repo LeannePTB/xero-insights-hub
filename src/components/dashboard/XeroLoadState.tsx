@@ -17,6 +17,16 @@ export function friendlyXeroError(error: unknown) {
   const message = extractErrorMessage(error);
   const lower = message.toLowerCase();
 
+  // App session errors (Supabase auth middleware) — NOT a Xero problem.
+  if (
+    lower.includes("authorization header") ||
+    lower.includes("invalid token") ||
+    lower.includes("no token provided") ||
+    lower.includes("user id found in token")
+  ) {
+    return "Your session has expired. Please sign in again to load this data.";
+  }
+
   if (
     message.includes("429") ||
     lower.includes("rate limit") ||
@@ -25,8 +35,12 @@ export function friendlyXeroError(error: unknown) {
   ) {
     return "Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.";
   }
-  if (message.includes("401") || lower.includes("unauthorized")) {
+  // Only treat as a Xero reconnect issue when the error actually came from Xero.
+  if (lower.includes("xero") && (message.includes("401") || lower.includes("unauthorized"))) {
     return "Xero says this connection needs to be reconnected before this data can load.";
+  }
+  if (lower.includes("unauthorized")) {
+    return "Your session has expired. Please sign in again to load this data.";
   }
   if (lower.includes("taking too long") || lower.includes("timeout")) {
     return "Xero is taking too long to respond. Try again shortly.";
