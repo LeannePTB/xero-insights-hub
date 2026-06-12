@@ -1,37 +1,22 @@
-## Goal
+## Problem
 
-Get the previously-failed advisor invites delivered through your verified `notify.tractionadvisory.app` sender, with branding, retries, and logging.
+The advisor invite email reads "You've been invited to join xero-shine-dashboards" and the From line shows `xero-shine-dashboards <noreply@notify.tractionadvisory.app>`. That's the project's internal slug, not the brand.
 
-## Steps
+## Cause
 
-1. **Scaffold branded auth email templates**
-   Creates the 6 auth templates (signup, magic link, recovery, **invite**, email-change, reauthentication) and wires the auth webhook to the email queue using `notify.tractionadvisory.app`. Apply your brand styling (logo, colors from `src/index.css`) to each template. Body background stays white per the email guide.
+`SITE_NAME` is hard-coded to `"xero-shine-dashboards"` in two files:
+- `src/routes/lovable/email/auth/webhook.ts` (used for live sends + From header)
+- `src/routes/lovable/email/auth/preview.ts` (used for dashboard previews)
 
-2. **Add a "Resend invite" server function** (`resendAdvisorInvite` in `src/lib/advisors.functions.ts`)
-   - Advisor-only.
-   - For a given advisor user_id, look up the auth user and confirm they have never confirmed/signed in (`email_confirmed_at` / `last_sign_in_at` both null) — so we never re-invite an active advisor.
-   - Call `supabaseAdmin.auth.admin.generateLink({ type: 'invite', email, options: { redirectTo } })`. This triggers the auth webhook → enqueues a branded invite email to the `auth_emails` queue → sent through Lovable Emails.
-   - Return `{ ok: true }`.
+It flows into every auth template (`invite`, `signup`, `magic-link`, `recovery`, `email-change`, `reauthentication`) as the `siteName` prop, and into the `From` line of the outgoing email.
 
-3. **Add a "Resend all pending invites" server function** (`resendAllPendingAdvisorInvites`)
-   - Advisor-only.
-   - Lists every advisor row whose auth user has no confirmation/last sign-in, iterates and calls the per-user resend logic. Returns `{ resent: string[], skipped: string[] }`.
+## Change
 
-4. **UI on `/settings/advisors`**
-   - For each advisor row that is "pending" (never signed in), show a `Resend invite` button next to their email.
-   - Add a top-level `Resend all pending invites` button. Toast results.
+1. In `webhook.ts` and `preview.ts`, set:
+   ```ts
+   const SITE_NAME = "Traction Advisory"
+   ```
+2. No template edits needed — they already render `{siteName}` (e.g. invite says "You've been invited to join **Traction Advisory**").
+3. Result: invite reads "join Traction Advisory", and emails arrive from `Traction Advisory <noreply@notify.tractionadvisory.app>`. Applies to all auth emails, not just invites.
 
-5. **Trigger the resend now**
-   Once the route is live, click `Resend all pending invites` (or I can invoke the server fn directly once it's deployed). Each invite enqueues, the cron worker sends it within ~5s, and rows land in `email_send_log` with `template_name = 'invite'`.
-
-## Verification
-
-- `email_send_log` shows one `pending` → `sent` row per advisor with `template_name = 'invite'`.
-- Recipients receive an email From `…@notify.tractionadvisory.app`.
-- Inviting/clicking the link lands them on `/auth` and they can set a password.
-
-## Notes
-
-- No DB migration needed; auth users already exist from the first (silent) invite. We use `generateLink` rather than `inviteUserByEmail` to avoid "user already registered" errors and to re-trigger the webhook.
-- The cron worker / queue infra is already in place from the previous email setup turn.
-- I won't touch the existing `inviteAdvisor` happy-path — only add the resend functions and UI.
+No migration, no infra changes. After approval I'll make the edits and you can hit "Resend" on a pending advisor to verify.

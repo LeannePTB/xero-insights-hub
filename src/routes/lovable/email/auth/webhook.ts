@@ -31,7 +31,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "xero-shine-dashboards"
+const SITE_NAME = "Traction Advisory"
 const SENDER_DOMAIN = "notify.tractionadvisory.app"
 const ROOT_DOMAIN = "tractionadvisory.app"
 const FROM_DOMAIN = "tractionadvisory.app"
