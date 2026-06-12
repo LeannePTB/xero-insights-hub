@@ -138,23 +138,106 @@ function AdvisorSettings() {
         </div>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <h2 className="mb-3 font-display text-lg font-semibold">Invite an advisor</h2>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input
-              type="email"
-              placeholder="advisor@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="flex-1"
-            />
-            <Button onClick={() => inviteMut.mutate()} disabled={!email.includes("@") || inviteMut.isPending}>
-              {inviteMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
-              Invite
-            </Button>
+          <h2 className="mb-3 font-display text-lg font-semibold">Add an advisor</h2>
+          <div className="mb-3 inline-flex rounded-md border border-border p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => { setMode("invite"); setLastCreated(null); }}
+              className={`rounded px-3 py-1.5 transition ${mode === "invite" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Send email invite
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("password"); setLastCreated(null); }}
+              className={`rounded px-3 py-1.5 transition ${mode === "password" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Create with password
+            </button>
           </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            If the email isn't registered yet, they'll receive an invite link. Existing users are upgraded to advisor immediately.
-          </p>
+
+          {mode === "invite" ? (
+            <>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  type="email"
+                  placeholder="advisor@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={() => inviteMut.mutate()} disabled={!email.includes("@") || inviteMut.isPending}>
+                  {inviteMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                  Invite
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                If the email isn't registered yet, they'll receive an invite link. Existing users are upgraded to advisor immediately.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-2">
+                <Input
+                  type="email"
+                  placeholder="advisor@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <div className="relative">
+                  <Input
+                    type={showPw ? "text" : "password"}
+                    placeholder="Starter password (min 8 chars, letter + number)"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPw ? "Hide password" : "Show password"}
+                  >
+                    {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button
+                  onClick={() => createPwMut.mutate()}
+                  disabled={!email.includes("@") || password.length < 8 || createPwMut.isPending}
+                  className="self-start"
+                >
+                  {createPwMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                  Create advisor
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                The account is active immediately — no email click required. Share the credentials securely. They can change the password from Account settings after signing in.
+              </p>
+              {lastCreated && (
+                <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs">
+                  <div className="mb-2 font-medium text-foreground">New advisor credentials</div>
+                  <div className="font-mono text-foreground">{lastCreated.email}</div>
+                  <div className="font-mono text-foreground">{lastCreated.password}</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={async () => {
+                      const text = `Email: ${lastCreated.email}\nPassword: ${lastCreated.password}\nSign in: https://tractionadvisory.app/auth`;
+                      try {
+                        await navigator.clipboard.writeText(text);
+                        toast.success("Credentials copied");
+                      } catch {
+                        window.prompt("Copy credentials:", text);
+                      }
+                    }}
+                  >
+                    <Copy className="mr-2 h-3.5 w-3.5" /> Copy credentials
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
