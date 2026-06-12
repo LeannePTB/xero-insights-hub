@@ -344,3 +344,58 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, invited: !existing };
   });
+
+function validateViewerPassword(pw: string) {
+  if (typeof pw !== "string" || pw.length < 8) throw new Error("Password must be at least 8 characters.");
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) throw new Error("Password must include at least one letter and one number.");
+}
+
+export const createClientViewerWithPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; email: string; password: string; tier: DashboardTier }) => i)
+  .handler(async ({ data, context }) => {
+    const email = data.email.trim().toLowerCase();
+    if (!email.includes("@") || email.length > 254) throw new Error("Please enter a valid email address.");
+    validateViewerPassword(data.password);
+
+    const { data: advisorRoles } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "advisor");
+    if (!advisorRoles || advisorRoles.length === 0) {
+      throw new Error("Only advisors can create client viewers.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: existing } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+    if (existing?.id) throw new Error("An account with this email already exists.");
+
+    const { data: created, error: cErr } = await (supabaseAdmin as any).auth.admin.createUser({
+      email,
+      password: data.password,
+      email_confirm: true,
+    });
+    if (cErr) throw new Error(cErr.message);
+    const userId = created?.user?.id;
+    if (!userId) throw new Error("Could not create account.");
+
+    await (supabaseAdmin as any)
+      .from("user_roles")
+      .upsert({ user_id: userId, role: "client_viewer" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+
+    const { error: aErr } = await (supabaseAdmin as any)
+      .from("client_access")
+      .upsert(
+        { client_id: data.clientId, user_id: userId, tier: data.tier },
+        { onConflict: "client_id,user_id" },
+      );
+    if (aErr) throw new Error(aErr.message);
+
+    return { ok: true, email };
+  });

@@ -11,6 +11,7 @@ import {
   deleteClient,
   listClientAccess,
   inviteClientViewer,
+  createClientViewerWithPassword,
   updateClientAccessTier,
   revokeClientAccess,
   updateClientReportBasis,
@@ -22,7 +23,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Loader2, Plug, UserPlus, Link2 } from "lucide-react";
+import { ArrowLeft, Trash2, Loader2, Plug, UserPlus, Link2, KeyRound, Eye, EyeOff, Copy } from "lucide-react";
 import { ALL_TIERS, TIER_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 
