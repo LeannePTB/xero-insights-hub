@@ -159,6 +159,27 @@ async function resendInviteForUser(supabaseAdmin: any, userId: string) {
   return { ok: true as const, email: user.email as string };
 }
 
+export const generateAdvisorInviteLink = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { userId: string }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: u, error: getErr } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
+    if (getErr || !u?.user?.email) throw new Error("User not found");
+    const email = u.user.email as string;
+    const redirectTo = getInviteRedirect();
+    const { data: link, error } = await (supabaseAdmin as any).auth.admin.generateLink({
+      type: "invite",
+      email,
+      options: { redirectTo },
+    });
+    if (error) throw new Error(error.message);
+    const actionLink = link?.properties?.action_link ?? link?.action_link;
+    if (!actionLink) throw new Error("Could not generate invite link");
+    return { email, link: actionLink as string };
+  });
+
 export const resendAdvisorInvite = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { userId: string }) => i)

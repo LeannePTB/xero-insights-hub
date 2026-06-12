@@ -9,11 +9,12 @@ import {
   resendAdvisorInvite,
   resendAllPendingAdvisorInvites,
   listPendingAdvisors,
+  generateAdvisorInviteLink,
 } from "@/lib/advisors.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({
@@ -31,6 +32,7 @@ function AdvisorSettings() {
   const fetchPending = useServerFn(listPendingAdvisors);
   const resendOneFn = useServerFn(resendAdvisorInvite);
   const resendAllFn = useServerFn(resendAllPendingAdvisorInvites);
+  const genLinkFn = useServerFn(generateAdvisorInviteLink);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const listQ = useQuery({
@@ -60,6 +62,19 @@ function AdvisorSettings() {
   const resendOneMut = useMutation({
     mutationFn: (userId: string) => resendOneFn({ data: { userId } }),
     onSuccess: (r) => toast.success(`Invite re-sent to ${r.email}`),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const copyLinkMut = useMutation({
+    mutationFn: (userId: string) => genLinkFn({ data: { userId } }),
+    onSuccess: async (r) => {
+      try {
+        await navigator.clipboard.writeText(r.link);
+        toast.success(`Invite link copied for ${r.email}`);
+      } catch {
+        window.prompt("Copy this invite link:", r.link);
+      }
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -163,15 +178,26 @@ function AdvisorSettings() {
                     </div>
                     <div className="flex items-center gap-1">
                       {isPending && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => resendOneMut.mutate(a.user_id)}
-                          disabled={resendOneMut.isPending}
-                          title="Resend invite email"
-                        >
-                          <Send className="h-3.5 w-3.5" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyLinkMut.mutate(a.user_id)}
+                            disabled={copyLinkMut.isPending}
+                            title="Copy invite link"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => resendOneMut.mutate(a.user_id)}
+                            disabled={resendOneMut.isPending}
+                            title="Resend invite email"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
                       )}
                       <Button
                         variant="ghost"
