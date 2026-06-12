@@ -260,18 +260,107 @@ function ClientSettings() {
 
         {/* Viewer access */}
         <Section title="Viewer access">
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input type="email" placeholder="viewer@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="flex-1" />
-            <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as DashboardTier)}>
-              <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
-              </SelectContent>
-            </Select>
-            <Button onClick={() => inviteMut.mutate()} disabled={!inviteEmail.includes("@") || inviteMut.isPending}>
-              {inviteMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />} Invite
-            </Button>
+          <div className="mb-3 inline-flex rounded-md border border-border p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => { setViewerMode("invite"); setLastViewerCreated(null); }}
+              className={`rounded px-3 py-1.5 transition ${viewerMode === "invite" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Send email invite
+            </button>
+            <button
+              type="button"
+              onClick={() => { setViewerMode("password"); setLastViewerCreated(null); }}
+              className={`rounded px-3 py-1.5 transition ${viewerMode === "password" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Create with password
+            </button>
           </div>
+
+          {viewerMode === "invite" ? (
+            <>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input type="email" placeholder="viewer@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="flex-1" />
+                <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as DashboardTier)}>
+                  <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+                <Button onClick={() => inviteMut.mutate()} disabled={!inviteEmail.includes("@") || inviteMut.isPending}>
+                  {inviteMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />} Invite
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                If the email isn't registered yet, they'll receive an invite link.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input type="email" placeholder="viewer@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="flex-1" />
+                  <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as DashboardTier)}>
+                    <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="relative">
+                  <Input
+                    type={showViewerPw ? "text" : "password"}
+                    placeholder="Starter password (min 8 chars, letter + number)"
+                    value={viewerPassword}
+                    onChange={(e) => setViewerPassword(e.target.value)}
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowViewerPw((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showViewerPw ? "Hide password" : "Show password"}
+                  >
+                    {showViewerPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button
+                  onClick={() => createViewerPwMut.mutate()}
+                  disabled={!inviteEmail.includes("@") || viewerPassword.length < 8 || createViewerPwMut.isPending}
+                  className="self-start"
+                >
+                  {createViewerPwMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                  Create viewer
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Account is active immediately — no email click required. Share the credentials securely; they can change the password from Account settings after signing in.
+              </p>
+              {lastViewerCreated && (
+                <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs">
+                  <div className="mb-2 font-medium text-foreground">New viewer credentials</div>
+                  <div className="font-mono text-foreground">{lastViewerCreated.email}</div>
+                  <div className="font-mono text-foreground">{lastViewerCreated.password}</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={async () => {
+                      const text = `Email: ${lastViewerCreated.email}\nPassword: ${lastViewerCreated.password}\nSign in: https://tractionadvisory.app/auth`;
+                      try {
+                        await navigator.clipboard.writeText(text);
+                        toast.success("Credentials copied");
+                      } catch {
+                        window.prompt("Copy credentials:", text);
+                      }
+                    }}
+                  >
+                    <Copy className="mr-2 h-3.5 w-3.5" /> Copy credentials
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
 
           <div className="mt-4">
             {accessQ.isLoading ? (
