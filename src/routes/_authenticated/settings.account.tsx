@@ -1,8 +1,9 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { changeMyPassword } from "@/lib/advisors.functions";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +17,7 @@ export const Route = createFileRoute("/_authenticated/settings/account")({
 
 function AccountSettings() {
   const changePwFn = useServerFn(changeMyPassword);
+  const navigate = useNavigate();
 
   const [currentPassword, setCurrent] = useState("");
   const [newPassword, setNew] = useState("");
@@ -30,12 +32,23 @@ function AccountSettings() {
     newPassword === confirm;
 
   const mut = useMutation({
-    mutationFn: () => changePwFn({ data: { currentPassword, newPassword } }),
+    mutationFn: async () => {
+      await changePwFn({ data: { currentPassword, newPassword } });
+      // Server-side updateUserById invalidates the existing session.
+      // Re-sign in on the client so the local session keeps working.
+      const { data: u } = await supabase.auth.getUser();
+      const email = u?.user?.email;
+      if (email) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password: newPassword });
+        if (error) throw new Error("Password changed, but couldn't refresh your session. Please sign in again.");
+      }
+    },
     onSuccess: () => {
       toast.success("Password updated");
       setCurrent("");
       setNew("");
       setConfirm("");
+      navigate({ to: "/dashboard" });
     },
     onError: (e: any) => toast.error(e.message),
   });
