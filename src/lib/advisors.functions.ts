@@ -175,9 +175,6 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase, context.userId);
-    if (data.userId === context.userId) {
-      throw new Error("You can't revoke your own advisor access.");
-    }
     if (data.userId === PRIMARY_ADVISOR_USER_ID) {
       throw new Error("The primary advisor account can't be removed.");
     }
