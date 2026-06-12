@@ -137,7 +137,7 @@ async function resendInviteForUser(supabaseAdmin: any, userId: string) {
     return { ok: false as const, reason: "User not found" };
   }
   const user = u.user;
-  if (user.last_sign_in_at || user.email_confirmed_at) {
+  if (user.last_sign_in_at) {
     return { ok: false as const, reason: "Already active" };
   }
   const redirectTo = getInviteRedirect();
@@ -225,7 +225,7 @@ export const listPendingAdvisors = createServerFn({ method: "GET" })
     const pending: string[] = [];
     for (const r of rows ?? []) {
       const { data: u } = await supabaseAdmin.auth.admin.getUserById(r.user_id);
-      if (u?.user && !u.user.last_sign_in_at && !u.user.email_confirmed_at) {
+      if (u?.user && !u.user.last_sign_in_at) {
         pending.push(r.user_id);
       }
     }
