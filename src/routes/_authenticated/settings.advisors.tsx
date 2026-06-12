@@ -32,6 +32,7 @@ function AdvisorSettings() {
   const fetchPending = useServerFn(listPendingAdvisors);
   const resendOneFn = useServerFn(resendAdvisorInvite);
   const resendAllFn = useServerFn(resendAllPendingAdvisorInvites);
+  const genLinkFn = useServerFn(generateAdvisorInviteLink);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const listQ = useQuery({
