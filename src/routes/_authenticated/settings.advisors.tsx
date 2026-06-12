@@ -2,11 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listAdvisors, inviteAdvisor, revokeAdvisor } from "@/lib/advisors.functions";
+import {
+  listAdvisors,
+  inviteAdvisor,
+  revokeAdvisor,
+  resendAdvisorInvite,
+  resendAllPendingAdvisorInvites,
+  listPendingAdvisors,
+} from "@/lib/advisors.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({
@@ -21,10 +28,19 @@ function AdvisorSettings() {
   const inviteFn = useServerFn(inviteAdvisor);
   const revokeFn = useServerFn(revokeAdvisor);
 
+  const fetchPending = useServerFn(listPendingAdvisors);
+  const resendOneFn = useServerFn(resendAdvisorInvite);
+  const resendAllFn = useServerFn(resendAllPendingAdvisorInvites);
+
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const listQ = useQuery({
     queryKey: ["advisors"],
     queryFn: () => fetchList(),
+    enabled: ctxQ.data?.isAdvisor ?? false,
+  });
+  const pendingQ = useQuery({
+    queryKey: ["advisors-pending"],
+    queryFn: () => fetchPending(),
     enabled: ctxQ.data?.isAdvisor ?? false,
   });
 
@@ -36,6 +52,22 @@ function AdvisorSettings() {
       toast.success(invited ? "Invite email sent" : "Advisor access granted");
       setEmail("");
       qc.invalidateQueries({ queryKey: ["advisors"] });
+      qc.invalidateQueries({ queryKey: ["advisors-pending"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const resendOneMut = useMutation({
+    mutationFn: (userId: string) => resendOneFn({ data: { userId } }),
+    onSuccess: (r) => toast.success(`Invite re-sent to ${r.email}`),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const resendAllMut = useMutation({
+    mutationFn: () => resendAllFn(),
+    onSuccess: (r) => {
+      if (r.resent.length === 0) toast("No pending invites to resend");
+      else toast.success(`Re-sent ${r.resent.length} invite${r.resent.length === 1 ? "" : "s"}`);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -55,6 +87,8 @@ function AdvisorSettings() {
   if (!ctxQ.data?.isAdvisor) return <p className="p-6 text-sm text-destructive">Advisors only.</p>;
 
   const advisors = listQ.data?.advisors ?? [];
+  const pendingIds = new Set(pendingQ.data?.pendingUserIds ?? []);
+  const pendingCount = pendingIds.size;
 
   return (
     <div className="min-h-screen bg-background">
