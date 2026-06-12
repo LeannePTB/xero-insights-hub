@@ -217,3 +217,156 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
     out.lines.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
     return out;
   });
+
+// ============================================================================
+// AU Activity Statement (BAS) – pulls directly from Xero so values match the PDF
+// ============================================================================
+
+export type ActivityStatement = {
+  periodFrom?: string;
+  periodTo?: string;
+  reportName: string;
+  basis?: "cash" | "accrual" | string;
+  boxes: Record<string, number>; // keyed by box code: G1, 1A, 1B, W1, W2, W3, W4, W5, 8A, 8B, 9
+  lines: { code: string; label: string; amount: number }[];
+  netGst: number;          // 1A - 1B (positive => payable, negative => refund)
+  netPayment: number;      // line 9 if present, else 1A + W5 - 1B
+  available: boolean;      // false when org has no AU Activity Statement
+  message?: string;
+};
+
+const BOX_CODE_REGEX = /^(G\d+[A-Z]?|W\d+|T\d+|[1-9][A-Z]?|[1-9])$/;
+
+function looksLikeBoxCode(s: string | undefined): boolean {
+  if (!s) return false;
+  return BOX_CODE_REGEX.test(s.trim());
+}
+
+function extractBoxes(report: any): { boxes: Record<string, number>; lines: ActivityStatement["lines"] } {
+  const boxes: Record<string, number> = {};
+  const lines: ActivityStatement["lines"] = [];
+  walkRows(report?.Rows, (r) => {
+    if ((r.RowType !== "Row" && r.RowType !== "SummaryRow") || !r.Cells) return;
+    const cells = r.Cells;
+    if (cells.length < 2) return;
+    // Try to find a box code in any of the first 3 cells, value in the last numeric cell.
+    let code: string | undefined;
+    let label: string | undefined;
+    for (let i = 0; i < Math.min(3, cells.length); i++) {
+      const v = (cells[i]?.Value ?? "").toString().trim();
+      if (looksLikeBoxCode(v)) {
+        code = v;
+      } else if (v && !label) {
+        label = v;
+      }
+    }
+    if (!code) return;
+    // amount = last cell with a parseable number
+    let amount = 0;
+    for (let i = cells.length - 1; i >= 0; i--) {
+      const raw = (cells[i]?.Value ?? "").toString();
+      if (!raw) continue;
+      const n = Number(raw.replace(/[, ]/g, "").replace(/^\((.*)\)$/, "-$1"));
+      if (Number.isFinite(n) && raw.match(/[\d]/)) {
+        amount = n;
+        break;
+      }
+    }
+    boxes[code] = amount;
+    lines.push({ code, label: label ?? code, amount });
+  });
+  return { boxes, lines };
+}
+
+export const getActivityStatement = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string; fromDate: string; toDate: string }) => input)
+  .handler(async ({ data, context }): Promise<ActivityStatement> => {
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { assertWidgetAccess } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    const conn = await getConnectionByTenant(data.tenantId);
+
+    // Xero AU Activity Statement endpoint. Returns 404 / NotFound for non-AU orgs.
+    let res: { Reports: any[] } | null = null;
+    try {
+      res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ActivityStatement", {
+        fromDate: data.fromDate,
+        toDate: data.toDate,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/404|NotFound|not available|not found/i.test(msg)) {
+        return {
+          reportName: "Activity Statement",
+          boxes: {},
+          lines: [],
+          netGst: 0,
+          netPayment: 0,
+          available: false,
+          message: "Activity Statement isn't available for this Xero organisation (AU GST orgs only).",
+        };
+      }
+      throw e;
+    }
+
+    const report = res?.Reports?.[0];
+    if (!report) {
+      return {
+        reportName: "Activity Statement",
+        boxes: {},
+        lines: [],
+        netGst: 0,
+        netPayment: 0,
+        available: false,
+        message: "No Activity Statement returned by Xero for this period.",
+      };
+    }
+
+    const { boxes, lines } = extractBoxes(report);
+    const get = (k: string) => boxes[k] ?? 0;
+    const netGst = get("1A") - get("1B");
+    const w5 = get("W5") || get("W2") + get("W3") + get("W4");
+    const netPayment = get("9") !== 0 ? get("9") : get("1A") + w5 - get("1B");
+
+    // basis: look for "Cash" / "Accrual" in ReportTitles
+    const titles: string[] = report.ReportTitles ?? [];
+    const basis =
+      titles.some((t) => /cash/i.test(t)) ? "cash" :
+      titles.some((t) => /accrual/i.test(t)) ? "accrual" : undefined;
+
+    return {
+      reportName: report.ReportName ?? "Activity Statement",
+      periodFrom: data.fromDate,
+      periodTo: data.toDate,
+      basis,
+      boxes,
+      lines,
+      netGst,
+      netPayment,
+      available: true,
+    };
+  });
+
+export type SuperPayable = {
+  asAtDate: string;
+  balance: number;
+  lines: { name: string; amount: number }[];
+};
+
+export const getSuperPayable = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string; date: string }) => input)
+  .handler(async ({ data, context }): Promise<SuperPayable> => {
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { assertWidgetAccess } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    const conn = await getConnectionByTenant(data.tenantId);
+    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.date });
+    const report = res.Reports?.[0];
+    if (!report) return { asAtDate: data.date, balance: 0, lines: [] };
+    const all = extractTaxLines(report);
+    const supers = all.filter((l) => l.category === "super").map((l) => ({ name: l.name, amount: l.amount }));
+    const balance = supers.reduce((s, l) => s + l.amount, 0);
+    return { asAtDate: data.date, balance, lines: supers };
+  });
