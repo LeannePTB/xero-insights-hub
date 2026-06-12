@@ -52,6 +52,7 @@ function ClientSettings() {
   const fetchConnections = useServerFn(listXeroConnections);
   const fetchAccess = useServerFn(listClientAccess);
   const startConnect = useServerFn(startXeroConnect);
+  const disconnect = useServerFn(disconnectXero);
 
   const rename = useServerFn(renameClient);
   const attach = useServerFn(attachXeroOrg);
