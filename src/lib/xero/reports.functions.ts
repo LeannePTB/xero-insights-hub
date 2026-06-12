@@ -370,3 +370,49 @@ export const getSuperPayable = createServerFn({ method: "POST" })
     const balance = supers.reduce((s, l) => s + l.amount, 0);
     return { asAtDate: data.date, balance, lines: supers };
   });
+
+// ============================================================================
+// Current tax balance – live Balance Sheet snapshot of GST/PAYG/Super accounts
+// ============================================================================
+
+export type CurrentTaxBalance = {
+  asAtDate: string;
+  gst: number;
+  payg: number;
+  superannuation: number;
+  otherTax: number;
+  total: number;
+  lines: { name: string; amount: number; category: "gst" | "payg" | "super" | "other-tax" }[];
+};
+
+export const getCurrentTaxBalance = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string; date?: string }) => input)
+  .handler(async ({ data, context }): Promise<CurrentTaxBalance> => {
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { assertWidgetAccess } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    const conn = await getConnectionByTenant(data.tenantId);
+    const date = data.date ?? new Date().toISOString().slice(0, 10);
+    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date });
+    const report = res.Reports?.[0];
+    const lines = report ? extractTaxLines(report) : [];
+    const out: CurrentTaxBalance = {
+      asAtDate: date,
+      gst: 0,
+      payg: 0,
+      superannuation: 0,
+      otherTax: 0,
+      total: 0,
+      lines,
+    };
+    for (const l of lines) {
+      if (l.category === "gst") out.gst += l.amount;
+      else if (l.category === "payg") out.payg += l.amount;
+      else if (l.category === "super") out.superannuation += l.amount;
+      else out.otherTax += l.amount;
+    }
+    out.total = out.gst + out.payg + out.superannuation + out.otherTax;
+    out.lines.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+    return out;
+  });
