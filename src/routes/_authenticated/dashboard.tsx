@@ -116,6 +116,13 @@ function Dashboard() {
               </Button>
             </div>
           )}
+          {!isAdvisor && (
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="mt-8">
