@@ -62,13 +62,6 @@ function AuthPage() {
     }
   }
 
-  async function handleGoogle() {
-    setLoading(true);
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin + "/dashboard" });
-    if (result.error) { toast.error(String(result.error)); setLoading(false); return; }
-    if (result.redirected) return;
-    navigate({ to: "/dashboard" });
-  }
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">
