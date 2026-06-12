@@ -225,7 +225,7 @@ export const listPendingAdvisors = createServerFn({ method: "GET" })
     const pending: string[] = [];
     for (const r of rows ?? []) {
       const { data: u } = await supabaseAdmin.auth.admin.getUserById(r.user_id);
-      if (u?.user && !u.user.last_sign_in_at && !u.user.email_confirmed_at) {
+      if (u?.user && !u.user.last_sign_in_at) {
         pending.push(r.user_id);
       }
     }
