@@ -137,7 +137,7 @@ async function resendInviteForUser(supabaseAdmin: any, userId: string) {
     return { ok: false as const, reason: "User not found" };
   }
   const user = u.user;
-  if (user.last_sign_in_at || user.email_confirmed_at) {
+  if (user.last_sign_in_at) {
     return { ok: false as const, reason: "Already active" };
   }
   const redirectTo = getInviteRedirect();
