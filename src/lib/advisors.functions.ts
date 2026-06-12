@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export const PRIMARY_ADVISOR_USER_ID = "57d544ad-db50-4330-9b12-bcffdf4c6065";
+
+
 async function assertAdvisor(supabase: any, userId: string) {
   const { data } = await supabase
     .from("user_roles")
@@ -93,6 +96,9 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
     await assertAdvisor(context.supabase, context.userId);
     if (data.userId === context.userId) {
       throw new Error("You can't revoke your own advisor access.");
+    }
+    if (data.userId === PRIMARY_ADVISOR_USER_ID) {
+      throw new Error("The primary advisor account can't be removed.");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

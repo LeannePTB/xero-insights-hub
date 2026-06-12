@@ -10,6 +10,7 @@ import {
   resendAllPendingAdvisorInvites,
   listPendingAdvisors,
   generateAdvisorInviteLink,
+  PRIMARY_ADVISOR_USER_ID,
 } from "@/lib/advisors.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
@@ -161,6 +162,7 @@ function AdvisorSettings() {
             <ul className="space-y-1.5">
               {advisors.map((a) => {
                 const isPending = pendingIds.has(a.user_id);
+                const isPrimary = a.user_id === PRIMARY_ADVISOR_USER_ID;
                 return (
                   <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -171,6 +173,7 @@ function AdvisorSettings() {
                         <p className="truncate text-sm font-medium">
                           {a.display_name ?? a.email ?? a.user_id}
                           {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+                          {isPrimary && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Primary</span>}
                           {isPending && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">Pending invite</span>}
                         </p>
                         {a.email && a.display_name && <p className="truncate text-xs text-muted-foreground">{a.email}</p>}
@@ -207,8 +210,8 @@ function AdvisorSettings() {
                             revokeMut.mutate(a.user_id);
                           }
                         }}
-                        disabled={a.is_self || revokeMut.isPending}
-                        title={a.is_self ? "You can't remove yourself" : "Remove advisor access"}
+                        disabled={a.is_self || isPrimary || revokeMut.isPending}
+                        title={isPrimary ? "The primary advisor can't be removed" : a.is_self ? "You can't remove yourself" : "Remove advisor access"}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
