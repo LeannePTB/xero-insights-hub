@@ -178,15 +178,26 @@ function AdvisorSettings() {
                     </div>
                     <div className="flex items-center gap-1">
                       {isPending && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => resendOneMut.mutate(a.user_id)}
-                          disabled={resendOneMut.isPending}
-                          title="Resend invite email"
-                        >
-                          <Send className="h-3.5 w-3.5" />
-                        </Button>
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyLinkMut.mutate(a.user_id)}
+                            disabled={copyLinkMut.isPending}
+                            title="Copy invite link"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => resendOneMut.mutate(a.user_id)}
+                            disabled={resendOneMut.isPending}
+                            title="Resend invite email"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
                       )}
                       <Button
                         variant="ghost"
