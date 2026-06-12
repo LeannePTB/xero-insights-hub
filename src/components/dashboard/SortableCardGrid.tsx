@@ -19,9 +19,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 
-export type SortableCard = { id: string; node: ReactNode };
+export type SortableCard = { id: string; node: ReactNode; fullWidth?: boolean };
 
-function SortableItem({ id, children }: { id: string; children: ReactNode }) {
+function SortableItem({ id, children, fullWidth }: { id: string; children: ReactNode; fullWidth?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -30,7 +30,11 @@ function SortableItem({ id, children }: { id: string; children: ReactNode }) {
     zIndex: isDragging ? 10 : "auto",
   } as const;
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative${fullWidth ? " [column-span:all]" : ""}`}
+    >
       <button
         type="button"
         {...attributes}
