@@ -122,7 +122,17 @@ function ClientSettings() {
 
   const detachMut = useMutation({
     mutationFn: (id: string) => detach({ data: { id } }),
-    onSuccess: () => { toast.success("Unlinked"); qc.invalidateQueries({ queryKey: ["client", clientId] }); },
+    onSuccess: () => { toast.success("Unlinked"); qc.invalidateQueries({ queryKey: ["client", clientId] }); qc.invalidateQueries({ queryKey: ["xero-connections"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const disconnectMut = useMutation({
+    mutationFn: (tenantId: string) => disconnect({ data: { tenantId } }),
+    onSuccess: () => {
+      toast.success("Xero org disconnected");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-connections"] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
