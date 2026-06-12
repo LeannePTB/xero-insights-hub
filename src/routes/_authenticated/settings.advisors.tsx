@@ -9,11 +9,12 @@ import {
   resendAdvisorInvite,
   resendAllPendingAdvisorInvites,
   listPendingAdvisors,
+  generateAdvisorInviteLink,
 } from "@/lib/advisors.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({
