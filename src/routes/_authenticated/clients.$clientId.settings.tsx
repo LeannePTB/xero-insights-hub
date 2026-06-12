@@ -47,6 +47,7 @@ function ClientSettings() {
   const detach = useServerFn(detachXeroOrg);
   const del = useServerFn(deleteClient);
   const invite = useServerFn(inviteClientViewer);
+  const createViewerPw = useServerFn(createClientViewerWithPassword);
   const updateTier = useServerFn(updateClientAccessTier);
   const revoke = useServerFn(revokeClientAccess);
   const fetchTierCfg = useServerFn(listTierConfig);
@@ -78,6 +79,10 @@ function ClientSettings() {
   const [name, setName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteTier, setInviteTier] = useState<DashboardTier>("basic");
+  const [viewerMode, setViewerMode] = useState<"invite" | "password">("invite");
+  const [viewerPassword, setViewerPassword] = useState("");
+  const [showViewerPw, setShowViewerPw] = useState(false);
+  const [lastViewerCreated, setLastViewerCreated] = useState<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
     if (clientQ.data?.client?.name && name === "") setName(clientQ.data.client.name as string);
