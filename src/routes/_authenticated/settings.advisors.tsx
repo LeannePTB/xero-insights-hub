@@ -307,12 +307,13 @@ function AdvisorSettings() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          if (confirm(`Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`)) {
-                            revokeMut.mutate(a.user_id);
-                          }
+                          const msg = a.is_self
+                            ? `Remove your own advisor access? You'll be signed out immediately.`
+                            : `Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`;
+                          if (confirm(msg)) revokeMut.mutate(a.user_id);
                         }}
-                        disabled={a.is_self || isPrimary || revokeMut.isPending}
-                        title={isPrimary ? "The primary advisor can't be removed" : a.is_self ? "You can't remove yourself" : "Remove advisor access"}
+                        disabled={isPrimary || revokeMut.isPending}
+                        title={isPrimary ? "The primary advisor can't be removed" : a.is_self ? "Remove your own advisor access (you'll be signed out)" : "Remove advisor access"}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
