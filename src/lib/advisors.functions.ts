@@ -115,3 +115,89 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+function getInviteRedirect() {
+  const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
+  return projectId ? `https://project--${projectId}.lovable.app/auth` : undefined;
+}
+
+async function resendInviteForUser(supabaseAdmin: any, userId: string) {
+  const { data: u, error: getErr } = await supabaseAdmin.auth.admin.getUserById(userId);
+  if (getErr || !u?.user?.email) {
+    return { ok: false as const, reason: "User not found" };
+  }
+  const user = u.user;
+  if (user.last_sign_in_at || user.email_confirmed_at) {
+    return { ok: false as const, reason: "Already active" };
+  }
+  const redirectTo = getInviteRedirect();
+  // Re-issue the invite. inviteUserByEmail on an existing unconfirmed user
+  // re-sends the invite via the auth webhook.
+  const { error } = await supabaseAdmin.auth.admin.inviteUserByEmail(
+    user.email,
+    redirectTo ? { redirectTo } : undefined,
+  );
+  if (error) {
+    // Fallback: generate an invite link, which also fires the auth webhook.
+    const { error: linkErr } = await supabaseAdmin.auth.admin.generateLink({
+      type: "invite",
+      email: user.email,
+      options: redirectTo ? { redirectTo } : undefined,
+    });
+    if (linkErr) return { ok: false as const, reason: linkErr.message };
+  }
+  return { ok: true as const, email: user.email as string };
+}
+
+export const resendAdvisorInvite = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { userId: string }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const res = await resendInviteForUser(supabaseAdmin, data.userId);
+    if (!res.ok) throw new Error(res.reason);
+    return { ok: true, email: res.email };
+  });
+
+export const resendAllPendingAdvisorInvites = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: rows } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "advisor");
+    const userIds = (rows ?? []).map((r: any) => r.user_id).filter((id: string) => id !== context.userId);
+
+    const resent: string[] = [];
+    const skipped: { email?: string; reason: string }[] = [];
+    for (const uid of userIds) {
+      const res = await resendInviteForUser(supabaseAdmin, uid);
+      if (res.ok) resent.push(res.email);
+      else skipped.push({ reason: res.reason });
+    }
+    return { resent, skipped };
+  });
+
+export const listPendingAdvisors = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rows } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "advisor");
+    const pending: string[] = [];
+    for (const r of rows ?? []) {
+      const { data: u } = await supabaseAdmin.auth.admin.getUserById(r.user_id);
+      if (u?.user && !u.user.last_sign_in_at && !u.user.email_confirmed_at) {
+        pending.push(r.user_id);
+      }
+    }
+    return { pendingUserIds: pending };
+  });
+
