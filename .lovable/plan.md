@@ -1,33 +1,30 @@
-# Add "Current balance" toggle to Tax & Super widget
+## Problem
 
-Add a view toggle next to the period selector so users can switch between:
-- **Activity Statement** — current behaviour: BAS boxes (1A, 1B, W2, etc.) for the selected period, pulled from Xero's Activity Statement report.
-- **Current balance** — live balances of GST Payable, PAYG Withholding Payable, and Super Payable accounts from the Balance Sheet, as at today.
+The trash icon on a linked Xero org calls `detachClientXero` — it only removes the link between the client and the connection. The underlying `xero_connections` row (with the stale/expired refresh token) is untouched, so the same connection reappears in "Link existing" and re-linking it does NOT reauthorize with Xero. Nothing actually refreshes the tokens, which is why widgets keep saying "this connection needs to be reconnected".
 
-## Changes
+To recover from a broken token, we need to re-run the Xero OAuth flow — that's the only thing that issues new tokens. The callback already upserts on `(user_id, tenant_id)`, so re-authing will overwrite the bad tokens in place.
 
-### 1. `src/lib/xero/reports.functions.ts`
-Add `getCurrentTaxBalance` server fn:
-- Input: `{ tenantId: string; date?: string }` (defaults to today).
-- Calls `Reports/BalanceSheet` for `date`.
-- Reuses existing `extractTaxLines` to classify rows as `gst | payg | super | other-tax`.
-- Returns `{ asAtDate, gst, payg, superannuation, otherTax, total, lines }` where each line keeps name + amount + category.
-- Reuses `assertWidgetAccess(..., "tax_liability")`.
+## Plan
 
-### 2. `src/components/dashboard/TaxLiabilityWidget.tsx`
-- Add a `view: "bas" | "balance"` state with a small toggle (Select or two-button group) next to the period selector.
-- When `view === "balance"`:
-  - Hide the period selector (balance is always as-at today; allow MTD/EOM later if needed).
-  - Fetch `getCurrentTaxBalance` with today's date.
-  - Show KPI tiles: GST Payable, PAYG Withholding, Super Payable, Total.
-  - Show a breakdown list grouped by category (GST / PAYG / Super / Other tax) with account name and balance.
-  - Subtitle: "Live balance as at {today}".
-- When `view === "bas"`: keep the existing Activity Statement behaviour exactly as it is.
-- Refresh button refetches whichever query is active.
+### 1. `src/routes/_authenticated/clients.$clientId.settings.tsx` — Xero organisations section
 
-### 3. No DB / migration changes.
+Replace the single trash icon per linked org with two explicit actions:
+
+- **Reconnect** (refresh icon) — calls `startXeroConnect({ origin })` and redirects to the returned `authorizeUrl`. After the user re-approves in Xero, the existing callback upserts fresh tokens for the same `tenant_id` and bounces back to the dashboard. No DB changes needed.
+- **Disconnect** (trash icon) — opens an AlertDialog with two choices:
+  - *Unlink from this client* → existing `detachClientXero` behaviour (connection stays available to link elsewhere).
+  - *Disconnect from Lovable entirely* → calls `disconnectXero({ tenantId })`, which deletes the `xero_connections` row. Use the org's `tenant_id` (already available via `o.xero_connections.tenant_id`).
+
+Invalidate `["xero-connections"]` and the client query after each action so the lists refresh.
+
+Add a small helper text under the section header: "If a widget says Xero needs reconnecting, use Reconnect — it re-runs Xero sign-in and refreshes the tokens in place."
+
+### 2. No server / DB changes
+
+`startXeroConnect`, the `/api/public/xero/callback` upsert, and `disconnectXero` already do the right thing. The fix is purely surfacing the missing reconnect action in the UI and making the destructive action explicit.
 
 ## Verification
-1. Open Positive Traction dashboard → default view = Activity Statement (unchanged).
-2. Flip toggle to "Current balance" → shows GST Payable / PAYG / Super balances from the Balance Sheet as-at today.
-3. Flip back → Activity Statement reappears with last-month figures matching the BAS PDF.
+
+1. From client settings, click **Reconnect** on the broken org → redirected to Xero → approve → land back on `/dashboard?xero=connected` → widget loads.
+2. Click **Disconnect → Unlink** → org disappears from "Linked" and shows under "Link existing".
+3. Click **Disconnect → Disconnect entirely** → org disappears from both lists; reconnecting requires a fresh OAuth.
