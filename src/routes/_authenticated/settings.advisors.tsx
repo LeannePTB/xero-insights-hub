@@ -65,6 +65,19 @@ function AdvisorSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const copyLinkMut = useMutation({
+    mutationFn: (userId: string) => genLinkFn({ data: { userId } }),
+    onSuccess: async (r) => {
+      try {
+        await navigator.clipboard.writeText(r.link);
+        toast.success(`Invite link copied for ${r.email}`);
+      } catch {
+        window.prompt("Copy this invite link:", r.link);
+      }
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const resendAllMut = useMutation({
     mutationFn: () => resendAllFn(),
     onSuccess: (r) => {
