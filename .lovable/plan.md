@@ -1,22 +1,45 @@
-## Problem
+# Add advisor with password + let them change it later
 
-The advisor invite email reads "You've been invited to join xero-shine-dashboards" and the From line shows `xero-shine-dashboards <noreply@notify.tractionadvisory.app>`. That's the project's internal slug, not the brand.
+Right now the only way to add an advisor is to send them an email invite and have them click a link to set a password. This adds a second path: you type their email and a starter password, they're active immediately, and after they log in they can change the password themselves.
 
-## Cause
+## What changes
 
-`SITE_NAME` is hard-coded to `"xero-shine-dashboards"` in two files:
-- `src/routes/lovable/email/auth/webhook.ts` (used for live sends + From header)
-- `src/routes/lovable/email/auth/preview.ts` (used for dashboard previews)
+### 1. Advisors settings page — new "Create with password" mode
 
-It flows into every auth template (`invite`, `signup`, `magic-link`, `recovery`, `email-change`, `reauthentication`) as the `siteName` prop, and into the `From` line of the outgoing email.
+The existing invite card gets a small toggle:
 
-## Change
+```text
+[ Send email invite  |  Create with password ]
+```
 
-1. In `webhook.ts` and `preview.ts`, set:
-   ```ts
-   const SITE_NAME = "Traction Advisory"
-   ```
-2. No template edits needed — they already render `{siteName}` (e.g. invite says "You've been invited to join **Traction Advisory**").
-3. Result: invite reads "join Traction Advisory", and emails arrive from `Traction Advisory <noreply@notify.tractionadvisory.app>`. Applies to all auth emails, not just invites.
+- **Send email invite** — current behaviour, unchanged.
+- **Create with password** — shows an email field, a password field (with show/hide toggle), and a "Copy credentials" button after creation that copies `email + password` to the clipboard so you can hand them over via Slack/SMS/etc.
 
-No migration, no infra changes. After approval I'll make the edits and you can hit "Resend" on a pending advisor to verify.
+The new advisor is created already-confirmed (no email click required), gets the advisor role, and appears in "Current advisors" with no "Pending invite" badge — they can sign in immediately at the normal `/auth` page.
+
+### 2. New "Change password" section in Account settings
+
+A new card on `/settings` (or a dedicated `/settings/account` page if you prefer — let me know) with:
+
+- Current password
+- New password (with strength hint)
+- Confirm new password
+- "Update password" button
+
+After update: success toast, fields clear. Any signed-in user (advisor or viewer) can use it.
+
+### 3. Sensible password rules
+
+Minimum 8 characters, at least one letter and one number. Same rule on both the create-advisor form and the change-password form so behaviour is consistent.
+
+## Technical notes
+
+- New server fn `createAdvisorWithPassword({ email, password })` — advisor-gated, uses `supabaseAdmin.auth.admin.createUser` with `email_confirm: true` and the supplied password, then grants the advisor role. Rejects if the email already exists.
+- New server fn `changeMyPassword({ currentPassword, newPassword })` — re-authenticates with the current password (defence against an unlocked laptop), then calls `supabase.auth.updateUser({ password })`.
+- Primary advisor (`admin@positivetraction.com.au`) protections from the previous change are untouched.
+- No DB migration needed.
+
+## Out of scope
+
+- Forgot-password / reset-by-email flow (separate request if you want it).
+- Password strength meter UI beyond the basic rule check.
