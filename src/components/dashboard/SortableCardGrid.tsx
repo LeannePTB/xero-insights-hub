@@ -19,9 +19,9 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 
-export type SortableCard = { id: string; node: ReactNode };
+export type SortableCard = { id: string; node: ReactNode; fullWidth?: boolean };
 
-function SortableItem({ id, children }: { id: string; children: ReactNode }) {
+function SortableItem({ id, children, fullWidth }: { id: string; children: ReactNode; fullWidth?: boolean }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -30,7 +30,11 @@ function SortableItem({ id, children }: { id: string; children: ReactNode }) {
     zIndex: isDragging ? 10 : "auto",
   } as const;
   return (
-    <div ref={setNodeRef} style={style} className="relative">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative${fullWidth ? " [column-span:all]" : ""}`}
+    >
       <button
         type="button"
         {...attributes}
@@ -96,10 +100,11 @@ export function SortableCardGrid({
       <SortableContext items={localOrder} strategy={rectSortingStrategy}>
         <div className="columns-1 gap-6 lg:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
           {localOrder.map((id) => {
+            const card = cards.find((c) => c.id === id);
             const node = cardById.get(id);
             if (!node) return null;
             return (
-              <SortableItem key={id} id={id}>
+              <SortableItem key={id} id={id} fullWidth={card?.fullWidth}>
                 {node}
               </SortableItem>
             );
