@@ -97,6 +97,9 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
     if (data.userId === context.userId) {
       throw new Error("You can't revoke your own advisor access.");
     }
+    if (data.userId === PRIMARY_ADVISOR_USER_ID) {
+      throw new Error("The primary advisor account can't be removed.");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Safety: make sure at least one other advisor remains
