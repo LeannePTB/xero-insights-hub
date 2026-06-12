@@ -249,18 +249,61 @@ function ClientSettings() {
         <Section title="Xero organisations" action={
           <Button variant="outline" size="sm" onClick={handleConnect}><Plug className="mr-1.5 h-3.5 w-3.5" /> Connect new</Button>
         }>
+          <p className="mb-3 text-xs text-muted-foreground">
+            If a widget says Xero needs reconnecting, use <strong>Reconnect</strong> — it re-runs Xero sign-in and refreshes the tokens for that org in place.
+          </p>
           {linkedOrgs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No Xero orgs linked yet.</p>
           ) : (
             <ul className="space-y-1.5">
-              {linkedOrgs.map((o) => (
-                <li key={o.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
-                  <span className="text-sm font-medium">{o.xero_connections?.tenant_name ?? "Unknown"}</span>
-                  <Button variant="ghost" size="sm" onClick={() => detachMut.mutate(o.id)}>
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </li>
-              ))}
+              {linkedOrgs.map((o) => {
+                const tenantId: string | undefined = o.xero_connections?.tenant_id;
+                const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
+                return (
+                  <li key={o.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                    <span className="text-sm font-medium">{tenantName}</span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleConnect}
+                        title="Re-run Xero sign-in to refresh tokens"
+                      >
+                        <RefreshCw className="mr-1 h-3.5 w-3.5" /> Reconnect
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="sm" title="Disconnect">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Disconnect {tenantName}</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              <strong>Unlink from this client</strong> removes the link only — the Xero connection stays available to link to other clients.
+                              <br /><br />
+                              <strong>Disconnect entirely</strong> removes the Xero connection from Lovable. Reconnecting requires a fresh Xero sign-in.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => detachMut.mutate(o.id)}>
+                              Unlink from this client
+                            </AlertDialogAction>
+                            <AlertDialogAction
+                              onClick={() => tenantId && disconnectMut.mutate(tenantId)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Disconnect entirely
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
           {availableConns.length > 0 && (
