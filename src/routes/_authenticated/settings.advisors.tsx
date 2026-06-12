@@ -35,6 +35,7 @@ function AdvisorSettings() {
   const resendOneFn = useServerFn(resendAdvisorInvite);
   const resendAllFn = useServerFn(resendAllPendingAdvisorInvites);
   const genLinkFn = useServerFn(generateAdvisorInviteLink);
+  const createPwFn = useServerFn(createAdvisorWithPassword);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const listQ = useQuery({
@@ -48,7 +49,11 @@ function AdvisorSettings() {
     enabled: ctxQ.data?.isAdvisor ?? false,
   });
 
+  const [mode, setMode] = useState<"invite" | "password">("invite");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [lastCreated, setLastCreated] = useState<{ email: string; password: string } | null>(null);
 
   const inviteMut = useMutation({
     mutationFn: () => inviteFn({ data: { email } }),
@@ -57,6 +62,18 @@ function AdvisorSettings() {
       setEmail("");
       qc.invalidateQueries({ queryKey: ["advisors"] });
       qc.invalidateQueries({ queryKey: ["advisors-pending"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const createPwMut = useMutation({
+    mutationFn: () => createPwFn({ data: { email, password } }),
+    onSuccess: () => {
+      toast.success(`Advisor created — ${email}`);
+      setLastCreated({ email, password });
+      setEmail("");
+      setPassword("");
+      qc.invalidateQueries({ queryKey: ["advisors"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
