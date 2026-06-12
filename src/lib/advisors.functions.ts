@@ -106,13 +106,25 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
       throw new Error("At least one advisor must remain.");
     }
 
-    const { error } = await (supabaseAdmin as any)
+    // Remove all role rows for this user
+    const { error: roleErr } = await (supabaseAdmin as any)
       .from("user_roles")
       .delete()
-      .eq("user_id", data.userId)
-      .eq("role", "advisor");
-    if (error) throw new Error(error.message);
+      .eq("user_id", data.userId);
+    if (roleErr) throw new Error(roleErr.message);
+
+    // Remove client_access grants
+    await (supabaseAdmin as any).from("client_access").delete().eq("user_id", data.userId);
+
+    // Remove profile row
+    await (supabaseAdmin as any).from("profiles").delete().eq("id", data.userId);
+
+    // Finally, delete the auth user so they can't sign in or reuse the email
+    const { error: delErr } = await (supabaseAdmin as any).auth.admin.deleteUser(data.userId);
+    if (delErr) throw new Error(delErr.message);
+
     return { ok: true };
+
   });
 
 function getInviteRedirect() {
