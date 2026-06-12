@@ -124,45 +124,76 @@ function AdvisorSettings() {
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <h2 className="mb-3 font-display text-lg font-semibold">Current advisors</h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="font-display text-lg font-semibold">Current advisors</h2>
+            {pendingCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => resendAllMut.mutate()}
+                disabled={resendAllMut.isPending}
+              >
+                {resendAllMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Resend {pendingCount} pending invite{pendingCount === 1 ? "" : "s"}
+              </Button>
+            )}
+          </div>
           {listQ.isLoading ? (
             <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
           ) : advisors.length === 0 ? (
             <p className="text-sm text-muted-foreground">No advisors yet.</p>
           ) : (
             <ul className="space-y-1.5">
-              {advisors.map((a) => (
-                <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                      <ShieldCheck className="h-4 w-4" />
+              {advisors.map((a) => {
+                const isPending = pendingIds.has(a.user_id);
+                return (
+                  <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {a.display_name ?? a.email ?? a.user_id}
+                          {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+                          {isPending && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">Pending invite</span>}
+                        </p>
+                        {a.email && a.display_name && <p className="truncate text-xs text-muted-foreground">{a.email}</p>}
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {a.display_name ?? a.email ?? a.user_id}
-                        {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
-                      </p>
-                      {a.email && a.display_name && <p className="truncate text-xs text-muted-foreground">{a.email}</p>}
+                    <div className="flex items-center gap-1">
+                      {isPending && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => resendOneMut.mutate(a.user_id)}
+                          disabled={resendOneMut.isPending}
+                          title="Resend invite email"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`)) {
+                            revokeMut.mutate(a.user_id);
+                          }
+                        }}
+                        disabled={a.is_self || revokeMut.isPending}
+                        title={a.is_self ? "You can't remove yourself" : "Remove advisor access"}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      if (confirm(`Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`)) {
-                        revokeMut.mutate(a.user_id);
-                      }
-                    }}
-                    disabled={a.is_self || revokeMut.isPending}
-                    title={a.is_self ? "You can't remove yourself" : "Remove advisor access"}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
+
       </main>
     </div>
   );
