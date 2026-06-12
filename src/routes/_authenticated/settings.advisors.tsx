@@ -2,11 +2,18 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listAdvisors, inviteAdvisor, revokeAdvisor } from "@/lib/advisors.functions";
+import {
+  listAdvisors,
+  inviteAdvisor,
+  revokeAdvisor,
+  resendAdvisorInvite,
+  resendAllPendingAdvisorInvites,
+  listPendingAdvisors,
+} from "@/lib/advisors.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({
@@ -21,10 +28,19 @@ function AdvisorSettings() {
   const inviteFn = useServerFn(inviteAdvisor);
   const revokeFn = useServerFn(revokeAdvisor);
 
+  const fetchPending = useServerFn(listPendingAdvisors);
+  const resendOneFn = useServerFn(resendAdvisorInvite);
+  const resendAllFn = useServerFn(resendAllPendingAdvisorInvites);
+
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const listQ = useQuery({
     queryKey: ["advisors"],
     queryFn: () => fetchList(),
+    enabled: ctxQ.data?.isAdvisor ?? false,
+  });
+  const pendingQ = useQuery({
+    queryKey: ["advisors-pending"],
+    queryFn: () => fetchPending(),
     enabled: ctxQ.data?.isAdvisor ?? false,
   });
 
@@ -36,6 +52,22 @@ function AdvisorSettings() {
       toast.success(invited ? "Invite email sent" : "Advisor access granted");
       setEmail("");
       qc.invalidateQueries({ queryKey: ["advisors"] });
+      qc.invalidateQueries({ queryKey: ["advisors-pending"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const resendOneMut = useMutation({
+    mutationFn: (userId: string) => resendOneFn({ data: { userId } }),
+    onSuccess: (r) => toast.success(`Invite re-sent to ${r.email}`),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const resendAllMut = useMutation({
+    mutationFn: () => resendAllFn(),
+    onSuccess: (r) => {
+      if (r.resent.length === 0) toast("No pending invites to resend");
+      else toast.success(`Re-sent ${r.resent.length} invite${r.resent.length === 1 ? "" : "s"}`);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -55,6 +87,8 @@ function AdvisorSettings() {
   if (!ctxQ.data?.isAdvisor) return <p className="p-6 text-sm text-destructive">Advisors only.</p>;
 
   const advisors = listQ.data?.advisors ?? [];
+  const pendingIds = new Set(pendingQ.data?.pendingUserIds ?? []);
+  const pendingCount = pendingIds.size;
 
   return (
     <div className="min-h-screen bg-background">
@@ -90,45 +124,76 @@ function AdvisorSettings() {
         </section>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-          <h2 className="mb-3 font-display text-lg font-semibold">Current advisors</h2>
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="font-display text-lg font-semibold">Current advisors</h2>
+            {pendingCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => resendAllMut.mutate()}
+                disabled={resendAllMut.isPending}
+              >
+                {resendAllMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Resend {pendingCount} pending invite{pendingCount === 1 ? "" : "s"}
+              </Button>
+            )}
+          </div>
           {listQ.isLoading ? (
             <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
           ) : advisors.length === 0 ? (
             <p className="text-sm text-muted-foreground">No advisors yet.</p>
           ) : (
             <ul className="space-y-1.5">
-              {advisors.map((a) => (
-                <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
-                      <ShieldCheck className="h-4 w-4" />
+              {advisors.map((a) => {
+                const isPending = pendingIds.has(a.user_id);
+                return (
+                  <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {a.display_name ?? a.email ?? a.user_id}
+                          {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+                          {isPending && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">Pending invite</span>}
+                        </p>
+                        {a.email && a.display_name && <p className="truncate text-xs text-muted-foreground">{a.email}</p>}
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">
-                        {a.display_name ?? a.email ?? a.user_id}
-                        {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
-                      </p>
-                      {a.email && a.display_name && <p className="truncate text-xs text-muted-foreground">{a.email}</p>}
+                    <div className="flex items-center gap-1">
+                      {isPending && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => resendOneMut.mutate(a.user_id)}
+                          disabled={resendOneMut.isPending}
+                          title="Resend invite email"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`)) {
+                            revokeMut.mutate(a.user_id);
+                          }
+                        }}
+                        disabled={a.is_self || revokeMut.isPending}
+                        title={a.is_self ? "You can't remove yourself" : "Remove advisor access"}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      if (confirm(`Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`)) {
-                        revokeMut.mutate(a.user_id);
-                      }
-                    }}
-                    disabled={a.is_self || revokeMut.isPending}
-                    title={a.is_self ? "You can't remove yourself" : "Remove advisor access"}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
+
       </main>
     </div>
   );
