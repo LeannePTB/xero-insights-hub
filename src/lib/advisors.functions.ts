@@ -89,6 +89,87 @@ export const inviteAdvisor = createServerFn({ method: "POST" })
     return { ok: true, invited };
   });
 
+function validatePassword(pw: string) {
+  if (typeof pw !== "string" || pw.length < 8) throw new Error("Password must be at least 8 characters.");
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) throw new Error("Password must include at least one letter and one number.");
+}
+
+export const createAdvisorWithPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { email: string; password: string }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const email = data.email.trim().toLowerCase();
+    if (!email.includes("@") || email.length > 254) throw new Error("Please enter a valid email address.");
+    validatePassword(data.password);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: existing } = await supabaseAdmin
+      .from("profiles")
+      .select("id")
+      .eq("email", email)
+      .maybeSingle();
+    if (existing?.id) throw new Error("An account with this email already exists.");
+
+    const { data: created, error: cErr } = await (supabaseAdmin as any).auth.admin.createUser({
+      email,
+      password: data.password,
+      email_confirm: true,
+    });
+    if (cErr) throw new Error(cErr.message);
+    const userId = created?.user?.id;
+    if (!userId) throw new Error("Could not create account.");
+
+    const { error: rErr } = await (supabaseAdmin as any)
+      .from("user_roles")
+      .upsert({ user_id: userId, role: "advisor" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+    if (rErr) throw new Error(rErr.message);
+
+    await (supabaseAdmin as any)
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId)
+      .eq("role", "client_viewer");
+
+    return { ok: true, email };
+  });
+
+export const changeMyPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { currentPassword: string; newPassword: string }) => i)
+  .handler(async ({ data, context }) => {
+    validatePassword(data.newPassword);
+    if (data.currentPassword === data.newPassword) {
+      throw new Error("New password must be different from the current password.");
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: u, error: uErr } = await (supabaseAdmin as any).auth.admin.getUserById(context.userId);
+    if (uErr || !u?.user?.email) throw new Error("Could not load your account.");
+    const email = u.user.email as string;
+
+    // Re-authenticate with current password using a throwaway client
+    const { createClient } = await import("@supabase/supabase-js");
+    const verifier = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_PUBLISHABLE_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
+    const { error: signInErr } = await verifier.auth.signInWithPassword({
+      email,
+      password: data.currentPassword,
+    });
+    if (signInErr) throw new Error("Current password is incorrect.");
+
+    const { error: updErr } = await (supabaseAdmin as any).auth.admin.updateUserById(context.userId, {
+      password: data.newPassword,
+    });
+    if (updErr) throw new Error(updErr.message);
+
+    return { ok: true };
+  });
+
 export const revokeAdvisor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { userId: string }) => i)

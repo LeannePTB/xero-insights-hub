@@ -17,6 +17,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedSettingsTiersRouteImport } from './routes/_authenticated/settings.tiers'
 import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
 import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
+import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
@@ -68,6 +69,12 @@ const AuthenticatedSettingsActivityRoute =
   AuthenticatedSettingsActivityRouteImport.update({
     id: '/settings/activity',
     path: '/settings/activity',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSettingsAccountRoute =
+  AuthenticatedSettingsAccountRouteImport.update({
+    id: '/settings/account',
+    path: '/settings/account',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedClientsNewRoute = AuthenticatedClientsNewRouteImport.update({
@@ -133,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/set-password': typeof SetPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
@@ -152,6 +160,7 @@ export interface FileRoutesByTo {
   '/set-password': typeof SetPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
@@ -173,6 +182,7 @@ export interface FileRoutesById {
   '/set-password': typeof SetPasswordRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
+  '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/tiers': typeof AuthenticatedSettingsTiersRoute
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/dashboard'
     | '/clients/new'
+    | '/settings/account'
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/tiers'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/dashboard'
     | '/clients/new'
+    | '/settings/account'
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/tiers'
@@ -233,6 +245,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/_authenticated/dashboard'
     | '/_authenticated/clients/new'
+    | '/_authenticated/settings/account'
     | '/_authenticated/settings/activity'
     | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/tiers'
@@ -316,6 +329,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsActivityRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings/account': {
+      id: '/_authenticated/settings/account'
+      path: '/settings/account'
+      fullPath: '/settings/account'
+      preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients/new': {
       id: '/_authenticated/clients/new'
       path: '/clients/new'
@@ -392,6 +412,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedClientsNewRoute: typeof AuthenticatedClientsNewRoute
+  AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
   AuthenticatedSettingsActivityRoute: typeof AuthenticatedSettingsActivityRoute
   AuthenticatedSettingsAdvisorsRoute: typeof AuthenticatedSettingsAdvisorsRoute
   AuthenticatedSettingsTiersRoute: typeof AuthenticatedSettingsTiersRoute
@@ -405,6 +426,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedClientsNewRoute: AuthenticatedClientsNewRoute,
+  AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
   AuthenticatedSettingsActivityRoute: AuthenticatedSettingsActivityRoute,
   AuthenticatedSettingsAdvisorsRoute: AuthenticatedSettingsAdvisorsRoute,
   AuthenticatedSettingsTiersRoute: AuthenticatedSettingsTiersRoute,
