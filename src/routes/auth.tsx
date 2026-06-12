@@ -19,6 +19,7 @@ function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -37,6 +38,27 @@ function AuthPage() {
       toast.error(e.message ?? "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleForgotPassword() {
+    if (!email.includes("@")) {
+      toast.error("Enter your email above, then click Forgot password.");
+      return;
+    }
+    setResetLoading(true);
+    try {
+      const redirectTo =
+        typeof window !== "undefined"
+          ? `${window.location.origin}/set-password`
+          : "https://tractionadvisory.app/set-password";
+      const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+      if (error) throw error;
+      toast.success("Password reset email sent. Check your inbox.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Couldn't send reset email.");
+    } finally {
+      setResetLoading(false);
     }
   }
 
@@ -93,6 +115,14 @@ function AuthPage() {
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Sign in
             </Button>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={resetLoading}
+              className="w-full pt-1 text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+            >
+              {resetLoading ? "Sending…" : "Forgot password?"}
+            </button>
             <p className="pt-1 text-center text-xs text-muted-foreground">
               Access is invite-only. Contact Positive Traction.
             </p>
