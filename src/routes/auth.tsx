@@ -94,7 +94,7 @@ function AuthPage() {
               Sign in
             </Button>
             <p className="pt-1 text-center text-xs text-muted-foreground">
-              Access is invite-only. Ask your advisor for an invite link.
+              Access is invite-only. Contact Positive Traction.
             </p>
           </div>
         </div>
