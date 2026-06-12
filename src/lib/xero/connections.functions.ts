@@ -47,23 +47,30 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     return { authorizeUrl: url.toString() };
   });
 
+const ALLOWED_CUSTOM_HOSTS = new Set([
+  "tractionadvisory.app",
+  "www.tractionadvisory.app",
+]);
+
 function normalizeOrigin(origin: string) {
   const parsed = new URL(origin);
   if (parsed.hostname === "localhost") return parsed.origin;
+  if (parsed.protocol !== "https:") {
+    throw new Error("Invalid app origin for Xero connection.");
+  }
 
   const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
-  const allowedHosts = projectId
-    ? new Set([
-        `${projectId}.lovableproject.com`,
-        `id-preview--${projectId}.lovable.app`,
-        `project--${projectId}.lovable.app`,
-        `project--${projectId}-dev.lovable.app`,
-      ])
-    : new Set<string>();
-
-  if (parsed.protocol === "https:" && allowedHosts.has(parsed.hostname)) {
-    return parsed.origin;
+  const allowedHosts = new Set<string>(ALLOWED_CUSTOM_HOSTS);
+  if (projectId) {
+    allowedHosts.add(`${projectId}.lovableproject.com`);
+    allowedHosts.add(`id-preview--${projectId}.lovable.app`);
+    allowedHosts.add(`project--${projectId}.lovable.app`);
+    allowedHosts.add(`project--${projectId}-dev.lovable.app`);
   }
+
+  // Allow any *.lovable.app host (covers published slug subdomains).
+  if (parsed.hostname.endsWith(".lovable.app")) return parsed.origin;
+  if (allowedHosts.has(parsed.hostname)) return parsed.origin;
 
   throw new Error("Invalid app origin for Xero connection.");
 }
@@ -71,11 +78,15 @@ function normalizeOrigin(origin: string) {
 function getXeroRedirectOrigin(returnOrigin: string) {
   const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
   const parsed = new URL(returnOrigin);
-  if (projectId && (parsed.hostname.endsWith(".lovableproject.com") || parsed.hostname === `project--${projectId}-dev.lovable.app`)) {
-    return `https://id-preview--${projectId}.lovable.app`;
-  }
+  // Local dev keeps its own callback (must be registered in Xero separately).
+  if (parsed.hostname === "localhost") return returnOrigin;
+  // Everything else routes through the stable id-preview callback that's
+  // registered in the Xero app, then the callback redirects back to returnOrigin.
+  if (projectId) return `https://id-preview--${projectId}.lovable.app`;
   return returnOrigin;
 }
+
+
 
 export const disconnectXero = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
