@@ -117,8 +117,7 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
   });
 
 function getInviteRedirect() {
-  const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
-  return projectId ? `https://project--${projectId}.lovable.app/auth` : undefined;
+  return "https://tractionadvisory.app/set-password";
 }
 
 async function resendInviteForUser(supabaseAdmin: any, userId: string) {
