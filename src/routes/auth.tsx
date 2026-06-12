@@ -115,6 +115,14 @@ function AuthPage() {
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Sign in
             </Button>
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              disabled={resetLoading}
+              className="w-full pt-1 text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+            >
+              {resetLoading ? "Sending…" : "Forgot password?"}
+            </button>
             <p className="pt-1 text-center text-xs text-muted-foreground">
               Access is invite-only. Contact Positive Traction.
             </p>
