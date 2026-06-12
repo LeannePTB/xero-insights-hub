@@ -130,6 +130,18 @@ function ClientSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const createViewerPwMut = useMutation({
+    mutationFn: () => createViewerPw({ data: { clientId, email: inviteEmail, password: viewerPassword, tier: inviteTier } }),
+    onSuccess: () => {
+      toast.success(`Viewer created — ${inviteEmail}`);
+      setLastViewerCreated({ email: inviteEmail, password: viewerPassword });
+      setInviteEmail("");
+      setViewerPassword("");
+      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const tierMut = useMutation({
     mutationFn: ({ id, tier }: { id: string; tier: DashboardTier }) => updateTier({ data: { id, tier } }),
     onSuccess: () => { toast.success("Tier updated"); qc.invalidateQueries({ queryKey: ["client-access", clientId] }); },
