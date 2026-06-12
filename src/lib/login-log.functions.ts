@@ -12,7 +12,10 @@ export const logLogin = createServerFn({ method: "POST" })
     const userAgent = getRequestHeader("user-agent") ?? null;
     const email = (context.claims as any)?.email ?? null;
 
-    const { error } = await context.supabase.from("login_events").insert({
+    // Use service role to insert — clients are blocked from inserting login
+    // events directly so they cannot forge email/ip/user_agent values.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("login_events").insert({
       user_id: context.userId,
       email,
       ip,
