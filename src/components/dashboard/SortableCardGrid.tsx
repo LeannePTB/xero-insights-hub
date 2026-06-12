@@ -100,10 +100,11 @@ export function SortableCardGrid({
       <SortableContext items={localOrder} strategy={rectSortingStrategy}>
         <div className="columns-1 gap-6 lg:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
           {localOrder.map((id) => {
+            const card = cards.find((c) => c.id === id);
             const node = cardById.get(id);
             if (!node) return null;
             return (
-              <SortableItem key={id} id={id}>
+              <SortableItem key={id} id={id} fullWidth={card?.fullWidth}>
                 {node}
               </SortableItem>
             );
