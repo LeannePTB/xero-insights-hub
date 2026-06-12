@@ -60,11 +60,10 @@ export const inviteAdvisor = createServerFn({ method: "POST" })
     let invited = false;
 
     if (!userId) {
-      const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
-      const redirectTo = projectId ? `https://project--${projectId}.lovable.app/auth` : undefined;
+      const redirectTo = getInviteRedirect();
       const { data: invitedRes, error: e } = await (supabaseAdmin as any).auth.admin.inviteUserByEmail(
         email,
-        redirectTo ? { redirectTo } : undefined,
+        { redirectTo },
       );
       if (e) throw new Error(e.message);
       userId = invitedRes?.user?.id;
