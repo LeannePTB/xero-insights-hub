@@ -8,7 +8,7 @@ import { listTierSettings } from "@/lib/tier-config.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, ChevronRight, SlidersHorizontal, Users, Activity } from "lucide-react";
+import { LogOut, Plus, Loader2, Building2, ChevronRight, SlidersHorizontal, Users, Activity, KeyRound } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
