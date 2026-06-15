@@ -206,6 +206,9 @@ export const acceptInvite = createServerFn({ method: "POST" })
     if (displayName.length < 2) throw new Error("Please enter your name.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Rate limit invite-accept attempts: 20 per 10 minutes per token prefix.
+    const { enforceRateLimit } = await import("@/lib/rate-limit.server");
+    await enforceRateLimit(`invite:accept:${data.token.slice(0, 16)}`, 20, 600);
     const { data: invite, error } = await (supabaseAdmin as any)
       .from("access_invites")
       .select("id, firm_id, email, role, expires_at, accepted_at")

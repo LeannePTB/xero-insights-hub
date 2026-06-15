@@ -3,12 +3,21 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { randomBytes } from "crypto";
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
-const SCOPES = [
+const SCOPES_ARRAY = [
   "offline_access",
   "accounting.reports.profitandloss.read",
   "accounting.reports.balancesheet.read",
   "accounting.invoices.read",
-].join(" ");
+];
+// Hard guarantee: Xero remains read-only. Any non-`.read` scope (other than the
+// `offline_access` refresh-token grant) must never be requested. If this throws
+// at boot, refuse to build the URL — fail closed.
+for (const s of SCOPES_ARRAY) {
+  if (s !== "offline_access" && !s.endsWith(".read")) {
+    throw new Error(`Forbidden Xero scope detected: ${s}. Only *.read scopes are allowed.`);
+  }
+}
+const SCOPES = SCOPES_ARRAY.join(" ");
 
 export const listXeroConnections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -29,6 +38,10 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     if (!clientId) {
       throw new Error("Xero is not configured yet. The app owner needs to add XERO_CLIENT_ID and XERO_CLIENT_SECRET.");
     }
+
+    // Rate limit: 10 Xero connect starts per user per hour.
+    const { enforceRateLimit } = await import("@/lib/rate-limit.server");
+    await enforceRateLimit(`xero:connect:${context.userId}`, 10, 3600);
 
     // Enforce tier-based connection hard-cap and access state before starting OAuth.
     const { computeFirmAccess } = await import("@/lib/access.functions");
