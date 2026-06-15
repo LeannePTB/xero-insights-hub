@@ -28,7 +28,7 @@ import { ArrowLeft, Loader2, KeyRound, Mail, ShieldAlert, History, CreditCard, U
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
-  head: () => ({ meta: [{ title: "Firm — Admin" }] }),
+  head: () => ({ meta: [{ title: "Business — Admin" }] }),
   component: FirmDetailPage,
 });
 
@@ -85,7 +85,7 @@ function FirmDetailPage() {
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
           <Button asChild variant="ghost" size="sm">
-            <Link to="/admin"><ArrowLeft className="h-4 w-4 mr-2" />All firms</Link>
+            <Link to="/admin"><ArrowLeft className="h-4 w-4 mr-2" />All businesses</Link>
           </Button>
           <h1 className="text-xl font-semibold">{firm.name}</h1>
           {firm.is_always_free && <Badge variant="outline">always free</Badge>}

@@ -68,11 +68,11 @@ function AdminPage() {
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         <p className="text-sm text-muted-foreground">
-          Firm name, tier, usage, billing and error counts only. No Xero org names, balances, or client data are visible from this page — enforced at the database level.
+          Business name, tier, usage, billing and error counts only. No Xero org names, balances, or client data are visible from this page — enforced at the database level.
         </p>
 
         {firmsQ.isLoading && (
-          <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading firms…</div>
+          <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading businesses…</div>
         )}
 
         {firmsQ.error && (
@@ -90,7 +90,7 @@ function AdminPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Firm</th>
+                  <th className="px-4 py-3">Business name</th>
                   <th className="px-4 py-3">Tier</th>
                   <th className="px-4 py-3">Usage</th>
                   <th className="px-4 py-3">Status</th>
@@ -135,7 +135,7 @@ function AdminPage() {
                   );
                 })}
                 {firmsQ.data.firms.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No firms yet.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No businesses yet.</td></tr>
                 )}
               </tbody>
             </table>
