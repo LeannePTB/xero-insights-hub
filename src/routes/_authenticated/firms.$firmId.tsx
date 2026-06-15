@@ -11,7 +11,7 @@ import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
-  head: () => ({ meta: [{ title: "Business — Traction Advisory" }] }),
+  head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
   component: FirmPage,
 });
 
@@ -43,7 +43,7 @@ function FirmPage() {
 
   useEffect(() => {
     if (firmQ.error) {
-      toast.error("You don't have access to that business.");
+      toast.error("You don't have access to that organisation.");
       navigate({ to: "/dashboard", replace: true });
     }
   }, [firmQ.error, navigate]);
@@ -63,7 +63,7 @@ function FirmPage() {
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-6xl px-6 py-10">
         <Button variant="ghost" size="sm" asChild className="mb-4">
-          <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All businesses</Link>
+          <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All organisations</Link>
         </Button>
 
         <div className="flex items-end justify-between">

@@ -30,7 +30,7 @@ import { ArrowLeft, Loader2, KeyRound, Mail, ShieldAlert, History, CreditCard, U
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
-  head: () => ({ meta: [{ title: "Business — Admin" }] }),
+  head: () => ({ meta: [{ title: "Organisation — Admin" }] }),
   component: FirmDetailPage,
 });
 
@@ -87,7 +87,7 @@ function FirmDetailPage() {
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
           <Button asChild variant="ghost" size="sm">
-            <Link to="/admin"><ArrowLeft className="h-4 w-4 mr-2" />All businesses</Link>
+            <Link to="/admin"><ArrowLeft className="h-4 w-4 mr-2" />All organisations</Link>
           </Button>
           <h1 className="text-xl font-semibold">{firm.name}</h1>
           {firm.is_always_free && <Badge variant="outline">always free</Badge>}
@@ -206,7 +206,7 @@ function SubscriptionSection({
         <div className="flex items-center justify-between rounded-md border p-3">
           <div>
             <p className="text-sm font-medium">Always free</p>
-            <p className="text-xs text-muted-foreground">Never charge this firm regardless of tier.</p>
+            <p className="text-xs text-muted-foreground">Never charge this organisation regardless of tier.</p>
           </div>
           <Switch checked={alwaysFree} onCheckedChange={setAlwaysFree} />
         </div>
@@ -459,7 +459,7 @@ function BusinessNameSection({
   const mut = useMutation({
     mutationFn: () => renameFn({ data: { firmId, name } }),
     onSuccess: () => {
-      toast.success("Business name updated");
+      toast.success("Organisation name updated");
       setEditing(false);
       onChanged();
     },
@@ -470,7 +470,7 @@ function BusinessNameSection({
     <section className="rounded-lg border p-6">
       <div className="flex items-center gap-3">
         <Building2 className="h-4 w-4 text-muted-foreground" />
-        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Business name</Label>
+        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Organisation name</Label>
       </div>
       <div className="mt-3 flex items-center gap-2">
         {editing ? (

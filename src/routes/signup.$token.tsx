@@ -128,7 +128,7 @@ function SignupPage() {
 
             {isOwner && (
               <div className="space-y-1.5">
-                <Label htmlFor="business">Business name</Label>
+                <Label htmlFor="business">Organisation</Label>
                 <Input
                   id="business"
                   value={businessName}

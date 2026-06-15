@@ -104,11 +104,11 @@ function Dashboard() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold">
-              {isSuperAdmin ? "Businesses" : isAdvisor ? "Clients" : "Your dashboards"}
+              {isSuperAdmin ? "Organisations" : isAdvisor ? "Clients" : "Your dashboards"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {isSuperAdmin
-                ? "Open your business to manage its clients. Other businesses are read-only."
+                ? "Open your organisation to manage its clients. Other organisations are read-only."
                 : isAdvisor
                 ? "Pick a client to open their dashboard."
                 : "Select a dashboard to view."}
@@ -233,7 +233,7 @@ function FirmGrid({ firms }: { firms: FirmOverviewCard[] }) {
   if (firms.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center text-muted-foreground">
-        No businesses yet.
+        No organisations yet.
       </div>
     );
   }
