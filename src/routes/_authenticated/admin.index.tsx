@@ -161,6 +161,7 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
   const [email, setEmail] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const mut = useMutation({
@@ -168,6 +169,7 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
     onSuccess: (res) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       setInviteUrl(`${origin}/signup/${res.token}`);
+      setEmailStatus((res as any).emailStatus ?? null);
       onCreated();
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not create invite"),
