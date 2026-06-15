@@ -236,6 +236,9 @@ function MembersSection({
       <div className="flex items-center gap-2">
         <Users className="h-4 w-4" />
         <h2 className="text-lg font-semibold">Members</h2>
+        <div className="ml-auto">
+          <InviteMemberDialog firmId={firmId} onCreated={onChanged} />
+        </div>
       </div>
       <div className="overflow-hidden rounded-md border">
         <table className="w-full text-sm">
