@@ -3,13 +3,15 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listClients } from "@/lib/clients.functions";
+import { listFirmsForSuperAdmin, type FirmOverviewCard } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { getMyFirmAccess } from "@/lib/access.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, ChevronRight, SlidersHorizontal, Users, Activity, KeyRound, Shield } from "lucide-react";
+import { LogOut, Plus, Loader2, Building2, ChevronRight, SlidersHorizontal, Users, Activity, KeyRound, Shield, Lock } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
