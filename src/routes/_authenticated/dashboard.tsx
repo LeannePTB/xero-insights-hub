@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listClients } from "@/lib/clients.functions";
 import { getMyContext } from "@/lib/roles.functions";
+import { getMyFirmAccess } from "@/lib/access.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
