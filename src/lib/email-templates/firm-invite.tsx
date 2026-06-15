@@ -20,7 +20,7 @@ const InviteEmail = ({
   const isOwner = role === 'owner'
   const headline = isOwner
     ? "You've been invited to Traction Advisory"
-    : `You've been invited to join ${firmName ?? 'a business'}`
+    : `You've been invited to join ${firmName ?? 'an organisation'}`
   return (
     <Html lang="en" dir="ltr">
       <Head />
@@ -30,7 +30,7 @@ const InviteEmail = ({
           <Heading style={h1}>{headline}</Heading>
           <Text style={text}>
             {inviterName ? `${inviterName} has invited` : "You've been invited"} you to set up{' '}
-            {isOwner ? 'your business account' : `access as ${role}`} on Traction Advisory — clean Xero dashboards built around the metrics that matter.
+            {isOwner ? 'your organisation account' : `access as ${role}`} on Traction Advisory — clean Xero dashboards built around the metrics that matter.
           </Text>
           <Text style={text}>
             Click below to accept and create your account. This link is single-use and expires in 14 days.
@@ -52,7 +52,7 @@ export const template = {
   component: InviteEmail,
   subject: (d: Record<string, any>) =>
     d.role === 'staff'
-      ? `You've been invited to ${d.firmName ?? 'a business'} on Traction Advisory`
+      ? `You've been invited to ${d.firmName ?? 'an organisation'} on Traction Advisory`
       : "You've been invited to Traction Advisory",
   displayName: 'Account invite',
   previewData: {
