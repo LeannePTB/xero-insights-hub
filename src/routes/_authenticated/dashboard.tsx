@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listClients } from "@/lib/clients.functions";
 import { getMyContext } from "@/lib/roles.functions";
+import { getMyFirmAccess } from "@/lib/access.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -86,6 +87,7 @@ function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-10">
+        {isAdvisor && <AccessBanner />}
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold">
@@ -228,6 +230,38 @@ function EmptyState({ isAdvisor }: { isAdvisor: boolean }) {
           <Link to="/clients/new"><Plus className="mr-2 h-4 w-4" /> New client</Link>
         </Button>
       )}
+    </div>
+  );
+}
+
+function AccessBanner() {
+  const fetchAccess = useServerFn(getMyFirmAccess);
+  const q = useQuery({ queryKey: ["my-firm-access"], queryFn: () => fetchAccess() });
+  if (!q.data || q.data.state === "no_firm" || q.data.state === "ok") return null;
+
+  if (q.data.state === "trial") {
+    return (
+      <div className="mb-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm flex items-center justify-between gap-3">
+        <span>
+          Trial: <strong>{q.data.trialDaysLeft}</strong> day{q.data.trialDaysLeft === 1 ? "" : "s"} left.
+          You're on the <strong className="capitalize">{q.data.tier}</strong> plan
+          ({q.data.connectionCount}/{q.data.connectionLimit} Xero files used).
+        </span>
+        <span className="text-muted-foreground text-xs">Billing setup coming soon.</span>
+      </div>
+    );
+  }
+
+  // locked
+  return (
+    <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+      <p className="font-medium text-destructive">Subscription not active</p>
+      <p className="text-muted-foreground mt-1">
+        {q.data.reason === "trial_expired"
+          ? "Your trial has ended."
+          : `Your subscription is ${q.data.reason ?? "inactive"}.`}{" "}
+        Contact support to restore access. Your data is retained.
+      </p>
     </div>
   );
 }

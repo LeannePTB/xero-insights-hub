@@ -29,6 +29,19 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     if (!clientId) {
       throw new Error("Xero is not configured yet. The app owner needs to add XERO_CLIENT_ID and XERO_CLIENT_SECRET.");
     }
+
+    // Enforce tier-based connection hard-cap and access state before starting OAuth.
+    const { computeFirmAccess } = await import("@/lib/access.functions");
+    const access = await computeFirmAccess(context.userId);
+    if (access.state === "locked") {
+      throw new Error("Your subscription is not active. Update billing before connecting another Xero file.");
+    }
+    if (access.state !== "no_firm" && access.connectionCount >= access.connectionLimit) {
+      throw new Error(
+        `You've reached your plan limit of ${access.connectionLimit} Xero file${access.connectionLimit === 1 ? "" : "s"}. Upgrade your plan to connect more.`,
+      );
+    }
+
     const state = randomBytes(24).toString("hex");
     const returnOrigin = normalizeOrigin(data.origin);
     const { error } = await context.supabase

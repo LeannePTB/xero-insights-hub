@@ -13,6 +13,7 @@ import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SignupTokenRouteImport } from './routes/signup.$token'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
@@ -49,6 +50,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignupTokenRoute = SignupTokenRouteImport.update({
+  id: '/signup/$token',
+  path: '/signup/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -159,6 +165,7 @@ export interface FileRoutesByFullPath {
   '/set-password': typeof SetPasswordRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/signup/$token': typeof SignupTokenRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
@@ -181,6 +188,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/set-password': typeof SetPasswordRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/signup/$token': typeof SignupTokenRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
@@ -206,6 +214,7 @@ export interface FileRoutesById {
   '/set-password': typeof SetPasswordRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/signup/$token': typeof SignupTokenRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
@@ -231,6 +240,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/admin'
     | '/dashboard'
+    | '/signup/$token'
     | '/clients/new'
     | '/settings/account'
     | '/settings/activity'
@@ -253,6 +263,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/set-password'
     | '/dashboard'
+    | '/signup/$token'
     | '/clients/new'
     | '/settings/account'
     | '/settings/activity'
@@ -277,6 +288,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/signup/$token'
     | '/_authenticated/clients/new'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/activity'
@@ -300,6 +312,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   SetPasswordRoute: typeof SetPasswordRoute
+  SignupTokenRoute: typeof SignupTokenRoute
   ApiPublicXeroCallbackRoute: typeof ApiPublicXeroCallbackRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -334,6 +347,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/signup/$token': {
+      id: '/signup/$token'
+      path: '/signup/$token'
+      fullPath: '/signup/$token'
+      preLoaderRoute: typeof SignupTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard': {
@@ -521,6 +541,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   SetPasswordRoute: SetPasswordRoute,
+  SignupTokenRoute: SignupTokenRoute,
   ApiPublicXeroCallbackRoute: ApiPublicXeroCallbackRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
