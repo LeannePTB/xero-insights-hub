@@ -31,12 +31,12 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     }
 
     // Enforce tier-based connection hard-cap and access state before starting OAuth.
-    const { getMyFirmAccess } = await import("@/lib/access.functions");
-    const access = await (getMyFirmAccess as any)();
-    if (access?.state === "locked") {
+    const { computeFirmAccess } = await import("@/lib/access.functions");
+    const access = await computeFirmAccess(context.userId);
+    if (access.state === "locked") {
       throw new Error("Your subscription is not active. Update billing before connecting another Xero file.");
     }
-    if (access?.state !== "no_firm" && access?.connectionCount >= access?.connectionLimit) {
+    if (access.state !== "no_firm" && access.connectionCount >= access.connectionLimit) {
       throw new Error(
         `You've reached your plan limit of ${access.connectionLimit} Xero file${access.connectionLimit === 1 ? "" : "s"}. Upgrade your plan to connect more.`,
       );
