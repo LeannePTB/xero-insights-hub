@@ -9,6 +9,7 @@ import {
   adminSetUserPassword,
   adminUpdateUserEmail,
   adminUpdateSubscription,
+  adminRenameFirm,
 } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -24,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Loader2, KeyRound, Mail, ShieldAlert, History, CreditCard, Users } from "lucide-react";
+import { ArrowLeft, Loader2, KeyRound, Mail, ShieldAlert, History, CreditCard, Users, Building2, Check, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
@@ -94,6 +95,12 @@ function FirmDetailPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-10">
+        <BusinessNameSection
+          firmId={firmId}
+          currentName={firm.name}
+          onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
+        />
+
         <SubscriptionSection
           firmId={firmId}
           subscription={subscription}
@@ -434,6 +441,59 @@ function AuditSection({ events, loading }: { events: any[]; loading: boolean }) 
           ))}
         </ul>
       )}
+    </section>
+  );
+}
+
+function BusinessNameSection({
+  firmId, currentName, onChanged,
+}: { firmId: string; currentName: string; onChanged: () => void }) {
+  const renameFn = useServerFn(adminRenameFirm);
+  const [editing, setEditing] = useState(false);
+  const [name, setName] = useState(currentName);
+
+  const mut = useMutation({
+    mutationFn: () => renameFn({ data: { firmId, name } }),
+    onSuccess: () => {
+      toast.success("Business name updated");
+      setEditing(false);
+      onChanged();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <section className="rounded-lg border p-6">
+      <div className="flex items-center gap-3">
+        <Building2 className="h-4 w-4 text-muted-foreground" />
+        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Business name</Label>
+      </div>
+      <div className="mt-3 flex items-center gap-2">
+        {editing ? (
+          <>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              maxLength={120}
+              className="max-w-md"
+              autoFocus
+            />
+            <Button size="sm" onClick={() => mut.mutate()} disabled={mut.isPending || name.trim().length < 2}>
+              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => { setName(currentName); setEditing(false); }}>
+              <X className="h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="text-lg font-medium">{currentName}</p>
+            <Button size="sm" variant="ghost" onClick={() => setEditing(true)}>
+              <Pencil className="h-3 w-3 mr-1" /> Edit
+            </Button>
+          </>
+        )}
+      </div>
     </section>
   );
 }
