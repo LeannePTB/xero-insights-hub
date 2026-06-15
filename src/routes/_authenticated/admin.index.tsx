@@ -69,6 +69,9 @@ function AdminPage() {
           </Button>
           <h1 className="text-xl font-semibold">Super-admin</h1>
           <Badge variant="secondary" className="ml-2">redacted view</Badge>
+          <div className="ml-auto">
+            <InviteFirmOwnerDialog onCreated={() => firmsQ.refetch()} />
+          </div>
         </div>
       </header>
 
