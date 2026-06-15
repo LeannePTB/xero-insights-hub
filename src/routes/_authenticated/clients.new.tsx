@@ -100,7 +100,13 @@ function NewClient() {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" asChild><Link to="/dashboard">Cancel</Link></Button>
+            <Button variant="ghost" asChild>
+              {firmId ? (
+                <Link to="/firms/$firmId" params={{ firmId }}>Cancel</Link>
+              ) : (
+                <Link to="/dashboard">Cancel</Link>
+              )}
+            </Button>
             <Button onClick={() => createMut.mutate()} disabled={!name.trim() || createMut.isPending}>
               {createMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create client
