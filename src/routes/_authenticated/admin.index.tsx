@@ -176,7 +176,7 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
   });
 
   function reset() {
-    setEmail(""); setBusinessName(""); setInviteUrl(null); setCopied(false);
+    setEmail(""); setBusinessName(""); setInviteUrl(null); setCopied(false); setEmailStatus(null);
   }
 
   async function copy() {
