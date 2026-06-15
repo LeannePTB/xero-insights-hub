@@ -60,3 +60,13 @@ has_tenant_access
 - Stripe (Phase 3) — still parked.
 - Enforcing the report-only CSP — separate hardening pass once we've watched the violation reports for a couple of weeks.
 - Renaming the `advisor` role to `firm_owner` — separate cleanup.
+
+## Phase 6b status — shipped
+
+- New `app_private` schema holds the 10 role/membership helpers; old `public.*` copies dropped.
+- Every RLS policy repointed to `app_private.*`.
+- `enforce_unreconciled_line_viewer_columns` trigger now calls `app_private.is_advisor`.
+- New `public.me_is_super_admin()` (no params, self-only) — used by admin/invite server fns.
+- `src/lib/xero/access.server.ts` replaced its three RPC calls with direct table reads via service role.
+- Trigger fns and email-queue helpers had EXECUTE revoked from anon/authenticated.
+- Linter warnings: 22 → 1 (the remaining one is `me_is_super_admin`, intentionally exposed; documented in security memory).
