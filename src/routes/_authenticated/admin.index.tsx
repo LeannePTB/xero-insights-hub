@@ -212,14 +212,20 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Invite created. Send this link to the owner:</p>
+            <p className="text-sm">
+              {emailStatus === "queued"
+                ? "✓ Invite email sent to the owner."
+                : emailStatus === "suppressed"
+                ? "⚠ This address is on the suppression list — share the link manually."
+                : "Invite created. The email couldn't be sent — share this link manually."}
+            </p>
             <div className="flex gap-2">
               <Input readOnly value={inviteUrl} className="font-mono text-xs" />
               <Button size="icon" variant="outline" onClick={copy}>
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Expires in 14 days.</p>
+            <p className="text-xs text-muted-foreground">Backup link — expires in 14 days.</p>
           </div>
         )}
 
