@@ -701,9 +701,30 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "advisor" | "client_viewer"
+      app_role:
+        | "advisor"
+        | "client_viewer"
+        | "super_admin"
+        | "firm_owner"
+        | "firm_staff"
       dashboard_tier: "basic" | "advisory" | "investigate" | "multi_company"
+      firm_member_role: "owner" | "staff"
       report_basis: "accrual" | "cash"
+      subscription_status:
+        | "trialing"
+        | "active"
+        | "past_due"
+        | "canceled"
+        | "incomplete"
+        | "incomplete_expired"
+        | "unpaid"
+      subscription_tier:
+        | "starter"
+        | "growth"
+        | "scale"
+        | "firm"
+        | "legacy"
+        | "free"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -831,9 +852,33 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["advisor", "client_viewer"],
+      app_role: [
+        "advisor",
+        "client_viewer",
+        "super_admin",
+        "firm_owner",
+        "firm_staff",
+      ],
       dashboard_tier: ["basic", "advisory", "investigate", "multi_company"],
+      firm_member_role: ["owner", "staff"],
       report_basis: ["accrual", "cash"],
+      subscription_status: [
+        "trialing",
+        "active",
+        "past_due",
+        "canceled",
+        "incomplete",
+        "incomplete_expired",
+        "unpaid",
+      ],
+      subscription_tier: [
+        "starter",
+        "growth",
+        "scale",
+        "firm",
+        "legacy",
+        "free",
+      ],
     },
   },
 } as const
