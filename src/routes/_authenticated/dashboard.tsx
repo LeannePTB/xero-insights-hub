@@ -82,7 +82,10 @@ function Dashboard() {
   }
 
   const clients = isAdvisor ? clientsQ.data?.clients ?? [] : viewerClients;
-  const loading = ctxQ.isLoading || (isAdvisor && clientsQ.isLoading);
+  const loading =
+    ctxQ.isLoading ||
+    (isSuperAdmin && firmsQ.isLoading) ||
+    (isAdvisor && !isSuperAdmin && clientsQ.isLoading);
 
   return (
     <div className="min-h-screen bg-background">
