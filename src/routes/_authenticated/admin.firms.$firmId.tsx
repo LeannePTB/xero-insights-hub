@@ -558,10 +558,16 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Invite link:</p>
+            <p className="text-sm">
+              {emailStatus === "queued"
+                ? "✓ Invite email sent."
+                : emailStatus === "suppressed"
+                ? "⚠ This address is on the suppression list — share the link manually."
+                : "Invite created. The email couldn't be sent — share this link manually."}
+            </p>
             <Input readOnly value={inviteUrl} className="font-mono text-xs" />
             <Button size="sm" variant="outline" onClick={copy}>Copy link</Button>
-            <p className="text-xs text-muted-foreground">Expires in 14 days.</p>
+            <p className="text-xs text-muted-foreground">Backup link — expires in 14 days.</p>
           </div>
         )}
         <DialogFooter>
