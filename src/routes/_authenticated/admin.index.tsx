@@ -161,6 +161,7 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
   const [email, setEmail] = useState("");
   const [businessName, setBusinessName] = useState("");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const mut = useMutation({
@@ -168,13 +169,14 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
     onSuccess: (res) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       setInviteUrl(`${origin}/signup/${res.token}`);
+      setEmailStatus((res as any).emailStatus ?? null);
       onCreated();
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not create invite"),
   });
 
   function reset() {
-    setEmail(""); setBusinessName(""); setInviteUrl(null); setCopied(false);
+    setEmail(""); setBusinessName(""); setInviteUrl(null); setCopied(false); setEmailStatus(null);
   }
 
   async function copy() {
@@ -210,14 +212,20 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Invite created. Send this link to the owner:</p>
+            <p className="text-sm">
+              {emailStatus === "queued"
+                ? "✓ Invite email sent to the owner."
+                : emailStatus === "suppressed"
+                ? "⚠ This address is on the suppression list — share the link manually."
+                : "Invite created. The email couldn't be sent — share this link manually."}
+            </p>
             <div className="flex gap-2">
               <Input readOnly value={inviteUrl} className="font-mono text-xs" />
               <Button size="icon" variant="outline" onClick={copy}>
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">Expires in 14 days.</p>
+            <p className="text-xs text-muted-foreground">Backup link — expires in 14 days.</p>
           </div>
         )}
 

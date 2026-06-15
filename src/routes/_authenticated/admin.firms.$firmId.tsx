@@ -508,18 +508,20 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"owner" | "staff">("staff");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
 
   const mut = useMutation({
     mutationFn: () => invite({ data: { firmId, email, role } }),
     onSuccess: (res) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       setInviteUrl(`${origin}/signup/${res.token}`);
+      setEmailStatus((res as any).emailStatus ?? null);
       onCreated();
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not create invite"),
   });
 
-  function reset() { setEmail(""); setRole("staff"); setInviteUrl(null); }
+  function reset() { setEmail(""); setRole("staff"); setInviteUrl(null); setEmailStatus(null); }
 
   async function copy() {
     if (!inviteUrl) return;
@@ -556,10 +558,16 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-sm text-muted-foreground">Invite link:</p>
+            <p className="text-sm">
+              {emailStatus === "queued"
+                ? "✓ Invite email sent."
+                : emailStatus === "suppressed"
+                ? "⚠ This address is on the suppression list — share the link manually."
+                : "Invite created. The email couldn't be sent — share this link manually."}
+            </p>
             <Input readOnly value={inviteUrl} className="font-mono text-xs" />
             <Button size="sm" variant="outline" onClick={copy}>Copy link</Button>
-            <p className="text-xs text-muted-foreground">Expires in 14 days.</p>
+            <p className="text-xs text-muted-foreground">Backup link — expires in 14 days.</p>
           </div>
         )}
         <DialogFooter>

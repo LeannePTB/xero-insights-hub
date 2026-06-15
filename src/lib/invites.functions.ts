@@ -84,7 +84,26 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
       firm_id: firm.id, email, role: "owner", new_firm: true,
     });
 
-    return { ok: true, firmId: firm.id, token, email };
+    // Build the canonical signup URL and fire-and-forget the email.
+    const inviteUrl = `https://tractionadvisory.app/signup/${token}`;
+    let emailStatus: string = "skipped";
+    try {
+      const { enqueueAppEmail } = await import("@/lib/email/send.server");
+      const res = await enqueueAppEmail({
+        templateName: "firm-invite",
+        recipientEmail: email,
+        idempotencyKey: `firm-invite-${firm.id}-${token.slice(0, 8)}`,
+        templateData: {
+          inviteUrl, role: "owner", firmName: firm.name, inviterName: null,
+        },
+      });
+      emailStatus = res.status;
+    } catch (e) {
+      console.error("Failed to enqueue invite email", e);
+      emailStatus = "failed";
+    }
+
+    return { ok: true, firmId: firm.id, token, email, emailStatus };
   });
 
 /**
@@ -115,7 +134,27 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
       firm_id: data.firmId, email, role: data.role, new_firm: false,
     });
 
-    return { ok: true, token, email };
+    const { data: firm } = await (supabaseAdmin as any)
+      .from("firms").select("name").eq("id", data.firmId).maybeSingle();
+    const inviteUrl = `https://tractionadvisory.app/signup/${token}`;
+    let emailStatus: string = "skipped";
+    try {
+      const { enqueueAppEmail } = await import("@/lib/email/send.server");
+      const res = await enqueueAppEmail({
+        templateName: "firm-invite",
+        recipientEmail: email,
+        idempotencyKey: `firm-invite-${data.firmId}-${token.slice(0, 8)}`,
+        templateData: {
+          inviteUrl, role: data.role, firmName: firm?.name ?? null, inviterName: null,
+        },
+      });
+      emailStatus = res.status;
+    } catch (e) {
+      console.error("Failed to enqueue invite email", e);
+      emailStatus = "failed";
+    }
+
+    return { ok: true, token, email, emailStatus };
   });
 
 /**
