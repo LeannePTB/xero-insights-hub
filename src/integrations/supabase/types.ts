@@ -578,6 +578,24 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_buckets: {
+        Row: {
+          count: number
+          key: string
+          window_start: string
+        }
+        Insert: {
+          count?: number
+          key: string
+          window_start: string
+        }
+        Update: {
+          count?: number
+          key?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       report_cache: {
         Row: {
           fetched_at: string
@@ -1013,6 +1031,10 @@ export type Database = {
       }
     }
     Functions: {
+      check_rate_limit: {
+        Args: { _key: string; _max: number; _window_seconds: number }
+        Returns: boolean
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
