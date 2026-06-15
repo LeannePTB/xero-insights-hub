@@ -6,18 +6,21 @@ function sanitizeWidgets(widgets: string[] | null | undefined): WidgetKey[] {
   return (widgets ?? []).filter((w): w is WidgetKey => (ALL_WIDGETS as string[]).includes(w));
 }
 
-export const listClients = createServerFn({ method: "GET" })
+export const listClients = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { data, error } = await context.supabase
+  .inputValidator((i: { firmId?: string } | undefined) => i ?? {})
+  .handler(async ({ data, context }) => {
+    let q = context.supabase
       .from("clients")
       .select(
-        "id, name, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
+        "id, name, firm_id, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
       )
       .order("name");
+    if (data?.firmId) q = q.eq("firm_id", data.firmId);
+    const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
 
-    const clientIds = (data ?? []).map((c: any) => c.id);
+    const clientIds = (rows ?? []).map((c: any) => c.id);
     let configRows: any[] = [];
     if (clientIds.length) {
       const { data: cfg } = await context.supabase
@@ -39,7 +42,7 @@ export const listClients = createServerFn({ method: "GET" })
       ) as Record<DashboardTier, WidgetKey[]>;
     }
 
-    const clients = (data ?? []).map((c: any) => {
+    const clients = (rows ?? []).map((c: any) => {
       const grantedTiers = Array.from(
         new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
       ) as DashboardTier[];
@@ -149,7 +152,7 @@ async function clientIsMultiCompany(supabase: any, clientId: string) {
 
 export const createClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { name: string; xeroConnectionIds: string[] }) => i)
+  .inputValidator((i: { name: string; xeroConnectionIds: string[]; firmId?: string }) => i)
   .handler(async ({ data, context }) => {
     const name = data.name.trim();
     if (!name) throw new Error("Client name is required.");
@@ -158,9 +161,31 @@ export const createClient = createServerFn({ method: "POST" })
         "Only the Multi company tier can link more than one Xero organisation. Create the client with one org, then grant a viewer the Multi company tier to link more.",
       );
     }
+
+    // Resolve target firm: explicit firmId (must be a member) OR caller's first firm.
+    let firmId: string | null = data.firmId ?? null;
+    if (firmId) {
+      const { data: membership } = await context.supabase
+        .from("firm_members")
+        .select("firm_id")
+        .eq("user_id", context.userId)
+        .eq("firm_id", firmId)
+        .maybeSingle();
+      if (!membership) throw new Error("You are not a member of that business.");
+    } else {
+      const { data: membership } = await context.supabase
+        .from("firm_members")
+        .select("firm_id")
+        .eq("user_id", context.userId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      firmId = membership?.firm_id ?? null;
+    }
+
     const { data: client, error } = await context.supabase
       .from("clients")
-      .insert({ name, owner_user_id: context.userId })
+      .insert({ name, owner_user_id: context.userId, firm_id: firmId })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
