@@ -104,21 +104,28 @@ function Dashboard() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold">
-              {isAdvisor ? "Clients" : "Your dashboards"}
+              {isSuperAdmin ? "Businesses" : isAdvisor ? "Clients" : "Your dashboards"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {isAdvisor
+              {isSuperAdmin
+                ? "Open your business to manage its clients. Other businesses are read-only."
+                : isAdvisor
                 ? "Pick a client to open their dashboard."
                 : "Select a dashboard to view."}
             </p>
           </div>
-          {isAdvisor && (
+          {isSuperAdmin && (
             <div className="flex flex-wrap gap-2">
-              {isSuperAdmin && (
-                <Button variant="outline" asChild>
-                  <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
-                </Button>
-              )}
+              <Button variant="outline" asChild>
+                <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
+              </Button>
+            </div>
+          )}
+          {isAdvisor && !isSuperAdmin && (
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" asChild>
                 <Link to="/settings/advisors"><Users className="mr-2 h-4 w-4" /> Advisors</Link>
               </Button>
@@ -138,11 +145,6 @@ function Dashboard() {
           )}
           {!isAdvisor && (
             <div className="flex flex-wrap gap-2">
-              {isSuperAdmin && (
-                <Button variant="outline" asChild>
-                  <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
-                </Button>
-              )}
               <Button variant="outline" asChild>
                 <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
               </Button>
@@ -155,6 +157,8 @@ function Dashboard() {
             <div className="flex items-center justify-center rounded-2xl border border-dashed border-border bg-card p-16 text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
             </div>
+          ) : isSuperAdmin ? (
+            <FirmGrid firms={firmsQ.data?.firms ?? []} />
           ) : clients.length === 0 ? (
             <EmptyState isAdvisor={isAdvisor} />
           ) : (
