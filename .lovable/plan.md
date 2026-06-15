@@ -1,47 +1,80 @@
-## Problem
+## Remaining work (excluding Stripe + landing page)
 
-When a new business owner accepts an invite they:
-1. See **Positive Traction's clients** on their dashboard (firm A's data leaking to firm B).
-2. See top-right buttons for **Advisors, Tier widgets, Activity** which are firm-wide / super-admin tools.
+Grouped by priority. Tell me which to start with after this is approved.
 
-Root cause: the previous fix granted the global `advisor` app role on invite acceptance. The `clients.advisors manage clients` RLS policy lets anyone with that role read/write **every** client across **every** firm. Granting it to a new firm owner gave them full cross-firm access.
+---
 
-## Fix
+## P0 — Onboarding & access (blocks new signups working end-to-end)
 
-### 1. Tighten RLS so firm data stays in its firm
+1. **Post-signup onboarding wizard** — after a new organisation owner sets their password they currently land on an empty dashboard. Add a 3-step wizard:
+   1. Confirm organisation details
+   2. Connect first Xero file (button → existing Xero OAuth flow)
+   3. Create first client (or skip)
+   Render at `/onboarding`, redirect there from `_authenticated/route.tsx` when `firm.onboarded_at IS NULL`.
 
-Drop the global "advisors manage clients" policy and replace with super-admin + firm-scoped policies. Same pattern on related tables that currently lean on `is_advisor(...)`:
+2. **Organisation staff invites** — owners can invite extra staff to their organisation. New route `_authenticated/settings.team.tsx`: list `firm_members`, invite by email (reuses email queue), revoke. Role within firm: `owner` / `member` (already on `firm_members`).
 
-- `public.clients`
-- `public.client_xero_orgs`
-- `public.client_access`
-- `public.client_notes`
-- `public.tier_widget_config`
-- `public.unreconciled_uploads`, `public.unreconciled_lines`
+3. **Client viewer invites** — let an org invite the client's CFO/owner to view *their own* dashboard. New flow on `clients.$clientId.settings.tsx`: invite by email → creates `client_access` row + sends magic-link email. Viewer sees only that client's dashboard (RLS already supports it; UI gating to confirm).
 
-For each: keep super-admin full access + firm-member read + firm-owner manage. No more "any advisor sees everything".
+4. **Password reset** — confirm the public `/auth` page has "Forgot password" wired to Supabase `resetPasswordForEmail` and that `/set-password` handles the recovery token, not just invite tokens.
 
-### 2. Stop auto-granting global `advisor` role on invite
+---
 
-In `src/lib/invites.functions.ts` remove the `user_roles` insert added in the prior turn. Access for firm owners/staff flows through `firm_members` + the new RLS policies — they don't need the global role.
+## P1 — Core product gaps
 
-Backfill: delete the `advisor` rows the prior migration inserted for users who are **not** super_admin (currently only `leanne@astrovisual.com.au`). Leave the existing PT super-admin/advisor rows alone.
+5. **Multi-org dashboards (multi_company tier)** — `tiers.ts` lists `multi_company` but `clients.$clientId.index.tsx` only renders one tenant. Add a tenant switcher + rolled-up KPI view when a client has >1 `client_xero_orgs`.
 
-### 3. Treat firm membership as the "advisor UX" flag
+6. **Xero connection management** — `xero/connections.functions.ts` exists, but there's no UI page to list connected Xero orgs, see token health, reconnect, or disconnect. Add `_authenticated/settings.xero.tsx` for super-admins and org owners.
 
-In `src/lib/roles.functions.ts` (`getMyContext`), set `isAdvisor = hasAdvisorRole || isFirmMember`, and also return the user's `firmId` (from `firm_members`). This keeps the dashboard rendering the clients view for new firm owners without granting cross-firm RLS.
+7. **Client list/search** — once an org has more than a handful of clients the `firms.$firmId.tsx` grid will get unwieldy. Add a search box + simple filter (tier, has-xero).
 
-### 4. Scope `listClients` to the caller's firm
+8. **Empty/loading/error states** — sweep the dashboard widgets (`RevenueExpenseKpis`, `PnlWidget`, `BreakevenWidget`, `PayablesWidget`, `ReceivablesWidget`, `TaxLiabilityWidget`) for "Xero not connected" vs "no data yet" vs "Xero error" states. Today some show blank cards.
 
-In `src/lib/clients.functions.ts`, when no `firmId` is passed and the caller is not super-admin, auto-filter to the user's own `firm_id` (looked up via `firm_members`). Defense in depth on top of RLS.
+9. **Notes / activity per client** — `NotesCard` exists; verify create/edit/delete works for org members (not just super-admins). Add @-mentions later (out of scope now).
 
-### 5. Trim dashboard chrome for non-super-admins
+---
 
-In `src/routes/_authenticated/dashboard.tsx`, the "advisor" toolbar currently shows: Advisors, Tier widgets, Activity, My account, New client. For users who are firm owners but **not** super-admin, show only **My account** and **New client**. Super-admins (the Positive Traction team) keep the full set.
+## P2 — Admin / ops (Positive Traction internal)
 
-## Verification
+10. **Activity log viewer polish** — `settings.activity.tsx` exists. Add filters (actor, target type, date range) and CSV export.
 
-- New business owner (leanne) refreshes `/dashboard` → sees only their own (empty) clients list, with just **My account** and **New client** buttons; no Positive Traction client visible.
-- Positive Traction super-admin still sees the Businesses grid and full toolbar; opening PT's firm still lists PT clients.
-- Invite a brand new business → owner accepts → lands on their own clients view, can add a client, cannot see other firms' data.
-- Supabase linter passes for the touched tables.
+11. **Super-admin organisation management** — `admin.firms.$firmId.tsx` exists but needs: change owner, suspend organisation, force-disconnect Xero, see subscription status (lands once Stripe is in).
+
+12. **Audit log retention** — schedule monthly prune of `audit_log` and `login_events` older than 12 months (pg_cron).
+
+13. **Email deliverability** — `email_send_log`, `suppressed_emails`, `email_send_state` are in place. Add an admin page to inspect queue depth, retry failed sends, and view suppression list.
+
+---
+
+## P3 — Polish
+
+14. **Mobile responsiveness pass** — dashboard grid, client list, and settings pages. Current viewport ratio suggests you test on mobile.
+
+15. **In-app notifications bell** — when a Xero sync fails, a subscription event happens, or a teammate is invited.
+
+16. **Help / docs surface** — small "?" button on each widget linking to a short explainer (can be a single `/help` page initially).
+
+17. **Branding per organisation** — let orgs upload a logo shown to their client viewers (white-label-lite).
+
+18. **2FA** — Supabase MFA enrollment in `settings.account.tsx`. Optional for owners, encouraged for super-admins.
+
+---
+
+## Cross-cutting cleanup (do alongside the above, not as separate phases)
+
+- Rename `firms` table & code references → `organisations` (you asked to standardise on "Organisation"; internal names still say firm and that will keep biting us). Touches DB column names, RLS policies, ~15 files. Worth one focused migration turn.
+- Tighten remaining `is_advisor()` policy usages on `client_notes`, `unreconciled_*` if they still grant cross-org reads (we fixed clients/access — sweep the rest).
+- Sentry/error reporting confirmation — `lovable-error-reporting.ts` is present; verify it's wired into the root error boundary.
+
+---
+
+## Suggested order
+
+1. **P0 #1 onboarding** + **P0 #4 password reset** (one turn)
+2. **P0 #2 staff invites** + **P0 #3 client viewer invites** (one turn)
+3. Cross-cutting **firms → organisations rename** (one turn, isolated)
+4. **P1 #5 multi-org** + **P1 #6 Xero connection UI** (one turn)
+5. **P1 #8 widget empty states** (one turn)
+6. P2 + P3 picked off in priority order
+
+Confirm the order or reshuffle and I'll start on whichever block you pick first.
