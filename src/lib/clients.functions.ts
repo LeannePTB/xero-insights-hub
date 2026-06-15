@@ -10,15 +10,33 @@ export const listClients = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId?: string } | undefined) => i ?? {})
   .handler(async ({ data, context }) => {
+    // Determine the firm scope. Super-admins may pass any firmId (or none → all).
+    // Everyone else is restricted to their own firm.
+    const { data: roleRows } = await context.supabase
+      .from("user_roles").select("role").eq("user_id", context.userId);
+    const isSuper = !!roleRows?.some((r: any) => r.role === "super_admin");
+
+    let firmId: string | null = data?.firmId ?? null;
+    if (!isSuper) {
+      const { data: m } = await context.supabase
+        .from("firm_members").select("firm_id").eq("user_id", context.userId)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      const myFirm = m?.firm_id ?? null;
+      if (firmId && firmId !== myFirm) throw new Error("Not a member of that business.");
+      firmId = myFirm;
+      if (!firmId) return { clients: [] };
+    }
+
     let q = context.supabase
       .from("clients")
       .select(
         "id, name, firm_id, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
       )
       .order("name");
-    if (data?.firmId) q = q.eq("firm_id", data.firmId);
+    if (firmId) q = q.eq("firm_id", firmId);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
+
 
     const clientIds = (rows ?? []).map((c: any) => c.id);
     let configRows: any[] = [];
