@@ -501,3 +501,78 @@ function BusinessNameSection({
     </section>
   );
 }
+
+function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: () => void }) {
+  const invite = useServerFn(adminInviteFirmMember);
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [role, setRole] = useState<"owner" | "staff">("staff");
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+
+  const mut = useMutation({
+    mutationFn: () => invite({ data: { firmId, email, role } }),
+    onSuccess: (res) => {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      setInviteUrl(`${origin}/signup/${res.token}`);
+      onCreated();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not create invite"),
+  });
+
+  function reset() { setEmail(""); setRole("staff"); setInviteUrl(null); }
+
+  async function copy() {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    toast.success("Invite link copied");
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+      <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
+        <Users className="h-4 w-4 mr-2" /> Invite member
+      </Button>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Invite a member</DialogTitle>
+          <DialogDescription>Share the resulting link with them by email.</DialogDescription>
+        </DialogHeader>
+        {!inviteUrl ? (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Email</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Role</Label>
+              <Select value={role} onValueChange={(v) => setRole(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="owner">Owner</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Invite link:</p>
+            <Input readOnly value={inviteUrl} className="font-mono text-xs" />
+            <Button size="sm" variant="outline" onClick={copy}>Copy link</Button>
+            <p className="text-xs text-muted-foreground">Expires in 14 days.</p>
+          </div>
+        )}
+        <DialogFooter>
+          {!inviteUrl ? (
+            <Button onClick={() => mut.mutate()} disabled={mut.isPending || !email}>
+              {mut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Create invite
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => setOpen(false)}>Done</Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
