@@ -23,6 +23,27 @@ function validatePassword(pw: string) {
   if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) throw new Error("Password must include at least one letter and one number.");
 }
 
+export const adminRenameFirm = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { firmId: string; name: string }) => i)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const name = data.name.trim();
+    if (name.length < 2 || name.length > 120) {
+      throw new Error("Business name must be between 2 and 120 characters.");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: prev } = await supabaseAdmin
+      .from("firms").select("name").eq("id", data.firmId).maybeSingle();
+    const { error } = await (supabaseAdmin as any)
+      .from("firms").update({ name }).eq("id", data.firmId);
+    if (error) throw new Error(error.message);
+    await logAudit("firm_renamed_by_admin", "firm", data.firmId, context.userId, {
+      firm_id: data.firmId, old_name: prev?.name ?? null, new_name: name,
+    });
+    return { ok: true };
+  });
+
 export const listFirmsAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
