@@ -3,13 +3,15 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listClients } from "@/lib/clients.functions";
+import { listFirmsForSuperAdmin, type FirmOverviewCard } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { getMyFirmAccess } from "@/lib/access.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, ChevronRight, SlidersHorizontal, Users, Activity, KeyRound, Shield } from "lucide-react";
+import { LogOut, Plus, Loader2, Building2, ChevronRight, SlidersHorizontal, Users, Activity, KeyRound, Shield, Lock } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
@@ -22,25 +24,32 @@ function Dashboard() {
   const navigate = useNavigate();
   const fetchClients = useServerFn(listClients);
   const fetchCtx = useServerFn(getMyContext);
+  const fetchFirms = useServerFn(listFirmsForSuperAdmin);
 
   const fetchTierSettings = useServerFn(listTierSettings);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
-  const isSuperAdmin = (ctxQ.data as any)?.isSuperAdmin ?? false;
+  const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
   const viewerClients = ctxQ.data?.viewerClients ?? [];
 
   const tierSettingsQ = useQuery({
     queryKey: ["tier-settings"],
     queryFn: () => fetchTierSettings(),
-    enabled: isAdvisor,
+    enabled: isAdvisor && !isSuperAdmin,
   });
   const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
 
+  // Super-admins see firm cards. Regular advisors see their own client list.
   const clientsQ = useQuery({
     queryKey: ["clients"],
     queryFn: () => fetchClients(),
-    enabled: isAdvisor,
+    enabled: isAdvisor && !isSuperAdmin,
+  });
+  const firmsQ = useQuery({
+    queryKey: ["firms-overview"],
+    queryFn: () => fetchFirms(),
+    enabled: isSuperAdmin,
   });
 
   // Auto-redirect viewers with exactly one client
@@ -73,7 +82,10 @@ function Dashboard() {
   }
 
   const clients = isAdvisor ? clientsQ.data?.clients ?? [] : viewerClients;
-  const loading = ctxQ.isLoading || (isAdvisor && clientsQ.isLoading);
+  const loading =
+    ctxQ.isLoading ||
+    (isSuperAdmin && firmsQ.isLoading) ||
+    (isAdvisor && !isSuperAdmin && clientsQ.isLoading);
 
   return (
     <div className="min-h-screen bg-background">
@@ -92,21 +104,28 @@ function Dashboard() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold">
-              {isAdvisor ? "Clients" : "Your dashboards"}
+              {isSuperAdmin ? "Businesses" : isAdvisor ? "Clients" : "Your dashboards"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {isAdvisor
+              {isSuperAdmin
+                ? "Open your business to manage its clients. Other businesses are read-only."
+                : isAdvisor
                 ? "Pick a client to open their dashboard."
                 : "Select a dashboard to view."}
             </p>
           </div>
-          {isAdvisor && (
+          {isSuperAdmin && (
             <div className="flex flex-wrap gap-2">
-              {isSuperAdmin && (
-                <Button variant="outline" asChild>
-                  <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
-                </Button>
-              )}
+              <Button variant="outline" asChild>
+                <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
+              </Button>
+            </div>
+          )}
+          {isAdvisor && !isSuperAdmin && (
+            <div className="flex flex-wrap gap-2">
               <Button variant="outline" asChild>
                 <Link to="/settings/advisors"><Users className="mr-2 h-4 w-4" /> Advisors</Link>
               </Button>
@@ -126,11 +145,6 @@ function Dashboard() {
           )}
           {!isAdvisor && (
             <div className="flex flex-wrap gap-2">
-              {isSuperAdmin && (
-                <Button variant="outline" asChild>
-                  <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
-                </Button>
-              )}
               <Button variant="outline" asChild>
                 <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
               </Button>
@@ -143,6 +157,8 @@ function Dashboard() {
             <div className="flex items-center justify-center rounded-2xl border border-dashed border-border bg-card p-16 text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
             </div>
+          ) : isSuperAdmin ? (
+            <FirmGrid firms={firmsQ.data?.firms ?? []} />
           ) : clients.length === 0 ? (
             <EmptyState isAdvisor={isAdvisor} />
           ) : (
@@ -218,6 +234,67 @@ function Dashboard() {
           )}
         </div>
       </main>
+    </div>
+  );
+}
+
+function FirmGrid({ firms }: { firms: FirmOverviewCard[] }) {
+  if (firms.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center text-muted-foreground">
+        No businesses yet.
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {firms.map((f) => {
+        const inner = (
+          <>
+            <div className="flex items-start justify-between">
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Building2 className="h-5 w-5" />
+              </div>
+              {f.isOwn ? (
+                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+              ) : (
+                <Lock className="h-4 w-4 text-muted-foreground/60" />
+              )}
+            </div>
+            <h3 className="mt-4 font-display text-lg font-semibold leading-tight">{f.name}</h3>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant="secondary" className="capitalize">
+                {f.tier ?? "no plan"}
+              </Badge>
+              <span className="text-muted-foreground">
+                {f.clientCount} {f.clientCount === 1 ? "client" : "clients"}
+              </span>
+              {!f.isOwn && (
+                <Badge variant="outline" className="ml-auto">read-only</Badge>
+              )}
+            </div>
+          </>
+        );
+        const base =
+          "flex flex-col rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]";
+        if (f.isOwn) {
+          return (
+            <Link
+              key={f.id}
+              to="/firms/$firmId"
+              params={{ firmId: f.id }}
+              className={`group ${base} transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md`}
+            >
+              {inner}
+            </Link>
+          );
+        }
+        return (
+          <div key={f.id} className={`${base} opacity-80`}>
+            {inner}
+          </div>
+        );
+      })}
     </div>
   );
 }

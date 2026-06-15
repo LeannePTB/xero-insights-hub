@@ -13,11 +13,15 @@ import { ArrowLeft, Loader2, Plug } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/new")({
   head: () => ({ meta: [{ title: "New client — Traction Advisory" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    firmId: typeof search.firmId === "string" ? search.firmId : undefined,
+  }),
   component: NewClient,
 });
 
 function NewClient() {
   const navigate = useNavigate();
+  const { firmId } = Route.useSearch();
   const fetchConnections = useServerFn(listXeroConnections);
   const startConnect = useServerFn(startXeroConnect);
   const create = useServerFn(createClient);
@@ -28,7 +32,7 @@ function NewClient() {
   const connQ = useQuery({ queryKey: ["xero-connections"], queryFn: () => fetchConnections() });
 
   const createMut = useMutation({
-    mutationFn: () => create({ data: { name, xeroConnectionIds: [...selected] } }),
+    mutationFn: () => create({ data: { name, xeroConnectionIds: [...selected], firmId } }),
     onSuccess: ({ id }) => {
       toast.success("Client created");
       navigate({ to: "/clients/$clientId", params: { clientId: id }, replace: true });
@@ -56,7 +60,11 @@ function NewClient() {
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-2xl px-6 py-10">
         <Button variant="ghost" size="sm" asChild className="mb-4">
-          <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back to clients</Link>
+          {firmId ? (
+            <Link to="/firms/$firmId" params={{ firmId }}><ArrowLeft className="mr-1 h-4 w-4" /> Back to business</Link>
+          ) : (
+            <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back to clients</Link>
+          )}
         </Button>
         <h1 className="font-display text-3xl font-semibold">New client</h1>
         <p className="mt-1 text-sm text-muted-foreground">A client is a company you track. Link one or more Xero organisations to it.</p>
@@ -92,7 +100,13 @@ function NewClient() {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" asChild><Link to="/dashboard">Cancel</Link></Button>
+            <Button variant="ghost" asChild>
+              {firmId ? (
+                <Link to="/firms/$firmId" params={{ firmId }}>Cancel</Link>
+              ) : (
+                <Link to="/dashboard">Cancel</Link>
+              )}
+            </Button>
             <Button onClick={() => createMut.mutate()} disabled={!name.trim() || createMut.isPending}>
               {createMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Create client
