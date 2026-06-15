@@ -14,6 +14,153 @@ export type Database = {
   }
   public: {
     Tables: {
+      access_invites: {
+        Row: {
+          accepted_at: string | null
+          created_at: string
+          email: string
+          expires_at: string
+          firm_id: string
+          id: string
+          invited_by: string | null
+          role: Database["public"]["Enums"]["firm_member_role"]
+          token_hash: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          created_at?: string
+          email: string
+          expires_at: string
+          firm_id: string
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["firm_member_role"]
+          token_hash: string
+        }
+        Update: {
+          accepted_at?: string | null
+          created_at?: string
+          email?: string
+          expires_at?: string
+          firm_id?: string
+          id?: string
+          invited_by?: string | null
+          role?: Database["public"]["Enums"]["firm_member_role"]
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "access_invites_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "access_invites_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      audit_log: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          at: string
+          firm_id: string | null
+          id: string
+          ip: string | null
+          meta: Json | null
+          target_id: string | null
+          target_type: string | null
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          at?: string
+          firm_id?: string | null
+          id?: string
+          ip?: string | null
+          meta?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          at?: string
+          firm_id?: string | null
+          id?: string
+          ip?: string | null
+          meta?: Json | null
+          target_id?: string | null
+          target_type?: string | null
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_log_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "audit_log_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_events: {
+        Row: {
+          firm_id: string | null
+          id: string
+          occurred_at: string
+          payload: Json
+          stripe_event_id: string
+          type: string
+        }
+        Insert: {
+          firm_id?: string | null
+          id?: string
+          occurred_at?: string
+          payload: Json
+          stripe_event_id: string
+          type: string
+        }
+        Update: {
+          firm_id?: string | null
+          id?: string
+          occurred_at?: string
+          payload?: Json
+          stripe_event_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_events_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "billing_events_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_access: {
         Row: {
           client_id: string
@@ -123,6 +270,7 @@ export type Database = {
       clients: {
         Row: {
           created_at: string
+          firm_id: string | null
           id: string
           name: string
           notes: string
@@ -132,6 +280,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          firm_id?: string | null
           id?: string
           name: string
           notes?: string
@@ -141,6 +290,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          firm_id?: string | null
           id?: string
           name?: string
           notes?: string
@@ -148,7 +298,22 @@ export type Database = {
           report_basis?: Database["public"]["Enums"]["report_basis"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "clients_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "clients_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       dashboard_card_order: {
         Row: {
@@ -293,6 +458,75 @@ export type Database = {
         }
         Relationships: []
       }
+      firm_members: {
+        Row: {
+          created_at: string
+          firm_id: string
+          id: string
+          role: Database["public"]["Enums"]["firm_member_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          firm_id: string
+          id?: string
+          role?: Database["public"]["Enums"]["firm_member_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          firm_id?: string
+          id?: string
+          role?: Database["public"]["Enums"]["firm_member_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "firm_members_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "firm_members_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      firms: {
+        Row: {
+          created_at: string
+          id: string
+          is_always_free: boolean
+          name: string
+          owner_user_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_always_free?: boolean
+          name: string
+          owner_user_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_always_free?: boolean
+          name?: string
+          owner_user_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       login_events: {
         Row: {
           email: string | null
@@ -373,6 +607,96 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      signup_requests: {
+        Row: {
+          contact_name: string
+          created_at: string
+          email: string
+          firm_name: string
+          id: string
+          note: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          contact_name: string
+          created_at?: string
+          email: string
+          firm_name: string
+          id?: string
+          note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          contact_name?: string
+          created_at?: string
+          email?: string
+          firm_name?: string
+          id?: string
+          note?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscriptions: {
+        Row: {
+          cancel_at_period_end: boolean
+          created_at: string
+          current_period_end: string | null
+          firm_id: string
+          id: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          tier: Database["public"]["Enums"]["subscription_tier"]
+          trial_ends_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          firm_id: string
+          id?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cancel_at_period_end?: boolean
+          created_at?: string
+          current_period_end?: string | null
+          firm_id?: string
+          id?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          tier?: Database["public"]["Enums"]["subscription_tier"]
+          trial_ends_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscriptions_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "subscriptions_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       suppressed_emails: {
         Row: {
@@ -582,10 +906,14 @@ export type Database = {
       xero_connections: {
         Row: {
           access_token: string
+          access_token_enc: string | null
           created_at: string
+          enc_version: number
           expires_at: string
+          firm_id: string | null
           id: string
           refresh_token: string
+          refresh_token_enc: string | null
           scopes: string | null
           tenant_id: string
           tenant_name: string
@@ -595,10 +923,14 @@ export type Database = {
         }
         Insert: {
           access_token: string
+          access_token_enc?: string | null
           created_at?: string
+          enc_version?: number
           expires_at: string
+          firm_id?: string | null
           id?: string
           refresh_token: string
+          refresh_token_enc?: string | null
           scopes?: string | null
           tenant_id: string
           tenant_name: string
@@ -608,10 +940,14 @@ export type Database = {
         }
         Update: {
           access_token?: string
+          access_token_enc?: string | null
           created_at?: string
+          enc_version?: number
           expires_at?: string
+          firm_id?: string | null
           id?: string
           refresh_token?: string
+          refresh_token_enc?: string | null
           scopes?: string | null
           tenant_id?: string
           tenant_name?: string
@@ -619,7 +955,22 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "xero_connections_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "xero_connections_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       xero_oauth_states: {
         Row: {
@@ -644,7 +995,22 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      admin_firm_overview: {
+        Row: {
+          cancel_at_period_end: boolean | null
+          connection_count: number | null
+          current_period_end: string | null
+          firm_created_at: string | null
+          firm_id: string | null
+          firm_name: string | null
+          is_always_free: boolean | null
+          recent_error_count: number | null
+          status: Database["public"]["Enums"]["subscription_status"] | null
+          tier: Database["public"]["Enums"]["subscription_tier"] | null
+          trial_ends_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       delete_email: {
@@ -662,12 +1028,17 @@ export type Database = {
         }
         Returns: string[]
       }
+      get_user_firm_id: { Args: { _user_id: string }; Returns: string }
       get_user_tier: {
         Args: { _tenant_id: string; _user_id: string }
         Returns: Database["public"]["Enums"]["dashboard_tier"]
       }
       has_client_access: {
         Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      has_firm_access: {
+        Args: { _firm_id: string; _user_id: string }
         Returns: boolean
       }
       has_role: {
@@ -682,6 +1053,11 @@ export type Database = {
         Returns: boolean
       }
       is_advisor: { Args: { _user_id: string }; Returns: boolean }
+      is_firm_owner: {
+        Args: { _firm_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -701,9 +1077,30 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "advisor" | "client_viewer"
+      app_role:
+        | "advisor"
+        | "client_viewer"
+        | "super_admin"
+        | "firm_owner"
+        | "firm_staff"
       dashboard_tier: "basic" | "advisory" | "investigate" | "multi_company"
+      firm_member_role: "owner" | "staff"
       report_basis: "accrual" | "cash"
+      subscription_status:
+        | "trialing"
+        | "active"
+        | "past_due"
+        | "canceled"
+        | "incomplete"
+        | "incomplete_expired"
+        | "unpaid"
+      subscription_tier:
+        | "starter"
+        | "growth"
+        | "scale"
+        | "firm"
+        | "legacy"
+        | "free"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -831,9 +1228,33 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["advisor", "client_viewer"],
+      app_role: [
+        "advisor",
+        "client_viewer",
+        "super_admin",
+        "firm_owner",
+        "firm_staff",
+      ],
       dashboard_tier: ["basic", "advisory", "investigate", "multi_company"],
+      firm_member_role: ["owner", "staff"],
       report_basis: ["accrual", "cash"],
+      subscription_status: [
+        "trialing",
+        "active",
+        "past_due",
+        "canceled",
+        "incomplete",
+        "incomplete_expired",
+        "unpaid",
+      ],
+      subscription_tier: [
+        "starter",
+        "growth",
+        "scale",
+        "firm",
+        "legacy",
+        "free",
+      ],
     },
   },
 } as const
