@@ -8,7 +8,7 @@ export async function enforceRateLimit(
   max: number,
   windowSeconds: number,
 ): Promise<void> {
-  const { data, error } = await supabaseAdmin.rpc("check_rate_limit", {
+  const { data, error } = await (supabaseAdmin.rpc as any)("check_rate_limit", {
     _key: key,
     _max: max,
     _window_seconds: windowSeconds,
