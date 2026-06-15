@@ -1,0 +1,1 @@
+ALTER TABLE public.firms ALTER COLUMN owner_user_id DROP NOT NULL;

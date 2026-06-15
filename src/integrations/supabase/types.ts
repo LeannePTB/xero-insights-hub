@@ -506,7 +506,7 @@ export type Database = {
           id: string
           is_always_free: boolean
           name: string
-          owner_user_id: string
+          owner_user_id: string | null
           updated_at: string
         }
         Insert: {
@@ -514,7 +514,7 @@ export type Database = {
           id?: string
           is_always_free?: boolean
           name: string
-          owner_user_id: string
+          owner_user_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -522,7 +522,7 @@ export type Database = {
           id?: string
           is_always_free?: boolean
           name?: string
-          owner_user_id?: string
+          owner_user_id?: string | null
           updated_at?: string
         }
         Relationships: []
