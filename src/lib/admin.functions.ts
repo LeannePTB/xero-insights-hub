@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase.rpc("is_super_admin", { _user_id: userId });
+async function assertSuperAdmin(supabase: any, _userId: string) {
+  // me_is_super_admin() returns the boolean for the calling user only — no probe param.
+  const { data, error } = await supabase.rpc("me_is_super_admin");
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden");
 }

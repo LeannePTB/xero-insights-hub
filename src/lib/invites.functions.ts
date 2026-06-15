@@ -6,8 +6,8 @@ function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase.rpc("is_super_admin", { _user_id: userId });
+async function assertSuperAdmin(supabase: any, _userId: string) {
+  const { data, error } = await supabase.rpc("me_is_super_admin");
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden");
 }
