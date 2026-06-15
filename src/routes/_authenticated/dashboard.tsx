@@ -27,6 +27,7 @@ function Dashboard() {
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
+  const isSuperAdmin = (ctxQ.data as any)?.isSuperAdmin ?? false;
   const viewerClients = ctxQ.data?.viewerClients ?? [];
 
   const tierSettingsQ = useQuery({
