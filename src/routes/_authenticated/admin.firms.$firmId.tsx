@@ -9,6 +9,7 @@ import {
   adminSetUserPassword,
   adminUpdateUserEmail,
   adminUpdateSubscription,
+  adminRenameFirm,
 } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -94,6 +95,12 @@ function FirmDetailPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-10">
+        <BusinessNameSection
+          firmId={firmId}
+          currentName={firm.name}
+          onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
+        />
+
         <SubscriptionSection
           firmId={firmId}
           subscription={subscription}
