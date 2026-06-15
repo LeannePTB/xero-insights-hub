@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as SetPasswordRouteImport } from './routes/set-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -37,6 +38,11 @@ import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_aut
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
 import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
 
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SetPasswordRoute = SetPasswordRouteImport.update({
   id: '/set-password',
   path: '/set-password',
@@ -189,6 +195,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/set-password': typeof SetPasswordRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -217,6 +224,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/set-password': typeof SetPasswordRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
@@ -246,6 +254,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/set-password': typeof SetPasswordRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -276,6 +285,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/set-password'
+    | '/unsubscribe'
     | '/admin'
     | '/dashboard'
     | '/email/unsubscribe'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/set-password'
+    | '/unsubscribe'
     | '/dashboard'
     | '/email/unsubscribe'
     | '/signup/$token'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/set-password'
+    | '/unsubscribe'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/email/unsubscribe'
@@ -362,6 +374,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   SetPasswordRoute: typeof SetPasswordRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   SignupTokenRoute: typeof SignupTokenRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -375,6 +388,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/set-password': {
       id: '/set-password'
       path: '/set-password'
@@ -623,6 +643,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   SetPasswordRoute: SetPasswordRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   SignupTokenRoute: SignupTokenRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
