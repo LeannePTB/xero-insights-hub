@@ -60,7 +60,11 @@ function NewClient() {
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-2xl px-6 py-10">
         <Button variant="ghost" size="sm" asChild className="mb-4">
-          <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back to clients</Link>
+          {firmId ? (
+            <Link to="/firms/$firmId" params={{ firmId }}><ArrowLeft className="mr-1 h-4 w-4" /> Back to business</Link>
+          ) : (
+            <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back to clients</Link>
+          )}
         </Button>
         <h1 className="font-display text-3xl font-semibold">New client</h1>
         <p className="mt-1 text-sm text-muted-foreground">A client is a company you track. Link one or more Xero organisations to it.</p>
