@@ -1043,43 +1043,7 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
-      get_tier_widgets: {
-        Args: {
-          _client_id: string
-          _tier: Database["public"]["Enums"]["dashboard_tier"]
-        }
-        Returns: string[]
-      }
-      get_user_firm_id: { Args: { _user_id: string }; Returns: string }
-      get_user_tier: {
-        Args: { _tenant_id: string; _user_id: string }
-        Returns: Database["public"]["Enums"]["dashboard_tier"]
-      }
-      has_client_access: {
-        Args: { _client_id: string; _user_id: string }
-        Returns: boolean
-      }
-      has_firm_access: {
-        Args: { _firm_id: string; _user_id: string }
-        Returns: boolean
-      }
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
-      has_tenant_access: {
-        Args: { _tenant_id: string; _user_id: string }
-        Returns: boolean
-      }
-      is_advisor: { Args: { _user_id: string }; Returns: boolean }
-      is_firm_owner: {
-        Args: { _firm_id: string; _user_id: string }
-        Returns: boolean
-      }
-      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      me_is_super_admin: { Args: never; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
