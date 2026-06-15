@@ -24,25 +24,32 @@ function Dashboard() {
   const navigate = useNavigate();
   const fetchClients = useServerFn(listClients);
   const fetchCtx = useServerFn(getMyContext);
+  const fetchFirms = useServerFn(listFirmsForSuperAdmin);
 
   const fetchTierSettings = useServerFn(listTierSettings);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
-  const isSuperAdmin = (ctxQ.data as any)?.isSuperAdmin ?? false;
+  const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
   const viewerClients = ctxQ.data?.viewerClients ?? [];
 
   const tierSettingsQ = useQuery({
     queryKey: ["tier-settings"],
     queryFn: () => fetchTierSettings(),
-    enabled: isAdvisor,
+    enabled: isAdvisor && !isSuperAdmin,
   });
   const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
 
+  // Super-admins see firm cards. Regular advisors see their own client list.
   const clientsQ = useQuery({
     queryKey: ["clients"],
     queryFn: () => fetchClients(),
-    enabled: isAdvisor,
+    enabled: isAdvisor && !isSuperAdmin,
+  });
+  const firmsQ = useQuery({
+    queryKey: ["firms-overview"],
+    queryFn: () => fetchFirms(),
+    enabled: isSuperAdmin,
   });
 
   // Auto-redirect viewers with exactly one client
