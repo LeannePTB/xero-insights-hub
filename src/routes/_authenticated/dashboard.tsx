@@ -238,6 +238,67 @@ function Dashboard() {
   );
 }
 
+function FirmGrid({ firms }: { firms: FirmOverviewCard[] }) {
+  if (firms.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center text-muted-foreground">
+        No businesses yet.
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {firms.map((f) => {
+        const inner = (
+          <>
+            <div className="flex items-start justify-between">
+              <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                <Building2 className="h-5 w-5" />
+              </div>
+              {f.isOwn ? (
+                <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+              ) : (
+                <Lock className="h-4 w-4 text-muted-foreground/60" />
+              )}
+            </div>
+            <h3 className="mt-4 font-display text-lg font-semibold leading-tight">{f.name}</h3>
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant="secondary" className="capitalize">
+                {f.tier ?? "no plan"}
+              </Badge>
+              <span className="text-muted-foreground">
+                {f.clientCount} {f.clientCount === 1 ? "client" : "clients"}
+              </span>
+              {!f.isOwn && (
+                <Badge variant="outline" className="ml-auto">read-only</Badge>
+              )}
+            </div>
+          </>
+        );
+        const base =
+          "flex flex-col rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]";
+        if (f.isOwn) {
+          return (
+            <Link
+              key={f.id}
+              to="/firms/$firmId"
+              params={{ firmId: f.id }}
+              className={`group ${base} transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md`}
+            >
+              {inner}
+            </Link>
+          );
+        }
+        return (
+          <div key={f.id} className={`${base} opacity-80`}>
+            {inner}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function EmptyState({ isAdvisor }: { isAdvisor: boolean }) {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center">
