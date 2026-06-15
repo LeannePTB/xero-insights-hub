@@ -1,167 +1,72 @@
-# Subscription platform plan
+# Phase 6b — Hide role helpers from the public API
 
-## Model in plain English
+## Goal
 
-Sold to **firms** (accountants, advisors). A firm subscribes to a **tier** = how many of their own clients' Xero files they can connect (5, 10, 20, 50). Signup is **invite-only** for now (switchable later) with a **7-day trial, card required**, auto-charged at trial end unless cancelled. The firm invites their end-clients as **viewers** of their own dashboard. **Positive Traction** is flagged `is_always_free`. **You (super-admin)** see a private list of firms with billing/usage — but never their Xero org names, financial data, or dashboards.
+Stop anonymous and signed-in users from being able to call the 10 internal role/membership helper functions over the Cloud Data API (the `/rpc/...` endpoints). Today anyone can probe questions like "is user X the super-admin?" or "is user X a member of firm Y?" — pure reconnaissance, but easy to remove.
 
-## Pricing tiers
+After this phase, the Lovable Cloud database linter should drop from 22 warnings to 0 (for codes 0028 and 0029).
 
-| Tier | Xero files |
-|---|---|
-| Starter | 5 |
-| Growth | 10 |
-| Scale | 20 |
-| Firm | 50 |
+## What changes (plain English)
 
-Hard cap on connections at the tier limit. Prices set in Stripe.
+- A new private database area (`app_private`) holds the helper functions.
+- The Data API only exposes things in the `public` area, so once the helpers move, the `/rpc/has_role`, `/rpc/is_super_admin`, etc. endpoints simply stop existing.
+- Row-level security policies keep working because they call the helpers by their new fully-qualified name (`app_private.has_role(...)`).
+- App code that needs to ask "am I an admin?" goes through a thin server function instead of a direct API call — same answer, but the check happens server-side where we already know who's asking.
+- No user-visible behaviour changes. No data migrates. No downtime.
 
-## New surfaces
-
-```text
-/                            Public landing (hero, value, pricing, request access, FAQ)
-/auth                        Existing sign in
-/signup/[token]              Accept invite → account → Stripe Checkout (trial, card required)
-/billing                     Firm: plan, usage, invoices, manage / cancel (Stripe portal)
-/admin                       Super-admin: firms, tier, usage, next bill, errors (NO Xero data)
-/api/public/stripe/webhook   Stripe events (signature-verified, idempotent)
-```
-
-## Roles
-
-Extend `app_role`:
-- `super_admin` — you. Sees `/admin`. **Cannot** open firms' Xero data.
-- `firm_owner` — subscriber; manages billing + invites.
-- `firm_staff` — additional firm logins (later).
-- `client_viewer` — existing end-client viewer.
-- `advisor` (existing) → migrated to `firm_owner`.
-
-## Data model (new tables)
+## Helpers being moved
 
 ```text
-firms              id, name, owner_user_id, is_always_free, created_at
-firm_members       firm_id, user_id, role
-subscriptions      firm_id, stripe_customer_id, stripe_subscription_id,
-                   tier, status, trial_ends_at, current_period_end, cancel_at_period_end
-billing_events     firm_id, stripe_event_id (UNIQUE), type, payload, occurred_at
-access_invites     token_hash, firm_id, email, role, expires_at, accepted_at
-signup_requests    email, firm_name, note, status, created_at
-audit_log          actor_user_id, action, target_type, target_id, ip, ua, at  (append-only)
+has_role               is_advisor            get_user_firm_id
+has_firm_access        is_super_admin        get_user_tier
+has_client_access      is_firm_owner         get_tier_widgets
+has_tenant_access
 ```
 
-Existing `clients`, `xero_connections`, `client_xero_orgs` get `firm_id`.
+`check_rate_limit` is already locked down (service-role only) and can move alongside them for tidiness, or stay — no security difference.
 
-## Core guarantees (non-negotiable)
+## Steps
 
-1. **Xero is read-only, forever.** Only `*.read` OAuth scopes. The OAuth URL builder has a code-level assertion that rejects any non-`.read` scope; CI fails if a write scope is added. Documented in security memory so future changes can't quietly grant write access.
-2. **Database lives only on Lovable Cloud.** Single managed Postgres, encrypted at rest, daily platform backups. No external warehouse, no analytics pixels, no exports unless you trigger one. Data leaving the DB is limited to: Stripe (billing metadata only, never Xero data), Xero API (read calls + cached responses back), transactional email (name + email only).
-3. **Super-admin cannot see any firm's Xero data — enforced by the database, not just the UI.**
+1. **Migration 1 — create the private home and copy the helpers.**
+   - `CREATE SCHEMA app_private;`
+   - Recreate each helper inside `app_private` with identical body and `SECURITY DEFINER`.
+   - `REVOKE EXECUTE ... FROM PUBLIC, anon, authenticated` on every new function; only `postgres` keeps execute.
 
-## Security architecture — four layers
+2. **Migration 2 — repoint every RLS policy and every dependent DB function to `app_private.*`.**
+   - Drop and recreate the affected policies (roughly: `firms`, `firm_members`, `subscriptions`, `billing_events`, `clients`, `xero_connections`, `client_xero_orgs`, `client_access`, `client_notes`, `dashboard_*`, `unreconciled_*`, `report_cache`, `audit_log`, `tier_*`, `signup_requests`, `access_invites`).
+   - Update `handle_new_user`, `enforce_unreconciled_line_viewer_columns`, and `audit_user_roles_change` if they reference any helper by short name.
 
-### Layer 1 — Database (RLS is the source of truth)
+3. **Migration 3 — drop the old `public.*` helpers.**
+   - Done after migrations 1 and 2 are live so nothing breaks mid-flight.
 
-- RLS on every table; no policy = no access.
-- Firm-scoped tables (`clients`, `xero_connections`, `client_xero_orgs`, `report_cache`, `unreconciled_*`, `client_notes`, `dashboard_*`) use policies of the shape `firm_id IN (SELECT firm_id FROM firm_members WHERE user_id = auth.uid())`. `super_admin` is **not** granted select on these.
-- Billing tables readable by firm members for their own firm + `super_admin` for all.
-- Dedicated SQL view `admin_firm_overview` exposes ONLY: firm name, tier, connection count, status, next bill date, trial state, error counts. No tenant_id, no Xero org names, no client names. This is the only thing `/admin` queries.
-- All policy helpers (`has_role`, `has_firm_access`, etc.) are `SECURITY DEFINER` with `search_path = public` and **must query a different table than the one they protect** (avoids infinite recursion).
-- Every new `public.` table = `GRANT` + `ENABLE RLS` + policies in the same migration.
+4. **App code touch-ups.**
+   - Anywhere we call `supabase.rpc('has_role', ...)` or similar from a server function, switch to either a direct table check or a tiny `public.me_is_super_admin()` wrapper that's allowed to be called by authenticated users (returns only the caller's own answer — no `_user_id` parameter to probe with).
+   - Likely callers: `promoteUser`-style admin fns in `src/lib/admin.functions.ts`, anywhere in `src/lib/access.functions.ts` that calls helpers via RPC, and the admin gate in invite/audit fns.
 
-### Layer 2 — Server functions (defence-in-depth)
+5. **Verify.**
+   - Run the Lovable Cloud database linter — expect codes 0028/0029 cleared.
+   - Smoke-test: sign in as the super-admin, open `/admin`, open a firm detail page; sign in as a firm owner, open `/dashboard`. All should behave identically.
+   - Manual probe: from a logged-in browser, calling `/rest/v1/rpc/is_super_admin` should now return a "function not found" error instead of `true`/`false`.
 
-- Every protected `createServerFn` uses `requireSupabaseAuth` + explicit ownership check (`has_firm_access(userId, firmId)`); never trust client-supplied `firmId`.
-- Admin fns assert `has_role(userId, 'super_admin')` and only call `admin_firm_overview`. **No admin server fn that returns Xero data exists** — the code path simply isn't there.
-- `supabaseAdmin` imported **inside handlers only**, never at module scope.
-- Zod validation on every input: length caps, regex on identifiers, enum on tiers.
+## Technical details
 
-### Layer 3 — Secrets and tokens at rest
+- `SECURITY DEFINER` + `SET search_path = public` is preserved on each moved function so they keep reading `public.user_roles`, `public.firm_members`, etc.
+- Policies use fully-qualified names: `USING (app_private.has_firm_access(auth.uid(), firm_id))`.
+- For the small number of server-fn callsites that genuinely need "is current user a super-admin?", add one `public.me_is_super_admin()` returning `boolean` with no parameters — safe to expose because the caller can only ask about themselves, and they already know.
+- All three migrations are pure schema changes (no data movement), idempotent, and reversible by re-creating the originals in `public`.
 
-- Xero `access_token` / `refresh_token` encrypted via **pgcrypto** (`pgp_sym_encrypt`) using a server-only key `XERO_TOKEN_ENC_KEY`. Even a service-role read returns ciphertext; decryption happens inside server fns that already passed the firm check. One-off rotation path included.
-- `access_invites` stores **only a hash** of the token; the raw exists only in the email.
-- Stripe webhook secret, Xero client secret, service-role key — all server-only `process.env`, never `VITE_*`.
+## Out of scope
 
-### Layer 4 — Network, billing, abuse
+- Stripe (Phase 3) — still parked.
+- Enforcing the report-only CSP — separate hardening pass once we've watched the violation reports for a couple of weeks.
+- Renaming the `advisor` role to `firm_owner` — separate cleanup.
 
-- `/api/public/stripe/webhook` verifies `stripe-signature` with `timingSafeEqual` before any write; idempotent on `stripe_event_id` UNIQUE.
-- Xero OAuth callback validates `state` and asserts the caller belongs to the firm starting the connection.
-- Auth hardening: enable Supabase **HIBP leaked-password check**, sensible password minimum, email confirm ON, no anonymous sign-ups, OTP expiry ≤ 1h.
-- Rate limits on signup, invite accept, webhook, Xero connect (simple per-IP/per-user counters in Postgres).
-- Security headers in `__root.tsx` + server responses: HSTS, `X-Content-Type-Options: nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`. CSP report-only first, then enforced.
+## Phase 6b status — shipped
 
-### Audit & monitoring
-
-- `audit_log` writes on: login, role change, invite created/accepted, Xero connection created/deleted, subscription state change, super-admin actions. Append-only.
-- Super-admin can read `audit_log`, cannot delete.
-- Supabase **security linter** run after each migration; fixes before shipping.
-- Per-firm "Security & access" page shows the firm their own recent logins + connected files.
-
-### What super-admin CAN and CANNOT do
-
-| Can | Cannot |
-|---|---|
-| See firm name, tier, usage, billing status, next bill, error counts | See Xero org names, tenant IDs, balances, P&L, payables, receivables, transactions |
-| Cancel/refund via Stripe | Open a firm's dashboard or `/clients/*` |
-| Resend invites, change tier, mark `always_free` | Read or decrypt Xero tokens |
-| View audit log | Delete audit log; impersonate a firm user (feature doesn't exist by design) |
-
-The "cannot" column is enforced by RLS denying super_admin SELECT on those tables — not just hidden UI buttons.
-
-### Pen-test checklist before launch
-
-1. Sign in as `super_admin`, attempt `SELECT * FROM xero_connections` → expect 0 rows / permission denied.
-2. Sign in as Firm A, pass Firm B's `firmId` to every server fn → expect rejection.
-3. Replay an old Stripe webhook → expect idempotent no-op.
-4. Tamper invite token → rejection.
-5. Attempt OAuth with a write scope manually appended → builder rejects.
-6. Supabase security linter + security scanner + security memory check — all green.
-7. Service-role select on `xero_connections` confirms tokens are ciphertext.
-
-## Stripe
-
-- Lovable **Seamless Stripe Payments** (no BYOK).
-- One Product, four recurring Prices (5/10/20/50), 7-day trial, `payment_method_collection=always`, AU `automatic_tax` on.
-- Webhook handles `customer.subscription.*`, `invoice.payment_failed`, `invoice.paid`.
-- Self-serve manage via Stripe Customer Portal.
-- Past-due → lock dashboards behind "Update payment method" 7 days → cancel; connections retained 30 days for resume.
-
-## Super-admin `/admin`
-
-One row per firm: name, tier (e.g. "Growth — 10"), usage `7/10`, status, next bill date, trial days left, recent error count, always-free badge. Row click → billing & audit detail only. **No deep link into a firm's app.**
-
-## Migration of existing users
-
-1. One `firm` per existing `advisor` user (firm name = display name; editable).
-2. Move their `clients` / `client_access` / `xero_connections` under that `firm_id`.
-3. Insert `subscriptions` row `tier='legacy'`, `status='active'`.
-4. Positive Traction firm: `is_always_free=true`.
-5. Promote you to `super_admin`.
-6. Re-encrypt existing Xero tokens with `XERO_TOKEN_ENC_KEY` in the same migration.
-
-## Landing page (first pass)
-
-`/` becomes marketing: hero, 3 feature blocks, pricing table, how-it-works, FAQ, "Request access" form → `signup_requests` → approve from `/admin` → emails an invite. Copy is placeholder; iterate later.
-
-## Build phases (each independently shippable, review gate after each)
-
-1. **Schema + roles + RLS + token encryption + audit_log + migration of existing data.** Linter green.
-2. **Super-admin `/admin`** wired to the redacted view only.
-3. **Stripe enablement + products + signed webhook + `/billing` + portal.**
-4. **Invite + signup + trial gate + hard-cap on Xero connect + lock screens.**
-5. **Landing page at `/`** (auth stays at `/auth`).
-6. **Security hardening pass**: HIBP, headers, rate limits, CSP, pen-test checklist, write security memory.
-
-## Decisions parked (not blockers)
-
-- Exact AUD prices per tier (set in Stripe).
-- Firm staff seat policy per tier.
-- Annual pricing.
-- Branded transactional emails.
-
-## Phase 6 status — shipped
-
-- Supabase auth: HIBP enabled, email confirm on, anonymous off, public signup disabled.
-- Security headers + report-only CSP set in `src/start.ts` request middleware.
-- Rate limiter: `public.check_rate_limit` + `src/lib/rate-limit.server.ts`; applied to invite-accept and Xero connect start.
-- Xero scope assertion: module-init check in `src/lib/xero/connections.functions.ts` rejects any non-`.read` scope.
-- Security memory updated.
-- Pre-existing Supabase linter warnings on `SECURITY DEFINER` role-check helpers are accepted (documented in security memory) — they are required by RLS and cannot become SECURITY INVOKER without recursion.
+- New `app_private` schema holds the 10 role/membership helpers; old `public.*` copies dropped.
+- Every RLS policy repointed to `app_private.*`.
+- `enforce_unreconciled_line_viewer_columns` trigger now calls `app_private.is_advisor`.
+- New `public.me_is_super_admin()` (no params, self-only) — used by admin/invite server fns.
+- `src/lib/xero/access.server.ts` replaced its three RPC calls with direct table reads via service role.
+- Trigger fns and email-queue helpers had EXECUTE revoked from anon/authenticated.
+- Linter warnings: 22 → 1 (the remaining one is `me_is_super_admin`, intentionally exposed; documented in security memory).
