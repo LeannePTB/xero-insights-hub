@@ -233,3 +233,35 @@ function EmptyState({ isAdvisor }: { isAdvisor: boolean }) {
     </div>
   );
 }
+
+function AccessBanner() {
+  const fetchAccess = useServerFn(getMyFirmAccess);
+  const q = useQuery({ queryKey: ["my-firm-access"], queryFn: () => fetchAccess() });
+  if (!q.data || q.data.state === "no_firm" || q.data.state === "ok") return null;
+
+  if (q.data.state === "trial") {
+    return (
+      <div className="mb-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm flex items-center justify-between gap-3">
+        <span>
+          Trial: <strong>{q.data.trialDaysLeft}</strong> day{q.data.trialDaysLeft === 1 ? "" : "s"} left.
+          You're on the <strong className="capitalize">{q.data.tier}</strong> plan
+          ({q.data.connectionCount}/{q.data.connectionLimit} Xero files used).
+        </span>
+        <span className="text-muted-foreground text-xs">Billing setup coming soon.</span>
+      </div>
+    );
+  }
+
+  // locked
+  return (
+    <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
+      <p className="font-medium text-destructive">Subscription not active</p>
+      <p className="text-muted-foreground mt-1">
+        {q.data.reason === "trial_expired"
+          ? "Your trial has ended."
+          : `Your subscription is ${q.data.reason ?? "inactive"}.`}{" "}
+        Contact support to restore access. Your data is retained.
+      </p>
+    </div>
+  );
+}
