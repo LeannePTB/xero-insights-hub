@@ -154,3 +154,84 @@ function AdminPage() {
     </div>
   );
 }
+
+function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
+  const create = useServerFn(adminCreateFirmAndInvite);
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const mut = useMutation({
+    mutationFn: () => create({ data: { email, businessName: businessName || null } }),
+    onSuccess: (res) => {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      setInviteUrl(`${origin}/signup/${res.token}`);
+      onCreated();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not create invite"),
+  });
+
+  function reset() {
+    setEmail(""); setBusinessName(""); setInviteUrl(null); setCopied(false);
+  }
+
+  async function copy() {
+    if (!inviteUrl) return;
+    await navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    toast.success("Invite link copied");
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+      <Button size="sm" onClick={() => setOpen(true)}>
+        <UserPlus className="h-4 w-4 mr-2" /> Invite business
+      </Button>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Invite a new business</DialogTitle>
+          <DialogDescription>
+            Creates a new firm with a 7-day trial and an owner invite. Share the link with them.
+          </DialogDescription>
+        </DialogHeader>
+
+        {!inviteUrl ? (
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="i-email">Owner email</Label>
+              <Input id="i-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="i-biz">Business name (optional)</Label>
+              <Input id="i-biz" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Owner can set this themselves" />
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Invite created. Send this link to the owner:</p>
+            <div className="flex gap-2">
+              <Input readOnly value={inviteUrl} className="font-mono text-xs" />
+              <Button size="icon" variant="outline" onClick={copy}>
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Expires in 14 days.</p>
+          </div>
+        )}
+
+        <DialogFooter>
+          {!inviteUrl ? (
+            <Button onClick={() => mut.mutate()} disabled={mut.isPending || !email}>
+              {mut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Create invite
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={() => setOpen(false)}>Done</Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
