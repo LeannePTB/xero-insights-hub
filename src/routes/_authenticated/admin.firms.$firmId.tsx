@@ -508,18 +508,20 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<"owner" | "staff">("staff");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [emailStatus, setEmailStatus] = useState<string | null>(null);
 
   const mut = useMutation({
     mutationFn: () => invite({ data: { firmId, email, role } }),
     onSuccess: (res) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       setInviteUrl(`${origin}/signup/${res.token}`);
+      setEmailStatus((res as any).emailStatus ?? null);
       onCreated();
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not create invite"),
   });
 
-  function reset() { setEmail(""); setRole("staff"); setInviteUrl(null); }
+  function reset() { setEmail(""); setRole("staff"); setInviteUrl(null); setEmailStatus(null); }
 
   async function copy() {
     if (!inviteUrl) return;
