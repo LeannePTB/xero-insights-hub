@@ -258,11 +258,6 @@ export const acceptInvite = createServerFn({ method: "POST" })
     });
     if (mErr && !/duplicate/i.test(mErr.message)) throw new Error(mErr.message);
 
-    // Grant 'advisor' app role so they reach the firm/clients UI (not the viewer empty state).
-    const { error: rErr } = await (supabaseAdmin as any).from("user_roles").insert({
-      user_id: userId, role: "advisor",
-    });
-    if (rErr && !/duplicate/i.test(rErr.message)) throw new Error(rErr.message);
 
     // If owner: ensure firms.owner_user_id is set; allow business name rename.
     if (invite.role === "owner") {
