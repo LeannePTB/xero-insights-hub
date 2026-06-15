@@ -102,6 +102,11 @@ function Dashboard() {
           </div>
           {isAdvisor && (
             <div className="flex flex-wrap gap-2">
+              {isSuperAdmin && (
+                <Button variant="outline" asChild>
+                  <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
+                </Button>
+              )}
               <Button variant="outline" asChild>
                 <Link to="/settings/advisors"><Users className="mr-2 h-4 w-4" /> Advisors</Link>
               </Button>
