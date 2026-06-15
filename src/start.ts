@@ -18,7 +18,45 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
   }
 });
 
+// Layer 4 — security headers on every response.
+// HSTS, MIME sniffing, referrer, framing, permissions, and a permissive CSP in
+// report-only mode (tightened later once we know what we'd block).
+const securityHeadersMiddleware = createMiddleware().server(async ({ next, request }) => {
+  const result = (await next()) as { response?: Response } & Record<string, unknown>;
+  const response = result?.response;
+  if (response && response.headers && typeof response.headers.set === "function") {
+    const h = response.headers;
+    if (!h.has("strict-transport-security")) {
+      h.set("strict-transport-security", "max-age=31536000; includeSubDomains; preload");
+    }
+    if (!h.has("x-content-type-options")) h.set("x-content-type-options", "nosniff");
+    if (!h.has("referrer-policy")) h.set("referrer-policy", "strict-origin-when-cross-origin");
+    if (!h.has("x-frame-options")) h.set("x-frame-options", "DENY");
+    if (!h.has("permissions-policy")) {
+      h.set("permissions-policy", "camera=(), microphone=(), geolocation=(), interest-cohort=()");
+    }
+    if (!h.has("content-security-policy-report-only")) {
+      h.set(
+        "content-security-policy-report-only",
+        [
+          "default-src 'self'",
+          "img-src 'self' data: https:",
+          "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+          "font-src 'self' https://fonts.gstatic.com data:",
+          "script-src 'self' 'unsafe-inline'",
+          "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.xero.com",
+          "frame-ancestors 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+        ].join("; "),
+      );
+    }
+  }
+  void request;
+  return result;
+});
+
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
-  requestMiddleware: [errorMiddleware],
+  requestMiddleware: [errorMiddleware, securityHeadersMiddleware],
 }));
