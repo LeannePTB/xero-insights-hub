@@ -156,3 +156,12 @@ One row per firm: name, tier (e.g. "Growth — 10"), usage `7/10`, status, next 
 - Firm staff seat policy per tier.
 - Annual pricing.
 - Branded transactional emails.
+
+## Phase 6 status — shipped
+
+- Supabase auth: HIBP enabled, email confirm on, anonymous off, public signup disabled.
+- Security headers + report-only CSP set in `src/start.ts` request middleware.
+- Rate limiter: `public.check_rate_limit` + `src/lib/rate-limit.server.ts`; applied to invite-accept and Xero connect start.
+- Xero scope assertion: module-init check in `src/lib/xero/connections.functions.ts` rejects any non-`.read` scope.
+- Security memory updated.
+- Pre-existing Supabase linter warnings on `SECURITY DEFINER` role-check helpers are accepted (documented in security memory) — they are required by RLS and cannot become SECURITY INVOKER without recursion.
