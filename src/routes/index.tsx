@@ -83,7 +83,7 @@ function Hero() {
           </a>
         </div>
         <ul className="mt-10 flex flex-wrap gap-x-6 gap-y-2 text-sm text-primary-foreground/80">
-          {["14-day free trial", "No credit card required", "Connect Xero in 60 seconds"].map((t) => (
+          {["7-day free trial", "No credit card required", "Connect Xero in 60 seconds"].map((t) => (
             <li key={t} className="flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-accent" />{t}</li>
           ))}
         </ul>
@@ -150,11 +150,11 @@ function Pricing() {
   const tiers = [
     { name: "Starter", price: "$49", suffix: "/mo", features: ["Up to 5 Xero files", "Core dashboards", "Email support"], cta: "Start free trial" },
     { name: "Growth", price: "$99", suffix: "/mo", highlight: true, features: ["Up to 10 Xero files", "All dashboards", "Multi-entity rollups", "Priority support"], cta: "Start free trial" },
-    { name: "Firm", price: "Let's talk", suffix: "", features: ["50+ Xero files", "White-glove onboarding", "Dedicated advisor"], cta: "Contact us" },
+    { name: "Organisation", price: "Let's talk", suffix: "", features: ["50+ Xero files", "White-glove onboarding", "Dedicated advisor"], cta: "Contact us" },
   ];
   return (
     <section id="pricing" className="mx-auto max-w-6xl px-5 py-20">
-      <h2 className="font-display text-3xl font-semibold md:text-4xl">Simple pricing. 14-day free trial.</h2>
+      <h2 className="font-display text-3xl font-semibold md:text-4xl">Simple pricing. 7-day free trial.</h2>
       <p className="mt-3 max-w-2xl text-muted-foreground">No credit card to start. Cancel anytime.</p>
       <div className="mt-10 grid gap-5 md:grid-cols-3">
         {tiers.map((t) => (
@@ -183,8 +183,8 @@ function Pricing() {
               ))}
             </ul>
             <div className="mt-6">
-              {t.name === "Firm" ? (
-                <a href="mailto:admin@positivetraction.com.au?subject=Traction%20Advisory%20Firm%20plan">
+              {t.name === "Organisation" ? (
+                <a href="mailto:admin@positivetraction.com.au?subject=Traction%20Advisory%20Organisation%20plan">
                   <Button variant="outline" className="w-full">{t.cta}</Button>
                 </a>
               ) : (
@@ -209,7 +209,7 @@ function CtaBand() {
       >
         <h2 className="font-display text-3xl font-semibold md:text-4xl">Ready to see your numbers clearly?</h2>
         <p className="mt-3 max-w-xl text-primary-foreground/85">
-          Start a 14-day free trial. Connect Xero in under a minute.
+          Start a 7-day free trial. Connect Xero in under a minute.
         </p>
         <div className="mt-7 flex flex-wrap gap-3">
           <Link to="/auth">

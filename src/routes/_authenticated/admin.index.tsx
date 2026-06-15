@@ -76,11 +76,11 @@ function AdminPage() {
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         <p className="text-sm text-muted-foreground">
-          Business name, tier, usage, billing and error counts only. No Xero org names, balances, or client data are visible from this page — enforced at the database level.
+          Organisation name, tier, usage, billing and error counts only. No Xero org names, balances, or client data are visible from this page — enforced at the database level.
         </p>
 
         {firmsQ.isLoading && (
-          <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading businesses…</div>
+          <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading organisations…</div>
         )}
 
         {firmsQ.error && (
@@ -98,7 +98,7 @@ function AdminPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
-                  <th className="px-4 py-3">Business name</th>
+                  <th className="px-4 py-3">Organisation name</th>
                   <th className="px-4 py-3">Tier</th>
                   <th className="px-4 py-3">Usage</th>
                   <th className="px-4 py-3">Status</th>
@@ -143,7 +143,7 @@ function AdminPage() {
                   );
                 })}
                 {firmsQ.data.firms.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No businesses yet.</td></tr>
+                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No organisations yet.</td></tr>
                 )}
               </tbody>
             </table>
@@ -188,13 +188,13 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
       <Button size="sm" onClick={() => setOpen(true)}>
-        <UserPlus className="h-4 w-4 mr-2" /> Invite business
+        <UserPlus className="h-4 w-4 mr-2" /> Invite organisation
       </Button>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Invite a new business</DialogTitle>
+          <DialogTitle>Invite a new organisation</DialogTitle>
           <DialogDescription>
-            Creates a new firm with a 7-day trial and an owner invite. Share the link with them.
+            Creates a new organisation with a 7-day trial and an owner invite. Share the link with them.
           </DialogDescription>
         </DialogHeader>
 
@@ -205,7 +205,7 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
               <Input id="i-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="i-biz">Business name (optional)</Label>
+              <Label htmlFor="i-biz">Organisation name (optional)</Label>
               <Input id="i-biz" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Owner can set this themselves" />
             </div>
           </div>
