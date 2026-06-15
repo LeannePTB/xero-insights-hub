@@ -87,6 +87,7 @@ function Dashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-10">
+        {isAdvisor && <AccessBanner />}
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold">
