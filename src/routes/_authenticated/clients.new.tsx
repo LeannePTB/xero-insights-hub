@@ -13,11 +13,15 @@ import { ArrowLeft, Loader2, Plug } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/new")({
   head: () => ({ meta: [{ title: "New client — Traction Advisory" }] }),
+  validateSearch: (search: Record<string, unknown>) => ({
+    firmId: typeof search.firmId === "string" ? search.firmId : undefined,
+  }),
   component: NewClient,
 });
 
 function NewClient() {
   const navigate = useNavigate();
+  const { firmId } = Route.useSearch();
   const fetchConnections = useServerFn(listXeroConnections);
   const startConnect = useServerFn(startXeroConnect);
   const create = useServerFn(createClient);
@@ -28,7 +32,7 @@ function NewClient() {
   const connQ = useQuery({ queryKey: ["xero-connections"], queryFn: () => fetchConnections() });
 
   const createMut = useMutation({
-    mutationFn: () => create({ data: { name, xeroConnectionIds: [...selected] } }),
+    mutationFn: () => create({ data: { name, xeroConnectionIds: [...selected], firmId } }),
     onSuccess: ({ id }) => {
       toast.success("Client created");
       navigate({ to: "/clients/$clientId", params: { clientId: id }, replace: true });

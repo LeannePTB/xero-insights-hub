@@ -24,6 +24,7 @@ import { Route as AuthenticatedSettingsTiersRouteImport } from './routes/_authen
 import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
 import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
+import { Route as AuthenticatedFirmsFirmIdRouteImport } from './routes/_authenticated/firms.$firmId'
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -116,6 +117,12 @@ const AuthenticatedSettingsAccountRoute =
     path: '/settings/account',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFirmsFirmIdRoute =
+  AuthenticatedFirmsFirmIdRouteImport.update({
+    id: '/firms/$firmId',
+    path: '/firms/$firmId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsNewRoute = AuthenticatedClientsNewRouteImport.update({
   id: '/clients/new',
   path: '/clients/new',
@@ -201,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
@@ -229,6 +237,7 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
+  '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
@@ -260,6 +269,7 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
+  '/_authenticated/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
@@ -291,6 +301,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/signup/$token'
     | '/clients/new'
+    | '/firms/$firmId'
     | '/settings/account'
     | '/settings/activity'
     | '/settings/advisors'
@@ -319,6 +330,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/signup/$token'
     | '/clients/new'
+    | '/firms/$firmId'
     | '/settings/account'
     | '/settings/activity'
     | '/settings/advisors'
@@ -349,6 +361,7 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/signup/$token'
     | '/_authenticated/clients/new'
+    | '/_authenticated/firms/$firmId'
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/activity'
     | '/_authenticated/settings/advisors'
@@ -493,6 +506,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/firms/$firmId': {
+      id: '/_authenticated/firms/$firmId'
+      path: '/firms/$firmId'
+      fullPath: '/firms/$firmId'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients/new': {
       id: '/_authenticated/clients/new'
       path: '/clients/new'
@@ -604,6 +624,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedClientsNewRoute: typeof AuthenticatedClientsNewRoute
+  AuthenticatedFirmsFirmIdRoute: typeof AuthenticatedFirmsFirmIdRoute
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
   AuthenticatedSettingsActivityRoute: typeof AuthenticatedSettingsActivityRoute
   AuthenticatedSettingsAdvisorsRoute: typeof AuthenticatedSettingsAdvisorsRoute
@@ -619,6 +640,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedClientsNewRoute: AuthenticatedClientsNewRoute,
+  AuthenticatedFirmsFirmIdRoute: AuthenticatedFirmsFirmIdRoute,
   AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
   AuthenticatedSettingsActivityRoute: AuthenticatedSettingsActivityRoute,
   AuthenticatedSettingsAdvisorsRoute: AuthenticatedSettingsAdvisorsRoute,
