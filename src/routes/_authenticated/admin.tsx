@@ -104,8 +104,10 @@ function AdminPage() {
                   return (
                     <tr key={f.firm_id} className="border-t">
                       <td className="px-4 py-3">
-                        <div className="font-medium">{f.firm_name}</div>
-                        {f.is_always_free && <Badge variant="outline" className="mt-1">always free</Badge>}
+                        <Link to="/admin/firms/$firmId" params={{ firmId: f.firm_id }} className="font-medium hover:underline">
+                          {f.firm_name}
+                        </Link>
+                        {f.is_always_free && <Badge variant="outline" className="mt-1 ml-2">always free</Badge>}
                       </td>
                       <td className="px-4 py-3 capitalize">{f.tier ?? "—"}</td>
                       <td className="px-4 py-3 tabular-nums">
