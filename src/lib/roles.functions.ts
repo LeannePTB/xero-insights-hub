@@ -10,6 +10,7 @@ export const getMyContext = createServerFn({ method: "GET" })
       .select("role")
       .eq("user_id", context.userId);
     const isAdvisor = !!roles?.some((r: { role: string }) => r.role === "advisor");
+    const isSuperAdmin = !!roles?.some((r: { role: string }) => r.role === "super_admin");
 
     let viewerClients: { id: string; name: string; tier: DashboardTier }[] = [];
     if (!isAdvisor) {
@@ -21,5 +22,5 @@ export const getMyContext = createServerFn({ method: "GET" })
         .filter((a) => a.clients)
         .map((a) => ({ id: a.clients.id, name: a.clients.name, tier: a.tier as DashboardTier }));
     }
-    return { isAdvisor, viewerClients };
+    return { isAdvisor, isSuperAdmin, viewerClients };
   });

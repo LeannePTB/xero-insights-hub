@@ -9,7 +9,7 @@ import { listTierSettings } from "@/lib/tier-config.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, ChevronRight, SlidersHorizontal, Users, Activity, KeyRound } from "lucide-react";
+import { LogOut, Plus, Loader2, Building2, ChevronRight, SlidersHorizontal, Users, Activity, KeyRound, Shield } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
@@ -27,6 +27,7 @@ function Dashboard() {
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
+  const isSuperAdmin = (ctxQ.data as any)?.isSuperAdmin ?? false;
   const viewerClients = ctxQ.data?.viewerClients ?? [];
 
   const tierSettingsQ = useQuery({
@@ -101,6 +102,11 @@ function Dashboard() {
           </div>
           {isAdvisor && (
             <div className="flex flex-wrap gap-2">
+              {isSuperAdmin && (
+                <Button variant="outline" asChild>
+                  <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
+                </Button>
+              )}
               <Button variant="outline" asChild>
                 <Link to="/settings/advisors"><Users className="mr-2 h-4 w-4" /> Advisors</Link>
               </Button>
@@ -120,6 +126,11 @@ function Dashboard() {
           )}
           {!isAdvisor && (
             <div className="flex flex-wrap gap-2">
+              {isSuperAdmin && (
+                <Button variant="outline" asChild>
+                  <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
+                </Button>
+              )}
               <Button variant="outline" asChild>
                 <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
               </Button>

@@ -57,8 +57,7 @@ function AdminPage() {
     );
   }
 
-  const isSuper = (ctxQ.data as any)?.isSuperAdmin ?? false;
-  // fallback: if getMyContext doesn't expose isSuperAdmin yet, the server fn will throw and we show Forbidden.
+  const isSuper = ctxQ.data?.isSuperAdmin ?? false;
 
   return (
     <div className="min-h-screen bg-background">
