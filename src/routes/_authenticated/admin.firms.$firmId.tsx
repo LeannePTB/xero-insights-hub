@@ -11,6 +11,7 @@ import {
   adminUpdateSubscription,
   adminRenameFirm,
 } from "@/lib/admin.functions";
+import { adminInviteFirmMember } from "@/lib/invites.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
