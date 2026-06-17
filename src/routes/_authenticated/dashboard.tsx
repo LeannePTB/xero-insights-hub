@@ -127,6 +127,9 @@ function Dashboard() {
           {isAdvisor && !isSuperAdmin && (
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" asChild>
+                <Link to="/settings/tiers"><SlidersHorizontal className="mr-2 h-4 w-4" /> Tier widgets</Link>
+              </Button>
+              <Button variant="outline" asChild>
                 <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
               </Button>
               <Button asChild>
