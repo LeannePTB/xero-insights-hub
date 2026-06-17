@@ -6,6 +6,10 @@ const TOKEN_URL = "https://identity.xero.com/connect/token";
 const API_BASE = "https://api.xero.com/api.xro/2.0";
 const XERO_TIMEOUT_MS = 20_000;
 
+const MISSING_SCOPE_HINTS: Record<string, string> = {
+  "Reports/ActivityStatement": "Xero needs the tax reports permission for Activity Statement data. Reconnect this organisation and approve the updated read-only permissions.",
+};
+
 type Connection = {
   id: string;
   user_id: string;
@@ -158,7 +162,14 @@ export async function xeroGet<T = unknown>(
     return xeroGet<T>(refreshed, path, params, retries - 1);
   }
   if (!res.ok) {
-    throw new Error(`Xero ${path}: ${res.status} ${await res.text()}`);
+    const body = await res.text();
+    if (res.status === 401) {
+      const hint = MISSING_SCOPE_HINTS[path];
+      if (hint && /insufficient_scope|scope|forbidden|unauthorized/i.test(body)) {
+        throw new Error(hint);
+      }
+    }
+    throw new Error(`Xero ${path}: ${res.status} ${body}`);
   }
   return (await res.json()) as T;
 }
