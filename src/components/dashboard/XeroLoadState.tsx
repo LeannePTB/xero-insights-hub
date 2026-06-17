@@ -35,6 +35,9 @@ export function friendlyXeroError(error: unknown) {
   ) {
     return "Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.";
   }
+  if (lower.includes("tax reports permission") || lower.includes("updated read-only permissions")) {
+    return message;
+  }
   // Only treat as a Xero reconnect issue when the error actually came from Xero.
   if (lower.includes("xero") && (message.includes("401") || lower.includes("unauthorized"))) {
     return "Xero says this connection needs to be reconnected before this data can load.";
