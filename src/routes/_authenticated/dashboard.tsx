@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
+import { LogOut, Plus, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock, SlidersHorizontal } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
@@ -126,6 +126,9 @@ function Dashboard() {
           )}
           {isAdvisor && !isSuperAdmin && (
             <div className="flex flex-wrap gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/settings/tiers"><SlidersHorizontal className="mr-2 h-4 w-4" /> Tier widgets</Link>
+              </Button>
               <Button variant="outline" asChild>
                 <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
               </Button>
