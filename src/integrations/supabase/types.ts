@@ -307,6 +307,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          cost_classification_enabled: boolean
           created_at: string
           firm_id: string | null
           id: string
@@ -317,6 +318,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cost_classification_enabled?: boolean
           created_at?: string
           firm_id?: string | null
           id?: string
@@ -327,6 +329,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cost_classification_enabled?: boolean
           created_at?: string
           firm_id?: string | null
           id?: string

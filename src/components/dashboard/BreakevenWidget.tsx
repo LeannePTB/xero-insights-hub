@@ -89,6 +89,8 @@ export function BreakevenWidget({
     enabled: shouldLoad && !!clientId,
   });
 
+  const classificationEnabled = classQ.data?.enabled ?? true;
+
   const classMap = useMemo(() => {
     const m = new Map<string, "fixed" | "variable">();
     for (const r of classQ.data?.rows ?? []) m.set(r.account_name, r.classification);
@@ -101,26 +103,27 @@ export function BreakevenWidget({
   const expenseLines = data?.expenseLines ?? [];
 
   // Split opex into fixed vs variable using the classification map. Unclassified defaults to fixed.
+  // When classification is disabled for this client, treat all opex as fixed.
   let variableOpex = 0;
   let fixedOpex = 0;
   let unclassifiedCount = 0;
-  for (const line of expenseLines) {
-    const c = classMap.get(line.name);
-    if (c === "variable") variableOpex += line.amount;
-    else {
-      fixedOpex += line.amount;
-      if (!c) unclassifiedCount += 1;
-    }
-  }
-  // Reconcile rounding: if line items don't sum exactly to opex, attribute the diff to fixed
-  const linesTotal = variableOpex + fixedOpex;
-  if (expenseLines.length > 0 && Math.abs(linesTotal - opex) > 0.5) {
-    fixedOpex += opex - linesTotal;
-  }
-  // If we have no expense lines at all (rare), fall back to treating opex as fixed
-  if (expenseLines.length === 0) {
+  if (!classificationEnabled || expenseLines.length === 0) {
     fixedOpex = opex;
     variableOpex = 0;
+  } else {
+    for (const line of expenseLines) {
+      const c = classMap.get(line.name);
+      if (c === "variable") variableOpex += line.amount;
+      else {
+        fixedOpex += line.amount;
+        if (!c) unclassifiedCount += 1;
+      }
+    }
+    // Reconcile rounding: if line items don't sum exactly to opex, attribute the diff to fixed
+    const linesTotal = variableOpex + fixedOpex;
+    if (Math.abs(linesTotal - opex) > 0.5) {
+      fixedOpex += opex - linesTotal;
+    }
   }
 
   const months = monthsBetween(fromDate, toDate);
@@ -238,7 +241,7 @@ export function BreakevenWidget({
               />
             </div>
 
-            {clientId && unclassifiedCount > 0 && (
+            {clientId && classificationEnabled && unclassifiedCount > 0 && (
               <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1">
@@ -280,9 +283,18 @@ export function BreakevenWidget({
             </div>
 
             <p className="mt-4 text-[11px] text-muted-foreground">
-              Monthly breakeven = Fixed Costs ÷ Gross Margin ÷ months. Cost of Sales plus any expense
-              accounts you tag as <strong>Variable</strong> in client settings are treated as variable;
-              everything else is fixed.
+              Monthly breakeven = Fixed Costs ÷ Gross Margin ÷ months.{" "}
+              {classificationEnabled ? (
+                <>
+                  Cost of Sales plus any expense accounts you tag as <strong>Variable</strong> in
+                  client settings are treated as variable; everything else is fixed.
+                </>
+              ) : (
+                <>
+                  Cost classification is off — Cost of Sales is treated as variable and all operating
+                  expenses as fixed.
+                </>
+              )}
               {clientId && (
                 <>
                   {" "}
@@ -292,7 +304,7 @@ export function BreakevenWidget({
                     hash="cost-classification"
                     className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2"
                   >
-                    <Settings2 className="h-3 w-3" /> Classify expense accounts
+                    <Settings2 className="h-3 w-3" /> Cost classification settings
                   </Link>
                 </>
               )}

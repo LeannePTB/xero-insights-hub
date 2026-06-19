@@ -1,0 +1,1 @@
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS cost_classification_enabled boolean NOT NULL DEFAULT true;
