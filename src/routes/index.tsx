@@ -55,11 +55,19 @@ function Header() {
 function Hero() {
   return (
     <section className="relative overflow-hidden">
+      <img
+        src={heroImage}
+        alt="Builders framing a new home on an Australian construction site at golden hour"
+        width={1920}
+        height={1080}
+        className="absolute inset-0 -z-20 h-full w-full object-cover"
+      />
       <div
-        className="absolute inset-0 -z-10 opacity-90"
+        className="absolute inset-0 -z-10 opacity-80 mix-blend-multiply"
         style={{ background: "var(--gradient-hero)" }}
       />
-      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent to-background/10" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-r from-background/70 via-background/20 to-transparent dark:from-black/70 dark:via-black/30" />
+      <div className="absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-b from-transparent to-background" />
       <div className="mx-auto max-w-6xl px-5 pb-24 pt-20 text-primary-foreground md:pt-28">
         <p className="mb-4 text-[11px] font-semibold uppercase tracking-[0.32em] text-accent">
           Built for builders. Backed by numbers.
