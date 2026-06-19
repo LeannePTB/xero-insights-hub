@@ -264,6 +264,12 @@ export function BreakevenWidget({
               </div>
             )}
 
+            {classificationEnabled && excludedCount > 0 && (
+              <p className="mt-3 text-[11px] text-muted-foreground">
+                Excluding {excludedCount} account{excludedCount === 1 ? "" : "s"} ({fmt(excludedOpex)}) from breakeven.
+              </p>
+            )}
+
             <div className="mt-6">
               <div className="mb-2 flex items-center justify-between text-xs">
                 <span className="font-semibold uppercase tracking-wider text-muted-foreground">
@@ -292,8 +298,9 @@ export function BreakevenWidget({
               Monthly breakeven = Fixed Costs ÷ Gross Margin ÷ months.{" "}
               {classificationEnabled ? (
                 <>
-                  Cost of Sales plus any expense accounts you tag as <strong>Variable</strong> in
-                  client settings are treated as variable; everything else is fixed.
+                  Cost of Sales plus any expense accounts you tag as <strong>Variable</strong> are
+                  treated as variable; accounts tagged <strong>Excluded</strong> are left out
+                  entirely; everything else is fixed.
                 </>
               ) : (
                 <>
