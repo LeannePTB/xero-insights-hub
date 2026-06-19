@@ -60,6 +60,11 @@ export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { 
         </div>
       </div>
 
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <DateField label="As at" value={asAt} onChange={setAsAt} />
+      </div>
+
+
       {!shouldLoad ? (
         <XeroLoadPrompt
           label="Load tax data"
