@@ -110,18 +110,26 @@ export function BreakevenWidget({
   let excludedOpex = 0;
   let excludedCount = 0;
   let unclassifiedCount = 0;
+  const fixedLines: { name: string; amount: number; unclassified: boolean }[] = [];
+  const variableLines: { name: string; amount: number }[] = [];
   if (!classificationEnabled || expenseLines.length === 0) {
     fixedOpex = opex;
     variableOpex = 0;
+    for (const line of expenseLines) {
+      fixedLines.push({ name: line.name, amount: line.amount, unclassified: true });
+    }
   } else {
     for (const line of expenseLines) {
       const c = classMap.get(line.name);
-      if (c === "variable") variableOpex += line.amount;
-      else if (c === "excluded") {
+      if (c === "variable") {
+        variableOpex += line.amount;
+        variableLines.push({ name: line.name, amount: line.amount });
+      } else if (c === "excluded") {
         excludedOpex += line.amount;
         excludedCount += 1;
       } else {
         fixedOpex += line.amount;
+        fixedLines.push({ name: line.name, amount: line.amount, unclassified: !c });
         if (!c) unclassifiedCount += 1;
       }
     }
@@ -131,6 +139,9 @@ export function BreakevenWidget({
       fixedOpex += opex - linesTotal;
     }
   }
+  fixedLines.sort((a, b) => b.amount - a.amount);
+  variableLines.sort((a, b) => b.amount - a.amount);
+
 
   const months = monthsBetween(fromDate, toDate);
   const totalVariable = cogs + variableOpex;
@@ -252,6 +263,81 @@ export function BreakevenWidget({
                 />
               </div>
             </div>
+
+            <details className="mt-3 rounded-lg border border-border/60 bg-background/50">
+              <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">
+                Show calculation breakdown
+              </summary>
+              <div className="space-y-4 border-t border-border/60 px-3 py-3 text-xs">
+                <div>
+                  <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                    Formula
+                  </p>
+                  <p className="font-mono text-foreground">
+                    Break-Even Revenue = Fixed Costs ÷ Gross Margin %
+                  </p>
+                  <p className="mt-1 font-mono text-muted-foreground">
+                    {fmt(breakevenRevenue)} = {fmt(fixedOpex)} ÷ {pct(grossMargin)}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                    Gross Margin %
+                  </p>
+                  <p className="font-mono text-foreground">
+                    ({fmt(income)} − {fmt(totalVariable)}) ÷ {fmt(income)} = {pct(grossMargin)}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    Variable costs = Cost of Sales ({fmt(cogs)})
+                    {variableOpex > 0 && <> + Variable opex ({fmt(variableOpex)})</>}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                    <span>Fixed Costs ({fixedLines.length})</span>
+                    <span>{fmt(fixedOpex)}</span>
+                  </p>
+                  {fixedLines.length === 0 ? (
+                    <p className="text-muted-foreground">No fixed cost accounts in this period.</p>
+                  ) : (
+                    <ul className="divide-y divide-border/40">
+                      {fixedLines.map((l) => (
+                        <li key={l.name} className="flex items-center justify-between gap-2 py-1">
+                          <span className="truncate">
+                            {l.name}
+                            {l.unclassified && (
+                              <span className="ml-1.5 text-[10px] text-amber-600">(unclassified)</span>
+                            )}
+                          </span>
+                          <span className="font-mono tabular-nums text-foreground">{fmt(l.amount)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                {variableLines.length > 0 && (
+                  <div>
+                    <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                      <span>Variable Opex ({variableLines.length})</span>
+                      <span>{fmt(variableOpex)}</span>
+                    </p>
+                    <ul className="divide-y divide-border/40">
+                      {variableLines.map((l) => (
+                        <li key={l.name} className="flex items-center justify-between gap-2 py-1">
+                          <span className="truncate">{l.name}</span>
+                          <span className="font-mono tabular-nums text-foreground">{fmt(l.amount)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </details>
+
+
 
 
             {clientId && classificationEnabled && unclassifiedCount > 0 && (
