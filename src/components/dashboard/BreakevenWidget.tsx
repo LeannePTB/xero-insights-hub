@@ -89,6 +89,8 @@ export function BreakevenWidget({
     enabled: shouldLoad && !!clientId,
   });
 
+  const classificationEnabled = classQ.data?.enabled ?? true;
+
   const classMap = useMemo(() => {
     const m = new Map<string, "fixed" | "variable">();
     for (const r of classQ.data?.rows ?? []) m.set(r.account_name, r.classification);
@@ -101,26 +103,27 @@ export function BreakevenWidget({
   const expenseLines = data?.expenseLines ?? [];
 
   // Split opex into fixed vs variable using the classification map. Unclassified defaults to fixed.
+  // When classification is disabled for this client, treat all opex as fixed.
   let variableOpex = 0;
   let fixedOpex = 0;
   let unclassifiedCount = 0;
-  for (const line of expenseLines) {
-    const c = classMap.get(line.name);
-    if (c === "variable") variableOpex += line.amount;
-    else {
-      fixedOpex += line.amount;
-      if (!c) unclassifiedCount += 1;
-    }
-  }
-  // Reconcile rounding: if line items don't sum exactly to opex, attribute the diff to fixed
-  const linesTotal = variableOpex + fixedOpex;
-  if (expenseLines.length > 0 && Math.abs(linesTotal - opex) > 0.5) {
-    fixedOpex += opex - linesTotal;
-  }
-  // If we have no expense lines at all (rare), fall back to treating opex as fixed
-  if (expenseLines.length === 0) {
+  if (!classificationEnabled || expenseLines.length === 0) {
     fixedOpex = opex;
     variableOpex = 0;
+  } else {
+    for (const line of expenseLines) {
+      const c = classMap.get(line.name);
+      if (c === "variable") variableOpex += line.amount;
+      else {
+        fixedOpex += line.amount;
+        if (!c) unclassifiedCount += 1;
+      }
+    }
+    // Reconcile rounding: if line items don't sum exactly to opex, attribute the diff to fixed
+    const linesTotal = variableOpex + fixedOpex;
+    if (Math.abs(linesTotal - opex) > 0.5) {
+      fixedOpex += opex - linesTotal;
+    }
   }
 
   const months = monthsBetween(fromDate, toDate);

@@ -505,3 +505,82 @@ function Section({ title, action, children }: { title: string; action?: React.Re
     </section>
   );
 }
+
+function CostClassificationSection({
+  clientId,
+  linkedOrgs,
+  fetchClassifications,
+  setClassEnabled,
+}: {
+  clientId: string;
+  linkedOrgs: any[];
+  fetchClassifications: ReturnType<typeof useServerFn<typeof listCostClassifications>>;
+  setClassEnabled: ReturnType<typeof useServerFn<typeof setCostClassificationEnabled>>;
+}) {
+  const qc = useQueryClient();
+  const firstTenantId: string | undefined = linkedOrgs[0]?.xero_connections?.tenant_id;
+  const enabledQ = useQuery({
+    queryKey: ["cost-classification-enabled", clientId],
+    queryFn: () => fetchClassifications({ data: { clientId, tenantId: firstTenantId ?? "" } }),
+    enabled: !!firstTenantId,
+  });
+  const enabled = enabledQ.data?.enabled ?? true;
+
+  const toggleMut = useMutation({
+    mutationFn: (v: boolean) => setClassEnabled({ data: { clientId, enabled: v } }),
+    onSuccess: () => {
+      toast.success("Saved");
+      qc.invalidateQueries({ queryKey: ["cost-classification-enabled", clientId] });
+      qc.invalidateQueries({ queryKey: ["cost-classifications", clientId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <section id="cost-classification" className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] scroll-mt-6">
+      <div className="mb-4 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-lg font-semibold">Cost classification</h2>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Tag each expense account as <strong>Fixed</strong> or <strong>Variable</strong> so the
+            Breakeven widget can split operating expenses correctly. Cost of Sales is always treated
+            as variable. Unclassified accounts default to Fixed.
+          </p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="text-xs text-muted-foreground">{enabled ? "On" : "Off"}</span>
+          <Switch
+            checked={enabled}
+            onCheckedChange={(v) => toggleMut.mutate(v)}
+            disabled={toggleMut.isPending || enabledQ.isLoading}
+            aria-label="Enable cost classification"
+          />
+        </div>
+      </div>
+      {!enabled ? (
+        <p className="text-sm text-muted-foreground">
+          Cost classification is turned off. The Breakeven widget treats all operating expenses as
+          fixed, and Cost of Sales as variable.
+        </p>
+      ) : linkedOrgs.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Link a Xero organisation first.</p>
+      ) : (
+        <div className="space-y-4">
+          {linkedOrgs.map((o) => {
+            const tenantId: string | undefined = o.xero_connections?.tenant_id;
+            const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
+            if (!tenantId) return null;
+            return (
+              <CostClassificationPanel
+                key={o.id}
+                clientId={clientId}
+                tenantId={tenantId}
+                tenantName={tenantName}
+              />
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
