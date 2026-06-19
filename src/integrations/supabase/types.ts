@@ -196,6 +196,44 @@ export type Database = {
           },
         ]
       }
+      client_cost_classifications: {
+        Row: {
+          account_name: string
+          classification: string
+          client_id: string
+          created_at: string
+          id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_name: string
+          classification: string
+          client_id: string
+          created_at?: string
+          id?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          classification?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_cost_classifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_notes: {
         Row: {
           author_id: string | null
