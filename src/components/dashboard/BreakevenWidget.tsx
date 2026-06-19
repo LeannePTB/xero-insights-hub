@@ -226,26 +226,33 @@ export function BreakevenWidget({
           </div>
         ) : (
           <>
-            <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <Kpi label="Revenue" value={fmt(income)} />
-              <Kpi label="Cost of Sales" value={fmt(cogs)} />
-              <Kpi label="Operating Expenses" value={fmt(opex)} />
+            <div className="mt-6">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Period Performance
+              </p>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <Kpi label="Revenue" value={fmt(income)} />
+                <Kpi label="Cost of Sales (Variable)" value={fmt(totalVariable)} />
+                <Kpi label="Gross Profit Margin" value={pct(grossMargin)} />
+              </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Kpi label="Breakeven / mo" value={fmt(monthlyBreakeven)} />
-              <Kpi label="Gross Margin" value={pct(grossMargin)} />
-              <Kpi label="Fixed Costs / mo" value={fmt(monthlyFixed)} />
-              <Kpi label="Variable Costs / mo" value={fmt(monthlyVariable)} />
+            <div className="mt-4">
+              <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Accounting Break-Even
+              </p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <Kpi label="Fixed Costs" value={fmt(fixedOpex)} />
+                <Kpi label="Break-Even Revenue" value={fmt(breakevenRevenue)} />
+                <Kpi label="Break-Even / mo" value={fmt(monthlyBreakeven)} />
+                <Kpi
+                  label={aboveBreakeven ? "Surplus / mo" : "Shortfall / mo"}
+                  value={fmt(Math.abs(surplus))}
+                  tone={aboveBreakeven ? "positive" : "negative"}
+                />
+              </div>
             </div>
 
-            <div className="mt-3">
-              <Kpi
-                label={aboveBreakeven ? "Surplus / mo" : "Shortfall / mo"}
-                value={fmt(Math.abs(surplus))}
-                tone={aboveBreakeven ? "positive" : "negative"}
-              />
-            </div>
 
             {clientId && classificationEnabled && unclassifiedCount > 0 && (
               <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
