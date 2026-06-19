@@ -18,7 +18,7 @@ export const listCostClassifications = createServerFn({ method: "POST" })
       .eq("client_id", data.clientId)
       .eq("tenant_id", data.tenantId);
     if (error) throw new Error(error.message);
-    return { rows: (rows ?? []) as CostClassificationRow[] };
+    return { rows: ((rows ?? []) as unknown) as CostClassificationRow[] };
   });
 
 export const setCostClassifications = createServerFn({ method: "POST" })
