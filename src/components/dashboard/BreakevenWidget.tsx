@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
+import { Link } from "@tanstack/react-router";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
+import { listCostClassifications } from "@/lib/cost-classification.functions";
 import {
   Loader2,
   Target,
@@ -10,6 +12,7 @@ import {
   TrendingUp,
   AlertTriangle,
   CalendarIcon,
+  Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -30,7 +33,6 @@ function pct(n: number) {
   return `${(n * 100).toFixed(1)}%`;
 }
 function toISO(d: Date) {
-  // Format as local YYYY-MM-DD so timezone offsets don't shift the date.
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
@@ -49,7 +51,6 @@ function monthsBetween(from: Date, to: Date) {
     (to.getFullYear() - from.getFullYear()) * 12 +
     (to.getMonth() - from.getMonth()) +
     (to.getDate() >= from.getDate() ? 1 : 0);
-  // Fractional months for partial periods
   const ms = to.getTime() - from.getTime();
   const fractional = ms / (1000 * 60 * 60 * 24 * 30.4375);
   return Math.max(0.1, Math.max(months, fractional));
@@ -58,13 +59,16 @@ function monthsBetween(from: Date, to: Date) {
 export function BreakevenWidget({
   tenantId,
   tenantName,
+  clientId,
   loadDelayMs = 0,
 }: {
   tenantId: string;
   tenantName: string;
+  clientId?: string;
   loadDelayMs?: number;
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
+  const fetchClassifications = useServerFn(listCostClassifications);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const [fromDate, setFromDate] = useState<Date>(startOfThisMonth());
   const [toDate, setToDate] = useState<Date>(endOfThisMonth());
@@ -79,14 +83,53 @@ export function BreakevenWidget({
     retry: false,
   });
 
+  const classQ = useQuery({
+    queryKey: ["cost-classifications", clientId, tenantId],
+    queryFn: () => fetchClassifications({ data: { clientId: clientId!, tenantId } }),
+    enabled: shouldLoad && !!clientId,
+  });
+
+  const classMap = useMemo(() => {
+    const m = new Map<string, "fixed" | "variable">();
+    for (const r of classQ.data?.rows ?? []) m.set(r.account_name, r.classification);
+    return m;
+  }, [classQ.data]);
+
   const income = data?.totalIncome ?? 0;
   const cogs = data?.totalCostOfSales ?? 0;
   const opex = data?.totalExpenses ?? 0;
+  const expenseLines = data?.expenseLines ?? [];
+
+  // Split opex into fixed vs variable using the classification map. Unclassified defaults to fixed.
+  let variableOpex = 0;
+  let fixedOpex = 0;
+  let unclassifiedCount = 0;
+  for (const line of expenseLines) {
+    const c = classMap.get(line.name);
+    if (c === "variable") variableOpex += line.amount;
+    else {
+      fixedOpex += line.amount;
+      if (!c) unclassifiedCount += 1;
+    }
+  }
+  // Reconcile rounding: if line items don't sum exactly to opex, attribute the diff to fixed
+  const linesTotal = variableOpex + fixedOpex;
+  if (expenseLines.length > 0 && Math.abs(linesTotal - opex) > 0.5) {
+    fixedOpex += opex - linesTotal;
+  }
+  // If we have no expense lines at all (rare), fall back to treating opex as fixed
+  if (expenseLines.length === 0) {
+    fixedOpex = opex;
+    variableOpex = 0;
+  }
+
   const months = monthsBetween(fromDate, toDate);
-  const grossMargin = income > 0 ? (income - cogs) / income : 0;
-  const breakevenRevenue = grossMargin > 0 ? opex / grossMargin : 0;
+  const totalVariable = cogs + variableOpex;
+  const grossMargin = income > 0 ? (income - totalVariable) / income : 0;
+  const breakevenRevenue = grossMargin > 0 ? fixedOpex / grossMargin : 0;
   const monthlyBreakeven = breakevenRevenue / months;
-  const monthlyFixed = opex / months;
+  const monthlyFixed = fixedOpex / months;
+  const monthlyVariable = totalVariable / months;
   const monthlyIncome = income / months;
   const surplus = monthlyIncome - monthlyBreakeven;
   const coverage = monthlyBreakeven > 0 ? monthlyIncome / monthlyBreakeven : 0;
@@ -102,7 +145,7 @@ export function BreakevenWidget({
   function setLastMonth() {
     const now = new Date();
     const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const end = new Date(now.getFullYear(), now.getMonth(), 0); // last day of prev month
+    const end = new Date(now.getFullYear(), now.getMonth(), 0);
     setFromDate(start);
     setToDate(end);
   }
@@ -122,7 +165,6 @@ export function BreakevenWidget({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          
           <Button variant="ghost" size="sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh">
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
@@ -185,12 +227,33 @@ export function BreakevenWidget({
               <Kpi label="Breakeven / mo" value={fmt(monthlyBreakeven)} />
               <Kpi label="Gross Margin" value={pct(grossMargin)} />
               <Kpi label="Fixed Costs / mo" value={fmt(monthlyFixed)} />
+              <Kpi label="Variable Costs / mo" value={fmt(monthlyVariable)} />
+            </div>
+
+            <div className="mt-3">
               <Kpi
                 label={aboveBreakeven ? "Surplus / mo" : "Shortfall / mo"}
                 value={fmt(Math.abs(surplus))}
                 tone={aboveBreakeven ? "positive" : "negative"}
               />
             </div>
+
+            {clientId && unclassifiedCount > 0 && (
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div className="flex-1">
+                  <strong>{unclassifiedCount}</strong> expense {unclassifiedCount === 1 ? "account is" : "accounts are"} unclassified and treated as fixed.{" "}
+                  <Link
+                    to="/clients/$clientId/settings"
+                    params={{ clientId }}
+                    hash="cost-classification"
+                    className="font-medium underline underline-offset-2"
+                  >
+                    Classify accounts
+                  </Link>
+                </div>
+              </div>
+            )}
 
             <div className="mt-6">
               <div className="mb-2 flex items-center justify-between text-xs">
@@ -217,8 +280,22 @@ export function BreakevenWidget({
             </div>
 
             <p className="mt-4 text-[11px] text-muted-foreground">
-              Monthly breakeven = (Operating Expenses ÷ Gross Margin) ÷ months in period. Cost of Sales is
-              treated as variable; all other operating expenses are treated as fixed.
+              Monthly breakeven = Fixed Costs ÷ Gross Margin ÷ months. Cost of Sales plus any expense
+              accounts you tag as <strong>Variable</strong> in client settings are treated as variable;
+              everything else is fixed.
+              {clientId && (
+                <>
+                  {" "}
+                  <Link
+                    to="/clients/$clientId/settings"
+                    params={{ clientId }}
+                    hash="cost-classification"
+                    className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2"
+                  >
+                    <Settings2 className="h-3 w-3" /> Classify expense accounts
+                  </Link>
+                </>
+              )}
             </p>
           </>
         )
@@ -259,18 +336,6 @@ function DateField({
         </PopoverContent>
       </Popover>
     </div>
-  );
-}
-
-function PresetBtn({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-md border border-border bg-background px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
-    >
-      {children}
-    </button>
   );
 }
 
