@@ -341,6 +341,20 @@ export function BreakevenWidget({
               })()}
             </div>
 
+            {clientId && (
+              <TrueBreakevenSection
+                clientId={clientId}
+                tenantId={tenantId}
+                fixedOpex={fixedOpex}
+                grossMargin={grossMargin}
+                monthlyIncome={monthlyIncome}
+                months={months}
+                toDateISO={toStr}
+              />
+            )}
+
+
+
 
 
             <details className="mt-3 rounded-lg border border-border/60 bg-background/50">
