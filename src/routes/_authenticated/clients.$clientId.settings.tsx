@@ -14,7 +14,6 @@ import {
   createClientViewerWithPassword,
   updateClientAccessTier,
   revokeClientAccess,
-  updateClientReportBasis,
 } from "@/lib/clients.functions";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { listXeroConnections, startXeroConnect, disconnectXero } from "@/lib/xero/connections.functions";
