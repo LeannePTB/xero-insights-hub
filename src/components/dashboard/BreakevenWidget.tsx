@@ -56,6 +56,25 @@ function monthsBetween(from: Date, to: Date) {
   return Math.max(0.1, Math.max(months, fractional));
 }
 
+function usePersistedDate(key: string, fallback: () => Date): [Date, (d: Date) => void] {
+  const [date, setDate] = useState<Date>(() => {
+    if (typeof window === "undefined") return fallback();
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw) {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) return d;
+      }
+    } catch {}
+    return fallback();
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, toISO(date));
+    } catch {}
+  }, [key, date]);
+  return [date, setDate];
+
 export function BreakevenWidget({
   tenantId,
   tenantName,
