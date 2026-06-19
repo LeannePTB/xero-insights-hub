@@ -294,46 +294,109 @@ export function BreakevenWidget({
                   </p>
                 </div>
 
-                <div>
-                  <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
-                    <span>Fixed Costs ({fixedLines.length})</span>
-                    <span>{fmt(fixedOpex)}</span>
-                  </p>
-                  {fixedLines.length === 0 ? (
-                    <p className="text-muted-foreground">No fixed cost accounts in this period.</p>
-                  ) : (
-                    <ul className="divide-y divide-border/40">
-                      {fixedLines.map((l) => (
-                        <li key={l.name} className="flex items-center justify-between gap-2 py-1">
-                          <span className="truncate">
-                            {l.name}
-                            {l.unclassified && (
-                              <span className="ml-1.5 text-[10px] text-amber-600">(unclassified)</span>
+                {(() => {
+                  const fixedLinesSum = fixedLines.reduce((s, l) => s + l.amount, 0);
+                  const fixedAdj = fixedOpex - fixedLinesSum;
+                  const variableLinesSum = variableLines.reduce((s, l) => s + l.amount, 0);
+                  const variableAdj = variableOpex - variableLinesSum;
+                  const recomputedBreakeven =
+                    grossMargin > 0 ? fixedOpex / grossMargin : 0;
+                  const breakevenMatches =
+                    Math.abs(recomputedBreakeven - breakevenRevenue) < 0.01;
+                  return (
+                    <>
+                      <div>
+                        <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                          <span>Fixed Costs ({fixedLines.length})</span>
+                          <span>{fmt(fixedOpex)}</span>
+                        </p>
+                        {fixedLines.length === 0 ? (
+                          <p className="text-muted-foreground">
+                            No fixed cost accounts in this period.
+                          </p>
+                        ) : (
+                          <ul className="divide-y divide-border/40">
+                            {fixedLines.map((l) => (
+                              <li key={l.name} className="flex items-center justify-between gap-2 py-1">
+                                <span className="truncate">
+                                  {l.name}
+                                  {l.unclassified && (
+                                    <span className="ml-1.5 text-[10px] text-amber-600">
+                                      (unclassified)
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="font-mono tabular-nums text-foreground">
+                                  {fmt(l.amount)}
+                                </span>
+                              </li>
+                            ))}
+                            {Math.abs(fixedAdj) >= 0.5 && (
+                              <li className="flex items-center justify-between gap-2 py-1 text-muted-foreground">
+                                <span className="truncate italic">Rounding / unallocated</span>
+                                <span className="font-mono tabular-nums">{fmt(fixedAdj)}</span>
+                              </li>
                             )}
-                          </span>
-                          <span className="font-mono tabular-nums text-foreground">{fmt(l.amount)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
+                            <li className="flex items-center justify-between gap-2 border-t border-border/60 py-1.5 font-medium">
+                              <span>Total</span>
+                              <span className="font-mono tabular-nums">{fmt(fixedOpex)}</span>
+                            </li>
+                          </ul>
+                        )}
+                      </div>
 
-                {variableLines.length > 0 && (
-                  <div>
-                    <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
-                      <span>Variable Opex ({variableLines.length})</span>
-                      <span>{fmt(variableOpex)}</span>
-                    </p>
-                    <ul className="divide-y divide-border/40">
-                      {variableLines.map((l) => (
-                        <li key={l.name} className="flex items-center justify-between gap-2 py-1">
-                          <span className="truncate">{l.name}</span>
-                          <span className="font-mono tabular-nums text-foreground">{fmt(l.amount)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                      {variableLines.length > 0 && (
+                        <div>
+                          <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                            <span>Variable Opex ({variableLines.length})</span>
+                            <span>{fmt(variableOpex)}</span>
+                          </p>
+                          <ul className="divide-y divide-border/40">
+                            {variableLines.map((l) => (
+                              <li key={l.name} className="flex items-center justify-between gap-2 py-1">
+                                <span className="truncate">{l.name}</span>
+                                <span className="font-mono tabular-nums text-foreground">
+                                  {fmt(l.amount)}
+                                </span>
+                              </li>
+                            ))}
+                            {Math.abs(variableAdj) >= 0.5 && (
+                              <li className="flex items-center justify-between gap-2 py-1 text-muted-foreground">
+                                <span className="truncate italic">Rounding / unallocated</span>
+                                <span className="font-mono tabular-nums">{fmt(variableAdj)}</span>
+                              </li>
+                            )}
+                            <li className="flex items-center justify-between gap-2 border-t border-border/60 py-1.5 font-medium">
+                              <span>Total</span>
+                              <span className="font-mono tabular-nums">{fmt(variableOpex)}</span>
+                            </li>
+                          </ul>
+                        </div>
+                      )}
+
+                      <div
+                        className={cn(
+                          "flex items-start gap-2 rounded-md border p-2 text-[11px]",
+                          breakevenMatches
+                            ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-900 dark:text-emerald-200"
+                            : "border-rose-500/30 bg-rose-500/5 text-rose-900 dark:text-rose-200",
+                        )}
+                      >
+                        <span className="font-medium">
+                          {breakevenMatches ? "✓ Reconciles:" : "✗ Mismatch:"}
+                        </span>
+                        <span className="font-mono">
+                          {fmt(fixedOpex)} ÷ {pct(grossMargin)} ={" "}
+                          {fmt(recomputedBreakeven)}
+                          {breakevenMatches
+                            ? ` (matches Break-Even Revenue of ${fmt(breakevenRevenue)})`
+                            : ` (displayed: ${fmt(breakevenRevenue)})`}
+                        </span>
+                      </div>
+                    </>
+                  );
+                })()}
+
               </div>
             </details>
 
