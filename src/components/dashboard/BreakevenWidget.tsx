@@ -122,7 +122,7 @@ export function BreakevenWidget({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <BasisSelect value={basis} onChange={setBasis} disabled={isFetching} />
+          
           <Button variant="ghost" size="sm" onClick={() => { setShouldLoad(true); refetch(); }} disabled={isFetching} title="Refresh">
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
