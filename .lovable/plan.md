@@ -1,27 +1,24 @@
+## Restructure Accounting Break-Even section
 
-## Restructure Breakeven widget display
+Replace the current 4-tile KPI grid in `src/components/dashboard/BreakevenWidget.tsx` with a vertical 2-column table (Item / Value) matching the screenshot.
 
-Reorganise the KPI grid in `src/components/dashboard/BreakevenWidget.tsx` into two labelled sections. No calculation changes — just layout, labels, and grouping.
+### Rows (in order)
 
-### Section 1 — Period Performance
-Row of three KPIs (period totals over the selected date range):
-- **Revenue** — `income`
-- **Cost of Sales (Variable)** — `totalVariable` (CoGS + any opex tagged Variable)
-- **Gross Profit Margin** — `pct(grossMargin)`
+1. **Total Fixed Costs** — `fmt(fixedOpex)`
+2. **Gross Margin %** — `pct(grossMargin)`
+3. **Break-Even Revenue** *(Fixed Costs ÷ Gross Margin %)* — `fmt(breakevenRevenue)` (label shows the formula in italics, matching the screenshot's emphasis)
+4. **Monthly Revenue** — `fmt(monthlyIncome)` (average monthly income over the selected period)
+5. **Above or Below Break-Even?** — text "Above" (green) or "Below" (red), based on `monthlyIncome >= monthlyBreakeven`
+6. **Operating Loss/Profit** — `fmt(income - totalVariable - fixedOpex)`; green if ≥ 0, red if < 0; label flips to "Operating Profit" or "Operating Loss" so the sign reads naturally
 
-### Section 2 — Accounting Break-Even
-Row of KPIs:
-- **Fixed Costs** — `fixedOpex` (period total)
-- **Break-Even Revenue** — `breakevenRevenue` (Fixed Costs ÷ Gross Margin %, for the period)
-- **Break-Even / month** — `monthlyBreakeven`
-- **Surplus / Shortfall / mo** — keep existing surplus tile here
+### Styling
 
-### What's removed / changed
-- Drop the standalone "Operating Expenses", "Fixed Costs / mo", "Variable Costs / mo" tiles from the top grid (they were redundant with the new grouping).
-- Keep everything else as-is: date controls, unclassified warning, excluded-accounts footnote, monthly progress bar, and the explanatory footer.
+- Two-column table with subtle row dividers, matching the existing card aesthetic (border, muted header background on the "Item" column like the screenshot's grey label cells).
+- Reuse existing `fmt()` / `pct()` helpers.
+- Keep the "Period Performance" section above (Revenue / Cost of Sales / Gross Profit Margin) unchanged.
+- Keep the expandable calculation breakdown, monthly progress bar, unclassified-accounts banner, and footer text below — unchanged.
+- Remove the old 4-tile grid (Fixed Costs / Break-Even Revenue / Break-Even per mo / Surplus or Shortfall per mo) since the new table replaces it.
 
-### Section headings
-Small uppercase muted labels above each grid, matching existing typography (e.g. `text-xs font-semibold uppercase tracking-wider text-muted-foreground`).
+### Files
 
-### Files touched
-- `src/components/dashboard/BreakevenWidget.tsx` only.
+- Edit only `src/components/dashboard/BreakevenWidget.tsx`.
