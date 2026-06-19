@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 
-type Classification = "fixed" | "variable";
+type Classification = "fixed" | "variable" | "excluded";
 
 function lastNMonthsRange(n: number) {
   const end = new Date();
