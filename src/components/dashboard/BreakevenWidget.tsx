@@ -1,7 +1,6 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { format } from "date-fns";
 import { Link } from "@tanstack/react-router";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { listCostClassifications } from "@/lib/cost-classification.functions";
@@ -11,16 +10,17 @@ import {
   RefreshCw,
   TrendingUp,
   AlertTriangle,
-  CalendarIcon,
   Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 import { TrueBreakevenSection } from "@/components/dashboard/TrueBreakevenSection";
+import {
+  DateRangeControls,
+  toISO,
+  usePersistedDate,
+} from "@/components/dashboard/DateRangeControls";
 import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
