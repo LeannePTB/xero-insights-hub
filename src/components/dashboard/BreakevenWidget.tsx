@@ -263,12 +263,14 @@ export function BreakevenWidget({
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Period Performance
               </p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className={cn("grid gap-3", variableOpex > 0 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3")}>
                 <Kpi label="Revenue" value={fmt(income)} />
-                <Kpi label="Cost of Sales (Variable)" value={fmt(totalVariable)} />
+                <Kpi label="Cost of Sales" value={fmt(cogs)} />
+                {variableOpex > 0 && <Kpi label="Variable Opex" value={fmt(variableOpex)} />}
                 <Kpi label="Gross Profit Margin" value={pct(grossMargin)} />
               </div>
             </div>
+
 
             <div className="mt-4">
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
