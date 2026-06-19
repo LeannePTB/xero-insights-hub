@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type Classification = "fixed" | "variable";
+export type Classification = "fixed" | "variable" | "excluded";
 
 export type CostClassificationRow = {
   account_name: string;

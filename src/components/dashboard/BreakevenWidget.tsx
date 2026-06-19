@@ -92,7 +92,7 @@ export function BreakevenWidget({
   const classificationEnabled = classQ.data?.enabled ?? true;
 
   const classMap = useMemo(() => {
-    const m = new Map<string, "fixed" | "variable">();
+    const m = new Map<string, "fixed" | "variable" | "excluded">();
     for (const r of classQ.data?.rows ?? []) m.set(r.account_name, r.classification);
     return m;
   }, [classQ.data]);
@@ -103,9 +103,12 @@ export function BreakevenWidget({
   const expenseLines = data?.expenseLines ?? [];
 
   // Split opex into fixed vs variable using the classification map. Unclassified defaults to fixed.
+  // Excluded accounts are left out of the breakeven entirely.
   // When classification is disabled for this client, treat all opex as fixed.
   let variableOpex = 0;
   let fixedOpex = 0;
+  let excludedOpex = 0;
+  let excludedCount = 0;
   let unclassifiedCount = 0;
   if (!classificationEnabled || expenseLines.length === 0) {
     fixedOpex = opex;
@@ -114,13 +117,16 @@ export function BreakevenWidget({
     for (const line of expenseLines) {
       const c = classMap.get(line.name);
       if (c === "variable") variableOpex += line.amount;
-      else {
+      else if (c === "excluded") {
+        excludedOpex += line.amount;
+        excludedCount += 1;
+      } else {
         fixedOpex += line.amount;
         if (!c) unclassifiedCount += 1;
       }
     }
     // Reconcile rounding: if line items don't sum exactly to opex, attribute the diff to fixed
-    const linesTotal = variableOpex + fixedOpex;
+    const linesTotal = variableOpex + fixedOpex + excludedOpex;
     if (Math.abs(linesTotal - opex) > 0.5) {
       fixedOpex += opex - linesTotal;
     }

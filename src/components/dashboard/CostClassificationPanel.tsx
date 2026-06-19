@@ -143,7 +143,7 @@ export function CostClassificationPanel({
                     </p>
                   </div>
                   <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
-                    {(["fixed", "variable"] as Classification[]).map((opt) => (
+                    {(["fixed", "variable", "excluded"] as Classification[]).map((opt) => (
                       <button
                         key={opt}
                         type="button"
@@ -155,6 +155,11 @@ export function CostClassificationPanel({
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
+                        title={
+                          opt === "excluded"
+                            ? "Leave this account out of the Breakeven calculation entirely"
+                            : undefined
+                        }
                       >
                         {opt}
                       </button>
