@@ -241,7 +241,7 @@ export function BreakevenWidget({
               />
             </div>
 
-            {clientId && unclassifiedCount > 0 && (
+            {clientId && classificationEnabled && unclassifiedCount > 0 && (
               <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1">
@@ -283,9 +283,18 @@ export function BreakevenWidget({
             </div>
 
             <p className="mt-4 text-[11px] text-muted-foreground">
-              Monthly breakeven = Fixed Costs ÷ Gross Margin ÷ months. Cost of Sales plus any expense
-              accounts you tag as <strong>Variable</strong> in client settings are treated as variable;
-              everything else is fixed.
+              Monthly breakeven = Fixed Costs ÷ Gross Margin ÷ months.{" "}
+              {classificationEnabled ? (
+                <>
+                  Cost of Sales plus any expense accounts you tag as <strong>Variable</strong> in
+                  client settings are treated as variable; everything else is fixed.
+                </>
+              ) : (
+                <>
+                  Cost classification is off — Cost of Sales is treated as variable and all operating
+                  expenses as fixed.
+                </>
+              )}
               {clientId && (
                 <>
                   {" "}
@@ -295,7 +304,7 @@ export function BreakevenWidget({
                     hash="cost-classification"
                     className="inline-flex items-center gap-1 font-medium text-foreground underline underline-offset-2"
                   >
-                    <Settings2 className="h-3 w-3" /> Classify expense accounts
+                    <Settings2 className="h-3 w-3" /> Cost classification settings
                   </Link>
                 </>
               )}
