@@ -50,7 +50,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { 
           </p>
           <h3 className="font-display text-lg font-semibold">Tax and Superannuation liabilities</h3>
           <p className="text-xs text-muted-foreground">
-            Live balance as at {format(new Date(), "d MMM yyyy")}
+            Balance as at {format(asAt, "d MMM yyyy")}
           </p>
         </div>
         <div className="flex items-center gap-2">
