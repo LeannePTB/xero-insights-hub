@@ -33,12 +33,6 @@ function fmt(n: number) {
 function pct(n: number) {
   return `${(n * 100).toFixed(1)}%`;
 }
-function toISO(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 function startOfThisMonth() {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -55,26 +49,6 @@ function monthsBetween(from: Date, to: Date) {
   const ms = to.getTime() - from.getTime();
   const fractional = ms / (1000 * 60 * 60 * 24 * 30.4375);
   return Math.max(0.1, Math.max(months, fractional));
-}
-
-function usePersistedDate(key: string, fallback: () => Date): [Date, (d: Date) => void] {
-  const [date, setDate] = useState<Date>(() => {
-    if (typeof window === "undefined") return fallback();
-    try {
-      const raw = window.localStorage.getItem(key);
-      if (raw) {
-        const d = new Date(raw);
-        if (!isNaN(d.getTime())) return d;
-      }
-    } catch {}
-    return fallback();
-  });
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(key, toISO(date));
-    } catch {}
-  }, [key, date]);
-  return [date, setDate];
 }
 
 
