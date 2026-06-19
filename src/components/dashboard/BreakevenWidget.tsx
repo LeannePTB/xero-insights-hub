@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -56,6 +56,27 @@ function monthsBetween(from: Date, to: Date) {
   return Math.max(0.1, Math.max(months, fractional));
 }
 
+function usePersistedDate(key: string, fallback: () => Date): [Date, (d: Date) => void] {
+  const [date, setDate] = useState<Date>(() => {
+    if (typeof window === "undefined") return fallback();
+    try {
+      const raw = window.localStorage.getItem(key);
+      if (raw) {
+        const d = new Date(raw);
+        if (!isNaN(d.getTime())) return d;
+      }
+    } catch {}
+    return fallback();
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(key, toISO(date));
+    } catch {}
+  }, [key, date]);
+  return [date, setDate];
+}
+
+
 export function BreakevenWidget({
   tenantId,
   tenantName,
@@ -70,8 +91,9 @@ export function BreakevenWidget({
   const fetchPnl = useServerFn(getProfitAndLoss);
   const fetchClassifications = useServerFn(listCostClassifications);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  const [fromDate, setFromDate] = useState<Date>(startOfThisMonth());
-  const [toDate, setToDate] = useState<Date>(endOfThisMonth());
+  const storageKey = `breakeven-range:${tenantId}`;
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfThisMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfThisMonth);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
