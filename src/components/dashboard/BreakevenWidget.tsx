@@ -20,6 +20,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import { TrueBreakevenSection } from "@/components/dashboard/TrueBreakevenSection";
 import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
@@ -339,6 +340,20 @@ export function BreakevenWidget({
                 );
               })()}
             </div>
+
+            {clientId && (
+              <TrueBreakevenSection
+                clientId={clientId}
+                tenantId={tenantId}
+                fixedOpex={fixedOpex}
+                grossMargin={grossMargin}
+                monthlyIncome={monthlyIncome}
+                months={months}
+                toDateISO={toStr}
+              />
+            )}
+
+
 
 
 
