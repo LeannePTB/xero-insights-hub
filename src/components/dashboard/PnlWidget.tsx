@@ -64,7 +64,7 @@ export function PnlWidget({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <BasisSelect value={basis} onChange={setBasis} disabled={isFetching} />
+          
           <Button
             variant="ghost"
             size="sm"
