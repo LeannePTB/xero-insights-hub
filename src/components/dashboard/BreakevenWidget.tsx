@@ -188,29 +188,13 @@ export function BreakevenWidget({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <DateField label="From" value={fromDate} onChange={setFromDate} />
-        <DateField label="To" value={toDate} onChange={setToDate} />
-        <div className="ml-auto">
-          <Select
-            onValueChange={(v) => {
-              if (v === "last") setLastMonth();
-              else setPreset(Number(v));
-            }}
-          >
-            <SelectTrigger className="h-8 w-[150px] text-xs">
-              <SelectValue placeholder="Quick range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="last">Last Month</SelectItem>
-              <SelectItem value="1">This Month</SelectItem>
-              <SelectItem value="3">Last 3 Months</SelectItem>
-              <SelectItem value="6">Last 6 Months</SelectItem>
-              <SelectItem value="12">Last 12 Months</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <DateRangeControls
+        fromDate={fromDate}
+        toDate={toDate}
+        onFromChange={setFromDate}
+        onToChange={setToDate}
+      />
+
 
       {!shouldLoad ? (
         <XeroLoadPrompt
