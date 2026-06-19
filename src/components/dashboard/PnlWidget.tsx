@@ -27,23 +27,20 @@ function today() {
 export function PnlWidget({
   tenantId,
   tenantName,
-  defaultBasis = "accrual",
   loadDelayMs = 0,
 }: {
   tenantId: string;
   tenantName: string;
-  defaultBasis?: ReportBasis;
   loadDelayMs?: number;
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const fromDate = startOfFiscalYear();
   const toDate = today();
-  const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-pnl", tenantId, fromDate, toDate, basis],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate, widget: "pnl", basis } }),
+    queryKey: ["xero-pnl", tenantId, fromDate, toDate, "accrual"],
+    queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate, widget: "pnl", basis: "accrual" } }),
     enabled: shouldLoad,
     retry: false,
   });
