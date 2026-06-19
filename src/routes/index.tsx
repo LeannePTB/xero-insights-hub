@@ -245,7 +245,6 @@ function Footer() {
           <BrandMark logoHeightClass="h-8" />
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-          <a href="mailto:admin@positivetraction.com.au" className="hover:text-foreground">admin@positivetraction.com.au</a>
           <Link to="/auth" className="hover:text-foreground">Sign in</Link>
           <span>© {new Date().getFullYear()} Positive Traction</span>
         </div>
