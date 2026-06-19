@@ -430,6 +430,37 @@ function ClientSettings() {
         </Section>
 
         {/* Danger */}
+        {/* Cost classification */}
+        <section id="cost-classification" className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] scroll-mt-6">
+          <div className="mb-4">
+            <h2 className="font-display text-lg font-semibold">Cost classification</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Tag each expense account as <strong>Fixed</strong> or <strong>Variable</strong> so the
+              Breakeven widget can split operating expenses correctly. Cost of Sales is always treated
+              as variable. Unclassified accounts default to Fixed.
+            </p>
+          </div>
+          {linkedOrgs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Link a Xero organisation first.</p>
+          ) : (
+            <div className="space-y-4">
+              {linkedOrgs.map((o) => {
+                const tenantId: string | undefined = o.xero_connections?.tenant_id;
+                const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
+                if (!tenantId) return null;
+                return (
+                  <CostClassificationPanel
+                    key={o.id}
+                    clientId={clientId}
+                    tenantId={tenantId}
+                    tenantName={tenantName}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </section>
+
         {/* Per-client tier overrides */}
         <Section title="Dashboard widgets per tier" action={
           <Button variant="ghost" size="sm" asChild>
