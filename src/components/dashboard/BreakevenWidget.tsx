@@ -1,7 +1,6 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { format } from "date-fns";
 import { Link } from "@tanstack/react-router";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { listCostClassifications } from "@/lib/cost-classification.functions";
@@ -11,16 +10,17 @@ import {
   RefreshCw,
   TrendingUp,
   AlertTriangle,
-  CalendarIcon,
   Settings2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 import { TrueBreakevenSection } from "@/components/dashboard/TrueBreakevenSection";
+import {
+  DateRangeControls,
+  toISO,
+  usePersistedDate,
+} from "@/components/dashboard/DateRangeControls";
 import { cn } from "@/lib/utils";
 
 function fmt(n: number) {
@@ -32,12 +32,6 @@ function fmt(n: number) {
 }
 function pct(n: number) {
   return `${(n * 100).toFixed(1)}%`;
-}
-function toISO(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
 }
 function startOfThisMonth() {
   const d = new Date();
@@ -55,26 +49,6 @@ function monthsBetween(from: Date, to: Date) {
   const ms = to.getTime() - from.getTime();
   const fractional = ms / (1000 * 60 * 60 * 24 * 30.4375);
   return Math.max(0.1, Math.max(months, fractional));
-}
-
-function usePersistedDate(key: string, fallback: () => Date): [Date, (d: Date) => void] {
-  const [date, setDate] = useState<Date>(() => {
-    if (typeof window === "undefined") return fallback();
-    try {
-      const raw = window.localStorage.getItem(key);
-      if (raw) {
-        const d = new Date(raw);
-        if (!isNaN(d.getTime())) return d;
-      }
-    } catch {}
-    return fallback();
-  });
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(key, toISO(date));
-    } catch {}
-  }, [key, date]);
-  return [date, setDate];
 }
 
 
@@ -214,29 +188,13 @@ export function BreakevenWidget({
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <DateField label="From" value={fromDate} onChange={setFromDate} />
-        <DateField label="To" value={toDate} onChange={setToDate} />
-        <div className="ml-auto">
-          <Select
-            onValueChange={(v) => {
-              if (v === "last") setLastMonth();
-              else setPreset(Number(v));
-            }}
-          >
-            <SelectTrigger className="h-8 w-[150px] text-xs">
-              <SelectValue placeholder="Quick range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="last">Last Month</SelectItem>
-              <SelectItem value="1">This Month</SelectItem>
-              <SelectItem value="3">Last 3 Months</SelectItem>
-              <SelectItem value="6">Last 6 Months</SelectItem>
-              <SelectItem value="12">Last 12 Months</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <DateRangeControls
+        fromDate={fromDate}
+        toDate={toDate}
+        onFromChange={setFromDate}
+        onToChange={setToDate}
+      />
+
 
       {!shouldLoad ? (
         <XeroLoadPrompt
@@ -578,40 +536,6 @@ export function BreakevenWidget({
   );
 }
 
-function DateField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: Date;
-  onChange: (d: Date) => void;
-}) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </span>
-      <Popover>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-8 px-2.5 text-xs font-normal">
-            <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
-            {format(value, "d MMM yyyy")}
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-auto p-0" align="start">
-          <Calendar
-            mode="single"
-            selected={value}
-            onSelect={(d) => d && onChange(d)}
-            initialFocus
-            className={cn("p-3 pointer-events-auto")}
-          />
-        </PopoverContent>
-      </Popover>
-    </div>
-  );
-}
 
 function Kpi({
   label,

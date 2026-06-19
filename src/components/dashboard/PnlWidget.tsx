@@ -6,6 +6,11 @@ import { Loader2, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import {
+  DateRangeControls,
+  toISO,
+  usePersistedDate,
+} from "@/components/dashboard/DateRangeControls";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -17,11 +22,10 @@ function fmt(n: number) {
 
 function startOfFiscalYear() {
   const now = new Date();
-  // Default to current calendar year-to-date
-  return `${now.getFullYear()}-01-01`;
+  return new Date(now.getFullYear(), 0, 1);
 }
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return new Date();
 }
 
 export function PnlWidget({
@@ -35,12 +39,16 @@ export function PnlWidget({
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  const fromDate = startOfFiscalYear();
-  const toDate = today();
+  const storageKey = `pnl-range:${tenantId}`;
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfFiscalYear);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
+
+  const fromStr = toISO(fromDate);
+  const toStr = toISO(toDate);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-pnl", tenantId, fromDate, toDate, "accrual"],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate, widget: "pnl", basis: "accrual" } }),
+    queryKey: ["xero-pnl", tenantId, fromStr, toStr, "accrual"],
+    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "pnl", basis: "accrual" } }),
     enabled: shouldLoad,
     retry: false,
   });
@@ -58,13 +66,12 @@ export function PnlWidget({
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {tenantName}
           </p>
-          <h3 className="font-display text-lg font-semibold">Profit & Loss · YTD</h3>
+          <h3 className="font-display text-lg font-semibold">Profit & Loss</h3>
           <p className="text-xs text-muted-foreground">
-            {fromDate} → {toDate}
+            {fromStr} → {toStr}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          
           <Button
             variant="ghost"
             size="sm"
@@ -79,6 +86,13 @@ export function PnlWidget({
           </Button>
         </div>
       </div>
+
+      <DateRangeControls
+        fromDate={fromDate}
+        toDate={toDate}
+        onFromChange={setFromDate}
+        onToChange={setToDate}
+      />
 
       {!shouldLoad ? (
         <XeroLoadPrompt

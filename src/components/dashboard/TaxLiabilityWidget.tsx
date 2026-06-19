@@ -6,6 +6,7 @@ import { getCurrentTaxBalance } from "@/lib/xero/reports.functions";
 import { Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import { DateField, toISO, usePersistedDate } from "@/components/dashboard/DateRangeControls";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -13,10 +14,6 @@ function fmt(n: number) {
     currency: "AUD",
     maximumFractionDigits: 0,
   }).format(n);
-}
-
-function iso(d: Date) {
-  return format(d, "yyyy-MM-dd");
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -29,11 +26,12 @@ const CATEGORY_LABEL: Record<string, string> = {
 export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { tenantId: string; tenantName: string; loadDelayMs?: number }) {
   const fetchBalance = useServerFn(getCurrentTaxBalance);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  const todayIso = iso(new Date());
+  const [asAt, setAsAt] = usePersistedDate(`tax-liability-as-at:${tenantId}`, () => new Date());
+  const asAtIso = toISO(asAt);
 
   const balanceQ = useQuery({
-    queryKey: ["xero-tax-balance", tenantId, todayIso],
-    queryFn: () => fetchBalance({ data: { tenantId, date: todayIso } }),
+    queryKey: ["xero-tax-balance", tenantId, asAtIso],
+    queryFn: () => fetchBalance({ data: { tenantId, date: asAtIso } }),
     enabled: shouldLoad,
     retry: false,
   });
@@ -52,7 +50,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { 
           </p>
           <h3 className="font-display text-lg font-semibold">Tax and Superannuation liabilities</h3>
           <p className="text-xs text-muted-foreground">
-            Live balance as at {format(new Date(), "d MMM yyyy")}
+            Balance as at {format(asAt, "d MMM yyyy")}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -61,6 +59,11 @@ export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { 
           </Button>
         </div>
       </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <DateField label="As at" value={asAt} onChange={setAsAt} />
+      </div>
+
 
       {!shouldLoad ? (
         <XeroLoadPrompt

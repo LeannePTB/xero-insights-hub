@@ -6,6 +6,11 @@ import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-reac
 import { Button } from "@/components/ui/button";
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import {
+  DateRangeControls,
+  toISO,
+  usePersistedDate,
+} from "@/components/dashboard/DateRangeControls";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -15,18 +20,29 @@ function fmt(n: number) {
   }).format(n);
 }
 
-function monthRange(offsetMonths: number): { from: string; to: string; label: string } {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth() + offsetMonths, 1);
-  const end = new Date(now.getFullYear(), now.getMonth() + offsetMonths + 1, 0);
-  const iso = (d: Date) => {
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  };
-  const label = start.toLocaleString(undefined, { month: "short", year: "numeric" });
-  return { from: iso(start), to: iso(end), label };
+function startOfThisMonth() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+function endOfThisMonth() {
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+}
+
+function rangeLabel(from: Date, to: Date) {
+  const sameMonth =
+    from.getFullYear() === to.getFullYear() && from.getMonth() === to.getMonth();
+  if (sameMonth) {
+    return from.toLocaleString(undefined, { month: "short", year: "numeric" });
+  }
+  return `${toISO(from)} → ${toISO(to)}`;
+}
+
+function priorRange(from: Date, to: Date): { from: Date; to: Date } {
+  const ms = to.getTime() - from.getTime();
+  const priorTo = new Date(from.getTime() - 24 * 60 * 60 * 1000);
+  const priorFrom = new Date(priorTo.getTime() - ms);
+  return { from: priorFrom, to: priorTo };
 }
 
 function wait(ms: number) {
@@ -44,18 +60,25 @@ export function RevenueExpenseKpis({
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  const current = monthRange(0);
-  const prior = monthRange(-1);
+  const storageKey = `revenue-kpis-range:${tenantId}`;
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfThisMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfThisMonth);
+
+  const currentFromStr = toISO(fromDate);
+  const currentToStr = toISO(toDate);
+  const prior = priorRange(fromDate, toDate);
+  const priorFromStr = toISO(prior.from);
+  const priorToStr = toISO(prior.to);
 
   const { data, isLoading, isFetching, error, refetch: refetchReports } = useQuery({
-    queryKey: ["xero-pnl-month-comparison", tenantId, current.from, current.to, prior.from, prior.to, "accrual"],
+    queryKey: ["xero-pnl-month-comparison", tenantId, currentFromStr, currentToStr, priorFromStr, priorToStr, "accrual"],
     queryFn: async () => {
       const currentReport = await fetchPnl({
-        data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis", basis: "accrual" },
+        data: { tenantId, fromDate: currentFromStr, toDate: currentToStr, widget: "revenue_kpis", basis: "accrual" },
       });
       await wait(1_500);
       const priorReport = await fetchPnl({
-        data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis", basis: "accrual" },
+        data: { tenantId, fromDate: priorFromStr, toDate: priorToStr, widget: "revenue_kpis", basis: "accrual" },
       });
       return { current: currentReport, prior: priorReport };
     },
@@ -77,16 +100,22 @@ export function RevenueExpenseKpis({
           </p>
           <h3 className="font-display text-lg font-semibold">Revenue & Expenses</h3>
           <p className="text-xs text-muted-foreground">
-            {current.label} vs {prior.label}
+            {rangeLabel(fromDate, toDate)} vs {rangeLabel(prior.from, prior.to)}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          
           <Button variant="ghost" size="sm" onClick={handleRefetch} disabled={isFetching} title="Refresh">
             <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
+
+      <DateRangeControls
+        fromDate={fromDate}
+        toDate={toDate}
+        onFromChange={setFromDate}
+        onToChange={setToDate}
+      />
 
       {!shouldLoad ? (
         <XeroLoadPrompt
