@@ -274,17 +274,75 @@ export function BreakevenWidget({
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Accounting Break-Even
               </p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Kpi label="Fixed Costs" value={fmt(fixedOpex)} />
-                <Kpi label="Break-Even Revenue" value={fmt(breakevenRevenue)} />
-                <Kpi label="Break-Even / mo" value={fmt(monthlyBreakeven)} />
-                <Kpi
-                  label={aboveBreakeven ? "Surplus / mo" : "Shortfall / mo"}
-                  value={fmt(Math.abs(surplus))}
-                  tone={aboveBreakeven ? "positive" : "negative"}
-                />
-              </div>
+              {(() => {
+                const operatingResult = income - totalVariable - fixedOpex;
+                const isProfit = operatingResult >= 0;
+                const rows: {
+                  label: React.ReactNode;
+                  value: React.ReactNode;
+                  tone?: "positive" | "negative";
+                }[] = [
+                  { label: "Total Fixed Costs", value: fmt(fixedOpex) },
+                  { label: "Gross Margin %", value: pct(grossMargin) },
+                  {
+                    label: (
+                      <>
+                        Break-Even Revenue{" "}
+                        <span className="italic text-muted-foreground">
+                          (Fixed Costs ÷ Gross Margin %)
+                        </span>
+                      </>
+                    ),
+                    value: fmt(breakevenRevenue),
+                  },
+                  { label: "Monthly Revenue", value: fmt(monthlyIncome) },
+                  {
+                    label: "Above or Below Break-Even?",
+                    value: aboveBreakeven ? "Above" : "Below",
+                    tone: aboveBreakeven ? "positive" : "negative",
+                  },
+                  {
+                    label: isProfit ? "Operating Profit" : "Operating Loss",
+                    value: fmt(operatingResult),
+                    tone: isProfit ? "positive" : "negative",
+                  },
+                ];
+                return (
+                  <div className="overflow-hidden rounded-lg border border-border">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {rows.map((r, i) => (
+                          <tr
+                            key={i}
+                            className={cn(
+                              i !== rows.length - 1 && "border-b border-border",
+                            )}
+                          >
+                            <th
+                              scope="row"
+                              className="w-1/2 bg-muted/40 px-3 py-2 text-left font-medium text-foreground"
+                            >
+                              {r.label}
+                            </th>
+                            <td
+                              className={cn(
+                                "px-3 py-2 text-right font-mono tabular-nums",
+                                r.tone === "positive" && "text-emerald-600 font-semibold",
+                                r.tone === "negative" && "text-rose-600 font-semibold",
+                              )}
+                            >
+                              {r.value}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                );
+              })()}
             </div>
+
+
 
             <details className="mt-3 rounded-lg border border-border/60 bg-background/50">
               <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">
