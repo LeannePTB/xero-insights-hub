@@ -269,6 +269,62 @@ export type Database = {
           },
         ]
       }
+      client_true_breakeven_inputs: {
+        Row: {
+          ato_payment_plan: number
+          client_id: string
+          created_at: string
+          credit_card_interest: number
+          equipment_finance: number
+          id: string
+          loan_principal: number
+          notes: string | null
+          other: number
+          owner_drawings: number
+          tax_payments: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          ato_payment_plan?: number
+          client_id: string
+          created_at?: string
+          credit_card_interest?: number
+          equipment_finance?: number
+          id?: string
+          loan_principal?: number
+          notes?: string | null
+          other?: number
+          owner_drawings?: number
+          tax_payments?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          ato_payment_plan?: number
+          client_id?: string
+          created_at?: string
+          credit_card_interest?: number
+          equipment_finance?: number
+          id?: string
+          loan_principal?: number
+          notes?: string | null
+          other?: number
+          owner_drawings?: number
+          tax_payments?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_true_breakeven_inputs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_xero_orgs: {
         Row: {
           client_id: string
