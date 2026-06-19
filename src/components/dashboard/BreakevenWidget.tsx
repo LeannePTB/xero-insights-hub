@@ -278,10 +278,6 @@ export function BreakevenWidget({
                 const operatingResult = income - totalVariable - fixedOpex;
                 const isProfit = operatingResult >= 0;
                 const rows: { label: ReactNode; value: ReactNode; tone?: "positive" | "negative" }[] = [
-                  label: React.ReactNode;
-                  value: React.ReactNode;
-                  tone?: "positive" | "negative";
-                }[] = [
                   { label: "Total Fixed Costs", value: fmt(fixedOpex) },
                   { label: "Gross Margin %", value: pct(grossMargin) },
                   {
