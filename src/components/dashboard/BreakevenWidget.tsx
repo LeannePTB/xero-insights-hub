@@ -110,18 +110,26 @@ export function BreakevenWidget({
   let excludedOpex = 0;
   let excludedCount = 0;
   let unclassifiedCount = 0;
+  const fixedLines: { name: string; amount: number; unclassified: boolean }[] = [];
+  const variableLines: { name: string; amount: number }[] = [];
   if (!classificationEnabled || expenseLines.length === 0) {
     fixedOpex = opex;
     variableOpex = 0;
+    for (const line of expenseLines) {
+      fixedLines.push({ name: line.name, amount: line.amount, unclassified: true });
+    }
   } else {
     for (const line of expenseLines) {
       const c = classMap.get(line.name);
-      if (c === "variable") variableOpex += line.amount;
-      else if (c === "excluded") {
+      if (c === "variable") {
+        variableOpex += line.amount;
+        variableLines.push({ name: line.name, amount: line.amount });
+      } else if (c === "excluded") {
         excludedOpex += line.amount;
         excludedCount += 1;
       } else {
         fixedOpex += line.amount;
+        fixedLines.push({ name: line.name, amount: line.amount, unclassified: !c });
         if (!c) unclassifiedCount += 1;
       }
     }
@@ -131,6 +139,9 @@ export function BreakevenWidget({
       fixedOpex += opex - linesTotal;
     }
   }
+  fixedLines.sort((a, b) => b.amount - a.amount);
+  variableLines.sort((a, b) => b.amount - a.amount);
+
 
   const months = monthsBetween(fromDate, toDate);
   const totalVariable = cogs + variableOpex;
