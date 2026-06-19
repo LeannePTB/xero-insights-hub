@@ -74,6 +74,8 @@ function usePersistedDate(key: string, fallback: () => Date): [Date, (d: Date) =
     } catch {}
   }, [key, date]);
   return [date, setDate];
+}
+
 
 export function BreakevenWidget({
   tenantId,
