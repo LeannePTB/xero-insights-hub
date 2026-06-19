@@ -149,6 +149,9 @@ function ClientDashboard() {
             <p className="mt-1 text-sm text-muted-foreground">
               {TIER_LABEL[tier]} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
             </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              All dashboards report on an <span className="font-semibold text-foreground">Accrual</span> basis unless noted on the card.
+            </p>
           </div>
           {isAdvisor && (
             <Button variant="outline" asChild className="shrink-0">
