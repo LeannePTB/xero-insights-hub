@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
+
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 
 function fmt(n: number) {
