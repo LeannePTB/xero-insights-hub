@@ -70,8 +70,9 @@ export function BreakevenWidget({
   const fetchPnl = useServerFn(getProfitAndLoss);
   const fetchClassifications = useServerFn(listCostClassifications);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  const [fromDate, setFromDate] = useState<Date>(startOfThisMonth());
-  const [toDate, setToDate] = useState<Date>(endOfThisMonth());
+  const storageKey = `breakeven-range:${tenantId}`;
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfThisMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfThisMonth);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
