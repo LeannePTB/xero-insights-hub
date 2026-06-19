@@ -64,7 +64,7 @@ function ClientSettings() {
   const fetchTierCfg = useServerFn(listTierConfig);
   const saveTier = useServerFn(saveTierWidgets);
   const fetchTierSettings = useServerFn(listTierSettings);
-  const updateBasis = useServerFn(updateClientReportBasis);
+  
 
   const clientQ = useQuery({ queryKey: ["client", clientId], queryFn: () => fetchClient({ data: { clientId } }) });
   const connQ = useQuery({ queryKey: ["xero-connections"], queryFn: () => fetchConnections() });
