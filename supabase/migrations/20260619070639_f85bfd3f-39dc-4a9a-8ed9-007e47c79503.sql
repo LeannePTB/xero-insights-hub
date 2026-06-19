@@ -1,0 +1,2 @@
+ALTER TABLE public.client_cost_classifications DROP CONSTRAINT IF EXISTS client_cost_classifications_classification_check;
+ALTER TABLE public.client_cost_classifications ADD CONSTRAINT client_cost_classifications_classification_check CHECK (classification IN ('fixed','variable','excluded'));
