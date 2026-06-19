@@ -66,20 +66,32 @@ function AuthPage() {
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">
-      <div className="hidden flex-col justify-between p-12 text-primary-foreground md:flex" style={{ background: "var(--gradient-hero)" }}>
-        <BrandMark onDark logoHeightClass="h-9" />
+      <div className="relative isolate hidden flex-col justify-between overflow-hidden p-12 text-primary-foreground md:flex">
+        <img
+          src={heroImage}
+          alt="Builders framing a new home on an Australian construction site at golden hour"
+          className="absolute inset-0 z-0 h-full w-full object-cover"
+        />
+        <div
+          className="absolute inset-0 z-10 opacity-70 mix-blend-multiply"
+          style={{ background: "var(--gradient-hero)" }}
+        />
+        <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
+        <div className="relative z-20">
+          <BrandMark onDark logoHeightClass="h-9" />
+        </div>
 
-        <div>
+        <div className="relative z-20">
           <h2 className="text-3xl font-bold leading-tight">
             Built for decisions.
             <br />
             <span className="font-serif italic text-accent">Backed by data.</span>
           </h2>
-          <p className="mt-4 max-w-md text-sm text-primary-foreground/75">
+          <p className="mt-4 max-w-md text-sm text-primary-foreground/85">
             Clean Xero dashboards you will actually open — built around the metrics that matter.
           </p>
         </div>
-        <p className="text-xs text-primary-foreground/55">© {new Date().getFullYear()} Positive Traction</p>
+        <p className="relative z-20 text-xs text-primary-foreground/70">© {new Date().getFullYear()} Positive Traction</p>
       </div>
 
       <div className="flex items-center justify-center p-6">
