@@ -86,7 +86,7 @@ function ClientDashboard() {
 
   const client = clientQ.data?.client;
   const orgs: any[] = client?.client_xero_orgs ?? [];
-  const defaultBasis = client?.report_basis === "cash" ? "cash" : "accrual";
+  
 
   const cards = useMemo<SortableCard[]>(() => {
     if (!client) return [];
@@ -99,13 +99,13 @@ function ClientDashboard() {
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
       if (widgets.includes("revenue_kpis"))
-        list.push({ id: `${o.id}:revenue_kpis`, node: <RevenueExpenseKpis tenantId={tenantId} tenantName={tenantName} defaultBasis={defaultBasis} /> });
+        list.push({ id: `${o.id}:revenue_kpis`, node: <RevenueExpenseKpis tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("tax_liability"))
         list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("pnl"))
-        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} defaultBasis={defaultBasis} /> });
+        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("breakeven"))
-        list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} defaultBasis={defaultBasis} /> });
+        list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("payables"))
         list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
       if (widgets.includes("receivables"))
@@ -113,7 +113,7 @@ function ClientDashboard() {
 
     }
     return list;
-  }, [client, clientId, defaultBasis, isAdvisor, orgs, widgets]);
+  }, [client, clientId, isAdvisor, orgs, widgets]);
 
   if (ctxQ.isLoading || clientQ.isLoading) {
     return (
@@ -148,6 +148,9 @@ function ClientDashboard() {
             <h1 className="truncate font-display text-2xl font-semibold sm:text-3xl">{client.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {TIER_LABEL[tier]} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              All dashboards report on an <span className="font-semibold text-foreground">Accrual</span> basis unless noted on the card.
             </p>
           </div>
           {isAdvisor && (

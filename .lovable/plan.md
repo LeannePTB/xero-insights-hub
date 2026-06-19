@@ -1,27 +1,31 @@
-## Plan: Hero background image on landing page
+## Goal
+Force every dashboard widget to use **Accrual** basis, remove the user-facing controls that let advisors switch it, and surface a small note on the client dashboard so users know.
 
-**Goal:** Replace the flat purple gradient behind the hero in `src/routes/index.tsx` with a cinematic construction-site photo, with the brand purple gradient overlaid for legibility.
+## Changes
 
-### Steps
+### 1. Client settings page (`src/routes/_authenticated/clients.$clientId.settings.tsx`)
+- Remove the entire "Report basis" `<Section>` (the Accrual/Cash dropdown and its mutation wiring).
+- Remove the now-unused `basisMut` mutation and related imports if they become orphaned.
 
-1. **Generate the image** (`imagegen` standard quality, 1920×1024, JPG)
-   - Path: `src/assets/hero-construction.jpg`
-   - Prompt: cinematic wide shot of an Australian residential construction site at golden hour — builders in hi-vis and hard hats framing a timber-framed home, scaffolding, ute in background. Shallow depth of field, warm natural light, photoreal, editorial quality. Composition leaves the left third darker/cleaner for headline overlay.
+### 2. Widgets — remove per-card basis switcher
+In each of these files, remove the `<BasisSelect>` control from the card header, drop the `basis` state, and hard-code `basis: "accrual"` in the query call + key:
+- `src/components/dashboard/PnlWidget.tsx`
+- `src/components/dashboard/BreakevenWidget.tsx`
+- `src/components/dashboard/RevenueExpenseKpis.tsx`
 
-2. **Wire it into the hero** in `src/routes/index.tsx`
-   - Import the JPG.
-   - In the `Hero` section, add an `<img>` layer as the bottom of the stack (`-z-20`, `object-cover`, `absolute inset-0`), with `alt="Builders on an Australian construction site"`.
-   - Keep the existing `--gradient-hero` layer (`-z-10`) but reduce opacity to ~75% and add a left-to-right dark gradient overlay so the white headline stays readable.
-   - Tighten bottom fade to background so the section blends into `BuiltFor`.
+Also drop the `defaultBasis` prop from each widget's signature.
 
-3. **No copy/layout changes** — headline, subhead, CTAs, checklist all stay as-is.
+### 3. Client dashboard (`src/routes/_authenticated/clients.$clientId.index.tsx`)
+- Stop passing `defaultBasis` to the widgets (and remove the `defaultBasis` calculation).
+- Under the client name / tier line, add a small muted line:
+  > "All dashboards report on an **Accrual** basis unless noted on the card."
 
-### Technical notes
-- Image stays in `src/assets/` (not externalized to CDN) — single hero, imported as a module so Vite hashes & optimises it.
-- Tailwind only; no new tokens. Reuses existing `--gradient-hero`.
-- Accessible `alt` text; image is decorative-supportive, not the sole carrier of meaning.
+### 4. Leave alone
+- `BasisSelect.tsx` component file — keep for now (unused, but harmless); can be deleted later if no callers remain.
+- Database `clients.report_basis` column — not changed. The server (`xero/access.server.ts`) currently reads it; that still works but will be ignored by the UI. No migration needed.
+- Receivables / Payables widgets — already invoice-based, not touched.
 
-### Out of scope
-- No other section changes (Features, Pricing, etc.)
-- No new fonts/colors
-- No copy edits
+## Technical notes
+- No database migration.
+- The hard-coded `"accrual"` keeps the existing server `fetchPnl` contract unchanged.
+- The dashboard note uses existing `text-muted-foreground` styling to match the tier/orgs subtitle.

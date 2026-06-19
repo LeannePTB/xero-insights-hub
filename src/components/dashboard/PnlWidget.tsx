@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { Loader2, TrendingUp, TrendingDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
+
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 
 function fmt(n: number) {
@@ -27,23 +27,20 @@ function today() {
 export function PnlWidget({
   tenantId,
   tenantName,
-  defaultBasis = "accrual",
   loadDelayMs = 0,
 }: {
   tenantId: string;
   tenantName: string;
-  defaultBasis?: ReportBasis;
   loadDelayMs?: number;
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const fromDate = startOfFiscalYear();
   const toDate = today();
-  const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-pnl", tenantId, fromDate, toDate, basis],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate, widget: "pnl", basis } }),
+    queryKey: ["xero-pnl", tenantId, fromDate, toDate, "accrual"],
+    queryFn: () => fetchPnl({ data: { tenantId, fromDate, toDate, widget: "pnl", basis: "accrual" } }),
     enabled: shouldLoad,
     retry: false,
   });
@@ -67,7 +64,7 @@ export function PnlWidget({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <BasisSelect value={basis} onChange={setBasis} disabled={isFetching} />
+          
           <Button
             variant="ghost"
             size="sm"
