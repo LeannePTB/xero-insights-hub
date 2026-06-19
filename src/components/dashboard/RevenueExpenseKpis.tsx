@@ -36,29 +36,26 @@ function wait(ms: number) {
 export function RevenueExpenseKpis({
   tenantId,
   tenantName,
-  defaultBasis = "accrual",
   loadDelayMs = 0,
 }: {
   tenantId: string;
   tenantName: string;
-  defaultBasis?: ReportBasis;
   loadDelayMs?: number;
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const current = monthRange(0);
   const prior = monthRange(-1);
-  const [basis, setBasis] = useState<ReportBasis>(defaultBasis);
 
   const { data, isLoading, isFetching, error, refetch: refetchReports } = useQuery({
-    queryKey: ["xero-pnl-month-comparison", tenantId, current.from, current.to, prior.from, prior.to, basis],
+    queryKey: ["xero-pnl-month-comparison", tenantId, current.from, current.to, prior.from, prior.to, "accrual"],
     queryFn: async () => {
       const currentReport = await fetchPnl({
-        data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis", basis },
+        data: { tenantId, fromDate: current.from, toDate: current.to, widget: "revenue_kpis", basis: "accrual" },
       });
       await wait(1_500);
       const priorReport = await fetchPnl({
-        data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis", basis },
+        data: { tenantId, fromDate: prior.from, toDate: prior.to, widget: "revenue_kpis", basis: "accrual" },
       });
       return { current: currentReport, prior: priorReport };
     },
