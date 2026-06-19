@@ -6,6 +6,7 @@ import { getCurrentTaxBalance } from "@/lib/xero/reports.functions";
 import { Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import { DateField, toISO, usePersistedDate } from "@/components/dashboard/DateRangeControls";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -13,10 +14,6 @@ function fmt(n: number) {
     currency: "AUD",
     maximumFractionDigits: 0,
   }).format(n);
-}
-
-function iso(d: Date) {
-  return format(d, "yyyy-MM-dd");
 }
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -29,11 +26,12 @@ const CATEGORY_LABEL: Record<string, string> = {
 export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { tenantId: string; tenantName: string; loadDelayMs?: number }) {
   const fetchBalance = useServerFn(getCurrentTaxBalance);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  const todayIso = iso(new Date());
+  const [asAt, setAsAt] = usePersistedDate(`tax-liability-as-at:${tenantId}`, () => new Date());
+  const asAtIso = toISO(asAt);
 
   const balanceQ = useQuery({
-    queryKey: ["xero-tax-balance", tenantId, todayIso],
-    queryFn: () => fetchBalance({ data: { tenantId, date: todayIso } }),
+    queryKey: ["xero-tax-balance", tenantId, asAtIso],
+    queryFn: () => fetchBalance({ data: { tenantId, date: asAtIso } }),
     enabled: shouldLoad,
     retry: false,
   });
