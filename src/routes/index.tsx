@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { BrandMark } from "@/components/BrandMark";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, CheckCircle2, BarChart3, ShieldCheck, Zap, Building2, HardHat, HomeIcon } from "lucide-react";
+import heroImage from "@/assets/hero-construction.jpg";
 
 export const Route = createFileRoute("/")({
   head: () => ({
