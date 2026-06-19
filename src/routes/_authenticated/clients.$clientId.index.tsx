@@ -86,7 +86,7 @@ function ClientDashboard() {
 
   const client = clientQ.data?.client;
   const orgs: any[] = client?.client_xero_orgs ?? [];
-  const defaultBasis = client?.report_basis === "cash" ? "cash" : "accrual";
+  
 
   const cards = useMemo<SortableCard[]>(() => {
     if (!client) return [];
