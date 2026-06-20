@@ -75,7 +75,7 @@ export function PnlWidget({
   const current = data?.current;
   const priorData = data?.prior;
 
-  const expenseData = (data?.expenseLines ?? []).slice(0, 6).map((e) => ({
+  const expenseData = (current?.expenseLines ?? []).slice(0, 6).map((e) => ({
     name: e.name.length > 18 ? e.name.slice(0, 18) + "…" : e.name,
     amount: e.amount,
   }));
