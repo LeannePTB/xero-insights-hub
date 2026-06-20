@@ -138,7 +138,7 @@ function walkRows(rows: XeroReportRow[] | undefined, visit: (r: XeroReportRow) =
 }
 
 function extractTaxLines(report: any) {
-  const lines: TaxLiabilities["lines"] = [];
+  const lines: (TaxLiabilities["lines"][number] & { accountId?: string })[] = [];
   walkRows(report?.Rows, (r) => {
     if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
     const name = r.Cells[0].Value;
@@ -146,7 +146,16 @@ function extractTaxLines(report: any) {
     const category = classifyTaxLine(name);
     if (!category) return;
     const amount = parseAmount(r.Cells[1].Value);
-    lines.push({ name, amount, category });
+    let accountId: string | undefined;
+    for (const cell of r.Cells) {
+      const attrs = (cell as any).Attributes;
+      if (!Array.isArray(attrs)) continue;
+      for (const a of attrs) {
+        if (a?.Id === "account" && typeof a.Value === "string") accountId = a.Value;
+      }
+      if (accountId) break;
+    }
+    lines.push({ name, amount, category, accountId });
   });
   return lines;
 }
