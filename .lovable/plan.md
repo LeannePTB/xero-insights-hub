@@ -1,77 +1,44 @@
 ## Goal
 
-In **Settings → Report basis**, render a list of dashboard cards with a toggle per card. Toggle ON = that card uses the client's accounting basis (Accrual or Cash, as set on the client). Toggle OFF = that card always uses Accrual. Today only the Tax liability card honours the client basis — this makes that behaviour explicit, per-card, and configurable.
+Tax card should show, side-by-side:
+1. **This period BAS** — 1A, 1B, W5, line 9 from the Xero Activity Statement (matches the PDF exactly).
+2. **Outstanding on balance sheet** — existing buckets (Not yet due / Due / Overdue) + BS breakdown.
 
-## Behaviour
+Also fix the "Activity Statement isn't available" path so Simpler BAS orgs (which the PDF confirms exists) still get period figures by falling back to GST/PAYG account movements when the AS endpoint 404s.
 
-- Default for every card = OFF (forced Accrual), **except Tax liability** which defaults ON (matches today's behaviour, so nothing regresses for existing clients).
-- Switching a card ON makes it follow `client.report_basis` (which is already editable above in Settings).
-- The `BasisBadge` on each dashboard card keeps working — it just shows whatever basis the card is actually using ("CASH" if override is ON and client basis is cash, otherwise "ACCRUAL").
-- Viewers never see the override list (advisor-only, same as the rest of Settings).
+## Why current numbers don't match
 
-## Cards exposed in the toggle list
+- BAS endpoint returned 404 → no lodged amounts → buckets default to "Not yet due", and overdue can't be computed.
+- PAYG BS balance $5,924 includes accumulated unpaid PAYG from earlier periods; June BAS only owes $1,795.
+- GST BS balance −$475 (debit) reflects net of GST on sales/purchases not yet journaled to a BAS clearing account.
 
-Each linked Xero org's widgets, grouped by widget type (one row per type, applied to all that client's orgs):
+## Changes
 
-- Tax liability  *(default ON)*
-- P&L  *(default OFF)*
-- Superannuation  *(default OFF)*
-- Payables  *(default OFF)*
-- Receivables  *(default OFF)*
-- Breakeven  *(default OFF)*
+### `src/lib/xero/reports.functions.ts`
 
-Cards that don't pull from Xero reports (Notes, Unreconciled) are excluded — basis doesn't apply.
+- New server fn `getActivityStatementOrFallback({ tenantId, fromDate, toDate })`:
+  - Try `Reports/ActivityStatement` first (existing logic).
+  - If unavailable, compute fallback from `Reports/ProfitAndLoss` (cash basis) GST account movement + Payroll Activity Summary for PAYG W5. Return `{ source: "activity-statement" | "fallback", boxes: { "1A","1B","W5","9","G1" }, periodFrom, periodTo, basis }`.
+  - For the fallback, label clearly so the UI can say "Estimated from GST/Payroll accounts".
+- Keep `getTaxLiabilityBuckets` unchanged (still BS snapshot).
 
-## Technical changes
+### `src/components/dashboard/TaxLiabilityWidget.tsx`
 
-### 1. Persist the per-card overrides
+- Add a date-range picker (period start / period end) defaulting to the current month, separate from the existing "As at" date.
+- Add a second `useQuery` calling the new period fn.
+- Render two stacked sections inside the card:
+  - **This period (BAS)**: KPI tiles for 1A, 1B, W5, and a prominent "Net payment (9)". Show period and basis. If `source === "fallback"`, show a small italic note: "Estimated — Activity Statement endpoint not available for this org."
+  - **Outstanding (balance sheet)** (existing): As-at date, bucket KPIs, reconciliation strip, BS breakdown list. Keep the existing `asMessage` notice.
+- Keep `BasisBadge`/reporting basis behaviour unchanged.
 
-Add a `basis_overrides jsonb not null default '{}'::jsonb` column on `public.clients`. Shape:
+### Out of scope
 
-```json
-{ "tax_liability": true, "pnl": false, "superannuation": false, "payables": false, "receivables": false, "breakeven": false }
-```
+- No DB migration.
+- No change to Superannuation, Payables, Receivables, or other widgets.
+- No change to `getTaxLiabilityBuckets` math beyond what's needed to coexist.
 
-Missing keys fall back to the documented defaults above (so existing rows keep current behaviour without a backfill).
+## Technical notes
 
-### 2. Server function
-
-In `src/lib/clients.functions.ts`, add `updateClientBasisOverride({ clientId, widget, enabled })`:
-- `requireSupabaseAuth` + advisor role check (mirrors `updateClientReportBasis`).
-- Updates the single key inside `basis_overrides` via `jsonb_set`.
-- Returns the new overrides object.
-
-### 3. Settings UI
-
-In `src/routes/_authenticated/clients.$clientId.settings.tsx`, extend the existing **Report basis** section:
-
-- Keep the existing `BasisSelectRow` (the client-level Accrual/Cash selector).
-- Below it, render a small table — one row per widget — with:
-  - Widget label
-  - `Switch` bound to the override value (defaulting per the rules above)
-  - Right-aligned helper text showing the resulting basis: e.g. *"Uses client basis (Cash)"* when ON, *"Always Accrual"* when OFF.
-- Updates call the new server fn and invalidate `client`, `xero-tax-buckets`, `xero-pnl`, and any other affected query keys.
-
-### 4. Dashboard wiring
-
-In `src/routes/_authenticated/clients.$clientId.index.tsx`:
-
-- Read `client.basis_overrides`.
-- Build a small helper `basisFor(widget)` returning `reportBasis` when the override is ON, else `"accrual"`.
-- Pass `basis={basisFor("tax_liability")}` to `TaxLiabilityWidget`, `basis={basisFor("pnl")}` to `PnlWidget`, and add the same `basis` prop to `SuperannuationWidget`, `PayablesWidget`, `ReceivablesWidget`, `BreakevenWidget`.
-
-### 5. Widget changes
-
-For each of Superannuation, Payables, Receivables, Breakeven:
-- Accept `basis?: "accrual" | "cash"` prop (default `"accrual"`).
-- Include `basis` in the relevant `useQuery` `queryKey` so changing it invalidates cache.
-- Pass `basis` through to the report server fn (matching how `PnlWidget` does it today).
-- `BasisBadge` already reads the prop, so badge updates automatically.
-
-Server-side report functions (`src/lib/xero/reports.functions.ts`, payables/receivables/etc.) already accept a `basis` parameter where Xero supports it; for ones that don't accept basis, the prop is still threaded so the badge label is honest, but the report request itself is unchanged.
-
-## Out of scope
-
-- No change to the existing client-level Accrual/Cash selector — that stays as-is.
-- No change to `BasisBadge` or to which widgets show one.
-- No migration of existing data (defaults preserve current Tax-only behaviour).
+- AU Activity Statement endpoint returns 404 for orgs on Simpler BAS / non-GST-worksheet — fallback path required.
+- Fallback PAYG via `Reports/PayrollActivitySummary` if available; otherwise show "—" with a tooltip instead of guessing.
+- Cash basis: pass `paymentsOnly: "true"` to P&L when `basis === "cash"` for the GST fallback.
