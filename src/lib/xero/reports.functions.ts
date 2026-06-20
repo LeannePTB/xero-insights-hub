@@ -138,7 +138,7 @@ function walkRows(rows: XeroReportRow[] | undefined, visit: (r: XeroReportRow) =
 }
 
 function extractTaxLines(report: any) {
-  const lines: TaxLiabilities["lines"] = [];
+  const lines: (TaxLiabilities["lines"][number] & { accountId?: string })[] = [];
   walkRows(report?.Rows, (r) => {
     if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
     const name = r.Cells[0].Value;
@@ -146,7 +146,16 @@ function extractTaxLines(report: any) {
     const category = classifyTaxLine(name);
     if (!category) return;
     const amount = parseAmount(r.Cells[1].Value);
-    lines.push({ name, amount, category });
+    let accountId: string | undefined;
+    for (const cell of r.Cells) {
+      const attrs = (cell as any).Attributes;
+      if (!Array.isArray(attrs)) continue;
+      for (const a of attrs) {
+        if (a?.Id === "account" && typeof a.Value === "string") accountId = a.Value;
+      }
+      if (accountId) break;
+    }
+    lines.push({ name, amount, category, accountId });
   });
   return lines;
 }
@@ -414,45 +423,88 @@ export const getActivityStatementPeriod = createServerFn({ method: "POST" })
       if (!/404|NotFound|not available|not found/i.test(msg)) throw e;
     }
 
-    // 2. Fallback: balance sheet movement of GST/PAYG accounts.
-    const openingDate = isoDayBefore(data.fromDate);
-    const params = basis === "cash" ? { paymentsOnly: "true" } : {};
-    const [openRes, endRes] = await Promise.all([
-      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: openingDate, ...params }),
-      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.toDate, ...params }),
-    ]);
-    const openLines = openRes?.Reports?.[0] ? extractTaxLines(openRes.Reports[0]) : [];
-    const endLines = endRes?.Reports?.[0] ? extractTaxLines(endRes.Reports[0]) : [];
-    const openMap = new Map<string, number>();
-    for (const l of openLines) openMap.set(l.name, (openMap.get(l.name) ?? 0) + l.amount);
-    let netGst = 0;
-    let paygWithheld = 0;
-    const seen = new Set<string>();
-    for (const l of endLines) {
-      seen.add(l.name);
-      const delta = l.amount - (openMap.get(l.name) ?? 0);
-      if (l.category === "gst") netGst += delta;
-      else if (l.category === "payg") paygWithheld += delta;
-    }
-    for (const l of openLines) {
-      if (seen.has(l.name)) continue;
-      const delta = -l.amount;
-      if (l.category === "gst") netGst += delta;
-      else if (l.category === "payg") paygWithheld += delta;
-    }
+    // 2. Fallback: sum period transactions on GST / PAYG accounts via the
+    //    AccountTransactions report. This matches what Simpler BAS reports
+    //    (credits = tax collected/withheld, debits = GST on purchases).
+    const bsRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {
+      date: data.toDate,
+    });
+    const bsLines = bsRes?.Reports?.[0] ? extractTaxLines(bsRes.Reports[0]) : [];
+    const taxAccounts = bsLines.filter(
+      (l) => (l.category === "gst" || l.category === "payg") && l.accountId,
+    );
+
+    let gstOnSales = 0; // 1A — credits to GST accounts
+    let gstOnPurchases = 0; // 1B — debits to GST accounts
+    let paygWithheld = 0; // W5 — credits to PAYG accounts
+
+    await Promise.all(
+      taxAccounts.map(async (acc) => {
+        try {
+          const tx = await xeroGet<{ Reports: any[] }>(conn, "Reports/AccountTransactions", {
+            accountID: acc.accountId!,
+            fromDate: data.fromDate,
+            toDate: data.toDate,
+          });
+          const report = tx?.Reports?.[0];
+          if (!report) return;
+          // Locate Debit / Credit column indexes from the header row.
+          let debitIdx = -1;
+          let creditIdx = -1;
+          walkRows(report.Rows, (r) => {
+            if (debitIdx >= 0 && creditIdx >= 0) return;
+            if (r.RowType === "Header" && Array.isArray(r.Cells)) {
+              r.Cells.forEach((c: any, i: number) => {
+                const v = String(c?.Value ?? "").toLowerCase();
+                if (v === "debit") debitIdx = i;
+                else if (v === "credit") creditIdx = i;
+              });
+            }
+          });
+          if (debitIdx < 0 || creditIdx < 0) return;
+          let debits = 0;
+          let credits = 0;
+          walkRows(report.Rows, (r) => {
+            if (r.RowType !== "Row" || !Array.isArray(r.Cells)) return;
+            // Skip the trailing "Total" / "Opening Balance" / "Closing Balance"
+            // summary rows — they have no transaction Date in cell 0.
+            const first = String(r.Cells[0]?.Value ?? "").toLowerCase();
+            if (
+              first.includes("opening balance") ||
+              first.includes("closing balance") ||
+              first.includes("total")
+            ) {
+              return;
+            }
+            debits += Math.abs(parseAmount(r.Cells[debitIdx]?.Value ?? 0));
+            credits += Math.abs(parseAmount(r.Cells[creditIdx]?.Value ?? 0));
+          });
+          if (acc.category === "gst") {
+            gstOnSales += credits;
+            gstOnPurchases += debits;
+          } else if (acc.category === "payg") {
+            paygWithheld += credits;
+          }
+        } catch {
+          // Swallow per-account errors so one bad account doesn't blank the card.
+        }
+      }),
+    );
+
+    const netGst = gstOnSales - gstOnPurchases;
     return {
       source: "fallback",
       periodFrom: data.fromDate,
       periodTo: data.toDate,
       basis,
       boxes: {},
-      gstOnSales: 0,
-      gstOnPurchases: 0,
+      gstOnSales,
+      gstOnPurchases,
       netGst,
       paygWithheld,
       netPayment: netGst + paygWithheld,
       message:
-        "Estimated from GST and PAYG account movements — Xero's Activity Statement endpoint isn't available for this org.",
+        "Estimated from GST and PAYG account transactions for the period — Xero's Activity Statement endpoint isn't available for this org.",
     };
   });
 

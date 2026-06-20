@@ -1,44 +1,51 @@
-## Goal
+## Why the numbers don't match
 
-Tax card should show, side-by-side:
-1. **This period BAS** — 1A, 1B, W5, line 9 from the Xero Activity Statement (matches the PDF exactly).
-2. **Outstanding on balance sheet** — existing buckets (Not yet due / Due / Overdue) + BS breakdown.
+The current "This period (BAS)" fallback compares the **Balance Sheet** of GST/PAYG liability accounts at the start vs end of the period. That measures *net change in the liability*, which includes BAS **payments** made during the period — so paying last quarter's BAS makes this period's "Net GST" look negative, which is exactly what the screenshot shows (Net GST −$291, PAYG −$666).
 
-Also fix the "Activity Statement isn't available" path so Simpler BAS orgs (which the PDF confirms exists) still get period figures by falling back to GST/PAYG account movements when the AS endpoint 404s.
+The Xero PDF (1A=$1,942, 1B=$212, W5=$1,795, Net=$3,525) is a sum of *transactions posted to those accounts during the period*, not the balance change.
 
-## Why current numbers don't match
+## Fix
 
-- BAS endpoint returned 404 → no lodged amounts → buckets default to "Not yet due", and overdue can't be computed.
-- PAYG BS balance $5,924 includes accumulated unpaid PAYG from earlier periods; June BAS only owes $1,795.
-- GST BS balance −$475 (debit) reflects net of GST on sales/purchases not yet journaled to a BAS clearing account.
+Replace the fallback in `getActivityStatementPeriod` to compute period figures from the **Profit and Loss / Account Transactions** activity on each GST and PAYG account, not the balance-sheet delta.
 
-## Changes
+### Approach
 
-### `src/lib/xero/reports.functions.ts`
+For each GST and PAYG account discovered on the Balance Sheet, call `Reports/ProfitAndLoss` won't work (these are liabilities). Instead use:
 
-- New server fn `getActivityStatementOrFallback({ tenantId, fromDate, toDate })`:
-  - Try `Reports/ActivityStatement` first (existing logic).
-  - If unavailable, compute fallback from `Reports/ProfitAndLoss` (cash basis) GST account movement + Payroll Activity Summary for PAYG W5. Return `{ source: "activity-statement" | "fallback", boxes: { "1A","1B","W5","9","G1" }, periodFrom, periodTo, basis }`.
-  - For the fallback, label clearly so the UI can say "Estimated from GST/Payroll accounts".
-- Keep `getTaxLiabilityBuckets` unchanged (still BS snapshot).
+- `Reports/BankSummary` — no.
+- **`Reports/ExecutiveSummary`** — too aggregated.
+- **`Reports/TrialBalance` with `date=toDate` and `paymentsOnly` toggle** — only gives balance, not period movement.
+- **`Reports/AccountTransactions?AccountID=<id>&fromDate&toDate`** — gives every line for the account in the window, with separate Debit/Credit columns. **This is the correct endpoint.**
 
-### `src/components/dashboard/TaxLiabilityWidget.tsx`
+Steps in the fallback handler:
 
-- Add a date-range picker (period start / period end) defaulting to the current month, separate from the existing "As at" date.
-- Add a second `useQuery` calling the new period fn.
-- Render two stacked sections inside the card:
-  - **This period (BAS)**: KPI tiles for 1A, 1B, W5, and a prominent "Net payment (9)". Show period and basis. If `source === "fallback"`, show a small italic note: "Estimated — Activity Statement endpoint not available for this org."
-  - **Outstanding (balance sheet)** (existing): As-at date, bucket KPIs, reconciliation strip, BS breakdown list. Keep the existing `asMessage` notice.
-- Keep `BasisBadge`/reporting basis behaviour unchanged.
+1. Fetch the Balance Sheet as at `toDate` once to discover GST and PAYG account names + IDs (re-use `extractTaxLines`, extend it to also surface `accountId` from `RowID`/`Attributes`).
+2. For each GST account, call `Reports/AccountTransactions` for `[fromDate, toDate]`. Sum:
+   - **Credits** → adds to **1A (GST on sales)**
+   - **Debits** → adds to **1B (GST on purchases)**
+3. For each PAYG Withholding account, call `Reports/AccountTransactions` and sum **Credits** → **W5 (PAYG withheld)**. (Debits there are BAS payments and shouldn't reduce W5.)
+4. Compute `netGst = 1A − 1B`, `netPayment = netGst + W5`.
+5. Keep the "Estimated …" message but update wording to: *"Estimated from GST/PAYG account transactions for the period."*
+6. Exclude lines whose source is `BAS Payment`/`Manual Journal` only if needed — first pass: include everything posted to the account, which matches what Xero's Simpler BAS worksheet does.
+
+### Sign handling
+
+Liability accounts: credits are positive (increase liability = tax collected). Xero's `AccountTransactions` report returns numeric `Debit` and `Credit` columns per row. Use absolute values from those columns rather than the signed `NetAmount`, so the result is independent of how Xero presents the running balance.
+
+### Files
+
+- `src/lib/xero/reports.functions.ts`
+  - Extend `extractTaxLines` (or add a parallel helper) to capture `accountId` for GST/PAYG rows.
+  - Rewrite the fallback branch (lines ~417-456) of `getActivityStatementPeriod` per above.
+  - Populate `gstOnSales` (1A) and `gstOnPurchases` (1B) in the fallback return so the UI can show the same four tiles as the Activity Statement path.
+- `src/components/dashboard/TaxLiabilityWidget.tsx`
+  - Show **1A, 1B, W5, Net payment** tiles for both `source === "activity-statement"` and `source === "fallback"` (drop the special "Net GST" single tile in fallback now that 1A/1B are real).
 
 ### Out of scope
 
-- No DB migration.
-- No change to Superannuation, Payables, Receivables, or other widgets.
-- No change to `getTaxLiabilityBuckets` math beyond what's needed to coexist.
+- No changes to the "Outstanding on balance sheet" section, buckets, or super/payables/receivables widgets.
+- No DB or migration changes.
 
-## Technical notes
+### Verification
 
-- AU Activity Statement endpoint returns 404 for orgs on Simpler BAS / non-GST-worksheet — fallback path required.
-- Fallback PAYG via `Reports/PayrollActivitySummary` if available; otherwise show "—" with a tooltip instead of guessing.
-- Cash basis: pass `paymentsOnly: "true"` to P&L when `basis === "cash"` for the GST fallback.
+After the change, with FROM=1 Apr 2026 TO=30 Jun 2026 (the quarter on the user's PDF), the four tiles should match 1A=$1,942, 1B=$212, W5=$1,795, Net=$3,525 within rounding. The 1–20 Jun window the user is currently viewing will naturally be smaller (partial period), which is expected.

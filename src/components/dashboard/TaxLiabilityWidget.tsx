@@ -260,20 +260,13 @@ function PeriodSection({
     message?: string;
   };
 }) {
-  const isAS = data.source === "activity-statement";
   return (
     <div className="mt-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {isAS ? (
-          <>
-            <PeriodKpi label="GST on sales (1A)" value={data.gstOnSales} />
-            <PeriodKpi label="GST on purchases (1B)" value={data.gstOnPurchases} />
-          </>
-        ) : (
-          <PeriodKpi label="Net GST" value={data.netGst} />
-        )}
+        <PeriodKpi label="GST on sales (1A)" value={data.gstOnSales} />
+        <PeriodKpi label="GST on purchases (1B)" value={data.gstOnPurchases} />
         <PeriodKpi label="PAYG withheld (W5)" value={data.paygWithheld} />
-        <PeriodKpi label={isAS ? "Net payment (9)" : "Net payable"} value={data.netPayment} emphasis />
+        <PeriodKpi label="Net payment (9)" value={data.netPayment} emphasis />
       </div>
       {data.message ? (
         <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs italic text-muted-foreground">
