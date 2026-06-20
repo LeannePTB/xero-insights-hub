@@ -89,6 +89,20 @@ function ClientDashboard() {
 
   const client = clientQ.data?.client;
   const orgs: any[] = client?.client_xero_orgs ?? [];
+  const reportBasis: ReportBasis = (client?.report_basis as ReportBasis) ?? "accrual";
+
+  const updateBasisFn = useServerFn(updateClientReportBasis);
+  const basisMut = useMutation({
+    mutationFn: (basis: ReportBasis) => updateBasisFn({ data: { clientId, basis } }),
+    onSuccess: (_d, basis) => {
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-tax-buckets"] });
+      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
+      toast.success(`Report basis set to ${basis === "cash" ? "Cash" : "Accrual"}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to update basis"),
+  });
+
   
 
   const cards = useMemo<SortableCard[]>(() => {
