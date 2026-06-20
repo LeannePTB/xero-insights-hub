@@ -108,10 +108,11 @@ export function PnlWidget({
         <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       ) : data ? (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
             <Kpi label="Income" value={data.totalIncome} positive />
-            <Kpi label="Expenses" value={data.totalExpenses} positive={false} />
+            <Kpi label="Cost of Sales" value={data.totalCostOfSales} positive={false} />
             <Kpi label="Gross Profit" value={data.grossProfit} positive={data.grossProfit >= 0} />
+            <Kpi label="Expenses" value={data.totalExpenses} positive={false} />
             <Kpi label="Net Profit" value={data.netProfit} positive={data.netProfit >= 0} />
           </div>
 
