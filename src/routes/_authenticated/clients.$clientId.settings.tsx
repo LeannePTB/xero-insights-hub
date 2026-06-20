@@ -14,7 +14,9 @@ import {
   createClientViewerWithPassword,
   updateClientAccessTier,
   revokeClientAccess,
+  updateClientReportBasis,
 } from "@/lib/clients.functions";
+import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { listXeroConnections, startXeroConnect, disconnectXero } from "@/lib/xero/connections.functions";
 import { Button } from "@/components/ui/button";
@@ -220,6 +222,15 @@ function ClientSettings() {
             </Button>
           </div>
         </Section>
+
+        {/* Report basis */}
+        <Section title="Report basis">
+          <p className="mb-3 text-xs text-muted-foreground">
+            Controls how Tax liabilities and P&amp;L are calculated. Other dashboard cards always report on Accrual. Viewers don't see this setting.
+          </p>
+          <BasisSelectRow clientId={clientId} current={(client.report_basis as ReportBasis) ?? "accrual"} />
+        </Section>
+
 
 
         {/* Xero orgs */}
@@ -584,3 +595,22 @@ function CostClassificationSection({
     </section>
   );
 }
+
+function BasisSelectRow({ clientId, current }: { clientId: string; current: ReportBasis }) {
+  const qc = useQueryClient();
+  const updateBasisFn = useServerFn(updateClientReportBasis);
+  const mut = useMutation({
+    mutationFn: (basis: ReportBasis) => updateBasisFn({ data: { clientId, basis } }),
+    onSuccess: (_d, basis) => {
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-tax-buckets"] });
+      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
+      toast.success(`Report basis set to ${basis === "cash" ? "Cash" : "Accrual"}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to update basis"),
+  });
+  return (
+    <BasisSelect value={current} onChange={(v) => mut.mutate(v)} disabled={mut.isPending} />
+  );
+}
+

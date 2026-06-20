@@ -2,9 +2,8 @@ import { useEffect, useMemo, useRef } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getClient, updateClientReportBasis } from "@/lib/clients.functions";
-import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
-import { toast } from "sonner";
+import { getClient } from "@/lib/clients.functions";
+import type { ReportBasis } from "@/components/dashboard/BasisSelect";
 import { getMyContext } from "@/lib/roles.functions";
 import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -91,17 +90,8 @@ function ClientDashboard() {
   const orgs: any[] = client?.client_xero_orgs ?? [];
   const reportBasis: ReportBasis = (client?.report_basis as ReportBasis) ?? "accrual";
 
-  const updateBasisFn = useServerFn(updateClientReportBasis);
-  const basisMut = useMutation({
-    mutationFn: (basis: ReportBasis) => updateBasisFn({ data: { clientId, basis } }),
-    onSuccess: (_d, basis) => {
-      qc.invalidateQueries({ queryKey: ["client", clientId] });
-      qc.invalidateQueries({ queryKey: ["xero-tax-buckets"] });
-      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
-      toast.success(`Report basis set to ${basis === "cash" ? "Cash" : "Accrual"}`);
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Failed to update basis"),
-  });
+
+
 
   
 
@@ -166,23 +156,17 @@ function ClientDashboard() {
             <p className="mt-1 text-sm text-muted-foreground">
               {TIER_LABEL[tier]} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
             </p>
-            <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Report basis</span>
-              {isAdvisor ? (
-                <BasisSelect
-                  value={reportBasis}
-                  onChange={(v) => basisMut.mutate(v)}
-                  disabled={basisMut.isPending}
-                />
-              ) : (
+            {isAdvisor && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Report basis</span>
                 <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                   {reportBasis}
                 </span>
-              )}
-              <span className="text-xs text-muted-foreground">
-                Used by Tax liabilities and P&L. Other cards report on Accrual.
-              </span>
-            </div>
+                <span className="text-xs text-muted-foreground">
+                  Used by Tax liabilities and P&L. Change in Settings.
+                </span>
+              </div>
+            )}
           </div>
           {isAdvisor && (
             <Button variant="outline" asChild className="shrink-0">
