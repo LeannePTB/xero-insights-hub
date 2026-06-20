@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Settings, LogOut, Loader2, Building2 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
-import { RevenueExpenseKpis } from "@/components/dashboard/RevenueExpenseKpis";
+
 import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
