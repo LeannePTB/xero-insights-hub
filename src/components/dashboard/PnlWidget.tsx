@@ -150,7 +150,7 @@ function Kpi({ label, value, positive }: { label: string; value: number; positiv
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold">{fmt(value)}</p>
+      <p className="mt-1 text-base font-semibold tracking-tight truncate sm:text-lg">{fmt(value)}</p>
       <p className={`mt-1 flex items-center gap-1 text-[11px] ${positive ? "text-emerald-600" : "text-rose-600"}`}>
         <Icon className="h-3 w-3" />
       </p>
