@@ -177,6 +177,7 @@ export function BreakevenWidget({
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" /> Monthly Breakeven
+            <BasisBadge basis="accrual" />
           </h3>
           <p className="text-xs text-muted-foreground">
             Period: {fromStr} → {toStr} ({months.toFixed(1)} mo)
