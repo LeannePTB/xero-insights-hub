@@ -595,3 +595,22 @@ function CostClassificationSection({
     </section>
   );
 }
+
+function BasisSelectRow({ clientId, current }: { clientId: string; current: ReportBasis }) {
+  const qc = useQueryClient();
+  const updateBasisFn = useServerFn(updateClientReportBasis);
+  const mut = useMutation({
+    mutationFn: (basis: ReportBasis) => updateBasisFn({ data: { clientId, basis } }),
+    onSuccess: (_d, basis) => {
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-tax-buckets"] });
+      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
+      toast.success(`Report basis set to ${basis === "cash" ? "Cash" : "Accrual"}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to update basis"),
+  });
+  return (
+    <BasisSelect value={current} onChange={(v) => mut.mutate(v)} disabled={mut.isPending} />
+  );
+}
+
