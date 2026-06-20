@@ -11,6 +11,7 @@ import { ArrowLeft, Settings, LogOut, Loader2, Building2 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 
 import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
+import { SuperannuationWidget } from "@/components/dashboard/SuperannuationWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
