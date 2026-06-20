@@ -165,17 +165,42 @@ export function PnlWidget({
   );
 }
 
-function Kpi({ label, value, positive }: { label: string; value: number; positive: boolean }) {
-  const Icon = positive ? TrendingUp : TrendingDown;
+function Kpi({
+  label,
+  value,
+  previous,
+  higherIsBetter,
+}: {
+  label: string;
+  value: number;
+  previous: number;
+  higherIsBetter: boolean;
+}) {
+  const delta = value - previous;
+  const pct = previous !== 0 ? (delta / Math.abs(previous)) * 100 : null;
+  const up = delta > 0;
+  const flat = delta === 0;
+  const good = flat ? true : up ? higherIsBetter : !higherIsBetter;
+  const Icon = flat ? Minus : up ? TrendingUp : TrendingDown;
+  const tone = flat ? "text-muted-foreground" : good ? "text-emerald-600" : "text-rose-600";
   return (
     <div className="rounded-lg border border-border/60 bg-background p-3">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 text-lg font-semibold tracking-tight tabular-nums">{fmt(value)}</p>
-      <p className={`mt-1 flex items-center gap-1 text-[11px] ${positive ? "text-emerald-600" : "text-rose-600"}`}>
-        <Icon className="h-3 w-3" />
-      </p>
+      <div className={`mt-1 flex items-center gap-1 text-[11px] font-medium ${tone}`}>
+        <Icon className="h-3 w-3 shrink-0" />
+        <span className="tabular-nums">
+          {flat ? "No change" : `${up ? "+" : ""}${fmt(delta)}`}
+          {pct !== null && !flat && (
+            <span className="ml-1 text-muted-foreground">
+              ({up ? "+" : ""}{pct.toFixed(1)}%)
+            </span>
+          )}
+        </span>
+      </div>
+      <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">Prior: {fmt(previous)}</p>
     </div>
   );
 }
