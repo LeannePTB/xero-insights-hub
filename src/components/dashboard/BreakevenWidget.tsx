@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import { TrueBreakevenSection } from "@/components/dashboard/TrueBreakevenSection";
 import {
   DateRangeControls,
