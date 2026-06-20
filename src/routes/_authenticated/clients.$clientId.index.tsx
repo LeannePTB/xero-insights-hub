@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Settings, LogOut, Loader2, Building2 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
-import { RevenueExpenseKpis } from "@/components/dashboard/RevenueExpenseKpis";
+
 import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
@@ -98,8 +98,6 @@ function ClientDashboard() {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
-      if (widgets.includes("revenue_kpis"))
-        list.push({ id: `${o.id}:revenue_kpis`, node: <RevenueExpenseKpis tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("tax_liability"))
         list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("pnl"))
