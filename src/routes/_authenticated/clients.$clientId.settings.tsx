@@ -14,7 +14,9 @@ import {
   createClientViewerWithPassword,
   updateClientAccessTier,
   revokeClientAccess,
+  updateClientReportBasis,
 } from "@/lib/clients.functions";
+import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { listXeroConnections, startXeroConnect, disconnectXero } from "@/lib/xero/connections.functions";
 import { Button } from "@/components/ui/button";
