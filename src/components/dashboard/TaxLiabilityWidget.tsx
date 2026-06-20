@@ -55,11 +55,11 @@ export function TaxLiabilityWidget({
   const today = new Date();
   const [periodFrom, setPeriodFrom] = usePersistedDate(
     `tax-liability-period-from:${tenantId}`,
-    () => new Date(today.getFullYear(), today.getMonth(), 1),
+    () => new Date(today.getFullYear(), today.getMonth() - 1, 1),
   );
   const [periodTo, setPeriodTo] = usePersistedDate(
     `tax-liability-period-to:${tenantId}`,
-    () => today,
+    () => new Date(today.getFullYear(), today.getMonth(), 0),
   );
   const periodFromIso = toISO(periodFrom);
   const periodToIso = toISO(periodTo);
@@ -248,7 +248,7 @@ function PeriodSection({
   data,
 }: {
   data: {
-    source: "activity-statement" | "fallback";
+    source: "activity-statement" | "unavailable";
     periodFrom: string;
     periodTo: string;
     gstOnSales: number;
@@ -260,6 +260,13 @@ function PeriodSection({
     message?: string;
   };
 }) {
+  if (data.source === "unavailable") {
+    return (
+      <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+        {data.message ?? "Activity Statement isn't available for this period."}
+      </p>
+    );
+  }
   return (
     <div className="mt-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
