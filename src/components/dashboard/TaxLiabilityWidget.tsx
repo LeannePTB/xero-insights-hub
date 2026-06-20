@@ -55,11 +55,11 @@ export function TaxLiabilityWidget({
   const today = new Date();
   const [periodFrom, setPeriodFrom] = usePersistedDate(
     `tax-liability-period-from:${tenantId}`,
-    () => new Date(today.getFullYear(), today.getMonth(), 1),
+    () => new Date(today.getFullYear(), today.getMonth() - 1, 1),
   );
   const [periodTo, setPeriodTo] = usePersistedDate(
     `tax-liability-period-to:${tenantId}`,
-    () => today,
+    () => new Date(today.getFullYear(), today.getMonth(), 0),
   );
   const periodFromIso = toISO(periodFrom);
   const periodToIso = toISO(periodTo);
