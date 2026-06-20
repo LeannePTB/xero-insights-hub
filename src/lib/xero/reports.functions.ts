@@ -245,46 +245,65 @@ export type ActivityStatement = {
 };
 
 const BOX_CODE_REGEX = /^(G\d+[A-Z]?|W\d+|T\d+|[1-9][A-Z]?|[1-9])$/;
+const BOX_CODE_INLINE_REGEX = /\b(G\d+[A-Z]?|W\d+|T\d+|[1-9][A-Z]?)\b/;
 
-function looksLikeBoxCode(s: string | undefined): boolean {
-  if (!s) return false;
-  return BOX_CODE_REGEX.test(s.trim());
+function normaliseCode(s: string | undefined): string | undefined {
+  if (!s) return undefined;
+  const cleaned = s.trim().replace(/[():]/g, "").trim();
+  return BOX_CODE_REGEX.test(cleaned) ? cleaned : undefined;
 }
 
-function extractBoxes(report: any): { boxes: Record<string, number>; lines: ActivityStatement["lines"] } {
+function parseMoney(raw: string): number | null {
+  if (!raw) return null;
+  const cleaned = raw
+    .replace(/[A-Z$\s,]/gi, "")
+    .replace(/^\((.*)\)$/, "-$1");
+  if (!/\d/.test(cleaned)) return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+}
+
+function extractBoxes(report: any): {
+  boxes: Record<string, number>;
+  lines: ActivityStatement["lines"];
+  unmatchedLabels: string[];
+} {
   const boxes: Record<string, number> = {};
   const lines: ActivityStatement["lines"] = [];
+  const unmatchedLabels: string[] = [];
   walkRows(report?.Rows, (r) => {
     if ((r.RowType !== "Row" && r.RowType !== "SummaryRow") || !r.Cells) return;
     const cells = r.Cells;
     if (cells.length < 2) return;
-    // Try to find a box code in any of the first 3 cells, value in the last numeric cell.
     let code: string | undefined;
     let label: string | undefined;
     for (let i = 0; i < Math.min(3, cells.length); i++) {
       const v = (cells[i]?.Value ?? "").toString().trim();
-      if (looksLikeBoxCode(v)) {
-        code = v;
-      } else if (v && !label) {
-        label = v;
-      }
+      const norm = normaliseCode(v);
+      if (norm && !code) code = norm;
+      else if (v && !label) label = v;
     }
-    if (!code) return;
-    // amount = last cell with a parseable number
-    let amount = 0;
+    if (!code && label) {
+      const m = label.match(BOX_CODE_INLINE_REGEX);
+      if (m) code = m[1];
+    }
+    let amount: number | null = null;
     for (let i = cells.length - 1; i >= 0; i--) {
       const raw = (cells[i]?.Value ?? "").toString();
-      if (!raw) continue;
-      const n = Number(raw.replace(/[, ]/g, "").replace(/^\((.*)\)$/, "-$1"));
-      if (Number.isFinite(n) && raw.match(/[\d]/)) {
+      const n = parseMoney(raw);
+      if (n !== null) {
         amount = n;
         break;
       }
     }
-    boxes[code] = amount;
-    lines.push({ code, label: label ?? code, amount });
+    if (!code) {
+      if (label && amount !== null) unmatchedLabels.push(`${label} = ${amount}`);
+      return;
+    }
+    boxes[code] = amount ?? 0;
+    lines.push({ code, label: label ?? code, amount: amount ?? 0 });
   });
-  return { boxes, lines };
+  return { boxes, lines, unmatchedLabels };
 }
 
 export const getActivityStatement = createServerFn({ method: "POST" })
