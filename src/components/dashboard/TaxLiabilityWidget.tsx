@@ -78,40 +78,45 @@ export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { 
       ) : error ? (
         <XeroErrorNotice error={error} onRetry={() => balanceQ.refetch()} isRetrying={isFetching} />
       ) : bal ? (
-        <>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <TaxKpi label="GST Payable" value={bal.gst} />
-            <TaxKpi label="PAYG Withholding" value={bal.payg} />
-            <TaxKpi label="Super Payable" value={bal.superannuation} />
-            <TaxKpi label="Total" value={bal.total} emphasis />
-          </div>
+        (() => {
+          const taxLines = bal.lines.filter((l) => l.category !== "super");
+          const taxTotal = bal.gst + bal.payg + (bal.total - bal.gst - bal.payg - bal.superannuation);
+          return (
+            <>
+              <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <TaxKpi label="GST Payable" value={bal.gst} />
+                <TaxKpi label="PAYG Withholding" value={bal.payg} />
+                <TaxKpi label="Total" value={taxTotal} emphasis />
+              </div>
 
-          {bal.lines.length === 0 ? (
-            <p className="mt-6 rounded-lg border border-dashed border-border bg-background p-4 text-center text-xs text-muted-foreground">
-              No GST, PAYG or super accounts found on the balance sheet.
-            </p>
-          ) : (
-            <div className="mt-6">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Breakdown
-              </p>
-              <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-background">
-                {bal.lines.map((l) => (
-                  <li key={l.name} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Receipt className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <span className="truncate">{l.name}</span>
-                      <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {CATEGORY_LABEL[l.category] ?? l.category}
-                      </span>
-                    </div>
-                    <span className="shrink-0 font-medium tabular-nums">{fmt(l.amount)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </>
+              {taxLines.length === 0 ? (
+                <p className="mt-6 rounded-lg border border-dashed border-border bg-background p-4 text-center text-xs text-muted-foreground">
+                  No GST or PAYG accounts found on the balance sheet.
+                </p>
+              ) : (
+                <div className="mt-6">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Breakdown
+                  </p>
+                  <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-background">
+                    {taxLines.map((l) => (
+                      <li key={l.name} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Receipt className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          <span className="truncate">{l.name}</span>
+                          <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                            {CATEGORY_LABEL[l.category] ?? l.category}
+                          </span>
+                        </div>
+                        <span className="shrink-0 font-medium tabular-nums">{fmt(l.amount)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </>
+          );
+        })()
       ) : null}
     </div>
   );
