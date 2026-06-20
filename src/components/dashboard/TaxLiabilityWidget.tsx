@@ -113,34 +113,74 @@ export function TaxLiabilityWidget({
             onClick={() => {
               setShouldLoad(true);
               balanceQ.refetch();
+              periodQ.refetch();
             }}
-            disabled={isFetching}
+            disabled={isFetching || periodQ.isFetching}
             title="Refresh"
           >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${isFetching || periodQ.isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <DateField label="As at" value={asAt} onChange={setAsAt} />
-      </div>
-
       {!shouldLoad ? (
-        <XeroLoadPrompt
-          label="Load tax data"
-          description="Load this report only when needed to avoid Xero rate limits."
-          onLoad={() => setShouldLoad(true)}
-        />
-      ) : isLoading ? (
-        <div className="flex h-32 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+        <div className="mt-4">
+          <XeroLoadPrompt
+            label="Load tax data"
+            description="Load this report only when needed to avoid Xero rate limits."
+            onLoad={() => setShouldLoad(true)}
+          />
         </div>
-      ) : error ? (
-        <XeroErrorNotice error={error} onRetry={() => balanceQ.refetch()} isRetrying={isFetching} />
-      ) : bal ? (
+      ) : (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {/* ============ This period (BAS) ============ */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                This period (BAS)
+              </p>
+            </div>
+            <DateRangeControls
+              fromDate={periodFrom}
+              toDate={periodTo}
+              onFromChange={setPeriodFrom}
+              onToChange={setPeriodTo}
+            />
+            {periodQ.isLoading ? (
+              <div className="mt-3 flex h-20 items-center justify-center text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+              </div>
+            ) : periodQ.error ? (
+              <XeroErrorNotice
+                error={periodQ.error}
+                onRetry={() => periodQ.refetch()}
+                isRetrying={periodQ.isFetching}
+              />
+            ) : periodQ.data ? (
+              <PeriodSection data={periodQ.data} />
+            ) : null}
+          </div>
+
+          {/* ============ Outstanding on balance sheet ============ */}
+          <div className="mt-8 border-t border-border pt-6">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Outstanding on balance sheet
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <DateField label="As at" value={asAt} onChange={setAsAt} />
+            </div>
+            {isLoading ? (
+              <div className="mt-3 flex h-32 items-center justify-center text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+              </div>
+            ) : error ? (
+              <XeroErrorNotice error={error} onRetry={() => balanceQ.refetch()} isRetrying={isFetching} />
+            ) : bal ? (
+              <>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Balance as at {format(asAt, "d MMM yyyy")}
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <BucketKpi label="Not yet due" value={bal.notYetDue} tone="neutral" />
             <BucketKpi label="Due now" value={bal.dueNow} tone="due" />
             <BucketKpi label="Overdue" value={bal.overdue} tone="overdue" />
