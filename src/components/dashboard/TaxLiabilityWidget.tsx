@@ -302,8 +302,7 @@ function PeriodKpi({ label, value, emphasis }: { label: string; value: number; e
     </div>
   );
 }
-  );
-}
+
 
 function BucketKpi({
   label,
