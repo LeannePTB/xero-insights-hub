@@ -416,3 +416,208 @@ export const getCurrentTaxBalance = createServerFn({ method: "POST" })
     out.lines.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
     return out;
   });
+
+// ============================================================================
+// Tax liability buckets – not yet due / due now / overdue, with BS reconciliation
+// ============================================================================
+
+export type TaxBucket = "not-due" | "due" | "overdue";
+
+export type TaxLiabilityBuckets = {
+  asAtDate: string;
+  basis: "cash" | "accrual";
+  notYetDue: number;
+  dueNow: number;
+  overdue: number;
+  balanceSheetTotal: number;
+  bucketTotal: number;
+  difference: number;
+  lines: {
+    name: string;
+    category: "gst" | "payg" | "super" | "other-tax";
+    balanceSheetAmount: number;
+    bucket: TaxBucket;
+  }[];
+  asUnavailable?: boolean;
+  asMessage?: string;
+};
+
+function isoAddDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
+// Returns the last `count` Australian BAS quarter ranges that ended on/before `asAt`.
+function recentBasQuarters(asAtIso: string, count: number): { from: string; to: string }[] {
+  const [y, m, d] = asAtIso.split("-").map(Number);
+  const asAt = new Date(Date.UTC(y, m - 1, d));
+  // Quarter ends: Mar 31, Jun 30, Sep 30, Dec 31
+  const quarterEnds = [
+    { m: 2, d: 31 }, // Mar
+    { m: 5, d: 30 }, // Jun
+    { m: 8, d: 30 }, // Sep
+    { m: 11, d: 31 }, // Dec
+  ];
+  const out: { from: string; to: string }[] = [];
+  let year = asAt.getUTCFullYear();
+  let qi = quarterEnds.length - 1;
+  // Walk back until we find a quarter end on/before asAt
+  while (true) {
+    const qe = new Date(Date.UTC(year, quarterEnds[qi].m, quarterEnds[qi].d));
+    if (qe <= asAt) break;
+    qi--;
+    if (qi < 0) {
+      qi = quarterEnds.length - 1;
+      year--;
+    }
+  }
+  for (let i = 0; i < count; i++) {
+    const qe = quarterEnds[qi];
+    const end = new Date(Date.UTC(year, qe.m, qe.d));
+    const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 2, 1));
+    const fmt = (dt: Date) =>
+      `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+    out.push({ from: fmt(start), to: fmt(end) });
+    qi--;
+    if (qi < 0) {
+      qi = quarterEnds.length - 1;
+      year--;
+    }
+  }
+  return out;
+}
+
+export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string; date?: string }) => input)
+  .handler(async ({ data, context }): Promise<TaxLiabilityBuckets> => {
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    const conn = await getConnectionByTenant(data.tenantId);
+    const asAt = data.date ?? new Date().toISOString().slice(0, 10);
+
+    const [bsRes, basis] = await Promise.all([
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: asAt }),
+      getClientReportBasis(data.tenantId).catch(() => "accrual" as const),
+    ]);
+    const bsReport = bsRes.Reports?.[0];
+    const bsLines = bsReport ? extractTaxLines(bsReport) : [];
+    // Exclude super – it lives in the Superannuation widget.
+    const taxLines = bsLines.filter((l) => l.category !== "super");
+    const balanceSheetTotal = taxLines.reduce((s, l) => s + l.amount, 0);
+
+    // Per-category BS totals
+    const bsByCat: Record<"gst" | "payg" | "other-tax", number> = { gst: 0, payg: 0, "other-tax": 0 };
+    for (const l of taxLines) {
+      if (l.category === "gst" || l.category === "payg" || l.category === "other-tax") {
+        bsByCat[l.category] += l.amount;
+      }
+    }
+
+    // Pull last 3 BAS quarters to derive lodged amounts and their due dates.
+    const quarters = recentBasQuarters(asAt, 3);
+    let asUnavailable = false;
+    let asMessage: string | undefined;
+    const lodgedByCat: { gst: { dueDate: string; amount: number }[]; payg: { dueDate: string; amount: number }[] } = {
+      gst: [],
+      payg: [],
+    };
+
+    for (const q of quarters) {
+      try {
+        const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ActivityStatement", {
+          fromDate: q.from,
+          toDate: q.to,
+        });
+        const report = res?.Reports?.[0];
+        if (!report) continue;
+        const { boxes } = extractBoxes(report);
+        const get = (k: string) => boxes[k] ?? 0;
+        const gstNet = get("1A") - get("1B");
+        const paygNet = get("W5") || get("W2") + get("W3") + get("W4");
+        const dueDate = isoAddDays(q.to, 28); // standard BAS lodgement window
+        if (gstNet !== 0) lodgedByCat.gst.push({ dueDate, amount: gstNet });
+        if (paygNet !== 0) lodgedByCat.payg.push({ dueDate, amount: paygNet });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        if (/404|NotFound|not available|not found/i.test(msg)) {
+          asUnavailable = true;
+          asMessage = "Activity Statement isn't available for this Xero organisation – overdue can't be computed.";
+          break;
+        }
+        // Other errors: skip this quarter silently
+      }
+    }
+
+    // Bucket each tax category against its BS balance.
+    const today = new Date().toISOString().slice(0, 10);
+    const bucketByCat: Record<string, { notYetDue: number; dueNow: number; overdue: number }> = {
+      gst: { notYetDue: 0, dueNow: 0, overdue: 0 },
+      payg: { notYetDue: 0, dueNow: 0, overdue: 0 },
+      "other-tax": { notYetDue: 0, dueNow: 0, overdue: 0 },
+    };
+
+    function bucketCategory(cat: "gst" | "payg" | "other-tax", lodged: { dueDate: string; amount: number }[]) {
+      const bsAmount = bsByCat[cat];
+      let remaining = bsAmount;
+      let overdue = 0;
+      let dueNow = 0;
+      if (!asUnavailable && lodged.length) {
+        // Sort lodged oldest first so we eat overdue from the BS balance first.
+        const sorted = [...lodged].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+        for (const l of sorted) {
+          if (remaining <= 0) break;
+          const take = Math.min(remaining, l.amount);
+          if (take <= 0) continue;
+          if (l.dueDate < today) overdue += take;
+          else dueNow += take;
+          remaining -= take;
+        }
+      }
+      bucketByCat[cat] = { overdue, dueNow, notYetDue: remaining };
+    }
+
+    bucketCategory("gst", lodgedByCat.gst);
+    bucketCategory("payg", lodgedByCat.payg);
+    bucketCategory("other-tax", []);
+
+    const notYetDue = bucketByCat.gst.notYetDue + bucketByCat.payg.notYetDue + bucketByCat["other-tax"].notYetDue;
+    const dueNow = bucketByCat.gst.dueNow + bucketByCat.payg.dueNow + bucketByCat["other-tax"].dueNow;
+    const overdue = bucketByCat.gst.overdue + bucketByCat.payg.overdue + bucketByCat["other-tax"].overdue;
+    const bucketTotal = notYetDue + dueNow + overdue;
+
+    // Tag each line with the dominant bucket for its category.
+    const dominant = (cat: "gst" | "payg" | "other-tax" | "super"): TaxBucket => {
+      if (cat === "super") return "not-due";
+      const b = bucketByCat[cat];
+      if (b.overdue >= b.dueNow && b.overdue >= b.notYetDue && b.overdue > 0) return "overdue";
+      if (b.dueNow >= b.notYetDue && b.dueNow > 0) return "due";
+      return "not-due";
+    };
+
+    const lines = taxLines
+      .map((l) => ({
+        name: l.name,
+        category: l.category,
+        balanceSheetAmount: l.amount,
+        bucket: dominant(l.category),
+      }))
+      .sort((a, b) => Math.abs(b.balanceSheetAmount) - Math.abs(a.balanceSheetAmount));
+
+    return {
+      asAtDate: asAt,
+      basis,
+      notYetDue,
+      dueNow,
+      overdue,
+      balanceSheetTotal,
+      bucketTotal,
+      difference: balanceSheetTotal - bucketTotal,
+      lines,
+      asUnavailable: asUnavailable || undefined,
+      asMessage,
+    };
+  });
