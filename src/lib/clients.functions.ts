@@ -80,7 +80,7 @@ export const getClient = createServerFn({ method: "POST" })
     const { data: client, error } = await context.supabase
       .from("clients")
       .select(
-        "id, name, owner_user_id, report_basis, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
+        "id, name, owner_user_id, report_basis, basis_overrides, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name))",
       )
       .eq("id", data.clientId)
       .maybeSingle();
@@ -249,6 +249,36 @@ export const updateClientReportBasis = createServerFn({ method: "POST" })
       .eq("id", data.clientId);
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export type BasisOverrideWidget =
+  | "tax_liability"
+  | "pnl"
+  | "superannuation"
+  | "payables"
+  | "receivables"
+  | "breakeven";
+
+export const updateClientBasisOverride = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (i: { clientId: string; widget: BasisOverrideWidget; enabled: boolean }) => i,
+  )
+  .handler(async ({ data, context }) => {
+    const { data: row, error: readErr } = await context.supabase
+      .from("clients")
+      .select("basis_overrides")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    const current = (row?.basis_overrides as Record<string, boolean> | null) ?? {};
+    const next = { ...current, [data.widget]: data.enabled };
+    const { error } = await context.supabase
+      .from("clients")
+      .update({ basis_overrides: next })
+      .eq("id", data.clientId);
+    if (error) throw new Error(error.message);
+    return { overrides: next };
   });
 
 export const attachXeroOrg = createServerFn({ method: "POST" })
