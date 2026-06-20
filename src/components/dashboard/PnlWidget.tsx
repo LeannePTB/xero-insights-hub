@@ -6,6 +6,7 @@ import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-reac
 import { Button } from "@/components/ui/button";
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import {
   DateRangeControls,
   toISO,
