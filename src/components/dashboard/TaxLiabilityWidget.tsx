@@ -181,63 +181,127 @@ export function TaxLiabilityWidget({
                   Balance as at {format(asAt, "d MMM yyyy")}
                 </p>
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <BucketKpi label="Not yet due" value={bal.notYetDue} tone="neutral" />
-            <BucketKpi label="Due now" value={bal.dueNow} tone="due" />
-            <BucketKpi label="Overdue" value={bal.overdue} tone="overdue" />
+                  <BucketKpi label="Not yet due" value={bal.notYetDue} tone="neutral" />
+                  <BucketKpi label="Due now" value={bal.dueNow} tone="due" />
+                  <BucketKpi label="Overdue" value={bal.overdue} tone="overdue" />
+                </div>
+
+                <ReconciliationStrip
+                  bucketTotal={bal.bucketTotal}
+                  balanceSheetTotal={bal.balanceSheetTotal}
+                  difference={bal.difference}
+                />
+
+                {bal.asUnavailable && bal.asMessage ? (
+                  <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+                    {bal.asMessage}
+                  </p>
+                ) : null}
+
+                {bal.lines.length === 0 ? (
+                  <p className="mt-6 rounded-lg border border-dashed border-border bg-background p-4 text-center text-xs text-muted-foreground">
+                    No GST or PAYG accounts found on the balance sheet.
+                  </p>
+                ) : (
+                  <div className="mt-6">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Balance sheet breakdown
+                    </p>
+                    <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-background">
+                      {bal.lines.map((l) => (
+                        <li
+                          key={l.name}
+                          className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Receipt className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{l.name}</span>
+                            <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                              {CATEGORY_LABEL[l.category] ?? l.category}
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                                BUCKET_STYLES[l.bucket]
+                              }`}
+                            >
+                              {BUCKET_LABEL[l.bucket]}
+                            </span>
+                            <span className="font-medium tabular-nums">{fmt(l.balanceSheetAmount)}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            ) : null}
           </div>
-
-          <ReconciliationStrip
-            bucketTotal={bal.bucketTotal}
-            balanceSheetTotal={bal.balanceSheetTotal}
-            difference={bal.difference}
-          />
-
-          {bal.asUnavailable && bal.asMessage ? (
-            <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-              {bal.asMessage}
-            </p>
-          ) : null}
-
-          {bal.lines.length === 0 ? (
-            <p className="mt-6 rounded-lg border border-dashed border-border bg-background p-4 text-center text-xs text-muted-foreground">
-              No GST or PAYG accounts found on the balance sheet.
-            </p>
-          ) : (
-            <div className="mt-6">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Balance sheet breakdown
-              </p>
-              <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-background">
-                {bal.lines.map((l) => (
-                  <li
-                    key={l.name}
-                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Receipt className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <span className="truncate">{l.name}</span>
-                      <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {CATEGORY_LABEL[l.category] ?? l.category}
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span
-                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-                          BUCKET_STYLES[l.bucket]
-                        }`}
-                      >
-                        {BUCKET_LABEL[l.bucket]}
-                      </span>
-                      <span className="font-medium tabular-nums">{fmt(l.balanceSheetAmount)}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
         </>
+      )}
+    </div>
+  );
+}
+
+function PeriodSection({
+  data,
+}: {
+  data: {
+    source: "activity-statement" | "fallback";
+    periodFrom: string;
+    periodTo: string;
+    gstOnSales: number;
+    gstOnPurchases: number;
+    netGst: number;
+    paygWithheld: number;
+    netPayment: number;
+    totalSales?: number;
+    message?: string;
+  };
+}) {
+  const isAS = data.source === "activity-statement";
+  return (
+    <div className="mt-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {isAS ? (
+          <>
+            <PeriodKpi label="GST on sales (1A)" value={data.gstOnSales} />
+            <PeriodKpi label="GST on purchases (1B)" value={data.gstOnPurchases} />
+          </>
+        ) : (
+          <PeriodKpi label="Net GST" value={data.netGst} />
+        )}
+        <PeriodKpi label="PAYG withheld (W5)" value={data.paygWithheld} />
+        <PeriodKpi label={isAS ? "Net payment (9)" : "Net payable"} value={data.netPayment} emphasis />
+      </div>
+      {data.message ? (
+        <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs italic text-muted-foreground">
+          {data.message}
+        </p>
       ) : null}
     </div>
+  );
+}
+
+function PeriodKpi({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
+  return (
+    <div
+      className={`rounded-xl border p-4 ${
+        emphasis ? "border-primary/30 bg-primary/5" : "border-border/60 bg-background"
+      }`}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p
+        className={`mt-1.5 font-semibold tracking-tight tabular-nums ${
+          emphasis ? "text-2xl" : "text-xl"
+        }`}
+      >
+        {fmt(value)}
+      </p>
+    </div>
+  );
+}
   );
 }
 
