@@ -56,13 +56,24 @@ export function PnlWidget({
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
+  const prior = priorRange(fromDate, toDate);
+  const priorFromStr = toISO(prior.from);
+  const priorToStr = toISO(prior.to);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-pnl", tenantId, fromStr, toStr, "accrual"],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "pnl", basis: "accrual" } }),
+    queryKey: ["xero-pnl", tenantId, fromStr, toStr, priorFromStr, priorToStr, "accrual"],
+    queryFn: async () => {
+      const current = await fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "pnl", basis: "accrual" } });
+      await wait(1_500);
+      const priorReport = await fetchPnl({ data: { tenantId, fromDate: priorFromStr, toDate: priorToStr, widget: "pnl", basis: "accrual" } });
+      return { current, prior: priorReport };
+    },
     enabled: shouldLoad,
     retry: false,
   });
+
+  const current = data?.current;
+  const priorData = data?.prior;
 
   const expenseData = (data?.expenseLines ?? []).slice(0, 6).map((e) => ({
     name: e.name.length > 18 ? e.name.slice(0, 18) + "…" : e.name,
