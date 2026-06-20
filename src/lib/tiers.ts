@@ -34,7 +34,7 @@ export const TIER_DESCRIPTION: Record<DashboardTier, string> = {
 
 export const WIDGET_LABEL: Record<WidgetKey, string> = {
   revenue_kpis: "Revenue & Expenses",
-  tax_liability: "Tax and Superannuation Liabilities",
+  tax_liability: "Tax Liabilities",
   pnl: "Profit & Loss",
   breakeven: "Breakeven",
   payables: "Aged Payables",
