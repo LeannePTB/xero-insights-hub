@@ -28,6 +28,17 @@ function today() {
   return new Date();
 }
 
+function priorRange(from: Date, to: Date): { from: Date; to: Date } {
+  const ms = to.getTime() - from.getTime();
+  const priorTo = new Date(from.getTime() - 24 * 60 * 60 * 1000);
+  const priorFrom = new Date(priorTo.getTime() - ms);
+  return { from: priorFrom, to: priorTo };
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function PnlWidget({
   tenantId,
   tenantName,
