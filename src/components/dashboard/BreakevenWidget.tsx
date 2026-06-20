@@ -58,11 +58,13 @@ export function BreakevenWidget({
   tenantName,
   clientId,
   loadDelayMs = 0,
+  basis = "accrual",
 }: {
   tenantId: string;
   tenantName: string;
   clientId?: string;
   loadDelayMs?: number;
+  basis?: "accrual" | "cash";
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
   const fetchClassifications = useServerFn(listCostClassifications);
@@ -75,8 +77,8 @@ export function BreakevenWidget({
   const toStr = toISO(toDate);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-pnl", tenantId, fromStr, toStr, "accrual"],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven", basis: "accrual" } }),
+    queryKey: ["xero-pnl", tenantId, fromStr, toStr, basis],
+    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven", basis } }),
     enabled: shouldLoad,
     retry: false,
   });
@@ -177,7 +179,7 @@ export function BreakevenWidget({
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <Target className="h-4 w-4 text-primary" /> Monthly Breakeven
-            <BasisBadge basis="accrual" />
+            <BasisBadge basis={basis} />
           </h3>
           <p className="text-xs text-muted-foreground">
             Period: {fromStr} → {toStr} ({months.toFixed(1)} mo)

@@ -21,10 +21,12 @@ export function SuperannuationWidget({
   tenantId,
   tenantName,
   loadDelayMs = 0,
+  basis = "accrual",
 }: {
   tenantId: string;
   tenantName: string;
   loadDelayMs?: number;
+  basis?: "accrual" | "cash";
 }) {
   const fetchBalance = useServerFn(getCurrentTaxBalance);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
@@ -32,7 +34,7 @@ export function SuperannuationWidget({
   const asAtIso = toISO(asAt);
 
   const balanceQ = useQuery({
-    queryKey: ["xero-super-balance", tenantId, asAtIso],
+    queryKey: ["xero-super-balance", tenantId, asAtIso, basis],
     queryFn: () => fetchBalance({ data: { tenantId, date: asAtIso } }),
     enabled: shouldLoad,
     retry: false,
@@ -53,7 +55,7 @@ export function SuperannuationWidget({
           </p>
           <div className="flex items-center gap-2">
             <h3 className="font-display text-lg font-semibold">Superannuation liabilities</h3>
-            <BasisBadge basis="accrual" />
+            <BasisBadge basis={basis} />
           </div>
           <p className="text-xs text-muted-foreground">
             Balance as at {format(asAt, "d MMM yyyy")}

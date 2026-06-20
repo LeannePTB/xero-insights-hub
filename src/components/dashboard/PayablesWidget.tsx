@@ -2,8 +2,18 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, Wallet } from "lucide-react";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
 
-export function PayablesWidget({ tenantId, tenantName, clientId }: { tenantId: string; tenantName: string; clientId: string; loadDelayMs?: number }) {
-
+export function PayablesWidget({
+  tenantId,
+  tenantName,
+  clientId,
+  basis = "accrual",
+}: {
+  tenantId: string;
+  tenantName: string;
+  clientId: string;
+  loadDelayMs?: number;
+  basis?: "accrual" | "cash";
+}) {
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
       <div className="flex items-start justify-between gap-4">
@@ -13,7 +23,7 @@ export function PayablesWidget({ tenantId, tenantName, clientId }: { tenantId: s
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <Wallet className="h-4 w-4 text-primary" /> Accounts Payable Ageing
-            <BasisBadge basis="accrual" />
+            <BasisBadge basis={basis} />
           </h3>
           <p className="text-xs text-muted-foreground">
             Supplier bills are loaded on the detail page.
