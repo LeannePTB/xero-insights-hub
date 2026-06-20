@@ -6,6 +6,7 @@ import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-reac
 import { Button } from "@/components/ui/button";
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import {
   DateRangeControls,
   toISO,
@@ -90,7 +91,10 @@ export function PnlWidget({
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {tenantName}
           </p>
-          <h3 className="font-display text-lg font-semibold">Profit & Loss</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-display text-lg font-semibold">Profit & Loss</h3>
+            <BasisBadge basis={basis ?? "accrual"} />
+          </div>
           <p className="text-xs text-muted-foreground">
             {fromStr} → {toStr}
           </p>

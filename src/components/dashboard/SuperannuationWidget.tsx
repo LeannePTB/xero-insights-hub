@@ -6,6 +6,7 @@ import { getCurrentTaxBalance } from "@/lib/xero/reports.functions";
 import { Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import { DateField, toISO, usePersistedDate } from "@/components/dashboard/DateRangeControls";
 
 function fmt(n: number) {
@@ -50,7 +51,10 @@ export function SuperannuationWidget({
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {tenantName}
           </p>
-          <h3 className="font-display text-lg font-semibold">Superannuation liabilities</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-display text-lg font-semibold">Superannuation liabilities</h3>
+            <BasisBadge basis="accrual" />
+          </div>
           <p className="text-xs text-muted-foreground">
             Balance as at {format(asAt, "d MMM yyyy")}
           </p>
