@@ -248,7 +248,7 @@ function PeriodSection({
   data,
 }: {
   data: {
-    source: "activity-statement" | "fallback";
+    source: "activity-statement" | "unavailable";
     periodFrom: string;
     periodTo: string;
     gstOnSales: number;
@@ -260,10 +260,29 @@ function PeriodSection({
     message?: string;
   };
 }) {
+  if (data.source === "unavailable") {
+    return (
+      <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+        {data.message ?? "Activity Statement isn't available for this period."}
+      </p>
+    );
+  }
   return (
     <div className="mt-3">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <PeriodKpi label="GST on sales (1A)" value={data.gstOnSales} />
+        <PeriodKpi label="GST on purchases (1B)" value={data.gstOnPurchases} />
+        <PeriodKpi label="PAYG withheld (W5)" value={data.paygWithheld} />
+        <PeriodKpi label="Net payment (9)" value={data.netPayment} emphasis />
+      </div>
+      {data.message ? (
+        <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs italic text-muted-foreground">
+          {data.message}
+        </p>
+      ) : null}
+    </div>
+  );
+}
         <PeriodKpi label="GST on purchases (1B)" value={data.gstOnPurchases} />
         <PeriodKpi label="PAYG withheld (W5)" value={data.paygWithheld} />
         <PeriodKpi label="Net payment (9)" value={data.netPayment} emphasis />
