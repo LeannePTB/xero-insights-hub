@@ -80,7 +80,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { 
       ) : bal ? (
         (() => {
           const taxLines = bal.lines.filter((l) => l.category !== "super");
-          const taxTotal = bal.gst + bal.payg + (bal.total - bal.gst - bal.payg - bal.superannuation);
+          const taxTotal = bal.total - bal.superannuation;
           return (
             <>
               <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
