@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { getTaxLiabilityBuckets } from "@/lib/xero/reports.functions";
+import { getTaxLiabilityBuckets, getActivityStatementPeriod } from "@/lib/xero/reports.functions";
 import { CheckCircle2, AlertTriangle, Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
-import { DateField, toISO, usePersistedDate } from "@/components/dashboard/DateRangeControls";
+import { DateField, DateRangeControls, toISO, usePersistedDate } from "@/components/dashboard/DateRangeControls";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -47,13 +47,34 @@ export function TaxLiabilityWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchBuckets = useServerFn(getTaxLiabilityBuckets);
+  const fetchPeriod = useServerFn(getActivityStatementPeriod);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const [asAt, setAsAt] = usePersistedDate(`tax-liability-as-at:${tenantId}`, () => new Date());
   const asAtIso = toISO(asAt);
 
+  const today = new Date();
+  const [periodFrom, setPeriodFrom] = usePersistedDate(
+    `tax-liability-period-from:${tenantId}`,
+    () => new Date(today.getFullYear(), today.getMonth(), 1),
+  );
+  const [periodTo, setPeriodTo] = usePersistedDate(
+    `tax-liability-period-to:${tenantId}`,
+    () => today,
+  );
+  const periodFromIso = toISO(periodFrom);
+  const periodToIso = toISO(periodTo);
+
   const balanceQ = useQuery({
     queryKey: ["xero-tax-buckets", tenantId, asAtIso, basis ?? "default"],
     queryFn: () => fetchBuckets({ data: { tenantId, date: asAtIso, basis } }),
+    enabled: shouldLoad,
+    retry: false,
+  });
+
+  const periodQ = useQuery({
+    queryKey: ["xero-as-period", tenantId, periodFromIso, periodToIso, basis ?? "default"],
+    queryFn: () =>
+      fetchPeriod({ data: { tenantId, fromDate: periodFromIso, toDate: periodToIso, basis } }),
     enabled: shouldLoad,
     retry: false,
   });
@@ -92,93 +113,196 @@ export function TaxLiabilityWidget({
             onClick={() => {
               setShouldLoad(true);
               balanceQ.refetch();
+              periodQ.refetch();
             }}
-            disabled={isFetching}
+            disabled={isFetching || periodQ.isFetching}
             title="Refresh"
           >
-            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${isFetching || periodQ.isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2">
-        <DateField label="As at" value={asAt} onChange={setAsAt} />
-      </div>
-
       {!shouldLoad ? (
-        <XeroLoadPrompt
-          label="Load tax data"
-          description="Load this report only when needed to avoid Xero rate limits."
-          onLoad={() => setShouldLoad(true)}
-        />
-      ) : isLoading ? (
-        <div className="flex h-32 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+        <div className="mt-4">
+          <XeroLoadPrompt
+            label="Load tax data"
+            description="Load this report only when needed to avoid Xero rate limits."
+            onLoad={() => setShouldLoad(true)}
+          />
         </div>
-      ) : error ? (
-        <XeroErrorNotice error={error} onRetry={() => balanceQ.refetch()} isRetrying={isFetching} />
-      ) : bal ? (
+      ) : (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <BucketKpi label="Not yet due" value={bal.notYetDue} tone="neutral" />
-            <BucketKpi label="Due now" value={bal.dueNow} tone="due" />
-            <BucketKpi label="Overdue" value={bal.overdue} tone="overdue" />
+          {/* ============ This period (BAS) ============ */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                This period (BAS)
+              </p>
+            </div>
+            <DateRangeControls
+              fromDate={periodFrom}
+              toDate={periodTo}
+              onFromChange={setPeriodFrom}
+              onToChange={setPeriodTo}
+            />
+            {periodQ.isLoading ? (
+              <div className="mt-3 flex h-20 items-center justify-center text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+              </div>
+            ) : periodQ.error ? (
+              <XeroErrorNotice
+                error={periodQ.error}
+                onRetry={() => periodQ.refetch()}
+                isRetrying={periodQ.isFetching}
+              />
+            ) : periodQ.data ? (
+              <PeriodSection data={periodQ.data} />
+            ) : null}
           </div>
 
-          <ReconciliationStrip
-            bucketTotal={bal.bucketTotal}
-            balanceSheetTotal={bal.balanceSheetTotal}
-            difference={bal.difference}
-          />
-
-          {bal.asUnavailable && bal.asMessage ? (
-            <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-              {bal.asMessage}
+          {/* ============ Outstanding on balance sheet ============ */}
+          <div className="mt-8 border-t border-border pt-6">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Outstanding on balance sheet
             </p>
-          ) : null}
-
-          {bal.lines.length === 0 ? (
-            <p className="mt-6 rounded-lg border border-dashed border-border bg-background p-4 text-center text-xs text-muted-foreground">
-              No GST or PAYG accounts found on the balance sheet.
-            </p>
-          ) : (
-            <div className="mt-6">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Balance sheet breakdown
-              </p>
-              <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-background">
-                {bal.lines.map((l) => (
-                  <li
-                    key={l.name}
-                    className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
-                  >
-                    <div className="flex min-w-0 items-center gap-2">
-                      <Receipt className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                      <span className="truncate">{l.name}</span>
-                      <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {CATEGORY_LABEL[l.category] ?? l.category}
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <span
-                        className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
-                          BUCKET_STYLES[l.bucket]
-                        }`}
-                      >
-                        {BUCKET_LABEL[l.bucket]}
-                      </span>
-                      <span className="font-medium tabular-nums">{fmt(l.balanceSheetAmount)}</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <DateField label="As at" value={asAt} onChange={setAsAt} />
             </div>
-          )}
+            {isLoading ? (
+              <div className="mt-3 flex h-32 items-center justify-center text-muted-foreground">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+              </div>
+            ) : error ? (
+              <XeroErrorNotice error={error} onRetry={() => balanceQ.refetch()} isRetrying={isFetching} />
+            ) : bal ? (
+              <>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Balance as at {format(asAt, "d MMM yyyy")}
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <BucketKpi label="Not yet due" value={bal.notYetDue} tone="neutral" />
+                  <BucketKpi label="Due now" value={bal.dueNow} tone="due" />
+                  <BucketKpi label="Overdue" value={bal.overdue} tone="overdue" />
+                </div>
+
+                <ReconciliationStrip
+                  bucketTotal={bal.bucketTotal}
+                  balanceSheetTotal={bal.balanceSheetTotal}
+                  difference={bal.difference}
+                />
+
+                {bal.asUnavailable && bal.asMessage ? (
+                  <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
+                    {bal.asMessage}
+                  </p>
+                ) : null}
+
+                {bal.lines.length === 0 ? (
+                  <p className="mt-6 rounded-lg border border-dashed border-border bg-background p-4 text-center text-xs text-muted-foreground">
+                    No GST or PAYG accounts found on the balance sheet.
+                  </p>
+                ) : (
+                  <div className="mt-6">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Balance sheet breakdown
+                    </p>
+                    <ul className="divide-y divide-border/60 rounded-lg border border-border/60 bg-background">
+                      {bal.lines.map((l) => (
+                        <li
+                          key={l.name}
+                          className="flex items-center justify-between gap-3 px-3 py-2 text-sm"
+                        >
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Receipt className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                            <span className="truncate">{l.name}</span>
+                            <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                              {CATEGORY_LABEL[l.category] ?? l.category}
+                            </span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            <span
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider ${
+                                BUCKET_STYLES[l.bucket]
+                              }`}
+                            >
+                              {BUCKET_LABEL[l.bucket]}
+                            </span>
+                            <span className="font-medium tabular-nums">{fmt(l.balanceSheetAmount)}</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
+            ) : null}
+          </div>
         </>
+      )}
+    </div>
+  );
+}
+
+function PeriodSection({
+  data,
+}: {
+  data: {
+    source: "activity-statement" | "fallback";
+    periodFrom: string;
+    periodTo: string;
+    gstOnSales: number;
+    gstOnPurchases: number;
+    netGst: number;
+    paygWithheld: number;
+    netPayment: number;
+    totalSales?: number;
+    message?: string;
+  };
+}) {
+  const isAS = data.source === "activity-statement";
+  return (
+    <div className="mt-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {isAS ? (
+          <>
+            <PeriodKpi label="GST on sales (1A)" value={data.gstOnSales} />
+            <PeriodKpi label="GST on purchases (1B)" value={data.gstOnPurchases} />
+          </>
+        ) : (
+          <PeriodKpi label="Net GST" value={data.netGst} />
+        )}
+        <PeriodKpi label="PAYG withheld (W5)" value={data.paygWithheld} />
+        <PeriodKpi label={isAS ? "Net payment (9)" : "Net payable"} value={data.netPayment} emphasis />
+      </div>
+      {data.message ? (
+        <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs italic text-muted-foreground">
+          {data.message}
+        </p>
       ) : null}
     </div>
   );
 }
+
+function PeriodKpi({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
+  return (
+    <div
+      className={`rounded-xl border p-4 ${
+        emphasis ? "border-primary/30 bg-primary/5" : "border-border/60 bg-background"
+      }`}
+    >
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p
+        className={`mt-1.5 font-semibold tracking-tight tabular-nums ${
+          emphasis ? "text-2xl" : "text-xl"
+        }`}
+      >
+        {fmt(value)}
+      </p>
+    </div>
+  );
+}
+
 
 function BucketKpi({
   label,
