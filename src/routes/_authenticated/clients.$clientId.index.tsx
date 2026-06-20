@@ -98,8 +98,6 @@ function ClientDashboard() {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
-      if (widgets.includes("revenue_kpis"))
-        list.push({ id: `${o.id}:revenue_kpis`, node: <RevenueExpenseKpis tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("tax_liability"))
         list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("pnl"))
