@@ -47,13 +47,34 @@ export function TaxLiabilityWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchBuckets = useServerFn(getTaxLiabilityBuckets);
+  const fetchPeriod = useServerFn(getActivityStatementPeriod);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const [asAt, setAsAt] = usePersistedDate(`tax-liability-as-at:${tenantId}`, () => new Date());
   const asAtIso = toISO(asAt);
 
+  const today = new Date();
+  const [periodFrom, setPeriodFrom] = usePersistedDate(
+    `tax-liability-period-from:${tenantId}`,
+    () => new Date(today.getFullYear(), today.getMonth(), 1),
+  );
+  const [periodTo, setPeriodTo] = usePersistedDate(
+    `tax-liability-period-to:${tenantId}`,
+    () => today,
+  );
+  const periodFromIso = toISO(periodFrom);
+  const periodToIso = toISO(periodTo);
+
   const balanceQ = useQuery({
     queryKey: ["xero-tax-buckets", tenantId, asAtIso, basis ?? "default"],
     queryFn: () => fetchBuckets({ data: { tenantId, date: asAtIso, basis } }),
+    enabled: shouldLoad,
+    retry: false,
+  });
+
+  const periodQ = useQuery({
+    queryKey: ["xero-as-period", tenantId, periodFromIso, periodToIso, basis ?? "default"],
+    queryFn: () =>
+      fetchPeriod({ data: { tenantId, fromDate: periodFromIso, toDate: periodToIso, basis } }),
     enabled: shouldLoad,
     retry: false,
   });
