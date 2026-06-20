@@ -6,6 +6,7 @@ import { getCurrentTaxBalance } from "@/lib/xero/reports.functions";
 import { Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
+import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import { DateField, toISO, usePersistedDate } from "@/components/dashboard/DateRangeControls";
 
 function fmt(n: number) {
