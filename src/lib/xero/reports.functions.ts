@@ -382,19 +382,17 @@ export const getActivityStatement = createServerFn({ method: "POST" })
 // ============================================================================
 
 export type ActivityStatementPeriod = {
-  source: "activity-statement" | "fallback";
+  source: "activity-statement" | "unavailable";
   periodFrom: string;
   periodTo: string;
   basis: "cash" | "accrual";
-  // Box-level (only populated when source === "activity-statement")
   boxes: Record<string, number>;
-  // Always populated
-  gstOnSales: number;       // 1A (or estimate)
-  gstOnPurchases: number;   // 1B (or estimate)
+  gstOnSales: number;       // 1A
+  gstOnPurchases: number;   // 1B
   netGst: number;           // 1A - 1B
   paygWithheld: number;     // W5
-  netPayment: number;       // line 9 if available, else netGst + paygWithheld
-  totalSales?: number;      // G1 (only when AS available)
+  netPayment: number;       // box 9 if present, else 1A + W5 - 1B
+  totalSales?: number;      // G1
   message?: string;
 };
 
@@ -410,120 +408,72 @@ export const getActivityStatementPeriod = createServerFn({ method: "POST" })
     const conn = await getConnectionByTenant(data.tenantId);
     const basis = data.basis ?? (await getClientReportBasis(data.tenantId).catch(() => "accrual" as const));
 
-    // 1. Try the AU Activity Statement endpoint first.
+    const empty = (source: "unavailable", message: string): ActivityStatementPeriod => ({
+      source,
+      periodFrom: data.fromDate,
+      periodTo: data.toDate,
+      basis,
+      boxes: {},
+      gstOnSales: 0,
+      gstOnPurchases: 0,
+      netGst: 0,
+      paygWithheld: 0,
+      netPayment: 0,
+      message,
+    });
+
+    let report: any = null;
     try {
       const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ActivityStatement", {
         fromDate: data.fromDate,
         toDate: data.toDate,
       });
-      const report = res?.Reports?.[0];
-      if (report) {
-        const { boxes } = extractBoxes(report);
-        const get = (k: string) => boxes[k] ?? 0;
-        const netGst = get("1A") - get("1B");
-        const w5 = get("W5") || get("W2") + get("W3") + get("W4");
-        const netPayment = get("9") !== 0 ? get("9") : netGst + w5;
-        return {
-          source: "activity-statement",
-          periodFrom: data.fromDate,
-          periodTo: data.toDate,
-          basis,
-          boxes,
-          gstOnSales: get("1A"),
-          gstOnPurchases: get("1B"),
-          netGst,
-          paygWithheld: w5,
-          netPayment,
-          totalSales: get("G1"),
-        };
-      }
+      report = res?.Reports?.[0] ?? null;
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      if (!/404|NotFound|not available|not found/i.test(msg)) throw e;
+      return empty(
+        "unavailable",
+        `Xero's Activity Statement endpoint returned an error: ${msg}`,
+      );
     }
 
-    // 2. Fallback: sum period transactions on GST / PAYG accounts via the
-    //    AccountTransactions report. This matches what Simpler BAS reports
-    //    (credits = tax collected/withheld, debits = GST on purchases).
-    const bsRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {
-      date: data.toDate,
-    });
-    const bsLines = bsRes?.Reports?.[0] ? extractTaxLines(bsRes.Reports[0]) : [];
-    const taxAccounts = bsLines.filter(
-      (l) => (l.category === "gst" || l.category === "payg") && l.accountId,
-    );
+    if (!report) {
+      return empty(
+        "unavailable",
+        "Xero returned no Activity Statement for this period.",
+      );
+    }
 
-    let gstOnSales = 0; // 1A — credits to GST accounts
-    let gstOnPurchases = 0; // 1B — debits to GST accounts
-    let paygWithheld = 0; // W5 — credits to PAYG accounts
+    const { boxes, unmatchedLabels } = extractBoxes(report);
+    const get = (k: string) => boxes[k] ?? 0;
+    const has = Object.keys(boxes).length > 0;
 
-    await Promise.all(
-      taxAccounts.map(async (acc) => {
-        try {
-          const tx = await xeroGet<{ Reports: any[] }>(conn, "Reports/AccountTransactions", {
-            accountID: acc.accountId!,
-            fromDate: data.fromDate,
-            toDate: data.toDate,
-          });
-          const report = tx?.Reports?.[0];
-          if (!report) return;
-          // Locate Debit / Credit column indexes from the header row.
-          let debitIdx = -1;
-          let creditIdx = -1;
-          walkRows(report.Rows, (r) => {
-            if (debitIdx >= 0 && creditIdx >= 0) return;
-            if (r.RowType === "Header" && Array.isArray(r.Cells)) {
-              r.Cells.forEach((c: any, i: number) => {
-                const v = String(c?.Value ?? "").toLowerCase();
-                if (v === "debit") debitIdx = i;
-                else if (v === "credit") creditIdx = i;
-              });
-            }
-          });
-          if (debitIdx < 0 || creditIdx < 0) return;
-          let debits = 0;
-          let credits = 0;
-          walkRows(report.Rows, (r) => {
-            if (r.RowType !== "Row" || !Array.isArray(r.Cells)) return;
-            // Skip the trailing "Total" / "Opening Balance" / "Closing Balance"
-            // summary rows — they have no transaction Date in cell 0.
-            const first = String(r.Cells[0]?.Value ?? "").toLowerCase();
-            if (
-              first.includes("opening balance") ||
-              first.includes("closing balance") ||
-              first.includes("total")
-            ) {
-              return;
-            }
-            debits += Math.abs(parseAmount(r.Cells[debitIdx]?.Value ?? 0));
-            credits += Math.abs(parseAmount(r.Cells[creditIdx]?.Value ?? 0));
-          });
-          if (acc.category === "gst") {
-            gstOnSales += credits;
-            gstOnPurchases += debits;
-          } else if (acc.category === "payg") {
-            paygWithheld += credits;
-          }
-        } catch {
-          // Swallow per-account errors so one bad account doesn't blank the card.
-        }
-      }),
-    );
+    if (!has) {
+      const hint = unmatchedLabels.length
+        ? ` Rows seen: ${unmatchedLabels.slice(0, 6).join("; ")}`
+        : "";
+      return empty(
+        "unavailable",
+        `Activity Statement returned but no BAS boxes recognised.${hint}`,
+      );
+    }
 
-    const netGst = gstOnSales - gstOnPurchases;
+    const w5 = get("W5") || get("W2") + get("W3") + get("W4");
+    const netGst = get("1A") - get("1B");
+    const netPayment = get("9") !== 0 ? get("9") : get("1A") + w5 - get("1B");
+
     return {
-      source: "fallback",
+      source: "activity-statement",
       periodFrom: data.fromDate,
       periodTo: data.toDate,
       basis,
-      boxes: {},
-      gstOnSales,
-      gstOnPurchases,
+      boxes,
+      gstOnSales: get("1A"),
+      gstOnPurchases: get("1B"),
       netGst,
-      paygWithheld,
-      netPayment: netGst + paygWithheld,
-      message:
-        "Estimated from GST and PAYG account transactions for the period — Xero's Activity Statement endpoint isn't available for this org.",
+      paygWithheld: w5,
+      netPayment,
+      totalSales: get("G1") || undefined,
     };
   });
 
