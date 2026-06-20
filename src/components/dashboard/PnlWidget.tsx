@@ -108,7 +108,7 @@ export function PnlWidget({
         <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       ) : data ? (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-5">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Kpi label="Income" value={data.totalIncome} positive />
             <Kpi label="Cost of Sales" value={data.totalCostOfSales} positive={false} />
             <Kpi label="Gross Profit" value={data.grossProfit} positive={data.grossProfit >= 0} />
@@ -150,7 +150,7 @@ function Kpi({ label, value, positive }: { label: string; value: number; positiv
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 text-base font-semibold tracking-tight truncate sm:text-lg">{fmt(value)}</p>
+      <p className="mt-1 text-lg font-semibold tracking-tight tabular-nums">{fmt(value)}</p>
       <p className={`mt-1 flex items-center gap-1 text-[11px] ${positive ? "text-emerald-600" : "text-rose-600"}`}>
         <Icon className="h-3 w-3" />
       </p>
