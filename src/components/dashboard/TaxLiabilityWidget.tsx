@@ -53,7 +53,7 @@ export function TaxLiabilityWidget({
 
   const balanceQ = useQuery({
     queryKey: ["xero-tax-buckets", tenantId, asAtIso, basis ?? "default"],
-    queryFn: () => fetchBuckets({ data: { tenantId, date: asAtIso } }),
+    queryFn: () => fetchBuckets({ data: { tenantId, date: asAtIso, basis } }),
     enabled: shouldLoad,
     retry: false,
   });

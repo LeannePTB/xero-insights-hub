@@ -491,7 +491,7 @@ function recentBasQuarters(asAtIso: string, count: number): { from: string; to: 
 
 export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; date?: string }) => input)
+  .inputValidator((input: { tenantId: string; date?: string; basis?: "accrual" | "cash" }) => input)
   .handler(async ({ data, context }): Promise<TaxLiabilityBuckets> => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
@@ -500,8 +500,13 @@ export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
     const asAt = data.date ?? new Date().toISOString().slice(0, 10);
 
     const [bsRes, basis] = await Promise.all([
-      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: asAt }),
-      getClientReportBasis(data.tenantId).catch(() => "accrual" as const),
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {
+        date: asAt,
+        ...((data.basis ?? null) === "cash" ? { paymentsOnly: "true" } : {}),
+      }),
+      data.basis
+        ? Promise.resolve(data.basis)
+        : getClientReportBasis(data.tenantId).catch(() => "accrual" as const),
     ]);
     const bsReport = bsRes.Reports?.[0];
     const bsLines = bsReport ? extractTaxLines(bsReport) : [];

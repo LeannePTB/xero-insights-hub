@@ -2,8 +2,18 @@ import { Link } from "@tanstack/react-router";
 import { ArrowRight, HandCoins } from "lucide-react";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
 
-export function ReceivablesWidget({ tenantId, tenantName, clientId }: { tenantId: string; tenantName: string; clientId: string; loadDelayMs?: number }) {
-
+export function ReceivablesWidget({
+  tenantId,
+  tenantName,
+  clientId,
+  basis = "accrual",
+}: {
+  tenantId: string;
+  tenantName: string;
+  clientId: string;
+  loadDelayMs?: number;
+  basis?: "accrual" | "cash";
+}) {
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
       <div className="flex items-start justify-between gap-4">
@@ -13,7 +23,7 @@ export function ReceivablesWidget({ tenantId, tenantName, clientId }: { tenantId
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <HandCoins className="h-4 w-4 text-primary" /> Accounts Receivable Ageing
-            <BasisBadge basis="accrual" />
+            <BasisBadge basis={basis} />
           </h3>
           <p className="text-xs text-muted-foreground">
             Customer invoices are loaded on the detail page.

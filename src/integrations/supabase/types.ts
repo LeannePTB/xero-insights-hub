@@ -363,6 +363,7 @@ export type Database = {
       }
       clients: {
         Row: {
+          basis_overrides: Json
           cost_classification_enabled: boolean
           created_at: string
           firm_id: string | null
@@ -374,6 +375,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          basis_overrides?: Json
           cost_classification_enabled?: boolean
           created_at?: string
           firm_id?: string | null
@@ -385,6 +387,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          basis_overrides?: Json
           cost_classification_enabled?: boolean
           created_at?: string
           firm_id?: string | null

@@ -89,11 +89,13 @@ function ClientDashboard() {
   const client = clientQ.data?.client;
   const orgs: any[] = client?.client_xero_orgs ?? [];
   const reportBasis: ReportBasis = (client?.report_basis as ReportBasis) ?? "accrual";
-
-
-
-
-  
+  const overrides: Record<string, boolean> = (client?.basis_overrides as Record<string, boolean>) ?? {};
+  // Defaults: tax_liability ON (preserves current behaviour); everything else OFF.
+  const DEFAULT_ON: Record<string, boolean> = { tax_liability: true };
+  function basisFor(widget: string): ReportBasis {
+    const enabled = overrides[widget] ?? DEFAULT_ON[widget] ?? false;
+    return enabled ? reportBasis : "accrual";
+  }
 
   const cards = useMemo<SortableCard[]>(() => {
     if (!client) return [];
@@ -106,21 +108,21 @@ function ClientDashboard() {
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
       if (widgets.includes("tax_liability")) {
-        list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={reportBasis} /> });
-        list.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} /> });
+        list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("tax_liability")} /> });
+        list.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} /> });
       }
       if (widgets.includes("pnl"))
-        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={reportBasis} /> });
+        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} /> });
       if (widgets.includes("breakeven"))
-        list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
+        list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("breakeven")} /> });
       if (widgets.includes("payables"))
-        list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
+        list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} /> });
       if (widgets.includes("receivables"))
-        list.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
+        list.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("receivables")} /> });
 
     }
     return list;
-  }, [client, clientId, isAdvisor, orgs, widgets]);
+  }, [client, clientId, isAdvisor, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
 
   if (ctxQ.isLoading || clientQ.isLoading) {
     return (
