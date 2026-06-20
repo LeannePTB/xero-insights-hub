@@ -348,6 +348,114 @@ export const getActivityStatement = createServerFn({ method: "POST" })
     };
   });
 
+// ============================================================================
+// Activity statement for a period, with fallback to BS movement for orgs where
+// Xero's AU Activity Statement endpoint isn't available (e.g. Simpler BAS).
+// ============================================================================
+
+export type ActivityStatementPeriod = {
+  source: "activity-statement" | "fallback";
+  periodFrom: string;
+  periodTo: string;
+  basis: "cash" | "accrual";
+  // Box-level (only populated when source === "activity-statement")
+  boxes: Record<string, number>;
+  // Always populated
+  gstOnSales: number;       // 1A (or estimate)
+  gstOnPurchases: number;   // 1B (or estimate)
+  netGst: number;           // 1A - 1B
+  paygWithheld: number;     // W5
+  netPayment: number;       // line 9 if available, else netGst + paygWithheld
+  totalSales?: number;      // G1 (only when AS available)
+  message?: string;
+};
+
+export const getActivityStatementPeriod = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { tenantId: string; fromDate: string; toDate: string; basis?: "accrual" | "cash" }) => input,
+  )
+  .handler(async ({ data, context }): Promise<ActivityStatementPeriod> => {
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    const conn = await getConnectionByTenant(data.tenantId);
+    const basis = data.basis ?? (await getClientReportBasis(data.tenantId).catch(() => "accrual" as const));
+
+    // 1. Try the AU Activity Statement endpoint first.
+    try {
+      const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ActivityStatement", {
+        fromDate: data.fromDate,
+        toDate: data.toDate,
+      });
+      const report = res?.Reports?.[0];
+      if (report) {
+        const { boxes } = extractBoxes(report);
+        const get = (k: string) => boxes[k] ?? 0;
+        const netGst = get("1A") - get("1B");
+        const w5 = get("W5") || get("W2") + get("W3") + get("W4");
+        const netPayment = get("9") !== 0 ? get("9") : netGst + w5;
+        return {
+          source: "activity-statement",
+          periodFrom: data.fromDate,
+          periodTo: data.toDate,
+          basis,
+          boxes,
+          gstOnSales: get("1A"),
+          gstOnPurchases: get("1B"),
+          netGst,
+          paygWithheld: w5,
+          netPayment,
+          totalSales: get("G1"),
+        };
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/404|NotFound|not available|not found/i.test(msg)) throw e;
+    }
+
+    // 2. Fallback: balance sheet movement of GST/PAYG accounts.
+    const openingDate = isoDayBefore(data.fromDate);
+    const params = basis === "cash" ? { paymentsOnly: "true" } : {};
+    const [openRes, endRes] = await Promise.all([
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: openingDate, ...params }),
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.toDate, ...params }),
+    ]);
+    const openLines = openRes?.Reports?.[0] ? extractTaxLines(openRes.Reports[0]) : [];
+    const endLines = endRes?.Reports?.[0] ? extractTaxLines(endRes.Reports[0]) : [];
+    const openMap = new Map<string, number>();
+    for (const l of openLines) openMap.set(l.name, (openMap.get(l.name) ?? 0) + l.amount);
+    let netGst = 0;
+    let paygWithheld = 0;
+    const seen = new Set<string>();
+    for (const l of endLines) {
+      seen.add(l.name);
+      const delta = l.amount - (openMap.get(l.name) ?? 0);
+      if (l.category === "gst") netGst += delta;
+      else if (l.category === "payg") paygWithheld += delta;
+    }
+    for (const l of openLines) {
+      if (seen.has(l.name)) continue;
+      const delta = -l.amount;
+      if (l.category === "gst") netGst += delta;
+      else if (l.category === "payg") paygWithheld += delta;
+    }
+    return {
+      source: "fallback",
+      periodFrom: data.fromDate,
+      periodTo: data.toDate,
+      basis,
+      boxes: {},
+      gstOnSales: 0,
+      gstOnPurchases: 0,
+      netGst,
+      paygWithheld,
+      netPayment: netGst + paygWithheld,
+      message:
+        "Estimated from GST and PAYG account movements — Xero's Activity Statement endpoint isn't available for this org.",
+    };
+  });
+
 export type SuperPayable = {
   asAtDate: string;
   balance: number;
