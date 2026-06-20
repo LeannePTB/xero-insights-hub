@@ -283,18 +283,6 @@ function PeriodSection({
     </div>
   );
 }
-        <PeriodKpi label="GST on purchases (1B)" value={data.gstOnPurchases} />
-        <PeriodKpi label="PAYG withheld (W5)" value={data.paygWithheld} />
-        <PeriodKpi label="Net payment (9)" value={data.netPayment} emphasis />
-      </div>
-      {data.message ? (
-        <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs italic text-muted-foreground">
-          {data.message}
-        </p>
-      ) : null}
-    </div>
-  );
-}
 
 function PeriodKpi({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
   return (
