@@ -1,51 +1,54 @@
-## Why the numbers don't match
+## Goal
 
-The current "This period (BAS)" fallback compares the **Balance Sheet** of GST/PAYG liability accounts at the start vs end of the period. That measures *net change in the liability*, which includes BAS **payments** made during the period — so paying last quarter's BAS makes this period's "Net GST" look negative, which is exactly what the screenshot shows (Net GST −$291, PAYG −$666).
+Make "This period (BAS)" return the same numbers as the Xero Activity Statement PDF (Jun 2026: G1 = 21,367 · 1A = 1,942 · 1B = 212 · W5 = 1,795 · Net 9 = 3,525) on Cash Basis.
 
-The Xero PDF (1A=$1,942, 1B=$212, W5=$1,795, Net=$3,525) is a sum of *transactions posted to those accounts during the period*, not the balance change.
+## Why it's currently $0
+
+`getActivityStatementPeriod` tries `Reports/ActivityStatement` first, and on any non-404 error silently falls through to a fallback computed from `Reports/AccountTransactions`. On this org one or both is failing:
+
+- The Activity Statement call is either being rejected (missing/insufficient scope, or wrong param shape) or returning a report whose row shape `extractBoxes` doesn't recognise — so it's treated as empty.
+- The AccountTransactions fallback returns 0s because we throw away per-account errors silently, and on cash basis those reports often come back with no Debit/Credit columns the way the parser expects.
+
+Net result: the UI shows $0 with no signal about which call failed.
 
 ## Fix
 
-Replace the fallback in `getActivityStatementPeriod` to compute period figures from the **Profit and Loss / Account Transactions** activity on each GST and PAYG account, not the balance-sheet delta.
+Replace the silent fallback chain with a single, observable Activity Statement call, plus diagnostics so we can iterate quickly if Xero rejects the shape.
 
-### Approach
+### 1. `src/lib/xero/reports.functions.ts` — rewrite `getActivityStatementPeriod`
 
-For each GST and PAYG account discovered on the Balance Sheet, call `Reports/ProfitAndLoss` won't work (these are liabilities). Instead use:
+- Drop the AccountTransactions fallback entirely. It can't reliably reproduce BAS boxes on cash basis and it's actively misleading when it returns 0.
+- Call `Reports/ActivityStatement` once with `fromDate` / `toDate`. The Xero AU endpoint already returns Cash- or Accrual-basis numbers based on the org's GST accounting method (the PDF header confirms this org is "Cash Basis"), so no basis param is needed.
+- Catch ALL errors from that call (not just 404) and return a structured `{ source: "unavailable", message }` payload that surfaces the underlying Xero error message to the UI. No more silent 0s.
+- When the call succeeds but `extractBoxes` returns no recognised boxes, capture the raw row labels and include them in `message` so we can adjust the parser next pass.
+- Harden `extractBoxes`:
+  - Recognise codes that appear with a trailing colon or wrapped in parens (e.g. `"1A"`, `"1A:"`, `"(1A)"`).
+  - Some Xero reports put the code inside the label cell ("GST on sales 1A") rather than its own cell — scan label text with the same regex as a fallback when no dedicated code cell is found.
+  - Strip `$`, currency codes and thousands separators before `Number(...)`.
+- Return `gstOnSales` (1A), `gstOnPurchases` (1B), `paygWithheld` (W5 with the existing W2+W3+W4 fallback), `netGst = 1A − 1B`, `netPayment = box 9` (and only fall back to `1A + W5 − 1B` if box 9 is missing), plus `totalSales` (G1) and `boxes` for debugging.
 
-- `Reports/BankSummary` — no.
-- **`Reports/ExecutiveSummary`** — too aggregated.
-- **`Reports/TrialBalance` with `date=toDate` and `paymentsOnly` toggle** — only gives balance, not period movement.
-- **`Reports/AccountTransactions?AccountID=<id>&fromDate&toDate`** — gives every line for the account in the window, with separate Debit/Credit columns. **This is the correct endpoint.**
+### 2. `src/components/dashboard/TaxLiabilityWidget.tsx`
 
-Steps in the fallback handler:
+- Handle the new `source === "unavailable"` case: show the message inside the same dashed note slot we already use for "Estimated…", instead of rendering 4 × $0 tiles.
+- Keep the existing 1A / 1B / W5 / Net payment grid for `source === "activity-statement"`.
+- Remove the now-unused `"fallback"` branch.
 
-1. Fetch the Balance Sheet as at `toDate` once to discover GST and PAYG account names + IDs (re-use `extractTaxLines`, extend it to also surface `accountId` from `RowID`/`Attributes`).
-2. For each GST account, call `Reports/AccountTransactions` for `[fromDate, toDate]`. Sum:
-   - **Credits** → adds to **1A (GST on sales)**
-   - **Debits** → adds to **1B (GST on purchases)**
-3. For each PAYG Withholding account, call `Reports/AccountTransactions` and sum **Credits** → **W5 (PAYG withheld)**. (Debits there are BAS payments and shouldn't reduce W5.)
-4. Compute `netGst = 1A − 1B`, `netPayment = netGst + W5`.
-5. Keep the "Estimated …" message but update wording to: *"Estimated from GST/PAYG account transactions for the period."*
-6. Exclude lines whose source is `BAS Payment`/`Manual Journal` only if needed — first pass: include everything posted to the account, which matches what Xero's Simpler BAS worksheet does.
+### 3. Default period
 
-### Sign handling
+When the org is on Cash basis Simpler BAS the PDF is monthly. Default `periodFrom` to the first day of the previous month and `periodTo` to the last day of that month, so the card opens on a complete period that lines up with the most recent BAS, not the current partial month. (User can still override via the date controls.)
 
-Liability accounts: credits are positive (increase liability = tax collected). Xero's `AccountTransactions` report returns numeric `Debit` and `Credit` columns per row. Use absolute values from those columns rather than the signed `NetAmount`, so the result is independent of how Xero presents the running balance.
+## Out of scope
 
-### Files
+- "Outstanding on balance sheet" section, buckets, reconciliation strip — unchanged.
+- No changes to Super / Payables / Receivables / P&L cards.
+- No DB / migration changes.
 
-- `src/lib/xero/reports.functions.ts`
-  - Extend `extractTaxLines` (or add a parallel helper) to capture `accountId` for GST/PAYG rows.
-  - Rewrite the fallback branch (lines ~417-456) of `getActivityStatementPeriod` per above.
-  - Populate `gstOnSales` (1A) and `gstOnPurchases` (1B) in the fallback return so the UI can show the same four tiles as the Activity Statement path.
-- `src/components/dashboard/TaxLiabilityWidget.tsx`
-  - Show **1A, 1B, W5, Net payment** tiles for both `source === "activity-statement"` and `source === "fallback"` (drop the special "Net GST" single tile in fallback now that 1A/1B are real).
+## Verification
 
-### Out of scope
+After deploy, with FROM = 1 Jun 2026, TO = 30 Jun 2026, the four tiles should read:
+- GST on sales (1A): A$1,942
+- GST on purchases (1B): A$212
+- PAYG withheld (W5): A$1,795
+- Net payment (9): A$3,525
 
-- No changes to the "Outstanding on balance sheet" section, buckets, or super/payables/receivables widgets.
-- No DB or migration changes.
-
-### Verification
-
-After the change, with FROM=1 Apr 2026 TO=30 Jun 2026 (the quarter on the user's PDF), the four tiles should match 1A=$1,942, 1B=$212, W5=$1,795, Net=$3,525 within rounding. The 1–20 Jun window the user is currently viewing will naturally be smaller (partial period), which is expected.
+If Xero returns something else, the dashed note will now tell us *what* (raw error or unrecognised row labels) instead of silently rendering 0s.
