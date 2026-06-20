@@ -79,7 +79,7 @@ export function TaxLiabilityWidget({ tenantId, tenantName, loadDelayMs = 0 }: { 
         <XeroErrorNotice error={error} onRetry={() => balanceQ.refetch()} isRetrying={isFetching} />
       ) : bal ? (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <TaxKpi label="GST Payable" value={bal.gst} />
             <TaxKpi label="PAYG Withholding" value={bal.payg} />
             <TaxKpi label="Super Payable" value={bal.superannuation} />
