@@ -223,6 +223,15 @@ function ClientSettings() {
           </div>
         </Section>
 
+        {/* Report basis */}
+        <Section title="Report basis">
+          <p className="mb-3 text-xs text-muted-foreground">
+            Controls how Tax liabilities and P&amp;L are calculated. Other dashboard cards always report on Accrual. Viewers don't see this setting.
+          </p>
+          <BasisSelectRow clientId={clientId} current={(client.report_basis as ReportBasis) ?? "accrual"} />
+        </Section>
+
+
 
         {/* Xero orgs */}
         <Section title="Xero organisations" action={
