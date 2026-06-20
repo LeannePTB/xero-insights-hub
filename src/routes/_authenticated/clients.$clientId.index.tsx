@@ -166,9 +166,23 @@ function ClientDashboard() {
             <p className="mt-1 text-sm text-muted-foreground">
               {TIER_LABEL[tier]} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              All dashboards report on an <span className="font-semibold text-foreground">Accrual</span> basis unless noted on the card.
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Report basis</span>
+              {isAdvisor ? (
+                <BasisSelect
+                  value={reportBasis}
+                  onChange={(v) => basisMut.mutate(v)}
+                  disabled={basisMut.isPending}
+                />
+              ) : (
+                <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {reportBasis}
+                </span>
+              )}
+              <span className="text-xs text-muted-foreground">
+                Used by Tax liabilities and P&L. Other cards report on Accrual.
+              </span>
+            </div>
           </div>
           {isAdvisor && (
             <Button variant="outline" asChild className="shrink-0">
