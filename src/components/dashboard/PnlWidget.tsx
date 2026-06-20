@@ -43,10 +43,12 @@ export function PnlWidget({
   tenantId,
   tenantName,
   loadDelayMs = 0,
+  basis = "accrual",
 }: {
   tenantId: string;
   tenantName: string;
   loadDelayMs?: number;
+  basis?: "accrual" | "cash";
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
@@ -61,11 +63,11 @@ export function PnlWidget({
   const priorToStr = toISO(prior.to);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-pnl", tenantId, fromStr, toStr, priorFromStr, priorToStr, "accrual"],
+    queryKey: ["xero-pnl", tenantId, fromStr, toStr, priorFromStr, priorToStr, basis],
     queryFn: async () => {
-      const current = await fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "pnl", basis: "accrual" } });
+      const current = await fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "pnl", basis } });
       await wait(1_500);
-      const priorReport = await fetchPnl({ data: { tenantId, fromDate: priorFromStr, toDate: priorToStr, widget: "pnl", basis: "accrual" } });
+      const priorReport = await fetchPnl({ data: { tenantId, fromDate: priorFromStr, toDate: priorToStr, widget: "pnl", basis } });
       return { current, prior: priorReport };
     },
     enabled: shouldLoad,

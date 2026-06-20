@@ -2,7 +2,9 @@ import { useEffect, useMemo, useRef } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getClient } from "@/lib/clients.functions";
+import { getClient, updateClientReportBasis } from "@/lib/clients.functions";
+import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
+import { toast } from "sonner";
 import { getMyContext } from "@/lib/roles.functions";
 import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -87,6 +89,20 @@ function ClientDashboard() {
 
   const client = clientQ.data?.client;
   const orgs: any[] = client?.client_xero_orgs ?? [];
+  const reportBasis: ReportBasis = (client?.report_basis as ReportBasis) ?? "accrual";
+
+  const updateBasisFn = useServerFn(updateClientReportBasis);
+  const basisMut = useMutation({
+    mutationFn: (basis: ReportBasis) => updateBasisFn({ data: { clientId, basis } }),
+    onSuccess: (_d, basis) => {
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-tax-buckets"] });
+      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
+      toast.success(`Report basis set to ${basis === "cash" ? "Cash" : "Accrual"}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to update basis"),
+  });
+
   
 
   const cards = useMemo<SortableCard[]>(() => {
@@ -100,11 +116,11 @@ function ClientDashboard() {
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
       if (widgets.includes("tax_liability")) {
-        list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} /> });
+        list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={reportBasis} /> });
         list.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} /> });
       }
       if (widgets.includes("pnl"))
-        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} /> });
+        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={reportBasis} /> });
       if (widgets.includes("breakeven"))
         list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
       if (widgets.includes("payables"))
@@ -150,9 +166,23 @@ function ClientDashboard() {
             <p className="mt-1 text-sm text-muted-foreground">
               {TIER_LABEL[tier]} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              All dashboards report on an <span className="font-semibold text-foreground">Accrual</span> basis unless noted on the card.
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Report basis</span>
+              {isAdvisor ? (
+                <BasisSelect
+                  value={reportBasis}
+                  onChange={(v) => basisMut.mutate(v)}
+                  disabled={basisMut.isPending}
+                />
+              ) : (
+                <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {reportBasis}
+                </span>
+              )}
+              <span className="text-xs text-muted-foreground">
+                Used by Tax liabilities and P&L. Other cards report on Accrual.
+              </span>
+            </div>
           </div>
           {isAdvisor && (
             <Button variant="outline" asChild className="shrink-0">

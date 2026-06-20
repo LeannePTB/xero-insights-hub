@@ -39,10 +39,12 @@ export function TaxLiabilityWidget({
   tenantId,
   tenantName,
   loadDelayMs = 0,
+  basis,
 }: {
   tenantId: string;
   tenantName: string;
   loadDelayMs?: number;
+  basis?: "accrual" | "cash";
 }) {
   const fetchBuckets = useServerFn(getTaxLiabilityBuckets);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
@@ -50,7 +52,7 @@ export function TaxLiabilityWidget({
   const asAtIso = toISO(asAt);
 
   const balanceQ = useQuery({
-    queryKey: ["xero-tax-buckets", tenantId, asAtIso],
+    queryKey: ["xero-tax-buckets", tenantId, asAtIso, basis ?? "default"],
     queryFn: () => fetchBuckets({ data: { tenantId, date: asAtIso } }),
     enabled: shouldLoad,
     retry: false,
