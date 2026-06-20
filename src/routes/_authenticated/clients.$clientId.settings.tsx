@@ -15,6 +15,8 @@ import {
   updateClientAccessTier,
   revokeClientAccess,
   updateClientReportBasis,
+  updateClientBasisOverride,
+  type BasisOverrideWidget,
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
@@ -226,10 +228,24 @@ function ClientSettings() {
         {/* Report basis */}
         <Section title="Report basis">
           <p className="mb-3 text-xs text-muted-foreground">
-            Controls how Tax liabilities and P&amp;L are calculated. Other dashboard cards always report on Accrual. Viewers don't see this setting.
+            Sets the client's accounting basis. Below, choose which dashboard cards should use it instead of always reporting on Accrual. Viewers don't see any of this.
           </p>
           <BasisSelectRow clientId={clientId} current={(client.report_basis as ReportBasis) ?? "accrual"} />
+          <div className="mt-5 border-t border-border pt-4">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Per-card override
+            </p>
+            <p className="mb-3 text-xs text-muted-foreground">
+              Toggle ON to make that card follow the client's basis. OFF = always Accrual.
+            </p>
+            <BasisOverrideList
+              clientId={clientId}
+              clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
+              overrides={(client.basis_overrides as Record<string, boolean> | null) ?? {}}
+            />
+          </div>
         </Section>
+
 
 
 
@@ -613,4 +629,65 @@ function BasisSelectRow({ clientId, current }: { clientId: string; current: Repo
     <BasisSelect value={current} onChange={(v) => mut.mutate(v)} disabled={mut.isPending} />
   );
 }
+
+const BASIS_OVERRIDE_WIDGETS: { key: BasisOverrideWidget; label: string; defaultOn?: boolean }[] = [
+  { key: "tax_liability", label: "Tax liabilities", defaultOn: true },
+  { key: "pnl", label: "Profit & Loss" },
+  { key: "superannuation", label: "Superannuation" },
+  { key: "payables", label: "Accounts Payable" },
+  { key: "receivables", label: "Accounts Receivable" },
+  { key: "breakeven", label: "Breakeven" },
+];
+
+function BasisOverrideList({
+  clientId,
+  clientBasis,
+  overrides,
+}: {
+  clientId: string;
+  clientBasis: ReportBasis;
+  overrides: Record<string, boolean>;
+}) {
+  const qc = useQueryClient();
+  const updateFn = useServerFn(updateClientBasisOverride);
+  const mut = useMutation({
+    mutationFn: (v: { widget: BasisOverrideWidget; enabled: boolean }) =>
+      updateFn({ data: { clientId, widget: v.widget, enabled: v.enabled } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-tax-buckets"] });
+      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
+      qc.invalidateQueries({ queryKey: ["xero-super-balance"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Failed to update override"),
+  });
+
+  return (
+    <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+      {BASIS_OVERRIDE_WIDGETS.map((w) => {
+        const enabled = overrides[w.key] ?? w.defaultOn ?? false;
+        const effective = enabled ? clientBasis : "accrual";
+        return (
+          <li key={w.key} className="flex items-center justify-between gap-3 px-3 py-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-medium">{w.label}</p>
+              <p className="text-xs text-muted-foreground">
+                {enabled
+                  ? `Uses client basis (${effective === "cash" ? "Cash" : "Accrual"})`
+                  : "Always Accrual"}
+              </p>
+            </div>
+            <Switch
+              checked={enabled}
+              onCheckedChange={(v) => mut.mutate({ widget: w.key, enabled: v })}
+              disabled={mut.isPending}
+              aria-label={`Use client basis for ${w.label}`}
+            />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 
