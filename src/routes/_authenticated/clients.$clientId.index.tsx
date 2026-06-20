@@ -158,17 +158,6 @@ function ClientDashboard() {
             <p className="mt-1 text-sm text-muted-foreground">
               {TIER_LABEL[tier]} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
             </p>
-            {isAdvisor && (
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Report basis</span>
-                <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  {reportBasis}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  Used by Tax liabilities and P&L. Change in Settings.
-                </span>
-              </div>
-            )}
           </div>
           {isAdvisor && (
             <Button variant="outline" asChild className="shrink-0">
