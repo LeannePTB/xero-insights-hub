@@ -1,54 +1,68 @@
-## Add Worksheet 3 — True Break-Even calculator
 
-Add a "True Break-Even" section below the existing Accounting Break-Even table in `BreakevenWidget`. Inputs persist per tenant; Xero pre-fills what it can, user can override every value.
+## Goal
 
-### Inputs (Worksheet 3)
+Upgrade the **Tax liabilities** card so it shows:
 
-| Field | Source |
-|---|---|
-| Loan Principal Repayments | Manual |
-| Credit Card Interest Payments | Manual |
-| Owner Drawings | Manual |
-| Tax Payments (GST/PAYG) | **Auto-fill from Xero** — sum of `getTaxLiabilities` GST + PAYG categories for the period end; editable |
-| ATO Payment Plans | Manual |
-| Equipment Finance | Manual |
-| Other | Manual |
+1. **Not yet due** — accruing in the current (open) BAS/IAS period
+2. **Due now** — lodged or closed-period amounts still on the balance sheet, within their lodgement window
+3. **Overdue** — past-due unpaid amounts derived from lodged Activity Statement history
+4. **Basis badge** — read-only "Cash" / "Accrual" pill matching the org's Xero reporting basis
+5. **Balance sheet reconciliation row** — raw balance sheet total per tax account so the user can confirm buckets sum back to the balance sheet
 
-### Computed rows
+## UI changes (`src/components/dashboard/TaxLiabilityWidget.tsx`)
 
-- **Total Additional Cash Commitments** = sum of inputs above
-- **Adjusted Fixed Costs** = `fixedOpex` (from existing calc) + Total Additional Cash Commitments
-- **True Break-Even Revenue** = Adjusted Fixed Costs ÷ Gross Margin %
-- **True Break-Even / mo** = True Break-Even Revenue ÷ months in period
-- **Above / Below True Break-Even?** — coloured green/red based on `monthlyIncome` vs True Break-Even / mo
+- Add a small badge next to the title: `Cash` or `Accrual` (muted pill, matches existing uppercase-tracked style).
+- Replace the current 3 KPIs (GST / PAYG / Total) with a 3-up bucket row:
+  - **Not yet due** (current open period accrual)
+  - **Due now** (lodged/closed, within lodgement window)
+  - **Overdue** (past lodgement due date, unpaid) — red emphasis when > 0
+- **Reconciliation strip** below the buckets:
+  - `Buckets total: A$X` · `Balance sheet: A$Y` · `Difference: A$Z`
+  - Green check when difference is 0; amber warning when it isn't (e.g. manual journals, payments mid-period).
+- Per-account breakdown list now shows three columns per row:
+  `Account name | Balance sheet amount | Bucket tag (Not due / Due / Overdue)`
+- Keep `As at` date picker and refresh button.
 
-Display as a second 2-column Item/Value table, same styling as the Accounting Break-Even table. Inputs render as inline editable number cells (currency-formatted on blur).
+## Server changes (`src/lib/xero/reports.functions.ts`)
 
-### Persistence
+Add a new server function `getTaxLiabilityBuckets({ tenantId, date })` that:
 
-New table `public.client_true_breakeven_inputs`:
-- `client_id uuid`, `tenant_id text`, `loan_principal numeric`, `credit_card_interest numeric`, `owner_drawings numeric`, `tax_payments numeric` (nullable — null = auto from Xero), `ato_payment_plan numeric`, `equipment_finance numeric`, `other numeric`, `notes text`, `created_at`, `updated_at`
-- Composite unique `(client_id, tenant_id)`
-- RLS: gated by existing advisor/firm access on the client (same pattern as `client_cost_classifications`)
-- GRANTs to `authenticated` and `service_role`
+1. Pulls the current Balance Sheet snapshot (existing `extractTaxLines` logic) — keeps per-account `balanceSheetAmount`.
+2. Pulls Activity Statement history via `Reports/ActivityStatement` for the last ~4 periods (graceful fallback for non-AU orgs).
+3. For each lodged AS period, computes the **lodgement due date** (28 days after period end for GST/PAYG quarterly; 21 days for monthly IAS) and the lodged net amount (`1A − 1B + W5`).
+4. Buckets per account:
+   - `overdue` = lodged amounts whose due date < today and still appear unpaid on BS
+   - `dueNow` = lodged amounts whose due date ≥ today (within current lodgement window)
+   - `notYetDue` = remainder of BS balance attributable to the current open period
+5. Returns the org's reporting basis (via `getClientReportBasis`) for the badge.
+6. Returns both the bucket totals **and** the raw balance sheet total + per-line BS amounts so the UI can render the reconciliation strip.
 
-Server functions in `src/lib/true-breakeven.functions.ts`:
-- `getTrueBreakevenInputs({ clientId, tenantId })` — returns saved row or defaults
-- `upsertTrueBreakevenInputs({ clientId, tenantId, ...fields })` — debounced save on field change
+Shape:
 
-### Xero auto-fill behaviour
+```ts
+type TaxLiabilityBuckets = {
+  asAtDate: string;
+  basis: "cash" | "accrual";
+  notYetDue: number;
+  dueNow: number;
+  overdue: number;
+  balanceSheetTotal: number;   // sum of all tax lines straight off BS
+  bucketTotal: number;         // notYetDue + dueNow + overdue
+  difference: number;          // balanceSheetTotal - bucketTotal
+  lines: {
+    name: string;
+    category: "gst" | "payg" | "super" | "other-tax";
+    balanceSheetAmount: number;
+    bucket: "not-due" | "due" | "overdue";
+  }[];
+  asUnavailable?: boolean; // non-AU: everything falls into notYetDue, difference = 0
+};
+```
 
-- On first load (no saved row), call `getTaxLiabilities` for the breakeven period's `toDate`; pre-populate `tax_payments` with `gst + payg`.
-- Show a small "Auto-filled from Xero · refresh" link next to the Tax row that re-pulls the latest figure.
-- All other fields default to 0; user types them in.
+When Activity Statement is unavailable, the full BS balance shows as **Not yet due**, reconciliation strip still renders (difference = 0), and a small note explains overdue can't be computed.
 
-### Files
+## Scope notes
 
-- New: `supabase/migrations/<ts>_true_breakeven_inputs.sql` (table + RLS + GRANTs)
-- New: `src/lib/true-breakeven.functions.ts` (get + upsert server fns)
-- Edit: `src/components/dashboard/BreakevenWidget.tsx` — add True Break-Even table section with inputs, auto-fill, save debounce; show even when classification is enabled.
-
-### Out of scope (future)
-
-- Worksheets 4 (Sensitivity) and 5 (12-Month Tracker) — not included this round per your selection.
-- Auto-deriving loan principal / equipment finance from Xero bank rules — flagged as a follow-up.
+- Super stays in the separate Superannuation widget.
+- No DB schema changes; no new secrets.
+- `getCurrentTaxBalance` kept for backward compatibility; widget switches to the new function.
