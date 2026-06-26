@@ -12,7 +12,7 @@ type Status =
   | { kind: "loading" }
   | { kind: "error" }
   | { kind: "ok" }
-  | { kind: "enroll"; factorId: string; uri: string; secret: string }
+  | { kind: "enroll"; factorId: string; qrCode: string; uri: string; secret: string }
   | { kind: "verify"; factorId: string };
 
 // Client-side gate that forces every authenticated user to reach AAL2
@@ -57,12 +57,14 @@ export function MfaGate() {
       }
       const { data: enrol, error: eErr } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName: `Traction Advisory ${new Date().toISOString()}`,
+        friendlyName: `Authenticator ${new Date().toISOString().slice(0, 10)} ${Date.now()}`,
+        issuer: "Traction Advisory",
       });
       if (eErr || !enrol) throw new Error(eErr?.message ?? "Could not start MFA enrolment.");
       setStatus({
         kind: "enroll",
         factorId: enrol.id,
+        qrCode: enrol.totp.qr_code,
         uri: enrol.totp.uri,
         secret: enrol.totp.secret,
       });
@@ -77,11 +79,8 @@ export function MfaGate() {
     setBusy(true);
     setErr(null);
     try {
-      const { data: ch, error: chErr } = await supabase.auth.mfa.challenge({ factorId: status.factorId });
-      if (chErr || !ch) throw new Error(chErr?.message ?? "Could not challenge factor.");
-      const { error: vErr } = await supabase.auth.mfa.verify({
+      const { error: vErr } = await supabase.auth.mfa.challengeAndVerify({
         factorId: status.factorId,
-        challengeId: ch.id,
         code: code.trim(),
       });
       if (vErr) {
@@ -177,11 +176,10 @@ export function MfaGate() {
           {status.kind === "enroll" && (
             <>
               <div className="flex justify-center">
-                {/* Render QR via Google Chart fallback — works without extra deps. */}
                 <img
                   alt="MFA QR code"
                   className="rounded border bg-white p-2"
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(status.uri)}`}
+                  src={status.qrCode}
                 />
               </div>
               <div className="text-xs text-muted-foreground">
