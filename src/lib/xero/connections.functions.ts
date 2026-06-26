@@ -1,6 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { randomBytes } from "crypto";
+import { randomBytes, createHash } from "crypto";
+
+function base64url(buf: Buffer) {
+  return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const SCOPES_ARRAY = [
