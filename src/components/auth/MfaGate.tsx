@@ -183,6 +183,11 @@ export function MfaGate() {
               {busy && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Verify
             </Button>
+            {status.kind === "enroll" && (
+              <Button variant="outline" onClick={startOver} disabled={busy} title="Discard this QR and generate a new one">
+                Start over
+              </Button>
+            )}
             <Button variant="outline" onClick={signOut} disabled={busy}>
               Sign out
             </Button>
