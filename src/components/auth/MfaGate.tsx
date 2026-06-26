@@ -41,18 +41,23 @@ export function MfaGate() {
       const { data: factorsData, error: fErr } = await supabase.auth.mfa.listFactors();
       if (fErr) throw new Error(fErr.message);
 
-      const verified = factorsData?.totp?.find((f) => f.status === "verified");
+      // `listFactors()` returns verified factors on `.totp`; unverified ones
+      // live on `.all`. Surface verified first, otherwise clean up stragglers.
+      const all = (factorsData as { all?: Array<{ id: string; status: string; factor_type: string }> }).all ?? [];
+      const totpAll = all.filter((f) => f.factor_type === "totp");
+      const verified = totpAll.find((f) => f.status === "verified")
+        ?? factorsData?.totp?.find((f) => f.status === "verified");
       if (verified) {
         setStatus({ kind: "verify", factorId: verified.id });
         return;
       }
-      const stale = factorsData?.totp?.filter((f) => f.status !== "verified") ?? [];
+      const stale = totpAll.filter((f) => f.status !== "verified");
       for (const f of stale) {
         await supabase.auth.mfa.unenroll({ factorId: f.id });
       }
       const { data: enrol, error: eErr } = await supabase.auth.mfa.enroll({
         factorType: "totp",
-        friendlyName: `Traction Advisory ${new Date().toISOString().slice(0, 10)}`,
+        friendlyName: `Traction Advisory ${new Date().toISOString()}`,
       });
       if (eErr || !enrol) throw new Error(eErr?.message ?? "Could not start MFA enrolment.");
       setStatus({
