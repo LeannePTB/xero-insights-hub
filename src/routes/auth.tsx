@@ -11,9 +11,25 @@ import { BrandMark } from "@/components/BrandMark";
 import heroImage from "@/assets/hero-construction.jpg";
 
 export const Route = createFileRoute("/auth")({
+  ssr: false,
   head: () => ({ meta: [{ title: "Sign in — Traction Advisory" }] }),
   component: AuthPage,
 });
+
+async function routeAfterAuth(navigate: (opts: { to: string; replace?: boolean }) => void | Promise<void>) {
+  const { data: factorsData } = await supabase.auth.mfa.listFactors();
+  const hasVerified = (factorsData?.totp ?? []).some((f) => f.status === "verified");
+  if (!hasVerified) {
+    await navigate({ to: "/auth/mfa-enroll", replace: true });
+    return;
+  }
+  const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aalData?.currentLevel !== "aal2") {
+    await navigate({ to: "/auth/mfa-verify", replace: true });
+    return;
+  }
+  await navigate({ to: "/dashboard", replace: true });
+}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -23,9 +39,11 @@ function AuthPage() {
   const [resetLoading, setResetLoading] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/dashboard" });
-    });
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) return;
+      await routeAfterAuth(navigate);
+    })();
   }, [navigate]);
 
   async function handleSignIn() {
@@ -34,7 +52,7 @@ function AuthPage() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       toast.success("Welcome back");
-      navigate({ to: "/dashboard" });
+      await routeAfterAuth(navigate);
     } catch (e: any) {
       toast.error(e.message ?? "Something went wrong");
     } finally {
