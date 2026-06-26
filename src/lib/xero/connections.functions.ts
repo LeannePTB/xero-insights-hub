@@ -62,10 +62,18 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     }
 
     const state = randomBytes(24).toString("hex");
+    // OAuth 2.0 PKCE (S256) — required by Xero security standard.
+    const codeVerifier = base64url(randomBytes(48));
+    const codeChallenge = base64url(createHash("sha256").update(codeVerifier).digest());
     const returnOrigin = normalizeOrigin(data.origin);
     const { error } = await context.supabase
       .from("xero_oauth_states")
-      .insert({ state, user_id: context.userId, code_verifier: returnOrigin });
+      .insert({
+        state,
+        user_id: context.userId,
+        code_verifier: codeVerifier,
+        return_origin: returnOrigin,
+      });
     if (error) throw new Error(error.message);
 
     const redirectOrigin = getXeroRedirectOrigin(returnOrigin);
@@ -76,7 +84,10 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     url.searchParams.set("redirect_uri", redirectUri);
     url.searchParams.set("scope", SCOPES);
     url.searchParams.set("state", state);
+    url.searchParams.set("code_challenge", codeChallenge);
+    url.searchParams.set("code_challenge_method", "S256");
     return { authorizeUrl: url.toString() };
+
   });
 
 const ALLOWED_CUSTOM_HOSTS = new Set([
