@@ -24,34 +24,57 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { encryptTokenB64 } = await import("@/lib/crypto.server");
 
-        // Look up the user this state belongs to
+        // Look up the user this state belongs to. Enforce 15-min single-use.
         const { data: stateRow, error: stateErr } = await supabaseAdmin
           .from("xero_oauth_states")
-          .select("user_id, code_verifier")
+          .select("user_id, code_verifier, return_origin, created_at")
           .eq("state", state)
           .maybeSingle();
         if (stateErr || !stateRow) {
           return redirectTo(`${origin}/dashboard?xero_error=invalid_state`);
         }
+        if (stateRow.created_at && Date.now() - new Date(stateRow.created_at).getTime() > 15 * 60 * 1000) {
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+          return redirectTo(`${origin}/dashboard?xero_error=state_expired`);
+        }
         const userId = stateRow.user_id;
-        if (typeof stateRow.code_verifier === "string" && stateRow.code_verifier.startsWith("https://")) {
-          returnOrigin = stateRow.code_verifier;
+        const codeVerifier: string | null = stateRow.code_verifier ?? null;
+
+        // Prefer the new return_origin column; tolerate legacy rows that
+        // overloaded code_verifier with the return origin until they expire.
+        if (typeof stateRow.return_origin === "string" && stateRow.return_origin.startsWith("https://")) {
+          returnOrigin = stateRow.return_origin;
+        } else if (typeof codeVerifier === "string" && codeVerifier.startsWith("https://")) {
+          returnOrigin = codeVerifier;
         }
         await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
 
         const redirectUri = `${origin}/api/public/xero/callback`;
+        const tokenBody: Record<string, string> = {
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: redirectUri,
+        };
+        // Send the PKCE verifier only when it looks like an actual verifier
+        // (43-128 chars, no scheme prefix) — legacy rows hold a URL here.
+        if (
+          codeVerifier &&
+          !codeVerifier.startsWith("https://") &&
+          codeVerifier.length >= 43 &&
+          codeVerifier.length <= 128
+        ) {
+          tokenBody.code_verifier = codeVerifier;
+        }
+
         const tokenRes = await fetch(XERO_TOKEN_URL, {
           method: "POST",
           headers: {
             "Content-Type": "application/x-www-form-urlencoded",
             Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
           },
-          body: new URLSearchParams({
-            grant_type: "authorization_code",
-            code,
-            redirect_uri: redirectUri,
-          }),
+          body: new URLSearchParams(tokenBody),
         });
         if (!tokenRes.ok) {
           const t = await tokenRes.text();
@@ -79,13 +102,17 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }>;
 
         const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
+        const accessEnc = encryptTokenB64(tokens.access_token);
+        const refreshEnc = encryptTokenB64(tokens.refresh_token);
         const rows = tenants.map((t) => ({
           user_id: userId,
           tenant_id: t.tenantId,
           tenant_name: t.tenantName,
           tenant_type: t.tenantType,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
+          access_token: null,
+          refresh_token: null,
+          access_token_enc: accessEnc,
+          refresh_token_enc: refreshEnc,
           expires_at: expiresAt,
           scopes: tokens.scope,
         }));
@@ -98,6 +125,17 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             console.error("xero_connections upsert failed", upsertErr);
             return redirectTo(`${returnOrigin}/dashboard?xero_error=db`);
           }
+
+          // Audit-log the successful connection.
+          await supabaseAdmin.from("audit_log").insert(
+            tenants.map((t) => ({
+              actor_user_id: userId,
+              action: "xero_connected",
+              target_type: "xero_connection",
+              target_id: t.tenantId,
+              meta: { tenant_name: t.tenantName, scopes: tokens.scope },
+            })),
+          );
         }
 
         return redirectTo(`${returnOrigin}/dashboard?xero=connected`);

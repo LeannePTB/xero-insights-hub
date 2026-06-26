@@ -1,6 +1,7 @@
 // Server-only Xero API helpers. Never import from client/route code directly —
 // only from `.functions.ts` handlers via dynamic import.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { decryptToken, encryptTokenB64 } from "@/lib/crypto.server";
 
 const TOKEN_URL = "https://identity.xero.com/connect/token";
 const API_BASE = "https://api.xero.com/api.xro/2.0";
@@ -10,7 +11,7 @@ const MISSING_SCOPE_HINTS: Record<string, string> = {
   "Reports/ActivityStatement": "Xero needs the tax reports permission for Activity Statement data. Reconnect this organisation and approve the updated read-only permissions.",
 };
 
-type Connection = {
+export type Connection = {
   id: string;
   user_id: string;
   tenant_id: string;
@@ -20,6 +21,23 @@ type Connection = {
   expires_at: string;
   scopes: string | null;
 };
+
+// Raw shape pulled from the DB, with both legacy plaintext and AES-256-GCM columns.
+type ConnectionRow = {
+  id: string;
+  user_id: string;
+  tenant_id: string;
+  tenant_name: string;
+  access_token: string | null;
+  refresh_token: string | null;
+  access_token_enc: string | null;
+  refresh_token_enc: string | null;
+  expires_at: string;
+  scopes: string | null;
+};
+
+const CONNECTION_COLUMNS =
+  "id, user_id, tenant_id, tenant_name, access_token, refresh_token, access_token_enc, refresh_token_enc, expires_at, scopes";
 
 function basicAuth() {
   const clientId = process.env.XERO_CLIENT_ID;
@@ -45,6 +63,55 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}) {
   }
 }
 
+// Decrypt a connection row. If the encrypted columns are missing (legacy row
+// written before encryption was rolled out), fall back to plaintext and
+// transparently re-encrypt for next time.
+async function materializeConnection(row: ConnectionRow): Promise<Connection> {
+  let access = "";
+  let refresh = "";
+  let needsBackfill = false;
+
+  if (row.access_token_enc) {
+    access = decryptToken(row.access_token_enc);
+  } else if (row.access_token) {
+    access = row.access_token;
+    needsBackfill = true;
+  }
+  if (row.refresh_token_enc) {
+    refresh = decryptToken(row.refresh_token_enc);
+  } else if (row.refresh_token) {
+    refresh = row.refresh_token;
+    needsBackfill = true;
+  }
+
+  if (!access || !refresh) {
+    throw new Error("Xero connection is missing tokens. Please reconnect this organisation.");
+  }
+
+  if (needsBackfill) {
+    await supabaseAdmin
+      .from("xero_connections")
+      .update({
+        access_token_enc: encryptTokenB64(access),
+        refresh_token_enc: encryptTokenB64(refresh),
+        access_token: null,
+        refresh_token: null,
+      })
+      .eq("id", row.id);
+  }
+
+  return {
+    id: row.id,
+    user_id: row.user_id,
+    tenant_id: row.tenant_id,
+    tenant_name: row.tenant_name,
+    access_token: access,
+    refresh_token: refresh,
+    expires_at: row.expires_at,
+    scopes: row.scopes,
+  };
+}
+
 async function refreshAccessToken(conn: Connection): Promise<Connection> {
   const res = await fetchWithTimeout(TOKEN_URL, {
     method: "POST",
@@ -61,16 +128,18 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
     const body = await res.text();
     const { data: latest } = await supabaseAdmin
       .from("xero_connections")
-      .select("id, user_id, tenant_id, tenant_name, access_token, refresh_token, expires_at, scopes")
+      .select(CONNECTION_COLUMNS)
       .eq("user_id", conn.user_id)
       .eq("tenant_id", conn.tenant_id)
       .maybeSingle();
-    if (
-      latest &&
-      latest.refresh_token !== conn.refresh_token &&
-      new Date(latest.expires_at).getTime() - Date.now() >= 60_000
-    ) {
-      return latest as Connection;
+    if (latest) {
+      const latestConn = await materializeConnection(latest as ConnectionRow);
+      if (
+        latestConn.refresh_token !== conn.refresh_token &&
+        new Date(latestConn.expires_at).getTime() - Date.now() >= 60_000
+      ) {
+        return latestConn;
+      }
     }
     throw new Error(`Xero token refresh failed: ${res.status} ${body}`);
   }
@@ -87,8 +156,10 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
   const { error } = await supabaseAdmin
     .from("xero_connections")
     .update({
-      access_token: t.access_token,
-      refresh_token: t.refresh_token,
+      access_token_enc: encryptTokenB64(t.access_token),
+      refresh_token_enc: encryptTokenB64(t.refresh_token),
+      access_token: null,
+      refresh_token: null,
       expires_at,
       scopes: t.scope ?? conn.scopes,
     })
@@ -101,17 +172,18 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
 export async function getConnection(userId: string, tenantId: string): Promise<Connection> {
   const { data, error } = await supabaseAdmin
     .from("xero_connections")
-    .select("id, user_id, tenant_id, tenant_name, access_token, refresh_token, expires_at, scopes")
+    .select(CONNECTION_COLUMNS)
     .eq("user_id", userId)
     .eq("tenant_id", tenantId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Xero connection not found for this organisation.");
 
-  if (new Date(data.expires_at).getTime() - Date.now() < 60_000) {
-    return await refreshAccessToken(data as Connection);
+  const conn = await materializeConnection(data as ConnectionRow);
+  if (new Date(conn.expires_at).getTime() - Date.now() < 60_000) {
+    return await refreshAccessToken(conn);
   }
-  return data as Connection;
+  return conn;
 }
 
 // Fetches a Xero connection by tenant only (no user filter). Use this when access
@@ -119,16 +191,17 @@ export async function getConnection(userId: string, tenantId: string): Promise<C
 export async function getConnectionByTenant(tenantId: string): Promise<Connection> {
   const { data, error } = await supabaseAdmin
     .from("xero_connections")
-    .select("id, user_id, tenant_id, tenant_name, access_token, refresh_token, expires_at, scopes")
+    .select(CONNECTION_COLUMNS)
     .eq("tenant_id", tenantId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Xero connection not found for this organisation.");
 
-  if (new Date(data.expires_at).getTime() - Date.now() < 60_000) {
-    return await refreshAccessToken(data as Connection);
+  const conn = await materializeConnection(data as ConnectionRow);
+  if (new Date(conn.expires_at).getTime() - Date.now() < 60_000) {
+    return await refreshAccessToken(conn);
   }
-  return data as Connection;
+  return conn;
 }
 
 export async function xeroGet<T = unknown>(

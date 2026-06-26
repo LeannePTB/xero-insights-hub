@@ -26,6 +26,7 @@ import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_aut
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
 import { Route as AuthenticatedFirmsFirmIdRouteImport } from './routes/_authenticated/firms.$firmId'
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
+import { Route as AuthenticatedAdminSecurityRouteImport } from './routes/_authenticated/admin.security'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -36,6 +37,7 @@ import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/x
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
+import { Route as ApiPublicDocsSecurityFileRouteImport } from './routes/api/public/docs/security/$file'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
 import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
 
@@ -128,6 +130,12 @@ const AuthenticatedClientsNewRoute = AuthenticatedClientsNewRouteImport.update({
   path: '/clients/new',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminSecurityRoute =
+  AuthenticatedAdminSecurityRouteImport.update({
+    id: '/security',
+    path: '/security',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedClientsClientIdIndexRoute =
   AuthenticatedClientsClientIdIndexRouteImport.update({
     id: '/clients/$clientId/',
@@ -185,6 +193,12 @@ const AuthenticatedAdminFirmsFirmIdRoute =
     path: '/firms/$firmId',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicDocsSecurityFileRoute =
+  ApiPublicDocsSecurityFileRouteImport.update({
+    id: '/api/public/docs/security/$file',
+    path: '/api/public/docs/security/$file',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedClientsClientIdReceivablesTenantIdRoute =
   AuthenticatedClientsClientIdReceivablesTenantIdRouteImport.update({
     id: '/clients/$clientId/receivables/$tenantId',
@@ -207,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
+  '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -227,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  '/api/public/docs/security/$file': typeof ApiPublicDocsSecurityFileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -236,6 +252,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
+  '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -256,6 +273,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId': typeof AuthenticatedClientsClientIdIndexRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  '/api/public/docs/security/$file': typeof ApiPublicDocsSecurityFileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -268,6 +286,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
+  '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
   '/_authenticated/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -288,6 +307,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
   '/_authenticated/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  '/api/public/docs/security/$file': typeof ApiPublicDocsSecurityFileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -300,6 +320,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/email/unsubscribe'
     | '/signup/$token'
+    | '/admin/security'
     | '/clients/new'
     | '/firms/$firmId'
     | '/settings/account'
@@ -320,6 +341,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
+    | '/api/public/docs/security/$file'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -329,6 +351,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/email/unsubscribe'
     | '/signup/$token'
+    | '/admin/security'
     | '/clients/new'
     | '/firms/$firmId'
     | '/settings/account'
@@ -349,6 +372,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
+    | '/api/public/docs/security/$file'
   id:
     | '__root__'
     | '/'
@@ -360,6 +384,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/email/unsubscribe'
     | '/signup/$token'
+    | '/_authenticated/admin/security'
     | '/_authenticated/clients/new'
     | '/_authenticated/firms/$firmId'
     | '/_authenticated/settings/account'
@@ -380,6 +405,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/'
     | '/_authenticated/clients/$clientId/payables/$tenantId'
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
+    | '/api/public/docs/security/$file'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -397,6 +423,7 @@ export interface RootRouteChildren {
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
+  ApiPublicDocsSecurityFileRoute: typeof ApiPublicDocsSecurityFileRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -520,6 +547,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/security': {
+      id: '/_authenticated/admin/security'
+      path: '/security'
+      fullPath: '/admin/security'
+      preLoaderRoute: typeof AuthenticatedAdminSecurityRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/clients/$clientId/': {
       id: '/_authenticated/clients/$clientId/'
       path: '/clients/$clientId'
@@ -590,6 +624,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFirmsFirmIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/docs/security/$file': {
+      id: '/api/public/docs/security/$file'
+      path: '/api/public/docs/security/$file'
+      fullPath: '/api/public/docs/security/$file'
+      preLoaderRoute: typeof ApiPublicDocsSecurityFileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/clients/$clientId/receivables/$tenantId': {
       id: '/_authenticated/clients/$clientId/receivables/$tenantId'
       path: '/clients/$clientId/receivables/$tenantId'
@@ -608,11 +649,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminSecurityRoute: typeof AuthenticatedAdminSecurityRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminFirmsFirmIdRoute: typeof AuthenticatedAdminFirmsFirmIdRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminSecurityRoute: AuthenticatedAdminSecurityRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminFirmsFirmIdRoute: AuthenticatedAdminFirmsFirmIdRoute,
 }
@@ -675,17 +718,8 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
+  ApiPublicDocsSecurityFileRoute: ApiPublicDocsSecurityFileRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
