@@ -104,13 +104,22 @@ export function MfaGate() {
     setErr(null);
     try {
       const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      const all = (factorsData as { all?: Array<{ id: string; status: string; factor_type: string }> }).all ?? [];
+      const totpAll = all.filter((f) => f.factor_type === "totp");
+      const ids = new Set<string>();
+      for (const f of totpAll) {
+        if (f.status !== "verified") ids.add(f.id);
+      }
       for (const f of factorsData?.totp ?? []) {
-        if (f.status !== "verified") {
-          await supabase.auth.mfa.unenroll({ factorId: f.id });
-        }
+        if (f.status !== "verified") ids.add(f.id);
+      }
+      for (const id of ids) {
+        await supabase.auth.mfa.unenroll({ factorId: id });
       }
       setCode("");
       await checkAal();
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
@@ -203,11 +212,9 @@ export function MfaGate() {
               {busy && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Verify
             </Button>
-            {status.kind === "enroll" && (
-              <Button variant="outline" onClick={startOver} disabled={busy} title="Discard this QR and generate a new one">
-                Start over
-              </Button>
-            )}
+            <Button variant="outline" onClick={startOver} disabled={busy} title="Discard the current setup and generate a new QR">
+              Start over
+            </Button>
             <Button variant="outline" onClick={signOut} disabled={busy}>
               Sign out
             </Button>
