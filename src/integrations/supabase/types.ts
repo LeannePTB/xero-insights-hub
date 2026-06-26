@@ -1023,14 +1023,14 @@ export type Database = {
       }
       xero_connections: {
         Row: {
-          access_token: string
+          access_token: string | null
           access_token_enc: string | null
           created_at: string
           enc_version: number
           expires_at: string
           firm_id: string | null
           id: string
-          refresh_token: string
+          refresh_token: string | null
           refresh_token_enc: string | null
           scopes: string | null
           tenant_id: string
@@ -1040,14 +1040,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          access_token: string
+          access_token?: string | null
           access_token_enc?: string | null
           created_at?: string
           enc_version?: number
           expires_at: string
           firm_id?: string | null
           id?: string
-          refresh_token: string
+          refresh_token?: string | null
           refresh_token_enc?: string | null
           scopes?: string | null
           tenant_id: string
@@ -1057,14 +1057,14 @@ export type Database = {
           user_id: string
         }
         Update: {
-          access_token?: string
+          access_token?: string | null
           access_token_enc?: string | null
           created_at?: string
           enc_version?: number
           expires_at?: string
           firm_id?: string | null
           id?: string
-          refresh_token?: string
+          refresh_token?: string | null
           refresh_token_enc?: string | null
           scopes?: string | null
           tenant_id?: string
@@ -1094,18 +1094,24 @@ export type Database = {
         Row: {
           code_verifier: string | null
           created_at: string
+          expires_at: string
+          return_origin: string | null
           state: string
           user_id: string
         }
         Insert: {
           code_verifier?: string | null
           created_at?: string
+          expires_at?: string
+          return_origin?: string | null
           state: string
           user_id: string
         }
         Update: {
           code_verifier?: string | null
           created_at?: string
+          expires_at?: string
+          return_origin?: string | null
           state?: string
           user_id?: string
         }
