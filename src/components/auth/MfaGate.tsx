@@ -10,6 +10,7 @@ import { Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
 
 type Status =
   | { kind: "loading" }
+  | { kind: "error" }
   | { kind: "ok" }
   | { kind: "enroll"; factorId: string; uri: string; secret: string }
   | { kind: "verify"; factorId: string };
@@ -30,46 +31,40 @@ export function MfaGate() {
   async function checkAal() {
     setErr(null);
     setStatus({ kind: "loading" });
-    const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-    if (aalErr) {
-      setErr(aalErr.message);
-      setStatus({ kind: "loading" });
-      return;
+    try {
+      const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aalErr) throw new Error(aalErr.message);
+      if (aal?.currentLevel === "aal2") {
+        setStatus({ kind: "ok" });
+        return;
+      }
+      const { data: factorsData, error: fErr } = await supabase.auth.mfa.listFactors();
+      if (fErr) throw new Error(fErr.message);
+
+      const verified = factorsData?.totp?.find((f) => f.status === "verified");
+      if (verified) {
+        setStatus({ kind: "verify", factorId: verified.id });
+        return;
+      }
+      const stale = factorsData?.totp?.filter((f) => f.status !== "verified") ?? [];
+      for (const f of stale) {
+        await supabase.auth.mfa.unenroll({ factorId: f.id });
+      }
+      const { data: enrol, error: eErr } = await supabase.auth.mfa.enroll({
+        factorType: "totp",
+        friendlyName: `Traction Advisory ${new Date().toISOString().slice(0, 10)}`,
+      });
+      if (eErr || !enrol) throw new Error(eErr?.message ?? "Could not start MFA enrolment.");
+      setStatus({
+        kind: "enroll",
+        factorId: enrol.id,
+        uri: enrol.totp.uri,
+        secret: enrol.totp.secret,
+      });
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+      setStatus({ kind: "error" });
     }
-    if (aal?.currentLevel === "aal2") {
-      setStatus({ kind: "ok" });
-      return;
-    }
-    // Need MFA: either enrol (no factors) or verify (existing factor).
-    const { data: factorsData, error: fErr } = await supabase.auth.mfa.listFactors();
-    if (fErr) {
-      setErr(fErr.message);
-      return;
-    }
-    const verified = factorsData?.totp?.find((f) => f.status === "verified");
-    if (verified) {
-      setStatus({ kind: "verify", factorId: verified.id });
-      return;
-    }
-    // No verified factor — start enrolment. Clean up any stale unverified factors first.
-    const stale = factorsData?.totp?.filter((f) => f.status !== "verified") ?? [];
-    for (const f of stale) {
-      await supabase.auth.mfa.unenroll({ factorId: f.id });
-    }
-    const { data: enrol, error: eErr } = await supabase.auth.mfa.enroll({
-      factorType: "totp",
-      friendlyName: `Traction Advisory ${new Date().toISOString().slice(0, 10)}`,
-    });
-    if (eErr || !enrol) {
-      setErr(eErr?.message ?? "Could not start MFA enrolment.");
-      return;
-    }
-    setStatus({
-      kind: "enroll",
-      factorId: enrol.id,
-      uri: enrol.totp.uri,
-      secret: enrol.totp.secret,
-    });
   }
 
   async function submitCode() {
@@ -123,12 +118,32 @@ export function MfaGate() {
 
   if (status.kind === "loading") {
     return (
-      <div className="min-h-screen grid place-items-center">
+      <div className="min-h-screen grid place-items-center gap-4">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Button variant="ghost" size="sm" onClick={signOut}>Sign out</Button>
       </div>
     );
   }
   if (status.kind === "ok") return <Outlet />;
+  if (status.kind === "error") {
+    return (
+      <div className="min-h-screen grid place-items-center p-6 bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" /> Something went wrong</CardTitle>
+            <CardDescription>We couldn't load your two-factor settings. Try again, or sign out and back in.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {err && <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>}
+            <div className="flex gap-2">
+              <Button onClick={checkAal} className="flex-1">Try again</Button>
+              <Button variant="outline" onClick={signOut}>Sign out</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen grid place-items-center p-6 bg-background">
