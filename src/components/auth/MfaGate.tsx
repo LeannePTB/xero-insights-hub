@@ -118,12 +118,32 @@ export function MfaGate() {
 
   if (status.kind === "loading") {
     return (
-      <div className="min-h-screen grid place-items-center">
+      <div className="min-h-screen grid place-items-center gap-4">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <Button variant="ghost" size="sm" onClick={signOut}>Sign out</Button>
       </div>
     );
   }
   if (status.kind === "ok") return <Outlet />;
+  if (status.kind === "error") {
+    return (
+      <div className="min-h-screen grid place-items-center p-6 bg-background">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><ShieldAlert className="h-5 w-5" /> Something went wrong</CardTitle>
+            <CardDescription>We couldn't load your two-factor settings. Try again, or sign out and back in.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {err && <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>}
+            <div className="flex gap-2">
+              <Button onClick={checkAal} className="flex-1">Try again</Button>
+              <Button variant="outline" onClick={signOut}>Sign out</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen grid place-items-center p-6 bg-background">
