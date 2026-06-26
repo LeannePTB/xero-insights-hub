@@ -16,6 +16,8 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignupTokenRouteImport } from './routes/signup.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as AuthMfaVerifyRouteImport } from './routes/auth_.mfa-verify'
+import { Route as AuthMfaEnrollRouteImport } from './routes/auth_.mfa-enroll'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
@@ -73,6 +75,16 @@ const SignupTokenRoute = SignupTokenRouteImport.update({
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
   id: '/email/unsubscribe',
   path: '/email/unsubscribe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthMfaVerifyRoute = AuthMfaVerifyRouteImport.update({
+  id: '/auth_/mfa-verify',
+  path: '/auth/mfa-verify',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthMfaEnrollRoute = AuthMfaEnrollRouteImport.update({
+  id: '/auth_/mfa-enroll',
+  path: '/auth/mfa-enroll',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -219,6 +231,8 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
+  '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
@@ -250,6 +264,8 @@ export interface FileRoutesByTo {
   '/set-password': typeof SetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
+  '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
@@ -284,6 +300,8 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/auth_/mfa-enroll': typeof AuthMfaEnrollRoute
+  '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
   '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRoute
@@ -318,6 +336,8 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin'
     | '/dashboard'
+    | '/auth/mfa-enroll'
+    | '/auth/mfa-verify'
     | '/email/unsubscribe'
     | '/signup/$token'
     | '/admin/security'
@@ -349,6 +369,8 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/unsubscribe'
     | '/dashboard'
+    | '/auth/mfa-enroll'
+    | '/auth/mfa-verify'
     | '/email/unsubscribe'
     | '/signup/$token'
     | '/admin/security'
@@ -382,6 +404,8 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/auth_/mfa-enroll'
+    | '/auth_/mfa-verify'
     | '/email/unsubscribe'
     | '/signup/$token'
     | '/_authenticated/admin/security'
@@ -414,6 +438,8 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   SetPasswordRoute: typeof SetPasswordRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  AuthMfaEnrollRoute: typeof AuthMfaEnrollRoute
+  AuthMfaVerifyRoute: typeof AuthMfaVerifyRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   SignupTokenRoute: typeof SignupTokenRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
@@ -475,6 +501,20 @@ declare module '@tanstack/react-router' {
       path: '/email/unsubscribe'
       fullPath: '/email/unsubscribe'
       preLoaderRoute: typeof EmailUnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth_/mfa-verify': {
+      id: '/auth_/mfa-verify'
+      path: '/auth/mfa-verify'
+      fullPath: '/auth/mfa-verify'
+      preLoaderRoute: typeof AuthMfaVerifyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth_/mfa-enroll': {
+      id: '/auth_/mfa-enroll'
+      path: '/auth/mfa-enroll'
+      fullPath: '/auth/mfa-enroll'
+      preLoaderRoute: typeof AuthMfaEnrollRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard': {
@@ -709,6 +749,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   SetPasswordRoute: SetPasswordRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  AuthMfaEnrollRoute: AuthMfaEnrollRoute,
+  AuthMfaVerifyRoute: AuthMfaVerifyRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   SignupTokenRoute: SignupTokenRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
