@@ -10,6 +10,7 @@ import { Loader2, ShieldCheck, ShieldAlert } from "lucide-react";
 
 type Status =
   | { kind: "loading" }
+  | { kind: "error" }
   | { kind: "ok" }
   | { kind: "enroll"; factorId: string; uri: string; secret: string }
   | { kind: "verify"; factorId: string };
