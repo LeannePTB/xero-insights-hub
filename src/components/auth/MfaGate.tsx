@@ -84,11 +84,33 @@ export function MfaGate() {
         challengeId: ch.id,
         code: code.trim(),
       });
-      if (vErr) throw new Error(vErr.message);
+      if (vErr) {
+        const msg = /invalid/i.test(vErr.message)
+          ? "That code didn't match. Check that your device's clock is set to automatic time, wait for the next 6-digit code to appear in your authenticator, then try again."
+          : vErr.message;
+        throw new Error(msg);
+      }
       setCode("");
       await checkAal();
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function startOver() {
+    setBusy(true);
+    setErr(null);
+    try {
+      const { data: factorsData } = await supabase.auth.mfa.listFactors();
+      for (const f of factorsData?.totp ?? []) {
+        if (f.status !== "verified") {
+          await supabase.auth.mfa.unenroll({ factorId: f.id });
+        }
+      }
+      setCode("");
+      await checkAal();
     } finally {
       setBusy(false);
     }
@@ -161,6 +183,11 @@ export function MfaGate() {
               {busy && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Verify
             </Button>
+            {status.kind === "enroll" && (
+              <Button variant="outline" onClick={startOver} disabled={busy} title="Discard this QR and generate a new one">
+                Start over
+              </Button>
+            )}
             <Button variant="outline" onClick={signOut} disabled={busy}>
               Sign out
             </Button>
