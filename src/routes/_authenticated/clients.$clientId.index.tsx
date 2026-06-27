@@ -203,9 +203,6 @@ function ClientDashboard() {
           </div>
         )}
 
-        <p className="mt-6 text-xs text-muted-foreground">
-          Tip: hover any card and grab the handle in its top-right corner to reorder. Your layout is saved automatically.
-        </p>
 
         <div className="mt-3 space-y-6">
           {orgs.length === 0 ? (
