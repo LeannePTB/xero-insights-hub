@@ -659,7 +659,9 @@ const BASIS_OVERRIDE_WIDGETS: { key: BasisOverrideWidget; label: string; default
   { key: "superannuation", label: "Superannuation" },
   { key: "payables", label: "Accounts Payable" },
   { key: "receivables", label: "Accounts Receivable" },
-  { key: "breakeven", label: "Breakeven" },
+  { key: "period_performance", label: "Period Performance" },
+  { key: "accounting_breakeven", label: "Accounting Break-Even" },
+  { key: "true_breakeven", label: "True Break-Even (Cash)" },
 ];
 
 function BasisOverrideList({

@@ -257,7 +257,9 @@ export type BasisOverrideWidget =
   | "superannuation"
   | "payables"
   | "receivables"
-  | "breakeven";
+  | "period_performance"
+  | "accounting_breakeven"
+  | "true_breakeven";
 
 export const updateClientBasisOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

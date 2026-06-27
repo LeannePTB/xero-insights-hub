@@ -41,7 +41,7 @@ export function CostClassificationPanel({
           tenantId,
           fromDate: range.from,
           toDate: range.to,
-          widget: "breakeven",
+          widget: "accounting_breakeven",
           basis: "accrual",
         },
       }),
