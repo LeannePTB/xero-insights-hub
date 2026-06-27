@@ -13,9 +13,23 @@ function extractErrorMessage(error: unknown): string {
   return String(error ?? "");
 }
 
+export function isXeroReconnectError(error: unknown): boolean {
+  const message = extractErrorMessage(error).toLowerCase();
+  if (message.includes("xero reconnect required")) return true;
+  if (message.includes("invalid_grant")) return true;
+  if (message.includes("xero connection not found")) return true;
+  if (message.includes("missing tokens")) return true;
+  if (message.includes("xero") && (message.includes("401") || message.includes("unauthorized"))) return true;
+  return false;
+}
+
 export function friendlyXeroError(error: unknown) {
   const message = extractErrorMessage(error);
   const lower = message.toLowerCase();
+
+  if (lower.includes("xero reconnect required")) {
+    return "Xero says this connection needs to be reconnected before this data can load.";
+  }
 
   // App session errors (Supabase auth middleware) — NOT a Xero problem.
   if (

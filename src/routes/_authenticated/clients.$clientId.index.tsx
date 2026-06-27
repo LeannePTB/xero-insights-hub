@@ -8,8 +8,10 @@ import { getMyContext } from "@/lib/roles.functions";
 import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, LogOut, Loader2, Building2 } from "lucide-react";
+import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.functions";
+import { toast } from "sonner";
 
 import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
 import { SuperannuationWidget } from "@/components/dashboard/SuperannuationWidget";
@@ -168,6 +170,15 @@ function ClientDashboard() {
           )}
         </div>
 
+        {orgs.length > 0 && (
+          <XeroConnectionBanner
+            orgs={orgs.map((o) => ({
+              tenantId: o.xero_connections?.tenant_id as string | undefined,
+              tenantName: o.xero_connections?.tenant_name as string | undefined,
+            })).filter((o): o is { tenantId: string; tenantName: string | undefined } => !!o.tenantId)}
+          />
+        )}
+
         {isAdvisor && orgs.length > 0 && (
           <div className="mt-6">
             <TransactionSearch clientId={clientId} />
@@ -226,6 +237,49 @@ function ErrorPage({ message }: { message: string }) {
           <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back</Link>
         </Button>
       </div>
+    </div>
+  );
+}
+
+function XeroConnectionBanner({ orgs }: { orgs: { tenantId: string; tenantName: string | undefined }[] }) {
+  const check = useServerFn(checkXeroConnection);
+  const startConnect = useServerFn(startXeroConnect);
+  const checks = useQuery({
+    queryKey: ["xero-conn-health", orgs.map((o) => o.tenantId).sort().join(",")],
+    queryFn: async () => {
+      const results = await Promise.all(
+        orgs.map(async (o) => ({ ...o, result: await check({ data: { tenantId: o.tenantId } }) })),
+      );
+      return results.filter((r) => r.result.needsReconnect);
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+
+  async function handleReconnect() {
+    const authWindow = window.open("about:blank", "_blank");
+    try {
+      const { authorizeUrl } = await startConnect({ data: { origin: window.location.origin } });
+      if (authWindow) { authWindow.opener = null; authWindow.location.href = authorizeUrl; }
+      else window.location.href = authorizeUrl;
+    } catch (e: any) {
+      authWindow?.close();
+      toast.error(e?.message ?? "Could not start Xero reconnection");
+    }
+  }
+
+  if (!checks.data || checks.data.length === 0) return null;
+  const names = checks.data.map((c) => c.tenantName ?? "Xero org").join(", ");
+  return (
+    <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
+      <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">Xero connection needs to be reconnected</p>
+        <p className="mt-1 text-sm">
+          {names} can't refresh — sign in to Xero again to restore all dashboard cards.
+        </p>
+      </div>
+      <Button size="sm" onClick={handleReconnect} className="shrink-0">Reconnect Xero</Button>
     </div>
   );
 }

@@ -141,6 +141,11 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
         return latestConn;
       }
     }
+    const lower = body.toLowerCase();
+    if (lower.includes("invalid_grant") || lower.includes("invalid_client") || res.status === 400 || res.status === 401) {
+      console.error(`[xero] refresh failed for tenant ${conn.tenant_id}: ${res.status} ${body}`);
+      throw new Error("Xero reconnect required: this organisation needs to be reconnected before data can load.");
+    }
     throw new Error(`Xero token refresh failed: ${res.status} ${body}`);
   }
   const t = (await res.json()) as {

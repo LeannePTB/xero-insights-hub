@@ -36,6 +36,26 @@ export const listXeroConnections = createServerFn({ method: "GET" })
     return { connections: data ?? [] };
   });
 
+export const checkXeroConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string }) => input)
+  .handler(async ({ data }) => {
+    const { getConnectionByTenant } = await import("@/lib/xero/api.server");
+    try {
+      await getConnectionByTenant(data.tenantId);
+      return { ok: true as const, needsReconnect: false as const };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      const lower = msg.toLowerCase();
+      const needsReconnect =
+        lower.includes("reconnect required") ||
+        lower.includes("invalid_grant") ||
+        lower.includes("missing tokens") ||
+        lower.includes("connection not found");
+      return { ok: false as const, needsReconnect, message: msg };
+    }
+  });
+
 export const startXeroConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { origin: string }) => input)
