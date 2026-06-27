@@ -1,31 +1,25 @@
-## Why "This period (BAS)" is failing
+## Goal
+Stop showing the GL-movement BAS estimate as if it can replace Xero’s Activity Statement. The card should be honest: exact BAS figures require Xero partner-certified access to the Activity Statement report.
 
-The widget calls `Reports/ActivityStatement`. Xero restricts that endpoint to **approved AU partner apps** — even with `accounting.reports.read`, regular OAuth apps get 403 / NotFound. It is not a missing scope we can add; Xero requires partner certification. That's why the section stays empty.
+## Plan
+1. **Remove the GL movement fallback from “This period (BAS)”**
+   - Keep the direct Xero Activity Statement call.
+   - If Xero rejects or hides that report, show a clear unavailable state instead of calculated BAS figures.
+   - Remove the “Source: GL movement” path and the balance-sheet-movement message.
 
-## Fix: derive the current-period BAS figures from GL movement
+2. **Keep the useful balance-sheet section**
+   - Leave “Outstanding on balance sheet” in place so you can still see current GST/PAYG liabilities from the balance sheet.
+   - Keep the balance-sheet reconciliation/breakdown, because that is still available without Activity Statement certification.
 
-For a pre-lodgement view, the accrued GST / PAYG for a period equals the **movement in the relevant liability accounts** between the day before `fromDate` and `toDate`. We already pull `Reports/BalanceSheet` on both bases, so no new scope or reconnect is needed.
+3. **Add a certification-ready message**
+   - Show wording like: “Exact BAS figures require Xero Activity Statement access. This app needs Xero partner certification before this period can load.”
+   - Avoid implying the dashboard can calculate the final BAS before lodgement from general ledger movements.
 
-### Changes
+4. **After certification**
+   - The existing Activity Statement integration can remain as the primary path.
+   - Once Xero grants access, the same widget should start using the official Activity Statement response for 1A, 1B, W5, and 9.
 
-1. **`src/lib/xero/reports.functions.ts` — `getActivityStatementPeriod`**
-   - Keep trying `Reports/ActivityStatement` first; if it returns data, use it (so partner-approved orgs still get the Xero-native numbers).
-   - Otherwise pull `Reports/BalanceSheet` at `toDate` and at `fromDate − 1 day`, honouring the selected basis (`paymentsOnly=true` for cash), and reuse `extractTaxLines` to find GST / PAYG accounts.
-   - Compute period movement per account:
-     - GST accounts whose name matches `collected|output|on sales|on income` → `gstOnSales` (1A).
-     - GST accounts whose name matches `paid|input|on purchases|on expenses|claimable` → `gstOnPurchases` (1B).
-     - GST accounts that are a single net account → surface as `gstOnSales`, leave `gstOnPurchases = 0`.
-     - PAYG accounts → `paygWithheld` (W5).
-   - Return `source: "balance-sheet-movement"` with a message: *"Calculated from balance-sheet movement on GST and PAYG accounts. Final BAS figures are confirmed at lodgement."*
-   - Extend the `ActivityStatementPeriod['source']` union to include `"balance-sheet-movement"`.
-
-2. **`src/components/dashboard/TaxLiabilityWidget.tsx` — `PeriodSection`**
-   - Widen the `source` prop type to accept `"balance-sheet-movement"`.
-   - Render the KPIs for both `activity-statement` and `balance-sheet-movement` sources.
-   - Show a small caption under the section header indicating the source (e.g. *"Source: GL movement"* vs *"Source: Xero Activity Statement"*).
-
-3. **No schema, scope, or reconnect changes.** Existing `accounting.reports.read` is sufficient.
-
-### Out of scope
-- Pursuing Xero partner certification for `Reports/ActivityStatement`.
-- Changes to the Superannuation widget or the outstanding-buckets section.
+## Technical notes
+- Update `getActivityStatementPeriod` so its only successful source is `activity-statement`.
+- Update `TaxLiabilityWidget` types and UI to remove `balance-sheet-movement` as a displayed source.
+- Do not change dashboard layout, tiers, or other widgets.
