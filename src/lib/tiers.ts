@@ -1,21 +1,31 @@
 export type DashboardTier = "basic" | "advisory" | "investigate" | "multi_company";
-export type WidgetKey = "revenue_kpis" | "tax_liability" | "pnl" | "breakeven" | "payables" | "receivables";
+export type WidgetKey =
+  | "health"
+  | "receivables"
+  | "payables"
+  | "pnl"
+  | "unreconciled"
+  | "tax_liability"
+  | "superannuation"
+  | "breakeven";
 
 export const ALL_WIDGETS: WidgetKey[] = [
-  "revenue_kpis",
-  "tax_liability",
-  "pnl",
-  "breakeven",
-  "payables",
+  "health",
   "receivables",
+  "payables",
+  "pnl",
+  "unreconciled",
+  "tax_liability",
+  "superannuation",
+  "breakeven",
 ];
 
 // Fallback defaults (used only if the DB has no row for a tier).
 export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
-  basic: ["revenue_kpis", "tax_liability", "receivables"],
-  advisory: ["revenue_kpis", "tax_liability", "pnl", "breakeven", "receivables"],
-  investigate: ["revenue_kpis", "tax_liability", "pnl", "breakeven", "payables", "receivables"],
-  multi_company: ["revenue_kpis", "tax_liability", "pnl", "breakeven", "payables", "receivables"],
+  basic: ["health", "receivables", "payables", "pnl", "unreconciled"],
+  advisory: ["health", "receivables", "payables", "pnl", "unreconciled", "tax_liability", "superannuation", "breakeven"],
+  investigate: ["health", "receivables", "payables", "pnl", "unreconciled", "tax_liability", "superannuation", "breakeven"],
+  multi_company: ["health", "receivables", "payables", "pnl", "unreconciled", "tax_liability", "superannuation", "breakeven"],
 };
 
 export const TIER_LABEL: Record<DashboardTier, string> = {
@@ -26,19 +36,21 @@ export const TIER_LABEL: Record<DashboardTier, string> = {
 };
 
 export const TIER_DESCRIPTION: Record<DashboardTier, string> = {
-  basic: "Revenue/expense KPIs and current tax liabilities.",
-  advisory: "Everything in Standard plus full P&L and breakeven analysis.",
-  investigate: "Full advisory view plus aged payables and supplier exposure.",
+  basic: "Health, receivables, payables, P&L and unreconciled transactions.",
+  advisory: "Everything in Standard plus tax, super and breakeven analysis.",
+  investigate: "Full advisory view across one Xero organisation.",
   multi_company: "Full dashboard across multiple linked Xero organisations. Required to link more than one Xero file to a client.",
 };
 
 export const WIDGET_LABEL: Record<WidgetKey, string> = {
-  revenue_kpis: "Revenue & Expenses",
-  tax_liability: "Tax Liabilities",
-  pnl: "Profit & Loss",
-  breakeven: "Breakeven",
-  payables: "Aged Payables",
+  health: "Business Health",
   receivables: "Aged Receivables",
+  payables: "Aged Payables",
+  pnl: "Profit & Loss",
+  unreconciled: "Unreconciled Transactions",
+  tax_liability: "Tax Liabilities",
+  superannuation: "Superannuation Liabilities",
+  breakeven: "Breakeven",
 };
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];

@@ -89,7 +89,7 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
       tenantId: string;
       fromDate?: string;
       toDate?: string;
-      widget?: "revenue_kpis" | "pnl" | "breakeven";
+      widget?: "pnl" | "breakeven";
       basis?: "accrual" | "cash";
     }) => input,
   )
