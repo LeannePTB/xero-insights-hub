@@ -1,12 +1,13 @@
 import * as React from "react";
 import { cn } from "@/lib/utils";
 
-type Variant = "connect" | "reconnect" | "disconnect";
+type Variant = "connect" | "reconnect" | "disconnect" | "signin";
 
 const LABELS: Record<Variant, string> = {
   connect: "Connect to Xero",
   reconnect: "Reconnect to Xero",
   disconnect: "Disconnect from Xero",
+  signin: "Sign in with Xero",
 };
 
 /**
