@@ -1,16 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getSecurityPosture, purgeOldAuditLog, listSecurityDocs } from "@/lib/security.functions";
+import {
+  getSecurityPosture,
+  purgeOldAuditLog,
+  getSecurityContact,
+} from "@/lib/security.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, ShieldCheck, ShieldAlert, Lock, FileText, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ContactDetailsCard } from "@/components/security/ContactDetailsCard";
+import { PoliciesViewer } from "@/components/security/PoliciesViewer";
 
 export const Route = createFileRoute("/_authenticated/admin/security")({
-  head: () => ({ meta: [{ title: "Security — Traction Advisory Admin" }] }),
+  head: () => ({ meta: [{ title: "Security & Compliance — Traction Advisory Admin" }] }),
   component: SecurityPage,
 });
 
