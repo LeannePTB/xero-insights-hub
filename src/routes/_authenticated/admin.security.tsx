@@ -125,6 +125,10 @@ function SecurityPage() {
           </CardContent>
         </Card>
 
+        {contactQ.data && <ContactDetailsCard contact={contactQ.data} />}
+
+        <PoliciesViewer />
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -141,32 +145,8 @@ function SecurityPage() {
             </Link>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" /> Policy documents
-            </CardTitle>
-            <CardDescription>
-              Download and share with Xero or other reviewers. Each doc is served as Markdown from a public URL.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid sm:grid-cols-2 gap-2">
-            {(docsQ.data?.docs ?? []).map((d) => (
-              <a
-                key={d.slug}
-                href={d.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between border rounded p-3 hover:bg-muted"
-              >
-                <span className="font-mono text-sm">{d.slug}.md</span>
-                <Download className="h-4 w-4 text-muted-foreground" />
-              </a>
-            ))}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
 }
+
