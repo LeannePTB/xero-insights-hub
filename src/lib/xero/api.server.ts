@@ -8,16 +8,16 @@ const API_BASE = "https://api.xero.com/api.xro/2.0";
 const XERO_TIMEOUT_MS = 20_000;
 
 const MISSING_SCOPE_HINTS: Record<string, string> = {
-  "Reports/ActivityStatement": "Xero needs the tax reports permission for Activity Statement data. Reconnect this organisation and approve the updated read-only permissions.",
+  "Reports/ActivityStatement": "Xero needs the reports read permission for Activity Statement data. Reconnect this organisation and approve the updated read-only permissions.",
   "Reports/BankSummary": "Xero needs the reports read permission for the Bank Summary report. Reconnect this organisation and approve the updated read-only permissions.",
-  "Reports/BalanceSheet": "Xero needs the balance sheet reports permission. Reconnect this organisation and approve the updated read-only permissions.",
-  "Reports/ProfitAndLoss": "Xero needs the profit and loss reports permission. Reconnect this organisation and approve the updated read-only permissions.",
+  "Reports/BalanceSheet": "Xero needs the reports read permission for Balance Sheet data. Reconnect this organisation and approve the updated read-only permissions.",
+  "Reports/ProfitAndLoss": "Xero needs the reports read permission for Profit and Loss data. Reconnect this organisation and approve the updated read-only permissions.",
   "Accounts": "Xero needs the settings read permission to list bank accounts. Reconnect this organisation and approve the updated read-only permissions.",
   "Organisations": "Xero needs the settings read permission to read organisation details. Reconnect this organisation and approve the updated read-only permissions.",
-  "Invoices": "Xero needs the invoices read permission. Reconnect this organisation and approve the updated read-only permissions.",
-  "CreditNotes": "Xero needs the invoices read permission. Reconnect this organisation and approve the updated read-only permissions.",
-  "Prepayments": "Xero needs the payments read permission. Reconnect this organisation and approve the updated read-only permissions.",
-  "Overpayments": "Xero needs the payments read permission. Reconnect this organisation and approve the updated read-only permissions.",
+  "Invoices": "Xero needs the transactions read permission for invoices. Reconnect this organisation and approve the updated read-only permissions.",
+  "CreditNotes": "Xero needs the transactions read permission for credit notes. Reconnect this organisation and approve the updated read-only permissions.",
+  "Prepayments": "Xero needs the transactions read permission for prepayments. Reconnect this organisation and approve the updated read-only permissions.",
+  "Overpayments": "Xero needs the transactions read permission for overpayments. Reconnect this organisation and approve the updated read-only permissions.",
 };
 
 export type Connection = {

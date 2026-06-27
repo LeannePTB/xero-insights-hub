@@ -1,32 +1,29 @@
-## Plan
+## Plan to fix Xero reconnect properly
 
-1. **Fix the invalid Xero scope**
-   - Remove `accounting.reports.tenninetynine.read` from the OAuth scope list because it is not a valid Xero OAuth scope and is causing `invalid_scope`.
-   - Keep the valid read-only scopes needed by the current widgets:
+1. **Restore the known-good Xero OAuth permissions**
+   - Remove the experimental granular/broad fallback flow.
+   - Use only the standard scopes that were working before:
      - `offline_access`
      - `accounting.reports.read`
-     - `accounting.settings.read`
      - `accounting.transactions.read`
+     - `accounting.settings.read`
      - `accounting.contacts.read`
+   - Do not request any invalid or experimental granular report scopes.
 
-2. **Improve the reconnect error handling**
-   - If Xero sends `invalid_scope` back to `/api/public/xero/callback`, redirect the user with a clearer reconnect error instead of the generic failure.
-   - Make the dashboard/settings message explain that the app scope list was updated and the org needs to be reconnected once.
+2. **Simplify the callback error path**
+   - If Xero returns `invalid_scope`, stop retrying with another scope set.
+   - Redirect back to the client settings/dashboard with a clear message that the Xero app rejected the requested permissions.
+   - Keep the existing production callback URL: `https://tractionadvisory.app/api/public/xero/callback`.
 
-3. **Audit widget header icons**
-   - Check the dashboard widget registry/components for cards missing header icons.
-   - Add matching icons only to cards that currently have none, keeping the existing card layout unchanged.
+3. **Remove state-prefix complexity**
+   - Generate normal OAuth state values again instead of `b_...` / `g_...` values.
+   - Keep PKCE and stored return origin behavior intact.
 
-4. **Validate the flow**
-   - Confirm the generated Xero authorize URL no longer contains invalid scopes.
-   - Confirm the dashboard components still import cleanly after icon additions.
+4. **Verify the actual generated authorize URL**
+   - Confirm the URL sent to Xero contains no invalid scopes.
+   - Confirm the `redirect_uri` is still the production callback URL.
+   - Confirm no dashboard widget asks the OAuth flow for extra scopes directly.
 
-## Technical note
-
-The likely immediate break is this scope in `src/lib/xero/connections.functions.ts`:
-
-```text
-accounting.reports.tenninetynine.read
-```
-
-Xero does not accept that OAuth scope in the standard Accounting API flow, so the authorize step fails before reconnect can complete.
+5. **Keep widget icons separate from reconnect**
+   - Do not add more dashboard/widget changes while fixing reconnect.
+   - Once reconnect works again, audit any missing widget icons as a separate safe change.
