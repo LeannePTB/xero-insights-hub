@@ -6,40 +6,47 @@ export async function getEffectiveTier(
   userId: string,
   tenantId: string,
 ): Promise<{ isAdvisor: boolean; tier: DashboardTier | null; clientId: string | null }> {
-  // is_advisor: direct user_roles read (supabaseAdmin bypasses RLS).
-  const { data: advisorRow } = await (supabaseAdmin as any)
-    .from("user_roles")
-    .select("user_id")
-    .eq("user_id", userId)
-    .eq("role", "advisor")
-    .maybeSingle();
-  const advisor = Boolean(advisorRow);
-
-  // Resolve client_id for this tenant (first match is fine; one tenant typically maps to one client)
+  // Resolve client_id + firm_id for this tenant.
   const { data: cxo } = await (supabaseAdmin as any)
     .from("client_xero_orgs")
-    .select("client_id, xero_connections!inner(tenant_id)")
+    .select("client_id, clients!inner(id, firm_id), xero_connections!inner(tenant_id)")
     .eq("xero_connections.tenant_id", tenantId)
     .limit(1)
     .maybeSingle();
   const clientId = (cxo?.client_id as string | undefined) ?? null;
+  const firmId = (cxo?.clients?.firm_id as string | undefined) ?? null;
 
-  if (advisor) return { isAdvisor: true, tier: "investigate", clientId };
-
-  // get_user_tier: replicate the highest-precedence client_access tier for this user+tenant.
-  const { data: tierRows } = await (supabaseAdmin as any)
-    .from("client_access")
-    .select("tier, client_xero_orgs!inner(client_id, xero_connections!inner(tenant_id))")
-    .eq("user_id", userId)
-    .eq("client_xero_orgs.xero_connections.tenant_id", tenantId);
-  const rank: Record<string, number> = { investigate: 3, advisory: 2 };
-  let tier: DashboardTier | null = null;
-  let best = -1;
-  for (const r of (tierRows as Array<{ tier: DashboardTier }> | null) ?? []) {
-    const score = rank[r.tier] ?? 1;
-    if (score > best) { best = score; tier = r.tier; }
+  // Subscription-scoped access only:
+  //  - firm members (any role) see the firm's clients with full "investigate" tier
+  //  - users with an explicit client_access row see at their granted tier
+  //  - everyone else (global advisor, super_admin, etc.) is denied
+  if (firmId) {
+    const { data: member } = await (supabaseAdmin as any)
+      .from("firm_members")
+      .select("user_id")
+      .eq("user_id", userId)
+      .eq("firm_id", firmId)
+      .maybeSingle();
+    if (member) return { isAdvisor: true, tier: "investigate", clientId };
   }
-  return { isAdvisor: false, tier, clientId };
+
+  if (clientId) {
+    const { data: tierRows } = await (supabaseAdmin as any)
+      .from("client_access")
+      .select("tier")
+      .eq("user_id", userId)
+      .eq("client_id", clientId);
+    const rank: Record<string, number> = { investigate: 3, advisory: 2 };
+    let tier: DashboardTier | null = null;
+    let best = -1;
+    for (const r of (tierRows as Array<{ tier: DashboardTier }> | null) ?? []) {
+      const score = rank[r.tier] ?? 1;
+      if (score > best) { best = score; tier = r.tier; }
+    }
+    return { isAdvisor: false, tier, clientId };
+  }
+
+  return { isAdvisor: false, tier: null, clientId };
 }
 
 export async function getClientReportBasis(tenantId: string): Promise<"accrual" | "cash"> {

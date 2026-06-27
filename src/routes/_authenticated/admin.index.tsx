@@ -67,7 +67,7 @@ function AdminPage() {
             <Link to="/dashboard"><ArrowLeft className="h-4 w-4 mr-2" />Back</Link>
           </Button>
           <h1 className="text-xl font-semibold">Super-admin</h1>
-          <Badge variant="secondary" className="ml-2">redacted view</Badge>
+          <Badge variant="secondary" className="ml-2">no client data</Badge>
           <div className="ml-auto flex items-center gap-2">
             {isSuper && (
               <Button asChild variant="outline" size="sm">

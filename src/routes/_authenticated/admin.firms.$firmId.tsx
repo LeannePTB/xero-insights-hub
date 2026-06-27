@@ -91,7 +91,7 @@ function FirmDetailPage() {
           </Button>
           <h1 className="text-xl font-semibold">{firm.name}</h1>
           {firm.is_always_free && <Badge variant="outline">always free</Badge>}
-          <Badge variant="secondary" className="ml-auto">redacted view</Badge>
+          <Badge variant="secondary" className="ml-auto">no client data</Badge>
         </div>
       </header>
 
