@@ -248,7 +248,7 @@ function PeriodSection({
   data,
 }: {
   data: {
-    source: "activity-statement" | "balance-sheet-movement" | "unavailable";
+    source: "activity-statement" | "unavailable";
     periodFrom: string;
     periodTo: string;
     gstOnSales: number;
@@ -263,16 +263,15 @@ function PeriodSection({
   if (data.source === "unavailable") {
     return (
       <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-        {data.message ?? "Activity Statement isn't available for this period."}
+        {data.message ??
+          "Exact BAS figures require Xero Activity Statement access. This app needs Xero partner certification before this period can load."}
       </p>
     );
   }
-  const sourceLabel =
-    data.source === "activity-statement" ? "Source: Xero Activity Statement" : "Source: GL movement";
   return (
     <div className="mt-3">
       <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        {sourceLabel}
+        Source: Xero Activity Statement
       </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <PeriodKpi label="GST on sales (1A)" value={data.gstOnSales} />
