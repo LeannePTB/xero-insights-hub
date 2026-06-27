@@ -64,9 +64,8 @@ export function decryptToken(payload: Buffer | Uint8Array | string | null | unde
   return dec.toString("utf8");
 }
 
-// Wraps a plaintext token as a base64 string for transport over PostgREST
-// (bytea write path). PostgREST expects the bytea value as base64 when sent
-// via the Data API.
+// Wraps a plaintext token as a Postgres bytea hex literal (\x...) for transport
+// over PostgREST. PostgREST writes bytea from a hex-escaped string, not base64.
 export function encryptTokenB64(plaintext: string): string {
-  return encryptToken(plaintext).toString("base64");
+  return "\\x" + encryptToken(plaintext).toString("hex");
 }
