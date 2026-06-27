@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { randomBytes, createHash } from "crypto";
+import { DEFAULT_XERO_SCOPE_SET, xeroScopeString, xeroStateForScopeSet } from "@/lib/xero/scopes";
 
 function base64url(buf: Buffer) {
   return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
@@ -10,22 +11,7 @@ function base64url(buf: Buffer) {
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const CANONICAL_XERO_APP_ORIGIN = "https://tractionadvisory.app";
 const XERO_CALLBACK_URL = `${CANONICAL_XERO_APP_ORIGIN}/api/public/xero/callback`;
-const SCOPES_ARRAY = [
-  "offline_access",
-  "accounting.reports.read",
-  "accounting.settings.read",
-  "accounting.transactions.read",
-  "accounting.contacts.read",
-];
-// Hard guarantee: Xero remains read-only. Any non-`.read` scope (other than the
-// `offline_access` refresh-token grant) must never be requested. If this throws
-// at boot, refuse to build the URL — fail closed.
-for (const s of SCOPES_ARRAY) {
-  if (s !== "offline_access" && !s.endsWith(".read")) {
-    throw new Error(`Forbidden Xero scope detected: ${s}. Only *.read scopes are allowed.`);
-  }
-}
-const SCOPES = SCOPES_ARRAY.join(" ");
+const SCOPES = xeroScopeString(DEFAULT_XERO_SCOPE_SET);
 
 export const listXeroConnections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -83,7 +69,7 @@ export const startXeroConnect = createServerFn({ method: "POST" })
       );
     }
 
-    const state = randomBytes(24).toString("hex");
+    const state = xeroStateForScopeSet(DEFAULT_XERO_SCOPE_SET, randomBytes(24).toString("hex"));
     // OAuth 2.0 PKCE (S256) — required by Xero security standard.
     const codeVerifier = base64url(randomBytes(48));
     const codeChallenge = base64url(createHash("sha256").update(codeVerifier).digest());
