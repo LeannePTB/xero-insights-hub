@@ -1,34 +1,31 @@
-## Pin Business Health + Notes, group Standard tier widgets
+## Why "This period (BAS)" is failing
 
-### 1. Pin the top two cards (non-draggable)
+The widget calls `Reports/ActivityStatement`. Xero restricts that endpoint to **approved AU partner apps** — even with `accounting.reports.read`, regular OAuth apps get 403 / NotFound. It is not a missing scope we can add; Xero requires partner certification. That's why the section stays empty.
 
-In `src/routes/_authenticated/clients.$clientId.index.tsx`:
-- Render **Business Health** (full width) and **Notes** (full width) directly above the `SortableCardGrid`, not inside it. Order: Business Health → Notes.
-- Remove `health` and `notes` from the `cards` array passed to `SortableCardGrid` so they can't be reordered or hidden by saved layout.
-- Strip any stale `health` / `notes` ids out of `savedOrder` before passing it down (one-time cleanup so old saved layouts don't leave gaps).
+## Fix: derive the current-period BAS figures from GL movement
 
-In `src/components/dashboard/SortableCardGrid.tsx`: no change needed — it only renders what it's given.
+For a pre-lodgement view, the accrued GST / PAYG for a period equals the **movement in the relevant liability accounts** between the day before `fromDate` and `toDate`. We already pull `Reports/BalanceSheet` on both bases, so no new scope or reconnect is needed.
 
-### 2. Group Standard-tier widgets visually
+### Changes
 
-Standard tier = `health`, `receivables`, `payables`, `pnl`, `unreconciled`. Health is already pinned at top, so the grouped block under Notes is:
+1. **`src/lib/xero/reports.functions.ts` — `getActivityStatementPeriod`**
+   - Keep trying `Reports/ActivityStatement` first; if it returns data, use it (so partner-approved orgs still get the Xero-native numbers).
+   - Otherwise pull `Reports/BalanceSheet` at `toDate` and at `fromDate − 1 day`, honouring the selected basis (`paymentsOnly=true` for cash), and reuse `extractTaxLines` to find GST / PAYG accounts.
+   - Compute period movement per account:
+     - GST accounts whose name matches `collected|output|on sales|on income` → `gstOnSales` (1A).
+     - GST accounts whose name matches `paid|input|on purchases|on expenses|claimable` → `gstOnPurchases` (1B).
+     - GST accounts that are a single net account → surface as `gstOnSales`, leave `gstOnPurchases = 0`.
+     - PAYG accounts → `paygWithheld` (W5).
+   - Return `source: "balance-sheet-movement"` with a message: *"Calculated from balance-sheet movement on GST and PAYG accounts. Final BAS figures are confirmed at lodgement."*
+   - Extend the `ActivityStatementPeriod['source']` union to include `"balance-sheet-movement"`.
 
-```text
-[ Receivables ] [ Payables ]
-[ P&L         ] [ Unreconciled ]
-```
+2. **`src/components/dashboard/TaxLiabilityWidget.tsx` — `PeriodSection`**
+   - Widen the `source` prop type to accept `"balance-sheet-movement"`.
+   - Render the KPIs for both `activity-statement` and `balance-sheet-movement` sources.
+   - Show a small caption under the section header indicating the source (e.g. *"Source: GL movement"* vs *"Source: Xero Activity Statement"*).
 
-Approach: render a dedicated "Standard" section with its own heading + 2-col grid for the Standard cards (still draggable within the section), then render the remaining tier-upgrade cards (Tax, Super, Breakeven) below in a second "Advisory / Investigate" section via a second `SortableCardGrid`.
+3. **No schema, scope, or reconnect changes.** Existing `accounting.reports.read` is sufficient.
 
-- Split `cards` into two arrays: `standardCards` (receivables, payables, pnl, unreconciled per org) and `advancedCards` (tax_liability, superannuation, breakeven per org).
-- Render two `<section>` blocks each with a small heading ("Standard dashboard" / "Advisory") and its own `SortableCardGrid`.
-- Persist order per section: extend `dashboard_card_order` usage to store two keys (`standard` + `advanced`) under the same row, or save a single combined order and split on read. Simplest: keep one saved order array, filter it per section when passing to each grid, and merge back on save.
-
-### 3. Acceptance
-
-- Business Health and Notes always appear at top, in that order, with no drag handle.
-- Standard widgets sit together in their own labeled group; tax/super/breakeven sit in a second labeled group.
-- Drag/reorder still works inside each group and persists.
-- No leftover empty slot where Notes/Health used to be in saved layouts.
-
-Confirm and I'll build it.
+### Out of scope
+- Pursuing Xero partner certification for `Reports/ActivityStatement`.
+- Changes to the Superannuation widget or the outstanding-buckets section.
