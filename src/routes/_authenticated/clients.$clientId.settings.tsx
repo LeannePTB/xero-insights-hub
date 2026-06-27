@@ -37,7 +37,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Loader2, Plug, UserPlus, Link2, KeyRound, Eye, EyeOff, Copy, RefreshCw } from "lucide-react";
+import { ArrowLeft, Trash2, Loader2, Plug, UserPlus, Link2, KeyRound, Eye, EyeOff, Copy, RefreshCw, AlertCircle } from "lucide-react";
+import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { ALL_TIERS, TIER_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
