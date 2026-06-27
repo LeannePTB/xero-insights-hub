@@ -182,6 +182,8 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
       refresh_token: null,
       expires_at,
       scopes: t.scope ?? conn.scopes,
+      status: "connected",
+      disconnected_at: null,
     })
     .eq("user_id", conn.user_id);
   if (error) throw new Error(`Failed to save refreshed Xero tokens: ${error.message}`);
