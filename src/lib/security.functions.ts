@@ -92,6 +92,7 @@ export const getSecurityPosture = createServerFn({ method: "GET" })
         total: totalConns ?? 0,
       },
       mfa: { enrolled: mfaEnrolled, total: totalUsers },
+      adminMfa: { enrolled: adminMfaEnrolled, total: totalAdmins },
       audit: { rowsOlderThanRetention: oldAudit ?? 0, retentionYears: 2 },
       tokenEncKeyConfigured: !!process.env.TOKEN_ENC_KEY,
       xeroConfigured: !!process.env.XERO_CLIENT_ID && !!process.env.XERO_CLIENT_SECRET,
