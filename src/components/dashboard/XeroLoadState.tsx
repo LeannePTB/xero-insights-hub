@@ -1,5 +1,6 @@
 import { AlertCircle, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 
 function extractErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
