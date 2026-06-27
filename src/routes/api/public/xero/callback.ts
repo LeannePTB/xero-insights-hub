@@ -22,12 +22,13 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           code_verifier: string | null;
           return_origin: string | null;
           created_at: string | null;
+          client_id: string | null;
         } | null = null;
 
         if (state) {
           const { data, error: stateLookupErr } = await supabaseAdmin
             .from("xero_oauth_states")
-            .select("user_id, code_verifier, return_origin, created_at")
+            .select("user_id, code_verifier, return_origin, created_at, client_id")
             .eq("state", state)
             .maybeSingle();
           if (!stateLookupErr && data) {
