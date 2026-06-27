@@ -59,25 +59,24 @@ export const getSecurityPosture = createServerFn({ method: "GET" })
       .from("xero_connections")
       .select("*", { count: "exact", head: true });
 
-    // MFA enrolment count via Auth Admin API — scoped to staff users
-    // (advisors + super admins). Client viewers are out of scope.
+    // MFA enrolment via SECURITY DEFINER RPC — reads auth.mfa_factors directly,
+    // since auth.admin.listUsers() does not return the factors array.
     let mfaEnrolled = 0;
     let totalUsers = 0;
+    let adminMfaEnrolled = 0;
+    let totalAdmins = 0;
     try {
-      const { data: staffRoles } = await supabaseAdmin
-        .from("user_roles")
-        .select("user_id")
-        .in("role", ["advisor", "super_admin"]);
-      const staffIds = new Set<string>((staffRoles ?? []).map((r: any) => r.user_id));
-      const { data } = await (supabaseAdmin as any).auth.admin.listUsers({ page: 1, perPage: 1000 });
-      const users = (data?.users ?? []).filter((u: any) => staffIds.has(u.id));
-      totalUsers = users.length;
-      mfaEnrolled = users.filter((u: any) =>
-        (u.factors ?? []).some((f: any) => f.status === "verified" && f.factor_type === "totp"),
-      ).length;
+      const { data: rows, error } = await supabaseAdmin.rpc("get_mfa_posture_counts" as any);
+      if (error) throw error;
+      const row = (rows as any[])?.[0] ?? {};
+      totalUsers = Number(row.total_staff ?? 0);
+      mfaEnrolled = Number(row.enrolled_staff ?? 0);
+      totalAdmins = Number(row.total_admins ?? 0);
+      adminMfaEnrolled = Number(row.enrolled_admins ?? 0);
     } catch {
-      // ignore — older SDKs may not return factors
+      // ignore — surface zeros, card will show "action"
     }
+
 
     // Audit log retention.
     const cutoff = new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 2).toISOString();
