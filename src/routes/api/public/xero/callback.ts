@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
+const XERO_CALLBACK_URL = "https://tractionadvisory.app/api/public/xero/callback";
 
 export const Route = createFileRoute("/api/public/xero/callback")({
   server: {
@@ -36,6 +37,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }
 
         if (error) {
+          console.error("Xero authorization failed", { error, callbackOrigin: origin, returnOrigin });
           if (state) await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
           return redirectTo(`${returnOrigin}/dashboard?xero_error=${encodeURIComponent(error)}`);
         }
@@ -61,11 +63,10 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         const codeVerifier: string | null = stateRow.code_verifier ?? null;
         await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
 
-        const redirectUri = `${origin}/api/public/xero/callback`;
         const tokenBody: Record<string, string> = {
           grant_type: "authorization_code",
           code,
-          redirect_uri: redirectUri,
+          redirect_uri: XERO_CALLBACK_URL,
         };
         // Send the PKCE verifier only when it looks like an actual verifier
         // (43-128 chars, no scheme prefix) — legacy rows hold a URL here.
@@ -88,7 +89,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         });
         if (!tokenRes.ok) {
           const t = await tokenRes.text();
-          console.error("Xero token exchange failed", tokenRes.status, t);
+          console.error("Xero token exchange failed", { status: tokenRes.status, body: t, redirectUri: XERO_CALLBACK_URL });
           return redirectTo(`${returnOrigin}/dashboard?xero_error=token_exchange`);
         }
         const tokens = await tokenRes.json() as {
