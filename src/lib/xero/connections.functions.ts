@@ -130,6 +130,82 @@ export const disconnectXero = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
+    // Look up the connection row (we need the Xero connection id + tokens to
+    // revoke remotely before deleting locally).
+    const { data: row, error: lookupErr } = await context.supabase
+      .from("xero_connections")
+      .select("id, tenant_id, tenant_name")
+      .eq("tenant_id", data.tenantId)
+      .maybeSingle();
+    if (lookupErr) throw new Error(lookupErr.message);
+
+    // Best-effort remote revoke. Xero requires us to call DELETE /connections
+    // and revoke the refresh token so the org no longer shows our app as
+    // connected (Xero certification checkpoint 3). A failure here must not
+    // block the local cleanup.
+    if (row) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { getConnectionByTenant } = await import("@/lib/xero/api.server");
+
+        let conn: Awaited<ReturnType<typeof getConnectionByTenant>> | null = null;
+        try {
+          conn = await getConnectionByTenant(data.tenantId);
+        } catch (e) {
+          console.warn("[xero] disconnect: could not materialize tokens for revoke", e instanceof Error ? e.message : e);
+        }
+
+        const clientId = process.env.XERO_CLIENT_ID;
+        const clientSecret = process.env.XERO_CLIENT_SECRET;
+
+        if (conn) {
+          // 1. DELETE /connections/{id} — tells Xero this organisation is no
+          //    longer connected to our app.
+          try {
+            const delRes = await fetch(`https://api.xero.com/connections/${row.id}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${conn.access_token}` },
+            });
+            if (!delRes.ok && delRes.status !== 404 && delRes.status !== 401) {
+              console.warn(`[xero] DELETE /connections returned ${delRes.status}: ${await delRes.text()}`);
+            }
+          } catch (e) {
+            console.warn("[xero] DELETE /connections failed", e instanceof Error ? e.message : e);
+          }
+
+          // 2. Revoke the refresh token at the identity server.
+          if (clientId && clientSecret) {
+            try {
+              const revRes = await fetch("https://identity.xero.com/connect/revocation", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/x-www-form-urlencoded",
+                  Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
+                },
+                body: new URLSearchParams({ token: conn.refresh_token }),
+              });
+              if (!revRes.ok) {
+                console.warn(`[xero] revoke returned ${revRes.status}: ${await revRes.text()}`);
+              }
+            } catch (e) {
+              console.warn("[xero] revoke failed", e instanceof Error ? e.message : e);
+            }
+          }
+        }
+
+        // 3. Audit-log the disconnect before removing the row.
+        await supabaseAdmin.from("audit_log").insert({
+          actor_user_id: context.userId,
+          action: "xero_disconnected",
+          target_type: "xero_connection",
+          target_id: row.tenant_id,
+          meta: { tenant_name: row.tenant_name },
+        });
+      } catch (e) {
+        console.error("[xero] disconnect remote cleanup error", e);
+      }
+    }
+
     const { error } = await context.supabase
       .from("xero_connections")
       .delete()
