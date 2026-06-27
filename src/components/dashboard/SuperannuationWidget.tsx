@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { getCurrentTaxBalance } from "@/lib/xero/reports.functions";
-import { Loader2, PiggyBank, RefreshCw } from "lucide-react";
+import { Loader2, PiggyBank, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
