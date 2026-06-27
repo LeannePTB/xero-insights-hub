@@ -726,6 +726,66 @@ export type Database = {
         }
         Relationships: []
       }
+      security_contact_details: {
+        Row: {
+          abn: string | null
+          app_name: string | null
+          assessment_date: string | null
+          company_legal_name: string | null
+          created_at: string
+          id: string
+          primary_contact_email: string | null
+          primary_contact_name: string | null
+          primary_contact_phone: string | null
+          primary_contact_role: string | null
+          registered_address: string | null
+          singleton: boolean
+          trading_name: string | null
+          updated_at: string
+          website: string | null
+          xero_api_usage: string | null
+          xero_client_id: string | null
+        }
+        Insert: {
+          abn?: string | null
+          app_name?: string | null
+          assessment_date?: string | null
+          company_legal_name?: string | null
+          created_at?: string
+          id?: string
+          primary_contact_email?: string | null
+          primary_contact_name?: string | null
+          primary_contact_phone?: string | null
+          primary_contact_role?: string | null
+          registered_address?: string | null
+          singleton?: boolean
+          trading_name?: string | null
+          updated_at?: string
+          website?: string | null
+          xero_api_usage?: string | null
+          xero_client_id?: string | null
+        }
+        Update: {
+          abn?: string | null
+          app_name?: string | null
+          assessment_date?: string | null
+          company_legal_name?: string | null
+          created_at?: string
+          id?: string
+          primary_contact_email?: string | null
+          primary_contact_name?: string | null
+          primary_contact_phone?: string | null
+          primary_contact_role?: string | null
+          registered_address?: string | null
+          singleton?: boolean
+          trading_name?: string | null
+          updated_at?: string
+          website?: string | null
+          xero_api_usage?: string | null
+          xero_client_id?: string | null
+        }
+        Relationships: []
+      }
       signup_requests: {
         Row: {
           contact_name: string
