@@ -9,6 +9,8 @@ const XERO_TIMEOUT_MS = 20_000;
 
 const MISSING_SCOPE_HINTS: Record<string, string> = {
   "Reports/ActivityStatement": "Xero needs the tax reports permission for Activity Statement data. Reconnect this organisation and approve the updated read-only permissions.",
+  "Reports/BankSummary": "Xero needs the reports read permission for the Bank Summary report. Reconnect this organisation and approve the updated read-only permissions.",
+  "Accounts": "Xero needs the settings read permission to list bank accounts. Reconnect this organisation and approve the updated read-only permissions.",
 };
 
 export type Connection = {

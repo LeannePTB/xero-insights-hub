@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
-import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Minus, RefreshCw, LineChart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
@@ -92,7 +92,7 @@ export function PnlWidget({
             {tenantName}
           </p>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg font-semibold">Profit & Loss</h3>
+            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><LineChart className="h-4 w-4 text-primary" />Profit & Loss</h3>
             <BasisBadge basis={basis ?? "accrual"} />
           </div>
           <p className="text-xs text-muted-foreground">

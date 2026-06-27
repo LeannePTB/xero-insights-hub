@@ -92,7 +92,7 @@ export function TaxLiabilityWidget({
             {tenantName}
           </p>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg font-semibold">Tax liabilities</h3>
+            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><Receipt className="h-4 w-4 text-primary" />Tax liabilities</h3>
             {bal?.basis ? (
               <span
                 className="rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"

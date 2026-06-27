@@ -54,7 +54,7 @@ export function SuperannuationWidget({
             {tenantName}
           </p>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg font-semibold">Superannuation liabilities</h3>
+            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><PiggyBank className="h-4 w-4 text-primary" />Superannuation liabilities</h3>
             <BasisBadge basis={basis} />
           </div>
           <p className="text-xs text-muted-foreground">
