@@ -23,7 +23,7 @@ const XERO_SCOPE_SETS: Record<XeroScopeSetId, string[]> = {
   ],
 };
 
-export const DEFAULT_XERO_SCOPE_SET: XeroScopeSetId = "broad";
+export const DEFAULT_XERO_SCOPE_SET: XeroScopeSetId = "granular";
 
 export function xeroScopes(scopeSet: XeroScopeSetId = DEFAULT_XERO_SCOPE_SET) {
   const scopes = XERO_SCOPE_SETS[scopeSet];
