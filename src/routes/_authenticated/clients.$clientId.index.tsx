@@ -8,8 +8,10 @@ import { getMyContext } from "@/lib/roles.functions";
 import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, LogOut, Loader2, Building2 } from "lucide-react";
+import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.functions";
+import { toast } from "sonner";
 
 import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
 import { SuperannuationWidget } from "@/components/dashboard/SuperannuationWidget";
