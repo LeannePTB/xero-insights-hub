@@ -205,6 +205,10 @@ function ClientDashboard() {
             />
           )}
         </div>
+
+        {!isAdvisor && orgs.length > 0 && (
+          <UpgradeOptions clientId={clientId} clientName={client.name} currentTier={tier} />
+        )}
       </main>
     </div>
   );
