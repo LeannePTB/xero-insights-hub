@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, ShieldAlert, UserPlus, Copy, Check } from "lucide-react";
+import { ArrowLeft, Loader2, ShieldAlert, SlidersHorizontal, UserPlus, Copy, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -69,6 +69,11 @@ function AdminPage() {
           <h1 className="text-xl font-semibold">Super-admin</h1>
           <Badge variant="secondary" className="ml-2">redacted view</Badge>
           <div className="ml-auto flex items-center gap-2">
+            {isSuper && (
+              <Button asChild variant="outline" size="sm">
+                <Link to="/settings/tiers"><SlidersHorizontal className="h-4 w-4 mr-2" />Tier widgets</Link>
+              </Button>
+            )}
             <Button asChild variant="outline" size="sm">
               <Link to="/admin/security"><ShieldAlert className="h-4 w-4 mr-2" />Security</Link>
             </Button>
