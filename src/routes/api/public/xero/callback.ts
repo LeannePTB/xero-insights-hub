@@ -1,43 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createHash, randomBytes } from "crypto";
-import {
-  alternateXeroScopeSet,
-  xeroScopeSetFromState,
-  xeroScopeString,
-  xeroStateForScopeSet,
-  type XeroScopeSetId,
-} from "@/lib/xero/scopes";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
-const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const XERO_CALLBACK_URL = "https://tractionadvisory.app/api/public/xero/callback";
-
-function base64url(buf: Buffer) {
-  return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
-}
-
-function buildAuthorizeUrl({
-  clientId,
-  state,
-  codeChallenge,
-  scopeSet,
-}: {
-  clientId: string;
-  state: string;
-  codeChallenge: string;
-  scopeSet: XeroScopeSetId;
-}) {
-  const authUrl = new URL(XERO_AUTHORIZE_URL);
-  authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("client_id", clientId);
-  authUrl.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
-  authUrl.searchParams.set("scope", xeroScopeString(scopeSet));
-  authUrl.searchParams.set("state", state);
-  authUrl.searchParams.set("code_challenge", codeChallenge);
-  authUrl.searchParams.set("code_challenge_method", "S256");
-  return authUrl.toString();
-}
 
 export const Route = createFileRoute("/api/public/xero/callback")({
   server: {
@@ -52,8 +17,6 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         let returnOrigin = origin;
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const clientId = process.env.XERO_CLIENT_ID;
-
         let stateRow: {
           user_id: string;
           code_verifier: string | null;
@@ -77,31 +40,10 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         if (error) {
           const errorDescription = rawErrorDescription ?? "";
           console.error("Xero authorization failed", { error, errorDescription, callbackOrigin: origin, returnOrigin });
-          if (error === "invalid_scope" && stateRow && clientId) {
-            const retryScopeSet = alternateXeroScopeSet(xeroScopeSetFromState(state));
-            if (retryScopeSet) {
-              const retryState = xeroStateForScopeSet(retryScopeSet, randomBytes(24).toString("hex"));
-              const codeVerifier = base64url(randomBytes(48));
-              const codeChallenge = base64url(createHash("sha256").update(codeVerifier).digest());
-              const { error: insertErr } = await supabaseAdmin.from("xero_oauth_states").insert({
-                state: retryState,
-                user_id: stateRow.user_id,
-                code_verifier: codeVerifier,
-                return_origin: returnOrigin,
-                client_id: stateRow.client_id ?? null,
-              });
-              if (!insertErr) {
-                if (state) await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-                console.info("Retrying Xero OAuth with fallback read-only scope set", { retryScopeSet, returnOrigin });
-                return redirectTo(buildAuthorizeUrl({ clientId, state: retryState, codeChallenge, scopeSet: retryScopeSet }));
-              }
-              console.error("Failed to create Xero fallback OAuth state", insertErr);
-            }
-          }
           if (state) await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
           const message =
             error === "invalid_scope"
-              ? `Xero rejected the requested read-only permissions${errorDescription ? ` (${errorDescription})` : ""}. Please try Reconnect again, or check the Xero app has Accounting API read scopes enabled.`
+              ? `Xero rejected the requested read-only permissions${errorDescription ? ` (${errorDescription})` : ""}. The app now requests only the standard Accounting API read scopes; please try Reconnect again.`
               : error;
           const errorPath = stateRow?.client_id ? `/clients/${stateRow.client_id}/settings` : "/dashboard";
           return redirectTo(`${returnOrigin}${errorPath}?xero_error=${encodeURIComponent(message)}`);
@@ -109,6 +51,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         if (!code || !state) return redirectTo(`${returnOrigin}/dashboard?xero_error=missing_params`);
 
         const clientSecret = process.env.XERO_CLIENT_SECRET;
+        const clientId = process.env.XERO_CLIENT_ID;
         if (!clientId || !clientSecret) {
           return redirectTo(`${returnOrigin}/dashboard?xero_error=not_configured`);
         }
