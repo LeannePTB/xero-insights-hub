@@ -140,6 +140,19 @@ function AuthPage() {
             >
               {resetLoading ? "Sending…" : "Forgot password?"}
             </button>
+            <div className="relative my-2">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+            <ConnectWithXeroButton
+              variant="signin"
+              className="w-full"
+              onClick={() =>
+                toast.info("Sign in with Xero is coming soon. Use your email and password for now.")
+              }
+            />
             <p className="pt-1 text-center text-xs text-muted-foreground">
               Access is invite-only. Contact Positive Traction.
             </p>
