@@ -101,7 +101,8 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             error === "invalid_scope"
               ? "Xero rejected the requested read-only permissions. Please try Reconnect again, or check the Xero app has Accounting API read scopes enabled."
               : error;
-          return redirectTo(`${returnOrigin}/dashboard?xero_error=${encodeURIComponent(message)}`);
+          const errorPath = stateRow?.client_id ? `/clients/${stateRow.client_id}/settings` : "/dashboard";
+          return redirectTo(`${returnOrigin}${errorPath}?xero_error=${encodeURIComponent(message)}`);
         }
         if (!code || !state) return redirectTo(`${returnOrigin}/dashboard?xero_error=missing_params`);
 
