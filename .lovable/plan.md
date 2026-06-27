@@ -1,56 +1,36 @@
-## What I found
+## What's happening
 
-The current project is not actually structured the same as the working Business Hub project.
+All cards on the Positive Traction dashboard fail with "This Xero data could not load right now."
 
-The working project uses:
-- A public `/auth/mfa-enroll` route for first setup.
-- A public `/auth/mfa-verify` route for existing verified factors.
-- The protected app layout redirects users to one of those routes before loading the dashboard.
-- Setup verification uses Supabase’s documented `challenge()` then `verify()` sequence.
+Looking at the database, the Xero connection for Positive Traction:
+- Access token expired on **2026-06-22** (5 days ago)
+- Has only the legacy plaintext token (no encrypted token from the security upgrade)
+- Hasn't been touched since 2026-06-22 06:56 UTC
 
-This project currently uses a single in-layout `MfaGate` component inside `/_authenticated`. That means MFA setup/verification happens while the protected app route is already loading, and the recent change switched setup to `challengeAndVerify()`. The docs and the working app both show enrollment using `challenge()` + `verify()`. The mismatch is the most likely reason the same valid-looking code still fails.
+When any widget loads, the server tries to refresh the access token using the stored refresh token. Refresh is failing — almost certainly because the refresh token has been invalidated (Xero rotates the refresh token on every use, and if anything used it once during the last 5 days the old one stored here is dead). That triggers the generic "could not load" message on every card.
 
-## Plan
+## Fix
 
-1. **Replace the single MFA gate with the working route pattern**
-   - Add `/auth/mfa-enroll` for users with no verified authenticator.
-   - Add `/auth/mfa-verify` for users who already have an authenticator but need to step up to AAL2.
-   - Keep both routes `ssr: false` so auth state is read only in the browser.
+The token store can't recover itself — Xero requires the user to reconnect the org via OAuth. The widgets are doing the right thing by failing fast; what's missing is a clear, actionable path on screen instead of the generic message.
 
-2. **Update protected route enforcement**
-   - Change `src/routes/_authenticated/route.tsx` to match the working project:
-     - confirm the user is signed in;
-     - check MFA factors;
-     - redirect to enroll if no verified TOTP exists;
-     - redirect to verify if the current session is not AAL2;
-     - render the normal authenticated content only after AAL2.
+### Step 1 — Confirm the refresh is the problem
+- Call the existing connection-status server fn from the dashboard once on mount for Positive Traction and log the precise refresh error to server logs so we can confirm `invalid_grant` vs scopes vs network.
 
-3. **Update login routing**
-   - Change `src/routes/auth.tsx` so after sign-in it routes users to:
-     - `/auth/mfa-enroll` if no verified factor exists;
-     - `/auth/mfa-verify` if a factor exists but the session is not AAL2;
-     - `/dashboard` only once MFA is satisfied.
+### Step 2 — Surface a "Reconnect Xero" CTA on the dashboard
+- In `src/routes/_authenticated/clients.$clientId.index.tsx`, when **all** widget queries return a Xero auth-class error (refresh failed / 401 after refresh), render a single banner above the cards: "Xero connection for Positive Traction needs to be reconnected" with a **Reconnect** button that kicks off the existing PKCE OAuth flow in `src/lib/xero/connections.functions.ts`.
+- Keep individual card error states for non-auth failures (rate-limit, timeout, etc.) using the existing `friendlyXeroError` mapping.
 
-4. **Use the documented verification sequence**
-   - In enrollment and verification, use:
-     - `supabase.auth.mfa.challenge({ factorId })`
-     - then `supabase.auth.mfa.verify({ factorId, challengeId, code })`
-   - Stop using `challengeAndVerify()` for the setup flow.
-   - Continue using Supabase’s returned `totp.qr_code` image directly.
+### Step 3 — Detect auth-class failure precisely
+- In `src/lib/xero/api.server.ts` `refreshAccessToken`, when Xero returns `invalid_grant` / `invalid_client`, throw a tagged error (`XeroReconnectRequired`) instead of the raw body. `friendlyXeroError` already maps the Xero 401 reconnect text; we'll widen it to also catch `invalid_grant` from the token endpoint, and the dashboard banner keys off that tag.
 
-5. **Keep recovery but make it safe**
-   - Before enrollment, remove stale unverified TOTP factors so the friendly-name collision cannot return.
-   - Keep sign-out/cancel options.
-   - Preserve the clearer invalid-code message.
+### Step 4 — Migrate the plaintext token on next successful refresh
+- Already handled by `materializeConnection` backfill — once the user reconnects, the new tokens will be encrypted and the legacy `access_token` / `refresh_token` columns nulled out.
 
-6. **Retire `MfaGate` from the authenticated shell**
-   - Stop rendering `MfaGate` in `/_authenticated/route.tsx`.
-   - Leave the component unused or remove it only if no imports remain, to keep the change focused.
+## Out of scope
+- No schema changes.
+- No changes to individual widget queries beyond reading the new error tag.
+- Not touching the OAuth flow itself — it works; we're just routing users to it sooner.
 
-## Validation
-
-After implementation I will verify:
-- `/auth` sends signed-in users to the correct MFA page instead of straight to dashboard.
-- `/auth/mfa-enroll` renders a QR code from the backend and uses `challenge()` + `verify()`.
-- `/auth/mfa-verify` handles existing verified factors separately.
-- Protected dashboard routes only render once the current session reaches AAL2.
+## Technical notes
+- Files changed: `src/lib/xero/api.server.ts`, `src/routes/_authenticated/clients.$clientId.index.tsx`, `src/components/dashboard/XeroLoadState.tsx` (extend `friendlyXeroError`).
+- No migration needed.
