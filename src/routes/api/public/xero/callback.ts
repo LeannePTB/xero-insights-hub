@@ -113,8 +113,15 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }>;
 
         const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
-        const accessEnc = encryptTokenB64(tokens.access_token);
-        const refreshEnc = encryptTokenB64(tokens.refresh_token);
+        let accessEnc: string;
+        let refreshEnc: string;
+        try {
+          accessEnc = encryptTokenB64(tokens.access_token);
+          refreshEnc = encryptTokenB64(tokens.refresh_token);
+        } catch (storageErr) {
+          console.error("Xero token encryption failed", storageErr);
+          return redirectTo(`${returnOrigin}/dashboard?xero_error=token_storage`);
+        }
         const rows = tenants.map((t) => ({
           user_id: userId,
           tenant_id: t.tenantId,
