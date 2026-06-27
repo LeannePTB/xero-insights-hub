@@ -46,7 +46,7 @@ export function useBreakevenData({
 
   const pnlQ = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr, basis],
-    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "breakeven", basis } }),
+    queryFn: () => fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "accounting_breakeven", basis } }),
     enabled: shouldLoad,
     retry: false,
   });
