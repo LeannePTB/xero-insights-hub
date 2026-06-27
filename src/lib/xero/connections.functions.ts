@@ -93,7 +93,7 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     url.searchParams.set("state", state);
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
-    console.info("Starting Xero OAuth", { redirectUri: XERO_CALLBACK_URL, returnOrigin });
+    console.info("Starting Xero OAuth", { redirectUri: XERO_CALLBACK_URL, scopes: SCOPES, returnOrigin });
     return { authorizeUrl: url.toString() };
 
   });

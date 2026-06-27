@@ -1,29 +1,53 @@
-## Plan to fix Xero reconnect properly
+## What the issue is
 
-1. **Restore the known-good Xero OAuth permissions**
-   - Remove the experimental granular/broad fallback flow.
-   - Use only the standard scopes that were working before:
+Xero is failing before it redirects back to our app. That means the problem is in the **authorize URL** sent to Xero, not the token exchange or dashboard card loading.
+
+Xero’s current docs say Web/PKCE apps have now been assigned **granular Accounting API scopes**, while the broad scopes we just restored (`accounting.reports.read`, `accounting.transactions.read`) are deprecated and may be rejected depending on the Xero app setup.
+
+**Do I know what the issue is?** Yes: the reconnect flow is still requesting the wrong style of scopes for this Xero app. The previous “fallback” approach also could not help because Xero is showing an identity error page before our callback route receives anything.
+
+## Plan to fix it
+
+1. **Switch Xero OAuth to the current granular scope list**
+   - Replace the broad scopes with Xero’s documented granular read scopes needed by the widgets:
      - `offline_access`
-     - `accounting.reports.read`
-     - `accounting.transactions.read`
+     - `accounting.reports.balancesheet.read`
+     - `accounting.reports.banksummary.read`
+     - `accounting.reports.profitandloss.read`
+     - `accounting.reports.taxreports.read`
+     - `accounting.invoices.read`
+     - `accounting.payments.read`
      - `accounting.settings.read`
      - `accounting.contacts.read`
-   - Do not request any invalid or experimental granular report scopes.
+   - Do **not** include `accounting.reports.tenninetynine.read`.
+   - Do **not** include deprecated broad scopes in the authorize URL.
 
-2. **Simplify the callback error path**
-   - If Xero returns `invalid_scope`, stop retrying with another scope set.
-   - Redirect back to the client settings/dashboard with a clear message that the Xero app rejected the requested permissions.
-   - Keep the existing production callback URL: `https://tractionadvisory.app/api/public/xero/callback`.
+2. **Remove the broad/granular retry concept completely**
+   - Since Xero errors before callback, callback-based retry is ineffective.
+   - Keep one clean scope list only.
 
-3. **Remove state-prefix complexity**
-   - Generate normal OAuth state values again instead of `b_...` / `g_...` values.
-   - Keep PKCE and stored return origin behavior intact.
+3. **Add safe OAuth diagnostics**
+   - Log the non-secret OAuth metadata when starting Xero connect:
+     - redirect URI
+     - exact scope string
+     - return origin
+   - Do not log client secret, tokens, auth codes, or refresh tokens.
 
-4. **Verify the actual generated authorize URL**
-   - Confirm the URL sent to Xero contains no invalid scopes.
-   - Confirm the `redirect_uri` is still the production callback URL.
-   - Confirm no dashboard widget asks the OAuth flow for extra scopes directly.
+4. **Improve user-facing Xero errors**
+   - If Xero does return to our callback with `invalid_scope`, show a message that the app is using granular read-only scopes and the Xero app settings may need those scopes enabled/assigned.
+   - If Xero never calls back and shows its own identity error page, the generated URL diagnostics will confirm whether the issue is scope or redirect URI.
 
-5. **Keep widget icons separate from reconnect**
-   - Do not add more dashboard/widget changes while fixing reconnect.
-   - Once reconnect works again, audit any missing widget icons as a separate safe change.
+5. **Verify references**
+   - Confirm no invalid scope remains in the codebase.
+   - Confirm the generated authorize URL uses:
+     - `https://tractionadvisory.app/api/public/xero/callback`
+     - granular scopes only
+   - Check the current runtime import error separately so the preview is not hiding the real result.
+
+<presentation-actions>
+  <presentation-open-history>View History</presentation-open-history>
+</presentation-actions>
+
+<presentation-actions>
+<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
+</presentation-actions>

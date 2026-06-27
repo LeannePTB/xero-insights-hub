@@ -43,7 +43,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           if (state) await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
           const message =
             error === "invalid_scope"
-              ? `Xero rejected the requested read-only permissions${errorDescription ? ` (${errorDescription})` : ""}. The app now requests only the standard Accounting API read scopes; please try Reconnect again.`
+              ? `Xero rejected the requested read-only permissions${errorDescription ? ` (${errorDescription})` : ""}. The app now requests Xero's current granular Accounting API read scopes; please check those scopes are assigned to the Xero app, then try Reconnect again.`
               : error;
           const errorPath = stateRow?.client_id ? `/clients/${stateRow.client_id}/settings` : "/dashboard";
           return redirectTo(`${returnOrigin}${errorPath}?xero_error=${encodeURIComponent(message)}`);
