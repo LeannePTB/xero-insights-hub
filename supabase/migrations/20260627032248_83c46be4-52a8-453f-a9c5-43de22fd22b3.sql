@@ -1,0 +1,1 @@
+DELETE FROM public.firms WHERE id = 'fd6fd542-67a4-4b0c-a5b7-ad76ec5c7961';
