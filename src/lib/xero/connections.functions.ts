@@ -15,6 +15,8 @@ const SCOPES_ARRAY = [
   "accounting.reports.profitandloss.read",
   "accounting.reports.balancesheet.read",
   "accounting.reports.taxreports.read",
+  "accounting.reports.read",
+  "accounting.settings.read",
   "accounting.invoices.read",
 ];
 // Hard guarantee: Xero remains read-only. Any non-`.read` scope (other than the

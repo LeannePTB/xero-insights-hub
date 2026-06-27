@@ -1,48 +1,39 @@
-## Goal
+## Problem
 
-Fix Security Posture MFA counts so they reflect reality. The current `getSecurityPosture` uses `supabaseAdmin.auth.admin.listUsers()` and reads `u.factors`, but the Auth Admin list endpoint does not return `factors` — so enrolment always reads 0 even when users have verified TOTP factors.
+The Cash Flow widget calls two Xero endpoints that aren't covered by our current OAuth scopes:
 
-Replace that path with a `SECURITY DEFINER` SQL function that aggregates directly from `auth.mfa_factors`, and add a second posture row for "Super admin MFA enforced".
+- `Reports/BankSummary` → requires `accounting.reports.read`
+- `Accounts` (bank account list) → requires `accounting.settings.read`
 
-## Role mapping note
+Our current scope list only has P&L / BalanceSheet / TaxReports / Invoices `.read`. So the API returns 401 → the widget shows "needs to be reconnected", and clicking Reconnect doesn't help because the consent screen never asks Xero for the new scopes.
 
-The user's snippet uses `role = 'admin'`. This project has no `admin` enum value — staff roles are `super_admin` and `advisor` (see `handle_new_user`, `me_is_super_admin`, and existing posture code that scopes MFA to `advisor + super_admin`). I'll keep that scoping:
+## Fix
 
-- **Staff** = users with role `advisor` or `super_admin` (matches today's "total" denominator)
-- **Admin** in the new "Admin MFA enforced" row = `super_admin`
+1. **Add the missing read-only scopes** to `SCOPES_ARRAY` in `src/lib/xero/connections.functions.ts`:
+   - `accounting.reports.read`
+   - `accounting.settings.read`
+   Both are `.read`, so they pass the read-only safety check.
 
-If you'd rather count *all* `auth.users` for the team row, say so and I'll widen the CTE.
+2. **Force a fresh consent** so Xero re-issues a token with the new scopes. After deploy, you'll need to disconnect + reconnect the org once (existing refresh tokens are scoped to the old list).
 
-## 1. Migration
+3. **Add a scope-hint entry** in `MISSING_SCOPE_HINTS` for `Reports/BankSummary` and `Accounts` so future scope drift surfaces a clear "needs reconnect" message instead of a raw 401.
 
-New SECURITY DEFINER function `public.get_mfa_posture_counts()` returning a single row:
+## Missing widget icons
 
-- `total_staff` — distinct users with `advisor` or `super_admin`
-- `enrolled_staff` — of those, how many have a verified TOTP factor in `auth.mfa_factors`
-- `total_admins` — distinct `super_admin` users
-- `enrolled_admins` — of those, how many have a verified TOTP factor
+You mentioned "some cards / widgets don't have little icons." I need to know which ones you mean before I touch them — the dashboard has ~10 widgets and most don't currently have a header icon. Two reads of the request:
 
-Reads `auth.mfa_factors` and `public.user_roles` directly. `EXECUTE` revoked from `PUBLIC`, `anon`, `authenticated`; granted to `service_role` only (the posture function calls it via `supabaseAdmin`).
+(a) Add a small icon next to every widget title (e.g. Cash Flow → Wallet, P&L → LineChart, Tax → Receipt, Super → PiggyBank, Receivables → ArrowDownToLine, Payables → ArrowUpFromLine, Break-even → Target, Health → Activity, Notes → StickyNote, Unreconciled → AlertCircle).
 
-## 2. Update `src/lib/security.functions.ts`
+(b) You're looking at a specific card or two that's missing an icon another card has — tell me which and I'll match it.
 
-In `getSecurityPosture`:
+I'll default to **(a)** — add a consistent lucide icon to every widget header — unless you tell me otherwise in your reply.
 
-- Remove the `auth.admin.listUsers()` block and the `staffIds` / `u.factors` derivation.
-- Call `supabaseAdmin.rpc("get_mfa_posture_counts")`, take `rows?.[0]`, default to zeros on error.
-- Return `mfa: { enrolled: enrolled_staff, total: total_staff }` (preserves the existing card field shape) and add `adminMfa: { enrolled: enrolled_admins, total: total_admins }` to the payload.
+## Files touched
 
-## 3. Update `src/components/admin/SecurityPostureCard.tsx`
+- `src/lib/xero/connections.functions.ts` — extend `SCOPES_ARRAY`
+- `src/lib/xero/api.server.ts` — add scope hints for `Reports/BankSummary` and `Accounts`
+- Each widget header in `src/components/dashboard/*Widget.tsx` (if option a) — add a leading lucide icon next to the `<h3>` title
 
-- Keep the existing "TOTP MFA enrolment" row; it now shows real numbers.
-- Add a new row "Super admin MFA enforced" driven by `data.adminMfa`, status `ok` when `total>0 && enrolled===total`, else `action`. Detail: `"{enrolled}/{total} super admins have a verified authenticator app factor."` or `"No super admin users found."` when `total===0`.
+## After deploy
 
-## 4. Verify
-
-After the migration is approved and the deploy lands, open `/admin/security`. Both rows should now show real ratios (e.g. `1/1` for super-admin MFA, and the staff total matching the count of `advisor + super_admin` users with verified TOTP).
-
-## Technical notes
-
-- The Postgres function is SECURITY DEFINER and owned by the migration role, so it can read `auth.mfa_factors` even though that schema isn't exposed via PostgREST.
-- `EXECUTE` is restricted to `service_role`; the function is never reachable from the browser, only from `supabaseAdmin.rpc(...)` inside `getSecurityPosture` (which already gates on `me_is_super_admin`).
-- No change to the Auth Admin API usage elsewhere; only the MFA counting path is replaced.
+Open Client settings → Xero connection → Disconnect → Reconnect, and approve the new permissions on the Xero consent screen. Then Cash Flow will load.

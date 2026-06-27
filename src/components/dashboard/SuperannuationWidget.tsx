@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { getCurrentTaxBalance } from "@/lib/xero/reports.functions";
-import { Loader2, Receipt, RefreshCw } from "lucide-react";
+import { Loader2, PiggyBank, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
@@ -54,7 +54,7 @@ export function SuperannuationWidget({
             {tenantName}
           </p>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg font-semibold">Superannuation liabilities</h3>
+            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><PiggyBank className="h-4 w-4 text-primary" />Superannuation liabilities</h3>
             <BasisBadge basis={basis} />
           </div>
           <p className="text-xs text-muted-foreground">
