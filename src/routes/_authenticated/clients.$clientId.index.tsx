@@ -12,6 +12,7 @@ import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle } from "lu
 import { BrandMark } from "@/components/BrandMark";
 import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.functions";
 import { toast } from "sonner";
+import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 
 import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
 import { SuperannuationWidget } from "@/components/dashboard/SuperannuationWidget";
