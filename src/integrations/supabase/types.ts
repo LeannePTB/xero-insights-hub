@@ -1081,6 +1081,60 @@ export type Database = {
         }
         Relationships: []
       }
+      xero_assessment_contact: {
+        Row: {
+          abn_acn: string | null
+          address: string | null
+          api_usage_description: string | null
+          app_name: string | null
+          assessment_date: string | null
+          contact_email: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contact_role: string | null
+          id: string
+          legal_name: string | null
+          trading_name: string | null
+          updated_at: string
+          website: string | null
+          xero_client_id: string | null
+        }
+        Insert: {
+          abn_acn?: string | null
+          address?: string | null
+          api_usage_description?: string | null
+          app_name?: string | null
+          assessment_date?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_role?: string | null
+          id?: string
+          legal_name?: string | null
+          trading_name?: string | null
+          updated_at?: string
+          website?: string | null
+          xero_client_id?: string | null
+        }
+        Update: {
+          abn_acn?: string | null
+          address?: string | null
+          api_usage_description?: string | null
+          app_name?: string | null
+          assessment_date?: string | null
+          contact_email?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contact_role?: string | null
+          id?: string
+          legal_name?: string | null
+          trading_name?: string | null
+          updated_at?: string
+          website?: string | null
+          xero_client_id?: string | null
+        }
+        Relationships: []
+      }
       xero_connections: {
         Row: {
           access_token: string | null
