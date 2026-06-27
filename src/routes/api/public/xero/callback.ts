@@ -140,6 +140,8 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           refresh_token_enc: refreshEnc,
           expires_at: expiresAt,
           scopes: tokens.scope,
+          status: "connected",
+          disconnected_at: null,
         }));
 
         if (rows.length > 0) {

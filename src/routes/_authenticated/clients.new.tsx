@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Plug } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
+import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 
 export const Route = createFileRoute("/_authenticated/clients/new")({
   head: () => ({ meta: [{ title: "New client — Traction Advisory" }] }),
@@ -78,9 +79,8 @@ function NewClient() {
           <div>
             <div className="flex items-center justify-between">
               <Label>Xero organisations</Label>
-              <Button variant="outline" size="sm" onClick={handleConnect}>
-                <Plug className="mr-1.5 h-3.5 w-3.5" /> Connect another
-              </Button>
+              <ConnectWithXeroButton variant="connect" size="sm" onClick={handleConnect} label="Connect another" />
+
             </div>
             <div className="mt-2 space-y-1.5 rounded-lg border border-border bg-background p-3">
               {connQ.isLoading ? (

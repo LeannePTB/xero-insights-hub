@@ -1140,6 +1140,7 @@ export type Database = {
           access_token: string | null
           access_token_enc: string | null
           created_at: string
+          disconnected_at: string | null
           enc_version: number
           expires_at: string
           firm_id: string | null
@@ -1147,6 +1148,7 @@ export type Database = {
           refresh_token: string | null
           refresh_token_enc: string | null
           scopes: string | null
+          status: string
           tenant_id: string
           tenant_name: string
           tenant_type: string | null
@@ -1157,6 +1159,7 @@ export type Database = {
           access_token?: string | null
           access_token_enc?: string | null
           created_at?: string
+          disconnected_at?: string | null
           enc_version?: number
           expires_at: string
           firm_id?: string | null
@@ -1164,6 +1167,7 @@ export type Database = {
           refresh_token?: string | null
           refresh_token_enc?: string | null
           scopes?: string | null
+          status?: string
           tenant_id: string
           tenant_name: string
           tenant_type?: string | null
@@ -1174,6 +1178,7 @@ export type Database = {
           access_token?: string | null
           access_token_enc?: string | null
           created_at?: string
+          disconnected_at?: string | null
           enc_version?: number
           expires_at?: string
           firm_id?: string | null
@@ -1181,6 +1186,7 @@ export type Database = {
           refresh_token?: string | null
           refresh_token_enc?: string | null
           scopes?: string | null
+          status?: string
           tenant_id?: string
           tenant_name?: string
           tenant_type?: string | null

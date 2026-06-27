@@ -1,53 +1,54 @@
-## What the issue is
+Implementing checkpoints 2 (proper disconnect), 3 (handle Xero-initiated disconnects), and 4 (branding) from the gap analysis. Skipping Sign Up / Sign In with Xero for a later pass.
 
-Xero is failing before it redirects back to our app. That means the problem is in the **authorize URL** sent to Xero, not the token exchange or dashboard card loading.
+## 1. Disconnect that actually revokes at Xero
 
-Xero’s current docs say Web/PKCE apps have now been assigned **granular Accounting API scopes**, while the broad scopes we just restored (`accounting.reports.read`, `accounting.transactions.read`) are deprecated and may be rejected depending on the Xero app setup.
+`src/lib/xero/connections.functions.ts` → update `disconnectXero` to:
+1. Load the current row (need `id`/connection-id, access + refresh tokens).
+2. Decrypt the access token, call `DELETE https://api.xero.com/connections/{connectionId}` with `Authorization: Bearer <access>`. Treat 401/404 as already-gone.
+3. Call `POST https://identity.xero.com/connect/revocation` with `token=<refresh_token>` and HTTP Basic `client_id:client_secret`.
+4. Delete the local `xero_connections` row (existing behaviour).
+5. Audit-log a `xero_disconnected` row in `audit_log`.
+6. If access token is expired, refresh first via the existing helper in `api.server.ts` before step 2; if refresh fails, skip remote revoke and still clean up locally.
 
-**Do I know what the issue is?** Yes: the reconnect flow is still requesting the wrong style of scopes for this Xero app. The previous “fallback” approach also could not help because Xero is showing an identity error page before our callback route receives anything.
+Wrap remote calls in try/catch so a Xero outage never blocks the local cleanup, but log failures.
 
-## Plan to fix it
+## 2. Handle Xero-initiated disconnects (status surfacing)
 
-1. **Switch Xero OAuth to the current granular scope list**
-   - Replace the broad scopes with Xero’s documented granular read scopes needed by the widgets:
-     - `offline_access`
-     - `accounting.reports.balancesheet.read`
-     - `accounting.reports.banksummary.read`
-     - `accounting.reports.profitandloss.read`
-     - `accounting.reports.taxreports.read`
-     - `accounting.invoices.read`
-     - `accounting.payments.read`
-     - `accounting.settings.read`
-     - `accounting.contacts.read`
-   - Do **not** include `accounting.reports.tenninetynine.read`.
-   - Do **not** include deprecated broad scopes in the authorize URL.
+Schema (migration):
+- Add columns to `xero_connections`: `status text not null default 'connected'` (`'connected' | 'disconnected'`) and `disconnected_at timestamptz`.
 
-2. **Remove the broad/granular retry concept completely**
-   - Since Xero errors before callback, callback-based retry is ineffective.
-   - Keep one clean scope list only.
+`src/lib/xero/api.server.ts`:
+- In the shared fetch wrapper, when Xero returns 401 / `invalid_grant` / `unauthorized_client` after a refresh attempt, update the row to `status='disconnected', disconnected_at=now()` via `supabaseAdmin` before throwing the existing "reconnect required" error.
 
-3. **Add safe OAuth diagnostics**
-   - Log the non-secret OAuth metadata when starting Xero connect:
-     - redirect URI
-     - exact scope string
-     - return origin
-   - Do not log client secret, tokens, auth codes, or refresh tokens.
+`src/lib/xero/connections.functions.ts`:
+- `listXeroConnections` already selects connection metadata — add `status`, `disconnected_at` to the select.
+- On a successful token refresh or fresh OAuth callback, reset `status` back to `'connected'` and clear `disconnected_at`.
 
-4. **Improve user-facing Xero errors**
-   - If Xero does return to our callback with `invalid_scope`, show a message that the app is using granular read-only scopes and the Xero app settings may need those scopes enabled/assigned.
-   - If Xero never calls back and shows its own identity error page, the generated URL diagnostics will confirm whether the issue is scope or redirect URI.
+`src/routes/_authenticated/clients.$clientId.settings.tsx`:
+- Render a red "Disconnected — reconnect required" badge when `status === 'disconnected'`, with the existing Reconnect button highlighted.
+- Existing green/blue badge keeps showing when `status === 'connected'`.
 
-5. **Verify references**
-   - Confirm no invalid scope remains in the codebase.
-   - Confirm the generated authorize URL uses:
-     - `https://tractionadvisory.app/api/public/xero/callback`
-     - granular scopes only
-   - Check the current runtime import error separately so the preview is not hiding the real result.
+## 3. Branding polish (Checkpoint 4)
 
-<presentation-actions>
-  <presentation-open-history>View History</presentation-open-history>
-</presentation-actions>
+Add Xero-branded buttons used wherever we connect or disconnect:
 
-<presentation-actions>
-<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
-</presentation-actions>
+- New `src/components/xero/ConnectWithXeroButton.tsx` — renders the official "Connect to Xero" blue button per Xero's branding guidelines (SVG mark + "Connect to Xero" / "Disconnect from Xero" / "Reconnect to Xero" label, correct colours `#13B5EA` blue and white text, min 32px height, proper padding, accessible focus ring). Variant prop: `connect | disconnect | reconnect`.
+- Replace the current plain shadcn `Button` for Xero connect / reconnect / disconnect in:
+  - `src/routes/_authenticated/clients.$clientId.settings.tsx`
+  - any banner in `XeroConnectionBanner` (if it uses a generic button)
+- Confirm the app name in `My Apps` matches the go-to-market name (this is a Xero portal action, not code — call it out in the response, not in the build).
+
+Asset: inline the Xero "X" SVG inside the component so we don't depend on an external file.
+
+## Technical details
+
+- Network calls in `disconnectXero` use `fetch` directly inside the handler (Worker-safe).
+- The new `status` column requires a `GRANT`-respecting migration; `xero_connections` already has grants — only `ALTER TABLE ... ADD COLUMN` is needed, no new GRANT block.
+- All token decryption uses existing `decryptTokenB64` in `crypto.server.ts`.
+- Audit log uses the existing `audit_log` table with `action='xero_disconnected'`, `target_type='xero_connection'`, `target_id=tenant_id`.
+
+## Out of scope (explicit)
+
+- Sign Up / Sign In with Xero (Checkpoint 1) — separate larger piece.
+- Error log page (Checkpoint 6 nice-to-have).
+- Data-integrity audit (Checkpoint 7) — flagged for a later pass.

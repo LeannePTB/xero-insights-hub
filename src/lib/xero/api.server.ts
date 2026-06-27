@@ -151,8 +151,14 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
       }
     }
     const lower = body.toLowerCase();
-    if (lower.includes("invalid_grant") || lower.includes("invalid_client") || res.status === 400 || res.status === 401) {
+    if (lower.includes("invalid_grant") || lower.includes("invalid_client") || lower.includes("unauthorized_client") || res.status === 400 || res.status === 401) {
       console.error(`[xero] refresh failed for tenant ${conn.tenant_id}: ${res.status} ${body}`);
+      // Xero issues tokens at the user level — a failed refresh invalidates
+      // every linked org. Surface that to the UI via the status column.
+      await supabaseAdmin
+        .from("xero_connections")
+        .update({ status: "disconnected", disconnected_at: new Date().toISOString() })
+        .eq("user_id", conn.user_id);
       throw new Error("Xero reconnect required: this organisation needs to be reconnected before data can load.");
     }
     throw new Error(`Xero token refresh failed: ${res.status} ${body}`);
@@ -176,6 +182,8 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
       refresh_token: null,
       expires_at,
       scopes: t.scope ?? conn.scopes,
+      status: "connected",
+      disconnected_at: null,
     })
     .eq("user_id", conn.user_id);
   if (error) throw new Error(`Failed to save refreshed Xero tokens: ${error.message}`);
