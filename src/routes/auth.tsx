@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import heroImage from "@/assets/hero-construction.jpg";
 
 export const Route = createFileRoute("/auth")({
