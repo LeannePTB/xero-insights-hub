@@ -21,6 +21,7 @@ import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
+import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
 import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
@@ -104,25 +105,29 @@ function ClientDashboard() {
     if (!client) return [];
     const list: SortableCard[] = [
       { id: "notes", node: <NotesCard clientId={clientId} canEdit={isAdvisor} />, fullWidth: true },
-      { id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> },
     ];
+    if (widgets.includes("health")) {
+      list.push({ id: "health", node: <HealthWidget />, fullWidth: true });
+    }
     for (const o of orgs) {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
-      if (widgets.includes("tax_liability")) {
-        list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("tax_liability")} /> });
-        list.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} /> });
-      }
-      if (widgets.includes("pnl"))
-        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} /> });
-      if (widgets.includes("breakeven"))
-        list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("breakeven")} /> });
-      if (widgets.includes("payables"))
-        list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} /> });
       if (widgets.includes("receivables"))
         list.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("receivables")} /> });
-
+      if (widgets.includes("payables"))
+        list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} /> });
+      if (widgets.includes("pnl"))
+        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} /> });
+      if (widgets.includes("tax_liability"))
+        list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("tax_liability")} /> });
+      if (widgets.includes("superannuation"))
+        list.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} /> });
+      if (widgets.includes("breakeven"))
+        list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("breakeven")} /> });
+    }
+    if (widgets.includes("unreconciled")) {
+      list.push({ id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> });
     }
     return list;
   }, [client, clientId, isAdvisor, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
