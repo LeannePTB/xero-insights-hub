@@ -5,7 +5,7 @@
 // Never import this from client-reachable modules. Load via:
 //   const { encryptToken, decryptToken } = await import("@/lib/crypto.server");
 
-import { createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { createCipheriv, createDecipheriv, createHash, randomBytes } from "crypto";
 
 const ALGO = "aes-256-gcm";
 const IV_LEN = 12;
@@ -24,7 +24,6 @@ function getKey(): Buffer {
       key = buf;
     } else {
       // Hash to 32 bytes if the supplied secret is the wrong length.
-      const { createHash } = require("crypto") as typeof import("crypto");
       key = createHash("sha256").update(buf).digest();
     }
   }
