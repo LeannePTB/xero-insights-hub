@@ -18,7 +18,7 @@ export const listXeroConnections = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("xero_connections")
-      .select("id, tenant_id, tenant_name, tenant_type, created_at")
+      .select("id, tenant_id, tenant_name, tenant_type, created_at, status, disconnected_at")
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return { connections: data ?? [] };
