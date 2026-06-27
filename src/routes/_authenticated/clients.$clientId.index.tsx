@@ -16,7 +16,9 @@ import { toast } from "sonner";
 import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
 import { SuperannuationWidget } from "@/components/dashboard/SuperannuationWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
-import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
+import { PeriodPerformanceWidget } from "@/components/dashboard/PeriodPerformanceWidget";
+import { AccountingBreakevenWidget } from "@/components/dashboard/AccountingBreakevenWidget";
+import { TrueBreakevenWidget } from "@/components/dashboard/TrueBreakevenWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
@@ -119,8 +121,12 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("tax_liability")} /> });
       if (widgets.includes("superannuation"))
         advanced.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} /> });
-      if (widgets.includes("breakeven"))
-        advanced.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("breakeven")} /> });
+      if (widgets.includes("period_performance"))
+        advanced.push({ id: `${o.id}:period_performance`, node: <PeriodPerformanceWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("period_performance")} /> });
+      if (widgets.includes("accounting_breakeven"))
+        advanced.push({ id: `${o.id}:accounting_breakeven`, node: <AccountingBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} /> });
+      if (widgets.includes("true_breakeven"))
+        advanced.push({ id: `${o.id}:true_breakeven`, node: <TrueBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("true_breakeven")} /> });
     }
     if (widgets.includes("unreconciled")) {
       standard.push({ id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> });
