@@ -64,23 +64,32 @@ export function SortableCardGrid({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const orderedIds = useMemo(() => {
-    const ids = cards.map((c) => c.id);
-    const known = new Set(ids);
-    const sorted = savedOrder.filter((id) => known.has(id));
-    const extras = ids.filter((id) => !sorted.includes(id));
-    return [...sorted, ...extras];
-  }, [cards, savedOrder]);
+  const cardIds = useMemo(() => cards.map((c) => c.id), [cards.map((c) => c.id).join("|")]);
 
-  const [localOrder, setLocalOrder] = useState<string[]>(orderedIds);
-  const savedKey = useRef("");
+  const initial = useMemo(() => {
+    const known = new Set(cardIds);
+    const sorted = savedOrder.filter((id) => known.has(id));
+    const extras = cardIds.filter((id) => !sorted.includes(id));
+    return [...sorted, ...extras];
+  }, [cardIds, savedOrder.join("|")]);
+
+  const [localOrder, setLocalOrder] = useState<string[]>(initial);
+
+  // Only reset local order when the saved order from the server actually
+  // changes, or when the set of cards changes. Do NOT reset on every parent
+  // re-render — that was clobbering the user's drag before the debounced save
+  // landed.
+  const savedKey = useRef(savedOrder.join("|"));
+  const cardsKey = useRef(cardIds.join("|"));
   useEffect(() => {
-    const key = orderedIds.join("|");
-    if (key !== savedKey.current) {
-      savedKey.current = key;
-      setLocalOrder(orderedIds);
+    const sKey = savedOrder.join("|");
+    const cKey = cardIds.join("|");
+    if (sKey !== savedKey.current || cKey !== cardsKey.current) {
+      savedKey.current = sKey;
+      cardsKey.current = cKey;
+      setLocalOrder(initial);
     }
-  }, [orderedIds]);
+  }, [initial, savedOrder, cardIds]);
 
   const cardById = useMemo(() => new Map(cards.map((c) => [c.id, c.node])), [cards]);
 
