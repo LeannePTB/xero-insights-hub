@@ -1,56 +1,48 @@
-## Cash Flow widget
+## Goal
 
-A new dashboard widget showing actual bank movement (Money In / Money Out / Net) over the selected date range, with current cash position and a simple 30/60/90-day forward projection driven by AR and AP due dates.
+Fix Security Posture MFA counts so they reflect reality. The current `getSecurityPosture` uses `supabaseAdmin.auth.admin.listUsers()` and reads `u.factors`, but the Auth Admin list endpoint does not return `factors` — so enrolment always reads 0 even when users have verified TOTP factors.
 
-### What I already have
-I don't need anything from you to build this — Xero exposes everything via your existing connection:
-- Bank balances and bank transactions (`Accounts` where `Type=BANK`, `BankTransactions`).
-- Receivables and Payables due-date data (already powering the AR/AP widgets).
+Replace that path with a `SECURITY DEFINER` SQL function that aggregates directly from `auth.mfa_factors`, and add a second posture row for "Super admin MFA enforced".
 
-The only thing worth confirming is below.
+## Role mapping note
 
-### What it will show
+The user's snippet uses `role = 'admin'`. This project has no `admin` enum value — staff roles are `super_admin` and `advisor` (see `handle_new_user`, `me_is_super_admin`, and existing posture code that scopes MFA to `advisor + super_admin`). I'll keep that scoping:
 
-**Top row — current position**
-- Total cash across all bank accounts (today)
-- Per-bank-account balances (expandable)
-- Basis badge: Cash (bank data is inherently cash-based; locked, not switchable)
+- **Staff** = users with role `advisor` or `super_admin` (matches today's "total" denominator)
+- **Admin** in the new "Admin MFA enforced" row = `super_admin`
 
-**Middle — actuals for the selected date range** (uses the shared `DateRangeControls`)
-- Money In, Money Out, Net movement
-- Period-over-period delta vs prior equal-length period (same style as P&L tiles)
-- Expandable monthly breakdown table
+If you'd rather count *all* `auth.users` for the team row, say so and I'll widen the CTE.
 
-**Bottom — 90-day forward projection**
-- Opening cash (today's balance)
-- Expected inflows: outstanding AR grouped by due bucket (next 30 / 31–60 / 61–90 days), overdue treated as "next 30"
-- Expected outflows: outstanding AP grouped the same way
-- Projected closing cash at +30, +60, +90 days
-- Coloured red when any bucket projects negative
-- Small disclaimer: "Projection based on AR/AP due dates; excludes recurring expenses and one-off items not yet invoiced."
+## 1. Migration
 
-### Technical details
+New SECURITY DEFINER function `public.get_mfa_posture_counts()` returning a single row:
 
-1. **`src/lib/xero/cashflow.functions.ts`** — new `getCashflow` server fn (auth-protected, `requireSupabaseAuth`), keyed off `(tenantId, from, to)`:
-   - `GET /Accounts?where=Type=="BANK"` for balances
-   - `GET /Reports/BankSummary?fromDate&toDate` for per-period in/out/net (single Xero call, already aggregated)
-   - Reuses existing AR/AP report fetchers for due-bucket projection
-   - Cached via `report_cache` like the other widgets
+- `total_staff` — distinct users with `advisor` or `super_admin`
+- `enrolled_staff` — of those, how many have a verified TOTP factor in `auth.mfa_factors`
+- `total_admins` — distinct `super_admin` users
+- `enrolled_admins` — of those, how many have a verified TOTP factor
 
-2. **`src/components/dashboard/CashflowWidget.tsx`** — same layout language as `PnlWidget` / `PeriodPerformanceWidget`; uses `DateRangeControls`, `BasisBadge` (fixed to "Cash"), shared `tabular-nums` alignment, and a `<details>` block for the per-account / per-month breakdowns.
+Reads `auth.mfa_factors` and `public.user_roles` directly. `EXECUTE` revoked from `PUBLIC`, `anon`, `authenticated`; granted to `service_role` only (the posture function calls it via `supabaseAdmin`).
 
-3. **Widget registry** (`src/lib/tiers.ts`):
-   - Add `"cashflow"` to `WidgetKey`, `ALL_WIDGETS`, `WIDGET_LABEL` ("Cash Flow")
-   - Add to `advisory`, `investigate`, `multi_company` default tier lists (not `basic`)
+## 2. Update `src/lib/security.functions.ts`
 
-4. **Dashboard composition** (`src/routes/_authenticated/clients.$clientId.index.tsx`):
-   - Render `<CashflowWidget />` in the Advisory section when `widgets.includes("cashflow")`
-   - Add to `DEFAULT_ON` so basis override UI is hidden (basis is locked)
+In `getSecurityPosture`:
 
-5. **Tier widget admin UI** — picks up the new key automatically via `ALL_WIDGETS`; no extra code.
+- Remove the `auth.admin.listUsers()` block and the `staffIds` / `u.factors` derivation.
+- Call `supabaseAdmin.rpc("get_mfa_posture_counts")`, take `rows?.[0]`, default to zeros on error.
+- Return `mfa: { enrolled: enrolled_staff, total: total_staff }` (preserves the existing card field shape) and add `adminMfa: { enrolled: enrolled_admins, total: total_admins }` to the payload.
 
-6. **DB migration** — none required. Uses existing `report_cache`, `tier_widget_config`, etc.
+## 3. Update `src/components/admin/SecurityPostureCard.tsx`
 
-### One quick check before I build
+- Keep the existing "TOTP MFA enrolment" row; it now shows real numbers.
+- Add a new row "Super admin MFA enforced" driven by `data.adminMfa`, status `ok` when `total>0 && enrolled===total`, else `action`. Detail: `"{enrolled}/{total} super admins have a verified authenticator app factor."` or `"No super admin users found."` when `total===0`.
 
-Are you happy with the forward projection using **only AR and AP due dates** for v1? That's accurate but conservative — it won't show recurring expenses (wages, rent, subs) that aren't yet entered as bills in Xero, so the projected outflow side can look light. If you'd rather, I can layer in a "recurring expense average" using the trailing 3-month bank outflow average net of AP-driven outflows to fill the gap. Happy to start with AR/AP only and add that later if you want it tighter.
+## 4. Verify
+
+After the migration is approved and the deploy lands, open `/admin/security`. Both rows should now show real ratios (e.g. `1/1` for super-admin MFA, and the staff total matching the count of `advisor + super_admin` users with verified TOTP).
+
+## Technical notes
+
+- The Postgres function is SECURITY DEFINER and owned by the migration role, so it can read `auth.mfa_factors` even though that schema isn't exposed via PostgREST.
+- `EXECUTE` is restricted to `service_role`; the function is never reachable from the browser, only from `supabaseAdmin.rpc(...)` inside `getSecurityPosture` (which already gates on `me_is_super_admin`).
+- No change to the Auth Admin API usage elsewhere; only the MFA counting path is replaced.

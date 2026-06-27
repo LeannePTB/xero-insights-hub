@@ -1266,6 +1266,15 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      get_mfa_posture_counts: {
+        Args: never
+        Returns: {
+          enrolled_admins: number
+          enrolled_staff: number
+          total_admins: number
+          total_staff: number
+        }[]
+      }
       me_is_super_admin: { Args: never; Returns: boolean }
       move_to_dlq: {
         Args: {
