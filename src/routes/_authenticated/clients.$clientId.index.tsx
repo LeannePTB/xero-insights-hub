@@ -19,6 +19,7 @@ import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { PeriodPerformanceWidget } from "@/components/dashboard/PeriodPerformanceWidget";
 import { AccountingBreakevenWidget } from "@/components/dashboard/AccountingBreakevenWidget";
 import { TrueBreakevenWidget } from "@/components/dashboard/TrueBreakevenWidget";
+import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
@@ -127,6 +128,8 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:accounting_breakeven`, node: <AccountingBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} /> });
       if (widgets.includes("true_breakeven"))
         advanced.push({ id: `${o.id}:true_breakeven`, node: <TrueBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("true_breakeven")} /> });
+      if (widgets.includes("cashflow"))
+        advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
     }
     if (widgets.includes("unreconciled")) {
       standard.push({ id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> });
