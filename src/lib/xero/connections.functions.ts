@@ -60,7 +60,7 @@ export const checkXeroConnection = createServerFn({ method: "POST" })
 
 export const startXeroConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { origin: string }) => input)
+  .inputValidator((input: { origin: string; clientId?: string }) => input)
   .handler(async ({ data, context }) => {
     const clientId = process.env.XERO_CLIENT_ID;
     if (!clientId) {
@@ -95,6 +95,7 @@ export const startXeroConnect = createServerFn({ method: "POST" })
         user_id: context.userId,
         code_verifier: codeVerifier,
         return_origin: returnOrigin,
+        client_id: data.clientId ?? null,
       });
     if (error) throw new Error(error.message);
 

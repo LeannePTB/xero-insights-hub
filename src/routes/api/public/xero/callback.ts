@@ -22,12 +22,13 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           code_verifier: string | null;
           return_origin: string | null;
           created_at: string | null;
+          client_id: string | null;
         } | null = null;
 
         if (state) {
           const { data, error: stateLookupErr } = await supabaseAdmin
             .from("xero_oauth_states")
-            .select("user_id, code_verifier, return_origin, created_at")
+            .select("user_id, code_verifier, return_origin, created_at, client_id")
             .eq("state", state)
             .maybeSingle();
           if (!stateLookupErr && data) {
@@ -154,6 +155,59 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               meta: { tenant_name: t.tenantName, scopes: tokens.scope },
             })),
           );
+        }
+
+        // If the OAuth started from a client settings page, auto-link the new
+        // org(s) to that client and redirect back there.
+        const initiatingClientId = stateRow.client_id ?? null;
+        if (initiatingClientId && tenants.length > 0) {
+          // Look up the new connection ids for this user + tenants.
+          const tenantIds = tenants.map((t) => t.tenantId);
+          const { data: conns } = await supabaseAdmin
+            .from("xero_connections")
+            .select("id, tenant_id")
+            .eq("user_id", userId)
+            .in("tenant_id", tenantIds);
+
+          // Enforce the same multi-company guard as attachXeroOrg.
+          const { data: existingLinks } = await supabaseAdmin
+            .from("client_xero_orgs")
+            .select("xero_connection_id")
+            .eq("client_id", initiatingClientId);
+          const existingCount = existingLinks?.length ?? 0;
+          const alreadyLinkedIds = new Set((existingLinks ?? []).map((r) => r.xero_connection_id));
+
+          let isMulti = false;
+          if (existingCount >= 1) {
+            const { data: tiers } = await supabaseAdmin
+              .from("client_access")
+              .select("tier")
+              .eq("client_id", initiatingClientId);
+            isMulti = (tiers ?? []).some((r) => r.tier === "multi_company");
+          }
+
+          const newConnIds = (conns ?? [])
+            .map((c) => c.id)
+            .filter((id) => !alreadyLinkedIds.has(id));
+
+          if (newConnIds.length > 0) {
+            if (existingCount >= 1 && !isMulti) {
+              return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero_error=multi_company_required`);
+            }
+            const linkRows = newConnIds.map((cid) => ({
+              client_id: initiatingClientId,
+              xero_connection_id: cid,
+            }));
+            const { error: linkErr } = await supabaseAdmin
+              .from("client_xero_orgs")
+              .insert(linkRows);
+            if (linkErr) {
+              console.error("client_xero_orgs auto-link failed", linkErr);
+              return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero_error=link_failed`);
+            }
+          }
+
+          return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero=connected`);
         }
 
         return redirectTo(`${returnOrigin}/dashboard?xero=connected`);
