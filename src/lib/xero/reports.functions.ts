@@ -382,19 +382,27 @@ export const getActivityStatement = createServerFn({ method: "POST" })
 // ============================================================================
 
 export type ActivityStatementPeriod = {
-  source: "activity-statement" | "unavailable";
+  source: "activity-statement" | "balance-sheet-movement" | "unavailable";
   periodFrom: string;
   periodTo: string;
   basis: "cash" | "accrual";
   boxes: Record<string, number>;
-  gstOnSales: number;       // 1A
-  gstOnPurchases: number;   // 1B
+  gstOnSales: number;       // 1A (or BS-movement equivalent)
+  gstOnPurchases: number;   // 1B (or BS-movement equivalent)
   netGst: number;           // 1A - 1B
   paygWithheld: number;     // W5
   netPayment: number;       // box 9 if present, else 1A + W5 - 1B
   totalSales?: number;      // G1
   message?: string;
 };
+
+// Sub-classify a GST line by the account name so we can split collected vs paid.
+function gstSubClassify(name: string): "sales" | "purchases" | "net" {
+  const n = name.toLowerCase();
+  if (/(collect|output|on sales|on income)/.test(n)) return "sales";
+  if (/(paid|input|on purchases|on expenses|claimable|receivable)/.test(n)) return "purchases";
+  return "net";
+}
 
 export const getActivityStatementPeriod = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -408,72 +416,123 @@ export const getActivityStatementPeriod = createServerFn({ method: "POST" })
     const conn = await getConnectionByTenant(data.tenantId);
     const basis = data.basis ?? (await getClientReportBasis(data.tenantId).catch(() => "accrual" as const));
 
-    const empty = (source: "unavailable", message: string): ActivityStatementPeriod => ({
-      source,
-      periodFrom: data.fromDate,
-      periodTo: data.toDate,
-      basis,
-      boxes: {},
-      gstOnSales: 0,
-      gstOnPurchases: 0,
-      netGst: 0,
-      paygWithheld: 0,
-      netPayment: 0,
-      message,
-    });
-
-    let report: any = null;
+    // 1) Try Xero's Activity Statement endpoint first — only works for AU partner-approved orgs.
+    let asError: string | undefined;
     try {
       const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ActivityStatement", {
         fromDate: data.fromDate,
         toDate: data.toDate,
       });
-      report = res?.Reports?.[0] ?? null;
+      const report = res?.Reports?.[0];
+      if (report) {
+        const { boxes } = extractBoxes(report);
+        if (Object.keys(boxes).length > 0) {
+          const get = (k: string) => boxes[k] ?? 0;
+          const w5 = get("W5") || get("W2") + get("W3") + get("W4");
+          const netGst = get("1A") - get("1B");
+          const netPayment = get("9") !== 0 ? get("9") : get("1A") + w5 - get("1B");
+          return {
+            source: "activity-statement",
+            periodFrom: data.fromDate,
+            periodTo: data.toDate,
+            basis,
+            boxes,
+            gstOnSales: get("1A"),
+            gstOnPurchases: get("1B"),
+            netGst,
+            paygWithheld: w5,
+            netPayment,
+            totalSales: get("G1") || undefined,
+          };
+        }
+      }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      return empty(
-        "unavailable",
-        `Xero's Activity Statement endpoint returned an error: ${msg}`,
-      );
+      asError = e instanceof Error ? e.message : String(e);
     }
 
-    if (!report) {
-      return empty(
-        "unavailable",
-        "Xero returned no Activity Statement for this period.",
-      );
+    // 2) Fall back to balance-sheet movement on GST / PAYG liability accounts.
+    const openingDate = isoDayBefore(data.fromDate);
+    const basisParam = basis === "cash" ? { paymentsOnly: "true" } : {};
+    const [closeRes, openRes] = await Promise.all([
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.toDate, ...basisParam }),
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: openingDate, ...basisParam }),
+    ]);
+    const closeLines = closeRes.Reports?.[0] ? extractTaxLines(closeRes.Reports[0]) : [];
+    const openLines = openRes.Reports?.[0] ? extractTaxLines(openRes.Reports[0]) : [];
+
+    if (closeLines.length === 0 && openLines.length === 0) {
+      return {
+        source: "unavailable",
+        periodFrom: data.fromDate,
+        periodTo: data.toDate,
+        basis,
+        boxes: {},
+        gstOnSales: 0,
+        gstOnPurchases: 0,
+        netGst: 0,
+        paygWithheld: 0,
+        netPayment: 0,
+        message: asError
+          ? `No tax accounts found on the balance sheet. (${asError})`
+          : "No GST or PAYG accounts found on the balance sheet for this period.",
+      };
     }
 
-    const { boxes, unmatchedLabels } = extractBoxes(report);
-    const get = (k: string) => boxes[k] ?? 0;
-    const has = Object.keys(boxes).length > 0;
+    const openMap = new Map<string, number>();
+    for (const l of openLines) openMap.set(l.name, l.amount);
 
-    if (!has) {
-      const hint = unmatchedLabels.length
-        ? ` Rows seen: ${unmatchedLabels.slice(0, 6).join("; ")}`
-        : "";
-      return empty(
-        "unavailable",
-        `Activity Statement returned but no BAS boxes recognised.${hint}`,
-      );
+    let gstSales = 0;
+    let gstPurchases = 0;
+    let gstNetLumped = 0;
+    let payg = 0;
+    const seen = new Set<string>();
+
+    for (const l of closeLines) {
+      seen.add(l.name);
+      const delta = l.amount - (openMap.get(l.name) ?? 0);
+      if (l.category === "gst") {
+        const sub = gstSubClassify(l.name);
+        if (sub === "sales") gstSales += delta;
+        else if (sub === "purchases") gstPurchases += Math.abs(delta);
+        else gstNetLumped += delta;
+      } else if (l.category === "payg") {
+        payg += delta;
+      }
+    }
+    for (const l of openLines) {
+      if (seen.has(l.name)) continue;
+      const delta = -l.amount;
+      if (l.category === "gst") {
+        const sub = gstSubClassify(l.name);
+        if (sub === "sales") gstSales += delta;
+        else if (sub === "purchases") gstPurchases += Math.abs(delta);
+        else gstNetLumped += delta;
+      } else if (l.category === "payg") {
+        payg += delta;
+      }
     }
 
-    const w5 = get("W5") || get("W2") + get("W3") + get("W4");
-    const netGst = get("1A") - get("1B");
-    const netPayment = get("9") !== 0 ? get("9") : get("1A") + w5 - get("1B");
+    // If only a single net GST account exists, surface it as 1A and leave 1B at 0.
+    if (gstSales === 0 && gstPurchases === 0 && gstNetLumped !== 0) {
+      gstSales = gstNetLumped;
+    }
+
+    const netGst = gstSales - gstPurchases;
+    const netPayment = netGst + payg;
 
     return {
-      source: "activity-statement",
+      source: "balance-sheet-movement",
       periodFrom: data.fromDate,
       periodTo: data.toDate,
       basis,
-      boxes,
-      gstOnSales: get("1A"),
-      gstOnPurchases: get("1B"),
+      boxes: {},
+      gstOnSales: gstSales,
+      gstOnPurchases: gstPurchases,
       netGst,
-      paygWithheld: w5,
+      paygWithheld: payg,
       netPayment,
-      totalSales: get("G1") || undefined,
+      message:
+        "Calculated from balance-sheet movement on GST and PAYG accounts. Final BAS figures are confirmed at lodgement.",
     };
   });
 
