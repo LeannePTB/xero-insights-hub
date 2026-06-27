@@ -139,13 +139,15 @@ function normalizeOrigin(origin: string) {
 }
 
 function getXeroRedirectOrigin(returnOrigin: string) {
-  const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
   const parsed = new URL(returnOrigin);
-  // Local dev keeps its own callback (must be registered in Xero separately).
-  if (parsed.hostname === "localhost") return returnOrigin;
-  // Everything else routes through the stable id-preview callback that's
-  // registered in the Xero app, then the callback redirects back to returnOrigin.
-  if (projectId) return `https://id-preview--${projectId}.lovable.app`;
+  // Keep production/custom-domain flows on the origin where the user started.
+  // Sending a live reconnect through the editor preview can strand users on the
+  // preview callback if token exchange or deployment config differs there.
+  if (parsed.hostname === "localhost" || ALLOWED_CUSTOM_HOSTS.has(parsed.hostname)) return returnOrigin;
+
+  // Published Lovable URLs should also remain on their own public callback.
+  // Preview/dev URLs keep their current preview callback because that is where
+  // the reconnect was started.
   return returnOrigin;
 }
 

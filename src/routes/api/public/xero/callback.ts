@@ -14,41 +14,51 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         const origin = `${url.protocol}//${url.host}`;
         let returnOrigin = origin;
 
-        if (error) return redirectTo(`${origin}/dashboard?xero_error=${encodeURIComponent(error)}`);
-        if (!code || !state) return redirectTo(`${origin}/dashboard?xero_error=missing_params`);
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+        let stateRow: {
+          user_id: string;
+          code_verifier: string | null;
+          return_origin: string | null;
+          created_at: string | null;
+        } | null = null;
+
+        if (state) {
+          const { data, error: stateLookupErr } = await supabaseAdmin
+            .from("xero_oauth_states")
+            .select("user_id, code_verifier, return_origin, created_at")
+            .eq("state", state)
+            .maybeSingle();
+          if (!stateLookupErr && data) {
+            stateRow = data;
+            returnOrigin = getSafeReturnOrigin(data.return_origin, data.code_verifier, origin);
+          }
+        }
+
+        if (error) {
+          if (state) await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+          return redirectTo(`${returnOrigin}/dashboard?xero_error=${encodeURIComponent(error)}`);
+        }
+        if (!code || !state) return redirectTo(`${returnOrigin}/dashboard?xero_error=missing_params`);
 
         const clientId = process.env.XERO_CLIENT_ID;
         const clientSecret = process.env.XERO_CLIENT_SECRET;
         if (!clientId || !clientSecret) {
-          return redirectTo(`${origin}/dashboard?xero_error=not_configured`);
+          return redirectTo(`${returnOrigin}/dashboard?xero_error=not_configured`);
         }
 
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { encryptTokenB64 } = await import("@/lib/crypto.server");
 
         // Look up the user this state belongs to. Enforce 15-min single-use.
-        const { data: stateRow, error: stateErr } = await supabaseAdmin
-          .from("xero_oauth_states")
-          .select("user_id, code_verifier, return_origin, created_at")
-          .eq("state", state)
-          .maybeSingle();
-        if (stateErr || !stateRow) {
-          return redirectTo(`${origin}/dashboard?xero_error=invalid_state`);
+        if (!stateRow) {
+          return redirectTo(`${returnOrigin}/dashboard?xero_error=invalid_state`);
         }
         if (stateRow.created_at && Date.now() - new Date(stateRow.created_at).getTime() > 15 * 60 * 1000) {
           await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-          return redirectTo(`${origin}/dashboard?xero_error=state_expired`);
+          return redirectTo(`${returnOrigin}/dashboard?xero_error=state_expired`);
         }
         const userId = stateRow.user_id;
         const codeVerifier: string | null = stateRow.code_verifier ?? null;
-
-        // Prefer the new return_origin column; tolerate legacy rows that
-        // overloaded code_verifier with the return origin until they expire.
-        if (typeof stateRow.return_origin === "string" && stateRow.return_origin.startsWith("https://")) {
-          returnOrigin = stateRow.return_origin;
-        } else if (typeof codeVerifier === "string" && codeVerifier.startsWith("https://")) {
-          returnOrigin = codeVerifier;
-        }
         await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
 
         const redirectUri = `${origin}/api/public/xero/callback`;
@@ -146,4 +156,28 @@ export const Route = createFileRoute("/api/public/xero/callback")({
 
 function redirectTo(url: string) {
   return new Response(null, { status: 302, headers: { Location: url } });
+}
+
+const ALLOWED_RETURN_HOSTS = new Set([
+  "tractionadvisory.app",
+  "www.tractionadvisory.app",
+  "xero-shine-dashboards.lovable.app",
+]);
+
+function getSafeReturnOrigin(returnOrigin: string | null, legacyCodeVerifier: string | null, fallback: string) {
+  // Prefer the new return_origin column; tolerate legacy rows that overloaded
+  // code_verifier with the return origin until they expire.
+  const candidates = [returnOrigin, legacyCodeVerifier];
+  for (const candidate of candidates) {
+    if (typeof candidate !== "string" || !candidate.startsWith("https://")) continue;
+    try {
+      const parsed = new URL(candidate);
+      if (ALLOWED_RETURN_HOSTS.has(parsed.hostname) || parsed.hostname.endsWith(".lovable.app")) {
+        return parsed.origin;
+      }
+    } catch {
+      // Ignore malformed stored origins and fall back to the callback origin.
+    }
+  }
+  return fallback;
 }
