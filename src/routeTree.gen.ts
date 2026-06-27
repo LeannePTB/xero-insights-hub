@@ -38,9 +38,7 @@ import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/em
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
-import { Route as AuthenticatedAdminSecurityXeroAssessmentPrintRouteImport } from './routes/_authenticated/admin.security.xero-assessment-print'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
-import { Route as ApiPublicDocsSecurityFileRouteImport } from './routes/api/public/docs/security/$file'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
 import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
 
@@ -200,23 +198,11 @@ const AuthenticatedClientsClientIdSettingsRoute =
     path: '/clients/$clientId/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminSecurityXeroAssessmentPrintRoute =
-  AuthenticatedAdminSecurityXeroAssessmentPrintRouteImport.update({
-    id: '/xero-assessment-print',
-    path: '/xero-assessment-print',
-    getParentRoute: () => AuthenticatedAdminSecurityRoute,
-  } as any)
 const AuthenticatedAdminFirmsFirmIdRoute =
   AuthenticatedAdminFirmsFirmIdRouteImport.update({
     id: '/firms/$firmId',
     path: '/firms/$firmId',
     getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
-const ApiPublicDocsSecurityFileRoute =
-  ApiPublicDocsSecurityFileRouteImport.update({
-    id: '/api/public/docs/security/$file',
-    path: '/api/public/docs/security/$file',
-    getParentRoute: () => rootRouteImport,
   } as any)
 const AuthenticatedClientsClientIdReceivablesTenantIdRoute =
   AuthenticatedClientsClientIdReceivablesTenantIdRouteImport.update({
@@ -242,7 +228,7 @@ export interface FileRoutesByFullPath {
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
-  '/admin/security': typeof AuthenticatedAdminSecurityRouteWithChildren
+  '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -252,7 +238,6 @@ export interface FileRoutesByFullPath {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
-  '/admin/security/xero-assessment-print': typeof AuthenticatedAdminSecurityXeroAssessmentPrintRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -264,7 +249,6 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
-  '/api/public/docs/security/$file': typeof ApiPublicDocsSecurityFileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -276,7 +260,7 @@ export interface FileRoutesByTo {
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
-  '/admin/security': typeof AuthenticatedAdminSecurityRouteWithChildren
+  '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -286,7 +270,6 @@ export interface FileRoutesByTo {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
-  '/admin/security/xero-assessment-print': typeof AuthenticatedAdminSecurityXeroAssessmentPrintRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -298,7 +281,6 @@ export interface FileRoutesByTo {
   '/clients/$clientId': typeof AuthenticatedClientsClientIdIndexRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
-  '/api/public/docs/security/$file': typeof ApiPublicDocsSecurityFileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -313,7 +295,7 @@ export interface FileRoutesById {
   '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
-  '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRouteWithChildren
+  '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
   '/_authenticated/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
@@ -323,7 +305,6 @@ export interface FileRoutesById {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
-  '/_authenticated/admin/security/xero-assessment-print': typeof AuthenticatedAdminSecurityXeroAssessmentPrintRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -335,7 +316,6 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
   '/_authenticated/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
-  '/api/public/docs/security/$file': typeof ApiPublicDocsSecurityFileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -360,7 +340,6 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/admin/'
     | '/admin/firms/$firmId'
-    | '/admin/security/xero-assessment-print'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
@@ -372,7 +351,6 @@ export interface FileRouteTypes {
     | '/clients/$clientId/'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
-    | '/api/public/docs/security/$file'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -394,7 +372,6 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/admin'
     | '/admin/firms/$firmId'
-    | '/admin/security/xero-assessment-print'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
@@ -406,7 +383,6 @@ export interface FileRouteTypes {
     | '/clients/$clientId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
-    | '/api/public/docs/security/$file'
   id:
     | '__root__'
     | '/'
@@ -430,7 +406,6 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/firms/$firmId'
-    | '/_authenticated/admin/security/xero-assessment-print'
     | '/_authenticated/clients/$clientId/settings'
     | '/_authenticated/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
@@ -442,7 +417,6 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/'
     | '/_authenticated/clients/$clientId/payables/$tenantId'
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
-    | '/api/public/docs/security/$file'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -462,7 +436,6 @@ export interface RootRouteChildren {
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
   LovableEmailTransactionalPreviewRoute: typeof LovableEmailTransactionalPreviewRoute
   LovableEmailTransactionalSendRoute: typeof LovableEmailTransactionalSendRoute
-  ApiPublicDocsSecurityFileRoute: typeof ApiPublicDocsSecurityFileRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -670,26 +643,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/security/xero-assessment-print': {
-      id: '/_authenticated/admin/security/xero-assessment-print'
-      path: '/xero-assessment-print'
-      fullPath: '/admin/security/xero-assessment-print'
-      preLoaderRoute: typeof AuthenticatedAdminSecurityXeroAssessmentPrintRouteImport
-      parentRoute: typeof AuthenticatedAdminSecurityRoute
-    }
     '/_authenticated/admin/firms/$firmId': {
       id: '/_authenticated/admin/firms/$firmId'
       path: '/firms/$firmId'
       fullPath: '/admin/firms/$firmId'
       preLoaderRoute: typeof AuthenticatedAdminFirmsFirmIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/api/public/docs/security/$file': {
-      id: '/api/public/docs/security/$file'
-      path: '/api/public/docs/security/$file'
-      fullPath: '/api/public/docs/security/$file'
-      preLoaderRoute: typeof ApiPublicDocsSecurityFileRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/clients/$clientId/receivables/$tenantId': {
       id: '/_authenticated/clients/$clientId/receivables/$tenantId'
@@ -708,29 +667,14 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AuthenticatedAdminSecurityRouteChildren {
-  AuthenticatedAdminSecurityXeroAssessmentPrintRoute: typeof AuthenticatedAdminSecurityXeroAssessmentPrintRoute
-}
-
-const AuthenticatedAdminSecurityRouteChildren: AuthenticatedAdminSecurityRouteChildren =
-  {
-    AuthenticatedAdminSecurityXeroAssessmentPrintRoute:
-      AuthenticatedAdminSecurityXeroAssessmentPrintRoute,
-  }
-
-const AuthenticatedAdminSecurityRouteWithChildren =
-  AuthenticatedAdminSecurityRoute._addFileChildren(
-    AuthenticatedAdminSecurityRouteChildren,
-  )
-
 interface AuthenticatedAdminRouteChildren {
-  AuthenticatedAdminSecurityRoute: typeof AuthenticatedAdminSecurityRouteWithChildren
+  AuthenticatedAdminSecurityRoute: typeof AuthenticatedAdminSecurityRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminFirmsFirmIdRoute: typeof AuthenticatedAdminFirmsFirmIdRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
-  AuthenticatedAdminSecurityRoute: AuthenticatedAdminSecurityRouteWithChildren,
+  AuthenticatedAdminSecurityRoute: AuthenticatedAdminSecurityRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminFirmsFirmIdRoute: AuthenticatedAdminFirmsFirmIdRoute,
 }
@@ -795,7 +739,6 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
   LovableEmailTransactionalPreviewRoute: LovableEmailTransactionalPreviewRoute,
   LovableEmailTransactionalSendRoute: LovableEmailTransactionalSendRoute,
-  ApiPublicDocsSecurityFileRoute: ApiPublicDocsSecurityFileRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
