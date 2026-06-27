@@ -189,11 +189,34 @@ function ClientSettings() {
   async function handleConnect() {
     const authWindow = window.open("about:blank", "_blank");
     try {
-      const { authorizeUrl } = await startConnect({ data: { origin: window.location.origin } });
+      const { authorizeUrl } = await startConnect({ data: { origin: window.location.origin, clientId } });
       if (authWindow) { authWindow.opener = null; authWindow.location.href = authorizeUrl; }
       else window.location.href = authorizeUrl;
     } catch (e: any) { authWindow?.close(); toast.error(e.message); }
   }
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get("xero");
+    const err = params.get("xero_error");
+    if (status === "connected") {
+      toast.success("Xero organisation linked");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-connections"] });
+    } else if (err === "multi_company_required") {
+      toast.error("This client already has a Xero org linked. Grant the Multi company tier to link more.");
+    } else if (err) {
+      toast.error(`Xero connect failed: ${err}`);
+    }
+    if (status || err) {
+      params.delete("xero");
+      params.delete("xero_error");
+      const qs = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (clientQ.isLoading) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>;
