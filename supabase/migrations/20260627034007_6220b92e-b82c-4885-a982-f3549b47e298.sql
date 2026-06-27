@@ -1,0 +1,1 @@
+ALTER TABLE public.xero_oauth_states ADD COLUMN IF NOT EXISTS client_id uuid;

@@ -1092,6 +1092,7 @@ export type Database = {
       }
       xero_oauth_states: {
         Row: {
+          client_id: string | null
           code_verifier: string | null
           created_at: string
           expires_at: string
@@ -1100,6 +1101,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          client_id?: string | null
           code_verifier?: string | null
           created_at?: string
           expires_at?: string
@@ -1108,6 +1110,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          client_id?: string | null
           code_verifier?: string | null
           created_at?: string
           expires_at?: string
