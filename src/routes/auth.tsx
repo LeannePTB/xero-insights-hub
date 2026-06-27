@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import heroImage from "@/assets/hero-construction.jpg";
 
 export const Route = createFileRoute("/auth")({
@@ -139,6 +140,19 @@ function AuthPage() {
             >
               {resetLoading ? "Sending…" : "Forgot password?"}
             </button>
+            <div className="relative my-2">
+              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+            <ConnectWithXeroButton
+              variant="signin"
+              className="w-full"
+              onClick={() =>
+                toast.info("Sign in with Xero is coming soon. Use your email and password for now.")
+              }
+            />
             <p className="pt-1 text-center text-xs text-muted-foreground">
               Access is invite-only. Contact Positive Traction.
             </p>
