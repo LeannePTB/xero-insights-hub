@@ -1,24 +1,29 @@
 ## Root cause
 
-`src/routes/_authenticated/admin.security.tsx` wraps the markdown viewer in `<article className="prose prose-sm dark:prose-invert max-w-none">`, but `@tailwindcss/typography` is not installed or registered in this project. With no `prose` styles in the build, every markdown element collapses to plain `<p>` text:
+The advisor invite UI already exists and works — it's at `/settings/advisors` (`src/routes/_authenticated/settings.advisors.tsx`) with full Invite / Create-with-password / Resend / Revoke flows wired to the `inviteAdvisor` / `createAdvisorWithPassword` / `resendAdvisorInvite` / `revokeAdvisor` server functions.
 
-- Headings lose their size/weight hierarchy
-- Bullet lists render as flat paragraphs (no markers, no indent)
-- The Section 1 / Technical controls tables collapse into stacked label/value lines instead of an actual `<table>` with rows and columns
+You have permission to use it — your account holds both `advisor` and `super_admin` roles, so the `assertAdvisor` check passes.
 
-That's exactly what your screenshot shows. The hub project has `@plugin "@tailwindcss/typography";` on line 3 of `src/styles.css` — this project does not.
+**The problem is purely navigation**: a `grep` for `/settings/advisors` across `src/` returns only the route file itself and the auto-generated route tree. There is no link, button, or menu item anywhere in the app pointing at it. The Super-admin header in `src/routes/_authenticated/admin.index.tsx` only exposes "Tier widgets", "Security", and "Invite organisation".
+
+About the "2" in the audit log: those are the two existing advisor role grants for `admin@positivetraction.com.au` and `allyce@positivetraction.com.au` (confirmed in `auth.users` joined with `user_roles`). The audit-log count is correct — it just reflects accounts already created, not pending invites.
 
 ## Fix
 
-1. Install the plugin: `bun add -d @tailwindcss/typography`.
-2. Add one line to `src/styles.css` (immediately after the existing `@import "tailwindcss" …;` block, before `@theme`, matching Tailwind v4 ordering rules and the hub setup):
+Add a single entry point to the existing page from the Super-admin header so it sits alongside Tier widgets / Security / Invite organisation.
 
-   ```css
-   @plugin "@tailwindcss/typography";
-   ```
+**Edit `src/routes/_authenticated/admin.index.tsx`** — header action bar (around line 71–80):
 
-No other code changes needed — the route, posture card, Section 1 editor, sidebar navigation, PDF download, and bundled `?raw` markdown imports are already structured the same way as Business Hub Central. Once `prose` actually does its job, the Overview text, the "Detailed policies live in this folder" list, and the "Technical controls in place" table will render with proper headings, bullets, and a real bordered table — matching the hub.
+- Add a new button (advisors-only, since the route already requires advisor):
+  ```tsx
+  <Button asChild variant="outline" size="sm">
+    <Link to="/settings/advisors"><Users className="h-4 w-4 mr-2" />Advisors</Link>
+  </Button>
+  ```
+- Import `Users` from `lucide-react` alongside the existing icon imports.
+
+That's the entire change — no schema, server-function, or permission work is needed because the page and all its mutations already exist and your role already authorises them.
 
 ## Verification
 
-After the change I'll confirm the build succeeds and read the rendered HTML in the live preview to verify the `<ul>` shows markers and the `<table>` has the expected `border` / `th` / `td` layout from the typography plugin.
+After the edit I'll confirm the build succeeds and that the Admin header renders a new "Advisors" button next to "Security", landing on the existing invite/manage UI.
