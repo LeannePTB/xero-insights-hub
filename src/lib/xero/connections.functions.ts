@@ -9,6 +9,7 @@ function base64url(buf: Buffer) {
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const CANONICAL_XERO_APP_ORIGIN = "https://tractionadvisory.app";
+const XERO_CALLBACK_URL = `${CANONICAL_XERO_APP_ORIGIN}/api/public/xero/callback`;
 const SCOPES_ARRAY = [
   "offline_access",
   "accounting.reports.profitandloss.read",
@@ -97,16 +98,15 @@ export const startXeroConnect = createServerFn({ method: "POST" })
       });
     if (error) throw new Error(error.message);
 
-    const redirectOrigin = getXeroRedirectOrigin(returnOrigin);
-    const redirectUri = `${redirectOrigin}/api/public/xero/callback`;
     const url = new URL(XERO_AUTHORIZE_URL);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
-    url.searchParams.set("redirect_uri", redirectUri);
+    url.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
     url.searchParams.set("scope", SCOPES);
     url.searchParams.set("state", state);
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
+    console.info("Starting Xero OAuth", { redirectUri: XERO_CALLBACK_URL, returnOrigin });
     return { authorizeUrl: url.toString() };
 
   });
@@ -138,21 +138,6 @@ function normalizeOrigin(origin: string) {
 
   throw new Error("Invalid app origin for Xero connection.");
 }
-
-function getXeroRedirectOrigin(returnOrigin: string) {
-  const parsed = new URL(returnOrigin);
-  // Keep production/custom-domain flows on the origin where the user started.
-  // Sending a live reconnect through the editor preview can strand users on the
-  // preview callback if token exchange or deployment config differs there.
-  if (parsed.hostname === "localhost" || ALLOWED_CUSTOM_HOSTS.has(parsed.hostname)) return returnOrigin;
-
-  // Published Lovable URLs should also remain on their own public callback.
-  // Preview/dev URLs keep their current preview callback because that is where
-  // the reconnect was started.
-  return returnOrigin;
-}
-
-
 
 export const disconnectXero = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
