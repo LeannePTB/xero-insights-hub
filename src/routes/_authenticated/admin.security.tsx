@@ -106,7 +106,7 @@ function SecurityPage() {
             <Row
               ok={p.mfa.total === 0 || p.mfa.enrolled === p.mfa.total}
               label="TOTP MFA enrolment"
-              detail={`${p.mfa.enrolled}/${p.mfa.total} users enrolled (${mfaPct}%). New sign-ins are forced to enrol before reaching the app.`}
+              detail={`${p.mfa.enrolled}/${p.mfa.total} staff users enrolled (${mfaPct}%). New sign-ins are forced to enrol before reaching the app.`}
             />
             <Row
               ok={p.audit.rowsOlderThanRetention === 0}

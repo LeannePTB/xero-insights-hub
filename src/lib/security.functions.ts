@@ -59,12 +59,18 @@ export const getSecurityPosture = createServerFn({ method: "GET" })
       .from("xero_connections")
       .select("*", { count: "exact", head: true });
 
-    // MFA enrolment count via Auth Admin API.
+    // MFA enrolment count via Auth Admin API — scoped to staff users
+    // (advisors + super admins). Client viewers are out of scope.
     let mfaEnrolled = 0;
     let totalUsers = 0;
     try {
+      const { data: staffRoles } = await supabaseAdmin
+        .from("user_roles")
+        .select("user_id")
+        .in("role", ["advisor", "super_admin"]);
+      const staffIds = new Set<string>((staffRoles ?? []).map((r: any) => r.user_id));
       const { data } = await (supabaseAdmin as any).auth.admin.listUsers({ page: 1, perPage: 1000 });
-      const users = data?.users ?? [];
+      const users = (data?.users ?? []).filter((u: any) => staffIds.has(u.id));
       totalUsers = users.length;
       mfaEnrolled = users.filter((u: any) =>
         (u.factors ?? []).some((f: any) => f.status === "verified" && f.factor_type === "totp"),
