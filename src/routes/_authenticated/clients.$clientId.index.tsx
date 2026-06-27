@@ -101,36 +101,48 @@ function ClientDashboard() {
     return enabled ? reportBasis : "accrual";
   }
 
-  const cards = useMemo<SortableCard[]>(() => {
-    if (!client) return [];
-    const list: SortableCard[] = [
-      { id: "notes", node: <NotesCard clientId={clientId} canEdit={isAdvisor} />, fullWidth: true },
-    ];
-    if (widgets.includes("health")) {
-      list.push({ id: "health", node: <HealthWidget />, fullWidth: true });
-    }
+  const { standardCards, advancedCards } = useMemo<{ standardCards: SortableCard[]; advancedCards: SortableCard[] }>(() => {
+    const standard: SortableCard[] = [];
+    const advanced: SortableCard[] = [];
+    if (!client) return { standardCards: standard, advancedCards: advanced };
     for (const o of orgs) {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
       if (widgets.includes("receivables"))
-        list.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("receivables")} /> });
+        standard.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("receivables")} /> });
       if (widgets.includes("payables"))
-        list.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} /> });
+        standard.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} /> });
       if (widgets.includes("pnl"))
-        list.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} /> });
+        standard.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} /> });
       if (widgets.includes("tax_liability"))
-        list.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("tax_liability")} /> });
+        advanced.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("tax_liability")} /> });
       if (widgets.includes("superannuation"))
-        list.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} /> });
+        advanced.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} /> });
       if (widgets.includes("breakeven"))
-        list.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("breakeven")} /> });
+        advanced.push({ id: `${o.id}:breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("breakeven")} /> });
     }
     if (widgets.includes("unreconciled")) {
-      list.push({ id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> });
+      standard.push({ id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> });
     }
-    return list;
-  }, [client, clientId, isAdvisor, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
+    return { standardCards: standard, advancedCards: advanced };
+  }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
+
+  const showHealth = widgets.includes("health");
+  const savedOrder = orderQ.data?.order ?? [];
+  const standardIds = new Set(standardCards.map((c) => c.id));
+  const advancedIds = new Set(advancedCards.map((c) => c.id));
+  const standardSaved = savedOrder.filter((id) => standardIds.has(id));
+  const advancedSaved = savedOrder.filter((id) => advancedIds.has(id));
+
+  function handleOrderChangeSection(section: "standard" | "advanced", next: string[]) {
+    const other = section === "standard" ? savedOrder.filter((id) => !standardIds.has(id)) : savedOrder.filter((id) => !advancedIds.has(id));
+    // Keep standard before advanced in merged order
+    const merged = section === "standard"
+      ? [...next, ...savedOrder.filter((id) => advancedIds.has(id))]
+      : [...savedOrder.filter((id) => standardIds.has(id)), ...next];
+    handleOrderChange(merged);
+  }
 
   if (ctxQ.isLoading || clientQ.isLoading) {
     return (
@@ -195,21 +207,48 @@ function ClientDashboard() {
           Tip: hover any card and grab the handle in its top-right corner to reorder. Your layout is saved automatically.
         </p>
 
-        <div className="mt-3">
+        <div className="mt-3 space-y-6">
           {orgs.length === 0 ? (
-            <div className="space-y-6">
+            <>
+              {showHealth && <HealthWidget />}
               <NotesCard clientId={clientId} canEdit={isAdvisor} />
               <UnreconciledCard clientId={clientId} />
               <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />
-            </div>
+            </>
           ) : (
-            <SortableCardGrid
-              cards={cards}
-              savedOrder={orderQ.data?.order ?? []}
-              onOrderChange={handleOrderChange}
-            />
+            <>
+              {showHealth && <HealthWidget />}
+              <NotesCard clientId={clientId} canEdit={isAdvisor} />
+
+              {standardCards.length > 0 && (
+                <section>
+                  <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    Standard dashboard
+                  </h2>
+                  <SortableCardGrid
+                    cards={standardCards}
+                    savedOrder={standardSaved}
+                    onOrderChange={(next) => handleOrderChangeSection("standard", next)}
+                  />
+                </section>
+              )}
+
+              {advancedCards.length > 0 && (
+                <section>
+                  <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    Advisory
+                  </h2>
+                  <SortableCardGrid
+                    cards={advancedCards}
+                    savedOrder={advancedSaved}
+                    onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
+                  />
+                </section>
+              )}
+            </>
           )}
         </div>
+
 
         {!isAdvisor && orgs.length > 0 && (
           <UpgradeOptions clientId={clientId} clientName={client.name} currentTier={tier} />
