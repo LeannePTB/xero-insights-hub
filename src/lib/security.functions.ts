@@ -1,6 +1,38 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+export type SecurityContact = {
+  company_legal_name: string | null;
+  trading_name: string | null;
+  abn: string | null;
+  registered_address: string | null;
+  website: string | null;
+  app_name: string | null;
+  xero_client_id: string | null;
+  primary_contact_name: string | null;
+  primary_contact_role: string | null;
+  primary_contact_email: string | null;
+  primary_contact_phone: string | null;
+  xero_api_usage: string | null;
+  assessment_date: string | null;
+};
+
+const EMPTY_CONTACT: SecurityContact = {
+  company_legal_name: null,
+  trading_name: null,
+  abn: null,
+  registered_address: null,
+  website: null,
+  app_name: null,
+  xero_client_id: null,
+  primary_contact_name: null,
+  primary_contact_role: null,
+  primary_contact_email: null,
+  primary_contact_phone: null,
+  xero_api_usage: null,
+  assessment_date: null,
+};
+
 async function assertSuperAdmin(supabase: any) {
   const { data, error } = await supabase.rpc("me_is_super_admin");
   if (error) throw new Error(error.message);
