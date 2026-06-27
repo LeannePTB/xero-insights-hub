@@ -275,10 +275,10 @@ function ClientSettings() {
 
         {/* Xero orgs */}
         <Section title="Xero organisations" action={
-          <Button variant="outline" size="sm" onClick={handleConnect}><Plug className="mr-1.5 h-3.5 w-3.5" /> Connect new</Button>
+          <ConnectWithXeroButton variant="connect" size="sm" onClick={handleConnect} label="Connect a Xero org" />
         }>
           <p className="mb-3 text-xs text-muted-foreground">
-            If a widget says Xero needs reconnecting, use <strong>Reconnect</strong> — it re-runs Xero sign-in and refreshes the tokens for that org in place.
+            If a widget says Xero needs reconnecting, use <strong>Reconnect to Xero</strong> — it re-runs Xero sign-in and refreshes the tokens for that org in place.
           </p>
           {linkedOrgs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No Xero orgs linked yet.</p>
@@ -287,18 +287,29 @@ function ClientSettings() {
               {linkedOrgs.map((o) => {
                 const tenantId: string | undefined = o.xero_connections?.tenant_id;
                 const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
+                const status: string = o.xero_connections?.status ?? "connected";
+                const isDisconnected = status === "disconnected";
                 return (
-                  <li key={o.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
-                    <span className="text-sm font-medium">{tenantName}</span>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="ghost"
+                  <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">{tenantName}</span>
+                      {isDisconnected ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                          <AlertCircle className="h-3 w-3" /> Reconnect required
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                          Connected
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <ConnectWithXeroButton
+                        variant={isDisconnected ? "reconnect" : "reconnect"}
                         size="sm"
                         onClick={handleConnect}
-                        title="Re-run Xero sign-in to refresh tokens"
-                      >
-                        <RefreshCw className="mr-1 h-3.5 w-3.5" /> Reconnect
-                      </Button>
+                        label={isDisconnected ? "Reconnect to Xero" : "Reconnect to Xero"}
+                      />
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button variant="ghost" size="sm" title="Disconnect">
@@ -311,7 +322,7 @@ function ClientSettings() {
                             <AlertDialogDescription>
                               <strong>Unlink from this client</strong> removes the link only — the Xero connection stays available to link to other clients.
                               <br /><br />
-                              <strong>Disconnect entirely</strong> removes the Xero connection from Lovable. Reconnecting requires a fresh Xero sign-in.
+                              <strong>Disconnect from Xero</strong> revokes our access at Xero and removes the connection here. Reconnecting requires a fresh Xero sign-in.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
@@ -323,7 +334,7 @@ function ClientSettings() {
                               onClick={() => tenantId && disconnectMut.mutate(tenantId)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
-                              Disconnect entirely
+                              Disconnect from Xero
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
