@@ -38,11 +38,11 @@ function Row({ ok, label, detail }: { ok: boolean; label: string; detail?: strin
 
 function SecurityPage() {
   const fetchPosture = useServerFn(getSecurityPosture);
-  const fetchDocs = useServerFn(listSecurityDocs);
+  const fetchContact = useServerFn(getSecurityContact);
   const purgeFn = useServerFn(purgeOldAuditLog);
 
   const postureQ = useQuery({ queryKey: ["security-posture"], queryFn: () => fetchPosture() });
-  const docsQ = useQuery({ queryKey: ["security-docs"], queryFn: () => fetchDocs() });
+  const contactQ = useQuery({ queryKey: ["security-contact"], queryFn: () => fetchContact() });
 
   const purgeM = useMutation({
     mutationFn: () => purgeFn(),
