@@ -89,7 +89,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
                 client_id: stateRow.client_id ?? null,
               });
               if (!insertErr) {
-                await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+                if (state) await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
                 console.info("Retrying Xero OAuth with fallback read-only scope set", { retryScopeSet, returnOrigin });
                 return redirectTo(buildAuthorizeUrl({ clientId, state: retryState, codeChallenge, scopeSet: retryScopeSet }));
               }
