@@ -248,7 +248,7 @@ function PeriodSection({
   data,
 }: {
   data: {
-    source: "activity-statement" | "unavailable";
+    source: "activity-statement" | "balance-sheet-movement" | "unavailable";
     periodFrom: string;
     periodTo: string;
     gstOnSales: number;
@@ -267,8 +267,13 @@ function PeriodSection({
       </p>
     );
   }
+  const sourceLabel =
+    data.source === "activity-statement" ? "Source: Xero Activity Statement" : "Source: GL movement";
   return (
     <div className="mt-3">
+      <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+        {sourceLabel}
+      </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <PeriodKpi label="GST on sales (1A)" value={data.gstOnSales} />
         <PeriodKpi label="GST on purchases (1B)" value={data.gstOnPurchases} />
