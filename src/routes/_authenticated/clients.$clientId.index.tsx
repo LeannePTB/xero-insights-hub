@@ -334,7 +334,7 @@ function XeroConnectionBanner({ orgs }: { orgs: { tenantId: string; tenantName: 
           {names} can't refresh — sign in to Xero again to restore all dashboard cards.
         </p>
       </div>
-      <Button size="sm" onClick={handleReconnect} className="shrink-0">Reconnect Xero</Button>
+      <ConnectWithXeroButton variant="reconnect" size="sm" onClick={handleReconnect} className="shrink-0" />
     </div>
   );
 }
