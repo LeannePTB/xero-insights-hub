@@ -149,3 +149,58 @@ export const listSecurityDocs = createServerFn({ method: "GET" })
     await assertSuperAdmin(context.supabase);
     return { docs: POLICY_DOCS.map((slug) => ({ slug, url: `/api/public/docs/security/${slug}.md` })) };
   });
+
+export const getSecurityContact = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<SecurityContact> => {
+    await assertSuperAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
+      .from("security_contact_details")
+      .select("*")
+      .eq("singleton", true)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!data) return EMPTY_CONTACT;
+    return {
+      company_legal_name: data.company_legal_name,
+      trading_name: data.trading_name,
+      abn: data.abn,
+      registered_address: data.registered_address,
+      website: data.website,
+      app_name: data.app_name,
+      xero_client_id: data.xero_client_id,
+      primary_contact_name: data.primary_contact_name,
+      primary_contact_role: data.primary_contact_role,
+      primary_contact_email: data.primary_contact_email,
+      primary_contact_phone: data.primary_contact_phone,
+      xero_api_usage: data.xero_api_usage,
+      assessment_date: data.assessment_date,
+    };
+  });
+
+export const saveSecurityContact = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: Partial<SecurityContact>) => i)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const payload: Record<string, unknown> = { singleton: true };
+    for (const k of Object.keys(EMPTY_CONTACT) as (keyof SecurityContact)[]) {
+      const v = (data as any)[k];
+      payload[k] = typeof v === "string" && v.trim() === "" ? null : v ?? null;
+    }
+    const { error } = await supabaseAdmin
+      .from("security_contact_details")
+      .upsert(payload, { onConflict: "singleton" });
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("audit_log").insert({
+      actor_user_id: context.userId,
+      action: "security_contact_updated",
+      target_type: "security_contact_details",
+      target_id: "singleton",
+      meta: {},
+    });
+    return { ok: true };
+  });
+
