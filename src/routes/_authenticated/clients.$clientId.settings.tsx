@@ -207,7 +207,7 @@ function ClientSettings() {
     } else if (err === "multi_company_required") {
       toast.error("This client already has a Xero org linked. Grant the Multi company tier to link more.");
     } else if (err) {
-      toast.error(`Xero connect failed: ${err}`);
+      toast.error(err);
     }
     if (status || err) {
       params.delete("xero");

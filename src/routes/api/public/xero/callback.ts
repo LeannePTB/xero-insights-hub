@@ -40,7 +40,11 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         if (error) {
           console.error("Xero authorization failed", { error, callbackOrigin: origin, returnOrigin });
           if (state) await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-          return redirectTo(`${returnOrigin}/dashboard?xero_error=${encodeURIComponent(error)}`);
+          const message =
+            error === "invalid_scope"
+              ? "Xero rejected an old permission request. Please start Reconnect again."
+              : error;
+          return redirectTo(`${returnOrigin}/dashboard?xero_error=${encodeURIComponent(message)}`);
         }
         if (!code || !state) return redirectTo(`${returnOrigin}/dashboard?xero_error=missing_params`);
 

@@ -13,7 +13,6 @@ const XERO_CALLBACK_URL = `${CANONICAL_XERO_APP_ORIGIN}/api/public/xero/callback
 const SCOPES_ARRAY = [
   "offline_access",
   "accounting.reports.read",
-  "accounting.reports.tenninetynine.read",
   "accounting.settings.read",
   "accounting.transactions.read",
   "accounting.contacts.read",

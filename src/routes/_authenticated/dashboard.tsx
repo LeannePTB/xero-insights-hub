@@ -70,7 +70,7 @@ function Dashboard() {
     }
     const err = url.searchParams.get("xero_error");
     if (err) {
-      toast.error(`Xero connection failed: ${err}`);
+      toast.error(err);
       url.searchParams.delete("xero_error");
       window.history.replaceState({}, "", url.toString());
     }
