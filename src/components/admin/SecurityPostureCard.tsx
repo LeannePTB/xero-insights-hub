@@ -55,6 +55,18 @@ export function SecurityPostureCard() {
         status: data.mfa.total > 0 && data.mfa.enrolled === data.mfa.total ? "ok" : "action",
       },
       {
+        id: "admin-mfa",
+        title: "Super admin MFA enforced",
+        detail:
+          (data.adminMfa?.total ?? 0) === 0
+            ? "No super admin users found."
+            : `${data.adminMfa.enrolled}/${data.adminMfa.total} super admins have a verified authenticator app factor.`,
+        status:
+          (data.adminMfa?.total ?? 0) > 0 && data.adminMfa.enrolled === data.adminMfa.total
+            ? "ok"
+            : "action",
+      },
+      {
         id: "audit-retention",
         title: `Audit log retention (${data.audit.retentionYears} years)`,
         detail:
