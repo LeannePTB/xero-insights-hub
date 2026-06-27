@@ -8,6 +8,7 @@ function base64url(buf: Buffer) {
 
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
+const CANONICAL_XERO_APP_ORIGIN = "https://tractionadvisory.app";
 const SCOPES_ARRAY = [
   "offline_access",
   "accounting.reports.profitandloss.read",
@@ -132,8 +133,8 @@ function normalizeOrigin(origin: string) {
   }
 
   // Allow any *.lovable.app host (covers published slug subdomains).
-  if (parsed.hostname.endsWith(".lovable.app")) return parsed.origin;
-  if (allowedHosts.has(parsed.hostname)) return parsed.origin;
+  if (parsed.hostname.endsWith(".lovable.app")) return CANONICAL_XERO_APP_ORIGIN;
+  if (allowedHosts.has(parsed.hostname)) return CANONICAL_XERO_APP_ORIGIN;
 
   throw new Error("Invalid app origin for Xero connection.");
 }
