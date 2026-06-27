@@ -47,6 +47,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         const code = url.searchParams.get("code");
         const state = url.searchParams.get("state");
         const error = url.searchParams.get("error");
+        const rawErrorDescription = url.searchParams.get("error_description");
         const origin = `${url.protocol}//${url.host}`;
         let returnOrigin = origin;
 
@@ -74,7 +75,8 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }
 
         if (error) {
-          console.error("Xero authorization failed", { error, callbackOrigin: origin, returnOrigin });
+          const errorDescription = rawErrorDescription ?? "";
+          console.error("Xero authorization failed", { error, errorDescription, callbackOrigin: origin, returnOrigin });
           if (error === "invalid_scope" && stateRow && clientId) {
             const retryScopeSet = alternateXeroScopeSet(xeroScopeSetFromState(state));
             if (retryScopeSet) {
@@ -99,7 +101,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           if (state) await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
           const message =
             error === "invalid_scope"
-              ? "Xero rejected the requested read-only permissions. Please try Reconnect again, or check the Xero app has Accounting API read scopes enabled."
+              ? `Xero rejected the requested read-only permissions${errorDescription ? ` (${errorDescription})` : ""}. Please try Reconnect again, or check the Xero app has Accounting API read scopes enabled.`
               : error;
           const errorPath = stateRow?.client_id ? `/clients/${stateRow.client_id}/settings` : "/dashboard";
           return redirectTo(`${returnOrigin}${errorPath}?xero_error=${encodeURIComponent(message)}`);
