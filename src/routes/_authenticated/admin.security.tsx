@@ -1,16 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getSecurityPosture, purgeOldAuditLog, listSecurityDocs } from "@/lib/security.functions";
+import {
+  getSecurityPosture,
+  purgeOldAuditLog,
+  getSecurityContact,
+} from "@/lib/security.functions";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { ArrowLeft, ShieldCheck, ShieldAlert, Lock, FileText, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Lock, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { ContactDetailsCard } from "@/components/security/ContactDetailsCard";
+import { PoliciesViewer } from "@/components/security/PoliciesViewer";
 
 export const Route = createFileRoute("/_authenticated/admin/security")({
-  head: () => ({ meta: [{ title: "Security — Traction Advisory Admin" }] }),
+  head: () => ({ meta: [{ title: "Security & Compliance — Traction Advisory Admin" }] }),
   component: SecurityPage,
 });
 
@@ -32,11 +38,11 @@ function Row({ ok, label, detail }: { ok: boolean; label: string; detail?: strin
 
 function SecurityPage() {
   const fetchPosture = useServerFn(getSecurityPosture);
-  const fetchDocs = useServerFn(listSecurityDocs);
+  const fetchContact = useServerFn(getSecurityContact);
   const purgeFn = useServerFn(purgeOldAuditLog);
 
   const postureQ = useQuery({ queryKey: ["security-posture"], queryFn: () => fetchPosture() });
-  const docsQ = useQuery({ queryKey: ["security-docs"], queryFn: () => fetchDocs() });
+  const contactQ = useQuery({ queryKey: ["security-contact"], queryFn: () => fetchContact() });
 
   const purgeM = useMutation({
     mutationFn: () => purgeFn(),
@@ -119,6 +125,10 @@ function SecurityPage() {
           </CardContent>
         </Card>
 
+        {contactQ.data && <ContactDetailsCard contact={contactQ.data} />}
+
+        <PoliciesViewer />
+
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -135,32 +145,8 @@ function SecurityPage() {
             </Link>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" /> Policy documents
-            </CardTitle>
-            <CardDescription>
-              Download and share with Xero or other reviewers. Each doc is served as Markdown from a public URL.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid sm:grid-cols-2 gap-2">
-            {(docsQ.data?.docs ?? []).map((d) => (
-              <a
-                key={d.slug}
-                href={d.url}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between border rounded p-3 hover:bg-muted"
-              >
-                <span className="font-mono text-sm">{d.slug}.md</span>
-                <Download className="h-4 w-4 text-muted-foreground" />
-              </a>
-            ))}
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
 }
+
