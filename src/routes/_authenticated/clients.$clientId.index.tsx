@@ -170,6 +170,15 @@ function ClientDashboard() {
           )}
         </div>
 
+        {orgs.length > 0 && (
+          <XeroConnectionBanner
+            orgs={orgs.map((o) => ({
+              tenantId: o.xero_connections?.tenant_id as string | undefined,
+              tenantName: o.xero_connections?.tenant_name as string | undefined,
+            })).filter((o): o is { tenantId: string; tenantName: string | undefined } => !!o.tenantId)}
+          />
+        )}
+
         {isAdvisor && orgs.length > 0 && (
           <div className="mt-6">
             <TransactionSearch clientId={clientId} />
