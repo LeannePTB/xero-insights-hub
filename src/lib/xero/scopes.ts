@@ -5,17 +5,13 @@ const XERO_SCOPE_SETS: Record<XeroScopeSetId, string[]> = {
   // apps from the older umbrella scopes onto these granular scopes.
   granular: [
     "offline_access",
-    "accounting.reports.aged.read",
     "accounting.reports.balancesheet.read",
     "accounting.reports.banksummary.read",
     "accounting.reports.profitandloss.read",
     "accounting.reports.taxreports.read",
     "accounting.invoices.read",
     "accounting.payments.read",
-    "accounting.banktransactions.read",
-    "accounting.manualjournals.read",
     "accounting.settings.read",
-    "accounting.contacts.read",
   ],
 
   // Fallback for Xero apps that still accept the older broad read-only scopes.
@@ -24,7 +20,6 @@ const XERO_SCOPE_SETS: Record<XeroScopeSetId, string[]> = {
     "accounting.reports.read",
     "accounting.transactions.read",
     "accounting.settings.read",
-    "accounting.contacts.read",
   ],
 };
 
