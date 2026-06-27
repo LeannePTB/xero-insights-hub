@@ -138,3 +138,72 @@ export const setTierEnabled = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Returns the upgrade tiers (enabled globally, higher than current) along with
+// the resolved widget list for each, and the firm contact email to request
+// the upgrade from. Used to render upsell rows on the client dashboard.
+export const getUpgradeOptions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; currentTier: DashboardTier }) => i)
+  .handler(async ({ data, context }) => {
+    // tier_settings: enabled map
+    const { data: settingsRows } = await context.supabase
+      .from("tier_settings")
+      .select("tier, enabled");
+    const enabledMap = Object.fromEntries(ALL_TIERS.map((t) => [t, true])) as Record<DashboardTier, boolean>;
+    for (const r of settingsRows ?? []) enabledMap[(r as any).tier as DashboardTier] = !!(r as any).enabled;
+
+    // Resolved widgets per tier (client override → global → defaults).
+    const { data: cfgRows } = await context.supabase
+      .from("tier_widget_config")
+      .select("client_id, tier, widgets")
+      .or(`client_id.is.null,client_id.eq.${data.clientId}`);
+    const byKey = new Map<string, WidgetKey[]>();
+    for (const r of cfgRows ?? []) {
+      byKey.set(`${(r as any).client_id ?? "global"}:${(r as any).tier}`, sanitizeWidgets((r as any).widgets ?? []));
+    }
+    const resolve = (t: DashboardTier): WidgetKey[] =>
+      byKey.get(`${data.clientId}:${t}`) ?? byKey.get(`global:${t}`) ?? DEFAULT_TIER_WIDGETS[t];
+
+    const currentWidgets = new Set<WidgetKey>(resolve(data.currentTier));
+    const order: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
+    const currentIdx = order.indexOf(data.currentTier);
+
+    const upgrades = order
+      .map((tier, idx) => ({ tier, idx }))
+      .filter(({ tier, idx }) => idx > currentIdx && enabledMap[tier])
+      .map(({ tier }) => {
+        const widgets = resolve(tier);
+        const extra = widgets.filter((w) => !currentWidgets.has(w));
+        return { tier, widgets, extraWidgets: extra };
+      })
+      .filter((u) => u.extraWidgets.length > 0);
+
+    // Firm contact email = firm owner's profile email (best-effort).
+    let contactEmail: string | null = null;
+    const { data: client } = await context.supabase
+      .from("clients")
+      .select("firm_id")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    const firmId = (client as any)?.firm_id as string | null | undefined;
+    if (firmId) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: firm } = await supabaseAdmin
+        .from("firms")
+        .select("owner_user_id")
+        .eq("id", firmId)
+        .maybeSingle();
+      const ownerId = (firm as any)?.owner_user_id as string | undefined;
+      if (ownerId) {
+        const { data: profile } = await supabaseAdmin
+          .from("profiles")
+          .select("email")
+          .eq("id", ownerId)
+          .maybeSingle();
+        contactEmail = (profile as any)?.email ?? null;
+      }
+    }
+
+    return { upgrades, contactEmail };
+  });

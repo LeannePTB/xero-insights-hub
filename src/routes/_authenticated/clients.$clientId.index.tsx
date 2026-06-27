@@ -25,6 +25,7 @@ import { SortableCardGrid, type SortableCard } from "@/components/dashboard/Sort
 import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
 import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
+import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
   head: () => ({ meta: [{ title: "Client dashboard — Traction Advisory" }] }),
@@ -204,6 +205,10 @@ function ClientDashboard() {
             />
           )}
         </div>
+
+        {!isAdvisor && orgs.length > 0 && (
+          <UpgradeOptions clientId={clientId} clientName={client.name} currentTier={tier} />
+        )}
       </main>
     </div>
   );
