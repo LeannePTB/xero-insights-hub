@@ -12,12 +12,11 @@ const CANONICAL_XERO_APP_ORIGIN = "https://tractionadvisory.app";
 const XERO_CALLBACK_URL = `${CANONICAL_XERO_APP_ORIGIN}/api/public/xero/callback`;
 const SCOPES_ARRAY = [
   "offline_access",
-  "accounting.reports.profitandloss.read",
-  "accounting.reports.balancesheet.read",
-  "accounting.reports.taxreports.read",
   "accounting.reports.read",
+  "accounting.reports.tenninetynine.read",
   "accounting.settings.read",
-  "accounting.invoices.read",
+  "accounting.transactions.read",
+  "accounting.contacts.read",
 ];
 // Hard guarantee: Xero remains read-only. Any non-`.read` scope (other than the
 // `offline_access` refresh-token grant) must never be requested. If this throws
