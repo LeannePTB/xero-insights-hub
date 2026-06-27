@@ -90,21 +90,29 @@ export function XeroErrorNotice({
   error,
   onRetry,
   isRetrying,
+  onReconnect,
 }: {
   error: unknown;
   onRetry: () => void;
   isRetrying?: boolean;
+  onReconnect?: () => void;
 }) {
+  const needsReconnect = isXeroReconnectError(error);
   return (
     <div className="mt-4 rounded-lg border border-border bg-muted/50 p-4 text-sm text-foreground">
       <div className="flex items-start gap-2">
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
         <p>{friendlyXeroError(error)}</p>
       </div>
-      <Button size="sm" variant="outline" className="mt-3" onClick={onRetry} disabled={isRetrying}>
-        {isRetrying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        Try again
-      </Button>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {needsReconnect && onReconnect ? (
+          <ConnectWithXeroButton variant="reconnect" size="sm" onClick={onReconnect} />
+        ) : null}
+        <Button size="sm" variant="outline" onClick={onRetry} disabled={isRetrying}>
+          {isRetrying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+          Try again
+        </Button>
+      </div>
     </div>
   );
 }
