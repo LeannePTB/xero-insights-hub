@@ -207,21 +207,48 @@ function ClientDashboard() {
           Tip: hover any card and grab the handle in its top-right corner to reorder. Your layout is saved automatically.
         </p>
 
-        <div className="mt-3">
+        <div className="mt-3 space-y-6">
           {orgs.length === 0 ? (
-            <div className="space-y-6">
+            <>
+              {showHealth && <HealthWidget />}
               <NotesCard clientId={clientId} canEdit={isAdvisor} />
               <UnreconciledCard clientId={clientId} />
               <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />
-            </div>
+            </>
           ) : (
-            <SortableCardGrid
-              cards={cards}
-              savedOrder={orderQ.data?.order ?? []}
-              onOrderChange={handleOrderChange}
-            />
+            <>
+              {showHealth && <HealthWidget />}
+              <NotesCard clientId={clientId} canEdit={isAdvisor} />
+
+              {standardCards.length > 0 && (
+                <section>
+                  <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    Standard dashboard
+                  </h2>
+                  <SortableCardGrid
+                    cards={standardCards}
+                    savedOrder={standardSaved}
+                    onOrderChange={(next) => handleOrderChangeSection("standard", next)}
+                  />
+                </section>
+              )}
+
+              {advancedCards.length > 0 && (
+                <section>
+                  <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                    Advisory
+                  </h2>
+                  <SortableCardGrid
+                    cards={advancedCards}
+                    savedOrder={advancedSaved}
+                    onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
+                  />
+                </section>
+              )}
+            </>
           )}
         </div>
+
 
         {!isAdvisor && orgs.length > 0 && (
           <UpgradeOptions clientId={clientId} clientName={client.name} currentTier={tier} />
