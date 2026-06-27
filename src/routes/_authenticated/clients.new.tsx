@@ -79,9 +79,8 @@ function NewClient() {
           <div>
             <div className="flex items-center justify-between">
               <Label>Xero organisations</Label>
-              <Button variant="outline" size="sm" onClick={handleConnect}>
-                <Plug className="mr-1.5 h-3.5 w-3.5" /> Connect another
-              </Button>
+              <ConnectWithXeroButton variant="connect" size="sm" onClick={handleConnect} label="Connect another" />
+
             </div>
             <div className="mt-2 space-y-1.5 rounded-lg border border-border bg-background p-3">
               {connQ.isLoading ? (
