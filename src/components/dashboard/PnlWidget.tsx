@@ -12,14 +12,7 @@ import {
   toISO,
   usePersistedDate,
 } from "@/components/dashboard/DateRangeControls";
-
-function fmt(n: number) {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: "AUD",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
+import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
 
 function startOfFiscalYear() {
   const now = new Date();
