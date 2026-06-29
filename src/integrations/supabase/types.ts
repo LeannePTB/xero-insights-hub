@@ -1216,27 +1216,30 @@ export type Database = {
           code_verifier: string | null
           created_at: string
           expires_at: string
+          flow: string
           return_origin: string | null
           state: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           client_id?: string | null
           code_verifier?: string | null
           created_at?: string
           expires_at?: string
+          flow?: string
           return_origin?: string | null
           state: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           client_id?: string | null
           code_verifier?: string | null
           created_at?: string
           expires_at?: string
+          flow?: string
           return_origin?: string | null
           state?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
