@@ -32,6 +32,8 @@ export function CashflowWidget({
   loadDelayMs?: number;
 }) {
   const fetchCashflow = useServerFn(getCashflow);
+  const currency = useTenantCurrency(tenantId);
+  const fmt = (n: number) => formatMoney(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `cashflow-range:${tenantId}`;
   const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfFiscalYear);
