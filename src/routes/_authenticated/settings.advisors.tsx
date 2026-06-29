@@ -11,13 +11,24 @@ import {
   listPendingAdvisors,
   generateAdvisorInviteLink,
   createAdvisorWithPassword,
+  sendAdvisorPasswordReset,
+  setAdvisorPassword,
   PRIMARY_ADVISOR_USER_ID,
 } from "@/lib/advisors.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail } from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({
   head: () => ({ meta: [{ title: "Advisors — Traction Advisory" }] }),
