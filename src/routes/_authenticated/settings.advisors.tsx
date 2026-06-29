@@ -378,6 +378,61 @@ function AdvisorSettings() {
         </section>
 
       </main>
+
+      <Dialog open={!!resetTarget} onOpenChange={(o) => { if (!o) { setResetTarget(null); setNewPw(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset password</DialogTitle>
+            <DialogDescription>
+              For <span className="font-medium text-foreground">{resetTarget?.label}</span>. Send a reset email, or set a new password directly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => resetTarget && sendResetMut.mutate(resetTarget.userId)}
+              disabled={sendResetMut.isPending}
+            >
+              {sendResetMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+              Send password reset email
+            </Button>
+            <div className="relative">
+              <Input
+                type={showNewPw ? "text" : "password"}
+                placeholder="New password (min 8 chars, letter + number)"
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                className="pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPw((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showNewPw ? "Hide password" : "Show password"}
+              >
+                {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Setting a password signs the advisor in with the new credentials immediately — share securely.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setResetTarget(null); setNewPw(""); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => resetTarget && setPwMut.mutate({ userId: resetTarget.userId, newPassword: newPw })}
+              disabled={newPw.length < 8 || setPwMut.isPending}
+            >
+              {setPwMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+              Set password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
