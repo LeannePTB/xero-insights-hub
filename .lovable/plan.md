@@ -1,39 +1,61 @@
-## Problem
 
-`/clients/:id` fails with `permission denied for table xero_connections`.
+## Business Health widget (compact overview)
 
-Root cause: NO public-schema tables have any GRANTs for `authenticated`, `service_role`, or `anon`. A previous hardening migration revoked every grant on every public table. RLS policies are correct, but PostgREST/Data API checks the role grant **before** RLS, so every browser query through `supabase.from(...)` now 403s. Server functions using `requireSupabaseAuth` (which acts as the `authenticated` role with a bearer token) also fail.
+Replace the current placeholder `HealthWidget.tsx` with a real, compact overview that shows a single composite score, a one-line verdict, a small KPI strip, and one priority alert. No customers section, no per-pillar cards, no "what to do now" CTAs — those can come later.
 
-The reason the app worked anywhere is that `supabaseAdmin` queries bypass grants/RLS via the service role's superuser-equivalent bypass — but PostgREST sessions for `authenticated` and `service_role` both need explicit grants.
+### Layout (single card, fits in the existing top-of-dashboard slot)
 
-## Fix
-
-One migration that restores grants on every public table to the roles each table's policies actually rely on. Two grant tiers:
-
-**Standard (most tables — policies scope to `auth.uid()` / firm membership):**
-```sql
-GRANT SELECT, INSERT, UPDATE, DELETE ON public.<table> TO authenticated;
-GRANT ALL ON public.<table> TO service_role;
+```text
+┌─────────────────────────────────────────────────────────────────────┐
+│ {Client} · {CCY} · FY{YY}–{YY} to date                              │
+│                                                                     │
+│  (donut 64)   Needs some work                                       │
+│   64 /100     Strong profitability but cash is very tight…          │
+│               🔄 Live from Xero · 29 Jun 2026                       │
+│                                                                     │
+│  Revenue   Gross margin   Net profit   Cash in bank   Owed to you   │
+│  $325,426  46.3%          $54,862      $2,339         $94,123       │
+│                                                                     │
+│  ⚠ Priority alert — bad debts                                       │
+│  $47,462 in bad debts is 14.6% of revenue…                          │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-Applies to: `clients`, `xero_connections`, `client_xero_orgs`, `client_access`, `client_cost_classifications`, `client_notes`, `client_true_breakeven_inputs`, `dashboard_card_order`, `dashboard_configs`, `firms`, `firm_members`, `profiles`, `user_roles`, `tier_settings`, `tier_widget_config`, `subscriptions`, `billing_events`, `unreconciled_lines`, `unreconciled_uploads`, `xero_assessment_contact`, `security_contact_details`, `audit_log`, `login_events`, `access_invites`, `signup_requests`, `report_cache`, `email_send_log`, `email_send_state`, `suppressed_emails`, `xero_oauth_states`.
+Smaller than the screenshots: one row of KPI tiles (wraps on mobile), no per-pillar grid, no buttons. Bad debts only surfaces in the alert strip, not as a duplicate tile.
 
-**Service-role-only (no authenticated access; written by server/admin only):**
-```sql
-GRANT ALL ON public.<table> TO service_role;
-```
+### Data (FY-to-date, accrual)
 
-Applies to: `rate_limit_buckets`, `email_unsubscribe_tokens` (token-hash lookups happen server-side).
+Pull once per tenant via a new server fn `getBusinessHealth({ tenantId })`:
+- `Reports/ProfitAndLoss` FY-to-date → Revenue, COGS → Gross profit & margin, Net profit & margin.
+- `Reports/BalanceSheet` as of today → Cash in bank (sum of bank-class accounts), Bad debts (Doubtful debts / Allowance for doubtful debts account if present, else 0).
+- `Reports/AgedReceivablesByContact` summary total → Owed to you.
+- Reuse `useTenantCurrency` for formatting.
 
-No `anon` grants — there are no public-anon flows in the app.
+### Score (0–100, three sub-scores, no "customers")
 
-## Verification
+Composite = weighted average of:
+- **Money** (40%): net margin band + gross margin band.
+- **Efficiency** (30%): operating profit %, bad debts as % of revenue (penalty), AP-on-time proxy from aged payables 0-day bucket.
+- **Stability** (30%): months of runway (cash ÷ avg monthly opex), AR concentration penalty if `aged_receivables > 0.5 × revenue_monthly_avg`.
 
-After the migration:
-1. `\dp public.xero_connections` shows `authenticated=arwd` and `service_role=a*r*w*d*`.
-2. Reload `/clients/0bdbfe31-...` — page loads, Xero connection list renders.
-3. Spot-check `/admin`, `/settings/advisors`, dashboard widgets.
+Band → label:
+- 80–100 "Strong"
+- 60–79 "Needs some work"
+- 0–59 "Urgent attention"
 
-## Why this happened
+Color the donut + label via existing semantic tokens (`text-primary`, `text-destructive`, amber via `text-amber-600` already used in the reconnect banner).
 
-The earlier "restrict super-admin / harden RLS" pass issued blanket `REVOKE ALL ... FROM authenticated, service_role` without re-granting the per-table privileges PostgREST needs. RLS = row filter; GRANT = table access. Both are required.
+### Priority alert
+
+Pick the single worst signal by normalized severity (bad debts %, runway months, net margin). Render only one. If everything is green, render a positive "All key signals healthy" line instead of the alert box.
+
+### Files
+
+- New: `src/lib/health.functions.ts` — `getBusinessHealth` server fn (auth middleware, accrual, FY-to-date).
+- New: `src/components/dashboard/HealthScoreDonut.tsx` — small SVG donut (no chart lib).
+- Rewrite: `src/components/dashboard/HealthWidget.tsx` — props `{ tenantId, tenantName, clientName }`, uses `useQuery` + `useTenantCurrency`, renders the layout above with `Skeleton` while loading and a soft error fallback if the call fails.
+- Update: `src/routes/_authenticated/clients.$clientId.index.tsx` — pass `tenantId` / `tenantName` / `client.name` to `<HealthWidget>` (currently rendered with no props). Keeps the same position above the Notes / Uncoded grid.
+
+### Out of scope (can add later as separate plans)
+
+Per-pillar drilldown cards, Growth/Customers pillars, "Why is cash so low?" explainers, historical trend, configurable weights.

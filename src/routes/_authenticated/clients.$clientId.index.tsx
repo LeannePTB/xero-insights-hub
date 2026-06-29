@@ -214,7 +214,7 @@ function ClientDashboard() {
         <div className="mt-3 space-y-6">
           {orgs.length === 0 ? (
             <>
-              {showHealth && <HealthWidget />}
+              {showHealth && <HealthWidget clientName={client.name} />}
               <div className="grid gap-6 md:grid-cols-2">
                 <NotesCard clientId={clientId} canEdit={isAdvisor} />
                 <UnreconciledCard clientId={clientId} />
@@ -223,11 +223,18 @@ function ClientDashboard() {
             </>
           ) : (
             <>
-              {showHealth && <HealthWidget />}
+              {showHealth && (
+                <HealthWidget
+                  clientName={client.name}
+                  tenantId={orgs[0]?.xero_connections?.tenant_id}
+                  tenantName={orgs[0]?.xero_connections?.tenant_name}
+                />
+              )}
               <div className="grid gap-6 md:grid-cols-2">
                 <NotesCard clientId={clientId} canEdit={isAdvisor} />
                 <UnreconciledCard clientId={clientId} />
               </div>
+
 
               {standardCards.length > 0 && (
                 <section>
