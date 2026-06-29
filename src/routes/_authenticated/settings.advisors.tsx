@@ -129,6 +129,29 @@ function AdvisorSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const [resetTarget, setResetTarget] = useState<{ userId: string; label: string } | null>(null);
+  const [newPw, setNewPw] = useState("");
+  const [showNewPw, setShowNewPw] = useState(false);
+
+  const sendResetMut = useMutation({
+    mutationFn: (userId: string) => sendResetFn({ data: { userId } }),
+    onSuccess: (r) => toast.success(`Password reset email sent to ${r.email}`),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const setPwMut = useMutation({
+    mutationFn: ({ userId, newPassword }: { userId: string; newPassword: string }) =>
+      setPwFn({ data: { userId, newPassword } }),
+    onSuccess: (r) => {
+      toast.success(`Password updated for ${r.email}`);
+      setResetTarget(null);
+      setNewPw("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
+
   if (ctxQ.isLoading) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>;
   }
