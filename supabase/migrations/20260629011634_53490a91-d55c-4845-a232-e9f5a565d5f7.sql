@@ -1,0 +1,67 @@
+
+-- Standard tables: authenticated CRUD + service_role full
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.clients TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.xero_connections TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.client_xero_orgs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.client_access TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.client_cost_classifications TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.client_notes TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.client_true_breakeven_inputs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.dashboard_card_order TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.dashboard_configs TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.firms TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.firm_members TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.profiles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_roles TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.tier_settings TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.tier_widget_config TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.subscriptions TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.billing_events TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.unreconciled_lines TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.unreconciled_uploads TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.xero_assessment_contact TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.security_contact_details TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.audit_log TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.login_events TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.access_invites TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.signup_requests TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.report_cache TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.email_send_log TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.email_send_state TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.suppressed_emails TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.xero_oauth_states TO authenticated;
+
+GRANT ALL ON public.clients TO service_role;
+GRANT ALL ON public.xero_connections TO service_role;
+GRANT ALL ON public.client_xero_orgs TO service_role;
+GRANT ALL ON public.client_access TO service_role;
+GRANT ALL ON public.client_cost_classifications TO service_role;
+GRANT ALL ON public.client_notes TO service_role;
+GRANT ALL ON public.client_true_breakeven_inputs TO service_role;
+GRANT ALL ON public.dashboard_card_order TO service_role;
+GRANT ALL ON public.dashboard_configs TO service_role;
+GRANT ALL ON public.firms TO service_role;
+GRANT ALL ON public.firm_members TO service_role;
+GRANT ALL ON public.profiles TO service_role;
+GRANT ALL ON public.user_roles TO service_role;
+GRANT ALL ON public.tier_settings TO service_role;
+GRANT ALL ON public.tier_widget_config TO service_role;
+GRANT ALL ON public.subscriptions TO service_role;
+GRANT ALL ON public.billing_events TO service_role;
+GRANT ALL ON public.unreconciled_lines TO service_role;
+GRANT ALL ON public.unreconciled_uploads TO service_role;
+GRANT ALL ON public.xero_assessment_contact TO service_role;
+GRANT ALL ON public.security_contact_details TO service_role;
+GRANT ALL ON public.audit_log TO service_role;
+GRANT ALL ON public.login_events TO service_role;
+GRANT ALL ON public.access_invites TO service_role;
+GRANT ALL ON public.signup_requests TO service_role;
+GRANT ALL ON public.report_cache TO service_role;
+GRANT ALL ON public.email_send_log TO service_role;
+GRANT ALL ON public.email_send_state TO service_role;
+GRANT ALL ON public.suppressed_emails TO service_role;
+GRANT ALL ON public.xero_oauth_states TO service_role;
+
+-- Server-only tables
+GRANT ALL ON public.rate_limit_buckets TO service_role;
+GRANT ALL ON public.email_unsubscribe_tokens TO service_role;
