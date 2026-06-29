@@ -1,0 +1,2 @@
+alter table public.xero_connections add column if not exists base_currency text;
+comment on column public.xero_connections.base_currency is 'Xero Organisation base currency (e.g., AUD). NULL means unknown — UI falls back to AUD.';

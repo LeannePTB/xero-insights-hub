@@ -1139,6 +1139,7 @@ export type Database = {
         Row: {
           access_token: string | null
           access_token_enc: string | null
+          base_currency: string | null
           created_at: string
           disconnected_at: string | null
           enc_version: number
@@ -1158,6 +1159,7 @@ export type Database = {
         Insert: {
           access_token?: string | null
           access_token_enc?: string | null
+          base_currency?: string | null
           created_at?: string
           disconnected_at?: string | null
           enc_version?: number
@@ -1177,6 +1179,7 @@ export type Database = {
         Update: {
           access_token?: string | null
           access_token_enc?: string | null
+          base_currency?: string | null
           created_at?: string
           disconnected_at?: string | null
           enc_version?: number
@@ -1216,27 +1219,30 @@ export type Database = {
           code_verifier: string | null
           created_at: string
           expires_at: string
+          flow: string
           return_origin: string | null
           state: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           client_id?: string | null
           code_verifier?: string | null
           created_at?: string
           expires_at?: string
+          flow?: string
           return_origin?: string | null
           state: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           client_id?: string | null
           code_verifier?: string | null
           created_at?: string
           expires_at?: string
+          flow?: string
           return_origin?: string | null
           state?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }

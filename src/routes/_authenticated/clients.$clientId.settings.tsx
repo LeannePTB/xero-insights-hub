@@ -304,6 +304,13 @@ function ClientSettings() {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5">
+                      {tenantId ? (
+                        <Button asChild variant="ghost" size="sm" title="View integration log">
+                          <Link to="/clients/$clientId/xero-log/$tenantId" params={{ clientId, tenantId }}>
+                            Log
+                          </Link>
+                        </Button>
+                      ) : null}
                       <ConnectWithXeroButton
                         variant={isDisconnected ? "reconnect" : "reconnect"}
                         size="sm"

@@ -12,14 +12,7 @@ import {
   toISO,
   usePersistedDate,
 } from "@/components/dashboard/DateRangeControls";
-
-function fmt(n: number) {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: "AUD",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
+import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
 
 function startOfFiscalYear() {
   const now = new Date();
@@ -39,6 +32,8 @@ export function CashflowWidget({
   loadDelayMs?: number;
 }) {
   const fetchCashflow = useServerFn(getCashflow);
+  const currency = useTenantCurrency(tenantId);
+  const fmt = (n: number) => formatMoney(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `cashflow-range:${tenantId}`;
   const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfFiscalYear);
@@ -152,13 +147,14 @@ export function CashflowWidget({
 
           {/* Period actuals */}
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <Tile label="Money In" value={data.totalIn} tone="text-emerald-600" />
-            <Tile label="Money Out" value={data.totalOut} tone="text-rose-600" />
+            <Tile label="Money In" value={data.totalIn} tone="text-emerald-600" currency={currency} />
+            <Tile label="Money Out" value={data.totalOut} tone="text-rose-600" currency={currency} />
             <Tile
               label="Net movement"
               value={data.netMovement}
               tone={netTone}
               icon={<NetIcon className="h-3 w-3 shrink-0" />}
+              currency={currency}
             />
           </div>
 
@@ -278,11 +274,13 @@ function Tile({
   value,
   tone,
   icon,
+  currency = "AUD",
 }: {
   label: string;
   value: number;
   tone: string;
   icon?: React.ReactNode;
+  currency?: string;
 }) {
   return (
     <div className="rounded-lg border border-border/60 bg-background p-3">
@@ -291,7 +289,7 @@ function Tile({
       </p>
       <p className={`mt-1 flex items-center gap-1 text-lg font-semibold tracking-tight tabular-nums ${tone}`}>
         {icon}
-        {fmt(value)}
+        {formatMoney(value, currency)}
       </p>
     </div>
   );

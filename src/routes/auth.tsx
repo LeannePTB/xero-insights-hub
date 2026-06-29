@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
+import { startXeroSignIn } from "@/lib/xero/connections.functions";
 import heroImage from "@/assets/hero-construction.jpg";
 
 export const Route = createFileRoute("/auth")({
@@ -38,6 +39,23 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [xeroLoading, setXeroLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("xero_error");
+    if (err) {
+      toast.error(err);
+      params.delete("xero_error");
+      const q = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
+    }
+    if (params.get("xero") === "signedin") {
+      toast.success("Signed in with Xero");
+    }
+  }, []);
+
 
   useEffect(() => {
     (async () => {
@@ -149,9 +167,19 @@ function AuthPage() {
             <ConnectWithXeroButton
               variant="signin"
               className="w-full"
-              onClick={() =>
-                toast.info("Sign in with Xero is coming soon. Use your email and password for now.")
-              }
+              disabled={xeroLoading}
+              onClick={async () => {
+                setXeroLoading(true);
+                try {
+                  const { authorizeUrl } = await startXeroSignIn({
+                    data: { origin: window.location.origin },
+                  });
+                  window.location.href = authorizeUrl;
+                } catch (e: any) {
+                  toast.error(e?.message ?? "Could not start Sign in with Xero.");
+                  setXeroLoading(false);
+                }
+              }}
             />
             <p className="pt-1 text-center text-xs text-muted-foreground">
               Access is invite-only. Contact Positive Traction.

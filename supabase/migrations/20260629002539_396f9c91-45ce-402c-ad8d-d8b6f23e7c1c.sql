@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.tg_xero_oauth_states_validate() FROM PUBLIC, anon, authenticated;

@@ -12,14 +12,7 @@ import {
   toISO,
   usePersistedDate,
 } from "@/components/dashboard/DateRangeControls";
-
-function fmt(n: number) {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency: "AUD",
-    maximumFractionDigits: 0,
-  }).format(n);
-}
+import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
 
 function startOfFiscalYear() {
   const now = new Date();
@@ -52,6 +45,8 @@ export function PnlWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
+  const currency = useTenantCurrency(tenantId);
+  const fmt = (n: number) => formatMoney(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `pnl-range:${tenantId}`;
   const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfFiscalYear);
@@ -137,11 +132,11 @@ export function PnlWidget({
       ) : current ? (
         <>
           <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Kpi label="Income" value={current.totalIncome} previous={priorData?.totalIncome ?? 0} higherIsBetter />
-            <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} />
-            <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter />
-            <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} />
-            <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter />
+            <Kpi label="Income" value={current.totalIncome} previous={priorData?.totalIncome ?? 0} higherIsBetter currency={currency} />
+            <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} currency={currency} />
+            <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} />
+            <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} />
+            <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} />
           </div>
 
           {expenseData.length > 0 && (
@@ -176,12 +171,15 @@ function Kpi({
   value,
   previous,
   higherIsBetter,
+  currency = "AUD",
 }: {
   label: string;
   value: number;
   previous: number;
   higherIsBetter: boolean;
+  currency?: string;
 }) {
+  const fmt = (n: number) => formatMoney(n, currency);
   const delta = value - previous;
   const pct = previous !== 0 ? (delta / Math.abs(previous)) * 100 : null;
   const up = delta > 0;
