@@ -215,14 +215,19 @@ function ClientDashboard() {
           {orgs.length === 0 ? (
             <>
               {showHealth && <HealthWidget />}
-              <NotesCard clientId={clientId} canEdit={isAdvisor} />
-              <UnreconciledCard clientId={clientId} />
+              <div className="grid gap-6 md:grid-cols-2">
+                <NotesCard clientId={clientId} canEdit={isAdvisor} />
+                <UnreconciledCard clientId={clientId} />
+              </div>
               <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />
             </>
           ) : (
             <>
               {showHealth && <HealthWidget />}
-              <NotesCard clientId={clientId} canEdit={isAdvisor} />
+              <div className="grid gap-6 md:grid-cols-2">
+                <NotesCard clientId={clientId} canEdit={isAdvisor} />
+                <UnreconciledCard clientId={clientId} />
+              </div>
 
               {standardCards.length > 0 && (
                 <section>
