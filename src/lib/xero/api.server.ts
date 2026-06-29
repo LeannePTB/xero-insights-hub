@@ -261,10 +261,32 @@ export async function xeroGet<T = unknown>(
     if (res.status === 401 || res.status === 403) {
       const hint = MISSING_SCOPE_HINTS[path];
       if (hint && /insufficient_scope|scope|forbidden|unauthorized/i.test(body)) {
+        await logXeroApiError(conn, path, res.status, hint);
         throw new Error(hint);
       }
     }
+    await logXeroApiError(conn, path, res.status, body.slice(0, 500));
     throw new Error(`Xero ${path}: ${res.status} ${body}`);
   }
   return (await res.json()) as T;
+}
+
+async function logXeroApiError(
+  conn: { user_id: string; tenant_id: string; tenant_name?: string | null },
+  path: string,
+  status: number,
+  message: string,
+) {
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin.from("audit_log").insert({
+      actor_user_id: conn.user_id,
+      action: "xero_api_error",
+      target_type: "xero_connection",
+      target_id: conn.tenant_id,
+      meta: { path, status, message, tenant_name: conn.tenant_name ?? null },
+    });
+  } catch (e) {
+    console.warn("[xero] failed to write api error to audit_log", e);
+  }
 }
