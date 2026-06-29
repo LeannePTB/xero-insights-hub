@@ -11,13 +11,24 @@ import {
   listPendingAdvisors,
   generateAdvisorInviteLink,
   createAdvisorWithPassword,
+  sendAdvisorPasswordReset,
+  setAdvisorPassword,
   PRIMARY_ADVISOR_USER_ID,
 } from "@/lib/advisors.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail } from "lucide-react";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({
   head: () => ({ meta: [{ title: "Advisors — Traction Advisory" }] }),
@@ -36,6 +47,9 @@ function AdvisorSettings() {
   const resendAllFn = useServerFn(resendAllPendingAdvisorInvites);
   const genLinkFn = useServerFn(generateAdvisorInviteLink);
   const createPwFn = useServerFn(createAdvisorWithPassword);
+  const sendResetFn = useServerFn(sendAdvisorPasswordReset);
+  const setPwFn = useServerFn(setAdvisorPassword);
+
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const listQ = useQuery({
@@ -114,6 +128,29 @@ function AdvisorSettings() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const [resetTarget, setResetTarget] = useState<{ userId: string; label: string } | null>(null);
+  const [newPw, setNewPw] = useState("");
+  const [showNewPw, setShowNewPw] = useState(false);
+
+  const sendResetMut = useMutation({
+    mutationFn: (userId: string) => sendResetFn({ data: { userId } }),
+    onSuccess: (r) => toast.success(`Password reset email sent to ${r.email}`),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const setPwMut = useMutation({
+    mutationFn: ({ userId, newPassword }: { userId: string; newPassword: string }) =>
+      setPwFn({ data: { userId, newPassword } }),
+    onSuccess: (r) => {
+      toast.success(`Password updated for ${r.email}`);
+      setResetTarget(null);
+      setNewPw("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
 
   if (ctxQ.isLoading) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>;
@@ -307,6 +344,20 @@ function AdvisorSettings() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
+                          setNewPw("");
+                          setResetTarget({
+                            userId: a.user_id,
+                            label: a.email ?? a.display_name ?? a.user_id,
+                          });
+                        }}
+                        title="Reset password"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
                           const msg = a.is_self
                             ? `Remove your own advisor access? You'll be signed out immediately.`
                             : `Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`;
@@ -317,6 +368,7 @@ function AdvisorSettings() {
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
+
                     </div>
                   </li>
                 );
@@ -326,6 +378,61 @@ function AdvisorSettings() {
         </section>
 
       </main>
+
+      <Dialog open={!!resetTarget} onOpenChange={(o) => { if (!o) { setResetTarget(null); setNewPw(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset password</DialogTitle>
+            <DialogDescription>
+              For <span className="font-medium text-foreground">{resetTarget?.label}</span>. Send a reset email, or set a new password directly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => resetTarget && sendResetMut.mutate(resetTarget.userId)}
+              disabled={sendResetMut.isPending}
+            >
+              {sendResetMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+              Send password reset email
+            </Button>
+            <div className="relative">
+              <Input
+                type={showNewPw ? "text" : "password"}
+                placeholder="New password (min 8 chars, letter + number)"
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                className="pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPw((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showNewPw ? "Hide password" : "Show password"}
+              >
+                {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Setting a password signs the advisor in with the new credentials immediately — share securely.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setResetTarget(null); setNewPw(""); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => resetTarget && setPwMut.mutate({ userId: resetTarget.userId, newPassword: newPw })}
+              disabled={newPw.length < 8 || setPwMut.isPending}
+            >
+              {setPwMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+              Set password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
