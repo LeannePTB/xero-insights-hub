@@ -132,9 +132,6 @@ function ClientDashboard() {
       if (widgets.includes("cashflow"))
         advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
     }
-    if (widgets.includes("unreconciled")) {
-      standard.push({ id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> });
-    }
     return { standardCards: standard, advancedCards: advanced };
   }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
 
@@ -218,14 +215,19 @@ function ClientDashboard() {
           {orgs.length === 0 ? (
             <>
               {showHealth && <HealthWidget />}
-              <NotesCard clientId={clientId} canEdit={isAdvisor} />
-              <UnreconciledCard clientId={clientId} />
+              <div className="grid gap-6 md:grid-cols-2">
+                <NotesCard clientId={clientId} canEdit={isAdvisor} />
+                <UnreconciledCard clientId={clientId} />
+              </div>
               <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />
             </>
           ) : (
             <>
               {showHealth && <HealthWidget />}
-              <NotesCard clientId={clientId} canEdit={isAdvisor} />
+              <div className="grid gap-6 md:grid-cols-2">
+                <NotesCard clientId={clientId} canEdit={isAdvisor} />
+                <UnreconciledCard clientId={clientId} />
+              </div>
 
               {standardCards.length > 0 && (
                 <section>
