@@ -64,11 +64,55 @@ export const listXeroConnections = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("xero_connections")
-      .select("id, tenant_id, tenant_name, tenant_type, created_at, status, disconnected_at")
+      .select("id, tenant_id, tenant_name, tenant_type, created_at, status, disconnected_at, base_currency")
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
     return { connections: data ?? [] };
   });
+
+/**
+ * Lookup the base currency for a single tenant (e.g., AUD, NZD, USD).
+ * Widgets call this so amounts are formatted in the org's actual currency
+ * rather than hard-coded AUD — required for Xero certification data integrity.
+ */
+export const getTenantCurrency = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("xero_connections")
+      .select("base_currency")
+      .eq("tenant_id", data.tenantId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    let currency: string = (row?.base_currency as string | null) ?? "";
+
+    // Lazy backfill — if we have a connection but never captured the
+    // currency (older rows), pull it from /Organisation now and cache.
+    if (!currency) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
+        const conn = await getConnectionByTenant(data.tenantId);
+        const org = await xeroGet<{ Organisations?: Array<{ BaseCurrency?: string }> }>(
+          conn,
+          "Organisation",
+        );
+        const cc = org.Organisations?.[0]?.BaseCurrency;
+        if (cc && typeof cc === "string") {
+          currency = cc;
+          await supabaseAdmin
+            .from("xero_connections")
+            .update({ base_currency: cc })
+            .eq("tenant_id", data.tenantId);
+        }
+      } catch (e) {
+        console.warn("[xero] currency backfill failed", e instanceof Error ? e.message : e);
+      }
+    }
+    return { currency: currency || "AUD" };
+  });
+
 
 export const checkXeroConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
