@@ -124,7 +124,7 @@ function ClientDashboard() {
       if (widgets.includes("superannuation"))
         advanced.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} /> });
       if (widgets.includes("period_performance"))
-        advanced.push({ id: `${o.id}:period_performance`, node: <PeriodPerformanceWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("period_performance")} /> });
+        standard.push({ id: `${o.id}:period_performance`, node: <PeriodPerformanceWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("period_performance")} /> });
       if (widgets.includes("accounting_breakeven"))
         advanced.push({ id: `${o.id}:accounting_breakeven`, node: <AccountingBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} /> });
       if (widgets.includes("true_breakeven"))
