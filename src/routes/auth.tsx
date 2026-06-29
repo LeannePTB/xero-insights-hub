@@ -167,9 +167,19 @@ function AuthPage() {
             <ConnectWithXeroButton
               variant="signin"
               className="w-full"
-              onClick={() =>
-                toast.info("Sign in with Xero is coming soon. Use your email and password for now.")
-              }
+              disabled={xeroLoading}
+              onClick={async () => {
+                setXeroLoading(true);
+                try {
+                  const { authorizeUrl } = await startXeroSignIn({
+                    data: { origin: window.location.origin },
+                  });
+                  window.location.href = authorizeUrl;
+                } catch (e: any) {
+                  toast.error(e?.message ?? "Could not start Sign in with Xero.");
+                  setXeroLoading(false);
+                }
+              }}
             />
             <p className="pt-1 text-center text-xs text-muted-foreground">
               Access is invite-only. Contact Positive Traction.
