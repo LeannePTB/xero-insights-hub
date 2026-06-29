@@ -171,12 +171,15 @@ function Kpi({
   value,
   previous,
   higherIsBetter,
+  currency = "AUD",
 }: {
   label: string;
   value: number;
   previous: number;
   higherIsBetter: boolean;
+  currency?: string;
 }) {
+  const fmt = (n: number) => formatMoney(n, currency);
   const delta = value - previous;
   const pct = previous !== 0 ? (delta / Math.abs(previous)) * 100 : null;
   const up = delta > 0;
