@@ -27,7 +27,7 @@ export function UnreconciledCard({ clientId }: { clientId: string }) {
             <FileSpreadsheet className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="font-display text-lg font-semibold">Uncoded statement lines</h2>
+            <h2 className="font-display text-lg font-semibold">Uncoded Bankfeed Questions</h2>
             {q.isLoading ? (
               <p className="mt-1 text-sm text-muted-foreground"><Loader2 className="mr-1 inline h-3.5 w-3.5 animate-spin" /> Loading…</p>
             ) : upload ? (
