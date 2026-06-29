@@ -45,6 +45,8 @@ export function PnlWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
+  const currency = useTenantCurrency(tenantId);
+  const fmt = (n: number) => formatMoney(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `pnl-range:${tenantId}`;
   const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfFiscalYear);
