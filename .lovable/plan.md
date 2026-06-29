@@ -1,47 +1,39 @@
-## Where we stand vs Xero's certification checkpoints
+## Problem
 
-I re-read Xero's checkpoint list and walked the codebase. Here is the honest status of each one.
+`/clients/:id` fails with `permission denied for table xero_connections`.
 
-### ✅ Done
+Root cause: NO public-schema tables have any GRANTs for `authenticated`, `service_role`, or `anon`. A previous hardening migration revoked every grant on every public table. RLS policies are correct, but PostgREST/Data API checks the role grant **before** RLS, so every browser query through `supabase.from(...)` now 403s. Server functions using `requireSupabaseAuth` (which acts as the `authenticated` role with a bearer token) also fail.
 
-- **Checkpoint 3 — Connection management.** Setup page lists connected tenant by name, shows status, has branded Connect / Reconnect / Disconnect buttons, calls `DELETE /connections` + token revoke on disconnect, and auto-flags `status = 'disconnected'` on 401 so a Xero-side disconnect surfaces the reconnect banner.
-- **Checkpoint 4 — Branding.** `ConnectWithXeroButton` uses Xero blue `#13B5EA`, white X mark, undistorted, min-height, used everywhere the user touches a Xero connection.
-- **Checkpoint 6 (partial) — Error handling.** `XeroLoadState` + reconnect banner surface API errors with the Xero-returned reason, plus scope hints.
-- **Checkpoints 8 & 9 — Account mapping / Taxes.** Not applicable; the app is read-only and writes nothing back to Xero.
+The reason the app worked anywhere is that `supabaseAdmin` queries bypass grants/RLS via the service role's superuser-equivalent bypass — but PostgREST sessions for `authenticated` and `service_role` both need explicit grants.
 
-### ⚠️ Partial / needs follow-up
+## Fix
 
-- **Checkpoint 1 — Sign Up with Xero.** Branded button is on `/auth`, but click only fires a "coming soon" toast. The actual identity OAuth flow, `openid profile email` scopes, identity callback, and invite-email matching are not built. **This is the biggest remaining gap and Xero requires it for App Store listing.**
-- **Checkpoint 5 — Scopes.** Read-only ✅, `offline_access` ✅, granular scopes ✅. Missing `openid profile email` — required only once we actually wire Sign Up / Sign In with Xero.
-- **Checkpoint 6 — Error log surface.** Per-call errors are shown, but there's no per-tenant "integration log" page Xero recommends. Low priority for a read-only dashboard app, but worth noting.
-- **Checkpoint 7 — Data integrity.** Reads only, so most sub-points don't apply. Multi-currency is currently passed through as-is; if any client runs a multi-currency Xero file we should confirm widget totals show the org's base currency consistently. Not blocking.
+One migration that restores grants on every public table to the roles each table's policies actually rely on. Two grant tiers:
 
-### N/A
+**Standard (most tables — policies scope to `auth.uid()` / firm membership):**
+```sql
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.<table> TO authenticated;
+GRANT ALL ON public.<table> TO service_role;
+```
 
-- **Checkpoint 2 — App Store tier.** Commercial decision (Plus tier+); nothing to build.
+Applies to: `clients`, `xero_connections`, `client_xero_orgs`, `client_access`, `client_cost_classifications`, `client_notes`, `client_true_breakeven_inputs`, `dashboard_card_order`, `dashboard_configs`, `firms`, `firm_members`, `profiles`, `user_roles`, `tier_settings`, `tier_widget_config`, `subscriptions`, `billing_events`, `unreconciled_lines`, `unreconciled_uploads`, `xero_assessment_contact`, `security_contact_details`, `audit_log`, `login_events`, `access_invites`, `signup_requests`, `report_cache`, `email_send_log`, `email_send_state`, `suppressed_emails`, `xero_oauth_states`.
 
----
+**Service-role-only (no authenticated access; written by server/admin only):**
+```sql
+GRANT ALL ON public.<table> TO service_role;
+```
 
-## What I propose we tackle next
+Applies to: `rate_limit_buckets`, `email_unsubscribe_tokens` (token-hash lookups happen server-side).
 
-Pick one of these — I'd recommend **A**:
+No `anon` grants — there are no public-anon flows in the app.
 
-**A. Finish Checkpoint 1 — Sign Up / Sign In with Xero (recommended)**
-   1. Add `openid profile email` to `src/lib/xero/scopes.ts` behind a flag so the existing data connect flow keeps the same scope string.
-   2. New server route `src/routes/api/public/xero/identity-callback.ts` that exchanges the code, reads the Xero `id_token` (email + name), and matches by **invited email only** (rejects unknown emails with a clear message — keeps your invite-only access model intact).
-   3. New `startXeroSignIn` server fn that mints state + PKCE for the identity flow (separate state row type so we don't confuse it with the data connect flow).
-   4. Wire the existing branded button on `/auth` to call it instead of the toast.
-   5. After successful identity match, mint a Supabase session for that user (admin `generateLink` magic-link, then redirect through it) and resume normal MFA routing.
+## Verification
 
-**B. Multi-currency safety pass (Checkpoint 7)**
-   - Audit `PnlWidget`, `CashflowWidget`, `TaxLiabilityWidget` to confirm we always render in the org's base currency and never sum mixed-currency values silently.
+After the migration:
+1. `\dp public.xero_connections` shows `authenticated=arwd` and `service_role=a*r*w*d*`.
+2. Reload `/clients/0bdbfe31-...` — page loads, Xero connection list renders.
+3. Spot-check `/admin`, `/settings/advisors`, dashboard widgets.
 
-**C. Integration log page (Checkpoint 6 polish)**
-   - A simple per-tenant page that lists recent Xero API errors from `audit_log` so users can self-diagnose.
+## Why this happened
 
-### Out of scope for this plan
-
-- Actual App Store submission, listing copy, pricing tier selection — those are commercial steps you do in Xero's developer portal.
-- Any change to the data-connect OAuth flow itself; it's working and certified-shape.
-
-Tell me **A**, **B**, **C**, or a combo, and I'll switch to build mode and implement.
+The earlier "restrict super-admin / harden RLS" pass issued blanket `REVOKE ALL ... FROM authenticated, service_role` without re-granting the per-table privileges PostgREST needs. RLS = row filter; GRANT = table access. Both are required.
