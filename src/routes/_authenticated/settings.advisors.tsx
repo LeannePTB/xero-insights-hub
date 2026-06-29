@@ -344,6 +344,20 @@ function AdvisorSettings() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
+                          setNewPw("");
+                          setResetTarget({
+                            userId: a.user_id,
+                            label: a.email ?? a.display_name ?? a.user_id,
+                          });
+                        }}
+                        title="Reset password"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
                           const msg = a.is_self
                             ? `Remove your own advisor access? You'll be signed out immediately.`
                             : `Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`;
@@ -354,6 +368,7 @@ function AdvisorSettings() {
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
+
                     </div>
                   </li>
                 );
