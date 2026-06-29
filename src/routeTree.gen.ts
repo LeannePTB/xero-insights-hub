@@ -39,6 +39,7 @@ import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/x
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
+import { Route as AuthenticatedClientsClientIdXeroLogTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.xero-log.$tenantId'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
 import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
 
@@ -204,6 +205,12 @@ const AuthenticatedAdminFirmsFirmIdRoute =
     path: '/firms/$firmId',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedClientsClientIdXeroLogTenantIdRoute =
+  AuthenticatedClientsClientIdXeroLogTenantIdRouteImport.update({
+    id: '/clients/$clientId/xero-log/$tenantId',
+    path: '/clients/$clientId/xero-log/$tenantId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsClientIdReceivablesTenantIdRoute =
   AuthenticatedClientsClientIdReceivablesTenantIdRouteImport.update({
     id: '/clients/$clientId/receivables/$tenantId',
@@ -249,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -281,6 +289,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId': typeof AuthenticatedClientsClientIdIndexRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -316,6 +325,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
   '/_authenticated/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  '/_authenticated/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -351,6 +361,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
+    | '/clients/$clientId/xero-log/$tenantId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -383,6 +394,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
+    | '/clients/$clientId/xero-log/$tenantId'
   id:
     | '__root__'
     | '/'
@@ -417,6 +429,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/'
     | '/_authenticated/clients/$clientId/payables/$tenantId'
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
+    | '/_authenticated/clients/$clientId/xero-log/$tenantId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -650,6 +663,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFirmsFirmIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/clients/$clientId/xero-log/$tenantId': {
+      id: '/_authenticated/clients/$clientId/xero-log/$tenantId'
+      path: '/clients/$clientId/xero-log/$tenantId'
+      fullPath: '/clients/$clientId/xero-log/$tenantId'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdXeroLogTenantIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients/$clientId/receivables/$tenantId': {
       id: '/_authenticated/clients/$clientId/receivables/$tenantId'
       path: '/clients/$clientId/receivables/$tenantId'
@@ -696,6 +716,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsClientIdIndexRoute: typeof AuthenticatedClientsClientIdIndexRoute
   AuthenticatedClientsClientIdPayablesTenantIdRoute: typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   AuthenticatedClientsClientIdReceivablesTenantIdRoute: typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  AuthenticatedClientsClientIdXeroLogTenantIdRoute: typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -717,6 +738,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedClientsClientIdPayablesTenantIdRoute,
   AuthenticatedClientsClientIdReceivablesTenantIdRoute:
     AuthenticatedClientsClientIdReceivablesTenantIdRoute,
+  AuthenticatedClientsClientIdXeroLogTenantIdRoute:
+    AuthenticatedClientsClientIdXeroLogTenantIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
