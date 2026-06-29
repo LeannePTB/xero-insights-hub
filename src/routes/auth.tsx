@@ -39,6 +39,23 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
+  const [xeroLoading, setXeroLoading] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const err = params.get("xero_error");
+    if (err) {
+      toast.error(err);
+      params.delete("xero_error");
+      const q = params.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${q ? `?${q}` : ""}`);
+    }
+    if (params.get("xero") === "signedin") {
+      toast.success("Signed in with Xero");
+    }
+  }, []);
+
 
   useEffect(() => {
     (async () => {
