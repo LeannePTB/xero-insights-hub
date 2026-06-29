@@ -317,3 +317,271 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
       alert,
     };
   });
+
+// ============================================================
+// Business Health — detail (pillar breakdown)
+// ============================================================
+
+export type PillarStatus = "good" | "watch" | "bad" | "neutral" | "not_in_xero";
+export type PillarMetric = {
+  label: string;
+  pill: string;
+  status: PillarStatus;
+};
+export type Pillar = {
+  key: "money" | "efficiency" | "growth" | "stability";
+  title: string;
+  subtitle: string;
+  score: number | null; // null => "—/100"
+  metrics: PillarMetric[];
+  ctaLabel: string;
+};
+
+export type BusinessHealthDetail = {
+  asOfDate: string;
+  fyLabel: string;
+  currency: string;
+  pillars: Pillar[];
+};
+
+// Collect leaf account rows from a P&L section (Income / Expense).
+function pnlSectionRows(report: any, predicate: (title: string) => boolean): { name: string; amount: number }[] {
+  const out: { name: string; amount: number }[] = [];
+  const sections: ReportRow[] = report?.Rows ?? [];
+  for (const section of sections) {
+    if (section.RowType !== "Section") continue;
+    const title = (section.Title || "").toLowerCase();
+    if (!predicate(title)) continue;
+    for (const r of section.Rows ?? []) {
+      if (r.RowType === "Row" && r.Cells && r.Cells.length >= 2) {
+        const name = r.Cells[0]?.Value ?? "";
+        const amount = parseAmount(r.Cells[1]?.Value);
+        if (name) out.push({ name, amount });
+      }
+    }
+  }
+  return out;
+}
+
+function sumLiabilities(report: any): number {
+  const leaves: { section: string; name: string; amount: number }[] = [];
+  walkBsRows(report?.Rows, "", leaves);
+  let liabilities = 0;
+  for (const l of leaves) {
+    const s = l.section.toLowerCase();
+    if (s.includes("liabilit") || s.includes("loan") || s.includes("borrowing")) {
+      liabilities += l.amount;
+    }
+  }
+  return liabilities;
+}
+
+// Aged Payables/Receivables summary report → total + overdue (>0 days bucket)
+function summariseAgedReport(report: any): { total: number; overdue: number } {
+  // Xero aged-by-contact summary report rows: each contact row has cells:
+  // [Contact, Current, <1mo, 1mo, 2mo, Older, Total]
+  let total = 0;
+  let overdue = 0;
+  const sections: ReportRow[] = report?.Rows ?? [];
+  function walk(rows: ReportRow[] | undefined) {
+    if (!rows) return;
+    for (const r of rows) {
+      if (r.RowType === "Section") walk(r.Rows);
+      else if ((r.RowType === "Row" || r.RowType === "SummaryRow") && r.Cells) {
+        const cells = r.Cells.map((c) => c?.Value ?? "");
+        // Total is the last cell; current is the second cell (after contact)
+        if (cells.length >= 6 && r.RowType === "SummaryRow") {
+          const t = parseAmount(cells[cells.length - 1]);
+          const current = parseAmount(cells[1]);
+          total += t;
+          overdue += Math.max(0, t - current);
+        }
+      }
+    }
+  }
+  walk(sections);
+  return { total, overdue };
+}
+
+function statusFor(value: number, thresholds: { good: number; watch: number }, lowerIsBetter = false): PillarStatus {
+  if (lowerIsBetter) {
+    if (value <= thresholds.good) return "good";
+    if (value <= thresholds.watch) return "watch";
+    return "bad";
+  }
+  if (value >= thresholds.good) return "good";
+  if (value >= thresholds.watch) return "watch";
+  return "bad";
+}
+
+function scoreFromMetrics(weighted: { score: number; weight: number }[]): number | null {
+  const items = weighted.filter((w) => Number.isFinite(w.score));
+  if (items.length === 0) return null;
+  const totalW = items.reduce((s, w) => s + w.weight, 0);
+  if (totalW === 0) return null;
+  const sum = items.reduce((s, w) => s + w.score * w.weight, 0);
+  return Math.round(Math.max(0, Math.min(100, sum / totalW)));
+}
+
+export const getBusinessHealthDetail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string }) => input)
+  .handler(async ({ data, context }): Promise<BusinessHealthDetail> => {
+    const { getConnectionByTenant, xeroGet } = await import("./xero/api.server");
+    const { assertWidgetAccess } = await import("./xero/access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "health");
+    const conn = await getConnectionByTenant(data.tenantId);
+
+    const today = new Date();
+    const fy = fyToDateRange(today);
+    const asOfDate = fy.to;
+
+    // Prior FY same window (same number of days)
+    const priorFromYear = parseInt(fy.from.slice(0, 4), 10) - 1;
+    const priorFrom = `${priorFromYear}-07-01`;
+    const priorTo = new Date(today);
+    priorTo.setUTCFullYear(priorTo.getUTCFullYear() - 1);
+    const priorToStr = priorTo.toISOString().slice(0, 10);
+
+    const safeGet = async <T,>(path: string, params: Record<string, string | undefined> = {}): Promise<T | null> => {
+      try {
+        return await xeroGet<T>(conn, path, params);
+      } catch (e) {
+        console.warn(`[health-detail] ${path} failed:`, (e as Error).message);
+        return null;
+      }
+    };
+
+    const [pnlRes, priorPnlRes, bsRes, agedRecRes, agedPayRes, orgRes] = await Promise.all([
+      safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: fy.from, toDate: fy.to }),
+      safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: priorFrom, toDate: priorToStr }),
+      safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: asOfDate }),
+      safeGet<{ Reports: any[] }>("Reports/AgedReceivablesByContact", { date: asOfDate }),
+      safeGet<{ Reports: any[] }>("Reports/AgedPayablesByContact", { date: asOfDate }),
+      safeGet<{ Organisations: any[] }>("Organisations"),
+    ]);
+
+    const pnl = summarisePnl(pnlRes?.Reports?.[0] ?? {});
+    const priorPnl = summarisePnl(priorPnlRes?.Reports?.[0] ?? {});
+    const bs = summariseBs(bsRes?.Reports?.[0] ?? {});
+    const liabilities = sumLiabilities(bsRes?.Reports?.[0] ?? {});
+    const ap = summariseAgedReport(agedPayRes?.Reports?.[0] ?? {});
+    const ar = summariseAgedReport(agedRecRes?.Reports?.[0] ?? {});
+    const currency = (orgRes?.Organisations?.[0]?.BaseCurrency as string) ?? "AUD";
+
+    // Income breakdown for "single source" detection (top revenue account share)
+    const incomeRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) =>
+      t.includes("income") || t.includes("revenue"),
+    );
+    const incomeTotal = incomeRows.reduce((s, r) => s + r.amount, 0) || pnl.income;
+    const topIncome = incomeRows.reduce((m, r) => (r.amount > m ? r.amount : m), 0);
+    const topIncomeShare = incomeTotal > 0 ? (topIncome / incomeTotal) * 100 : 0;
+
+    // Wages-like accounts from expense section
+    const expenseRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) => t.includes("expense") || t.includes("operating"));
+    const wages = expenseRows
+      .filter((r) => /wage|salary|salaries|superannuation|payroll|staff/i.test(r.name))
+      .reduce((s, r) => s + r.amount, 0);
+
+    const grossMarginPct = pnl.income > 0 ? (pnl.gross / pnl.income) * 100 : 0;
+    const netMarginPct = pnl.income > 0 ? (pnl.net / pnl.income) * 100 : 0;
+    const opMarginPct = netMarginPct; // approximation when no tax/interest separation
+    const wagesPct = pnl.income > 0 ? (wages / pnl.income) * 100 : 0;
+    const badDebtsPct = pnl.income > 0 ? (bs.badDebts / pnl.income) * 100 : 0;
+    const billsOnTimePct = ap.total > 0 ? ((ap.total - ap.overdue) / ap.total) * 100 : 100;
+
+    const fyStart = new Date(`${fy.from}T00:00:00Z`);
+    const monthsElapsed = Math.max(
+      1,
+      (today.getUTCFullYear() - fyStart.getUTCFullYear()) * 12 +
+        (today.getUTCMonth() - fyStart.getUTCMonth()) + 1,
+    );
+    const monthlyOpex = pnl.expenses / monthsElapsed;
+    const monthlyRevenue = pnl.income / monthsElapsed;
+    const monthsRunway = monthlyOpex > 0 ? bs.cash / monthlyOpex : null;
+    const revenueGrowthPct = priorPnl.income > 0 ? ((pnl.income - priorPnl.income) / priorPnl.income) * 100 : null;
+
+    const fmtMoney = (n: number) =>
+      new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
+
+    // ---------- MONEY ----------
+    const moneyMetrics: PillarMetric[] = [
+      revenueGrowthPct === null
+        ? { label: "Revenue growing?", pill: "No prior year", status: "neutral" }
+        : { label: "Revenue growing?", pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}%`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
+      { label: `Gross margin ${grossMarginPct.toFixed(1)}%`, pill: grossMarginPct >= 60 ? "Great" : grossMarginPct >= 45 ? "Good" : grossMarginPct >= 30 ? "OK" : "Poor", status: statusFor(grossMarginPct, { good: 45, watch: 30 }) },
+      { label: `Net margin ${netMarginPct.toFixed(1)}%`, pill: netMarginPct >= 10 ? "Healthy" : netMarginPct >= 0 ? "Thin" : "Loss", status: statusFor(netMarginPct, { good: 10, watch: 0 }) },
+      {
+        label: "Cash in bank",
+        pill: monthsRunway === null ? fmtMoney(bs.cash) : monthsRunway >= 3 ? "Healthy" : monthsRunway >= 1 ? "Low" : "Very low",
+        status: monthsRunway === null ? "neutral" : statusFor(monthsRunway, { good: 3, watch: 1 }),
+      },
+      {
+        label: "Debt carried",
+        pill: liabilities <= 0 ? "None" : liabilities < monthlyRevenue * 1 ? "Minimal" : liabilities < monthlyRevenue * 6 ? "Moderate" : "High",
+        status: liabilities <= 0 ? "good" : statusFor(liabilities, { good: monthlyRevenue, watch: monthlyRevenue * 6 }, true),
+      },
+    ];
+    const moneyScore = scoreFromMetrics([
+      { score: Math.max(0, Math.min(100, netMarginPct * 5)), weight: 0.4 },
+      { score: Math.max(0, Math.min(100, grossMarginPct * 1.5)), weight: 0.3 },
+      { score: monthsRunway === null ? 50 : Math.min(100, monthsRunway * 25), weight: 0.2 },
+      { score: revenueGrowthPct === null ? 50 : Math.max(0, Math.min(100, 50 + revenueGrowthPct * 2)), weight: 0.1 },
+    ]);
+
+    // ---------- EFFICIENCY ----------
+    const efficiencyMetrics: PillarMetric[] = [
+      { label: "Operating profit %", pill: `${opMarginPct.toFixed(1)}%`, status: statusFor(opMarginPct, { good: 10, watch: 0 }) },
+      { label: "Wages as % of rev", pill: wages > 0 ? `${wagesPct.toFixed(1)}%` : "Not tagged", status: wages === 0 ? "neutral" : statusFor(wagesPct, { good: 30, watch: 50 }, true) },
+      { label: "Bad debts as % of rev", pill: `${badDebtsPct.toFixed(1)}%`, status: statusFor(badDebtsPct, { good: 1, watch: 3 }, true) },
+      { label: "Bills paid on time", pill: ap.total === 0 ? "None owing" : ap.overdue === 0 ? "All current" : `${billsOnTimePct.toFixed(0)}% current`, status: statusFor(billsOnTimePct, { good: 90, watch: 70 }) },
+    ];
+    const efficiencyScore = scoreFromMetrics([
+      { score: Math.max(0, Math.min(100, opMarginPct * 5)), weight: 0.4 },
+      { score: wages === 0 ? 50 : Math.max(0, Math.min(100, 100 - (wagesPct - 30) * 2)), weight: 0.2 },
+      { score: Math.max(0, 100 - badDebtsPct * 10), weight: 0.2 },
+      { score: billsOnTimePct, weight: 0.2 },
+    ]);
+
+    // ---------- GROWTH ----------
+    const growthMetrics: PillarMetric[] = [
+      { label: "Revenue single source", pill: topIncomeShare >= 80 ? `${topIncomeShare.toFixed(0)}% one account` : topIncomeShare >= 50 ? "Concentrated" : "Diversified", status: statusFor(topIncomeShare, { good: 50, watch: 80 }, true) },
+      { label: "New customers", pill: "Not in Xero", status: "not_in_xero" },
+      { label: "Pipeline leads", pill: "Not in Xero", status: "not_in_xero" },
+      revenueGrowthPct === null
+        ? { label: "Monthly rev trend", pill: "No comparison", status: "neutral" }
+        : { label: "Monthly rev trend", pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}% YoY`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
+    ];
+    const growthScore = scoreFromMetrics([
+      { score: Math.max(0, Math.min(100, 100 - (topIncomeShare - 30) * 1.2)), weight: 0.5 },
+      ...(revenueGrowthPct === null ? [] : [{ score: Math.max(0, Math.min(100, 50 + revenueGrowthPct * 2)), weight: 0.5 }]),
+    ]);
+
+    // ---------- STABILITY ----------
+    const runwayPill =
+      monthsRunway === null ? "Unknown" : monthsRunway < 1 ? "<1 month" : monthsRunway < 3 ? `${monthsRunway.toFixed(1)} months` : `${monthsRunway.toFixed(1)}+ months`;
+    const stabilityMetrics: PillarMetric[] = [
+      { label: "Months of runway", pill: runwayPill, status: monthsRunway === null ? "neutral" : statusFor(monthsRunway, { good: 3, watch: 1 }) },
+      { label: "Revenue concentration", pill: topIncomeShare >= 80 ? "Single service" : topIncomeShare >= 50 ? "Top-heavy" : "Spread", status: statusFor(topIncomeShare, { good: 50, watch: 80 }, true) },
+      { label: "Debts owed to business", pill: ar.total > 0 ? `${fmtMoney(ar.total)} outstanding` : "None", status: ar.total > monthlyRevenue * 2 ? "bad" : ar.total > monthlyRevenue ? "watch" : "good" },
+      { label: "Amount business owes", pill: ap.total > 0 ? `Only ${fmtMoney(ap.total)}` : "None", status: ap.total > monthlyRevenue * 2 ? "bad" : ap.total > monthlyRevenue ? "watch" : "good" },
+    ];
+    const stabilityScore = scoreFromMetrics([
+      { score: monthsRunway === null ? 50 : Math.min(100, monthsRunway * 25), weight: 0.4 },
+      { score: Math.max(0, Math.min(100, 100 - (topIncomeShare - 30) * 1.2)), weight: 0.2 },
+      { score: monthlyRevenue > 0 ? Math.max(0, 100 - (ar.total / monthlyRevenue) * 20) : 50, weight: 0.2 },
+      { score: monthlyRevenue > 0 ? Math.max(0, 100 - (ap.total / monthlyRevenue) * 20) : 50, weight: 0.2 },
+    ]);
+
+    return {
+      asOfDate,
+      fyLabel: fy.label,
+      currency,
+      pillars: [
+        { key: "money", title: "Money", subtitle: "Are you profitable?", score: moneyScore, metrics: moneyMetrics, ctaLabel: "Why is cash so low?" },
+        { key: "efficiency", title: "Efficiency", subtitle: "Is the team productive?", score: efficiencyScore, metrics: efficiencyMetrics, ctaLabel: "Improve efficiency" },
+        { key: "growth", title: "Growth", subtitle: "Is the pipeline full?", score: growthScore, metrics: growthMetrics, ctaLabel: "Diversification risk" },
+        { key: "stability", title: "Stability", subtitle: "Could you weather a storm?", score: stabilityScore, metrics: stabilityMetrics, ctaLabel: "What to do now" },
+      ],
+    };
+  });
