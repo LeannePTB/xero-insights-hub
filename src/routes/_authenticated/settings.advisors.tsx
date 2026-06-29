@@ -47,6 +47,9 @@ function AdvisorSettings() {
   const resendAllFn = useServerFn(resendAllPendingAdvisorInvites);
   const genLinkFn = useServerFn(generateAdvisorInviteLink);
   const createPwFn = useServerFn(createAdvisorWithPassword);
+  const sendResetFn = useServerFn(sendAdvisorPasswordReset);
+  const setPwFn = useServerFn(setAdvisorPassword);
+
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const listQ = useQuery({
