@@ -147,13 +147,14 @@ export function CashflowWidget({
 
           {/* Period actuals */}
           <div className="mt-4 grid grid-cols-3 gap-3">
-            <Tile label="Money In" value={data.totalIn} tone="text-emerald-600" />
-            <Tile label="Money Out" value={data.totalOut} tone="text-rose-600" />
+            <Tile label="Money In" value={data.totalIn} tone="text-emerald-600" currency={currency} />
+            <Tile label="Money Out" value={data.totalOut} tone="text-rose-600" currency={currency} />
             <Tile
               label="Net movement"
               value={data.netMovement}
               tone={netTone}
               icon={<NetIcon className="h-3 w-3 shrink-0" />}
+              currency={currency}
             />
           </div>
 
