@@ -1,30 +1,47 @@
-Add the Xero-branded sign-in button to `/auth` per Xero App Store Checkpoint 1 branding requirements. **This is the button only — no OAuth backend wiring yet.** Clicking it shows a toast explaining the flow isn't enabled.
+## Where we stand vs Xero's certification checkpoints
 
-## Changes
+I re-read Xero's checkpoint list and walked the codebase. Here is the honest status of each one.
 
-### 1. Extend `ConnectWithXeroButton.tsx`
-Add a `"signin"` variant to the existing `Variant` union:
-- Label: `"Sign in with Xero"`
-- Same blue `#13B5EA` filled style as `connect`
-- Same Xero "X" mark, sizes, focus ring
+### ✅ Done
 
-No other component changes — keeps a single branded button source for all Xero CTAs.
+- **Checkpoint 3 — Connection management.** Setup page lists connected tenant by name, shows status, has branded Connect / Reconnect / Disconnect buttons, calls `DELETE /connections` + token revoke on disconnect, and auto-flags `status = 'disconnected'` on 401 so a Xero-side disconnect surfaces the reconnect banner.
+- **Checkpoint 4 — Branding.** `ConnectWithXeroButton` uses Xero blue `#13B5EA`, white X mark, undistorted, min-height, used everywhere the user touches a Xero connection.
+- **Checkpoint 6 (partial) — Error handling.** `XeroLoadState` + reconnect banner surface API errors with the Xero-returned reason, plus scope hints.
+- **Checkpoints 8 & 9 — Account mapping / Taxes.** Not applicable; the app is read-only and writes nothing back to Xero.
 
-### 2. Update `src/routes/auth.tsx`
-In the right-hand sign-in panel, after the email/password `Sign in` button:
+### ⚠️ Partial / needs follow-up
 
-- Add a divider: thin border with centred `"or"` label (muted text).
-- Render `<ConnectWithXeroButton variant="signin" />` full-width below the divider.
-- On click: `toast.info("Sign in with Xero is coming soon. Use your email and password for now.")` — placeholder until the OAuth flow is built in a later pass.
+- **Checkpoint 1 — Sign Up with Xero.** Branded button is on `/auth`, but click only fires a "coming soon" toast. The actual identity OAuth flow, `openid profile email` scopes, identity callback, and invite-email matching are not built. **This is the biggest remaining gap and Xero requires it for App Store listing.**
+- **Checkpoint 5 — Scopes.** Read-only ✅, `offline_access` ✅, granular scopes ✅. Missing `openid profile email` — required only once we actually wire Sign Up / Sign In with Xero.
+- **Checkpoint 6 — Error log surface.** Per-call errors are shown, but there's no per-tenant "integration log" page Xero recommends. Low priority for a read-only dashboard app, but worth noting.
+- **Checkpoint 7 — Data integrity.** Reads only, so most sub-points don't apply. Multi-currency is currently passed through as-is; if any client runs a multi-currency Xero file we should confirm widget totals show the org's base currency consistently. Not blocking.
 
-No changes to existing email/password logic, MFA routing, or the forgot-password link.
+### N/A
 
-## Out of scope (explicit)
-- OAuth backend route, Xero identity callback, email-match provisioning — separate piece.
-- Auth page on `/signup.$token` — invite flow stays unchanged.
-- No new env vars, migrations, or server functions.
+- **Checkpoint 2 — App Store tier.** Commercial decision (Plus tier+); nothing to build.
 
-## Technical notes
-- `ConnectWithXeroButton` already has `forwardRef` + size/className props, so adding a variant is a one-line `LABELS` entry plus including `"signin"` in the filled-style branch (it can share the `connect` styling).
-- Full-width button: pass `className="w-full"` from `auth.tsx`.
-- Brand compliance: keep the official blue, white text, undistorted "X" mark, min 40px height (matches existing `md` size).
+---
+
+## What I propose we tackle next
+
+Pick one of these — I'd recommend **A**:
+
+**A. Finish Checkpoint 1 — Sign Up / Sign In with Xero (recommended)**
+   1. Add `openid profile email` to `src/lib/xero/scopes.ts` behind a flag so the existing data connect flow keeps the same scope string.
+   2. New server route `src/routes/api/public/xero/identity-callback.ts` that exchanges the code, reads the Xero `id_token` (email + name), and matches by **invited email only** (rejects unknown emails with a clear message — keeps your invite-only access model intact).
+   3. New `startXeroSignIn` server fn that mints state + PKCE for the identity flow (separate state row type so we don't confuse it with the data connect flow).
+   4. Wire the existing branded button on `/auth` to call it instead of the toast.
+   5. After successful identity match, mint a Supabase session for that user (admin `generateLink` magic-link, then redirect through it) and resume normal MFA routing.
+
+**B. Multi-currency safety pass (Checkpoint 7)**
+   - Audit `PnlWidget`, `CashflowWidget`, `TaxLiabilityWidget` to confirm we always render in the org's base currency and never sum mixed-currency values silently.
+
+**C. Integration log page (Checkpoint 6 polish)**
+   - A simple per-tenant page that lists recent Xero API errors from `audit_log` so users can self-diagnose.
+
+### Out of scope for this plan
+
+- Actual App Store submission, listing copy, pricing tier selection — those are commercial steps you do in Xero's developer portal.
+- Any change to the data-connect OAuth flow itself; it's working and certified-shape.
+
+Tell me **A**, **B**, **C**, or a combo, and I'll switch to build mode and implement.
