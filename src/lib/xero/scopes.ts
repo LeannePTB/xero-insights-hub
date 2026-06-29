@@ -10,6 +10,12 @@ const XERO_SCOPES = [
   "accounting.contacts.read",
 ];
 
+// Scopes for "Sign In with Xero" — identity only, no organisation access.
+// Per Xero docs (https://developer.xero.com/documentation/guides/oauth2/sign-up),
+// `openid` is required; `profile` and `email` populate the id_token claims we
+// use to match a Xero user back to an invited app user.
+const XERO_IDENTITY_SCOPES = ["openid", "profile", "email"];
+
 export function xeroScopes() {
   const scopes = XERO_SCOPES;
   for (const scope of scopes) {
@@ -22,4 +28,8 @@ export function xeroScopes() {
 
 export function xeroScopeString() {
   return xeroScopes().join(" ");
+}
+
+export function xeroIdentityScopeString() {
+  return XERO_IDENTITY_SCOPES.join(" ");
 }
