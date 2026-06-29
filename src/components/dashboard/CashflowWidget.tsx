@@ -273,11 +273,13 @@ function Tile({
   value,
   tone,
   icon,
+  currency = "AUD",
 }: {
   label: string;
   value: number;
   tone: string;
   icon?: React.ReactNode;
+  currency?: string;
 }) {
   return (
     <div className="rounded-lg border border-border/60 bg-background p-3">
@@ -286,7 +288,7 @@ function Tile({
       </p>
       <p className={`mt-1 flex items-center gap-1 text-lg font-semibold tracking-tight tabular-nums ${tone}`}>
         {icon}
-        {fmt(value)}
+        {formatMoney(value, currency)}
       </p>
     </div>
   );
