@@ -170,6 +170,39 @@ export const changeMyPassword = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const sendAdvisorPasswordReset = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { userId: string }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: u, error } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
+    if (error || !u?.user?.email) throw new Error("User not found");
+    const email = u.user.email as string;
+    const { error: rErr } = await (supabaseAdmin as any).auth.resetPasswordForEmail(email, {
+      redirectTo: "https://tractionadvisory.app/set-password",
+    });
+    if (rErr) throw new Error(rErr.message);
+    return { ok: true, email };
+  });
+
+export const setAdvisorPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { userId: string; newPassword: string }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    validatePassword(data.newPassword);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: u, error: gErr } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
+    if (gErr || !u?.user?.email) throw new Error("User not found");
+    const { error } = await (supabaseAdmin as any).auth.admin.updateUserById(data.userId, {
+      password: data.newPassword,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true, email: u.user.email as string };
+  });
+
+
 export const revokeAdvisor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { userId: string }) => i)
