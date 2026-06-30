@@ -16,10 +16,11 @@ import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenant
 
 function startOfFiscalYear() {
   const now = new Date();
-  return new Date(now.getFullYear(), 0, 1);
+  return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 function today() {
-  return new Date();
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
 }
 
 export function CashflowWidget({
