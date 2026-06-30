@@ -29,6 +29,7 @@ import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
 import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
+import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
 
@@ -129,6 +130,8 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:true_breakeven`, node: <TrueBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("true_breakeven")} /> });
       if (widgets.includes("cashflow"))
         advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
+      if (widgets.includes("xero_audit"))
+        advanced.push({ id: `${o.id}:xero_audit`, node: <AuditSummaryCard tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
     }
     return { standardCards: standard, advancedCards: advanced };
   }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
