@@ -42,6 +42,7 @@ import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_aut
 import { Route as AuthenticatedClientsClientIdXeroLogTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.xero-log.$tenantId'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
 import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
+import { Route as AuthenticatedClientsClientIdAuditTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.audit.$tenantId'
 
 const UnsubscribeRoute = UnsubscribeRouteImport.update({
   id: '/unsubscribe',
@@ -223,6 +224,12 @@ const AuthenticatedClientsClientIdPayablesTenantIdRoute =
     path: '/clients/$clientId/payables/$tenantId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedClientsClientIdAuditTenantIdRoute =
+  AuthenticatedClientsClientIdAuditTenantIdRouteImport.update({
+    id: '/clients/$clientId/audit/$tenantId',
+    path: '/clients/$clientId/audit/$tenantId',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
+  '/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
@@ -287,6 +295,7 @@ export interface FileRoutesByTo {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdIndexRoute
+  '/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
@@ -323,6 +332,7 @@ export interface FileRoutesById {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/_authenticated/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
+  '/_authenticated/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/_authenticated/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/_authenticated/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
@@ -359,6 +369,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/clients/$clientId/'
+    | '/clients/$clientId/audit/$tenantId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
     | '/clients/$clientId/xero-log/$tenantId'
@@ -392,6 +403,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/clients/$clientId'
+    | '/clients/$clientId/audit/$tenantId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
     | '/clients/$clientId/xero-log/$tenantId'
@@ -427,6 +439,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/_authenticated/clients/$clientId/'
+    | '/_authenticated/clients/$clientId/audit/$tenantId'
     | '/_authenticated/clients/$clientId/payables/$tenantId'
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
     | '/_authenticated/clients/$clientId/xero-log/$tenantId'
@@ -684,6 +697,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdPayablesTenantIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clients/$clientId/audit/$tenantId': {
+      id: '/_authenticated/clients/$clientId/audit/$tenantId'
+      path: '/clients/$clientId/audit/$tenantId'
+      fullPath: '/clients/$clientId/audit/$tenantId'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdAuditTenantIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -714,6 +734,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRoute
   AuthenticatedClientsClientIdUnreconciledRoute: typeof AuthenticatedClientsClientIdUnreconciledRoute
   AuthenticatedClientsClientIdIndexRoute: typeof AuthenticatedClientsClientIdIndexRoute
+  AuthenticatedClientsClientIdAuditTenantIdRoute: typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   AuthenticatedClientsClientIdPayablesTenantIdRoute: typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   AuthenticatedClientsClientIdReceivablesTenantIdRoute: typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   AuthenticatedClientsClientIdXeroLogTenantIdRoute: typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
@@ -734,6 +755,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedClientsClientIdUnreconciledRoute,
   AuthenticatedClientsClientIdIndexRoute:
     AuthenticatedClientsClientIdIndexRoute,
+  AuthenticatedClientsClientIdAuditTenantIdRoute:
+    AuthenticatedClientsClientIdAuditTenantIdRoute,
   AuthenticatedClientsClientIdPayablesTenantIdRoute:
     AuthenticatedClientsClientIdPayablesTenantIdRoute,
   AuthenticatedClientsClientIdReceivablesTenantIdRoute:
