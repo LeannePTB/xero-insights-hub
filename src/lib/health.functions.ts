@@ -319,6 +319,7 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
       monthsRunway,
       netMarginPct,
       cashInBank: bs.cash,
+      bankAccounts: bs.bankAccounts,
     });
 
     return {
