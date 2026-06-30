@@ -4,6 +4,7 @@ import { getBusinessHealthDetail } from "@/lib/health.functions";
 import { PillarCard } from "./PillarCard";
 import { MoneyRecommendations } from "./MoneyRecommendations";
 import { EfficiencyRecommendations } from "./EfficiencyRecommendations";
+import { StabilityRecommendations } from "./StabilityRecommendations";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function HealthPillars({
