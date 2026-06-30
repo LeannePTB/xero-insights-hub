@@ -21,7 +21,7 @@ export function usePersistedDate(
   const [date, setDate] = useState<Date>(() => {
     if (typeof window === "undefined") return fallback();
     try {
-      const raw = window.localStorage.getItem(key);
+      const raw = window.sessionStorage.getItem(key);
       if (raw) {
         const d = new Date(raw);
         if (!isNaN(d.getTime())) return d;
@@ -31,7 +31,7 @@ export function usePersistedDate(
   });
   useEffect(() => {
     try {
-      window.localStorage.setItem(key, toISO(date));
+      window.sessionStorage.setItem(key, toISO(date));
     } catch {}
   }, [key, date]);
   return [date, setDate];

@@ -11,8 +11,11 @@ import { HealthPillars } from "./HealthPillars";
 
 function fyStartDefault(): Date {
   const t = new Date();
-  const startYear = t.getMonth() >= 6 ? t.getFullYear() : t.getFullYear() - 1;
-  return new Date(startYear, 6, 1);
+  return new Date(t.getFullYear(), t.getMonth(), 1);
+}
+function endOfThisMonth(): Date {
+  const t = new Date();
+  return new Date(t.getFullYear(), t.getMonth() + 1, 0);
 }
 
 type Props = {
@@ -31,7 +34,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
   );
   const [toDate, setToDate] = usePersistedDate(
     `health:to:${tenantId ?? "none"}`,
-    () => new Date(),
+    endOfThisMonth,
   );
 
   const q = useQuery({

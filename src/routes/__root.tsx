@@ -119,6 +119,9 @@ function RootComponent() {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      if (event === "SIGNED_OUT") {
+        try { window.sessionStorage.clear(); } catch {}
+      }
       if (event === "SIGNED_IN") {
         logLogin().catch((e) => console.warn("logLogin failed", e));
       }
