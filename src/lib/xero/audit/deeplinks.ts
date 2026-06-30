@@ -11,6 +11,7 @@ export function xeroDeepLink(entityType: string | null, entityId: string | null,
       case "Bill": return `/AccountsPayable/Edit.aspx?InvoiceID=${entityId}`;
       case "CreditNote": return `/AccountsReceivable/ViewCreditNote.aspx?creditNoteID=${entityId}`;
       case "Contact": return `/Contacts/View/${entityId}`;
+      case "Payment": return `/Bank/ViewPayment.aspx?paymentID=${entityId}`;
       default: return null;
     }
   })();
