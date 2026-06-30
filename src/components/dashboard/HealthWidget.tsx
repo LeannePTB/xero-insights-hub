@@ -18,9 +18,10 @@ type Props = {
   tenantId?: string;
   tenantName?: string;
   clientName?: string;
+  clientId?: string;
 };
 
-export function HealthWidget({ tenantId, tenantName, clientName }: Props) {
+export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Props) {
   const fetchHealth = useServerFn(getBusinessHealth);
   const currency = useTenantCurrency(tenantId);
   const [fromDate, setFromDate] = usePersistedDate(
@@ -132,7 +133,7 @@ export function HealthWidget({ tenantId, tenantName, clientName }: Props) {
             </div>
           )}
 
-          <HealthPillars tenantId={tenantId} />
+          <HealthPillars tenantId={tenantId} clientId={clientId} />
         </>
       )}
     </div>

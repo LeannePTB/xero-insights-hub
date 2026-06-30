@@ -228,6 +228,7 @@ function ClientDashboard() {
                 <>
                   <HealthWidget
                     clientName={client.name}
+                    clientId={clientId}
                     tenantId={orgs[0]?.xero_connections?.tenant_id}
                     tenantName={orgs[0]?.xero_connections?.tenant_name}
                   />
