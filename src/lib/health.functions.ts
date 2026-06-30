@@ -514,16 +514,18 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     // ---------- MONEY ----------
     const moneyMetrics: PillarMetric[] = [
       revenueGrowthPct === null
-        ? { label: "Revenue growing?", pill: "No prior year", status: "neutral" }
-        : { label: "Revenue growing?", pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}%`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
-      { label: `Gross margin ${grossMarginPct.toFixed(1)}%`, pill: grossMarginPct >= 60 ? "Great" : grossMarginPct >= 45 ? "Good" : grossMarginPct >= 30 ? "OK" : "Poor", status: statusFor(grossMarginPct, { good: 45, watch: 30 }) },
-      { label: `Net margin ${netMarginPct.toFixed(1)}%`, pill: netMarginPct >= 10 ? "Healthy" : netMarginPct >= 0 ? "Thin" : "Loss", status: statusFor(netMarginPct, { good: 10, watch: 0 }) },
+        ? { key: "revenue_growth", label: "Revenue growing?", pill: "No prior year", status: "neutral" }
+        : { key: "revenue_growth", label: "Revenue growing?", pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}%`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
+      { key: "gross_margin", label: `Gross margin ${grossMarginPct.toFixed(1)}%`, pill: grossMarginPct >= 60 ? "Great" : grossMarginPct >= 45 ? "Good" : grossMarginPct >= 30 ? "OK" : "Poor", status: statusFor(grossMarginPct, { good: 45, watch: 30 }) },
+      { key: "net_margin", label: `Net margin ${netMarginPct.toFixed(1)}%`, pill: netMarginPct >= 10 ? "Healthy" : netMarginPct >= 0 ? "Thin" : "Loss", status: statusFor(netMarginPct, { good: 10, watch: 0 }) },
       {
+        key: "cash_runway",
         label: "Cash in bank",
         pill: monthsRunway === null ? fmtMoney(bs.cash) : monthsRunway >= 3 ? "Healthy" : monthsRunway >= 1 ? "Low" : "Very low",
         status: monthsRunway === null ? "neutral" : statusFor(monthsRunway, { good: 3, watch: 1 }),
       },
       {
+        key: "debt_carried",
         label: "Debt carried",
         pill: liabilities <= 0 ? "None" : liabilities < monthlyRevenue * 1 ? "Minimal" : liabilities < monthlyRevenue * 6 ? "Moderate" : "High",
         status: liabilities <= 0 ? "good" : statusFor(liabilities, { good: monthlyRevenue, watch: monthlyRevenue * 6 }, true),
