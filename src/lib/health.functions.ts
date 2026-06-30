@@ -115,10 +115,17 @@ function summariseBs(report: any) {
   let badDebts = 0;
   let currentAssets = 0;
   let currentLiabilities = 0;
+  const bankAccounts: { name: string; balance: number }[] = [];
   for (const l of leaves) {
     const s = l.section.toLowerCase();
     const n = l.name.toLowerCase();
-    if (s.includes("bank")) cash += l.amount;
+    if (s.includes("bank")) {
+      cash += l.amount;
+      // Skip "Total Bank" summary rows that get emitted as leaves on some orgs.
+      if (!n.startsWith("total ")) {
+        bankAccounts.push({ name: l.name, balance: l.amount });
+      }
+    }
     if (n.includes("doubtful") || n.includes("bad debt") || n.includes("allowance for")) {
       badDebts += Math.abs(l.amount);
     }
@@ -137,8 +144,9 @@ function summariseBs(report: any) {
       currentLiabilities += l.amount;
     }
   }
-  return { cash, receivables, badDebts, currentAssets, currentLiabilities };
+  return { cash, receivables, badDebts, currentAssets, currentLiabilities, bankAccounts };
 }
+
 
 
 function computeScore(input: {
