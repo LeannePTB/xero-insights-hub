@@ -3,9 +3,10 @@ import { useServerFn } from "@tanstack/react-start";
 import { getBusinessHealthDetail } from "@/lib/health.functions";
 import { PillarCard } from "./PillarCard";
 import { MoneyRecommendations } from "./MoneyRecommendations";
+import { EfficiencyRecommendations } from "./EfficiencyRecommendations";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function HealthPillars({ tenantId }: { tenantId: string }) {
+export function HealthPillars({ tenantId, clientId }: { tenantId: string; clientId?: string }) {
   const fetchDetail = useServerFn(getBusinessHealthDetail);
   const q = useQuery({
     queryKey: ["business-health-detail", tenantId],
@@ -36,16 +37,23 @@ export function HealthPillars({ tenantId }: { tenantId: string }) {
 
   return (
     <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {q.data.pillars.map((p) => (
-        <PillarCard
-          key={p.key}
-          pillar={p}
-          expandable={p.key === "money"}
-          renderExpanded={
-            p.key === "money" ? () => <MoneyRecommendations metrics={p.metrics} /> : undefined
-          }
-        />
-      ))}
+      {q.data.pillars.map((p) => {
+        const expandable = p.key === "money" || p.key === "efficiency";
+        const renderExpanded =
+          p.key === "money"
+            ? () => <MoneyRecommendations metrics={p.metrics} />
+            : p.key === "efficiency"
+              ? () => <EfficiencyRecommendations metrics={p.metrics} clientId={clientId} />
+              : undefined;
+        return (
+          <PillarCard
+            key={p.key}
+            pillar={p}
+            expandable={expandable}
+            renderExpanded={renderExpanded}
+          />
+        );
+      })}
     </div>
   );
 }
