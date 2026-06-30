@@ -487,10 +487,19 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       }
     };
 
-    const [pnlRes, priorPnlRes, bsRes, agedRecRes, agedPayRes, orgRes] = await Promise.all([
+    // Prior BS at one day before fy.from gives us bank balance at start of period for net cash movement.
+    const dayBefore = (iso: string) => {
+      const d = new Date(`${iso}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - 1);
+      return d.toISOString().slice(0, 10);
+    };
+    const bsStartDate = dayBefore(fy.from);
+
+    const [pnlRes, priorPnlRes, bsRes, bsStartRes, agedRecRes, agedPayRes, orgRes] = await Promise.all([
       safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: fy.from, toDate: fy.to }),
       safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: priorFrom, toDate: priorToStr }),
       safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: asOfDate }),
+      safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: bsStartDate }),
       safeGet<{ Reports: any[] }>("Reports/AgedReceivablesByContact", { date: asOfDate }),
       safeGet<{ Reports: any[] }>("Reports/AgedPayablesByContact", { date: asOfDate }),
       safeGet<{ Organisations: any[] }>("Organisations"),
