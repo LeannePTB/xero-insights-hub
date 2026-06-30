@@ -6,13 +6,23 @@ import { MoneyRecommendations } from "./MoneyRecommendations";
 import { EfficiencyRecommendations } from "./EfficiencyRecommendations";
 import { Skeleton } from "@/components/ui/skeleton";
 
-export function HealthPillars({ tenantId, clientId }: { tenantId: string; clientId?: string }) {
+export function HealthPillars({
+  tenantId,
+  clientId,
+  fromDate,
+  toDate,
+}: {
+  tenantId: string;
+  clientId?: string;
+  fromDate: string;
+  toDate: string;
+}) {
   const fetchDetail = useServerFn(getBusinessHealthDetail);
   const q = useQuery({
-    queryKey: ["business-health-detail", tenantId],
+    queryKey: ["business-health-detail", tenantId, clientId, fromDate, toDate],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000,
-    queryFn: () => fetchDetail({ data: { tenantId } }),
+    queryFn: () => fetchDetail({ data: { tenantId, clientId, fromDate, toDate } }),
   });
 
   if (q.isLoading) {

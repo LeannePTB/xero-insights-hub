@@ -351,6 +351,10 @@ export type BusinessHealthDetail = {
   pillars: Pillar[];
 };
 
+function normaliseAccountName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 // Collect leaf account rows from any P&L section whose title matches the predicate.
 // Recurses through nested Section rows so accounts grouped under sub-sections
 // (e.g. inside "Operating Expenses") are still picked up.
@@ -440,7 +444,7 @@ function scoreFromMetrics(weighted: { score: number; weight: number }[]): number
 
 export const getBusinessHealthDetail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string }) => input)
+  .inputValidator((input: { tenantId: string; clientId?: string; fromDate?: string; toDate?: string }) => input)
   .handler(async ({ data, context }): Promise<BusinessHealthDetail> => {
     const { getConnectionByTenant, xeroGet } = await import("./xero/api.server");
     const { assertWidgetAccess } = await import("./xero/access.server");
@@ -448,15 +452,22 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const conn = await getConnectionByTenant(data.tenantId);
 
     const today = new Date();
-    const fy = fyToDateRange(today);
+    const fyDefault = fyToDateRange(today);
+    const fy = {
+      from: data.fromDate ?? fyDefault.from,
+      to: data.toDate ?? fyDefault.to,
+      label: data.fromDate && data.toDate ? `${data.fromDate} → ${data.toDate}` : fyDefault.label,
+    };
     const asOfDate = fy.to;
 
-    // Prior FY same window (same number of days)
-    const priorFromYear = parseInt(fy.from.slice(0, 4), 10) - 1;
-    const priorFrom = `${priorFromYear}-07-01`;
-    const priorTo = new Date(today);
-    priorTo.setUTCFullYear(priorTo.getUTCFullYear() - 1);
-    const priorToStr = priorTo.toISOString().slice(0, 10);
+    // Prior-year same selected window.
+    const shiftYear = (iso: string) => {
+      const d = new Date(`${iso}T00:00:00Z`);
+      d.setUTCFullYear(d.getUTCFullYear() - 1);
+      return d.toISOString().slice(0, 10);
+    };
+    const priorFrom = shiftYear(fy.from);
+    const priorToStr = shiftYear(fy.to);
 
     const safeGet = async <T,>(path: string, params: Record<string, string | undefined> = {}): Promise<T | null> => {
       try {
@@ -492,24 +503,33 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const topIncome = incomeRows.reduce((m, r) => (r.amount > m ? r.amount : m), 0);
     const topIncomeShare = incomeTotal > 0 ? (topIncome / incomeTotal) * 100 : 0;
 
-    // Wages: prefer accounts tagged 'wages' in cost classifications; fall back to name detection.
-    const { data: wageTagRows } = await context.supabase
-      .from("client_cost_classifications" as any)
-      .select("account_name, classification")
+    // Wages: prefer the separate Wages marker in cost classifications; fall back to name detection.
+    // Use the trusted server client after widget access has been checked so RLS helper gaps don't
+    // prevent the Business Health card from reading advisor-maintained account tags.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let wageTagsQuery = (supabaseAdmin as any)
+      .from("client_cost_classifications")
+      .select("account_name, classification, is_wages")
       .eq("tenant_id", data.tenantId);
+    if (data.clientId) wageTagsQuery = wageTagsQuery.eq("client_id", data.clientId);
+    const { data: wageTagRows } = await wageTagsQuery;
     const taggedWageNames = new Set<string>(
       ((wageTagRows ?? []) as any[])
-        .filter((r) => r.classification === "wages")
-        .map((r) => String(r.account_name).toLowerCase()),
+        .filter((r) => r.is_wages || r.classification === "wages")
+        .map((r) => normaliseAccountName(String(r.account_name))),
     );
     const expenseRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) =>
       t.includes("expense") || t.includes("operating") || t.includes("less operating"),
     );
+    const cogsRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) =>
+      t.includes("cost of sales") || t.includes("cost of goods") || t.includes("direct cost"),
+    );
+    const wageSourceRows = [...expenseRows, ...cogsRows];
     const wageRegex = /wage|salary|salaries|superannuation|payroll|staff|employee|contract\s*labou?r|sub[-\s]*contract|director'?s?\s*fee|payg|kiwisaver|bonus|commission/i;
-    const taggedWages = expenseRows
-      .filter((r) => taggedWageNames.has(r.name.toLowerCase()))
+    const taggedWages = wageSourceRows
+      .filter((r) => taggedWageNames.has(normaliseAccountName(r.name)))
       .reduce((s, r) => s + r.amount, 0);
-    const detectedWages = expenseRows
+    const detectedWages = wageSourceRows
       .filter((r) => wageRegex.test(r.name))
       .reduce((s, r) => s + r.amount, 0);
     const wages = taggedWageNames.size > 0 ? taggedWages : detectedWages;
@@ -523,10 +543,11 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const billsOnTimePct = ap.total > 0 ? ((ap.total - ap.overdue) / ap.total) * 100 : 100;
 
     const fyStart = new Date(`${fy.from}T00:00:00Z`);
+    const periodEnd = new Date(`${fy.to}T00:00:00Z`);
     const monthsElapsed = Math.max(
       1,
-      (today.getUTCFullYear() - fyStart.getUTCFullYear()) * 12 +
-        (today.getUTCMonth() - fyStart.getUTCMonth()) + 1,
+      (periodEnd.getUTCFullYear() - fyStart.getUTCFullYear()) * 12 +
+        (periodEnd.getUTCMonth() - fyStart.getUTCMonth()) + 1,
     );
     const monthlyOpex = pnl.expenses / monthsElapsed;
     const monthlyRevenue = pnl.income / monthsElapsed;

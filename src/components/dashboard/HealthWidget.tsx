@@ -133,7 +133,12 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
             </div>
           )}
 
-          <HealthPillars tenantId={tenantId} clientId={clientId} />
+          <HealthPillars
+            tenantId={tenantId}
+            clientId={clientId}
+            fromDate={toISO(fromDate)}
+            toDate={toISO(toDate)}
+          />
         </>
       )}
     </div>

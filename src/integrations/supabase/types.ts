@@ -203,6 +203,7 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          is_wages: boolean
           tenant_id: string
           updated_at: string
         }
@@ -212,6 +213,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          is_wages?: boolean
           tenant_id: string
           updated_at?: string
         }
@@ -221,6 +223,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          is_wages?: boolean
           tenant_id?: string
           updated_at?: string
         }

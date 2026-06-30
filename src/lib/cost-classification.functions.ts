@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-export type Classification = "fixed" | "variable" | "excluded" | "wages";
+export type Classification = "fixed" | "variable" | "excluded";
 
 export type CostClassificationRow = {
   account_name: string;
   classification: Classification;
+  is_wages: boolean;
 };
 
 export const listCostClassifications = createServerFn({ method: "POST" })
@@ -15,7 +16,7 @@ export const listCostClassifications = createServerFn({ method: "POST" })
     const [rowsRes, clientRes] = await Promise.all([
       context.supabase
         .from("client_cost_classifications" as any)
-        .select("account_name, classification")
+        .select("account_name, classification, is_wages")
         .eq("client_id", data.clientId)
         .eq("tenant_id", data.tenantId),
       context.supabase
@@ -40,7 +41,7 @@ export const setCostClassifications = createServerFn({ method: "POST" })
     (input: {
       clientId: string;
       tenantId: string;
-      entries: { accountName: string; classification: Classification }[];
+      entries: { accountName: string; classification: Classification; isWages: boolean }[];
     }) => input,
   )
   .handler(async ({ data, context }) => {
@@ -50,6 +51,7 @@ export const setCostClassifications = createServerFn({ method: "POST" })
       tenant_id: data.tenantId,
       account_name: e.accountName,
       classification: e.classification,
+      is_wages: e.isWages,
     }));
     const { error } = await context.supabase
       .from("client_cost_classifications" as any)

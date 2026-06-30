@@ -611,9 +611,9 @@ function CostClassificationSection({
         <div>
           <h2 className="font-display text-lg font-semibold">Cost classification</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Tag each expense account as <strong>Fixed</strong> or <strong>Variable</strong> so the
-            Breakeven widget can split operating expenses correctly. Cost of Sales is always treated
-            as variable. Unclassified accounts default to Fixed.
+            Tag each expense account as <strong>Fixed</strong>, <strong>Variable</strong>, or <strong>Excluded</strong> for
+            break-even. Use the separate <strong>Wages</strong> marker for Business Health only; it does not
+            change fixed-cost treatment.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
