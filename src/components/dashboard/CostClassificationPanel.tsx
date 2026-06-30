@@ -66,9 +66,17 @@ export function CostClassificationPanel({
   }, [classQ.data]);
 
   const accounts = useMemo(() => {
-    const lines = pnlQ.data?.expenseLines ?? [];
-    // Sort descending by absolute amount
-    return [...lines].sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+    const expense = pnlQ.data?.expenseLines ?? [];
+    const cogs = pnlQ.data?.cogsLines ?? [];
+    // Merge expense + cost-of-sales accounts so wages booked under COGS can be tagged too.
+    const seen = new Set<string>();
+    const merged: { name: string; amount: number }[] = [];
+    for (const l of [...expense, ...cogs]) {
+      if (seen.has(l.name)) continue;
+      seen.add(l.name);
+      merged.push(l);
+    }
+    return merged.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
   }, [pnlQ.data]);
 
   const current = (name: string): Classification =>
