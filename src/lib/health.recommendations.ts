@@ -132,3 +132,127 @@ export function getMoneyRecommendations(metrics: PillarMetric[]): Recommendation
   const order = { danger: 0, watch: 1, info: 2 } as const;
   return recs.sort((a, b) => order[a.severity] - order[b.severity]);
 }
+
+function parsePct(pill: string | undefined): number | null {
+  if (!pill) return null;
+  const m = pill.match(/-?\d+(?:\.\d+)?/);
+  if (!m) return null;
+  const n = Number(m[0]);
+  return Number.isFinite(n) ? n : null;
+}
+
+export function getEfficiencyRecommendations(metrics: PillarMetric[]): Recommendation[] {
+  const recs: Recommendation[] = [];
+
+  const wages = find(metrics, "wages");
+  if (wages) {
+    const isUntagged = wages.pill === "Not tagged";
+    const wagesPct = parsePct(wages.pill);
+    if (isUntagged) {
+      recs.push({
+        severity: "info",
+        title: "Wage accounts aren't tagged",
+        why: "We can't compute Wages as % of revenue accurately until your wage-related accounts are tagged. Right now we fall back to name matching, which can miss accounts like 'Contract Labour' or 'Director Fees'.",
+        actions: [
+          "Open Settings → Cost classification and tag each wages/salaries/super/contractor account as 'Wages'.",
+          "Re-open Business Health — the Efficiency pillar will recalculate immediately.",
+        ],
+      });
+    } else if (wages.status === "bad" && wagesPct !== null) {
+      recs.push({
+        severity: "danger",
+        title: `Wages are consuming ${wagesPct.toFixed(1)}% of revenue`,
+        why: "Above 50% is generally unsustainable for service businesses — labour is crowding out profit, tax, and reinvestment.",
+        actions: [
+          "Map revenue per FTE — identify roles whose output doesn't cover their fully loaded cost.",
+          "Freeze new hires until revenue per head improves by 10%.",
+          "Lift prices on the top 3 services — small increases recover wage drag fast.",
+          "Convert lowest-utilisation roles to contract or part-time.",
+          "Track billable vs non-billable hours weekly; target <20% non-billable.",
+        ],
+      });
+    } else if (wages.status === "watch" && wagesPct !== null) {
+      recs.push({
+        severity: "watch",
+        title: `Wages at ${wagesPct.toFixed(1)}% of revenue is climbing`,
+        why: "30–50% is the warning band — productivity gains or price rises are needed before it tips over.",
+        actions: [
+          "Set a target wages % and review monthly, not yearly.",
+          "Audit overtime and casual top-ups — they often hide a structural staffing gap or surplus.",
+          "Push a 3–5% price rise on your highest-volume service.",
+        ],
+      });
+    }
+  }
+
+  const op = find(metrics, "operating_profit");
+  if (op?.status === "bad") {
+    recs.push({
+      severity: "danger",
+      title: "Operating profit is negative or flat",
+      why: `Operating profit reads ${op.pill}. The business isn't generating enough margin after running costs.`,
+      actions: [
+        "Cut the three largest fixed overheads first — biggest impact for least disruption.",
+        "Lift gross margin before chasing revenue; unprofitable growth makes it worse.",
+        "Cancel software/subscriptions unused for 30+ days.",
+      ],
+    });
+  }
+
+  const bad = find(metrics, "bad_debts");
+  if (bad?.status === "bad") {
+    recs.push({
+      severity: "danger",
+      title: `Bad debts are eroding revenue (${bad.pill})`,
+      why: "Above 3% of revenue lost to bad debts indicates weak credit control.",
+      actions: [
+        "Run credit checks on any new customer above $5k.",
+        "Require deposits up-front (30–50%) for new or risky clients.",
+        "Stop work the moment an invoice goes 30 days overdue.",
+        "Move chronic late payers to direct debit or pre-payment only.",
+      ],
+    });
+  } else if (bad?.status === "watch") {
+    recs.push({
+      severity: "watch",
+      title: `Bad debts trending up (${bad.pill})`,
+      why: "1–3% of revenue is recoverable with tighter collections.",
+      actions: [
+        "Set a 7-day reminder before the due date, not just after.",
+        "Automate a 3-step dunning sequence (day 1, day 7, day 14 overdue).",
+        "Review your aged receivables every Monday.",
+      ],
+    });
+  }
+
+  const bills = find(metrics, "bills_on_time");
+  if (bills?.status === "bad") {
+    recs.push({
+      severity: "watch",
+      title: "Bills are paid late",
+      why: `Only ${bills.pill} — late payments damage supplier relationships and credit terms.`,
+      actions: [
+        "Run a weekly payment batch on a fixed day (e.g. every Thursday).",
+        "Negotiate longer terms on your largest 3 suppliers instead of paying late.",
+        "Set reminders 3 days before due date, not on the due date.",
+      ],
+    });
+  }
+
+  if (recs.length === 0) {
+    return [
+      {
+        severity: "info",
+        title: "Efficiency is in good shape",
+        why: "Wages, operating profit, bad debts and supplier payments are all healthy on the current period.",
+        actions: [
+          "Hold the line — review the same metrics again in 30 days.",
+          "Document what's working so it survives staff changes.",
+        ],
+      },
+    ];
+  }
+
+  const order = { danger: 0, watch: 1, info: 2 } as const;
+  return recs.sort((a, b) => order[a.severity] - order[b.severity]);
+}

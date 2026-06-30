@@ -1,60 +1,49 @@
-## Goal
+## Two related fixes for the Efficiency pillar
 
-Render the 4 pillar cards (Money, Efficiency, Growth, Stability) under the Business Health overview, and wire the Money pillar's "Why is cash so low?" CTA to inline-expand with rules-based recommendations derived from the metrics. Other pillars render their CTA buttons but stay non-interactive for now.
+### Problem 1 — "Wages as % of rev" reads 0% / "Not tagged"
 
-## Changes
+In `src/lib/health.functions.ts` (~L487-496), wages are pulled from the P&L by:
+1. `pnlSectionRows` matching sections whose title contains `"expense"` or `"operating"`.
+2. A name regex `/wage|salary|salaries|superannuation|payroll|staff/i`.
+3. Divide by `pnl.income`.
 
-### 1. `src/lib/health.functions.ts`
-- Extend `PillarMetric` with an optional `key: string` (stable id like `revenue_growth`, `gross_margin`, `net_margin`, `cash_runway`, `debt_carried`) so the recommendations engine can match by metric, not label text.
-- Add `key` to every Money metric (other pillars get keys later — not in scope now).
-- Add a new exported pure function `getMoneyRecommendations(metrics: PillarMetric[]): Recommendation[]` (no server call) returning a rules-based list. Shape:
-  ```ts
-  type Recommendation = {
-    title: string;        // "Cash buffer is critically low"
-    why: string;          // one sentence reading the metric
-    actions: string[];    // 3–5 concrete steps
-    severity: "danger" | "watch" | "info";
-  }
-  ```
-- Rules (only emit when the metric is `bad`/`watch`):
-  - **cash_runway = bad** → "Cash buffer critically low": pause discretionary spend, chase aged receivables >30d, negotiate supplier terms, review owner drawings, set min cash floor.
-  - **cash_runway = watch** → "Cash buffer thin": same actions, lighter framing.
-  - **net_margin = bad (loss)** → "Operating at a loss": price review, drop loss-making lines, cut fixed overhead, lift gross margin first.
-  - **net_margin = watch (thin)** → "Net margin thin": revisit pricing, audit subscriptions, batch admin.
-  - **gross_margin = bad** → "Gross margin under 30%": rate card review, supplier renegotiation, productise services, cost-of-sales audit.
-  - **revenue_growth = bad (declining)** → "Revenue is shrinking YoY": reactivate dormant clients, run a price increase on top tier, focus on highest-margin offer.
-  - **debt_carried = bad** → "Debt load is heavy vs revenue": consolidate, prioritise highest-rate debt, model interest coverage.
-  - If nothing fires, return a single `info` "Money is in good shape" with maintenance suggestions (build 3-month buffer, quarterly margin review).
+Two real causes of the miss:
+- **`pnlSectionRows` doesn't recurse.** It only reads direct children of a top-level Section. When Xero nests accounts (tracking categories, grouped sub-sections inside "Operating Expenses"), the walker returns nothing → wages = 0 → "Not tagged".
+- **Regex is fragile.** Common names like "Employee Benefits", "Contract Labour", "Sub-contractors", "Director Fees", "PAYG", "KiwiSaver", "Bonus", "Commission" don't match even when rows are found.
 
-### 2. New `src/components/dashboard/MoneyRecommendations.tsx`
-- Props: `metrics: PillarMetric[]`.
-- Calls `getMoneyRecommendations` (sync, client-safe — recommendations live in the same module but the pure function has no Supabase imports).
-- Renders a list of recommendation cards: severity-coloured left border, title, "why" line, bulleted actions.
+### Problem 2 — Efficiency pillar CTA isn't wired
 
-### 3. New `src/components/dashboard/PillarCard.tsx`
-- Props: `pillar: Pillar`, optional `expandable?: boolean`, optional `renderExpanded?: () => ReactNode`.
-- Layout matches the reference screenshot: title + subtitle, big score `/100`, coloured progress bar, metric rows (label left, status pill right with `good/watch/bad/neutral/not_in_xero` colours), CTA button at bottom.
-- When `expandable` is true, the CTA toggles open/closed and renders `renderExpanded()` underneath inside the same card. Caret rotates on toggle.
+In `HealthPillars.tsx` only the Money pillar passes an `expanded` renderer (`MoneyRecommendations`). Efficiency, Growth, and Stability fall through to the "Coming soon" path in `PillarCard.tsx`.
 
-### 4. New `src/components/dashboard/HealthPillars.tsx`
-- Server-fn call: `getBusinessHealthDetail({ data: { tenantId } })` via `useServerFn` + `useQuery` (key `["business-health-detail", tenantId]`, 5-min stale).
-- Renders 4 `PillarCard`s in a responsive grid (1 col mobile, 2 col md, 4 col xl).
-- Only the Money card gets `expandable` + `renderExpanded={() => <MoneyRecommendations metrics={...} />}`. Other CTAs render as buttons with no-op handlers + a small "Coming soon" tooltip.
-- Loading state: 4 skeleton cards. Error state: inline destructive message.
+## Plan
 
-### 5. `src/components/dashboard/HealthWidget.tsx`
-- After the existing overview content, render `<HealthPillars tenantId={tenantId} />`.
-- No date-picker wiring on the detail (per previous decision — detail stays FY-to-date).
+### Wages fix
+1. Make `pnlSectionRows` recurse into nested `Section` rows so leaf accounts are collected at any depth.
+2. Broaden the wage-account regex to include: `employee`, `contract labour`, `subcontract`, `director fee|directors fee`, `PAYG`, `kiwisaver`, `bonus`, `commission`.
+3. Prefer explicit tags when present: add a new `'wages'` value to the cost-classification type (small migration + a "Wages" toggle in the existing Cost Classifications settings UI). If any account is tagged as wages, sum tagged accounts instead of running the regex. Detection is the fallback when nothing is tagged — same pattern Break-Even already uses.
+4. Only render "Not tagged" when both tags are empty and detection finds zero matches.
 
-### 6. Tier gating
-- Business Health is already pinned at the top of the dashboard for every tier. No tier changes needed; pillars render whenever the overview does.
+### Efficiency CTA wiring
+1. Add `getEfficiencyRecommendations(metrics)` to `src/lib/health.recommendations.ts`, mirroring `getMoneyRecommendations`. Rules driven by the live metrics:
+   - **Wages too high** (wages% > 50): suggest reviewing roles, freezing hires, productivity per FTE, raising prices.
+   - **Wages untagged** (Not tagged): one-click link to Settings → Cost Classifications to tag wage accounts.
+   - **Bad debts present** (>0% of revenue): tighten credit checks, deposits up-front, dunning cadence.
+   - **Bills paid late** (on-time% < 90): negotiate terms, batch payment runs, set reminders before due date.
+   - **Top-customer concentration** (if available): diversification actions.
+2. Create `src/components/dashboard/EfficiencyRecommendations.tsx` (same shape as `MoneyRecommendations`).
+3. In `HealthPillars.tsx`, extend the renderer map so `p.key === "efficiency"` uses `EfficiencyRecommendations`. Pass `clientId` through so the "Tag wage accounts" item can deep-link.
+4. Leave Growth and Stability on "Coming soon" — we'll do those next.
 
-## Out of scope
-- AI-generated advice (rules only, per your selection).
-- Wiring Efficiency / Growth / Stability CTAs — buttons render but are inert.
-- Hooking the date picker into the pillar detail.
-- New customers / Pipeline leads data sources (stay "Not in Xero").
+### Files touched
+- `src/lib/health.functions.ts` — recurse sections, broaden regex, load wage tags, prefer tagged sum.
+- `supabase/migrations/<new>.sql` — add `'wages'` classification type (+ GRANTs already in place on the table).
+- Cost Classifications settings page — add the "Wages" option alongside Fixed / Variable / Excluded.
+- `src/lib/health.recommendations.ts` — add `getEfficiencyRecommendations`.
+- `src/components/dashboard/EfficiencyRecommendations.tsx` — new.
+- `src/components/dashboard/HealthPillars.tsx` — register the Efficiency renderer.
 
-## Files touched
-- Edit: `src/lib/health.functions.ts`, `src/components/dashboard/HealthWidget.tsx`
-- New: `src/components/dashboard/PillarCard.tsx`, `src/components/dashboard/HealthPillars.tsx`, `src/components/dashboard/MoneyRecommendations.tsx`
+### One decision
+
+Tagging approach for wages:
+- **(a)** Detection-only (recurse + broader regex). No schema/UI change. Faster, but can still miss oddly named accounts.
+- **(b) Recommended** — add an explicit "Wages" tag in Cost Classifications. Detection becomes the fallback. Same reliability model as Break-Even, and the Efficiency CTA gets a meaningful "Tag wage accounts" action.

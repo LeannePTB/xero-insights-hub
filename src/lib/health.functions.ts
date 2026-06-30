@@ -351,21 +351,29 @@ export type BusinessHealthDetail = {
   pillars: Pillar[];
 };
 
-// Collect leaf account rows from a P&L section (Income / Expense).
+// Collect leaf account rows from any P&L section whose title matches the predicate.
+// Recurses through nested Section rows so accounts grouped under sub-sections
+// (e.g. inside "Operating Expenses") are still picked up.
 function pnlSectionRows(report: any, predicate: (title: string) => boolean): { name: string; amount: number }[] {
   const out: { name: string; amount: number }[] = [];
-  const sections: ReportRow[] = report?.Rows ?? [];
-  for (const section of sections) {
-    if (section.RowType !== "Section") continue;
-    const title = (section.Title || "").toLowerCase();
-    if (!predicate(title)) continue;
-    for (const r of section.Rows ?? []) {
-      if (r.RowType === "Row" && r.Cells && r.Cells.length >= 2) {
+  function collectLeaves(rows: ReportRow[] | undefined) {
+    if (!rows) return;
+    for (const r of rows) {
+      if (r.RowType === "Section") {
+        collectLeaves(r.Rows);
+      } else if (r.RowType === "Row" && r.Cells && r.Cells.length >= 2) {
         const name = r.Cells[0]?.Value ?? "";
         const amount = parseAmount(r.Cells[1]?.Value);
         if (name) out.push({ name, amount });
       }
     }
+  }
+  const sections: ReportRow[] = report?.Rows ?? [];
+  for (const section of sections) {
+    if (section.RowType !== "Section") continue;
+    const title = (section.Title || "").toLowerCase();
+    if (!predicate(title)) continue;
+    collectLeaves(section.Rows);
   }
   return out;
 }
@@ -484,11 +492,28 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const topIncome = incomeRows.reduce((m, r) => (r.amount > m ? r.amount : m), 0);
     const topIncomeShare = incomeTotal > 0 ? (topIncome / incomeTotal) * 100 : 0;
 
-    // Wages-like accounts from expense section
-    const expenseRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) => t.includes("expense") || t.includes("operating"));
-    const wages = expenseRows
-      .filter((r) => /wage|salary|salaries|superannuation|payroll|staff/i.test(r.name))
+    // Wages: prefer accounts tagged 'wages' in cost classifications; fall back to name detection.
+    const { data: wageTagRows } = await context.supabase
+      .from("client_cost_classifications" as any)
+      .select("account_name, classification")
+      .eq("tenant_id", data.tenantId);
+    const taggedWageNames = new Set<string>(
+      ((wageTagRows ?? []) as any[])
+        .filter((r) => r.classification === "wages")
+        .map((r) => String(r.account_name).toLowerCase()),
+    );
+    const expenseRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) =>
+      t.includes("expense") || t.includes("operating") || t.includes("less operating"),
+    );
+    const wageRegex = /wage|salary|salaries|superannuation|payroll|staff|employee|contract\s*labou?r|sub[-\s]*contract|director'?s?\s*fee|payg|kiwisaver|bonus|commission/i;
+    const taggedWages = expenseRows
+      .filter((r) => taggedWageNames.has(r.name.toLowerCase()))
       .reduce((s, r) => s + r.amount, 0);
+    const detectedWages = expenseRows
+      .filter((r) => wageRegex.test(r.name))
+      .reduce((s, r) => s + r.amount, 0);
+    const wages = taggedWageNames.size > 0 ? taggedWages : detectedWages;
+    const wagesIsTagged = taggedWageNames.size > 0;
 
     const grossMarginPct = pnl.income > 0 ? (pnl.gross / pnl.income) * 100 : 0;
     const netMarginPct = pnl.income > 0 ? (pnl.net / pnl.income) * 100 : 0;
@@ -539,11 +564,17 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     ]);
 
     // ---------- EFFICIENCY ----------
+    const wagesPill =
+      wages > 0
+        ? `${wagesPct.toFixed(1)}%${wagesIsTagged ? "" : " (auto)"}`
+        : wagesIsTagged
+          ? "Tagged: $0"
+          : "Not tagged";
     const efficiencyMetrics: PillarMetric[] = [
-      { label: "Operating profit %", pill: `${opMarginPct.toFixed(1)}%`, status: statusFor(opMarginPct, { good: 10, watch: 0 }) },
-      { label: "Wages as % of rev", pill: wages > 0 ? `${wagesPct.toFixed(1)}%` : "Not tagged", status: wages === 0 ? "neutral" : statusFor(wagesPct, { good: 30, watch: 50 }, true) },
-      { label: "Bad debts as % of rev", pill: `${badDebtsPct.toFixed(1)}%`, status: statusFor(badDebtsPct, { good: 1, watch: 3 }, true) },
-      { label: "Bills paid on time", pill: ap.total === 0 ? "None owing" : ap.overdue === 0 ? "All current" : `${billsOnTimePct.toFixed(0)}% current`, status: statusFor(billsOnTimePct, { good: 90, watch: 70 }) },
+      { key: "operating_profit", label: "Operating profit %", pill: `${opMarginPct.toFixed(1)}%`, status: statusFor(opMarginPct, { good: 10, watch: 0 }) },
+      { key: "wages", label: "Wages as % of rev", pill: wagesPill, status: wages === 0 ? "neutral" : statusFor(wagesPct, { good: 30, watch: 50 }, true) },
+      { key: "bad_debts", label: "Bad debts as % of rev", pill: `${badDebtsPct.toFixed(1)}%`, status: statusFor(badDebtsPct, { good: 1, watch: 3 }, true) },
+      { key: "bills_on_time", label: "Bills paid on time", pill: ap.total === 0 ? "None owing" : ap.overdue === 0 ? "All current" : `${billsOnTimePct.toFixed(0)}% current`, status: statusFor(billsOnTimePct, { good: 90, watch: 70 }) },
     ];
     const efficiencyScore = scoreFromMetrics([
       { score: Math.max(0, Math.min(100, opMarginPct * 5)), weight: 0.4 },
