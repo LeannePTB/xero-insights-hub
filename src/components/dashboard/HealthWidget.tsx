@@ -58,6 +58,15 @@ export function HealthWidget({ tenantId, tenantName, clientName }: Props) {
         </div>
       </div>
 
+      <DateRangeControls
+        fromDate={fromDate}
+        toDate={toDate}
+        onFromChange={setFromDate}
+        onToChange={setToDate}
+      />
+
+
+
       {q.isLoading && <LoadingState />}
       {q.error && (
         <p className="mt-4 text-sm text-destructive">
