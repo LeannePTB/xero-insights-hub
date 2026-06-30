@@ -503,9 +503,12 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const topIncome = incomeRows.reduce((m, r) => (r.amount > m ? r.amount : m), 0);
     const topIncomeShare = incomeTotal > 0 ? (topIncome / incomeTotal) * 100 : 0;
 
-    // Wages: prefer accounts tagged 'wages' in cost classifications; fall back to name detection.
-    const { data: wageTagRows } = await context.supabase
-      .from("client_cost_classifications" as any)
+    // Wages: prefer the separate Wages marker in cost classifications; fall back to name detection.
+    // Use the trusted server client after widget access has been checked so RLS helper gaps don't
+    // prevent the Business Health card from reading advisor-maintained account tags.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: wageTagRows } = await (supabaseAdmin as any)
+      .from("client_cost_classifications")
       .select("account_name, classification, is_wages")
       .eq("tenant_id", data.tenantId);
     const taggedWageNames = new Set<string>(
