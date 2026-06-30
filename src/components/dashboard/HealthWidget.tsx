@@ -5,6 +5,13 @@ import { getBusinessHealth } from "@/lib/health.functions";
 import { useTenantCurrency, formatMoney } from "./useTenantCurrency";
 import { HealthScoreDonut } from "./HealthScoreDonut";
 import { Skeleton } from "@/components/ui/skeleton";
+import { DateRangeControls, usePersistedDate, toISO } from "./DateRangeControls";
+
+function fyStartDefault(): Date {
+  const t = new Date();
+  const startYear = t.getMonth() >= 6 ? t.getFullYear() : t.getFullYear() - 1;
+  return new Date(startYear, 6, 1);
+}
 
 type Props = {
   tenantId?: string;
@@ -15,12 +22,23 @@ type Props = {
 export function HealthWidget({ tenantId, tenantName, clientName }: Props) {
   const fetchHealth = useServerFn(getBusinessHealth);
   const currency = useTenantCurrency(tenantId);
+  const [fromDate, setFromDate] = usePersistedDate(
+    `health:from:${tenantId ?? "none"}`,
+    fyStartDefault,
+  );
+  const [toDate, setToDate] = usePersistedDate(
+    `health:to:${tenantId ?? "none"}`,
+    () => new Date(),
+  );
 
   const q = useQuery({
-    queryKey: ["business-health", tenantId],
+    queryKey: ["business-health", tenantId, toISO(fromDate), toISO(toDate)],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000,
-    queryFn: () => fetchHealth({ data: { tenantId: tenantId! } }),
+    queryFn: () =>
+      fetchHealth({
+        data: { tenantId: tenantId!, fromDate: toISO(fromDate), toDate: toISO(toDate) },
+      }),
   });
 
   if (!tenantId) {
@@ -39,6 +57,15 @@ export function HealthWidget({ tenantId, tenantName, clientName }: Props) {
           </h3>
         </div>
       </div>
+
+      <DateRangeControls
+        fromDate={fromDate}
+        toDate={toDate}
+        onFromChange={setFromDate}
+        onToChange={setToDate}
+      />
+
+
 
       {q.isLoading && <LoadingState />}
       {q.error && (

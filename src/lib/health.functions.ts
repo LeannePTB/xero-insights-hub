@@ -238,7 +238,7 @@ function buildSummary(h: {
 
 export const getBusinessHealth = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string }) => input)
+  .inputValidator((input: { tenantId: string; fromDate?: string; toDate?: string }) => input)
   .handler(async ({ data, context }): Promise<BusinessHealth> => {
     const { getConnectionByTenant, xeroGet } = await import("./xero/api.server");
     const { assertWidgetAccess } = await import("./xero/access.server");
@@ -246,13 +246,19 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
     const conn = await getConnectionByTenant(data.tenantId);
 
     const today = new Date();
-    const fy = fyToDateRange(today);
-    const asOfDate = fy.to;
+    const fyDefault = fyToDateRange(today);
+    const fromDate = data.fromDate || fyDefault.from;
+    const toDate = data.toDate || fyDefault.to;
+    const isFy = !data.fromDate && !data.toDate;
+    const rangeLabel = isFy
+      ? fyDefault.label
+      : `${fromDate} → ${toDate}`;
+    const asOfDate = toDate;
 
     const [pnlRes, bsRes] = await Promise.all([
       xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
-        fromDate: fy.from,
-        toDate: fy.to,
+        fromDate,
+        toDate,
       }),
       xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: asOfDate }),
     ]);
@@ -263,19 +269,19 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
     const grossMarginPct = pnl.income > 0 ? (pnl.gross / pnl.income) * 100 : 0;
     const netMarginPct = pnl.income > 0 ? (pnl.net / pnl.income) * 100 : 0;
 
-    // Months elapsed in FY to derive avg monthly opex
-    const fyStart = new Date(`${fy.from}T00:00:00Z`);
+    const startD = new Date(`${fromDate}T00:00:00Z`);
+    const endD = new Date(`${toDate}T00:00:00Z`);
     const monthsElapsed = Math.max(
       1,
-      (today.getUTCFullYear() - fyStart.getUTCFullYear()) * 12 +
-        (today.getUTCMonth() - fyStart.getUTCMonth()) +
+      (endD.getUTCFullYear() - startD.getUTCFullYear()) * 12 +
+        (endD.getUTCMonth() - startD.getUTCMonth()) +
         1,
     );
     const monthlyOpex = pnl.expenses / monthsElapsed;
     const monthsRunway = monthlyOpex > 0 ? bs.cash / monthlyOpex : null;
 
     const badDebtsPctOfRev = pnl.income > 0 ? (bs.badDebts / pnl.income) * 100 : 0;
-    const { score, band, label } = computeScore({
+    const { score, band, label: bandLabel } = computeScore({
       netMarginPct,
       grossMarginPct,
       badDebtsPctOfRev,
@@ -299,9 +305,9 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
 
     return {
       asOfDate,
-      fyFromDate: fy.from,
-      fyToDate: fy.to,
-      fyLabel: fy.label,
+      fyFromDate: fromDate,
+      fyToDate: toDate,
+      fyLabel: rangeLabel,
       revenue: pnl.income,
       grossProfit: pnl.gross,
       grossMarginPct,
@@ -312,7 +318,7 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
       badDebts: bs.badDebts,
       score,
       band,
-      label,
+      label: bandLabel,
       summary,
       alert,
     };
