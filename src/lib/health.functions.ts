@@ -197,25 +197,42 @@ function pickAlert(h: {
   cashInBank: number;
 }): BusinessHealth["alert"] {
   const badDebtPct = h.revenue > 0 ? (h.badDebts / h.revenue) * 100 : 0;
+  const profitable = h.netMarginPct >= 0;
   type Candidate = { weight: number; alert: NonNullable<BusinessHealth["alert"]> };
   const candidates: Candidate[] = [];
   if (badDebtPct >= 3) {
     candidates.push({
       weight: badDebtPct,
       alert: {
-        title: "Priority alert — bad debts",
-        body: `Bad debts are ${fmtPct(badDebtPct)} of revenue. Immediate action recommended.`,
+        title: "Priority alert — money you're unlikely to recover",
+        body: `About ${fmtPct(badDebtPct)} of your sales this period have been written off as bad debt. That's money you've earned but won't see. Tighten up who you give credit to, ask for deposits up front, and follow up overdue invoices before they get to write-off stage.`,
         severity: badDebtPct >= 8 ? "danger" : "warning",
       },
     });
   }
   if (h.monthsRunway !== null && h.monthsRunway < 2) {
+    const runway = h.monthsRunway;
+    let body: string;
+    if (runway < 0.5) {
+      const weeks = Math.max(1, Math.round(runway * 4.33));
+      const tail = profitable
+        ? "The good news — your business is profitable, so this is a collections problem, not an earnings problem. Chase your outstanding invoices this week and hold off on any non-essential spend."
+        : "Spending is outpacing what's coming in. This week, chase outstanding invoices and pause any non-essential costs while you work out where to trim.";
+      body = `You've got roughly ${weeks} ${weeks === 1 ? "week" : "weeks"} of cash left at your current spending. ${tail}`;
+    } else if (runway < 1) {
+      const tail = profitable
+        ? "Your business is profitable, so this is about collecting what you're already owed. Chase outstanding invoices and delay any non-essential spend."
+        : "Spending is running ahead of income. Chase outstanding invoices and review any costs you could pause.";
+      body = `You've got less than a month of cash at your current spending. ${tail}`;
+    } else {
+      body = `You've got under two months of cash at your current spending. Not urgent yet, but worth getting ahead of — chase overdue invoices and review any spend you could delay.`;
+    }
     candidates.push({
-      weight: 50 + (2 - h.monthsRunway) * 20,
+      weight: 50 + (2 - runway) * 20,
       alert: {
         title: "Priority alert — running low on cash",
-        body: `You currently have about 2-3 weeks of cash on hand if no new money comes in. The good news: your business is profitable, so this isn't about earning enough — it's about collecting what you're already owed. Focus on chasing your outstanding invoices this week.`,
-        severity: h.monthsRunway < 1 ? "danger" : "warning",
+        body,
+        severity: runway < 1 ? "danger" : "warning",
       },
     });
   }
@@ -223,8 +240,8 @@ function pickAlert(h: {
     candidates.push({
       weight: 40 + Math.abs(h.netMarginPct),
       alert: {
-        title: "Priority alert — operating loss",
-        body: `Net margin is ${fmtPct(h.netMarginPct)} for the period.`,
+        title: "Priority alert — spending more than you earn",
+        body: `You spent more than you brought in this period — net margin is ${fmtPct(h.netMarginPct)}. Look at your two biggest cost lines and your pricing. Small changes to either usually move this faster than chasing more sales.`,
         severity: "danger",
       },
     });

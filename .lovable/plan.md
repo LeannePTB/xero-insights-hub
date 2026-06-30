@@ -1,45 +1,36 @@
-## Replace Growth pillar with Cash Flow & Liquidity
+## Rewrite Priority alerts in plain English
 
-Drop the Growth pillar from Business Health (it relied on CRM/pipeline data Xero doesn't hold) and replace it with a Cash Flow & Liquidity pillar built entirely from Xero data we already pull.
+Update `pickAlert()` in `src/lib/health.functions.ts` so all three alerts use friendly, plain-English copy and adapt to the actual numbers. Only one alert ever displays (highest weight wins).
 
-### New pillar: Cash Flow & Liquidity
+### 1. Bad debts
+**Title:** Priority alert — money you're unlikely to recover
 
-Subtitle: "Is cash actually moving the right way?"
+**Body (dynamic):**
+> About {X%} of your sales this period have been written off as bad debt. That's money you've earned but won't see. Tighten up who you give credit to, ask for deposits up front, and follow up overdue invoices before they get to write-off stage.
 
-Metrics (4):
-1. **Net cash movement (period)** — change in bank balance over the selected range. Status: good if positive, watch if flat (±5% of monthly opex), bad if negative.
-2. **Working capital** — Current Assets − Current Liabilities from the balance sheet. Status: good if > 1× monthly opex, watch if positive but < 1×, bad if negative.
-3. **Days Sales Outstanding (DSO)** — (AR ÷ revenue) × period days. Status: good ≤ 30, watch 30–60, bad > 60.
-4. **Quick ratio** — (Cash + AR) ÷ Current Liabilities. Status: good ≥ 1.0, watch 0.7–1.0, bad < 0.7.
+(X% = badDebts / revenue, 1 decimal)
 
-Score weighting inside the pillar: net cash movement 30%, working capital 30%, DSO 20%, quick ratio 20%.
+### 2. Running low on cash *(replaces the hardcoded version)*
+**Title:** Priority alert — running low on cash
 
-### Wiring
+**Body (dynamic, three variants):**
 
-- Update `getBusinessHealthDetail` in `src/lib/health.functions.ts`:
-  - Remove the `growth` pillar block and its metrics (revenue concentration moves stays only in Stability where it already lives; `New customers` / `Pipeline leads` "Not in Xero" rows are dropped).
-  - Add a `cash_flow` pillar block using existing bank balance, balance sheet, AR ageing, and P&L data already loaded in this function — no new Xero calls.
-  - Pillar key: `"cash_flow"`, title `"Cash Flow"`, CTA label `"How to free up cash"`.
-- Update the `PillarMetric` key union and pillar key union to swap `growth` → `cash_flow`.
-- Rebalance the overall Business Health score weighting in `src/lib/health.functions.ts` (currently Money 40 / Efficiency 30 / Stability 30 with Growth unused in headline). Keep the headline formula unchanged; the new pillar appears only in the detail grid.
+- If `monthsRunway < 0.5`:
+> You've got roughly {N weeks} of cash left at your current spending. {If profitable: "The good news — your business is profitable, so this is a collections problem, not an earnings problem. Chase your outstanding invoices this week and hold off on any non-essential spend." | If not profitable: "Spending is outpacing what's coming in. This week, chase outstanding invoices and pause any non-essential costs while you work out where to trim."}
 
-### Recommendations + CTA
+- If `monthsRunway < 1`:
+> You've got less than a month of cash at your current spending. {profitable / loss-making variant as above, slightly softer tone}
 
-- Add `getCashFlowRecommendations` to `src/lib/health.recommendations.ts` with rules per metric:
-  - Negative net cash movement → tighten terms, defer capex, weekly cash flow forecast.
-  - Negative working capital → urgent: restructure short-term debt, push out payables, accelerate receivables.
-  - High DSO → automate dunning, deposits up-front, stop work at 30 days overdue.
-  - Low quick ratio → build cash buffer, convert idle stock, renegotiate supplier terms.
-- New component `src/components/dashboard/CashFlowRecommendations.tsx` mirroring `StabilityRecommendations.tsx`.
-- Wire it into `src/components/dashboard/HealthPillars.tsx` so the Cash Flow CTA expands inline like Money/Efficiency/Stability.
+- If `monthsRunway < 2`:
+> You've got under two months of cash at your current spending. Not urgent yet, but worth getting ahead of — chase overdue invoices and review any spend you could delay.
 
-### UI
+"Weeks" = `Math.max(1, Math.round(monthsRunway * 4.33))`. "Profitable" = `netMarginPct >= 0`.
 
-- Grid stays at 4 pillars: Money, Efficiency, Cash Flow, Stability.
-- No layout, color, or component-shape changes — only the swapped pillar content.
+### 3. Operating loss
+**Title:** Priority alert — spending more than you earn
+
+**Body (dynamic):**
+> You spent more than you brought in this period — net margin is {X%}. Look at your two biggest cost lines and your pricing. Small changes to either usually move this faster than chasing more sales.
 
 ### Out of scope
-
-- No new Xero API calls or scopes.
-- No changes to the headline Business Health score, donut, or date picker.
-- No migration — all derived in the server function.
+No UI changes — `HealthWidget.tsx` already renders `alert.title` and `alert.body` as-is. No DB changes.
