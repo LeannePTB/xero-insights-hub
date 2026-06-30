@@ -1,21 +1,45 @@
-## Plan
+## Replace Growth pillar with Cash Flow & Liquidity
 
-1. **Separate “Wages” from the fixed/variable/excluded break-even choice**
-   - Change Cost Classification so an account can stay **Fixed** for break-even while also being marked as **Wages** for Business Health.
-   - This answers your concern: tagging wages will **not** move them out of fixed costs unless you explicitly change the break-even classification.
+Drop the Growth pillar from Business Health (it relied on CRM/pipeline data Xero doesn't hold) and replace it with a Cash Flow & Liquidity pillar built entirely from Xero data we already pull.
 
-2. **Fix the Efficiency pillar reading tagged wages**
-   - Update Business Health detail to read the new wage flag and include both Operating Expenses and Cost of Sales lines when calculating “Wages as % of rev”.
-   - Also make the date range from the Business Health picker apply to the pillar breakdown so the card and detail section are looking at the same period.
+### New pillar: Cash Flow & Liquidity
 
-3. **Migrate existing data safely**
-   - Add a dedicated wage marker in the backend.
-   - Convert any existing accounts currently tagged as `wages` into: `classification = fixed` plus `is_wages = true`, so existing tags keep working and do not upset break-even.
+Subtitle: "Is cash actually moving the right way?"
 
-4. **Update cache refresh**
-   - After saving classifications, invalidate both break-even and business-health queries so the Efficiency card updates immediately instead of staying on “Not tagged”.
+Metrics (4):
+1. **Net cash movement (period)** — change in bank balance over the selected range. Status: good if positive, watch if flat (±5% of monthly opex), bad if negative.
+2. **Working capital** — Current Assets − Current Liabilities from the balance sheet. Status: good if > 1× monthly opex, watch if positive but < 1×, bad if negative.
+3. **Days Sales Outstanding (DSO)** — (AR ÷ revenue) × period days. Status: good ≤ 30, watch 30–60, bad > 60.
+4. **Quick ratio** — (Cash + AR) ÷ Current Liabilities. Status: good ≥ 1.0, watch 0.7–1.0, bad < 0.7.
 
-## Technical notes
+Score weighting inside the pillar: net cash movement 30%, working capital 30%, DSO 20%, quick ratio 20%.
 
-- Current issue: `wages` is stored in the same field as `fixed/variable/excluded`, so Business Health can look for it, but break-even treats unknown/non-variable/non-excluded values as fixed. It works accidentally for break-even, but it is not clear or robust.
-- Safer model: keep `classification` only for break-even and add `is_wages` only for Business Health Efficiency.
+### Wiring
+
+- Update `getBusinessHealthDetail` in `src/lib/health.functions.ts`:
+  - Remove the `growth` pillar block and its metrics (revenue concentration moves stays only in Stability where it already lives; `New customers` / `Pipeline leads` "Not in Xero" rows are dropped).
+  - Add a `cash_flow` pillar block using existing bank balance, balance sheet, AR ageing, and P&L data already loaded in this function — no new Xero calls.
+  - Pillar key: `"cash_flow"`, title `"Cash Flow"`, CTA label `"How to free up cash"`.
+- Update the `PillarMetric` key union and pillar key union to swap `growth` → `cash_flow`.
+- Rebalance the overall Business Health score weighting in `src/lib/health.functions.ts` (currently Money 40 / Efficiency 30 / Stability 30 with Growth unused in headline). Keep the headline formula unchanged; the new pillar appears only in the detail grid.
+
+### Recommendations + CTA
+
+- Add `getCashFlowRecommendations` to `src/lib/health.recommendations.ts` with rules per metric:
+  - Negative net cash movement → tighten terms, defer capex, weekly cash flow forecast.
+  - Negative working capital → urgent: restructure short-term debt, push out payables, accelerate receivables.
+  - High DSO → automate dunning, deposits up-front, stop work at 30 days overdue.
+  - Low quick ratio → build cash buffer, convert idle stock, renegotiate supplier terms.
+- New component `src/components/dashboard/CashFlowRecommendations.tsx` mirroring `StabilityRecommendations.tsx`.
+- Wire it into `src/components/dashboard/HealthPillars.tsx` so the Cash Flow CTA expands inline like Money/Efficiency/Stability.
+
+### UI
+
+- Grid stays at 4 pillars: Money, Efficiency, Cash Flow, Stability.
+- No layout, color, or component-shape changes — only the swapped pillar content.
+
+### Out of scope
+
+- No new Xero API calls or scopes.
+- No changes to the headline Business Health score, donut, or date picker.
+- No migration — all derived in the server function.
