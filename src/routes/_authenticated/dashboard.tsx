@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { LogOut, Plus, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock, SlidersHorizontal } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Clients — Traction Advisory" }] }),
