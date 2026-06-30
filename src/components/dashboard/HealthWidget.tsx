@@ -167,10 +167,12 @@ function Kpi({
   label,
   value,
   tone,
+  detail,
 }: {
   label: string;
   value: string;
   tone?: "danger";
+  detail?: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-border/60 bg-background/60 p-3">
@@ -183,6 +185,7 @@ function Kpi({
       >
         {value}
       </p>
+      {detail}
     </div>
   );
 }
