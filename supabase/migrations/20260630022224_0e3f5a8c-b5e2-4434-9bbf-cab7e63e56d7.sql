@@ -1,0 +1,1 @@
+ALTER TABLE public.xero_connections DROP COLUMN access_token, DROP COLUMN refresh_token;
