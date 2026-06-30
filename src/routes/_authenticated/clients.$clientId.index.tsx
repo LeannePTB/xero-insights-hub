@@ -17,7 +17,7 @@ import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
 import { SuperannuationWidget } from "@/components/dashboard/SuperannuationWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
-import { PeriodPerformanceWidget } from "@/components/dashboard/PeriodPerformanceWidget";
+
 import { AccountingBreakevenWidget } from "@/components/dashboard/AccountingBreakevenWidget";
 import { TrueBreakevenWidget } from "@/components/dashboard/TrueBreakevenWidget";
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
