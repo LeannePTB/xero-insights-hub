@@ -492,11 +492,28 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const topIncome = incomeRows.reduce((m, r) => (r.amount > m ? r.amount : m), 0);
     const topIncomeShare = incomeTotal > 0 ? (topIncome / incomeTotal) * 100 : 0;
 
-    // Wages-like accounts from expense section
-    const expenseRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) => t.includes("expense") || t.includes("operating"));
-    const wages = expenseRows
-      .filter((r) => /wage|salary|salaries|superannuation|payroll|staff/i.test(r.name))
+    // Wages: prefer accounts tagged 'wages' in cost classifications; fall back to name detection.
+    const { data: wageTagRows } = await context.supabase
+      .from("client_cost_classifications" as any)
+      .select("account_name, classification")
+      .eq("tenant_id", data.tenantId);
+    const taggedWageNames = new Set<string>(
+      ((wageTagRows ?? []) as any[])
+        .filter((r) => r.classification === "wages")
+        .map((r) => String(r.account_name).toLowerCase()),
+    );
+    const expenseRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) =>
+      t.includes("expense") || t.includes("operating") || t.includes("less operating"),
+    );
+    const wageRegex = /wage|salary|salaries|superannuation|payroll|staff|employee|contract\s*labou?r|sub[-\s]*contract|director'?s?\s*fee|payg|kiwisaver|bonus|commission/i;
+    const taggedWages = expenseRows
+      .filter((r) => taggedWageNames.has(r.name.toLowerCase()))
       .reduce((s, r) => s + r.amount, 0);
+    const detectedWages = expenseRows
+      .filter((r) => wageRegex.test(r.name))
+      .reduce((s, r) => s + r.amount, 0);
+    const wages = taggedWageNames.size > 0 ? taggedWages : detectedWages;
+    const wagesIsTagged = taggedWageNames.size > 0;
 
     const grossMarginPct = pnl.income > 0 ? (pnl.gross / pnl.income) * 100 : 0;
     const netMarginPct = pnl.income > 0 ? (pnl.net / pnl.income) * 100 : 0;
