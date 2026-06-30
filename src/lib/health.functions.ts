@@ -15,6 +15,7 @@ export type BusinessHealth = {
   netProfit: number;
   netMarginPct: number; // 0-100
   cashInBank: number;
+  bankAccounts: { name: string; balance: number }[];
   owedToYou: number;
   badDebts: number;
   // Score
