@@ -351,21 +351,29 @@ export type BusinessHealthDetail = {
   pillars: Pillar[];
 };
 
-// Collect leaf account rows from a P&L section (Income / Expense).
+// Collect leaf account rows from any P&L section whose title matches the predicate.
+// Recurses through nested Section rows so accounts grouped under sub-sections
+// (e.g. inside "Operating Expenses") are still picked up.
 function pnlSectionRows(report: any, predicate: (title: string) => boolean): { name: string; amount: number }[] {
   const out: { name: string; amount: number }[] = [];
-  const sections: ReportRow[] = report?.Rows ?? [];
-  for (const section of sections) {
-    if (section.RowType !== "Section") continue;
-    const title = (section.Title || "").toLowerCase();
-    if (!predicate(title)) continue;
-    for (const r of section.Rows ?? []) {
-      if (r.RowType === "Row" && r.Cells && r.Cells.length >= 2) {
+  function collectLeaves(rows: ReportRow[] | undefined) {
+    if (!rows) return;
+    for (const r of rows) {
+      if (r.RowType === "Section") {
+        collectLeaves(r.Rows);
+      } else if (r.RowType === "Row" && r.Cells && r.Cells.length >= 2) {
         const name = r.Cells[0]?.Value ?? "";
         const amount = parseAmount(r.Cells[1]?.Value);
         if (name) out.push({ name, amount });
       }
     }
+  }
+  const sections: ReportRow[] = report?.Rows ?? [];
+  for (const section of sections) {
+    if (section.RowType !== "Section") continue;
+    const title = (section.Title || "").toLowerCase();
+    if (!predicate(title)) continue;
+    collectLeaves(section.Rows);
   }
   return out;
 }
