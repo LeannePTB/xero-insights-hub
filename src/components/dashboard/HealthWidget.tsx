@@ -6,6 +6,7 @@ import { useTenantCurrency, formatMoney } from "./useTenantCurrency";
 import { HealthScoreDonut } from "./HealthScoreDonut";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateRangeControls, usePersistedDate, toISO } from "./DateRangeControls";
+import { HealthPillars } from "./HealthPillars";
 
 function fyStartDefault(): Date {
   const t = new Date();
