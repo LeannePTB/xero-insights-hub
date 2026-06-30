@@ -33,8 +33,13 @@ const EMPTY_CONTACT: SecurityContact = {
   assessment_date: null,
 };
 
-async function assertSuperAdmin(supabase: any) {
-  const { data, error } = await supabase.rpc("me_is_super_admin");
+async function assertSuperAdmin(supabase: any, userId: string) {
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden");
 }
@@ -42,7 +47,7 @@ async function assertSuperAdmin(supabase: any) {
 export const getSecurityPosture = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Token encryption coverage.
@@ -102,7 +107,7 @@ export const getSecurityPosture = createServerFn({ method: "GET" })
 export const purgeOldAuditLog = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const cutoff = new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 2).toISOString();
     const { error, count } = await supabaseAdmin
@@ -117,7 +122,7 @@ export const resetUserMfa = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: factors } = await (supabaseAdmin as any).auth.admin.mfa.listFactors({
       userId: data.userId,
@@ -152,14 +157,14 @@ const POLICY_DOCS = [
 export const listSecurityDocs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     return { docs: POLICY_DOCS.map((slug) => ({ slug, url: `/api/public/docs/security/${slug}.md` })) };
   });
 
 export const getSecurityContact = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<SecurityContact> => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("security_contact_details")
@@ -189,7 +194,7 @@ export const saveSecurityContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: Partial<SecurityContact>) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const payload: Record<string, unknown> = { singleton: true };
     for (const k of Object.keys(EMPTY_CONTACT) as (keyof SecurityContact)[]) {

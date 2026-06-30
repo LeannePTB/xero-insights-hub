@@ -10,8 +10,13 @@ export type FirmOverviewCard = {
   isOwn: boolean;
 };
 
-async function assertSuperAdmin(supabase: any) {
-  const { data, error } = await supabase.rpc("me_is_super_admin");
+async function assertSuperAdmin(supabase: any, userId: string) {
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden");
 }
@@ -24,7 +29,7 @@ async function assertSuperAdmin(supabase: any) {
 export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<{ firms: FirmOverviewCard[] }> => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: firms, error } = await (supabaseAdmin as any)

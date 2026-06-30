@@ -20,8 +20,13 @@ const contactSchema = z.object({
 
 export type XeroAssessmentContact = z.infer<typeof contactSchema>;
 
-async function assertSuperAdmin(supabase: any) {
-  const { data, error } = await supabase.rpc("me_is_super_admin");
+async function assertSuperAdmin(supabase: any, userId: string) {
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden: super admin only");
 }
@@ -29,7 +34,7 @@ async function assertSuperAdmin(supabase: any) {
 export const getAssessmentContact = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<XeroAssessmentContact> => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { data, error } = await context.supabase
       .from("xero_assessment_contact")
       .select("*")
@@ -43,7 +48,7 @@ export const saveAssessmentContact = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => contactSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { error } = await context.supabase
       .from("xero_assessment_contact")
       .upsert({ id: "singleton", ...data }, { onConflict: "id" });

@@ -7,7 +7,12 @@ function hashToken(token: string) {
 }
 
 async function assertSuperAdmin(supabase: any, _userId: string) {
-  const { data, error } = await supabase.rpc("me_is_super_admin");
+  const { data, error } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", _userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Forbidden");
 }
