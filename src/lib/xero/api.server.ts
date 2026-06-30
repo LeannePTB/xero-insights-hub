@@ -153,13 +153,12 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
     .update({
       access_token_enc: encryptTokenB64(t.access_token),
       refresh_token_enc: encryptTokenB64(t.refresh_token),
-      access_token: null,
-      refresh_token: null,
       expires_at,
       scopes: t.scope ?? conn.scopes,
       status: "connected",
       disconnected_at: null,
     })
+
     .eq("user_id", conn.user_id);
   if (error) throw new Error(`Failed to save refreshed Xero tokens: ${error.message}`);
 
