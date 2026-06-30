@@ -22,7 +22,7 @@ export function HealthPillars({
     queryKey: ["business-health-detail", tenantId, fromDate, toDate],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000,
-    queryFn: () => fetchDetail({ data: { tenantId, fromDate, toDate } }),
+    queryFn: () => fetchDetail({ data: { tenantId, clientId, fromDate, toDate } }),
   });
 
   if (q.isLoading) {
