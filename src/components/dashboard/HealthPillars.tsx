@@ -4,6 +4,7 @@ import { getBusinessHealthDetail } from "@/lib/health.functions";
 import { PillarCard } from "./PillarCard";
 import { MoneyRecommendations } from "./MoneyRecommendations";
 import { EfficiencyRecommendations } from "./EfficiencyRecommendations";
+import { StabilityRecommendations } from "./StabilityRecommendations";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function HealthPillars({
@@ -48,13 +49,15 @@ export function HealthPillars({
   return (
     <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
       {q.data.pillars.map((p) => {
-        const expandable = p.key === "money" || p.key === "efficiency";
+        const expandable = p.key === "money" || p.key === "efficiency" || p.key === "stability";
         const renderExpanded =
           p.key === "money"
             ? () => <MoneyRecommendations metrics={p.metrics} />
             : p.key === "efficiency"
               ? () => <EfficiencyRecommendations metrics={p.metrics} clientId={clientId} />
-              : undefined;
+              : p.key === "stability"
+                ? () => <StabilityRecommendations metrics={p.metrics} />
+                : undefined;
         return (
           <PillarCard
             key={p.key}

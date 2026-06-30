@@ -256,3 +256,129 @@ export function getEfficiencyRecommendations(metrics: PillarMetric[]): Recommend
   const order = { danger: 0, watch: 1, info: 2 } as const;
   return recs.sort((a, b) => order[a.severity] - order[b.severity]);
 }
+
+export function getStabilityRecommendations(metrics: PillarMetric[]): Recommendation[] {
+  const recs: Recommendation[] = [];
+
+  const runway = find(metrics, "runway");
+  if (runway?.status === "bad") {
+    recs.push({
+      severity: "danger",
+      title: "Less than 1 month of runway",
+      why: `Cash on hand covers "${runway.pill}" of operating costs — any shock could be fatal.`,
+      actions: [
+        "Build a 13-week cash flow forecast today and review it every Monday.",
+        "Pause all non-essential spend until runway exceeds 2 months.",
+        "Bring forward invoicing — bill weekly, not monthly.",
+        "Talk to your bank about an overdraft facility before you need it, not after.",
+        "Review owner drawings against the current cash position.",
+      ],
+    });
+  } else if (runway?.status === "watch") {
+    recs.push({
+      severity: "watch",
+      title: "Runway is thin (1–3 months)",
+      why: `Cash covers ${runway.pill} — not enough margin to absorb a bad quarter.`,
+      actions: [
+        "Target 3 months of operating costs in reserve as the minimum cash floor.",
+        "Tighten payment terms on new work — deposits up-front where possible.",
+        "Defer any non-essential capex for the next quarter.",
+      ],
+    });
+  }
+
+  const conc = find(metrics, "revenue_concentration");
+  if (conc?.status === "bad") {
+    recs.push({
+      severity: "danger",
+      title: "Revenue is dangerously concentrated",
+      why: `One source dominates revenue ("${conc.pill}") — losing it would break the business.`,
+      actions: [
+        "Map your top 5 customers/services as a % of revenue.",
+        "Set a target: no single customer above 25% of revenue within 12 months.",
+        "Invest marketing in the 2nd and 3rd tier services to broaden the base.",
+        "Lock in longer-term contracts with the dominant client to buy diversification time.",
+      ],
+    });
+  } else if (conc?.status === "watch") {
+    recs.push({
+      severity: "watch",
+      title: "Revenue base is top-heavy",
+      why: `Revenue mix reads "${conc.pill}" — better than single-source but still fragile.`,
+      actions: [
+        "Identify 3 services/products to actively grow to balance the mix.",
+        "Track revenue share monthly so drift is visible early.",
+      ],
+    });
+  }
+
+  const ar = find(metrics, "receivables");
+  if (ar?.status === "bad") {
+    recs.push({
+      severity: "danger",
+      title: "Receivables are larger than 2 months of revenue",
+      why: `${ar.pill} owed to the business — cash is locked in customers, not the bank.`,
+      actions: [
+        "Personally call every debtor over 30 days overdue this week.",
+        "Stop work the moment an invoice goes 30 days overdue.",
+        "Move chronic late payers to direct debit or pre-payment only.",
+        "Offer a small early-payment discount (e.g. 2%/7 days) to accelerate cash in.",
+        "Tighten terms on new work: 7–14 days instead of 30.",
+      ],
+    });
+  } else if (ar?.status === "watch") {
+    recs.push({
+      severity: "watch",
+      title: "Receivables are building up",
+      why: `${ar.pill} outstanding — over 1 month of revenue trapped in debtors.`,
+      actions: [
+        "Automate a 3-step reminder sequence (day 1, day 7, day 14 overdue).",
+        "Review aged receivables every Monday morning.",
+        "Send a reminder 3 days before the due date, not just after.",
+      ],
+    });
+  }
+
+  const ap = find(metrics, "payables");
+  if (ap?.status === "bad") {
+    recs.push({
+      severity: "danger",
+      title: "Payables are larger than 2 months of revenue",
+      why: `${ap.pill} owed to suppliers — supplier risk and credit damage are real if cash slips.`,
+      actions: [
+        "List every supplier balance with terms and due dates.",
+        "Negotiate longer terms with the largest 3 instead of paying late.",
+        "Prioritise paying suppliers critical to delivery — protect the revenue line first.",
+        "Speak to lenders early about consolidation before relationships strain.",
+      ],
+    });
+  } else if (ap?.status === "watch") {
+    recs.push({
+      severity: "watch",
+      title: "Payables are climbing",
+      why: `${ap.pill} owed — over 1 month of revenue in supplier obligations.`,
+      actions: [
+        "Run a weekly payment batch on a fixed day so suppliers know what to expect.",
+        "Match supplier terms to your customer terms to avoid being squeezed in the middle.",
+      ],
+    });
+  }
+
+  if (recs.length === 0) {
+    return [
+      {
+        severity: "info",
+        title: "Stability is in good shape",
+        why: "Runway, revenue concentration, receivables and payables all look healthy.",
+        actions: [
+          "Keep building cash reserves toward 6+ months of operating costs.",
+          "Re-check revenue concentration quarterly — drift happens slowly.",
+          "Document credit-control and payment routines so they survive staff changes.",
+        ],
+      },
+    ];
+  }
+
+  const order = { danger: 0, watch: 1, info: 2 } as const;
+  return recs.sort((a, b) => order[a.severity] - order[b.severity]);
+}

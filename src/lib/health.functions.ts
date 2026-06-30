@@ -622,10 +622,10 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const runwayPill =
       monthsRunway === null ? "Unknown" : monthsRunway < 1 ? "<1 month" : monthsRunway < 3 ? `${monthsRunway.toFixed(1)} months` : `${monthsRunway.toFixed(1)}+ months`;
     const stabilityMetrics: PillarMetric[] = [
-      { label: "Months of runway", pill: runwayPill, status: monthsRunway === null ? "neutral" : statusFor(monthsRunway, { good: 3, watch: 1 }) },
-      { label: "Revenue concentration", pill: topIncomeShare >= 80 ? "Single service" : topIncomeShare >= 50 ? "Top-heavy" : "Spread", status: statusFor(topIncomeShare, { good: 50, watch: 80 }, true) },
-      { label: "Debts owed to business", pill: ar.total > 0 ? `${fmtMoney(ar.total)} outstanding` : "None", status: ar.total > monthlyRevenue * 2 ? "bad" : ar.total > monthlyRevenue ? "watch" : "good" },
-      { label: "Amount business owes", pill: ap.total > 0 ? `Only ${fmtMoney(ap.total)}` : "None", status: ap.total > monthlyRevenue * 2 ? "bad" : ap.total > monthlyRevenue ? "watch" : "good" },
+      { key: "runway", label: "Months of runway", pill: runwayPill, status: monthsRunway === null ? "neutral" : statusFor(monthsRunway, { good: 3, watch: 1 }) },
+      { key: "revenue_concentration", label: "Revenue concentration", pill: topIncomeShare >= 80 ? "Single service" : topIncomeShare >= 50 ? "Top-heavy" : "Spread", status: statusFor(topIncomeShare, { good: 50, watch: 80 }, true) },
+      { key: "receivables", label: "Debts owed to business", pill: ar.total > 0 ? `${fmtMoney(ar.total)} outstanding` : "None", status: ar.total > monthlyRevenue * 2 ? "bad" : ar.total > monthlyRevenue ? "watch" : "good" },
+      { key: "payables", label: "Amount business owes", pill: ap.total > 0 ? `Only ${fmtMoney(ap.total)}` : "None", status: ap.total > monthlyRevenue * 2 ? "bad" : ap.total > monthlyRevenue ? "watch" : "good" },
     ];
     const stabilityScore = scoreFromMetrics([
       { score: monthsRunway === null ? 50 : Math.min(100, monthsRunway * 25), weight: 0.4 },
