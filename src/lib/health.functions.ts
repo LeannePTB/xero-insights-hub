@@ -330,6 +330,7 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
 
 export type PillarStatus = "good" | "watch" | "bad" | "neutral" | "not_in_xero";
 export type PillarMetric = {
+  key?: string;
   label: string;
   pill: string;
   status: PillarStatus;
