@@ -42,6 +42,7 @@ function summarise(report: any): PnlReport {
     netProfit: 0,
     incomeLines: [],
     expenseLines: [],
+    cogsLines: [],
   };
 
   const sections: XeroReportRow[] = report?.Rows ?? [];
