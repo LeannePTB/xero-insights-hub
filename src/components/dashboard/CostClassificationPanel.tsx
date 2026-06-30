@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 
-type Classification = "fixed" | "variable" | "excluded" | "wages";
+type Classification = "fixed" | "variable" | "excluded";
+type AccountOverride = { classification?: Classification; isWages?: boolean };
 
 function lastNMonthsRange(n: number) {
   const end = new Date();
@@ -53,15 +54,17 @@ export function CostClassificationPanel({
     queryFn: () => fetchClassifications({ data: { clientId, tenantId } }),
   });
 
-  const [overrides, setOverrides] = useState<Record<string, Classification>>({});
+  const [overrides, setOverrides] = useState<Record<string, AccountOverride>>({});
 
   useEffect(() => {
     setOverrides({});
   }, [classQ.data, pnlQ.data]);
 
   const saved = useMemo(() => {
-    const m: Record<string, Classification> = {};
-    for (const r of classQ.data?.rows ?? []) m[r.account_name] = r.classification;
+    const m: Record<string, { classification: Classification; isWages: boolean }> = {};
+    for (const r of classQ.data?.rows ?? []) {
+      m[r.account_name] = { classification: r.classification, isWages: r.is_wages };
+    }
     return m;
   }, [classQ.data]);
 
@@ -80,15 +83,23 @@ export function CostClassificationPanel({
   }, [pnlQ.data]);
 
   const current = (name: string): Classification =>
-    overrides[name] ?? saved[name] ?? "fixed";
+    overrides[name]?.classification ?? saved[name]?.classification ?? "fixed";
 
-  const dirty = Object.keys(overrides).filter((k) => overrides[k] !== (saved[k] ?? "fixed"));
+  const currentIsWages = (name: string): boolean =>
+    overrides[name]?.isWages ?? saved[name]?.isWages ?? false;
+
+  const dirty = Object.keys(overrides).filter((k) => {
+    const classification = current(k);
+    const isWages = currentIsWages(k);
+    return classification !== (saved[k]?.classification ?? "fixed") || isWages !== (saved[k]?.isWages ?? false);
+  });
 
   const saveMut = useMutation({
     mutationFn: async () => {
       const entries = dirty.map((accountName) => ({
         accountName,
-        classification: overrides[accountName],
+        classification: current(accountName),
+        isWages: currentIsWages(accountName),
       }));
       return saveClassifications({ data: { clientId, tenantId, entries } });
     },
@@ -96,6 +107,9 @@ export function CostClassificationPanel({
       toast.success("Classifications saved");
       setOverrides({});
       qc.invalidateQueries({ queryKey: ["cost-classifications", clientId, tenantId] });
+      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
+      qc.invalidateQueries({ queryKey: ["business-health"] });
+      qc.invalidateQueries({ queryKey: ["business-health-detail"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -106,7 +120,7 @@ export function CostClassificationPanel({
         <div>
           <p className="text-sm font-semibold">{tenantName}</p>
           <p className="text-xs text-muted-foreground">
-            Accounts seen in the last 12 months of P&L. Default is Fixed.
+            Accounts seen in the last 12 months of P&L. Default is Fixed. Mark wages separately for Business Health.
           </p>
         </div>
         <Button
@@ -137,8 +151,9 @@ export function CostClassificationPanel({
           <ul className="divide-y divide-border">
             {accounts.map((a) => {
               const c = current(a.name);
+              const isWages = currentIsWages(a.name);
               return (
-                <li key={a.name} className="flex items-center justify-between gap-3 py-2">
+                <li key={a.name} className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">{a.name}</p>
                     <p className="text-[11px] text-muted-foreground">
@@ -150,13 +165,17 @@ export function CostClassificationPanel({
                       (12 mo)
                     </p>
                   </div>
-                  <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
-                    {(["fixed", "variable", "excluded", "wages"] as Classification[]).map((opt) => (
+                  <div className="flex shrink-0 flex-wrap items-center gap-2">
+                    <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
+                    {(["fixed", "variable", "excluded"] as Classification[]).map((opt) => (
                       <button
                         key={opt}
                         type="button"
                         onClick={() =>
-                          setOverrides((prev) => ({ ...prev, [a.name]: opt }))
+                          setOverrides((prev) => ({
+                            ...prev,
+                            [a.name]: { ...prev[a.name], classification: opt },
+                          }))
                         }
                         className={`rounded px-2.5 py-1 capitalize transition ${
                           c === opt
@@ -166,14 +185,30 @@ export function CostClassificationPanel({
                         title={
                           opt === "excluded"
                             ? "Leave this account out of the Breakeven calculation entirely"
-                            : opt === "wages"
-                              ? "Tag this account as wages/salaries — used by Business Health Efficiency"
-                              : undefined
+                            : undefined
                         }
                       >
                         {opt}
                       </button>
                     ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOverrides((prev) => ({
+                          ...prev,
+                          [a.name]: { ...prev[a.name], isWages: !isWages },
+                        }))
+                      }
+                      className={`rounded-md border px-2.5 py-1 text-xs transition ${
+                        isWages
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-muted-foreground hover:text-foreground"
+                      }`}
+                      title="Mark as wages/salaries for Business Health Efficiency without changing break-even fixed cost treatment"
+                    >
+                      Wages
+                    </button>
                   </div>
                 </li>
               );

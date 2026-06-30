@@ -59,7 +59,7 @@ export function useBreakevenData({
 
   const classificationEnabled = classQ.data?.enabled ?? true;
   const classMap = useMemo(() => {
-    const m = new Map<string, "fixed" | "variable" | "excluded" | "wages">();
+    const m = new Map<string, "fixed" | "variable" | "excluded">();
     for (const r of classQ.data?.rows ?? []) m.set(r.account_name, r.classification);
     return m;
   }, [classQ.data]);

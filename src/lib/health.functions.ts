@@ -351,6 +351,10 @@ export type BusinessHealthDetail = {
   pillars: Pillar[];
 };
 
+function normaliseAccountName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
 // Collect leaf account rows from any P&L section whose title matches the predicate.
 // Recurses through nested Section rows so accounts grouped under sub-sections
 // (e.g. inside "Operating Expenses") are still picked up.
@@ -440,7 +444,7 @@ function scoreFromMetrics(weighted: { score: number; weight: number }[]): number
 
 export const getBusinessHealthDetail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string }) => input)
+  .inputValidator((input: { tenantId: string; fromDate?: string; toDate?: string }) => input)
   .handler(async ({ data, context }): Promise<BusinessHealthDetail> => {
     const { getConnectionByTenant, xeroGet } = await import("./xero/api.server");
     const { assertWidgetAccess } = await import("./xero/access.server");
@@ -448,7 +452,12 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const conn = await getConnectionByTenant(data.tenantId);
 
     const today = new Date();
-    const fy = fyToDateRange(today);
+    const fyDefault = fyToDateRange(today);
+    const fy = {
+      from: data.fromDate ?? fyDefault.from,
+      to: data.toDate ?? fyDefault.to,
+      label: data.fromDate && data.toDate ? `${data.fromDate} → ${data.toDate}` : fyDefault.label,
+    };
     const asOfDate = fy.to;
 
     // Prior FY same window (same number of days)
@@ -495,21 +504,25 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     // Wages: prefer accounts tagged 'wages' in cost classifications; fall back to name detection.
     const { data: wageTagRows } = await context.supabase
       .from("client_cost_classifications" as any)
-      .select("account_name, classification")
+      .select("account_name, classification, is_wages")
       .eq("tenant_id", data.tenantId);
     const taggedWageNames = new Set<string>(
       ((wageTagRows ?? []) as any[])
-        .filter((r) => r.classification === "wages")
-        .map((r) => String(r.account_name).toLowerCase()),
+        .filter((r) => r.is_wages || r.classification === "wages")
+        .map((r) => normaliseAccountName(String(r.account_name))),
     );
     const expenseRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) =>
       t.includes("expense") || t.includes("operating") || t.includes("less operating"),
     );
+    const cogsRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) =>
+      t.includes("cost of sales") || t.includes("cost of goods") || t.includes("direct cost"),
+    );
+    const wageSourceRows = [...expenseRows, ...cogsRows];
     const wageRegex = /wage|salary|salaries|superannuation|payroll|staff|employee|contract\s*labou?r|sub[-\s]*contract|director'?s?\s*fee|payg|kiwisaver|bonus|commission/i;
-    const taggedWages = expenseRows
-      .filter((r) => taggedWageNames.has(r.name.toLowerCase()))
+    const taggedWages = wageSourceRows
+      .filter((r) => taggedWageNames.has(normaliseAccountName(r.name)))
       .reduce((s, r) => s + r.amount, 0);
-    const detectedWages = expenseRows
+    const detectedWages = wageSourceRows
       .filter((r) => wageRegex.test(r.name))
       .reduce((s, r) => s + r.amount, 0);
     const wages = taggedWageNames.size > 0 ? taggedWages : detectedWages;
