@@ -20,6 +20,7 @@ export type PnlReport = {
   netProfit: number;
   incomeLines: { name: string; amount: number }[];
   expenseLines: { name: string; amount: number }[];
+  cogsLines: { name: string; amount: number }[];
 };
 
 function parseAmount(v: string | undefined): number {
