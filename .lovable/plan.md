@@ -1,35 +1,56 @@
-# Security recheck — final pass before Xero submission
+# Cut over to tractionadvisory.com.au
 
-## Current state
+Goal: make `tractionadvisory.com.au` the canonical domain everywhere in code, email, and Xero, then publish.
 
-All scanners are clean except one Supabase linter warning:
+## 1. Code changes (find/replace `tractionadvisory.app` → `tractionadvisory.com.au`)
 
-- **`public.me_is_super_admin()` is executable by `authenticated`** (lint 0029, `SECURITY DEFINER` callable by signed-in users).
+Update every hardcoded reference:
 
-Everything else passes:
-- Connector security scan: 0 findings
-- Supabase RLS/GRANT scan: 0 findings
-- Lovable Supabase scan: 0 findings
-- Supply-chain scan: 0 findings
-- All other `SECURITY DEFINER` functions in `public` have `EXECUTE` revoked from `authenticated` and `anon` (verified via `pg_proc`).
-- `has_role` / `is_super_admin` live in the locked-down `app_private` schema (not exposed via PostgREST).
+- `src/lib/xero/connections.functions.ts`
+  - `CANONICAL_XERO_APP_ORIGIN` → `https://tractionadvisory.com.au`
+  - Allowed-origin list → `tractionadvisory.com.au`, `www.tractionadvisory.com.au`
+- `src/routes/api/public/xero/callback.ts`
+  - `XERO_CALLBACK_URL` → `https://tractionadvisory.com.au/api/public/xero/callback`
+  - Allowed-origin list updated to `.com.au`
+- `src/lib/invites.functions.ts` — both `inviteUrl` builders → `https://tractionadvisory.com.au/signup/${token}`
+- `src/lib/advisors.functions.ts` — `redirectTo` and fallback → `https://tractionadvisory.com.au/set-password`
+- `src/lib/admin.functions.ts` — `redirectTo` → `https://tractionadvisory.com.au/set-password`
+- `src/routes/auth.tsx` — production set-password URL → `https://tractionadvisory.com.au/set-password`
+- `src/routes/_authenticated/settings.advisors.tsx` — copy-credentials snippet → `https://tractionadvisory.com.au/auth`
+- `src/routes/_authenticated/clients.$clientId.settings.tsx` — viewer-credentials snippet → `https://tractionadvisory.com.au/auth`
+- `src/lib/email-templates/firm-invite.tsx` — default `inviteUrl` and preview example → `tractionadvisory.com.au`
 
-## Why `me_is_super_admin` stays executable
+Email sender domain (must match the DNS NS delegation we already sent the host):
 
-It's the only function the browser RPCs directly (`supabase.rpc('me_is_super_admin')`) to decide whether to render Super-admin UI, and every server function gates on the same RPC before doing privileged work. The function:
+- `src/lib/email/send.server.ts`, `src/routes/lovable/email/transactional/send.ts`, `src/routes/lovable/email/auth/webhook.ts`, `src/routes/lovable/email/auth/preview.ts`
+  - `SENDER_DOMAIN` → `notify.tractionadvisory.com.au`
+  - `FROM_DOMAIN` / `ROOT_DOMAIN` → `tractionadvisory.com.au`
 
-- Takes no arguments.
-- Reads only `auth.uid()` (the caller's own id) against `public.user_roles`.
-- Returns a single boolean about the caller — no other user's data, no enumeration, no side effects.
-- Cannot be used to elevate privileges; it just reports a fact the caller already has.
+## 2. Lovable Domains (manual, in Project Settings → Domains)
 
-Revoking `EXECUTE` would break the Super-admin console and every server-side `assertSuperAdmin` check, with no security gain.
+1. Confirm `tractionadvisory.com.au` and `www.tractionadvisory.com.au` are connected and **Active** (host has the A/TXT records from the Word doc).
+2. Set `tractionadvisory.com.au` as **Primary**.
+3. Either remove `tractionadvisory.app` / `www.tractionadvisory.app` or leave them as redirects to the new primary — your call.
 
-## Plan
+## 3. Xero developer portal (manual)
 
-1. **Mark the linter finding as accepted** via `security--manage_security_finding` (op `ignore`) with the rationale above, so it doesn't keep appearing in future scans/exports.
-2. **Update `@security-memory`** so future scans know this exposure is intentional, and record the boundary (only `me_is_super_admin` is exposed to `authenticated`; any new `SECURITY DEFINER` function in `public` must default to `REVOKE EXECUTE FROM authenticated, anon`).
-3. **Re-run `security--run_security_scan`** to confirm a fully clean report you can attach to the Xero submission.
-4. Reply with the clean scan summary so you have it ready to send.
+In the Xero app config, add the new redirect URI **before** publishing:
 
-No code or schema changes — this is purely closing out the warning and refreshing the security memory.
+- `https://tractionadvisory.com.au/api/public/xero/callback`
+
+Keep the old `.app` URI temporarily so in-flight connections don't break, then remove it once the cutover is verified.
+
+## 4. Publish
+
+Run `preview_ui--publish` after the code changes land and Domains shows Active.
+
+## 5. Post-deploy smoke test
+
+- `https://tractionadvisory.com.au/auth` loads, MFA works.
+- Invite/reset-password email links point at `.com.au`.
+- Xero "Connect" redirects to `.com.au/api/public/xero/callback` and links the tenant.
+- Auth + transactional emails send from `notify.tractionadvisory.com.au` with no DKIM/SPF warnings.
+
+## Open question
+
+The DNS doc I generated delegates `notify.tractionadvisory.com.au` for email. Confirm that's the sender subdomain you want (this plan assumes yes). If you'd prefer `mail.` or root-domain sending, tell me and I'll adjust the constants and the DNS doc.

@@ -143,7 +143,7 @@ export const adminSendPasswordReset = createServerFn({ method: "POST" })
     const email = u.user.email as string;
 
     const { error: rErr } = await (supabaseAdmin as any).auth.resetPasswordForEmail(email, {
-      redirectTo: "https://tractionadvisory.app/set-password",
+      redirectTo: "https://tractionadvisory.com.au/set-password",
     });
     if (rErr) throw new Error(rErr.message);
 

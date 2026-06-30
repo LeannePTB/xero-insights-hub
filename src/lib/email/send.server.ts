@@ -10,8 +10,8 @@ import { render } from "@react-email/components";
 import { TEMPLATES } from "@/lib/email-templates/registry";
 
 const SITE_NAME = "Traction Advisory";
-const SENDER_DOMAIN = "notify.tractionadvisory.app";
-const FROM_DOMAIN = "tractionadvisory.app";
+const SENDER_DOMAIN = "notify.tractionadvisory.com.au";
+const FROM_DOMAIN = "tractionadvisory.com.au";
 
 function generateToken(): string {
   const bytes = new Uint8Array(32);
