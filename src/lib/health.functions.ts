@@ -345,7 +345,7 @@ export type PillarMetric = {
   status: PillarStatus;
 };
 export type Pillar = {
-  key: "money" | "efficiency" | "growth" | "stability";
+  key: "money" | "efficiency" | "cash_flow" | "stability";
   title: string;
   subtitle: string;
   score: number | null; // null => "—/100"
