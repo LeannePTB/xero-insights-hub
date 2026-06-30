@@ -9,7 +9,7 @@ function base64url(buf: Buffer) {
 
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
-const CANONICAL_XERO_APP_ORIGIN = "https://tractionadvisory.app";
+const CANONICAL_XERO_APP_ORIGIN = "https://tractionadvisory.com.au";
 const XERO_CALLBACK_URL = `${CANONICAL_XERO_APP_ORIGIN}/api/public/xero/callback`;
 const SCOPES = xeroScopeString();
 const IDENTITY_SCOPES = xeroIdentityScopeString();
@@ -189,8 +189,8 @@ export const startXeroConnect = createServerFn({ method: "POST" })
   });
 
 const ALLOWED_CUSTOM_HOSTS = new Set([
-  "tractionadvisory.app",
-  "www.tractionadvisory.app",
+  "tractionadvisory.com.au",
+  "www.tractionadvisory.com.au",
 ]);
 
 function normalizeOrigin(origin: string) {

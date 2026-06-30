@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
-const XERO_CALLBACK_URL = "https://tractionadvisory.app/api/public/xero/callback";
+const XERO_CALLBACK_URL = "https://tractionadvisory.com.au/api/public/xero/callback";
 
 type StateRow = {
   user_id: string | null;
@@ -317,8 +317,8 @@ function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
 }
 
 const ALLOWED_RETURN_HOSTS = new Set([
-  "tractionadvisory.app",
-  "www.tractionadvisory.app",
+  "tractionadvisory.com.au",
+  "www.tractionadvisory.com.au",
   "xero-shine-dashboards.lovable.app",
 ]);
 

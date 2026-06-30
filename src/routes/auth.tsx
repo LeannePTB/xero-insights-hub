@@ -89,7 +89,7 @@ function AuthPage() {
       const redirectTo =
         typeof window !== "undefined"
           ? `${window.location.origin}/set-password`
-          : "https://tractionadvisory.app/set-password";
+          : "https://tractionadvisory.com.au/set-password";
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
       toast.success("Password reset email sent. Check your inbox.");
