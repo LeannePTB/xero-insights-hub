@@ -113,12 +113,13 @@ function summariseBs(report: any) {
   let cash = 0;
   let receivables = 0;
   let badDebts = 0;
+  let currentAssets = 0;
+  let currentLiabilities = 0;
   for (const l of leaves) {
     const s = l.section.toLowerCase();
     const n = l.name.toLowerCase();
     if (s.includes("bank")) cash += l.amount;
     if (n.includes("doubtful") || n.includes("bad debt") || n.includes("allowance for")) {
-      // Allowance is usually a negative contra; surface absolute value
       badDebts += Math.abs(l.amount);
     }
     if (
@@ -128,9 +129,17 @@ function summariseBs(report: any) {
     ) {
       receivables += l.amount;
     }
+    // Xero balance sheet sections include "Bank", "Current Assets", "Current Liabilities", etc.
+    // Treat bank as part of current assets even if it's in its own section.
+    if (s.includes("current asset") || s.includes("bank")) {
+      currentAssets += l.amount;
+    } else if (s.includes("current liabilit")) {
+      currentLiabilities += l.amount;
+    }
   }
-  return { cash, receivables, badDebts };
+  return { cash, receivables, badDebts, currentAssets, currentLiabilities };
 }
+
 
 function computeScore(input: {
   netMarginPct: number;
