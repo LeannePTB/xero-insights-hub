@@ -154,7 +154,7 @@ export function getEfficiencyRecommendations(metrics: PillarMetric[]): Recommend
         title: "Wage accounts aren't tagged",
         why: "We can't compute Wages as % of revenue accurately until your wage-related accounts are tagged. Right now we fall back to name matching, which can miss accounts like 'Contract Labour' or 'Director Fees'.",
         actions: [
-          "Open Settings → Cost classification and tag each wages/salaries/super/contractor account as 'Wages'.",
+          "Open Settings → Cost classification and turn on the Wages marker for each wages/salaries/super/contractor account.",
           "Re-open Business Health — the Efficiency pillar will recalculate immediately.",
         ],
       });

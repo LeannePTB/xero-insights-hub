@@ -460,12 +460,14 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     };
     const asOfDate = fy.to;
 
-    // Prior FY same window (same number of days)
-    const priorFromYear = parseInt(fy.from.slice(0, 4), 10) - 1;
-    const priorFrom = `${priorFromYear}-07-01`;
-    const priorTo = new Date(today);
-    priorTo.setUTCFullYear(priorTo.getUTCFullYear() - 1);
-    const priorToStr = priorTo.toISOString().slice(0, 10);
+    // Prior-year same selected window.
+    const shiftYear = (iso: string) => {
+      const d = new Date(`${iso}T00:00:00Z`);
+      d.setUTCFullYear(d.getUTCFullYear() - 1);
+      return d.toISOString().slice(0, 10);
+    };
+    const priorFrom = shiftYear(fy.from);
+    const priorToStr = shiftYear(fy.to);
 
     const safeGet = async <T,>(path: string, params: Record<string, string | undefined> = {}): Promise<T | null> => {
       try {
@@ -536,10 +538,11 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const billsOnTimePct = ap.total > 0 ? ((ap.total - ap.overdue) / ap.total) * 100 : 100;
 
     const fyStart = new Date(`${fy.from}T00:00:00Z`);
+    const periodEnd = new Date(`${fy.to}T00:00:00Z`);
     const monthsElapsed = Math.max(
       1,
-      (today.getUTCFullYear() - fyStart.getUTCFullYear()) * 12 +
-        (today.getUTCMonth() - fyStart.getUTCMonth()) + 1,
+      (periodEnd.getUTCFullYear() - fyStart.getUTCFullYear()) * 12 +
+        (periodEnd.getUTCMonth() - fyStart.getUTCMonth()) + 1,
     );
     const monthlyOpex = pnl.expenses / monthsElapsed;
     const monthlyRevenue = pnl.income / monthsElapsed;
