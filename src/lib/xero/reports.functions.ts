@@ -20,6 +20,7 @@ export type PnlReport = {
   netProfit: number;
   incomeLines: { name: string; amount: number }[];
   expenseLines: { name: string; amount: number }[];
+  cogsLines: { name: string; amount: number }[];
 };
 
 function parseAmount(v: string | undefined): number {
@@ -41,6 +42,7 @@ function summarise(report: any): PnlReport {
     netProfit: 0,
     incomeLines: [],
     expenseLines: [],
+    cogsLines: [],
   };
 
   const sections: XeroReportRow[] = report?.Rows ?? [];
@@ -64,6 +66,7 @@ function summarise(report: any): PnlReport {
       out.incomeLines.push(...lineItems);
     } else if (title.includes("cost of sales")) {
       out.totalCostOfSales += sectionTotal;
+      out.cogsLines.push(...lineItems);
     } else if (title === "gross profit") {
       out.grossProfit = sectionTotal;
     } else if (title.includes("less operating expenses") || title.includes("expenses")) {
@@ -78,6 +81,7 @@ function summarise(report: any): PnlReport {
   if (!out.netProfit) out.netProfit = out.grossProfit - out.totalExpenses;
   // Sort line items descending
   out.expenseLines.sort((a, b) => b.amount - a.amount);
+  out.cogsLines.sort((a, b) => b.amount - a.amount);
   out.incomeLines.sort((a, b) => b.amount - a.amount);
   return out;
 }
