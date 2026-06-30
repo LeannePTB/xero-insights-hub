@@ -319,7 +319,6 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
       monthsRunway,
       netMarginPct,
       cashInBank: bs.cash,
-      bankAccounts: bs.bankAccounts,
     });
 
     return {
@@ -333,6 +332,7 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
       netProfit: pnl.net,
       netMarginPct,
       cashInBank: bs.cash,
+      bankAccounts: bs.bankAccounts,
       owedToYou: bs.receivables,
       badDebts: bs.badDebts,
       score,
