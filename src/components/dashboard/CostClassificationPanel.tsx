@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Save } from "lucide-react";
 import { toast } from "sonner";
 
-type Classification = "fixed" | "variable" | "excluded";
+type Classification = "fixed" | "variable" | "excluded" | "wages";
 
 function lastNMonthsRange(n: number) {
   const end = new Date();
@@ -143,7 +143,7 @@ export function CostClassificationPanel({
                     </p>
                   </div>
                   <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
-                    {(["fixed", "variable", "excluded"] as Classification[]).map((opt) => (
+                    {(["fixed", "variable", "excluded", "wages"] as Classification[]).map((opt) => (
                       <button
                         key={opt}
                         type="button"
@@ -158,7 +158,9 @@ export function CostClassificationPanel({
                         title={
                           opt === "excluded"
                             ? "Leave this account out of the Breakeven calculation entirely"
-                            : undefined
+                            : opt === "wages"
+                              ? "Tag this account as wages/salaries — used by Business Health Efficiency"
+                              : undefined
                         }
                       >
                         {opt}
