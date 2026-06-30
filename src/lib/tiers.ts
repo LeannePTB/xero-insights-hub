@@ -7,7 +7,6 @@ export type WidgetKey =
   | "unreconciled"
   | "tax_liability"
   | "superannuation"
-  | "period_performance"
   | "accounting_breakeven"
   | "true_breakeven"
   | "cashflow";
@@ -20,7 +19,6 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "unreconciled",
   "tax_liability",
   "superannuation",
-  "period_performance",
   "accounting_breakeven",
   "true_breakeven",
   "cashflow",
@@ -35,7 +33,6 @@ const ADVANCED: WidgetKey[] = [
   "unreconciled",
   "tax_liability",
   "superannuation",
-  "period_performance",
   "accounting_breakeven",
   "true_breakeven",
   "cashflow",
@@ -69,7 +66,6 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   unreconciled: "Unreconciled Transactions",
   tax_liability: "Tax Liabilities",
   superannuation: "Superannuation Liabilities",
-  period_performance: "Period Performance",
   accounting_breakeven: "Accounting Break-Even",
   true_breakeven: "True Break-Even (Cash)",
   cashflow: "Cash Flow",

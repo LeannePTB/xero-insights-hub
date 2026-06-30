@@ -257,7 +257,7 @@ export type BasisOverrideWidget =
   | "superannuation"
   | "payables"
   | "receivables"
-  | "period_performance"
+  
   | "accounting_breakeven"
   | "true_breakeven"
   | "cashflow";
