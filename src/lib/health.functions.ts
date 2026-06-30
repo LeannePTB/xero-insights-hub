@@ -727,7 +727,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       pillars: [
         { key: "money", title: "Money", subtitle: "Are you profitable?", score: moneyScore, metrics: moneyMetrics, ctaLabel: "Why is cash so low?" },
         { key: "efficiency", title: "Efficiency", subtitle: "Is the team productive?", score: efficiencyScore, metrics: efficiencyMetrics, ctaLabel: "Improve efficiency" },
-        { key: "growth", title: "Growth", subtitle: "Is the pipeline full?", score: growthScore, metrics: growthMetrics, ctaLabel: "Diversification risk" },
+        { key: "cash_flow", title: "Cash Flow", subtitle: "Is cash actually moving the right way?", score: cashFlowScore, metrics: cashFlowMetrics, ctaLabel: "How to free up cash" },
         { key: "stability", title: "Stability", subtitle: "Could you weather a storm?", score: stabilityScore, metrics: stabilityMetrics, ctaLabel: "What to do now" },
       ],
     };
