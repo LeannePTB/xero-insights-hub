@@ -508,6 +508,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const pnl = summarisePnl(pnlRes?.Reports?.[0] ?? {});
     const priorPnl = summarisePnl(priorPnlRes?.Reports?.[0] ?? {});
     const bs = summariseBs(bsRes?.Reports?.[0] ?? {});
+    const bsStart = summariseBs(bsStartRes?.Reports?.[0] ?? {});
     const liabilities = sumLiabilities(bsRes?.Reports?.[0] ?? {});
     const ap = summariseAgedReport(agedPayRes?.Reports?.[0] ?? {});
     const ar = summariseAgedReport(agedRecRes?.Reports?.[0] ?? {});
