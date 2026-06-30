@@ -444,7 +444,7 @@ function scoreFromMetrics(weighted: { score: number; weight: number }[]): number
 
 export const getBusinessHealthDetail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; fromDate?: string; toDate?: string }) => input)
+  .inputValidator((input: { tenantId: string; clientId?: string; fromDate?: string; toDate?: string }) => input)
   .handler(async ({ data, context }): Promise<BusinessHealthDetail> => {
     const { getConnectionByTenant, xeroGet } = await import("./xero/api.server");
     const { assertWidgetAccess } = await import("./xero/access.server");
@@ -507,10 +507,12 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     // Use the trusted server client after widget access has been checked so RLS helper gaps don't
     // prevent the Business Health card from reading advisor-maintained account tags.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: wageTagRows } = await (supabaseAdmin as any)
+    let wageTagsQuery = (supabaseAdmin as any)
       .from("client_cost_classifications")
       .select("account_name, classification, is_wages")
       .eq("tenant_id", data.tenantId);
+    if (data.clientId) wageTagsQuery = wageTagsQuery.eq("client_id", data.clientId);
+    const { data: wageTagRows } = await wageTagsQuery;
     const taggedWageNames = new Set<string>(
       ((wageTagRows ?? []) as any[])
         .filter((r) => r.is_wages || r.classification === "wages")
