@@ -623,18 +623,85 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       { score: billsOnTimePct, weight: 0.2 },
     ]);
 
-    // ---------- GROWTH ----------
-    const growthMetrics: PillarMetric[] = [
-      { label: "Revenue single source", pill: topIncomeShare >= 80 ? `${topIncomeShare.toFixed(0)}% one account` : topIncomeShare >= 50 ? "Concentrated" : "Diversified", status: statusFor(topIncomeShare, { good: 50, watch: 80 }, true) },
-      { label: "New customers", pill: "Not in Xero", status: "not_in_xero" },
-      { label: "Pipeline leads", pill: "Not in Xero", status: "not_in_xero" },
-      revenueGrowthPct === null
-        ? { label: "Monthly rev trend", pill: "No comparison", status: "neutral" }
-        : { label: "Monthly rev trend", pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}% YoY`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
+    // ---------- CASH FLOW & LIQUIDITY ----------
+    const netCashMovement = bs.cash - bsStart.cash;
+    const periodDays = Math.max(
+      1,
+      Math.round((periodEnd.getTime() - fyStart.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+    );
+    const dso = pnl.income > 0 ? (ar.total / pnl.income) * periodDays : null;
+    const workingCapital = bs.currentAssets - bs.currentLiabilities;
+    const quickRatio =
+      bs.currentLiabilities > 0 ? (bs.cash + ar.total) / bs.currentLiabilities : null;
+
+    const cashMovementPill =
+      netCashMovement > 0
+        ? `+${fmtMoney(netCashMovement)}`
+        : netCashMovement < 0
+          ? `${fmtMoney(netCashMovement)}`
+          : "Flat";
+    const cashMovementStatus: PillarStatus =
+      monthlyOpex <= 0
+        ? "neutral"
+        : netCashMovement > monthlyOpex * 0.05
+          ? "good"
+          : netCashMovement < -monthlyOpex * 0.05
+            ? "bad"
+            : "watch";
+
+    const workingCapitalPill =
+      workingCapital >= 0 ? `+${fmtMoney(workingCapital)}` : `${fmtMoney(workingCapital)}`;
+    const workingCapitalStatus: PillarStatus =
+      workingCapital < 0
+        ? "bad"
+        : monthlyOpex > 0 && workingCapital < monthlyOpex
+          ? "watch"
+          : "good";
+
+    const dsoPill = dso === null ? "No revenue" : `${Math.round(dso)} days`;
+    const dsoStatus: PillarStatus =
+      dso === null ? "neutral" : dso <= 30 ? "good" : dso <= 60 ? "watch" : "bad";
+
+    const quickRatioPill =
+      quickRatio === null ? "No current liabilities" : quickRatio.toFixed(2);
+    const quickRatioStatus: PillarStatus =
+      quickRatio === null
+        ? "neutral"
+        : quickRatio >= 1.0
+          ? "good"
+          : quickRatio >= 0.7
+            ? "watch"
+            : "bad";
+
+    const cashFlowMetrics: PillarMetric[] = [
+      { key: "net_cash_movement", label: "Net cash movement", pill: cashMovementPill, status: cashMovementStatus },
+      { key: "working_capital", label: "Working capital", pill: workingCapitalPill, status: workingCapitalStatus },
+      { key: "dso", label: "Days sales outstanding", pill: dsoPill, status: dsoStatus },
+      { key: "quick_ratio", label: "Quick ratio", pill: quickRatioPill, status: quickRatioStatus },
     ];
-    const growthScore = scoreFromMetrics([
-      { score: Math.max(0, Math.min(100, 100 - (topIncomeShare - 30) * 1.2)), weight: 0.5 },
-      ...(revenueGrowthPct === null ? [] : [{ score: Math.max(0, Math.min(100, 50 + revenueGrowthPct * 2)), weight: 0.5 }]),
+    const cashFlowScore = scoreFromMetrics([
+      {
+        score:
+          monthlyOpex <= 0
+            ? 50
+            : Math.max(0, Math.min(100, 50 + (netCashMovement / monthlyOpex) * 25)),
+        weight: 0.3,
+      },
+      {
+        score:
+          monthlyOpex <= 0
+            ? 50
+            : Math.max(0, Math.min(100, 50 + (workingCapital / monthlyOpex) * 25)),
+        weight: 0.3,
+      },
+      {
+        score: dso === null ? 50 : Math.max(0, Math.min(100, 100 - (dso - 30) * 2)),
+        weight: 0.2,
+      },
+      {
+        score: quickRatio === null ? 50 : Math.max(0, Math.min(100, quickRatio * 70)),
+        weight: 0.2,
+      },
     ]);
 
     // ---------- STABILITY ----------
