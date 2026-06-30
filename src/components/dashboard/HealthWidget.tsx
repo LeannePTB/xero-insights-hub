@@ -34,7 +34,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
   );
   const [toDate, setToDate] = usePersistedDate(
     `health:to:${tenantId ?? "none"}`,
-    () => new Date(),
+    endOfThisMonth,
   );
 
   const q = useQuery({
