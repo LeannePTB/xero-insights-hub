@@ -213,8 +213,8 @@ function pickAlert(h: {
     candidates.push({
       weight: 50 + (2 - h.monthsRunway) * 20,
       alert: {
-        title: "Priority alert — cash runway",
-        body: `Less than ${h.monthsRunway < 1 ? "1 month" : "2 months"} of cash runway at current operating costs.`,
+        title: "Priority alert — running low on cash",
+        body: `You currently have about 2-3 weeks of cash on hand if no new money comes in. The good news: your business is profitable, so this isn't about earning enough — it's about collecting what you're already owed. Focus on chasing your outstanding invoices this week.`,
         severity: h.monthsRunway < 1 ? "danger" : "warning",
       },
     });
