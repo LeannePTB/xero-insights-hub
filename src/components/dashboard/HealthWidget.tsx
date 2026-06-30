@@ -130,6 +130,8 @@ export function HealthWidget({ tenantId, tenantName, clientName }: Props) {
               </div>
             </div>
           )}
+
+          <HealthPillars tenantId={tenantId} />
         </>
       )}
     </div>
