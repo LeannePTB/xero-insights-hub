@@ -5,6 +5,7 @@ import { PillarCard } from "./PillarCard";
 import { MoneyRecommendations } from "./MoneyRecommendations";
 import { EfficiencyRecommendations } from "./EfficiencyRecommendations";
 import { StabilityRecommendations } from "./StabilityRecommendations";
+import { CashFlowRecommendations } from "./CashFlowRecommendations";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function HealthPillars({
