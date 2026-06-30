@@ -95,7 +95,7 @@ export const runXeroAudit = createServerFn({ method: "POST" })
         bySev[f.severity] = (bySev[f.severity] ?? 0) + 1;
         byCat[f.category] = (byCat[f.category] ?? 0) + 1;
       }
-      summary = { total: findings.length, severity: bySev, category: byCat, accounts: accounts.length, invoices: invoices.length };
+      summary = { total: findings.length, severity: bySev, category: byCat, accounts: accounts.length, invoices: invoices.length, payments: payments.length };
     } catch (e: any) {
       runError = e?.message ?? String(e);
     }
