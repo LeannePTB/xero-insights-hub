@@ -29,6 +29,7 @@ import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
 import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
+import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
 
