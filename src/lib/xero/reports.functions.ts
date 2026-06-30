@@ -66,6 +66,7 @@ function summarise(report: any): PnlReport {
       out.incomeLines.push(...lineItems);
     } else if (title.includes("cost of sales")) {
       out.totalCostOfSales += sectionTotal;
+      out.cogsLines.push(...lineItems);
     } else if (title === "gross profit") {
       out.grossProfit = sectionTotal;
     } else if (title.includes("less operating expenses") || title.includes("expenses")) {
