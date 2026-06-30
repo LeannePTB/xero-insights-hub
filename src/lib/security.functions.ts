@@ -55,11 +55,8 @@ export const getSecurityPosture = createServerFn({ method: "GET" })
       .from("xero_connections")
       .select("*", { count: "exact", head: true })
       .not("access_token_enc", "is", null);
-    const { count: plainCount } = await supabaseAdmin
-      .from("xero_connections")
-      .select("*", { count: "exact", head: true })
-      .is("access_token_enc", null)
-      .not("access_token", "is", null);
+    const plainCount = 0;
+
     const { count: totalConns } = await supabaseAdmin
       .from("xero_connections")
       .select("*", { count: "exact", head: true });

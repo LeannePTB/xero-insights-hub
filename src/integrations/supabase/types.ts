@@ -1140,7 +1140,6 @@ export type Database = {
       }
       xero_connections: {
         Row: {
-          access_token: string | null
           access_token_enc: string | null
           base_currency: string | null
           created_at: string
@@ -1149,7 +1148,6 @@ export type Database = {
           expires_at: string
           firm_id: string | null
           id: string
-          refresh_token: string | null
           refresh_token_enc: string | null
           scopes: string | null
           status: string
@@ -1160,7 +1158,6 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          access_token?: string | null
           access_token_enc?: string | null
           base_currency?: string | null
           created_at?: string
@@ -1169,7 +1166,6 @@ export type Database = {
           expires_at: string
           firm_id?: string | null
           id?: string
-          refresh_token?: string | null
           refresh_token_enc?: string | null
           scopes?: string | null
           status?: string
@@ -1180,7 +1176,6 @@ export type Database = {
           user_id: string
         }
         Update: {
-          access_token?: string | null
           access_token_enc?: string | null
           base_currency?: string | null
           created_at?: string
@@ -1189,7 +1184,6 @@ export type Database = {
           expires_at?: string
           firm_id?: string | null
           id?: string
-          refresh_token?: string | null
           refresh_token_enc?: string | null
           scopes?: string | null
           status?: string

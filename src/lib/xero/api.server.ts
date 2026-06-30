@@ -31,14 +31,12 @@ export type Connection = {
   scopes: string | null;
 };
 
-// Raw shape pulled from the DB, with both legacy plaintext and AES-256-GCM columns.
+// Raw shape pulled from the DB — encrypted-only since plaintext columns were dropped.
 type ConnectionRow = {
   id: string;
   user_id: string;
   tenant_id: string;
   tenant_name: string;
-  access_token: string | null;
-  refresh_token: string | null;
   access_token_enc: string | null;
   refresh_token_enc: string | null;
   expires_at: string;
@@ -46,7 +44,8 @@ type ConnectionRow = {
 };
 
 const CONNECTION_COLUMNS =
-  "id, user_id, tenant_id, tenant_name, access_token, refresh_token, access_token_enc, refresh_token_enc, expires_at, scopes";
+  "id, user_id, tenant_id, tenant_name, access_token_enc, refresh_token_enc, expires_at, scopes";
+
 
 function basicAuth() {
   const clientId = process.env.XERO_CLIENT_ID;
@@ -75,39 +74,14 @@ async function fetchWithTimeout(url: string, init: RequestInit = {}) {
 // Decrypt a connection row. If the encrypted columns are missing (legacy row
 // written before encryption was rolled out), fall back to plaintext and
 // transparently re-encrypt for next time.
+// Decrypt a connection row. Plaintext columns were removed; rows missing
+// encrypted tokens are unrecoverable and require reconnection.
 async function materializeConnection(row: ConnectionRow): Promise<Connection> {
-  let access = "";
-  let refresh = "";
-  let needsBackfill = false;
-
-  if (row.access_token_enc) {
-    access = decryptToken(row.access_token_enc);
-  } else if (row.access_token) {
-    access = row.access_token;
-    needsBackfill = true;
-  }
-  if (row.refresh_token_enc) {
-    refresh = decryptToken(row.refresh_token_enc);
-  } else if (row.refresh_token) {
-    refresh = row.refresh_token;
-    needsBackfill = true;
-  }
-
-  if (!access || !refresh) {
+  if (!row.access_token_enc || !row.refresh_token_enc) {
     throw new Error("Xero connection is missing tokens. Please reconnect this organisation.");
   }
-
-  if (needsBackfill) {
-    await supabaseAdmin
-      .from("xero_connections")
-      .update({
-        access_token_enc: encryptTokenB64(access),
-        refresh_token_enc: encryptTokenB64(refresh),
-        access_token: null,
-        refresh_token: null,
-      })
-      .eq("id", row.id);
-  }
+  const access = decryptToken(row.access_token_enc);
+  const refresh = decryptToken(row.refresh_token_enc);
 
   return {
     id: row.id,
@@ -120,6 +94,7 @@ async function materializeConnection(row: ConnectionRow): Promise<Connection> {
     scopes: row.scopes,
   };
 }
+
 
 async function refreshAccessToken(conn: Connection): Promise<Connection> {
   const res = await fetchWithTimeout(TOKEN_URL, {
@@ -178,13 +153,12 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
     .update({
       access_token_enc: encryptTokenB64(t.access_token),
       refresh_token_enc: encryptTokenB64(t.refresh_token),
-      access_token: null,
-      refresh_token: null,
       expires_at,
       scopes: t.scope ?? conn.scopes,
       status: "connected",
       disconnected_at: null,
     })
+
     .eq("user_id", conn.user_id);
   if (error) throw new Error(`Failed to save refreshed Xero tokens: ${error.message}`);
 
