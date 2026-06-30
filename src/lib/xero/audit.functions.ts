@@ -22,7 +22,7 @@ export const runXeroAudit = createServerFn({ method: "POST" })
     await assertAdvisor(context.supabase, context.userId);
     const { tenantId } = data;
     const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
-    const { ruleCoaHygiene, ruleArAp, ruleBank } = await import("@/lib/xero/audit/rules.server");
+    const { ruleCoaHygiene, ruleArAp, ruleBank, rulePayments } = await import("@/lib/xero/audit/rules.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const conn = await getConnectionByTenant(tenantId);
@@ -40,24 +40,29 @@ export const runXeroAudit = createServerFn({ method: "POST" })
     const runId = run.id as string;
 
     try {
+      // Payments lookback: last 12 months
+      const since = new Date(Date.now() - 365 * 86_400_000).toISOString();
       // Fetch in parallel. Org gives us shortCode for deep links.
-      const [orgRes, accountsRes, invoicesRes, creditNotesRes] = await Promise.all([
+      const [orgRes, accountsRes, invoicesRes, creditNotesRes, paymentsRes] = await Promise.all([
         xeroGet<any>(conn, "Organisations").catch(() => null),
         xeroGet<any>(conn, "Accounts"),
         // Pull all unpaid + paid in last 24m to bound size.
         xeroGet<any>(conn, "Invoices", { Statuses: "AUTHORISED,SUBMITTED,DRAFT", page: "1" }),
         xeroGet<any>(conn, "CreditNotes", { Statuses: "AUTHORISED,SUBMITTED" }).catch(() => ({ CreditNotes: [] })),
+        xeroGet<any>(conn, "Payments", { where: `Status=="AUTHORISED"&&Date>=DateTime(${since.slice(0, 10).replace(/-/g, ",")})` }).catch(() => ({ Payments: [] })),
       ]);
 
       const shortCode: string | null = orgRes?.Organisations?.[0]?.ShortCode ?? null;
       const accounts = (accountsRes?.Accounts ?? []) as any[];
       const invoices = (invoicesRes?.Invoices ?? []) as any[];
       const creditNotes = (creditNotesRes?.CreditNotes ?? []) as any[];
+      const payments = (paymentsRes?.Payments ?? []) as any[];
 
       const findings = [
         ...ruleCoaHygiene(accounts, shortCode),
         ...ruleBank(accounts, shortCode),
         ...ruleArAp(invoices, creditNotes, shortCode),
+        ...rulePayments(payments, shortCode),
       ];
 
       // Persist findings.
