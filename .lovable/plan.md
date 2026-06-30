@@ -1,29 +1,38 @@
-## Add duplicate payment detection to the Xero file audit
+## Goal
+All date pickers default to the **current month** at login, persist while the user is signed in, and reset on logout. Applies to every widget with a date picker, including Business Health.
 
-Extend the existing Xero file audit with a new rule that flags likely double payments — useful for catching bills paid twice or customer payments recorded twice.
+## Changes
 
-### What gets detected
+### 1. `src/components/dashboard/DateRangeControls.tsx` — `usePersistedDate`
+- Switch storage from `localStorage` to `sessionStorage` so values clear when the browser session ends.
+- Also clear on Supabase `SIGNED_OUT` (see step 3) to handle in-tab logout.
+- Keep the same `(key, fallback)` API so call sites don't change.
 
-A new **AP/AR** category rule `payments.possible_duplicate` (severity: **high**) flags any two or more payments that share:
-- Same contact (vendor or customer)
-- Same amount (to the cent)
-- Same bank account
-- Payment dates within **30 days** of each other
-- Not already linked to the same invoice (so a legitimate split-invoice payment isn't flagged)
+### 2. Default fallbacks → current month
+Audit every `usePersistedDate(..., fallback)` call and ensure the fallback returns a current-month value:
 
-Each finding lists the payment IDs, dates, amount, contact, and a deep link to the first payment in Xero. Like all audit findings, it can be snoozed per tenant.
+- `useBreakevenData.ts` — already `startOfThisMonth` / `endOfThisMonth` ✅ (no change, just verify)
+- `HealthWidget` / health pillars date picker — set fallback to start/end of current month
+- `CashflowWidget` — set fallback to current month range
+- `PnlWidget` — set fallback to current month range
+- `TaxLiabilityWidget` "as at" — keep as today (single date, current month implicit)
+- `SuperannuationWidget` "as at" — keep as today
+- Any other widget using `usePersistedDate` (grep to confirm: Receivables, Payables, Unreconciled, Audit, TransactionSearch, etc.) — normalise to current month range or today for single-date pickers.
 
-A secondary, lower-severity rule `payments.cross_account_duplicate` (severity: **medium**) catches the same contact + same amount within 30 days **across different bank accounts** (covers the "paid from personal card then again from business" pattern).
+Single-date "as at" pickers stay as `new Date()` (today is inside current month). Range pickers all use `startOfThisMonth` → `endOfThisMonth`.
 
-### Implementation
+### 3. Clear on logout — `src/routes/__root.tsx`
+In the existing `onAuthStateChange` handler, on `SIGNED_OUT` also call `sessionStorage.clear()` (or remove keys with our known prefixes) so the next login starts fresh even if the tab is reused.
 
-1. **`src/lib/xero/audit/rules.server.ts`** — add `rulePayments(payments, shortCode)`. Group by `Contact+Amount(+Account)`, sort by date, walk pairs within the 30-day window.
-2. **`src/lib/xero/audit/deeplinks.ts`** — add `Payment` entity deep link.
-3. **`src/lib/xero/audit.functions.ts`** — fetch `Payments` (last 12 months, `Status=AUTHORISED`) in parallel with existing fetches; call `rulePayments` and merge findings.
-4. **Audit page** — no UI change; new findings appear under the AR/AP category filter.
+### 4. SSR safety
+`usePersistedDate` already guards `typeof window === "undefined"`. `sessionStorage` is browser-only, so the same guard covers it.
 
-### Notes / limits
+## Out of scope
+- No changes to widget UI, query logic, or business rules.
+- No changes to non-date persisted settings (cost classifications, card order, etc.).
 
-- Only **AUTHORISED** payments considered (DELETED ignored).
-- 12-month lookback to bound API size.
-- Multiple payments against the **same invoice** are excluded so part-payments aren't false positives.
+## Verification
+- Log in → every range picker shows current month (1st → last day).
+- Change a picker → navigate to settings and back → value retained.
+- Log out → log back in → picker is current month again.
+- Open a new tab after closing all tabs → current month.
