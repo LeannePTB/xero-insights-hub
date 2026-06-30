@@ -113,12 +113,13 @@ function summariseBs(report: any) {
   let cash = 0;
   let receivables = 0;
   let badDebts = 0;
+  let currentAssets = 0;
+  let currentLiabilities = 0;
   for (const l of leaves) {
     const s = l.section.toLowerCase();
     const n = l.name.toLowerCase();
     if (s.includes("bank")) cash += l.amount;
     if (n.includes("doubtful") || n.includes("bad debt") || n.includes("allowance for")) {
-      // Allowance is usually a negative contra; surface absolute value
       badDebts += Math.abs(l.amount);
     }
     if (
@@ -128,9 +129,17 @@ function summariseBs(report: any) {
     ) {
       receivables += l.amount;
     }
+    // Xero balance sheet sections include "Bank", "Current Assets", "Current Liabilities", etc.
+    // Treat bank as part of current assets even if it's in its own section.
+    if (s.includes("current asset") || s.includes("bank")) {
+      currentAssets += l.amount;
+    } else if (s.includes("current liabilit")) {
+      currentLiabilities += l.amount;
+    }
   }
-  return { cash, receivables, badDebts };
+  return { cash, receivables, badDebts, currentAssets, currentLiabilities };
 }
+
 
 function computeScore(input: {
   netMarginPct: number;
@@ -336,7 +345,7 @@ export type PillarMetric = {
   status: PillarStatus;
 };
 export type Pillar = {
-  key: "money" | "efficiency" | "growth" | "stability";
+  key: "money" | "efficiency" | "cash_flow" | "stability";
   title: string;
   subtitle: string;
   score: number | null; // null => "—/100"
@@ -478,10 +487,19 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       }
     };
 
-    const [pnlRes, priorPnlRes, bsRes, agedRecRes, agedPayRes, orgRes] = await Promise.all([
+    // Prior BS at one day before fy.from gives us bank balance at start of period for net cash movement.
+    const dayBefore = (iso: string) => {
+      const d = new Date(`${iso}T00:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - 1);
+      return d.toISOString().slice(0, 10);
+    };
+    const bsStartDate = dayBefore(fy.from);
+
+    const [pnlRes, priorPnlRes, bsRes, bsStartRes, agedRecRes, agedPayRes, orgRes] = await Promise.all([
       safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: fy.from, toDate: fy.to }),
       safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: priorFrom, toDate: priorToStr }),
       safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: asOfDate }),
+      safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: bsStartDate }),
       safeGet<{ Reports: any[] }>("Reports/AgedReceivablesByContact", { date: asOfDate }),
       safeGet<{ Reports: any[] }>("Reports/AgedPayablesByContact", { date: asOfDate }),
       safeGet<{ Organisations: any[] }>("Organisations"),
@@ -490,6 +508,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const pnl = summarisePnl(pnlRes?.Reports?.[0] ?? {});
     const priorPnl = summarisePnl(priorPnlRes?.Reports?.[0] ?? {});
     const bs = summariseBs(bsRes?.Reports?.[0] ?? {});
+    const bsStart = summariseBs(bsStartRes?.Reports?.[0] ?? {});
     const liabilities = sumLiabilities(bsRes?.Reports?.[0] ?? {});
     const ap = summariseAgedReport(agedPayRes?.Reports?.[0] ?? {});
     const ar = summariseAgedReport(agedRecRes?.Reports?.[0] ?? {});
@@ -604,18 +623,85 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       { score: billsOnTimePct, weight: 0.2 },
     ]);
 
-    // ---------- GROWTH ----------
-    const growthMetrics: PillarMetric[] = [
-      { label: "Revenue single source", pill: topIncomeShare >= 80 ? `${topIncomeShare.toFixed(0)}% one account` : topIncomeShare >= 50 ? "Concentrated" : "Diversified", status: statusFor(topIncomeShare, { good: 50, watch: 80 }, true) },
-      { label: "New customers", pill: "Not in Xero", status: "not_in_xero" },
-      { label: "Pipeline leads", pill: "Not in Xero", status: "not_in_xero" },
-      revenueGrowthPct === null
-        ? { label: "Monthly rev trend", pill: "No comparison", status: "neutral" }
-        : { label: "Monthly rev trend", pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}% YoY`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
+    // ---------- CASH FLOW & LIQUIDITY ----------
+    const netCashMovement = bs.cash - bsStart.cash;
+    const periodDays = Math.max(
+      1,
+      Math.round((periodEnd.getTime() - fyStart.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+    );
+    const dso = pnl.income > 0 ? (ar.total / pnl.income) * periodDays : null;
+    const workingCapital = bs.currentAssets - bs.currentLiabilities;
+    const quickRatio =
+      bs.currentLiabilities > 0 ? (bs.cash + ar.total) / bs.currentLiabilities : null;
+
+    const cashMovementPill =
+      netCashMovement > 0
+        ? `+${fmtMoney(netCashMovement)}`
+        : netCashMovement < 0
+          ? `${fmtMoney(netCashMovement)}`
+          : "Flat";
+    const cashMovementStatus: PillarStatus =
+      monthlyOpex <= 0
+        ? "neutral"
+        : netCashMovement > monthlyOpex * 0.05
+          ? "good"
+          : netCashMovement < -monthlyOpex * 0.05
+            ? "bad"
+            : "watch";
+
+    const workingCapitalPill =
+      workingCapital >= 0 ? `+${fmtMoney(workingCapital)}` : `${fmtMoney(workingCapital)}`;
+    const workingCapitalStatus: PillarStatus =
+      workingCapital < 0
+        ? "bad"
+        : monthlyOpex > 0 && workingCapital < monthlyOpex
+          ? "watch"
+          : "good";
+
+    const dsoPill = dso === null ? "No revenue" : `${Math.round(dso)} days`;
+    const dsoStatus: PillarStatus =
+      dso === null ? "neutral" : dso <= 30 ? "good" : dso <= 60 ? "watch" : "bad";
+
+    const quickRatioPill =
+      quickRatio === null ? "No current liabilities" : quickRatio.toFixed(2);
+    const quickRatioStatus: PillarStatus =
+      quickRatio === null
+        ? "neutral"
+        : quickRatio >= 1.0
+          ? "good"
+          : quickRatio >= 0.7
+            ? "watch"
+            : "bad";
+
+    const cashFlowMetrics: PillarMetric[] = [
+      { key: "net_cash_movement", label: "Net cash movement", pill: cashMovementPill, status: cashMovementStatus },
+      { key: "working_capital", label: "Working capital", pill: workingCapitalPill, status: workingCapitalStatus },
+      { key: "dso", label: "Days sales outstanding", pill: dsoPill, status: dsoStatus },
+      { key: "quick_ratio", label: "Quick ratio", pill: quickRatioPill, status: quickRatioStatus },
     ];
-    const growthScore = scoreFromMetrics([
-      { score: Math.max(0, Math.min(100, 100 - (topIncomeShare - 30) * 1.2)), weight: 0.5 },
-      ...(revenueGrowthPct === null ? [] : [{ score: Math.max(0, Math.min(100, 50 + revenueGrowthPct * 2)), weight: 0.5 }]),
+    const cashFlowScore = scoreFromMetrics([
+      {
+        score:
+          monthlyOpex <= 0
+            ? 50
+            : Math.max(0, Math.min(100, 50 + (netCashMovement / monthlyOpex) * 25)),
+        weight: 0.3,
+      },
+      {
+        score:
+          monthlyOpex <= 0
+            ? 50
+            : Math.max(0, Math.min(100, 50 + (workingCapital / monthlyOpex) * 25)),
+        weight: 0.3,
+      },
+      {
+        score: dso === null ? 50 : Math.max(0, Math.min(100, 100 - (dso - 30) * 2)),
+        weight: 0.2,
+      },
+      {
+        score: quickRatio === null ? 50 : Math.max(0, Math.min(100, quickRatio * 70)),
+        weight: 0.2,
+      },
     ]);
 
     // ---------- STABILITY ----------
@@ -641,7 +727,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       pillars: [
         { key: "money", title: "Money", subtitle: "Are you profitable?", score: moneyScore, metrics: moneyMetrics, ctaLabel: "Why is cash so low?" },
         { key: "efficiency", title: "Efficiency", subtitle: "Is the team productive?", score: efficiencyScore, metrics: efficiencyMetrics, ctaLabel: "Improve efficiency" },
-        { key: "growth", title: "Growth", subtitle: "Is the pipeline full?", score: growthScore, metrics: growthMetrics, ctaLabel: "Diversification risk" },
+        { key: "cash_flow", title: "Cash Flow", subtitle: "Is cash actually moving the right way?", score: cashFlowScore, metrics: cashFlowMetrics, ctaLabel: "How to free up cash" },
         { key: "stability", title: "Stability", subtitle: "Could you weather a storm?", score: stabilityScore, metrics: stabilityMetrics, ctaLabel: "What to do now" },
       ],
     };
