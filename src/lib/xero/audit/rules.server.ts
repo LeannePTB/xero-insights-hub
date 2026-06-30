@@ -334,3 +334,150 @@ export function ruleBank(accounts: XAccount[], shortCode?: string | null): Findi
   }
   return out;
 }
+
+// ---------- Payments (possible duplicates) ----------
+type XPayment = {
+  PaymentID: string;
+  Date?: string;
+  Amount?: number;
+  Reference?: string;
+  Status?: string;
+  PaymentType?: string;
+  Account?: { AccountID?: string; Name?: string; Code?: string };
+  Invoice?: { InvoiceID?: string; InvoiceNumber?: string; Contact?: { ContactID?: string; Name?: string } };
+};
+
+const DUP_WINDOW_MS = 30 * 86_400_000;
+
+export function rulePayments(payments: XPayment[], shortCode?: string | null): Finding[] {
+  const out: Finding[] = [];
+
+  type Norm = {
+    id: string;
+    date: Date;
+    amount: number;
+    accountId: string;
+    accountName: string;
+    contactId: string;
+    contactName: string;
+    invoiceId: string;
+    invoiceNumber: string;
+    type: string;
+  };
+
+  const norm: Norm[] = [];
+  for (const p of payments) {
+    const status = (p.Status ?? "").toUpperCase();
+    if (status === "DELETED") continue;
+    const d = parseXeroDate(p.Date);
+    const amt = Math.round(Number(p.Amount ?? 0) * 100) / 100;
+    if (!d || amt <= 0) continue;
+    norm.push({
+      id: p.PaymentID,
+      date: d,
+      amount: amt,
+      accountId: p.Account?.AccountID ?? "",
+      accountName: p.Account?.Name ?? "",
+      contactId: p.Invoice?.Contact?.ContactID ?? "",
+      contactName: p.Invoice?.Contact?.Name ?? "Unknown contact",
+      invoiceId: p.Invoice?.InvoiceID ?? "",
+      invoiceNumber: p.Invoice?.InvoiceNumber ?? "",
+      type: (p.PaymentType ?? "").toUpperCase(),
+    });
+  }
+
+  // Group by contact + amount (+ account for primary rule)
+  const sameAccountGroups = new Map<string, Norm[]>();
+  const crossAccountGroups = new Map<string, Norm[]>();
+  for (const n of norm) {
+    if (!n.contactId) continue;
+    const amtKey = n.amount.toFixed(2);
+    const sk = `${n.contactId}|${amtKey}|${n.accountId}`;
+    const ck = `${n.contactId}|${amtKey}`;
+    (sameAccountGroups.get(sk) ?? sameAccountGroups.set(sk, []).get(sk)!).push(n);
+    (crossAccountGroups.get(ck) ?? crossAccountGroups.set(ck, []).get(ck)!).push(n);
+  }
+
+  const emitted = new Set<string>();
+
+  const emitCluster = (
+    cluster: Norm[],
+    opts: { severity: Severity; ruleId: string; titlePrefix: string; crossAccount: boolean },
+  ) => {
+    if (cluster.length < 2) return;
+    // Exclude clusters where every payment is against the same invoice (split payments).
+    const distinctInvoices = new Set(cluster.map((c) => c.invoiceId).filter(Boolean));
+    if (distinctInvoices.size <= 1 && cluster.every((c) => c.invoiceId)) return;
+
+    const sorted = [...cluster].sort((a, b) => a.date.getTime() - b.date.getTime());
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const days = Math.round((last.date.getTime() - first.date.getTime()) / 86_400_000);
+    const fk = key(opts.ruleId, [first.contactId, first.amount.toFixed(2), ...sorted.map((s) => s.id)]);
+    if (emitted.has(fk)) return;
+    emitted.add(fk);
+
+    const acctText = opts.crossAccount
+      ? ` across ${new Set(sorted.map((s) => s.accountName || s.accountId)).size} bank accounts`
+      : first.accountName
+        ? ` from ${first.accountName}`
+        : "";
+
+    out.push({
+      ruleId: opts.ruleId,
+      category: "ar_ap",
+      severity: opts.severity,
+      title: `${opts.titlePrefix} — ${first.contactName}`,
+      message: `${sorted.length} payments of ${first.amount.toFixed(2)} to ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"} (${sorted.map((s) => s.date.toISOString().slice(0, 10)).join(", ")}). Review for a possible double payment.`,
+      entityType: "Payment",
+      entityId: first.id,
+      deepLink: xeroDeepLink("Payment", first.id, shortCode),
+      evidence: {
+        amount: first.amount,
+        contact: first.contactName,
+        paymentIds: sorted.map((s) => s.id),
+        dates: sorted.map((s) => s.date.toISOString().slice(0, 10)),
+        accounts: Array.from(new Set(sorted.map((s) => s.accountName).filter(Boolean))),
+        invoices: Array.from(new Set(sorted.map((s) => s.invoiceNumber).filter(Boolean))),
+        windowDays: days,
+      },
+      findingKey: fk,
+    });
+  };
+
+  const walkWindow = (groups: Map<string, Norm[]>, opts: { severity: Severity; ruleId: string; titlePrefix: string; crossAccount: boolean }) => {
+    for (const [, list] of groups) {
+      if (list.length < 2) continue;
+      const sorted = [...list].sort((a, b) => a.date.getTime() - b.date.getTime());
+      let i = 0;
+      while (i < sorted.length) {
+        const cluster: Norm[] = [sorted[i]];
+        let j = i + 1;
+        while (j < sorted.length && sorted[j].date.getTime() - cluster[0].date.getTime() <= DUP_WINDOW_MS) {
+          cluster.push(sorted[j]);
+          j++;
+        }
+        if (cluster.length >= 2) emitCluster(cluster, opts);
+        i = cluster.length >= 2 ? j : i + 1;
+      }
+    }
+  };
+
+  walkWindow(sameAccountGroups, {
+    severity: "high",
+    ruleId: "payments.possible_duplicate",
+    titlePrefix: "Possible duplicate payment",
+    crossAccount: false,
+  });
+
+  // Cross-account: only emit if not already covered by same-account rule
+  walkWindow(crossAccountGroups, {
+    severity: "medium",
+    ruleId: "payments.cross_account_duplicate",
+    titlePrefix: "Possible duplicate payment across bank accounts",
+    crossAccount: true,
+  });
+
+  return out;
+}
+
