@@ -95,11 +95,31 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
                 {q.data.label}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">{q.data.summary}</p>
-              <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] text-muted-foreground">
-                <RefreshCw className="h-3 w-3" /> Live from Xero · {formatDate(q.data.asOfDate)}
-              </span>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] text-muted-foreground">
+                  <RefreshCw className="h-3 w-3" /> Live from Xero · {formatDate(q.data.asOfDate)}
+                </span>
+                {q.data.alert && (
+                  <span
+                    className={
+                      "inline-flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] " +
+                      (q.data.alert.severity === "danger"
+                        ? "border-destructive/30 bg-destructive/10 text-destructive"
+                        : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100")
+                    }
+                    title={`${q.data.alert.title} — ${q.data.alert.body}`}
+                  >
+                    <AlertTriangle className="h-3 w-3 shrink-0" />
+                    <span className="truncate">
+                      <span className="font-medium">{q.data.alert.title}</span>
+                      <span className="opacity-80"> · {q.data.alert.body}</span>
+                    </span>
+                  </span>
+                )}
+              </div>
             </div>
           </div>
+
 
           <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Kpi label="Revenue (FY)" value={formatMoney(q.data.revenue, currency)} />
@@ -135,22 +155,8 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
             <Kpi label="Owed to you" value={formatMoney(q.data.owedToYou, currency)} />
           </div>
 
-          {q.data.alert && (
-            <div
-              className={
-                "mt-5 flex items-start gap-3 rounded-xl border p-4 text-sm " +
-                (q.data.alert.severity === "danger"
-                  ? "border-destructive/30 bg-destructive/10 text-destructive"
-                  : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100")
-              }
-            >
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div className="min-w-0">
-                <p className="font-medium">{q.data.alert.title}</p>
-                <p className="mt-0.5 opacity-90">{q.data.alert.body}</p>
-              </div>
-            </div>
-          )}
+
+
 
           <HealthPillars
             tenantId={tenantId}
