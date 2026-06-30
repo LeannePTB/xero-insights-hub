@@ -564,11 +564,17 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     ]);
 
     // ---------- EFFICIENCY ----------
+    const wagesPill =
+      wages > 0
+        ? `${wagesPct.toFixed(1)}%${wagesIsTagged ? "" : " (auto)"}`
+        : wagesIsTagged
+          ? "Tagged: $0"
+          : "Not tagged";
     const efficiencyMetrics: PillarMetric[] = [
-      { label: "Operating profit %", pill: `${opMarginPct.toFixed(1)}%`, status: statusFor(opMarginPct, { good: 10, watch: 0 }) },
-      { label: "Wages as % of rev", pill: wages > 0 ? `${wagesPct.toFixed(1)}%` : "Not tagged", status: wages === 0 ? "neutral" : statusFor(wagesPct, { good: 30, watch: 50 }, true) },
-      { label: "Bad debts as % of rev", pill: `${badDebtsPct.toFixed(1)}%`, status: statusFor(badDebtsPct, { good: 1, watch: 3 }, true) },
-      { label: "Bills paid on time", pill: ap.total === 0 ? "None owing" : ap.overdue === 0 ? "All current" : `${billsOnTimePct.toFixed(0)}% current`, status: statusFor(billsOnTimePct, { good: 90, watch: 70 }) },
+      { key: "operating_profit", label: "Operating profit %", pill: `${opMarginPct.toFixed(1)}%`, status: statusFor(opMarginPct, { good: 10, watch: 0 }) },
+      { key: "wages", label: "Wages as % of rev", pill: wagesPill, status: wages === 0 ? "neutral" : statusFor(wagesPct, { good: 30, watch: 50 }, true) },
+      { key: "bad_debts", label: "Bad debts as % of rev", pill: `${badDebtsPct.toFixed(1)}%`, status: statusFor(badDebtsPct, { good: 1, watch: 3 }, true) },
+      { key: "bills_on_time", label: "Bills paid on time", pill: ap.total === 0 ? "None owing" : ap.overdue === 0 ? "All current" : `${billsOnTimePct.toFixed(0)}% current`, status: statusFor(billsOnTimePct, { good: 90, watch: 70 }) },
     ];
     const efficiencyScore = scoreFromMetrics([
       { score: Math.max(0, Math.min(100, opMarginPct * 5)), weight: 0.4 },
