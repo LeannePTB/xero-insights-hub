@@ -26,7 +26,6 @@ import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
-import { HealthDetail } from "@/components/dashboard/HealthDetail";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
 import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
@@ -232,7 +231,6 @@ function ClientDashboard() {
                     tenantId={orgs[0]?.xero_connections?.tenant_id}
                     tenantName={orgs[0]?.xero_connections?.tenant_name}
                   />
-                  <HealthDetail tenantId={orgs[0]?.xero_connections?.tenant_id} />
                 </>
               )}
               <div className="grid gap-6 md:grid-cols-2">
