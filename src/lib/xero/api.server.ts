@@ -31,14 +31,12 @@ export type Connection = {
   scopes: string | null;
 };
 
-// Raw shape pulled from the DB, with both legacy plaintext and AES-256-GCM columns.
+// Raw shape pulled from the DB — encrypted-only since plaintext columns were dropped.
 type ConnectionRow = {
   id: string;
   user_id: string;
   tenant_id: string;
   tenant_name: string;
-  access_token: string | null;
-  refresh_token: string | null;
   access_token_enc: string | null;
   refresh_token_enc: string | null;
   expires_at: string;
@@ -46,7 +44,8 @@ type ConnectionRow = {
 };
 
 const CONNECTION_COLUMNS =
-  "id, user_id, tenant_id, tenant_name, access_token, refresh_token, access_token_enc, refresh_token_enc, expires_at, scopes";
+  "id, user_id, tenant_id, tenant_name, access_token_enc, refresh_token_enc, expires_at, scopes";
+
 
 function basicAuth() {
   const clientId = process.env.XERO_CLIENT_ID;
