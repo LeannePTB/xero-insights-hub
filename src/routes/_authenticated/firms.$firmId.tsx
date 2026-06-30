@@ -8,6 +8,7 @@ import { listTierSettings } from "@/lib/tier-config.functions";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2, ChevronRight, Loader2, Plus } from "lucide-react";
 import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
@@ -123,6 +124,7 @@ function FirmPage() {
                         .filter(Boolean)
                         .join(", ") || "No Xero org linked"}
                     </p>
+                    <ClientHealthBadge tenantId={(c.client_xero_orgs ?? []).map((o: any) => o.xero_connections?.tenant_id).filter(Boolean)[0] ?? null} />
                     {tierWidgets && (
                       <div className="mt-4 space-y-1.5 border-t border-border/60 pt-3">
                         {enabledTiers.map((t) => {
