@@ -112,6 +112,24 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
               label="Cash in bank"
               value={formatMoney(q.data.cashInBank, currency)}
               tone={q.data.cashInBank < 5000 ? "danger" : undefined}
+              detail={
+                q.data.bankAccounts && q.data.bankAccounts.length > 0 ? (
+                  <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
+                    {q.data.bankAccounts.map((b) => (
+                      <li key={b.name} className="flex items-center justify-between gap-2">
+                        <span className="truncate">{b.name}</span>
+                        <span
+                          className={
+                            "tabular-nums " + (b.balance < 0 ? "text-destructive" : "")
+                          }
+                        >
+                          {formatMoney(b.balance, currency)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null
+              }
             />
             <Kpi label="Owed to you" value={formatMoney(q.data.owedToYou, currency)} />
           </div>
