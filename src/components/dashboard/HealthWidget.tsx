@@ -155,22 +155,8 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
             <Kpi label="Owed to you" value={formatMoney(q.data.owedToYou, currency)} />
           </div>
 
-          {q.data.alert && (
-            <div
-              className={
-                "mt-5 flex items-start gap-3 rounded-xl border p-4 text-sm " +
-                (q.data.alert.severity === "danger"
-                  ? "border-destructive/30 bg-destructive/10 text-destructive"
-                  : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100")
-              }
-            >
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-              <div className="min-w-0">
-                <p className="font-medium">{q.data.alert.title}</p>
-                <p className="mt-0.5 opacity-90">{q.data.alert.body}</p>
-              </div>
-            </div>
-          )}
+
+
 
           <HealthPillars
             tenantId={tenantId}
