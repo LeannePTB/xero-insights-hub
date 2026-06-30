@@ -9,7 +9,8 @@ export type WidgetKey =
   | "superannuation"
   | "accounting_breakeven"
   | "true_breakeven"
-  | "cashflow";
+  | "cashflow"
+  | "xero_audit";
 
 export const ALL_WIDGETS: WidgetKey[] = [
   "health",
@@ -22,6 +23,7 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "accounting_breakeven",
   "true_breakeven",
   "cashflow",
+  "xero_audit",
 ];
 
 // Fallback defaults (used only if the DB has no row for a tier).
@@ -36,6 +38,7 @@ const ADVANCED: WidgetKey[] = [
   "accounting_breakeven",
   "true_breakeven",
   "cashflow",
+  "xero_audit",
 ];
 export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
   basic: ["health", "receivables", "payables", "pnl", "unreconciled"],
