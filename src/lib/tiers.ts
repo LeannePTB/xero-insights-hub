@@ -72,6 +72,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   accounting_breakeven: "Accounting Break-Even",
   true_breakeven: "True Break-Even (Cash)",
   cashflow: "Cash Flow",
+  xero_audit: "Xero File Audit",
 };
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
