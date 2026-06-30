@@ -19,7 +19,7 @@ export function HealthPillars({
 }) {
   const fetchDetail = useServerFn(getBusinessHealthDetail);
   const q = useQuery({
-    queryKey: ["business-health-detail", tenantId, fromDate, toDate],
+    queryKey: ["business-health-detail", tenantId, clientId, fromDate, toDate],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000,
     queryFn: () => fetchDetail({ data: { tenantId, clientId, fromDate, toDate } }),
