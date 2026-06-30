@@ -679,7 +679,7 @@ const BASIS_OVERRIDE_WIDGETS: { key: BasisOverrideWidget; label: string; default
   { key: "receivables", label: "Aged Receivables" },
   { key: "payables", label: "Aged Payables" },
   { key: "cashflow", label: "Cash Flow" },
-  { key: "period_performance", label: "Period Performance" },
+  
   { key: "accounting_breakeven", label: "Accounting Break-Even" },
   { key: "true_breakeven", label: "True Break-Even (Cash)" },
 ];
