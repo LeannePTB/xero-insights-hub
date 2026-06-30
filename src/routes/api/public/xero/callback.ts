@@ -215,8 +215,6 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           tenant_id: t.tenantId,
           tenant_name: t.tenantName,
           tenant_type: t.tenantType,
-          access_token: null,
-          refresh_token: null,
           access_token_enc: accessEnc,
           refresh_token_enc: refreshEnc,
           expires_at: expiresAt,
