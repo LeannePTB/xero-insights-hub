@@ -81,6 +81,7 @@ function summarise(report: any): PnlReport {
   if (!out.netProfit) out.netProfit = out.grossProfit - out.totalExpenses;
   // Sort line items descending
   out.expenseLines.sort((a, b) => b.amount - a.amount);
+  out.cogsLines.sort((a, b) => b.amount - a.amount);
   out.incomeLines.sort((a, b) => b.amount - a.amount);
   return out;
 }
