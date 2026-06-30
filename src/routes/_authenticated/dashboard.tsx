@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { LogOut, Plus, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock, SlidersHorizontal } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Clients — Traction Advisory" }] }),
@@ -185,6 +186,17 @@ function Dashboard() {
                             .join(", ") || "No Xero org linked")
                         : `Tier: ${TIER_LABEL[c.tier as DashboardTier] ?? c.tier}`}
                     </p>
+
+                    {isAdvisor && (
+                      <ClientHealthBadge
+                        tenantId={
+                          (c.client_xero_orgs ?? [])
+                            .map((o: any) => o.xero_connections?.tenant_id)
+                            .find((t: string | undefined) => !!t) ?? null
+                        }
+                      />
+                    )}
+
 
                     {tierWidgets && (
                       <div className="mt-4 space-y-1.5 border-t border-border/60 pt-3">
