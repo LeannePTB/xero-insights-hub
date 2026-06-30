@@ -65,6 +65,92 @@ export type Database = {
           },
         ]
       }
+      audit_finding_snoozes: {
+        Row: {
+          created_at: string
+          finding_key: string
+          note: string | null
+          snoozed_by: string | null
+          snoozed_until: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          finding_key: string
+          note?: string | null
+          snoozed_by?: string | null
+          snoozed_until?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          finding_key?: string
+          note?: string | null
+          snoozed_by?: string | null
+          snoozed_until?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
+      audit_findings: {
+        Row: {
+          category: string
+          created_at: string
+          deep_link: string | null
+          entity_id: string | null
+          entity_type: string | null
+          evidence: Json
+          finding_key: string
+          id: string
+          message: string
+          rule_id: string
+          run_id: string
+          severity: string
+          tenant_id: string
+          title: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          deep_link?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          evidence?: Json
+          finding_key: string
+          id?: string
+          message: string
+          rule_id: string
+          run_id: string
+          severity: string
+          tenant_id: string
+          title: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          deep_link?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          evidence?: Json
+          finding_key?: string
+          id?: string
+          message?: string
+          rule_id?: string
+          run_id?: string
+          severity?: string
+          tenant_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "audit_findings_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -118,6 +204,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      audit_runs: {
+        Row: {
+          duration_ms: number | null
+          error: string | null
+          id: string
+          run_at: string
+          run_by: string | null
+          summary: Json
+          tenant_id: string
+        }
+        Insert: {
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          run_at?: string
+          run_by?: string | null
+          summary?: Json
+          tenant_id: string
+        }
+        Update: {
+          duration_ms?: number | null
+          error?: string | null
+          id?: string
+          run_at?: string
+          run_by?: string | null
+          summary?: Json
+          tenant_id?: string
+        }
+        Relationships: []
       }
       billing_events: {
         Row: {
