@@ -42,7 +42,7 @@ import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { ALL_TIERS, TIER_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
-import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
+// import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
 import { Switch } from "@/components/ui/switch";
 import { listCostClassifications, setCostClassificationEnabled } from "@/lib/cost-classification.functions";
 
