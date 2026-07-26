@@ -174,7 +174,39 @@ function AuditPage() {
             <Button size="sm" variant={showSnoozed ? "secondary" : "ghost"} onClick={() => setShowSnoozed((v) => !v)}>
               {showSnoozed ? "Hide snoozed" : "Show snoozed"}
             </Button>
+            {selectableKeys.length > 0 && (
+              <label className="ml-2 flex items-center gap-2 text-sm">
+                <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
+                Select all ({selectableKeys.length})
+              </label>
+            )}
           </div>
+
+          {selected.size > 0 && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <span className="font-medium">{selected.size} selected</span>
+              <span className="text-muted-foreground">Snooze for:</span>
+              {[
+                { label: "7 days", days: 7 as number | null },
+                { label: "30 days", days: 30 },
+                { label: "90 days", days: 90 },
+                { label: "Indefinitely", days: null },
+              ].map((o) => (
+                <Button
+                  key={o.label}
+                  size="sm"
+                  variant="outline"
+                  disabled={bulkSnoozeMut.isPending}
+                  onClick={() => bulkSnoozeMut.mutate(o.days)}
+                >
+                  {o.label}
+                </Button>
+              ))}
+              <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())} className="ml-auto">
+                Clear
+              </Button>
+            </div>
+          )}
 
           {visible.length === 0 ? (
             <p className="rounded border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
@@ -185,9 +217,18 @@ function AuditPage() {
               {visible.map((f) => {
                 const s = snoozes[f.finding_key];
                 const isSnoozed = s && (s.until === null || new Date(s.until).getTime() > Date.now());
+                const isSelected = selected.has(f.finding_key);
                 return (
                   <li key={f.id} className="py-3">
                     <div className="flex flex-wrap items-start gap-2">
+                      {!isSnoozed && (
+                        <Checkbox
+                          className="mt-1"
+                          checked={isSelected}
+                          onCheckedChange={() => toggleOne(f.finding_key)}
+                          aria-label="Select finding"
+                        />
+                      )}
                       <SeverityBadge severity={f.severity} />
                       <Badge variant="outline" className="text-muted-foreground">{CAT_LABEL[f.category] ?? f.category}</Badge>
                       <h3 className="font-medium">{f.title}</h3>
