@@ -29,6 +29,7 @@ import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_auth
 import { Route as AuthenticatedFirmsFirmIdRouteImport } from './routes/_authenticated/firms.$firmId'
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedAdminSecurityRouteImport } from './routes/_authenticated/admin.security'
+import { Route as AuthenticatedAdminBillingRouteImport } from './routes/_authenticated/admin.billing'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -150,6 +151,12 @@ const AuthenticatedAdminSecurityRoute =
     path: '/security',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminBillingRoute =
+  AuthenticatedAdminBillingRouteImport.update({
+    id: '/billing',
+    path: '/billing',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedClientsClientIdIndexRoute =
   AuthenticatedClientsClientIdIndexRouteImport.update({
     id: '/clients/$clientId/',
@@ -249,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
+  '/admin/billing': typeof AuthenticatedAdminBillingRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
@@ -284,6 +292,7 @@ export interface FileRoutesByTo {
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
+  '/admin/billing': typeof AuthenticatedAdminBillingRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
@@ -322,6 +331,7 @@ export interface FileRoutesById {
   '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
+  '/_authenticated/admin/billing': typeof AuthenticatedAdminBillingRoute
   '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
   '/_authenticated/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
@@ -360,6 +370,7 @@ export interface FileRouteTypes {
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
     | '/signup/$token'
+    | '/admin/billing'
     | '/admin/security'
     | '/clients/new'
     | '/firms/$firmId'
@@ -395,6 +406,7 @@ export interface FileRouteTypes {
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
     | '/signup/$token'
+    | '/admin/billing'
     | '/admin/security'
     | '/clients/new'
     | '/firms/$firmId'
@@ -432,6 +444,7 @@ export interface FileRouteTypes {
     | '/auth_/mfa-verify'
     | '/email/unsubscribe'
     | '/signup/$token'
+    | '/_authenticated/admin/billing'
     | '/_authenticated/admin/security'
     | '/_authenticated/clients/new'
     | '/_authenticated/firms/$firmId'
@@ -620,6 +633,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSecurityRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/billing': {
+      id: '/_authenticated/admin/billing'
+      path: '/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AuthenticatedAdminBillingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/clients/$clientId/': {
       id: '/_authenticated/clients/$clientId/'
       path: '/clients/$clientId'
@@ -729,12 +749,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminBillingRoute: typeof AuthenticatedAdminBillingRoute
   AuthenticatedAdminSecurityRoute: typeof AuthenticatedAdminSecurityRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminFirmsFirmIdRoute: typeof AuthenticatedAdminFirmsFirmIdRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminBillingRoute: AuthenticatedAdminBillingRoute,
   AuthenticatedAdminSecurityRoute: AuthenticatedAdminSecurityRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminFirmsFirmIdRoute: AuthenticatedAdminFirmsFirmIdRoute,
