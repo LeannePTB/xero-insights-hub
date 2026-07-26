@@ -131,8 +131,8 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:true_breakeven`, node: <TrueBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("true_breakeven")} /> });
       if (widgets.includes("cashflow"))
         advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
-      if (widgets.includes("xero_audit"))
-        advanced.push({ id: `${o.id}:xero_audit`, node: <AuditSummaryCard tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
+      // xero_audit rendered under Business Health, not in advanced grid
+
     }
     return { standardCards: standard, advancedCards: advanced };
   }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
