@@ -235,15 +235,17 @@ function SecurityDocsPage() {
           <Link to="/settings/activity">
             <Button size="sm" variant="outline">Audit log</Button>
           </Link>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => purgeM.mutate()}
-            disabled={purgeM.isPending}
-          >
-            {purgeM.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Purge audit log &gt; 2 years
-          </Button>
+          {isSuper && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => purgeM.mutate()}
+              disabled={purgeM.isPending}
+            >
+              {purgeM.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Purge audit log &gt; 2 years
+            </Button>
+          )}
         </div>
       </div>
 
