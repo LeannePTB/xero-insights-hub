@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail } from "lucide-react";
 import { toast } from "sonner";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({
