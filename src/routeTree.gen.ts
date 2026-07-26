@@ -36,6 +36,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
@@ -188,6 +189,12 @@ const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
   path: '/api/public/xero/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedClientsClientIdUnreconciledRoute =
   AuthenticatedClientsClientIdUnreconciledRouteImport.update({
     id: '/clients/$clientId/unreconciled',
@@ -254,6 +261,7 @@ export interface FileRoutesByFullPath {
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -288,6 +296,7 @@ export interface FileRoutesByTo {
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -325,6 +334,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -362,6 +372,7 @@ export interface FileRouteTypes {
     | '/admin/firms/$firmId'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
+    | '/api/public/payments/webhook'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -396,6 +407,7 @@ export interface FileRouteTypes {
     | '/admin/firms/$firmId'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
+    | '/api/public/payments/webhook'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -432,6 +444,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/firms/$firmId'
     | '/_authenticated/clients/$clientId/settings'
     | '/_authenticated/clients/$clientId/unreconciled'
+    | '/api/public/payments/webhook'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -456,6 +469,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   SignupTokenRoute: typeof SignupTokenRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicXeroCallbackRoute: typeof ApiPublicXeroCallbackRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -655,6 +669,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicXeroCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/clients/$clientId/unreconciled': {
       id: '/_authenticated/clients/$clientId/unreconciled'
       path: '/clients/$clientId/unreconciled'
@@ -779,6 +800,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   SignupTokenRoute: SignupTokenRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicXeroCallbackRoute: ApiPublicXeroCallbackRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
