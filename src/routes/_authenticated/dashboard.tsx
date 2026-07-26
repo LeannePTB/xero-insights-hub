@@ -100,11 +100,13 @@ function Dashboard() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold">
-              {isAdvisor ? "Organisations" : "Your dashboards"}
+              {isAdvisor
+                ? (firms.length === 1 ? "Your subscription" : "Your firms")
+                : "Your dashboards"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {isAdvisor
-                ? "Open an organisation to see its clients."
+                ? "Manage your plan and open your firm to work with clients."
                 : "Select a dashboard to view."}
             </p>
           </div>
@@ -119,6 +121,7 @@ function Dashboard() {
             </Button>
           </div>
         </div>
+
 
         <div className="mt-8">
           {loading ? (
