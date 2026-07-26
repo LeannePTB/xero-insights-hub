@@ -174,9 +174,10 @@ function SubscriptionSection({
           <Select value={tier} onValueChange={setTier}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {TIERS.map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
+              {TIERS.map((t) => <SelectItem key={t} value={t}>{FIRM_TIER_LABEL[t] ?? t}</SelectItem>)}
             </SelectContent>
           </Select>
+
         </div>
         <div className="space-y-1.5">
           <Label>Status</Label>
