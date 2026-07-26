@@ -32,7 +32,7 @@ import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
-import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
+// import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
   head: () => ({ meta: [{ title: "Client dashboard — Traction Advisory" }] }),
