@@ -219,12 +219,33 @@ export const createClient = createServerFn({ method: "POST" })
       firmId = membership?.firm_id ?? null;
     }
 
+    if (!firmId) throw new Error("No business associated with your account.");
+
+    // Enforce firm subscription client quota.
+    const { clientLimitFor } = await import("@/lib/firmPlans");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ data: firmRow }, { data: subRow }, { count: usedCount }] = await Promise.all([
+      supabaseAdmin.from("firms").select("is_always_free").eq("id", firmId).maybeSingle(),
+      supabaseAdmin.from("subscriptions").select("tier, status").eq("firm_id", firmId).maybeSingle(),
+      supabaseAdmin.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", firmId),
+    ]);
+    const limit = clientLimitFor((subRow as any)?.tier, (firmRow as any)?.is_always_free);
+    const status = (subRow as any)?.status ?? null;
+    const okStatus = !status || ["active", "trialing", "past_due"].includes(status) || (firmRow as any)?.is_always_free;
+    if (!okStatus) {
+      throw new Error("This business has no active subscription. Please renew before adding clients.");
+    }
+    if ((usedCount ?? 0) >= limit) {
+      throw new Error(`Client limit reached (${usedCount}/${limit}). Upgrade the subscription to add more clients.`);
+    }
+
     const { data: client, error } = await context.supabase
       .from("clients")
       .insert({ name, owner_user_id: context.userId, firm_id: firmId })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
+
     if (data.xeroConnectionIds.length) {
       const rows = data.xeroConnectionIds.map((xero_connection_id) => ({
         client_id: client.id,

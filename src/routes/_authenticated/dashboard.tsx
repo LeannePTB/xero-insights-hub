@@ -3,6 +3,9 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listFirmsForSuperAdmin, listMyFirms, type FirmOverviewCard } from "@/lib/firms.functions";
+import { firmPlanView, toneClasses } from "@/lib/firmPlans";
+const planView = (f: FirmOverviewCard) => firmPlanView({ tier: f.tier, status: f.status, is_always_free: f.isAlwaysFree, trial_ends_at: f.trialEndsAt, current_period_end: f.currentPeriodEnd });
+
 import { getMyContext } from "@/lib/roles.functions";
 import { getMyFirmAccess } from "@/lib/access.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -185,16 +188,24 @@ function FirmGrid({ firms }: { firms: FirmOverviewCard[] }) {
             </div>
             <h3 className="mt-4 font-display text-lg font-semibold leading-tight">{f.name}</h3>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <Badge variant="secondary" className="capitalize">
-                {f.tier ?? "no plan"}
+              <Badge variant="secondary">{planView(f).planLabel}</Badge>
+              <Badge
+                variant="outline"
+                className={toneClasses(planView(f).statusTone)}
+              >
+                {planView(f).statusLabel}
               </Badge>
-              <span className="text-muted-foreground">
-                {f.clientCount} {f.clientCount === 1 ? "client" : "clients"}
+              <span className="text-muted-foreground tabular-nums">
+                {f.clientCount}/{f.clientLimit} clients
               </span>
               {!f.isOwn && (
                 <Badge variant="outline" className="ml-auto">read-only</Badge>
               )}
             </div>
+            {planView(f).dueLabel && (
+              <p className="mt-1 text-[11px] text-muted-foreground">{planView(f).dueLabel}</p>
+            )}
+
           </>
         );
         const base =

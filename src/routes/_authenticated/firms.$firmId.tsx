@@ -10,7 +10,10 @@ import { ArrowLeft, Building2, ChevronRight, Loader2, Plus } from "lucide-react"
 import { ALL_TIERS, TIER_LABEL, type DashboardTier } from "@/lib/tiers";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { SubscriptionStatusBadge, subscriptionView } from "@/components/billing/SubscriptionStatusBadge";
+import { Badge } from "@/components/ui/badge";
+import { firmPlanView, toneClasses } from "@/lib/firmPlans";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
   head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
@@ -59,7 +62,16 @@ function FirmPage() {
   }
 
   const firm = firmQ.data.firm;
+  const plan = firmQ.data.plan;
+  const planV = firmPlanView({
+    tier: plan.tier,
+    status: plan.status,
+    is_always_free: plan.isAlwaysFree,
+    trial_ends_at: plan.trialEndsAt,
+    current_period_end: plan.currentPeriodEnd,
+  });
   const clients = clientsQ.data?.clients ?? [];
+  const atLimit = plan.clientCount >= plan.clientLimit;
 
   return (
     <div className="min-h-screen bg-background">
@@ -68,17 +80,25 @@ function FirmPage() {
           <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All organisations</Link>
         </Button>
 
-        <div className="flex items-end justify-between">
+        <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-3xl font-semibold">{firm.name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Pick a client to open their dashboard.</p>
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <Badge variant="secondary">{planV.planLabel}</Badge>
+              <Badge variant="outline" className={toneClasses(planV.statusTone)}>{planV.statusLabel}</Badge>
+              <span className="text-muted-foreground tabular-nums">
+                {plan.clientCount}/{plan.clientLimit} clients used
+              </span>
+              {planV.dueLabel && <span className="text-muted-foreground">· {planV.dueLabel}</span>}
+            </div>
           </div>
-          <Button asChild>
-            <Link to="/clients/new" search={{ firmId } as any}>
+          <Button asChild disabled={atLimit} title={atLimit ? "Client limit reached — upgrade the plan" : ""}>
+            <Link to="/clients/new" search={{ firmId } as any} disabled={atLimit as any}>
               <Plus className="mr-2 h-4 w-4" /> New client
             </Link>
           </Button>
         </div>
+
 
         <div className="mt-8">
           {clientsQ.isLoading ? (
