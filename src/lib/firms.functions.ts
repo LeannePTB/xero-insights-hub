@@ -48,31 +48,38 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
     const firmIds = (firms ?? []).map((f: any) => f.id);
     if (firmIds.length === 0) return { firms: [] };
 
-    const [{ data: subs }, { data: clients }, { data: myMembership }] = await Promise.all([
-      (supabaseAdmin as any).from("subscriptions").select("firm_id, tier, status").in("firm_id", firmIds),
+    const [{ data: subs }, { data: clients }, { data: firmMeta }, { data: myMembership }] = await Promise.all([
+      (supabaseAdmin as any).from("subscriptions").select("firm_id, tier, status, trial_ends_at, current_period_end").in("firm_id", firmIds),
       (supabaseAdmin as any).from("clients").select("firm_id").in("firm_id", firmIds),
+      (supabaseAdmin as any).from("firms").select("id, is_always_free").in("id", firmIds),
       (supabaseAdmin as any).from("firm_members").select("firm_id").eq("user_id", context.userId),
     ]);
 
-    const subByFirm = new Map<string, { tier: string | null; status: string | null }>();
-    for (const s of subs ?? []) subByFirm.set(s.firm_id, { tier: s.tier ?? null, status: s.status ?? null });
+    const subByFirm = new Map<string, any>();
+    for (const s of subs ?? []) subByFirm.set(s.firm_id, s);
     const countByFirm = new Map<string, number>();
     for (const c of clients ?? []) countByFirm.set(c.firm_id, (countByFirm.get(c.firm_id) ?? 0) + 1);
+    const freeByFirm = new Map<string, boolean>();
+    for (const f of firmMeta ?? []) freeByFirm.set(f.id, !!f.is_always_free);
     const ownFirmIds = new Set<string>((myMembership ?? []).map((m: any) => m.firm_id));
 
     const cards: FirmOverviewCard[] = (firms ?? []).map((f: any) => {
       const sub = subByFirm.get(f.id);
+      const isAlwaysFree = freeByFirm.get(f.id) ?? false;
       return {
         id: f.id,
         name: f.name,
         tier: sub?.tier ?? null,
         status: sub?.status ?? null,
         clientCount: countByFirm.get(f.id) ?? 0,
+        clientLimit: clientLimitFor(sub?.tier, isAlwaysFree),
+        isAlwaysFree,
+        trialEndsAt: sub?.trial_ends_at ?? null,
+        currentPeriodEnd: sub?.current_period_end ?? null,
         isOwn: ownFirmIds.has(f.id),
       };
     });
 
-    // Own firm(s) first, then others alphabetically
     cards.sort((a, b) => {
       if (a.isOwn !== b.isOwn) return a.isOwn ? -1 : 1;
       return a.name.localeCompare(b.name);
@@ -80,6 +87,7 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
 
     return { firms: cards };
   });
+
 
 /**
  * Returns the firms the current user is a member of, with tier and client count.
