@@ -168,15 +168,15 @@ function SecurityDocsPage() {
     );
   }
 
-  if (!isSuper) {
+  if (!hasAccess) {
     return (
       <div className="container mx-auto p-6">
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
           <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
           <div>
-            <p className="font-medium text-destructive">Super-admin required</p>
+            <p className="font-medium text-destructive">Admin access required</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Security and compliance documents are restricted to the super-admin account.
+              Security and compliance documents are restricted to firm advisors and admins.
             </p>
           </div>
         </div>
