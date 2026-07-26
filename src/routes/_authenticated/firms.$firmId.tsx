@@ -7,9 +7,9 @@ import { getMyFirm } from "@/lib/firms.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2, ChevronRight, Loader2, Plus } from "lucide-react";
-import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { ALL_TIERS, TIER_LABEL, type DashboardTier } from "@/lib/tiers";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
-// import { SubscriptionBadge } from "@/components/billing/SubscriptionBadge";
+import { SubscriptionStatusBadge, subscriptionView } from "@/components/billing/SubscriptionStatusBadge";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
