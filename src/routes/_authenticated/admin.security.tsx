@@ -11,13 +11,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldAlert } from "lucide-react";
 import {
   getAssessmentContact,
   saveAssessmentContact,
   type XeroAssessmentContact,
 } from "@/lib/xero-assessment.functions";
 import { purgeOldAuditLog } from "@/lib/security.functions";
+import { getMyContext } from "@/lib/roles.functions";
 
 // Bundle the markdown at build time via Vite ?raw imports.
 import readme from "../../../docs/security/README.md?raw";
@@ -97,13 +98,21 @@ function renderSection1(contact: XeroAssessmentContact): string {
 
 function SecurityDocsPage() {
   const qc = useQueryClient();
+  const getCtx = useServerFn(getMyContext);
   const getFn = useServerFn(getAssessmentContact);
   const saveFn = useServerFn(saveAssessmentContact);
   const purgeFn = useServerFn(purgeOldAuditLog);
 
+  const ctxQ = useQuery({
+    queryKey: ["my-context"],
+    queryFn: () => getCtx(),
+  });
+  const isSuper = ctxQ.data?.isSuperAdmin ?? false;
+
   const { data: contact } = useQuery({
     queryKey: ["xero-assessment-contact"],
     queryFn: () => getFn(),
+    enabled: isSuper,
   });
 
   const [form, setForm] = useState<XeroAssessmentContact>({});
@@ -149,6 +158,30 @@ function SecurityDocsPage() {
 
   const [activeId, setActiveId] = useState(docs[0].id);
   const active = docs.find((d) => d.id === activeId) ?? docs[0];
+
+  if (ctxQ.isLoading) {
+    return (
+      <div className="grid min-h-screen place-items-center text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+      </div>
+    );
+  }
+
+  if (!isSuper) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
+          <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
+          <div>
+            <p className="font-medium text-destructive">Super-admin required</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Security and compliance documents are restricted to the super-admin account.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const downloadAll = () => {
     const bundle = docs
