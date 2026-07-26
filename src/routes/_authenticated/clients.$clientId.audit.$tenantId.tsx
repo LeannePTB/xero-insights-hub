@@ -80,6 +80,53 @@ function AuditPage() {
       .sort((a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9));
   }, [findings, snoozes, catFilter, sevFilter, showSnoozed]);
 
+  const selectableKeys = useMemo(() => {
+    const now = Date.now();
+    return visible
+      .filter((f) => {
+        const s = snoozes[f.finding_key];
+        return !(s && (s.until === null || new Date(s.until).getTime() > now));
+      })
+      .map((f) => f.finding_key as string);
+  }, [visible, snoozes]);
+
+  const allSelected = selectableKeys.length > 0 && selectableKeys.every((k) => selected.has(k));
+  const toggleAll = () => {
+    setSelected((prev) => {
+      if (allSelected) {
+        const next = new Set(prev);
+        selectableKeys.forEach((k) => next.delete(k));
+        return next;
+      }
+      const next = new Set(prev);
+      selectableKeys.forEach((k) => next.add(k));
+      return next;
+    });
+  };
+  const toggleOne = (k: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(k)) next.delete(k); else next.add(k);
+      return next;
+    });
+  };
+
+  const bulkSnoozeMut = useMutation({
+    mutationFn: async (days: number | null) => {
+      const keys = Array.from(selected);
+      for (const k of keys) {
+        await snoozeFn({ data: { tenantId, findingKey: k, days } });
+      }
+      return keys.length;
+    },
+    onSuccess: (count) => {
+      toast.success(`Snoozed ${count} finding${count === 1 ? "" : "s"}`);
+      setSelected(new Set());
+      qc.invalidateQueries({ queryKey: ["xero-audit-latest", tenantId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Bulk snooze failed"),
+  });
+
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-6">
       <div className="flex items-center justify-between">
