@@ -75,12 +75,12 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
   });
 
 /**
- * Returns the firms the current user is a member of.
- * Used to scope client lists and "add client" to a specific firm.
+ * Returns the firms the current user is a member of, with tier and client count.
+ * Powers the top-level organisations grid and scopes "add client" to a firm.
  */
 export const listMyFirms = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<{ firms: { id: string; name: string }[] }> => {
+  .handler(async ({ context }): Promise<{ firms: FirmOverviewCard[] }> => {
     const { data, error } = await context.supabase
       .from("firm_members")
       .select("firm_id, firms(id, name)")
@@ -89,8 +89,30 @@ export const listMyFirms = createServerFn({ method: "GET" })
     const firms = ((data ?? []) as any[])
       .map((r) => r.firms)
       .filter(Boolean)
-      .map((f: any) => ({ id: f.id, name: f.name }));
-    return { firms };
+      .map((f: any) => ({ id: f.id as string, name: f.name as string }));
+    if (firms.length === 0) return { firms: [] };
+
+    const firmIds = firms.map((f) => f.id);
+    const [{ data: subs }, { data: clients }] = await Promise.all([
+      context.supabase.from("subscriptions").select("firm_id, tier, status").in("firm_id", firmIds),
+      context.supabase.from("clients").select("firm_id").in("firm_id", firmIds),
+    ]);
+    const subByFirm = new Map<string, { tier: string | null; status: string | null }>();
+    for (const s of (subs ?? []) as any[]) subByFirm.set(s.firm_id, { tier: s.tier ?? null, status: s.status ?? null });
+    const countByFirm = new Map<string, number>();
+    for (const c of (clients ?? []) as any[]) countByFirm.set(c.firm_id, (countByFirm.get(c.firm_id) ?? 0) + 1);
+
+    const cards: FirmOverviewCard[] = firms
+      .map((f) => ({
+        id: f.id,
+        name: f.name,
+        tier: subByFirm.get(f.id)?.tier ?? null,
+        status: subByFirm.get(f.id)?.status ?? null,
+        clientCount: countByFirm.get(f.id) ?? 0,
+        isOwn: true,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    return { firms: cards };
   });
 
 /**

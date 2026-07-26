@@ -2,32 +2,26 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listClients } from "@/lib/clients.functions";
-import { listFirmsForSuperAdmin, type FirmOverviewCard } from "@/lib/firms.functions";
+import { listFirmsForSuperAdmin, listMyFirms, type FirmOverviewCard } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { getMyFirmAccess } from "@/lib/access.functions";
-import { listTierSettings } from "@/lib/tier-config.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Plus, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
+import { LogOut, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
-import { ALL_TIERS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
-import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Clients — Traction Advisory" }] }),
+  head: () => ({ meta: [{ title: "Organisations — Traction Advisory" }] }),
   component: Dashboard,
 });
 
 function Dashboard() {
   const navigate = useNavigate();
-  const fetchClients = useServerFn(listClients);
   const fetchCtx = useServerFn(getMyContext);
-  const fetchFirms = useServerFn(listFirmsForSuperAdmin);
-
-  const fetchTierSettings = useServerFn(listTierSettings);
+  const fetchAllFirms = useServerFn(listFirmsForSuperAdmin);
+  const fetchMyFirms = useServerFn(listMyFirms);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
@@ -35,23 +29,17 @@ function Dashboard() {
   const hasAdminAreaAccess = ctxQ.data?.hasAdminAreaAccess ?? isSuperAdmin;
   const viewerClients = ctxQ.data?.viewerClients ?? [];
 
-  const tierSettingsQ = useQuery({
-    queryKey: ["tier-settings"],
-    queryFn: () => fetchTierSettings(),
-    enabled: isAdvisor && !isSuperAdmin,
-  });
-  const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
-
-  // Super-admins see firm cards. Regular advisors see their own client list.
-  const clientsQ = useQuery({
-    queryKey: ["clients"],
-    queryFn: () => fetchClients(),
-    enabled: isAdvisor && !isSuperAdmin,
-  });
-  const firmsQ = useQuery({
+  // Super-admins see every firm (own first, others read-only).
+  // Regular advisors see only firms they belong to.
+  const superFirmsQ = useQuery({
     queryKey: ["firms-overview"],
-    queryFn: () => fetchFirms(),
+    queryFn: () => fetchAllFirms(),
     enabled: isSuperAdmin,
+  });
+  const myFirmsQ = useQuery({
+    queryKey: ["my-firms"],
+    queryFn: () => fetchMyFirms(),
+    enabled: isAdvisor && !isSuperAdmin,
   });
 
   // Auto-redirect viewers with exactly one client
@@ -83,11 +71,14 @@ function Dashboard() {
     navigate({ to: "/auth", replace: true });
   }
 
-  const clients = isAdvisor ? clientsQ.data?.clients ?? [] : viewerClients;
+  const firms: FirmOverviewCard[] = isSuperAdmin
+    ? superFirmsQ.data?.firms ?? []
+    : myFirmsQ.data?.firms ?? [];
+
   const loading =
     ctxQ.isLoading ||
-    (isSuperAdmin && firmsQ.isLoading) ||
-    (isAdvisor && !isSuperAdmin && clientsQ.isLoading);
+    (isSuperAdmin && superFirmsQ.isLoading) ||
+    (isAdvisor && !isSuperAdmin && myFirmsQ.isLoading);
 
   return (
     <div className="min-h-screen bg-background">
@@ -106,13 +97,11 @@ function Dashboard() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold">
-              {isSuperAdmin ? "Organisations" : isAdvisor ? "Clients" : "Your dashboards"}
+              {isAdvisor ? "Organisations" : "Your dashboards"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {isSuperAdmin
-                ? "Open your organisation to manage its clients. Other organisations are read-only."
-                : isAdvisor
-                ? "Pick a client to open their dashboard."
+              {isAdvisor
+                ? "Open an organisation to see its clients."
                 : "Select a dashboard to view."}
             </p>
           </div>
@@ -126,7 +115,6 @@ function Dashboard() {
               <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
             </Button>
           </div>
-
         </div>
 
         <div className="mt-8">
@@ -134,90 +122,36 @@ function Dashboard() {
             <div className="flex items-center justify-center rounded-2xl border border-dashed border-border bg-card p-16 text-muted-foreground">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
             </div>
-          ) : isSuperAdmin ? (
-            <FirmGrid firms={firmsQ.data?.firms ?? []} />
-          ) : clients.length === 0 ? (
-            <EmptyState isAdvisor={isAdvisor} />
+          ) : isAdvisor ? (
+            <FirmGrid firms={firms} />
+          ) : viewerClients.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <h3 className="mt-4 font-display text-xl font-semibold">No dashboards assigned yet</h3>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                Your advisor hasn't granted you access to any dashboards yet.
+              </p>
+            </div>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {clients.map((c: any) => {
-                const orgCount = isAdvisor ? (c.client_xero_orgs?.length ?? 0) : null;
-                const granted: DashboardTier[] = isAdvisor
-                  ? (c.grantedTiers ?? [])
-                  : (c.tier ? [c.tier as DashboardTier] : []);
-                const tierWidgets: Record<DashboardTier, WidgetKey[]> | undefined = c.tierWidgets;
-                return (
-                  <Link
-                    key={c.id}
-                    to="/clients/$clientId"
-                    params={{ clientId: c.id }}
-                    className="group flex flex-col rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
-                        <Building2 className="h-5 w-5" />
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+              {viewerClients.map((c: any) => (
+                <Link
+                  key={c.id}
+                  to="/clients/$clientId"
+                  params={{ clientId: c.id }}
+                  className="group flex flex-col rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                      <Building2 className="h-5 w-5" />
                     </div>
-                    <h3 className="mt-4 font-display text-lg font-semibold leading-tight">{c.name}</h3>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      {isAdvisor
-                        ? ((c.client_xero_orgs ?? [])
-                            .map((o: any) => o.xero_connections?.tenant_name)
-                            .filter(Boolean)
-                            .join(", ") || "No Xero org linked")
-                        : `Tier: ${TIER_LABEL[c.tier as DashboardTier] ?? c.tier}`}
-                    </p>
-
-                    {isAdvisor && (
-                      <ClientHealthBadge
-                        tenantId={
-                          (c.client_xero_orgs ?? [])
-                            .map((o: any) => o.xero_connections?.tenant_id)
-                            .find((t: string | undefined) => !!t) ?? null
-                        }
-                      />
-                    )}
-
-
-                    {tierWidgets && (
-                      <div className="mt-4 space-y-1.5 border-t border-border/60 pt-3">
-                        {enabledTiers.map((t) => {
-                          const isOn = granted.includes(t);
-                          const widgets = tierWidgets[t] ?? [];
-                          return (
-                            <div
-                              key={t}
-                              className={`flex items-baseline gap-2 text-[11px] leading-snug ${
-                                isOn ? "text-foreground" : "text-muted-foreground/60"
-                              }`}
-                            >
-                              <span
-                                className={`shrink-0 font-semibold uppercase tracking-wider ${
-                                  isOn ? "text-primary" : ""
-                                }`}
-                              >
-                                {TIER_LABEL[t]}
-                                {isOn ? " ●" : ""}
-                              </span>
-                              <span className="truncate">
-                                {widgets.length
-                                  ? widgets.map((w) => WIDGET_LABEL[w]).join(" · ")
-                                  : "—"}
-                              </span>
-                            </div>
-                          );
-                        })}
-                        {isAdvisor && granted.length === 0 && (
-                          <p className="pt-1 text-[10px] italic text-muted-foreground/70">
-                            No viewers assigned yet
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </Link>
-                );
-              })}
+                    <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />
+                  </div>
+                  <h3 className="mt-4 font-display text-lg font-semibold leading-tight">{c.name}</h3>
+                </Link>
+              ))}
             </div>
           )}
         </div>
@@ -230,7 +164,7 @@ function FirmGrid({ firms }: { firms: FirmOverviewCard[] }) {
   if (firms.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center text-muted-foreground">
-        No organisations yet.
+        You don't belong to any organisations yet.
       </div>
     );
   }
@@ -287,29 +221,6 @@ function FirmGrid({ firms }: { firms: FirmOverviewCard[] }) {
   );
 }
 
-function EmptyState({ isAdvisor }: { isAdvisor: boolean }) {
-  return (
-    <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center">
-      <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
-        <Building2 className="h-6 w-6" />
-      </div>
-      <h3 className="mt-4 font-display text-xl font-semibold">
-        {isAdvisor ? "Create your first client" : "No dashboards assigned yet"}
-      </h3>
-      <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-        {isAdvisor
-          ? "A client is a company you track. Each client can hold one or more Xero organisations."
-          : "Your advisor hasn't granted you access to any dashboards yet."}
-      </p>
-      {isAdvisor && (
-        <Button className="mt-6" asChild>
-          <Link to="/clients/new"><Plus className="mr-2 h-4 w-4" /> New client</Link>
-        </Button>
-      )}
-    </div>
-  );
-}
-
 function AccessBanner() {
   const fetchAccess = useServerFn(getMyFirmAccess);
   const q = useQuery({ queryKey: ["my-firm-access"], queryFn: () => fetchAccess() });
@@ -328,7 +239,6 @@ function AccessBanner() {
     );
   }
 
-  // locked
   return (
     <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
       <p className="font-medium text-destructive">Subscription not active</p>
