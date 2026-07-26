@@ -1,36 +1,34 @@
-The Security & Compliance page still exists at `/admin/security`, but the admin experience is currently a flat header with a single Security button. The user wants a proper admin area that groups Security, Tier widgets, New client and Advisors in one place.
+## Goal
+Restore clear Admin access for super-admin users and make the admin area reachable from the screen shown in your screenshot.
+
+## What I confirmed
+- The dashboard currently only shows the **Admin** button when `getMyContext()` returns `isSuperAdmin: true`.
+- The screenshot shows the regular advisor buttons (**Tier widgets**, **My account**, **New client**) and no **Admin**, so the UI is not treating the current login as super-admin.
+- The Admin pages still exist at `/admin` and `/admin/security`; the missing part is access/visibility for your current user.
 
 ## Plan
+1. **Fix the dashboard entry point**
+   - Show the **Admin** button for any user who is either:
+     - a true `super_admin`, or
+     - has admin-level firm/advisor access already used elsewhere in the app.
+   - Keep normal advisor buttons visible as needed, so you do not lose **Tier widgets**, **My account**, or **New client**.
 
-### 1. Create an admin shell with sidebar
-- New `src/components/admin/AdminShell.tsx` that renders a collapsible `Sidebar` (from `src/components/ui/sidebar.tsx`) plus an `Outlet` area.
-- New `src/components/admin/AdminSidebar.tsx` with navigation items:
-  - **Organisations** → `/admin`
-  - **Security & Compliance** → `/admin/security`
-  - **Tier widgets** → `/settings/tiers`
-  - **New client** → `/clients/new`
-  - **Advisors** → `/settings/advisors`
-- Highlight the active route using `useRouterState` and TanStack `Link`.
-- Include a mobile header with `SidebarTrigger` so the menu is usable on small screens.
+2. **Make Admin navigation obvious**
+   - Ensure the Admin button routes to `/admin`, where the sidebar contains:
+     - Organisations
+     - Security & Compliance
+     - Tier widgets
+     - New client
+     - Advisors
 
-### 2. Convert admin routes to use the shell
-- Update `src/routes/_authenticated/admin.tsx` from a plain `<Outlet />` layout to render `<AdminShell />`.
-- Remove the per-page back/Security buttons from `src/routes/_authenticated/admin.index.tsx` (the shell now provides navigation).
-- Update `src/routes/_authenticated/admin.security.tsx` to render inside the shell (remove its own Admin back button).
-- Optionally update `src/routes/_authenticated/admin.firms.$firmId.tsx` so the firm detail page also uses the shell for consistency.
+3. **Harden the role check**
+   - Update the context function so admin visibility is based on the backend role/access data, not a fragile UI assumption.
+   - If the current user is missing the required backend `super_admin` role, surface a clear “not super-admin” state rather than silently hiding Admin.
 
-### 3. Keep dashboard entry point
-- Leave the **Admin** button on `src/routes/_authenticated/dashboard.tsx` for super-admins; it continues to route to `/admin`.
-- Non-super-advisors still see their existing dashboard buttons (Tier widgets, My account, New client).
-
-### 4. Verify
-- Type-check the changes.
-- Use the preview to confirm:
-  - Super-admin sees the Admin button on the dashboard.
-  - `/admin` loads with the new sidebar and all five nav items.
-  - Clicking **Security & Compliance** loads `/admin/security` with the shell still visible.
-  - Mobile view shows the sidebar trigger.
+4. **Verify**
+   - Confirm the dashboard shows **Admin** for the appropriate user.
+   - Confirm `/admin` and `/admin/security` load with the admin sidebar.
 
 ## Out of scope
-- No route moves: `/settings/tiers`, `/settings/advisors` and `/clients/new` keep their existing URLs; the admin sidebar simply links to them.
-- No role changes: the Admin area remains super-admin only.
+- No changes to client financial-data permissions.
+- No changes to MFA, login, or Xero connection logic.
