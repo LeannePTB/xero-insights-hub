@@ -115,7 +115,7 @@ function FirmPage() {
                 </thead>
                 <tbody>
                   {clients.map((c: any) => {
-                    const granted: DashboardTier[] = c.grantedTiers ?? [];
+                    const granted: DashboardTier[] = c.clientTiers?.length ? c.clientTiers : enabledTiers;
                     const view = subscriptionView(c.subscription ?? null);
                     const tenantIds = (c.client_xero_orgs ?? [])
                       .map((o: any) => o.xero_connections?.tenant_id)
