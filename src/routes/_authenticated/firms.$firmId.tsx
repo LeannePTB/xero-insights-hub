@@ -126,9 +126,6 @@ function FirmPage() {
                 <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                   <tr>
                     <th className="px-5 py-3">Client</th>
-                    <th className="px-5 py-3">Plan</th>
-                    <th className="px-5 py-3">Due date</th>
-                    <th className="px-5 py-3">Status</th>
                     <th className="px-5 py-3">Tiers</th>
                     <th className="px-5 py-3 text-right"></th>
                   </tr>
@@ -136,7 +133,6 @@ function FirmPage() {
                 <tbody>
                   {clients.map((c: any) => {
                     const granted: DashboardTier[] = c.clientTiers?.length ? c.clientTiers : enabledTiers;
-                    const view = subscriptionView(c.subscription ?? null);
                     const tenantIds = (c.client_xero_orgs ?? [])
                       .map((o: any) => o.xero_connections?.tenant_id)
                       .filter(Boolean);
@@ -165,14 +161,6 @@ function FirmPage() {
                               <ClientHealthBadge tenantId={tenantIds[0] ?? null} />
                             </div>
                           </Link>
-                        </td>
-                        <td className="px-5 py-4 text-muted-foreground">{view.plan}</td>
-                        <td className="px-5 py-4 text-muted-foreground tabular-nums">{view.due}</td>
-                        <td className="px-5 py-4">
-                          <SubscriptionStatusBadge sub={c.subscription ?? null} />
-                          {view.sub && (
-                            <div className="mt-1 text-[11px] text-muted-foreground">{view.sub}</div>
-                          )}
                         </td>
                         <td className="px-5 py-4">
                           <div className="flex flex-wrap gap-1">
@@ -206,6 +194,7 @@ function FirmPage() {
                 </tbody>
               </table>
             </div>
+
           )}
         </div>
       </main>
