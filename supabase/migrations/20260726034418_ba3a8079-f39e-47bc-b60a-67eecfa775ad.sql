@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION public.me_is_super_admin() TO authenticated;
