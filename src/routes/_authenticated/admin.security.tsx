@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import {
   getAssessmentContact,
   saveAssessmentContact,
@@ -180,11 +180,6 @@ function SecurityDocsPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center gap-3">
-        <Link to="/admin">
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Admin
-          </Button>
-        </Link>
         <h1 className="text-2xl font-semibold">Security &amp; Compliance</h1>
       </div>
 

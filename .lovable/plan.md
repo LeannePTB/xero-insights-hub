@@ -1,23 +1,36 @@
-## Pre-lodgement security recheck — clean
+The Security & Compliance page still exists at `/admin/security`, but the admin experience is currently a flat header with a single Security button. The user wants a proper admin area that groups Security, Tier widgets, New client and Advisors in one place.
 
-Ran the full security scan (Supabase RLS/GRANTs, connector scan, supply-chain, Lovable Supabase scanner). **Zero findings across all scanners.**
+## Plan
 
-### Controls verified against the Xero API Consumer Security Standard
+### 1. Create an admin shell with sidebar
+- New `src/components/admin/AdminShell.tsx` that renders a collapsible `Sidebar` (from `src/components/ui/sidebar.tsx`) plus an `Outlet` area.
+- New `src/components/admin/AdminSidebar.tsx` with navigation items:
+  - **Organisations** → `/admin`
+  - **Security & Compliance** → `/admin/security`
+  - **Tier widgets** → `/settings/tiers`
+  - **New client** → `/clients/new`
+  - **Advisors** → `/settings/advisors`
+- Highlight the active route using `useRouterState` and TanStack `Link`.
+- Include a mobile header with `SidebarTrigger` so the menu is usable on small screens.
 
-| Xero section | Control | Status |
-| --- | --- | --- |
-| §2 Encryption | OAuth 2.0 + PKCE (S256); Xero tokens AES-256-GCM wrapped with `TOKEN_ENC_KEY`; TLS 1.2+ / HSTS; no tokens in URLs/HTML; plaintext token columns dropped | Pass |
-| §3 Authentication | Mandatory TOTP MFA, AAL2 gate on `_authenticated` shell; HIBP leaked-password check; invite-only signup (`disable_signup: true`); per-firm connection ownership | Pass |
-| §4 Data hosting | Cloudflare (AU edge) + Supabase managed Postgres (AU); documented sub-processors | Pass |
-| §5 App server config | RLS enabled on every public table with explicit GRANTs; `SECURITY DEFINER` funcs least-privileged (`email_queue_wake`/`dispatch` EXECUTE revoked from anon/authenticated); service-role key never in client graph; strict security headers | Pass |
-| §6 Vulnerability mgmt | Supply-chain scan clean; scanner runs on every change; schema linter after every migration | Pass |
-| §7 Logging | Append-only `audit_log` (UPDATE/DELETE revoked from app roles); 2-year retention | Pass |
-| §8 Monitoring / IR | Cloudflare WAF, rate-limit buckets, `login_events`; incident response documented in `docs/security/` | Pass |
+### 2. Convert admin routes to use the shell
+- Update `src/routes/_authenticated/admin.tsx` from a plain `<Outlet />` layout to render `<AdminShell />`.
+- Remove the per-page back/Security buttons from `src/routes/_authenticated/admin.index.tsx` (the shell now provides navigation).
+- Update `src/routes/_authenticated/admin.security.tsx` to render inside the shell (remove its own Admin back button).
+- Optionally update `src/routes/_authenticated/admin.firms.$firmId.tsx` so the firm detail page also uses the shell for consistency.
 
-Also confirmed the privilege-escalation fix from the previous pass is still in place: `user_roles` writes are super-admin only; advisors read-only.
+### 3. Keep dashboard entry point
+- Leave the **Admin** button on `src/routes/_authenticated/dashboard.tsx` for super-admins; it continues to route to `/admin`.
+- Non-super-advisors still see their existing dashboard buttons (Tier widgets, My account, New client).
 
-### Recommendation
+### 4. Verify
+- Type-check the changes.
+- Use the preview to confirm:
+  - Super-admin sees the Admin button on the dashboard.
+  - `/admin` loads with the new sidebar and all five nav items.
+  - Clicking **Security & Compliance** loads `/admin/security` with the shell still visible.
+  - Mobile view shows the sidebar trigger.
 
-**Safe to lodge.** No code or migration changes required this pass.
-
-No files to change — this plan is a verification-only report. Approve to close out the recheck.
+## Out of scope
+- No route moves: `/settings/tiers`, `/settings/advisors` and `/clients/new` keep their existing URLs; the admin sidebar simply links to them.
+- No role changes: the Admin area remains super-admin only.
