@@ -129,7 +129,8 @@ function Dashboard() {
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
             </div>
           ) : isAdvisor ? (
-            <FirmGrid firms={firms} />
+            <FirmGrid firms={firms} isSuperAdmin={isSuperAdmin} />
+
           ) : viewerClients.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center">
               <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
