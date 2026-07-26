@@ -40,27 +40,17 @@ export const listClients = createServerFn({ method: "POST" })
 
     const clientIds = (rows ?? []).map((c: any) => c.id);
     let configRows: any[] = [];
-    let subRows: any[] = [];
     if (clientIds.length) {
-      const [cfgRes, subRes] = await Promise.all([
-        context.supabase
-          .from("tier_widget_config")
-          .select("client_id, tier, widgets")
-          .or(`client_id.is.null,client_id.in.(${clientIds.join(",")})`),
-        context.supabase
-          .from("client_subscriptions")
-          .select("client_id, plan_name, subscription_type, status, current_period_end, trial_end, past_due_since")
-          .in("client_id", clientIds),
-      ]);
-      configRows = cfgRes.data ?? [];
-      subRows = subRes.data ?? [];
+      const { data: cfgData } = await context.supabase
+        .from("tier_widget_config")
+        .select("client_id, tier, widgets")
+        .or(`client_id.is.null,client_id.in.(${clientIds.join(",")})`);
+      configRows = cfgData ?? [];
     }
     const byKey = new Map<string, WidgetKey[]>();
     for (const r of configRows) {
       byKey.set(`${r.client_id ?? "global"}:${r.tier}`, sanitizeWidgets(r.widgets));
     }
-    const subByClient = new Map<string, any>();
-    for (const s of subRows) subByClient.set(s.client_id, s);
     function resolveTierWidgets(clientId: string): Record<DashboardTier, WidgetKey[]> {
       return Object.fromEntries(
         ALL_TIERS.map((t) => [
@@ -85,11 +75,11 @@ export const listClients = createServerFn({ method: "POST" })
         grantedTiers,
         clientTiers,
         tierWidgets: resolveTierWidgets(c.id),
-        subscription: subByClient.get(c.id) ?? null,
       };
     });
     return { clients };
   });
+
 
 export const getClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
