@@ -436,6 +436,8 @@ function AdvisorSettings() {
         </DialogContent>
       </Dialog>
     </div>
+    </AdminShell>
   );
 }
+
 
