@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { listFirmsAdmin } from "@/lib/admin.functions";
+import { listMyFirms } from "@/lib/firms.functions";
 import { adminCreateFirmAndInvite } from "@/lib/invites.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
@@ -14,7 +15,16 @@ import { Building2, Loader2, ShieldAlert, UserPlus, Copy, Check, Shield, Sliders
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
-  head: () => ({ meta: [{ title: "Admin — Traction Advisory" }] }),
+  head: () => ({
+    meta: [
+      { title: "Organisations Admin — Traction Advisory" },
+      { name: "description", content: "Manage Traction Advisory organisations, advisors and dashboard settings." },
+      { property: "og:title", content: "Organisations Admin — Traction Advisory" },
+      { property: "og:description", content: "Manage Traction Advisory organisations, advisors and dashboard settings." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: AdminPage,
 });
 
@@ -42,9 +52,15 @@ function fmtDate(s: string | null) {
 function AdminPage() {
   const fetchCtx = useServerFn(getMyContext);
   const fetchFirms = useServerFn(listFirmsAdmin);
+  const fetchMyFirms = useServerFn(listMyFirms);
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isSuper = ctxQ.data?.isSuperAdmin ?? false;
   const hasAdminAreaAccess = ctxQ.data?.hasAdminAreaAccess ?? isSuper;
+  const myFirmsQ = useQuery({
+    queryKey: ["my-firms"],
+    queryFn: () => fetchMyFirms(),
+    enabled: hasAdminAreaAccess,
+  });
   const firmsQ = useQuery({
     queryKey: ["admin-firms"],
     queryFn: () => fetchFirms(),
@@ -94,6 +110,14 @@ function AdminPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        <OrganisationsSection
+          isSuper={isSuper}
+          firms={firmsQ.data?.firms as FirmRow[] | undefined}
+          firmsLoading={isSuper ? firmsQ.isLoading : myFirmsQ.isLoading}
+          firmsError={isSuper ? firmsQ.error : myFirmsQ.error}
+          myFirms={myFirmsQ.data?.firms ?? []}
+        />
+
         <AdminQuickLinks isSuper={isSuper} />
 
         {!isSuper && (
@@ -108,77 +132,160 @@ function AdminPage() {
           </p>
         )}
 
-        {isSuper && firmsQ.isLoading && (
-          <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading organisations…</div>
-        )}
-
-        {isSuper && firmsQ.error && (
-          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
-            <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
-            <div>
-              <p className="font-medium text-destructive">Access denied</p>
-              <p className="text-sm text-muted-foreground">{(firmsQ.error as Error).message}</p>
-            </div>
-          </div>
-        )}
-
-        {isSuper && firmsQ.data && (
-          <div className="rounded-lg border overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Organisation name</th>
-                  <th className="px-4 py-3">Tier</th>
-                  <th className="px-4 py-3">Usage</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Next bill / trial</th>
-                  <th className="px-4 py-3">Errors (7d)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {(firmsQ.data.firms as FirmRow[]).map((f) => {
-                  const limit = f.tier ? TIER_LIMITS[f.tier] ?? null : null;
-                  return (
-                    <tr key={f.firm_id} className="border-t">
-                      <td className="px-4 py-3">
-                        <Link to="/admin/firms/$firmId" params={{ firmId: f.firm_id }} className="font-medium hover:underline">
-                          {f.firm_name}
-                        </Link>
-                        {f.is_always_free && <Badge variant="outline" className="mt-1 ml-2">always free</Badge>}
-                      </td>
-                      <td className="px-4 py-3 capitalize">{f.tier ?? "—"}</td>
-                      <td className="px-4 py-3 tabular-nums">
-                        {f.connection_count}{limit && limit < 9999 ? ` / ${limit}` : ""}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={f.status === "active" || f.status === "trialing" ? "default" : "secondary"} className="capitalize">
-                          {f.status ?? "—"}
-                        </Badge>
-                        {f.cancel_at_period_end && <Badge variant="outline" className="ml-1">cancelling</Badge>}
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {f.status === "trialing"
-                          ? `trial ends ${fmtDate(f.trial_ends_at)}`
-                          : fmtDate(f.current_period_end)}
-                      </td>
-                      <td className="px-4 py-3 tabular-nums">
-                        {f.recent_error_count > 0 ? (
-                          <span className="text-destructive font-medium">{f.recent_error_count}</span>
-                        ) : (
-                          <span className="text-muted-foreground">0</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-                {firmsQ.data.firms.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">No organisations yet.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
       </main>
+    </div>
+  );
+}
+
+function OrganisationsSection({
+  isSuper,
+  firms,
+  firmsLoading,
+  firmsError,
+  myFirms,
+}: {
+  isSuper: boolean;
+  firms: FirmRow[] | undefined;
+  firmsLoading: boolean;
+  firmsError: unknown;
+  myFirms: { id: string; name: string }[];
+}) {
+  const ownFirmIds = new Set(myFirms.map((firm) => firm.id));
+
+  if (firmsLoading) {
+    return (
+      <section className="space-y-3">
+        <SectionTitle />
+        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading organisations…</div>
+      </section>
+    );
+  }
+
+  if (firmsError) {
+    return (
+      <section className="space-y-3">
+        <SectionTitle />
+        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
+          <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
+          <div>
+            <p className="font-medium text-destructive">Organisations could not load</p>
+            <p className="text-sm text-muted-foreground">{(firmsError as Error).message}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!isSuper) {
+    return (
+      <section className="space-y-3">
+        <SectionTitle />
+        <div className="rounded-lg border overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+              <tr>
+                <th className="px-4 py-3">Organisation name</th>
+                <th className="px-4 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {myFirms.map((firm) => (
+                <tr key={firm.id} className="border-t">
+                  <td className="px-4 py-3 font-medium">{firm.name}</td>
+                  <td className="px-4 py-3 text-right">
+                    <Button size="sm" variant="outline" asChild>
+                      <Link to="/firms/$firmId" params={{ firmId: firm.id }}>Open clients</Link>
+                    </Button>
+                  </td>
+                </tr>
+              ))}
+              {myFirms.length === 0 && (
+                <tr><td colSpan={2} className="px-4 py-8 text-center text-muted-foreground">No organisations yet.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-3">
+      <SectionTitle />
+      <div className="rounded-lg border overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
+            <tr>
+              <th className="px-4 py-3">Organisation name</th>
+              <th className="px-4 py-3">Tier</th>
+              <th className="px-4 py-3">Usage</th>
+              <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Next bill / trial</th>
+              <th className="px-4 py-3">Errors (7d)</th>
+              <th className="px-4 py-3 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {(firms ?? []).map((f) => {
+              const limit = f.tier ? TIER_LIMITS[f.tier] ?? null : null;
+              return (
+                <tr key={f.firm_id} className="border-t">
+                  <td className="px-4 py-3">
+                    <span className="font-medium">{f.firm_name}</span>
+                    {f.is_always_free && <Badge variant="outline" className="mt-1 ml-2">always free</Badge>}
+                  </td>
+                  <td className="px-4 py-3 capitalize">{f.tier ?? "—"}</td>
+                  <td className="px-4 py-3 tabular-nums">
+                    {f.connection_count}{limit && limit < 9999 ? ` / ${limit}` : ""}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant={f.status === "active" || f.status === "trialing" ? "default" : "secondary"} className="capitalize">
+                      {f.status ?? "—"}
+                    </Badge>
+                    {f.cancel_at_period_end && <Badge variant="outline" className="ml-1">cancelling</Badge>}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {f.status === "trialing"
+                      ? `trial ends ${fmtDate(f.trial_ends_at)}`
+                      : fmtDate(f.current_period_end)}
+                  </td>
+                  <td className="px-4 py-3 tabular-nums">
+                    {f.recent_error_count > 0 ? (
+                      <span className="text-destructive font-medium">{f.recent_error_count}</span>
+                    ) : (
+                      <span className="text-muted-foreground">0</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex justify-end gap-2">
+                      {ownFirmIds.has(f.firm_id) && (
+                        <Button size="sm" variant="outline" asChild>
+                          <Link to="/firms/$firmId" params={{ firmId: f.firm_id }}>Open clients</Link>
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" asChild>
+                        <Link to="/admin/firms/$firmId" params={{ firmId: f.firm_id }}>Admin details</Link>
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+            {(firms ?? []).length === 0 && (
+              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No organisations yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+function SectionTitle() {
+  return (
+    <div className="flex items-center gap-2">
+      <Building2 className="h-5 w-5 text-muted-foreground" />
+      <h2 className="text-xl font-semibold">Organisations</h2>
     </div>
   );
 }
@@ -187,7 +294,6 @@ function AdminQuickLinks({ isSuper }: { isSuper: boolean }) {
   const links = [
     ...(isSuper
       ? [
-          { title: "Organisations", description: "Review firms, billing status and admin details.", to: "/admin" as const, icon: Building2 },
           { title: "Security & Compliance", description: "Open the Xero security documentation and compliance tools.", to: "/admin/security" as const, icon: Shield },
         ]
       : []),
