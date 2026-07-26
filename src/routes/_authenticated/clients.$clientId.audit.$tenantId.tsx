@@ -35,6 +35,7 @@ function AuditPage() {
   const [catFilter, setCatFilter] = useState<string>("all");
   const [sevFilter, setSevFilter] = useState<string>("all");
   const [showSnoozed, setShowSnoozed] = useState(false);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const q = useQuery({
     queryKey: ["xero-audit-latest", tenantId],
