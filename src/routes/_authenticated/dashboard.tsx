@@ -3,6 +3,9 @@ import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listFirmsForSuperAdmin, listMyFirms, type FirmOverviewCard } from "@/lib/firms.functions";
+import { firmPlanView, toneClasses } from "@/lib/firmPlans";
+const planView = (f: FirmOverviewCard) => firmPlanView({ tier: f.tier, status: f.status, is_always_free: f.isAlwaysFree, trial_ends_at: f.trialEndsAt, current_period_end: f.currentPeriodEnd });
+
 import { getMyContext } from "@/lib/roles.functions";
 import { getMyFirmAccess } from "@/lib/access.functions";
 import { supabase } from "@/integrations/supabase/client";
