@@ -126,7 +126,7 @@ function FirmPage() {
                         .join(", ") || "No Xero org linked"}
                     </p>
                     <ClientHealthBadge tenantId={(c.client_xero_orgs ?? []).map((o: any) => o.xero_connections?.tenant_id).filter(Boolean)[0] ?? null} />
-                    <SubscriptionBadge clientId={c.id} />
+                    {/* SubscriptionBadge hidden until payments re-enabled */}
                     {tierWidgets && (
                       <div className="mt-4 space-y-1.5 border-t border-border/60 pt-3">
                         {enabledTiers.map((t) => {
