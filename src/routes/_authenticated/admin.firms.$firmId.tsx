@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Loader2, KeyRound, Mail, ShieldAlert, History, CreditCard, Users, Building2, Check, X, Pencil } from "lucide-react";
+import { Loader2, KeyRound, Mail, ShieldAlert, History, CreditCard, Users, Building2, Check, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
@@ -86,9 +86,6 @@ function FirmDetailPage() {
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/admin"><ArrowLeft className="h-4 w-4 mr-2" />All organisations</Link>
-          </Button>
           <h1 className="text-xl font-semibold">{firm.name}</h1>
           {firm.is_always_free && <Badge variant="outline">always free</Badge>}
           <Badge variant="secondary" className="ml-auto">no client data</Badge>
