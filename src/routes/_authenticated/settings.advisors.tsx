@@ -163,8 +163,10 @@ function AdvisorSettings() {
   const pendingCount = pendingIds.size;
 
   return (
+    <AdminShell>
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
+
         <Button variant="ghost" size="sm" asChild className="-ml-2">
           <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
         </Button>
