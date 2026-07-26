@@ -116,46 +116,17 @@ function Dashboard() {
                 : "Select a dashboard to view."}
             </p>
           </div>
-          {hasAdminAreaAccess && (
-            <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2">
+            {hasAdminAreaAccess && (
               <Button variant="outline" asChild>
                 <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
               </Button>
-              {isAdvisor && (
-                <Button variant="outline" asChild>
-                  <Link to="/settings/tiers"><SlidersHorizontal className="mr-2 h-4 w-4" /> Tier widgets</Link>
-                </Button>
-              )}
-              <Button variant="outline" asChild>
-                <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
-              </Button>
-              {isAdvisor && (
-                <Button asChild>
-                  <Link to="/clients/new"><Plus className="mr-2 h-4 w-4" /> New client</Link>
-                </Button>
-              )}
-            </div>
-          )}
-          {isAdvisor && !hasAdminAreaAccess && (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" asChild>
-                <Link to="/settings/tiers"><SlidersHorizontal className="mr-2 h-4 w-4" /> Tier widgets</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
-              </Button>
-              <Button asChild>
-                <Link to="/clients/new"><Plus className="mr-2 h-4 w-4" /> New client</Link>
-              </Button>
-            </div>
-          )}
-          {!isAdvisor && (
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" asChild>
-                <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
-              </Button>
-            </div>
-          )}
+            )}
+            <Button variant="outline" asChild>
+              <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
+            </Button>
+          </div>
+
         </div>
 
         <div className="mt-8">
