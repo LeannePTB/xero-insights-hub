@@ -62,27 +62,12 @@ function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
-          <Button asChild variant="ghost" size="sm">
-            <Link to="/dashboard"><ArrowLeft className="h-4 w-4 mr-2" />Back</Link>
-          </Button>
-          <h1 className="text-xl font-semibold">Super-admin</h1>
-          <Badge variant="secondary" className="ml-2">no client data</Badge>
-          <div className="ml-auto flex items-center gap-2">
-            {isSuper && (
-              <Button asChild variant="outline" size="sm">
-                <Link to="/settings/tiers"><SlidersHorizontal className="h-4 w-4 mr-2" />Tier widgets</Link>
-              </Button>
-            )}
-            <Button asChild variant="outline" size="sm">
-              <Link to="/settings/advisors"><Users className="h-4 w-4 mr-2" />Advisors</Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link to="/admin/security"><ShieldAlert className="h-4 w-4 mr-2" />Security</Link>
-            </Button>
-            <InviteFirmOwnerDialog onCreated={() => firmsQ.refetch()} />
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold">Super-admin</h1>
+            <Badge variant="secondary">no client data</Badge>
           </div>
-
+          <InviteFirmOwnerDialog onCreated={() => firmsQ.refetch()} />
         </div>
       </header>
 
