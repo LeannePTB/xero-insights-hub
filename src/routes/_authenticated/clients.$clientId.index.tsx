@@ -176,7 +176,7 @@ function ClientDashboard() {
       </header>
 
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <SubscriptionGate clientId={clientId}>
+        {/* SubscriptionGate disabled until payments re-enabled */}
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
           <div className="min-w-0">
             {isAdvisor && (
