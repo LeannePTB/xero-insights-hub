@@ -9,8 +9,10 @@ export const getMyContext = createServerFn({ method: "GET" })
       .from("user_roles")
       .select("role")
       .eq("user_id", context.userId);
-    const hasAdvisorRole = !!roles?.some((r: { role: string }) => r.role === "advisor");
-    const isSuperAdmin = !!roles?.some((r: { role: string }) => r.role === "super_admin");
+    const roleNames = (roles ?? []).map((r: { role: string }) => r.role);
+    const hasAdvisorRole = roleNames.includes("advisor");
+    const isSuperAdmin = roleNames.includes("super_admin");
+    const isFirmOwner = roleNames.includes("firm_owner");
 
     const { data: membership } = await context.supabase
       .from("firm_members")
@@ -23,6 +25,7 @@ export const getMyContext = createServerFn({ method: "GET" })
 
     // A firm member is treated as an advisor for UX purposes (sees client list, can add clients).
     const isAdvisor = hasAdvisorRole || !!firmId;
+    const hasAdminAreaAccess = isSuperAdmin || hasAdvisorRole || isFirmOwner || !!firmId;
 
     let viewerClients: { id: string; name: string; tier: DashboardTier }[] = [];
     if (!isAdvisor) {
@@ -34,6 +37,6 @@ export const getMyContext = createServerFn({ method: "GET" })
         .filter((a) => a.clients)
         .map((a) => ({ id: a.clients.id, name: a.clients.name, tier: a.tier as DashboardTier }));
     }
-    return { isAdvisor, isSuperAdmin, firmId, viewerClients };
+    return { isAdvisor, isSuperAdmin, isFirmOwner, hasAdminAreaAccess, firmId, viewerClients };
   });
 

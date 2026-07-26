@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, ShieldAlert, UserPlus, Copy, Check } from "lucide-react";
+import { Building2, Loader2, ShieldAlert, UserPlus, Copy, Check, Shield, SlidersHorizontal, Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -43,10 +43,12 @@ function AdminPage() {
   const fetchCtx = useServerFn(getMyContext);
   const fetchFirms = useServerFn(listFirmsAdmin);
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
+  const isSuper = ctxQ.data?.isSuperAdmin ?? false;
+  const hasAdminAreaAccess = ctxQ.data?.hasAdminAreaAccess ?? isSuper;
   const firmsQ = useQuery({
     queryKey: ["admin-firms"],
     queryFn: () => fetchFirms(),
-    enabled: !!ctxQ.data,
+    enabled: isSuper,
   });
 
   if (ctxQ.isLoading) {
@@ -57,30 +59,56 @@ function AdminPage() {
     );
   }
 
-  const isSuper = ctxQ.data?.isSuperAdmin ?? false;
+  if (!hasAdminAreaAccess) {
+    return (
+      <div className="min-h-screen bg-background">
+        <main className="mx-auto max-w-3xl px-6 py-10">
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
+            <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
+            <div>
+              <p className="font-medium text-destructive">Admin access required</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                This area is for advisor or admin accounts. Your login is currently a viewer account.
+              </p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold">Super-admin</h1>
-            <Badge variant="secondary">no client data</Badge>
+            <h1 className="text-xl font-semibold">Admin</h1>
+            {isSuper ? <Badge variant="secondary">super-admin</Badge> : <Badge variant="outline">advisor admin</Badge>}
           </div>
-          <InviteFirmOwnerDialog onCreated={() => firmsQ.refetch()} />
+          {isSuper && <InviteFirmOwnerDialog onCreated={() => firmsQ.refetch()} />}
         </div>
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        <p className="text-sm text-muted-foreground">
-          Organisation name, tier, usage, billing and error counts only. No Xero org names, balances, or client data are visible from this page — enforced at the database level.
-        </p>
+        <AdminQuickLinks isSuper={isSuper} />
 
-        {firmsQ.isLoading && (
+        {!isSuper && (
+          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+            Your account has advisor admin access. Organisation-wide billing, security documentation and compliance settings require the super-admin role.
+          </div>
+        )}
+
+        {isSuper && (
+          <p className="text-sm text-muted-foreground">
+            Organisation name, tier, usage, billing and error counts only. No Xero org names, balances, or client data are visible from this page — enforced at the database level.
+          </p>
+        )}
+
+        {isSuper && firmsQ.isLoading && (
           <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading organisations…</div>
         )}
 
-        {firmsQ.error && (
+        {isSuper && firmsQ.error && (
           <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
             <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
             <div>
@@ -90,7 +118,7 @@ function AdminPage() {
           </div>
         )}
 
-        {firmsQ.data && (
+        {isSuper && firmsQ.data && (
           <div className="rounded-lg border overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -147,6 +175,40 @@ function AdminPage() {
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+function AdminQuickLinks({ isSuper }: { isSuper: boolean }) {
+  const links = [
+    ...(isSuper
+      ? [
+          { title: "Organisations", description: "Review firms, billing status and admin details.", to: "/admin" as const, icon: Building2 },
+          { title: "Security & Compliance", description: "Open the Xero security documentation and compliance tools.", to: "/admin/security" as const, icon: Shield },
+        ]
+      : []),
+    { title: "Tier widgets", description: "Choose which dashboard cards belong in each tier.", to: "/settings/tiers" as const, icon: SlidersHorizontal },
+    { title: "New client", description: "Add a client and connect their Xero organisation.", to: "/clients/new" as const, icon: Plus },
+    { title: "Advisors", description: "Invite advisors and manage advisor access.", to: "/settings/advisors" as const, icon: Users },
+  ];
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {links.map((item) => (
+        <Link
+          key={item.title}
+          to={item.to}
+          className="group rounded-lg border border-border bg-card p-5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+              <item.icon className="h-5 w-5" />
+            </div>
+          </div>
+          <h2 className="mt-4 font-display text-lg font-semibold leading-tight">{item.title}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+        </Link>
+      ))}
     </div>
   );
 }
