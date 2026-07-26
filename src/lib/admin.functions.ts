@@ -126,14 +126,8 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
       .eq("firm_id", data.firmId)
       .maybeSingle();
 
-    const { data: billing } = await supabaseAdmin
-      .from("billing_events")
-      .select("id, type, stripe_event_id, payload, occurred_at")
-      .eq("firm_id", data.firmId)
-      .order("occurred_at", { ascending: false })
-      .limit(50);
+    return { firm, members: membersWithAuth, subscription, billing: [] as any[] };
 
-    return { firm, members: membersWithAuth, subscription, billing: billing ?? [] };
   });
 
 export const adminSendPasswordReset = createServerFn({ method: "POST" })
