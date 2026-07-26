@@ -559,7 +559,7 @@ function ClientSettings() {
           </Button>
           <p className="mt-2 text-xs text-muted-foreground">This removes the client and all viewer access. Linked Xero organisations stay connected and can be reused.</p>
         </Section>
-        <div className="mt-6"><SubscriptionPanel clientId={clientId} /></div>
+        {/* SubscriptionPanel hidden until payments re-enabled */}
       </main>
     </div>
   );
