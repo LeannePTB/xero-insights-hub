@@ -275,7 +275,7 @@ function ClientDashboard() {
         {!isAdvisor && orgs.length > 0 && (
           <UpgradeOptions clientId={clientId} clientName={client.name} currentTier={tier} />
         )}
-        </SubscriptionGate>
+        {/* /SubscriptionGate */}
       </main>
     </div>
   );
