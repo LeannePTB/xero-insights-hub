@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 export const Route = createFileRoute("/_authenticated/settings/tiers")({
   head: () => ({ meta: [{ title: "Tier widgets — Traction Advisory" }] }),
