@@ -185,16 +185,24 @@ function FirmGrid({ firms }: { firms: FirmOverviewCard[] }) {
             </div>
             <h3 className="mt-4 font-display text-lg font-semibold leading-tight">{f.name}</h3>
             <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              <Badge variant="secondary" className="capitalize">
-                {f.tier ?? "no plan"}
+              <Badge variant="secondary">{planView(f).planLabel}</Badge>
+              <Badge
+                variant="outline"
+                className={toneClasses(planView(f).statusTone)}
+              >
+                {planView(f).statusLabel}
               </Badge>
-              <span className="text-muted-foreground">
-                {f.clientCount} {f.clientCount === 1 ? "client" : "clients"}
+              <span className="text-muted-foreground tabular-nums">
+                {f.clientCount}/{f.clientLimit} clients
               </span>
               {!f.isOwn && (
                 <Badge variant="outline" className="ml-auto">read-only</Badge>
               )}
             </div>
+            {planView(f).dueLabel && (
+              <p className="mt-1 text-[11px] text-muted-foreground">{planView(f).dueLabel}</p>
+            )}
+
           </>
         );
         const base =
