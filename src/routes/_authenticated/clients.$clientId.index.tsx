@@ -131,8 +131,8 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:true_breakeven`, node: <TrueBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("true_breakeven")} /> });
       if (widgets.includes("cashflow"))
         advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
-      if (widgets.includes("xero_audit"))
-        advanced.push({ id: `${o.id}:xero_audit`, node: <AuditSummaryCard tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
+      // xero_audit rendered under Business Health, not in advanced grid
+
     }
     return { standardCards: standard, advancedCards: advanced };
   }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
@@ -234,8 +234,20 @@ function ClientDashboard() {
                     tenantId={orgs[0]?.xero_connections?.tenant_id}
                     tenantName={orgs[0]?.xero_connections?.tenant_name}
                   />
+                  {widgets.includes("xero_audit") &&
+                    orgs.map((o) =>
+                      o.xero_connections?.tenant_id ? (
+                        <AuditSummaryCard
+                          key={`${o.id}:xero_audit`}
+                          tenantId={o.xero_connections.tenant_id}
+                          tenantName={o.xero_connections.tenant_name ?? "Unknown"}
+                          clientId={clientId}
+                        />
+                      ) : null,
+                    )}
                 </>
               )}
+
               <div className="grid gap-6 md:grid-cols-2">
                 <NotesCard clientId={clientId} canEdit={isAdvisor} />
                 <UnreconciledCard clientId={clientId} />
