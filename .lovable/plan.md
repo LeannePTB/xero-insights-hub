@@ -1,40 +1,24 @@
+## Why the Tiers column is empty
 
-## What's actually broken
+The "Tiers" badges are derived from `client_access.tier` rows — that table stores **per-viewer grants** (which advisor has which tier for a client), not which tiers the client itself has enabled. Since the two clients in Positive Traction have no additional viewers assigned (only you as firm owner, who bypasses `client_access`), there are no rows and the column renders "—".
 
-Both problems have the same root cause. A hardening migration on 30 Jun revoked `EXECUTE` on `public.me_is_super_admin()` from the `authenticated` role:
+There is no `client_access` row for firm owners / super-admins because they access clients via ownership, not per-user grants. So the current data source will never light up for those users.
 
-```sql
--- 20260630020728_...sql
-REVOKE EXECUTE ON FUNCTION public.me_is_super_admin() FROM authenticated;
-REVOKE EXECUTE ON FUNCTION public.me_is_super_admin() TO service_role;  -- only role left
-```
+## What to change
 
-That single change cascades into everything you're seeing:
+Switch the Tiers column to reflect **the client's own enabled tiers** instead of viewer grants:
 
-1. **Security → Posture** — `permission denied for function me_is_super_admin`. The posture card calls the RPC directly and now 403s for every signed-in user, including you.
-2. **Admin → Organisations shows only "Open clients"** — `admin.index.tsx` branches on `isSuper`. Because the RPC throws, `isSuper` resolves false, so you get the reduced advisor table (name + Open clients) instead of the super-admin table with the **Admin details** link. The Always-free toggle lives on `/admin/firms/{firmId}` behind that link, so from the current UI it's unreachable.
-3. **Any other surface gated on super-admin** (audit-log actions, admin billing page, tier settings menus that hide their heavier controls) silently degrades the same way.
+1. In `src/lib/clients.functions.ts` → `listClients`:
+   - Also fetch `tier_widget_config` rows already loaded, and for each client compute `clientTiers` = the set of tiers with any widget rows for that client, unioned with the `grantedTiers` set (so nothing existing breaks).
+   - If no per-client override exists, fall back to `enabledTiers` from the firm-wide `listTierSettings` (i.e. every tier the firm has switched on is available to the client by default).
+   - Return `clientTiers: DashboardTier[]` on each client alongside the existing `grantedTiers`.
 
-The revoke was overzealous. `me_is_super_admin()` is `SECURITY DEFINER`, takes no arguments, and only checks the caller's own `auth.uid()` against `user_roles` — letting `authenticated` execute it does not leak anything. The RLS policies added since then (in `20260703230113` and `20260726031512`) even assume `authenticated` can call it, so those policies are currently unreachable too.
+2. In `src/routes/_authenticated/firms.$firmId.tsx`:
+   - Render `c.clientTiers` (intersected with `enabledTiers`) instead of `granted`.
+   - Keep the "—" fallback only when the firm has zero tiers enabled.
 
-## Fix
+Result: Both Home Hunter Watch and Positive Traction will show badges for every tier active in the firm's tier settings (Standard, Advisory, etc.), matching what actually drives the dashboard split.
 
-Single migration that restores the grant to `authenticated` (and keeps `service_role`, keeps `anon` revoked):
+## Out of scope
 
-```sql
-GRANT EXECUTE ON FUNCTION public.me_is_super_admin() TO authenticated;
-```
-
-No app-code changes required — `admin.index.tsx`, the Security posture card, and every policy that references the function will start working again the moment the grant lands.
-
-## Verification after apply
-
-1. Reload `/admin` → Organisations table shows Tier / Usage / Status columns and an **Admin details** button next to Positive Traction.
-2. Click **Admin details** → firm page renders with the **Always free** switch in the Subscription section (this is the free-forever control you were looking for).
-3. Reload `/admin/security` → Posture card renders MFA/session counts instead of the red permission-denied message.
-
-## Not in scope
-
-- No changes to billing UI (still hidden as agreed).
-- No changes to `hasAdminAreaAccess`, sidebar, or route structure.
-- Nothing else touched — this is a one-line grant.
+No schema changes, no billing changes, no access-control changes. Purely a display fix on the firm client table.
