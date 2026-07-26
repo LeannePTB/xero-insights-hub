@@ -1,4 +1,5 @@
 import { Outlet } from "@tanstack/react-router";
+import type { ReactNode } from "react";
 import {
   SidebarInset,
   SidebarProvider,
@@ -6,7 +7,7 @@ import {
 } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
 
-export function AdminShell() {
+export function AdminShell({ children }: { children?: ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-svh w-full">
@@ -16,10 +17,11 @@ export function AdminShell() {
             <SidebarTrigger />
           </header>
           <main className="flex-1">
-            <Outlet />
+            {children ?? <Outlet />}
           </main>
         </SidebarInset>
       </div>
     </SidebarProvider>
   );
 }
+

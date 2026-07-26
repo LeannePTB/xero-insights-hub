@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail } from "lucide-react";
 import { toast } from "sonner";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({
@@ -162,8 +163,10 @@ function AdvisorSettings() {
   const pendingCount = pendingIds.size;
 
   return (
+    <AdminShell>
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
+
         <Button variant="ghost" size="sm" asChild className="-ml-2">
           <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
         </Button>
@@ -433,6 +436,8 @@ function AdvisorSettings() {
         </DialogContent>
       </Dialog>
     </div>
+    </AdminShell>
   );
 }
+
 

@@ -10,6 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { ArrowLeft, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { AdminShell } from "@/components/admin/AdminShell";
 
 export const Route = createFileRoute("/_authenticated/settings/tiers")({
   head: () => ({ meta: [{ title: "Tier widgets — Traction Advisory" }] }),
@@ -59,35 +60,37 @@ function TierSettings() {
   if (!isAdvisor) return <p className="p-6 text-sm text-destructive">Advisors only.</p>;
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
-        </Button>
-        <div>
-          <h1 className="font-display text-3xl font-semibold">Dashboard tier widgets</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Turn each tier on or off and pick the widgets it shows. Disabled tiers won't appear when inviting viewers or assigning access.
-          </p>
-        </div>
+    <AdminShell>
+      <div className="min-h-screen bg-background">
+        <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
+          <Button variant="ghost" size="sm" asChild className="-ml-2">
+            <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
+          </Button>
+          <div>
+            <h1 className="font-display text-3xl font-semibold">Dashboard tier widgets</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Turn each tier on or off and pick the widgets it shows. Disabled tiers won't appear when inviting viewers or assigning access.
+            </p>
+          </div>
 
-        {ALL_TIERS.map((tier) => {
-          const enabled = settingsQ.data?.enabled?.[tier] ?? true;
-          return (
-            <TierEditor
-              key={tier}
-              tier={tier}
-              initial={cfgQ.data?.global[tier] ?? []}
-              saving={saveMut.isPending}
-              onSave={(widgets) => saveMut.mutate({ tier, widgets })}
-              enabled={enabled}
-              onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
-              toggleDisabled={toggleMut.isPending}
-            />
-          );
-        })}
-      </main>
-    </div>
+          {ALL_TIERS.map((tier) => {
+            const enabled = settingsQ.data?.enabled?.[tier] ?? true;
+            return (
+              <TierEditor
+                key={tier}
+                tier={tier}
+                initial={cfgQ.data?.global[tier] ?? []}
+                saving={saveMut.isPending}
+                onSave={(widgets) => saveMut.mutate({ tier, widgets })}
+                enabled={enabled}
+                onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
+                toggleDisabled={toggleMut.isPending}
+              />
+            );
+          })}
+        </main>
+      </div>
+    </AdminShell>
   );
 }
 
