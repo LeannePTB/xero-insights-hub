@@ -1,38 +1,23 @@
-# Pre-lodgement security fix (invite-only confirmed)
+## Pre-lodgement security recheck — clean
 
-Ran the security scanner against the Xero API Consumer Security Standard controls. Everything documented in `docs/security/` is in place: OAuth 2.0 + PKCE (S256), AES-256-GCM token wrap with server-only `TOKEN_ENC_KEY`, TLS 1.2+ / HSTS, mandatory TOTP MFA (AAL2 gate), HIBP leaked-password check, RLS + explicit GRANTs on every public table, append-only `audit_log` with 2-year retention, least-privilege Xero scopes (`.read` + `offline_access` only).
+Ran the full security scan (Supabase RLS/GRANTs, connector scan, supply-chain, Lovable Supabase scanner). **Zero findings across all scanners.**
 
-Signup remains **invite-only**: `disable_signup: true` stays as-is; new users only enter via admin-issued `access_invites` tokens (14-day expiry, SHA-256 hashed, single-use).
+### Controls verified against the Xero API Consumer Security Standard
 
-## Finding to fix
+| Xero section | Control | Status |
+| --- | --- | --- |
+| §2 Encryption | OAuth 2.0 + PKCE (S256); Xero tokens AES-256-GCM wrapped with `TOKEN_ENC_KEY`; TLS 1.2+ / HSTS; no tokens in URLs/HTML; plaintext token columns dropped | Pass |
+| §3 Authentication | Mandatory TOTP MFA, AAL2 gate on `_authenticated` shell; HIBP leaked-password check; invite-only signup (`disable_signup: true`); per-firm connection ownership | Pass |
+| §4 Data hosting | Cloudflare (AU edge) + Supabase managed Postgres (AU); documented sub-processors | Pass |
+| §5 App server config | RLS enabled on every public table with explicit GRANTs; `SECURITY DEFINER` funcs least-privileged (`email_queue_wake`/`dispatch` EXECUTE revoked from anon/authenticated); service-role key never in client graph; strict security headers | Pass |
+| §6 Vulnerability mgmt | Supply-chain scan clean; scanner runs on every change; schema linter after every migration | Pass |
+| §7 Logging | Append-only `audit_log` (UPDATE/DELETE revoked from app roles); 2-year retention | Pass |
+| §8 Monitoring / IR | Cloudflare WAF, rate-limit buckets, `login_events`; incident response documented in `docs/security/` | Pass |
 
-The scanner flagged 4 warnings — all one root cause. Two `SECURITY DEFINER` functions in `public` are executable by `anon` and `authenticated`:
+Also confirmed the privilege-escalation fix from the previous pass is still in place: `user_roles` writes are super-admin only; advisors read-only.
 
-- `public.email_queue_wake()` — trigger function, never called directly.
-- `public.email_queue_dispatch()` — invoked by `pg_cron` (runs as `postgres`), never called from the Data API.
+### Recommendation
 
-Because they are `SECURITY DEFINER`, any signed-in (or anonymous) caller hitting them via PostgREST would execute with elevated privileges. Maps to Xero assessment Section 3 (least privilege) and Section 5 (server config hardening).
+**Safe to lodge.** No code or migration changes required this pass.
 
-All other `SECURITY DEFINER` functions (`me_is_super_admin`, `check_rate_limit`, `enqueue_email`, `read_email_batch`, `delete_email`, `move_to_dlq`, `get_mfa_posture_counts`, `handle_new_user`, `audit_user_roles_change`, `enforce_unreconciled_line_viewer_columns`) are already restricted to `postgres` / `service_role`.
-
-## Change
-
-Single migration:
-
-```sql
-REVOKE EXECUTE ON FUNCTION public.email_queue_wake()     FROM anon, authenticated, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.email_queue_dispatch() FROM anon, authenticated, PUBLIC;
-```
-
-`postgres` and `service_role` keep EXECUTE, so the enqueue trigger and the `pg_cron` job continue working unchanged.
-
-## Verification
-
-- Re-run the security scanner — the 4 warnings clear.
-- Send a test invite email; confirm it lands (trigger + cron path still fires).
-- No app-code changes; no client or server function calls these directly.
-
-## Not changing
-
-- Signup stays disabled (invite-only).
-- No changes to `docs/security/*` — the controls described there are unaffected; this only tightens grants to match what's already documented as least privilege.
+No files to change — this plan is a verification-only report. Approve to close out the recheck.
