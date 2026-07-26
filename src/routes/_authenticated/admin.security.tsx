@@ -108,11 +108,12 @@ function SecurityDocsPage() {
     queryFn: () => getCtx(),
   });
   const isSuper = ctxQ.data?.isSuperAdmin ?? false;
+  const hasAccess = ctxQ.data?.hasAdminAreaAccess ?? false;
 
   const { data: contact } = useQuery({
     queryKey: ["xero-assessment-contact"],
     queryFn: () => getFn(),
-    enabled: isSuper,
+    enabled: hasAccess,
   });
 
   const [form, setForm] = useState<XeroAssessmentContact>({});
