@@ -29,6 +29,7 @@ import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_auth
 import { Route as AuthenticatedFirmsFirmIdRouteImport } from './routes/_authenticated/firms.$firmId'
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedAdminSecurityRouteImport } from './routes/_authenticated/admin.security'
+import { Route as AuthenticatedAdminBillingRouteImport } from './routes/_authenticated/admin.billing'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -36,6 +37,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
@@ -149,6 +151,12 @@ const AuthenticatedAdminSecurityRoute =
     path: '/security',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminBillingRoute =
+  AuthenticatedAdminBillingRouteImport.update({
+    id: '/billing',
+    path: '/billing',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedClientsClientIdIndexRoute =
   AuthenticatedClientsClientIdIndexRouteImport.update({
     id: '/clients/$clientId/',
@@ -188,6 +196,12 @@ const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
   path: '/api/public/xero/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedClientsClientIdUnreconciledRoute =
   AuthenticatedClientsClientIdUnreconciledRouteImport.update({
     id: '/clients/$clientId/unreconciled',
@@ -242,6 +256,7 @@ export interface FileRoutesByFullPath {
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
+  '/admin/billing': typeof AuthenticatedAdminBillingRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
@@ -254,6 +269,7 @@ export interface FileRoutesByFullPath {
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -276,6 +292,7 @@ export interface FileRoutesByTo {
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
+  '/admin/billing': typeof AuthenticatedAdminBillingRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
@@ -288,6 +305,7 @@ export interface FileRoutesByTo {
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -313,6 +331,7 @@ export interface FileRoutesById {
   '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/signup/$token': typeof SignupTokenRoute
+  '/_authenticated/admin/billing': typeof AuthenticatedAdminBillingRoute
   '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
   '/_authenticated/firms/$firmId': typeof AuthenticatedFirmsFirmIdRoute
@@ -325,6 +344,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -350,6 +370,7 @@ export interface FileRouteTypes {
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
     | '/signup/$token'
+    | '/admin/billing'
     | '/admin/security'
     | '/clients/new'
     | '/firms/$firmId'
@@ -362,6 +383,7 @@ export interface FileRouteTypes {
     | '/admin/firms/$firmId'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
+    | '/api/public/payments/webhook'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -384,6 +406,7 @@ export interface FileRouteTypes {
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
     | '/signup/$token'
+    | '/admin/billing'
     | '/admin/security'
     | '/clients/new'
     | '/firms/$firmId'
@@ -396,6 +419,7 @@ export interface FileRouteTypes {
     | '/admin/firms/$firmId'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
+    | '/api/public/payments/webhook'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -420,6 +444,7 @@ export interface FileRouteTypes {
     | '/auth_/mfa-verify'
     | '/email/unsubscribe'
     | '/signup/$token'
+    | '/_authenticated/admin/billing'
     | '/_authenticated/admin/security'
     | '/_authenticated/clients/new'
     | '/_authenticated/firms/$firmId'
@@ -432,6 +457,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/firms/$firmId'
     | '/_authenticated/clients/$clientId/settings'
     | '/_authenticated/clients/$clientId/unreconciled'
+    | '/api/public/payments/webhook'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -456,6 +482,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   SignupTokenRoute: typeof SignupTokenRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
   ApiPublicXeroCallbackRoute: typeof ApiPublicXeroCallbackRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -606,6 +633,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSecurityRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/billing': {
+      id: '/_authenticated/admin/billing'
+      path: '/billing'
+      fullPath: '/admin/billing'
+      preLoaderRoute: typeof AuthenticatedAdminBillingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/clients/$clientId/': {
       id: '/_authenticated/clients/$clientId/'
       path: '/clients/$clientId'
@@ -653,6 +687,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/xero/callback'
       fullPath: '/api/public/xero/callback'
       preLoaderRoute: typeof ApiPublicXeroCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/clients/$clientId/unreconciled': {
@@ -708,12 +749,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminBillingRoute: typeof AuthenticatedAdminBillingRoute
   AuthenticatedAdminSecurityRoute: typeof AuthenticatedAdminSecurityRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminFirmsFirmIdRoute: typeof AuthenticatedAdminFirmsFirmIdRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminBillingRoute: AuthenticatedAdminBillingRoute,
   AuthenticatedAdminSecurityRoute: AuthenticatedAdminSecurityRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminFirmsFirmIdRoute: AuthenticatedAdminFirmsFirmIdRoute,
@@ -779,6 +822,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   SignupTokenRoute: SignupTokenRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
   ApiPublicXeroCallbackRoute: ApiPublicXeroCallbackRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
