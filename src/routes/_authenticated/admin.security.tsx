@@ -108,11 +108,12 @@ function SecurityDocsPage() {
     queryFn: () => getCtx(),
   });
   const isSuper = ctxQ.data?.isSuperAdmin ?? false;
+  const hasAccess = ctxQ.data?.hasAdminAreaAccess ?? false;
 
   const { data: contact } = useQuery({
     queryKey: ["xero-assessment-contact"],
     queryFn: () => getFn(),
-    enabled: isSuper,
+    enabled: hasAccess,
   });
 
   const [form, setForm] = useState<XeroAssessmentContact>({});
@@ -167,15 +168,15 @@ function SecurityDocsPage() {
     );
   }
 
-  if (!isSuper) {
+  if (!hasAccess) {
     return (
       <div className="container mx-auto p-6">
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
           <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
           <div>
-            <p className="font-medium text-destructive">Super-admin required</p>
+            <p className="font-medium text-destructive">Admin access required</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Security and compliance documents are restricted to the super-admin account.
+              Security and compliance documents are restricted to firm advisors and admins.
             </p>
           </div>
         </div>
@@ -234,15 +235,17 @@ function SecurityDocsPage() {
           <Link to="/settings/activity">
             <Button size="sm" variant="outline">Audit log</Button>
           </Link>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => purgeM.mutate()}
-            disabled={purgeM.isPending}
-          >
-            {purgeM.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-            Purge audit log &gt; 2 years
-          </Button>
+          {isSuper && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => purgeM.mutate()}
+              disabled={purgeM.isPending}
+            >
+              {purgeM.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Purge audit log &gt; 2 years
+            </Button>
+          )}
         </div>
       </div>
 
