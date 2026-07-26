@@ -148,7 +148,10 @@ export const listMyFirms = createServerFn({ method: "GET" })
 export const getMyFirm = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId: string }) => i)
-  .handler(async ({ data, context }): Promise<{ firm: { id: string; name: string } }> => {
+  .handler(async ({ data, context }): Promise<{
+    firm: { id: string; name: string };
+    plan: FirmOverviewCard;
+  }> => {
     const { data: membership } = await context.supabase
       .from("firm_members")
       .select("firm_id")
@@ -156,12 +159,27 @@ export const getMyFirm = createServerFn({ method: "POST" })
       .eq("firm_id", data.firmId)
       .maybeSingle();
     if (!membership) throw new Error("Forbidden");
-    const { data: firm, error } = await context.supabase
-      .from("firms")
-      .select("id, name")
-      .eq("id", data.firmId)
-      .maybeSingle();
+    const [{ data: firm, error }, { data: sub }, { count: clientCount }] = await Promise.all([
+      context.supabase.from("firms").select("id, name, is_always_free").eq("id", data.firmId).maybeSingle(),
+      context.supabase.from("subscriptions").select("tier, status, trial_ends_at, current_period_end").eq("firm_id", data.firmId).maybeSingle(),
+      context.supabase.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", data.firmId),
+    ]);
     if (error) throw new Error(error.message);
     if (!firm) throw new Error("Firm not found.");
-    return { firm: firm as any };
+    const s: any = sub ?? {};
+    const isAlwaysFree = !!(firm as any).is_always_free;
+    const plan: FirmOverviewCard = {
+      id: (firm as any).id,
+      name: (firm as any).name,
+      tier: s.tier ?? null,
+      status: s.status ?? null,
+      clientCount: clientCount ?? 0,
+      clientLimit: clientLimitFor(s.tier, isAlwaysFree),
+      isAlwaysFree,
+      trialEndsAt: s.trial_ends_at ?? null,
+      currentPeriodEnd: s.current_period_end ?? null,
+      isOwn: true,
+    };
+    return { firm: { id: (firm as any).id, name: (firm as any).name }, plan };
   });
+
