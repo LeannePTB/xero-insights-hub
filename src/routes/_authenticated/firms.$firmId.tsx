@@ -10,7 +10,10 @@ import { ArrowLeft, Building2, ChevronRight, Loader2, Plus } from "lucide-react"
 import { ALL_TIERS, TIER_LABEL, type DashboardTier } from "@/lib/tiers";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { SubscriptionStatusBadge, subscriptionView } from "@/components/billing/SubscriptionStatusBadge";
+import { Badge } from "@/components/ui/badge";
+import { firmPlanView, toneClasses } from "@/lib/firmPlans";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
   head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
