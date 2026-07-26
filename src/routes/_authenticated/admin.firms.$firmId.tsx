@@ -82,7 +82,7 @@ function FirmDetailPage() {
     );
   }
 
-  const { firm, members, subscription, billing } = detailQ.data!;
+  const { firm, members, subscription } = detailQ.data!;
 
   return (
     <div className="min-h-screen bg-background">
@@ -114,7 +114,7 @@ function FirmDetailPage() {
           onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
         />
 
-        <BillingSection events={billing} />
+        
 
         <AuditSection events={auditQ.data?.events ?? []} loading={auditQ.isLoading} />
       </main>
@@ -378,48 +378,6 @@ function ChangeEmailDialog({
   );
 }
 
-function BillingSection({ events }: { events: any[] }) {
-  return (
-    <section className="rounded-lg border p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <CreditCard className="h-4 w-4" />
-        <h2 className="text-lg font-semibold">Billing history</h2>
-      </div>
-      {events.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No billing events recorded yet.</p>
-      ) : (
-        <div className="overflow-hidden rounded-md border">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-2">When</th>
-                <th className="px-4 py-2">Type</th>
-                <th className="px-4 py-2">Amount</th>
-                <th className="px-4 py-2">Reference</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((e) => {
-                const amt = e.payload?.amount ?? e.payload?.amount_total ?? e.payload?.amount_paid;
-                const currency = (e.payload?.currency ?? "").toUpperCase();
-                return (
-                  <tr key={e.id} className="border-t">
-                    <td className="px-4 py-2 text-muted-foreground">{fmt(e.occurred_at)}</td>
-                    <td className="px-4 py-2">{e.type}</td>
-                    <td className="px-4 py-2 tabular-nums">
-                      {amt != null ? `${(amt / 100).toFixed(2)} ${currency}` : "—"}
-                    </td>
-                    <td className="px-4 py-2 font-mono text-xs text-muted-foreground">{e.stripe_event_id ?? "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
 
 function AuditSection({ events, loading }: { events: any[]; loading: boolean }) {
   return (

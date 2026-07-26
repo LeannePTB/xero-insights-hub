@@ -1,34 +1,37 @@
 ## Goal
 
-The main `/dashboard` is a **firm subscription overview** — one card per firm the user belongs to, showing plan/status/usage/renewal only. Clients live inside the firm (existing `/firms/$firmId` page, which already shows the Client / Plan / Due Date / Status / Tiers table).
+Strip out the Lovable-managed Stripe integration (gateway-proxied SDK, managed webhook, checkout/portal server fns, billing UI). Leave firm plan tiers (Starter/Growth/Scale/Firm) and client quotas in place so you can bolt on your own Stripe account later without redoing that work.
 
-## Changes
+## What gets removed
 
-### `src/routes/_authenticated/dashboard.tsx`
-Replace the current firm grid (which mixes plan chips with client counts and is easy to confuse with a client list) with a focused **Subscription** panel per firm:
+**Code**
+- `src/lib/stripe.ts` — client-side Stripe.js loader keyed to `VITE_PAYMENTS_CLIENT_TOKEN`
+- `src/lib/stripe.server.ts` — gateway-proxied Stripe SDK client + webhook verifier
+- `src/lib/billing.functions.ts` — `createCheckoutSession`, `createPortalSession`, etc.
+- `src/routes/api/public/payments/webhook.ts` — Stripe webhook handler
+- `src/routes/_authenticated/admin.billing.tsx` — admin billing page + its sidebar link
+- `src/components/billing/SubscriptionPanel.tsx`, `SubscriptionGate.tsx`, `SubscriptionStatusBadge.tsx`, `SubscriptionBadge.tsx`
+- `stripe` and `@stripe/*` npm packages
+- Any `PaymentTestModeBanner` mount
 
-- Title: "Your subscription" (single firm) or "Your firms" (multiple).
-- One card per firm with:
-  - Firm name + "Always free" badge if applicable.
-  - Plan label (Starter / Growth / Scale / Firm / Legacy / Free) via `TIER_LABEL`.
-  - Status pill (Active / Trialing / Past due / Canceled / No billing) via `firmPlanView`.
-  - Client usage: `3 / 5 clients` with a thin progress bar.
-  - Renewal / trial end date, or "—" when none.
-  - Primary action: **Open clients →** navigates to `/firms/$firmId`.
-  - Secondary action (super-admin only): **Manage** → `/admin/firms/$firmId`.
-- No client rows, no health badges, no "New client" button on this page. Client management stays on the firm page.
+**Refactors (don't delete, just decouple from Stripe)**
+- `src/lib/clients.functions.ts` — drop the `client_subscriptions` join used to hydrate `c.subscription`; keep the client list + quota check via `firmPlans`
+- `src/routes/_authenticated/firms.$firmId.tsx` — remove Plan / Due Date / Status columns and `SubscriptionStatusBadge` import; keep Client / Tiers columns
+- `src/routes/_authenticated/dashboard.tsx` — firm cards keep name + `used / limit` client usage bar, drop status/renewal date
+- `src/lib/admin.functions.ts` — drop the `billing_events` query from `getFirmDetail`
+- `src/routes/_authenticated/admin.firms.$firmId.tsx` — remove `BillingSection` and its render
 
-If the user belongs to a single firm, render it as one wide card; multiple firms render as a responsive grid.
+**Kept as-is**
+- `src/lib/firmPlans.ts` (tier labels + `clientLimitFor` quotas)
+- `client_subscriptions` and `billing_events` DB tables (untouched — no destructive migration; ready to repopulate when you connect your own Stripe)
+- `admin.firms.$firmId` tier picker
 
-### `src/routes/_authenticated/firms.$firmId.tsx`
-No behavioural change — this already is the "Positive Traction Clients" page shown in the screenshot. Confirm the "New client" button and subscription header stay here (they do).
+## What you'll do yourself later
 
-### Nothing else
-- No schema changes.
-- No changes to `listMyFirms` — it already returns plan / status / usage / renewal.
-- No changes to admin pages, health widgets, or Stripe wiring.
+When you're ready to plug in your own Stripe account, tell me and I'll add a fresh integration using your `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` — no gateway proxy, direct SDK, your keys stored via `add_secret`.
 
-## Out of scope
+## Verification
 
-- Re-enabling Stripe checkout / portal buttons (still paused per earlier request).
-- Adding a firm switcher in the header — the dashboard card itself is the switcher.
+- Typecheck passes
+- `/dashboard`, `/firms/$firmId`, `/admin`, `/admin/firms/$firmId` load without runtime errors
+- No remaining `import ... stripe` or `VITE_PAYMENTS_CLIENT_TOKEN` references in `src/`
