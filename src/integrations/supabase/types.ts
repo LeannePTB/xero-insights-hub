@@ -388,6 +388,59 @@ export type Database = {
           },
         ]
       }
+      client_subscriptions: {
+        Row: {
+          client_id: string
+          created_at: string
+          current_period_end: string | null
+          id: string
+          past_due_since: string | null
+          plan_name: string | null
+          status: Database["public"]["Enums"]["client_subscription_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          subscription_type: Database["public"]["Enums"]["client_subscription_type"]
+          trial_end: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          past_due_since?: string | null
+          plan_name?: string | null
+          status?: Database["public"]["Enums"]["client_subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_type?: Database["public"]["Enums"]["client_subscription_type"]
+          trial_end?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          current_period_end?: string | null
+          id?: string
+          past_due_since?: string | null
+          plan_name?: string | null
+          status?: Database["public"]["Enums"]["client_subscription_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          subscription_type?: Database["public"]["Enums"]["client_subscription_type"]
+          trial_end?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_subscriptions_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_true_breakeven_inputs: {
         Row: {
           ato_payment_plan: number
@@ -1427,6 +1480,13 @@ export type Database = {
         | "super_admin"
         | "firm_owner"
         | "firm_staff"
+      client_subscription_status:
+        | "active"
+        | "trialing"
+        | "past_due"
+        | "cancelled"
+        | "free_forever"
+      client_subscription_type: "paid" | "free_forever" | "trial"
       dashboard_tier: "basic" | "advisory" | "investigate" | "multi_company"
       firm_member_role: "owner" | "staff"
       report_basis: "accrual" | "cash"
@@ -1579,6 +1639,14 @@ export const Constants = {
         "firm_owner",
         "firm_staff",
       ],
+      client_subscription_status: [
+        "active",
+        "trialing",
+        "past_due",
+        "cancelled",
+        "free_forever",
+      ],
+      client_subscription_type: ["paid", "free_forever", "trial"],
       dashboard_tier: ["basic", "advisory", "investigate", "multi_company"],
       firm_member_role: ["owner", "staff"],
       report_basis: ["accrual", "cash"],
