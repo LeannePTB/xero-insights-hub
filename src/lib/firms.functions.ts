@@ -7,8 +7,13 @@ export type FirmOverviewCard = {
   tier: string | null;
   status: string | null;
   clientCount: number;
+  clientLimit: number;
+  isAlwaysFree: boolean;
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
   isOwn: boolean;
 };
+
 
 async function assertSuperAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase
