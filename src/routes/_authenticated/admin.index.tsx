@@ -4,14 +4,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { listFirmsAdmin } from "@/lib/admin.functions";
 import { listMyFirms } from "@/lib/firms.functions";
-import { adminCreateFirmAndInvite } from "@/lib/invites.functions";
+import { adminCreateOrganisation } from "@/lib/invites.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Building2, Loader2, ShieldAlert, UserPlus, Copy, Check, Shield, SlidersHorizontal, Plus, Users, ArrowLeft } from "lucide-react";
+import { Building2, Loader2, ShieldAlert, UserPlus, Copy, Check, Shield, SlidersHorizontal, Users, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -104,7 +106,7 @@ function AdminPage() {
             <h1 className="text-xl font-semibold">Admin</h1>
             {isSuper ? <Badge variant="secondary">super-admin</Badge> : <Badge variant="outline">advisor admin</Badge>}
           </div>
-          {isSuper && <InviteFirmOwnerDialog onCreated={() => firmsQ.refetch()} />}
+          {isSuper && <AddOrganisationDialog onCreated={() => firmsQ.refetch()} />}
         </div>
 
       </header>
@@ -298,7 +300,6 @@ function AdminQuickLinks({ isSuper }: { isSuper: boolean }) {
         ]
       : []),
     { title: "Tier widgets", description: "Choose which dashboard cards belong in each tier.", to: "/settings/tiers" as const, icon: SlidersHorizontal },
-    { title: "New client", description: "Add a client and connect their Xero organisation.", to: "/clients/new" as const, icon: Plus },
     { title: "Advisors", description: "Invite advisors and manage advisor access.", to: "/settings/advisors" as const, icon: Users },
   ];
 
