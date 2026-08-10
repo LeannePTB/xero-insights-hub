@@ -176,6 +176,13 @@ export const createClient = createServerFn({ method: "POST" })
         "Only the Multi company tier can link more than one Xero organisation. Create the client with one org, then grant a viewer the Multi company tier to link more.",
       );
     }
+    if (data.xeroConnectionIds.length > 0) {
+      const { getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
+      const available = await getUnassignedConnectionsForUser(context.userId);
+      if (data.xeroConnectionIds.some((id) => !available.some((connection) => connection.id === id))) {
+        throw new Error("A selected Xero organisation is already assigned to another subscription or is not yours.");
+      }
+    }
 
     // Resolve target firm: explicit firmId (must be a member) OR caller's first firm.
     let firmId: string | null = data.firmId ?? null;

@@ -115,12 +115,14 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         // ─────────────────────────────────────────────────────────────────────
         if (flow === "signin") {
           if (!tokens.id_token) {
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             console.error("Xero sign-in missing id_token", { scope: tokens.scope });
             return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent("Xero did not return an identity token. Confirm openid/profile/email scopes are enabled on the Xero app.")}`);
           }
           const claims = decodeJwtPayload(tokens.id_token);
           const xeroEmail = typeof claims?.email === "string" ? claims.email.toLowerCase().trim() : null;
           if (!xeroEmail) {
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent("Your Xero account did not return an email. Verify your Xero email is confirmed and try again.")}`);
           }
 
@@ -149,6 +151,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               target_id: xeroEmail,
               meta: { reason: "not_invited" },
             });
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent(`No invited account found for ${xeroEmail}. Access is invite-only — contact Positive Traction to be added.`)}`);
           }
 
@@ -170,6 +173,8 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             target_id: matchedUser.id,
             meta: { email: xeroEmail },
           });
+
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
 
           return redirectTo(linkData.properties.action_link);
         }
