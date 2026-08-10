@@ -299,14 +299,41 @@ function FirmPage() {
                           </div>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <Link
-                            to="/clients/$clientId"
-                            params={{ clientId: c.id }}
-                            className="inline-flex items-center text-muted-foreground hover:text-foreground"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Link>
+                          <div className="flex items-center justify-end gap-1">
+                            <Link
+                              to="/clients/$clientId"
+                              params={{ clientId: c.id }}
+                              className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Link>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${c.name}`}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                  <Link to="/clients/$clientId" params={{ clientId: c.id }}>Open</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Settings</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setPendingDelete({ id: c.id, name: c.name });
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Remove client
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </td>
+
                       </tr>
                     );
                   })}
