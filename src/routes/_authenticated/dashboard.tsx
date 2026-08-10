@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { LogOut, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Organisations — Traction Advisory" }] }),
@@ -100,23 +102,31 @@ function Dashboard() {
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold">
-              {isAdvisor
+              {isSuperAdmin
+                ? "Subscriptions"
+                : isAdvisor
                 ? (firms.length === 1 ? "Your subscription" : "Your firms")
                 : "Your dashboards"}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {isAdvisor
+              {isSuperAdmin
+                ? `${firms.length} organisation${firms.length === 1 ? "" : "s"} on the platform.`
+                : isAdvisor
                 ? "Manage your plan and open your firm to work with clients."
                 : "Select a dashboard to view."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            {isSuperAdmin && (
+              <AddOrganisationDialog size="default" variant="outline" onCreated={() => superFirmsQ.refetch()} />
+            )}
             {hasAdminAreaAccess && (
               <Button variant="outline" asChild>
                 <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
               </Button>
             )}
             <Button variant="outline" asChild>
+
               <Link to="/settings/account"><KeyRound className="mr-2 h-4 w-4" /> My account</Link>
             </Button>
           </div>
