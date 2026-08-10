@@ -38,6 +38,8 @@ import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/em
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
+import { Route as AuthenticatedClientsClientIdLoansAccountsRouteImport } from './routes/_authenticated/clients.$clientId.loans-accounts'
+import { Route as AuthenticatedClientsClientIdLoansRouteImport } from './routes/_authenticated/clients.$clientId.loans'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
 import { Route as AuthenticatedClientsClientIdXeroLogTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.xero-log.$tenantId'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
@@ -200,6 +202,18 @@ const AuthenticatedClientsClientIdSettingsRoute =
     path: '/clients/$clientId/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedClientsClientIdLoansAccountsRoute =
+  AuthenticatedClientsClientIdLoansAccountsRouteImport.update({
+    id: '/clients/$clientId/loans-accounts',
+    path: '/clients/$clientId/loans-accounts',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedClientsClientIdLoansRoute =
+  AuthenticatedClientsClientIdLoansRouteImport.update({
+    id: '/clients/$clientId/loans',
+    path: '/clients/$clientId/loans',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminFirmsFirmIdRoute =
   AuthenticatedAdminFirmsFirmIdRouteImport.update({
     id: '/firms/$firmId',
@@ -252,6 +266,8 @@ export interface FileRoutesByFullPath {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
+  '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
+  '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -286,6 +302,8 @@ export interface FileRoutesByTo {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
+  '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
+  '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -323,6 +341,8 @@ export interface FileRoutesById {
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
+  '/_authenticated/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
+  '/_authenticated/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -360,6 +380,8 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/admin/'
     | '/admin/firms/$firmId'
+    | '/clients/$clientId/loans'
+    | '/clients/$clientId/loans-accounts'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
@@ -394,6 +416,8 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/admin'
     | '/admin/firms/$firmId'
+    | '/clients/$clientId/loans'
+    | '/clients/$clientId/loans-accounts'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
@@ -430,6 +454,8 @@ export interface FileRouteTypes {
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/firms/$firmId'
+    | '/_authenticated/clients/$clientId/loans'
+    | '/_authenticated/clients/$clientId/loans-accounts'
     | '/_authenticated/clients/$clientId/settings'
     | '/_authenticated/clients/$clientId/unreconciled'
     | '/api/public/xero/callback'
@@ -669,6 +695,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clients/$clientId/loans-accounts': {
+      id: '/_authenticated/clients/$clientId/loans-accounts'
+      path: '/clients/$clientId/loans-accounts'
+      fullPath: '/clients/$clientId/loans-accounts'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdLoansAccountsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clients/$clientId/loans': {
+      id: '/_authenticated/clients/$clientId/loans'
+      path: '/clients/$clientId/loans'
+      fullPath: '/clients/$clientId/loans'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdLoansRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/firms/$firmId': {
       id: '/_authenticated/admin/firms/$firmId'
       path: '/firms/$firmId'
@@ -731,6 +771,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsActivityRoute: typeof AuthenticatedSettingsActivityRoute
   AuthenticatedSettingsAdvisorsRoute: typeof AuthenticatedSettingsAdvisorsRoute
   AuthenticatedSettingsTiersRoute: typeof AuthenticatedSettingsTiersRoute
+  AuthenticatedClientsClientIdLoansRoute: typeof AuthenticatedClientsClientIdLoansRoute
+  AuthenticatedClientsClientIdLoansAccountsRoute: typeof AuthenticatedClientsClientIdLoansAccountsRoute
   AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRoute
   AuthenticatedClientsClientIdUnreconciledRoute: typeof AuthenticatedClientsClientIdUnreconciledRoute
   AuthenticatedClientsClientIdIndexRoute: typeof AuthenticatedClientsClientIdIndexRoute
@@ -749,6 +791,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsActivityRoute: AuthenticatedSettingsActivityRoute,
   AuthenticatedSettingsAdvisorsRoute: AuthenticatedSettingsAdvisorsRoute,
   AuthenticatedSettingsTiersRoute: AuthenticatedSettingsTiersRoute,
+  AuthenticatedClientsClientIdLoansRoute:
+    AuthenticatedClientsClientIdLoansRoute,
+  AuthenticatedClientsClientIdLoansAccountsRoute:
+    AuthenticatedClientsClientIdLoansAccountsRoute,
   AuthenticatedClientsClientIdSettingsRoute:
     AuthenticatedClientsClientIdSettingsRoute,
   AuthenticatedClientsClientIdUnreconciledRoute:
@@ -789,13 +835,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

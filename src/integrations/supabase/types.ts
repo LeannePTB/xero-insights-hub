@@ -799,6 +799,66 @@ export type Database = {
         }
         Relationships: []
       }
+      loan_consolidation_accounts: {
+        Row: {
+          account_code: string | null
+          account_id: string | null
+          account_name: string | null
+          account_type: string | null
+          client_id: string
+          counterparty_account_id: string | null
+          created_at: string
+          direction: string
+          id: string
+          sort_order: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_code?: string | null
+          account_id?: string | null
+          account_name?: string | null
+          account_type?: string | null
+          client_id: string
+          counterparty_account_id?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          sort_order?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_code?: string | null
+          account_id?: string | null
+          account_name?: string | null
+          account_type?: string | null
+          client_id?: string
+          counterparty_account_id?: string | null
+          created_at?: string
+          direction?: string
+          id?: string
+          sort_order?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_consolidation_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loan_consolidation_accounts_counterparty_account_id_fkey"
+            columns: ["counterparty_account_id"]
+            isOneToOne: false
+            referencedRelation: "loan_consolidation_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_events: {
         Row: {
           email: string | null
