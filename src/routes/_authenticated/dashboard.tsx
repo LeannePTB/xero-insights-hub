@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { LogOut, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
+import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Organisations — Traction Advisory" }] }),
