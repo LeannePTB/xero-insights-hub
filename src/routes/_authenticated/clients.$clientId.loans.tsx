@@ -3,12 +3,11 @@ import { useState, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
-  getClient,
   getLoanReconciliation,
   listClientTenantsWithAccounts,
   type ReconRow,
 } from "@/lib/loan-consolidation.functions";
-import { getClient as getClientInfo } from "@/lib/clients.functions";
+import { getClient } from "@/lib/clients.functions";
 import { buildXeroAccountLink } from "@/lib/xero/loan-account-link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
