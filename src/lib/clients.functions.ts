@@ -192,6 +192,7 @@ export const createClient = createServerFn({ method: "POST" })
 
     // Resolve target firm: explicit firmId (must be a member) OR caller's first firm.
     let firmId: string | null = data.firmId ?? null;
+    let isSuper = false;
     if (firmId) {
       const { data: membership } = await context.supabase
         .from("firm_members")
@@ -207,6 +208,7 @@ export const createClient = createServerFn({ method: "POST" })
           .eq("role", "super_admin")
           .maybeSingle();
         if (!superRow) throw new Error("You are not a member of that business.");
+        isSuper = true;
       }
     } else {
       const { data: membership } = await context.supabase
@@ -220,6 +222,7 @@ export const createClient = createServerFn({ method: "POST" })
     }
 
     if (!firmId) throw new Error("No business associated with your account.");
+
 
     // Enforce firm subscription client quota.
     const { clientLimitFor, firmLimitCatalogue } = await import("@/lib/firmPlans");
@@ -244,7 +247,10 @@ export const createClient = createServerFn({ method: "POST" })
       throw new Error(`Client limit reached (${usedCount}/${limit}). Upgrade the subscription to add more clients.`);
     }
 
-    const { data: client, error } = await context.supabase
+    // Super admins manage organisations they don't belong to; RLS scopes inserts to firm owners.
+    const writer: any = isSuper ? supabaseAdmin : context.supabase;
+
+    const { data: client, error } = await writer
       .from("clients")
       .insert({ name, owner_user_id: context.userId, firm_id: firmId })
       .select("id")
@@ -256,9 +262,10 @@ export const createClient = createServerFn({ method: "POST" })
         client_id: client.id,
         xero_connection_id,
       }));
-      const { error: e2 } = await context.supabase.from("client_xero_orgs").insert(rows);
+      const { error: e2 } = await writer.from("client_xero_orgs").insert(rows);
       if (e2) throw new Error(e2.message);
     }
+
     return { id: client.id };
   });
 
