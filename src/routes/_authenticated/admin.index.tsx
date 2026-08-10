@@ -199,9 +199,10 @@ function OrganisationsSection({
                   <td className="px-4 py-3 font-medium">{firm.name}</td>
                   <td className="px-4 py-3 text-right">
                     <Button size="sm" variant="outline" asChild>
-                      <Link to="/firms/$firmId" params={{ firmId: firm.id }}>Open clients</Link>
+                      <Link to="/firms/$firmId" params={{ firmId: firm.id }}>Clients &amp; plan</Link>
                     </Button>
                   </td>
+
                 </tr>
               ))}
               {myFirms.length === 0 && (
