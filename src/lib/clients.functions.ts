@@ -266,21 +266,18 @@ export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("clients").delete().eq("id", data.clientId);
-    if (error) throw new Error(error.message);
-
-    // RLS silently deletes nothing for a super admin who isn't a member of the firm.
-    const { data: still } = await context.supabase
-      .from("clients").select("id").eq("id", data.clientId).maybeSingle();
-    if (still) {
-      const { data: superRow } = await context.supabase
-        .from("user_roles").select("role")
-        .eq("user_id", context.userId).eq("role", "super_admin").maybeSingle();
-      if (!superRow) throw new Error("You can't remove that client.");
+    // Super admins manage every organisation; RLS scopes deletes to firm owners.
+    const { data: superRow } = await context.supabase
+      .from("user_roles").select("role")
+      .eq("user_id", context.userId).eq("role", "super_admin").maybeSingle();
+    if (superRow) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error: adminErr } = await supabaseAdmin.from("clients").delete().eq("id", data.clientId);
       if (adminErr) throw new Error(adminErr.message);
+      return { ok: true };
     }
+    const { error } = await context.supabase.from("clients").delete().eq("id", data.clientId);
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
