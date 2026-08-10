@@ -13,12 +13,14 @@ export type PlanLevel = {
   xero_org_limit: number;
   allows_multi_org: boolean;
   widgets: string[];
+  /** Firm-scope only: dashboard tier keys this plan may grant. Empty = all. */
+  allowed_tiers: string[];
   sort_order: number;
   enabled: boolean;
 };
 
 const COLS =
-  "id, scope, key, label, description, client_limit, xero_org_limit, allows_multi_org, widgets, sort_order, enabled";
+  "id, scope, key, label, description, client_limit, xero_org_limit, allows_multi_org, widgets, allowed_tiers, sort_order, enabled";
 
 /** Readable by any signed-in user — powers plan/tier dropdowns everywhere. */
 export const listPlanLevels = createServerFn({ method: "GET" })
