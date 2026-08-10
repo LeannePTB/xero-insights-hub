@@ -365,7 +365,7 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
           trialEndsAt: status === "trialing" ? endDate : null,
           currentPeriodEnd: status === "active" ? endDate : null,
           isAlwaysFree: alwaysFree,
-          ownerEmail: email,
+          ownerEmail: ownerMode === "none" ? null : email,
           ownerMode,
           ownerPassword: ownerMode === "password" ? password : null,
           ownerName: ownerName || null,
@@ -374,10 +374,13 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
     onSuccess: (res: any) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       setDone(
-        res.mode === "password"
+        res.mode === "none"
+          ? { mode: "none" }
+          : res.mode === "password"
           ? { mode: "password", email: res.email, password }
           : { mode: "invite", email: res.email, inviteUrl: `${origin}/signup/${res.token}`, emailStatus: res.emailStatus },
       );
+
       toast.success("Organisation created");
       onCreated();
     },
