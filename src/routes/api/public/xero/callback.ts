@@ -249,39 +249,54 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }
 
         const initiatingClientId = stateRow.client_id ?? null;
-        if (initiatingClientId && tenants.length > 0) {
-          const knownTenantIds = new Set(stateRow.known_tenant_ids ?? []);
-          const tenantIds = tenants.map((t) => t.tenantId).filter((tenantId) => !knownTenantIds.has(tenantId));
-          const { data: conns } = await supabaseAdmin
-            .from("xero_connections")
-            .select("id, tenant_id")
-            .eq("user_id", userId)
-            .in("tenant_id", tenantIds);
+        if (initiatingClientId) {
+          const settingsPath = `/clients/${initiatingClientId}/settings`;
+          const { getClientOrgAllowance, getSelectableConnectionsForClient, getClientFirmId } = await import("@/lib/xero/client-orgs.server");
 
-          const { getClientOrgAllowance, getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
+          if (tenants.length === 0) {
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+            return redirectTo(`${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent("Xero didn't return any organisations for that login. Run Connect a Xero file again and tick the organisation you want on Xero's consent screen.")}`);
+          }
+
+          // Stamp the organisation onto every connection from this authorisation
+          // so an org's users only ever see their own Xero files.
+          const firmId = await getClientFirmId(initiatingClientId);
+          const allTenantIds = tenants.map((t) => t.tenantId);
+          if (firmId) {
+            await supabaseAdmin
+              .from("xero_connections")
+              .update({ firm_id: firmId })
+              .eq("user_id", userId)
+              .in("tenant_id", allTenantIds)
+              .is("firm_id", null);
+          }
+
           const allowance = await getClientOrgAllowance(initiatingClientId);
-          const availableIds = new Set((await getUnassignedConnectionsForUser(userId)).map((connection) => connection.id));
-          const candidates = (conns ?? []).filter((connection) => availableIds.has(connection.id));
+          // Include organisations Xero already treats as "connected" — the user
+          // still needs to be able to pick them for this subscription.
+          const candidates = await getSelectableConnectionsForClient(initiatingClientId, allTenantIds);
+          const selectable = candidates.filter((c) => c.available);
 
-          if (candidates.length === 1 && allowance.remaining > 0) {
+          if (selectable.length === 1 && candidates.length === 1 && allowance.remaining > 0) {
             const { error: linkErr } = await supabaseAdmin.from("client_xero_orgs").insert({
               client_id: initiatingClientId,
-              xero_connection_id: candidates[0].id,
+              xero_connection_id: selectable[0].id,
             });
-            if (linkErr) return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero_error=${encodeURIComponent(linkErr.message)}`);
+            if (linkErr) return redirectTo(`${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent(linkErr.message)}`);
             await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-            return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero=connected`);
+            return redirectTo(`${returnOrigin}${settingsPath}?xero=connected`);
           }
           if (candidates.length > 0) {
             await supabaseAdmin.from("xero_oauth_states").update({
               pending_tenant_ids: candidates.map((connection) => connection.tenant_id),
               completed_at: new Date().toISOString(),
             }).eq("state", state);
-            return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero=choose&state=${encodeURIComponent(state)}`);
+            return redirectTo(`${returnOrigin}${settingsPath}?xero=choose&state=${encodeURIComponent(state)}`);
           }
           await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-          return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero_error=${encodeURIComponent("No newly authorised Xero organisation was available for this subscription.")}`);
+          return redirectTo(`${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent("Those Xero organisations belong to another organisation in this app, so they can't be linked here.")}`);
         }
+
 
         await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
         return redirectTo(`${returnOrigin}/dashboard?xero=connected`);
