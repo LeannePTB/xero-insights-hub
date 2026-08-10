@@ -56,6 +56,86 @@ export async function userCanManageClient(userId: string, clientId: string): Pro
   return Boolean(membership);
 }
 
+export async function getClientFirmId(clientId: string): Promise<string | null> {
+  const { data } = await supabaseAdmin.from("clients").select("firm_id").eq("id", clientId).maybeSingle();
+  return (data?.firm_id as string | null) ?? null;
+}
+
+export type SelectableConnection = {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  tenant_type: string | null;
+  status: string | null;
+  available: boolean;
+  linkedClientName: string | null;
+  linkedToThisClient: boolean;
+};
+
+/**
+ * Candidates for linking to a client subscription.
+ *
+ * Scoped two ways:
+ *  - only tenants authorised in this OAuth session (tenantIds)
+ *  - only connections that belong to this client's organisation (or are not
+ *    yet stamped with one), so one login's unrelated Xero files never appear.
+ *
+ * Files already linked elsewhere are returned with available=false so the UI
+ * can explain why they can't be picked, instead of silently dropping them.
+ */
+export async function getSelectableConnectionsForClient(
+  clientId: string,
+  tenantIds: string[],
+): Promise<SelectableConnection[]> {
+  if (!tenantIds.length) return [];
+  const firmId = await getClientFirmId(clientId);
+
+  const { data: connections, error } = await supabaseAdmin
+    .from("xero_connections")
+    .select("id, tenant_id, tenant_name, tenant_type, status, firm_id, created_at")
+    .in("tenant_id", tenantIds)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  if (!connections?.length) return [];
+
+  const scoped = connections.filter((c: any) => (firmId ? c.firm_id === firmId || c.firm_id === null : true));
+
+  const { data: assigned, error: assignedError } = await supabaseAdmin
+    .from("client_xero_orgs")
+    .select("client_id, xero_connection_id, clients(name), xero_connections(tenant_id)");
+  if (assignedError) throw new Error(assignedError.message);
+
+  const byTenant = new Map<string, { clientId: string; clientName: string | null }>();
+  for (const row of (assigned ?? []) as any[]) {
+    const tid = row.xero_connections?.tenant_id;
+    if (tid) byTenant.set(tid, { clientId: row.client_id, clientName: row.clients?.name ?? null });
+  }
+
+  // De-dupe by tenant (a tenant may have rows for multiple connecting users).
+  const seen = new Set<string>();
+  const out: SelectableConnection[] = [];
+  for (const c of scoped as any[]) {
+    if (seen.has(c.tenant_id)) continue;
+    seen.add(c.tenant_id);
+    const link = byTenant.get(c.tenant_id);
+    out.push({
+      id: c.id,
+      tenant_id: c.tenant_id,
+      tenant_name: c.tenant_name,
+      tenant_type: c.tenant_type ?? null,
+      status: c.status ?? null,
+      available: !link,
+      linkedClientName: link ? link.clientName : null,
+      linkedToThisClient: link?.clientId === clientId,
+    });
+  }
+  return out;
+}
+
+/**
+ * Connections created by this user that are not linked to any client yet.
+ * Used by create-client / attach flows where no OAuth session state exists.
+ */
 export async function getUnassignedConnectionsForUser(userId: string) {
   const { data: connections, error } = await supabaseAdmin
     .from("xero_connections")

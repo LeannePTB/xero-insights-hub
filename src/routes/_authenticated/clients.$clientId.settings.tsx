@@ -400,25 +400,43 @@ function ClientSettings() {
               <p className="mb-2 text-sm font-semibold">Choose files for this subscription</p>
               <p className="mb-3 text-xs text-muted-foreground">Only the files selected here will be visible to this client's users. You can select up to {allowance?.remaining ?? 0}.</p>
               <ul className="space-y-1">
-                {availableConns.map((c: any) => (
-                  <li key={c.id}>
-                    <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50">
-                      <Checkbox checked={selectedXeroIds.has(c.id)} onCheckedChange={() => setSelectedXeroIds((current) => {
-                        const next = new Set(current);
-                        if (next.has(c.id)) next.delete(c.id);
-                        else if (next.size < (allowance?.remaining ?? 0)) next.add(c.id);
-                        return next;
-                      })} />
-                      <span className="text-sm font-medium">{c.tenant_name}</span>
-                    </label>
-                  </li>
-                ))}
+                {availableConns.map((c: any) => {
+                  const disabled = c.available === false;
+                  return (
+                    <li key={c.id}>
+                      <label className={`flex items-center gap-3 rounded-md px-2 py-2 ${disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/50"}`}>
+                        <Checkbox
+                          disabled={disabled}
+                          checked={selectedXeroIds.has(c.id)}
+                          onCheckedChange={() => {
+                            if (disabled) return;
+                            setSelectedXeroIds((current) => {
+                              const next = new Set(current);
+                              if (next.has(c.id)) next.delete(c.id);
+                              else if (next.size < (allowance?.remaining ?? 0)) next.add(c.id);
+                              return next;
+                            });
+                          }}
+                        />
+                        <span className="text-sm font-medium">{c.tenant_name}</span>
+                        {disabled && (
+                          <span className="text-xs text-muted-foreground">
+                            {c.linkedToThisClient
+                              ? "Already linked to this subscription"
+                              : `Linked to another subscription${c.linkedClientName ? ` (${c.linkedClientName})` : ""}`}
+                          </span>
+                        )}
+                      </label>
+                    </li>
+                  );
+                })}
               </ul>
               <Button className="mt-3" onClick={() => linkOptionsMut.mutate()} disabled={selectedXeroIds.size === 0 || linkOptionsMut.isPending}>
                 <Link2 className="mr-2 h-4 w-4" /> Link selected
               </Button>
             </div>
           )}
+
         </Section>
 
         {/* Viewer access */}
