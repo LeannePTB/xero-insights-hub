@@ -13,6 +13,7 @@ import {
 import { BrandMark } from "@/components/BrandMark";
 import {
   Building2,
+  Layers,
   Shield,
   SlidersHorizontal,
   Users,
@@ -20,10 +21,12 @@ import {
 
 const items = [
   { title: "Organisations", url: "/admin", icon: Building2 },
+  { title: "Subscription levels", url: "/admin/plans", icon: Layers },
   { title: "Security & Compliance", url: "/admin/security", icon: Shield },
   { title: "Tier widgets", url: "/settings/tiers", icon: SlidersHorizontal },
   { title: "Advisors", url: "/settings/advisors", icon: Users },
 ];
+
 
 export function AdminSidebar() {
   const currentPath = useRouterState({
