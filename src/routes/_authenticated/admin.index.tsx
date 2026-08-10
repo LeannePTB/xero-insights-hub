@@ -1,20 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
 import { listFirmsAdmin } from "@/lib/admin.functions";
 import { listMyFirms } from "@/lib/firms.functions";
-import { adminCreateOrganisation } from "@/lib/invites.functions";
 import { getMyContext } from "@/lib/roles.functions";
+import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Building2, Loader2, ShieldAlert, UserPlus, Copy, Check, Shield, SlidersHorizontal, Users, ArrowLeft } from "lucide-react";
-import { toast } from "sonner";
+import { Building2, Loader2, ShieldAlert, Shield, SlidersHorizontal, Users, ArrowLeft } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({
