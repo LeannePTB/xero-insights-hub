@@ -91,17 +91,34 @@ export const getClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
+    const SELECT =
+      "id, name, owner_user_id, report_basis, basis_overrides, max_xero_orgs, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name, status, disconnected_at))";
     const { data: client, error } = await context.supabase
       .from("clients")
-      .select(
-        "id, name, owner_user_id, report_basis, basis_overrides, max_xero_orgs, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name, status, disconnected_at))",
-      )
+      .select(SELECT)
       .eq("id", data.clientId)
       .maybeSingle();
     if (error) throw new Error(error.message);
-    if (!client) throw new Error("Client not found.");
-    return { client: client as any };
+    if (client) return { client: client as any };
+
+    // Platform admins can open clients in organisations they're not a member of.
+    const { data: roleRows } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    const isSuper = !!roleRows?.some((r: any) => r.role === "super_admin");
+    if (isSuper) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: adminClient } = await supabaseAdmin
+        .from("clients")
+        .select(SELECT)
+        .eq("id", data.clientId)
+        .maybeSingle();
+      if (adminClient) return { client: adminClient as any };
+    }
+    throw new Error("Client not found.");
   });
+
 
 export const listClientNotes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
