@@ -7,7 +7,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Loader2, ShieldAlert, ArrowLeft } from "lucide-react";
+import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/admin/")({
