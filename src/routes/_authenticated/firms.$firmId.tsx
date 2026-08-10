@@ -7,7 +7,7 @@ import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, ChevronRight, CreditCard, Loader2, MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
+import { ArrowLeft, Building2, ChevronRight, CreditCard, Eye, Loader2, MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
 import { ALL_TIERS, TIER_LABEL, type DashboardTier } from "@/lib/tiers";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import {
@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
+import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 
 import { Badge } from "@/components/ui/badge";
 import { firmPlanView, toneClasses } from "@/lib/firmPlans";
@@ -31,6 +32,9 @@ import { toast } from "sonner";
 
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    viewAs: typeof search.viewAs === "string" ? search.viewAs : undefined,
+  }),
   head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
   component: FirmPage,
 });
@@ -38,6 +42,8 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId")({
 
 function FirmPage() {
   const { firmId } = Route.useParams();
+  const { viewAs } = Route.useSearch();
+  const previewing = viewAs === "owner";
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchFirm = useServerFn(getMyFirm);
@@ -61,7 +67,8 @@ function FirmPage() {
   });
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
-  const isSuper = ctxQ.data?.isSuperAdmin ?? false;
+  // While previewing as the organisation owner, hide platform-admin-only controls.
+  const isSuper = (ctxQ.data?.isSuperAdmin ?? false) && !previewing;
 
   const tierSettingsQ = useQuery({
     queryKey: ["tier-settings"],
@@ -110,10 +117,18 @@ function FirmPage() {
 
   return (
     <div className="min-h-screen bg-background">
+      {previewing && (
+        <ViewAsBanner
+          label={`${firm.name} — as the organisation owner`}
+          note="Layout and controls only; data access is unchanged"
+        />
+      )}
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <Button variant="ghost" size="sm" asChild className="mb-4">
-          <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All organisations</Link>
-        </Button>
+        {!previewing && (
+          <Button variant="ghost" size="sm" asChild className="mb-4">
+            <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All organisations</Link>
+          </Button>
+        )}
 
         <div>
           <h1 className="font-display text-3xl font-semibold">{firm.name}</h1>
@@ -320,6 +335,13 @@ function FirmPage() {
                                 <DropdownMenuItem asChild>
                                   <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Settings</Link>
                                 </DropdownMenuItem>
+                                {(granted.length ? granted : enabledTiers).map((t) => (
+                                  <DropdownMenuItem key={`view-as-${t}`} asChild>
+                                    <Link to="/clients/$clientId" params={{ clientId: c.id }} search={{ viewAs: t }}>
+                                      <Eye className="mr-2 h-4 w-4" /> View as {TIER_LABEL[t]} client
+                                    </Link>
+                                  </DropdownMenuItem>
+                                ))}
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
                                   onSelect={(e) => {
