@@ -116,7 +116,22 @@ function FirmDetailPage() {
           onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
         />
 
-        
+        <section className="rounded-lg border p-6 space-y-4">
+          <FirmClientsSection
+            firmId={firmId}
+            firmName={firm.name}
+            clientLimit={detailQ.data?.clientLimit}
+            showHealth={false}
+            onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
+          />
+          <p className="text-xs text-muted-foreground">
+            Client names, tiers and linked Xero files only. Open the{" "}
+            <Link to="/firms/$firmId" params={{ firmId }} className="underline underline-offset-2">
+              organisation page
+            </Link>{" "}
+            for the full view.
+          </p>
+        </section>
 
         <AuditSection events={auditQ.data?.events ?? []} loading={auditQ.isLoading} />
       </main>
