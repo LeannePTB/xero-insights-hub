@@ -20,6 +20,7 @@ import {
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
+import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
 import { startXeroConnect, disconnectXero, listClientXeroOptions, linkClientXeroOptions } from "@/lib/xero/connections.functions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
@@ -93,7 +94,16 @@ function ClientSettings() {
     queryFn: () => fetchTierCfg({ data: { clientId } }),
   });
   const tierSettingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchTierSettings() });
-  const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
+  const fetchPlanTiers = useServerFn(getAllowedTiersForClient);
+  const planTiersQ = useQuery({
+    queryKey: ["plan-tiers", "client", clientId],
+    queryFn: () => fetchPlanTiers({ data: { clientId } }),
+  });
+  const planTiers = planTiersQ.data?.allowed ?? null;
+  // Only offer tiers the organisation's plan includes.
+  const enabledTiers = ALL_TIERS.filter(
+    (t) => (tierSettingsQ.data?.enabled?.[t] ?? true) && (!planTiers || planTiers.includes(t)),
+  );
 
   const tierSaveMut = useMutation({
     mutationFn: (v: { tier: DashboardTier; widgets: WidgetKey[] | null }) =>

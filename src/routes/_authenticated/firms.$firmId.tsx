@@ -6,6 +6,7 @@ import { listClients, deleteClient } from "@/lib/clients.functions";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
+import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Building2, ChevronRight, CreditCard, Eye, Loader2, MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
 import { ALL_TIERS, TIER_LABEL, type DashboardTier } from "@/lib/tiers";
@@ -49,6 +50,7 @@ function FirmPage() {
   const fetchFirm = useServerFn(getMyFirm);
   const fetchClients = useServerFn(listClients);
   const fetchTierSettings = useServerFn(listTierSettings);
+  const fetchPlanTiers = useServerFn(getAllowedTiersForFirm);
   const fetchCtx = useServerFn(getMyContext);
   const removeClient = useServerFn(deleteClient);
   const [planOpen, setPlanOpen] = useState(false);
@@ -75,7 +77,16 @@ function FirmPage() {
     queryFn: () => fetchTierSettings(),
     enabled: !!firmQ.data,
   });
-  const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
+  // Tiers this organisation's plan includes (null = unrestricted).
+  const planTiersQ = useQuery({
+    queryKey: ["plan-tiers", "firm", firmId],
+    queryFn: () => fetchPlanTiers({ data: { firmId } }),
+    enabled: !!firmQ.data,
+  });
+  const planTiers = planTiersQ.data?.allowed ?? null;
+  const enabledTiers = ALL_TIERS.filter(
+    (t) => (tierSettingsQ.data?.enabled?.[t] ?? true) && (!planTiers || planTiers.includes(t)),
+  );
 
   const deleteMut = useMutation({
     mutationFn: (clientId: string) => removeClient({ data: { clientId } }),
@@ -311,6 +322,18 @@ function FirmPage() {
                             {granted.length === 0 && (
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
+                            {planTiers &&
+                              granted
+                                .filter((t) => !planTiers.includes(t))
+                                .map((t) => (
+                                  <span
+                                    key={`out-${t}`}
+                                    className="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400"
+                                    title={`Not included in the ${planV.planLabel} plan`}
+                                  >
+                                    {TIER_LABEL[t]} · not in plan
+                                  </span>
+                                ))}
                           </div>
                         </td>
                         <td className="px-5 py-4 text-right">

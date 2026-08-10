@@ -13,12 +13,14 @@ export type PlanLevel = {
   xero_org_limit: number;
   allows_multi_org: boolean;
   widgets: string[];
+  /** Firm-scope only: dashboard tier keys this plan may grant. Empty = all. */
+  allowed_tiers: string[];
   sort_order: number;
   enabled: boolean;
 };
 
 const COLS =
-  "id, scope, key, label, description, client_limit, xero_org_limit, allows_multi_org, widgets, sort_order, enabled";
+  "id, scope, key, label, description, client_limit, xero_org_limit, allows_multi_org, widgets, allowed_tiers, sort_order, enabled";
 
 /** Readable by any signed-in user — powers plan/tier dropdowns everywhere. */
 export const listPlanLevels = createServerFn({ method: "GET" })
@@ -52,6 +54,7 @@ export const savePlanLevel = createServerFn({ method: "POST" })
       xero_org_limit?: number;
       allows_multi_org?: boolean;
       widgets?: string[];
+      allowed_tiers?: string[];
       sort_order?: number;
       enabled?: boolean;
     }) => i,
@@ -71,6 +74,7 @@ export const savePlanLevel = createServerFn({ method: "POST" })
       xero_org_limit: Math.max(1, data.xero_org_limit ?? 1),
       allows_multi_org: !!data.allows_multi_org,
       widgets: data.widgets ?? [],
+      allowed_tiers: data.scope === "firm" ? (data.allowed_tiers ?? []) : [],
       sort_order: data.sort_order ?? 100,
       enabled: data.enabled ?? true,
     };

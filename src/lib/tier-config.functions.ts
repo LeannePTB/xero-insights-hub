@@ -169,9 +169,13 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
     const order: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
     const currentIdx = order.indexOf(data.currentTier);
 
+    // Only advertise tiers this organisation's plan actually includes.
+    const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
+    const planTiers = await allowedTiersForClient(data.clientId);
+
     const upgrades = order
       .map((tier, idx) => ({ tier, idx }))
-      .filter(({ tier, idx }) => idx > currentIdx && enabledMap[tier])
+      .filter(({ tier, idx }) => idx > currentIdx && enabledMap[tier] && (!planTiers || planTiers.includes(tier)))
       .map(({ tier }) => {
         const widgets = resolve(tier);
         const extra = widgets.filter((w) => !currentWidgets.has(w));
