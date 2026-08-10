@@ -14,9 +14,9 @@ Nothing is wrong with the access rules themselves — the wrong *links* were cre
 
 **2. Ask when it's ambiguous.** If the return contains more than one new organisation (or none), don't guess — return to the client's settings page and show a short "Which organisation belongs to this client?" chooser listing only the organisations from that authorisation. You tick one (or several, for multi-company clients) and confirm.
 
-**3. One organisation, one client.** Add a database rule so a Xero organisation can be linked to at most one client, and drop the "Link existing" list back to organisations that aren't linked anywhere yet. This makes each client subscription genuinely independent.
+**3. Isolate every subscription.** A Xero organisation can belong to only one client subscription. All dashboard reads, organisation lists, selectors, and linking actions must start from that subscription's `client_xero_orgs` records—never from every Xero connection owned by the advisor. A multi-company subscription may have several files, but those files remain exclusive to that one subscription.
 
-**4. Clean up the existing bad links.** Remove the Positive Traction and Hay Officesmart links from DRTABT Projects, leaving each client with only its own organisation.
+**4. Clean up DRTABT Projects.** Remove Positive Traction and Hay Officesmart Newsagency from DRTABT Projects. Its only linked Xero file will be **DRTABT Projects Pty Ltd**. This cleanup happens before the unique database rule is applied.
 
 ## Multi-file subscriptions
 
@@ -30,6 +30,7 @@ Today "multi company" is a yes/no switch — once a client has that tier they ca
   - the **firm/subscription limit** on total connected Xero files (already enforced in `startXeroConnect`), and
   - the **per-client allowance** on how many of those files can hang off one client.
 - The chooser from step 2 respects the allowance: if you tick more organisations than the client has room for, it refuses and tells you how many slots remain.
+- The chooser never offers an organisation already assigned to another subscription, and client viewers never receive those organisations' names or data in any response.
 - Reducing an allowance below what's already linked is blocked — unlink first.
 
 ## Technical detail
