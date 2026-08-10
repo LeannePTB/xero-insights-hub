@@ -468,7 +468,11 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
 
             <div className="space-y-3 rounded-lg border border-border p-3">
               <p className="text-sm font-medium">Owner access</p>
-              <div className="grid grid-cols-2 gap-2">
+              <p className="text-xs text-muted-foreground">Optional — you can add the owner later from the organisation page.</p>
+              <div className="grid grid-cols-3 gap-2">
+                <Button type="button" variant={ownerMode === "none" ? "default" : "outline"} size="sm" onClick={() => setOwnerMode("none")}>
+                  Add later
+                </Button>
                 <Button type="button" variant={ownerMode === "password" ? "default" : "outline"} size="sm" onClick={() => setOwnerMode("password")}>
                   Create login now
                 </Button>
@@ -476,10 +480,12 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
                   Send invite
                 </Button>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="o-email">Owner email</Label>
-                <Input id="o-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
+              {ownerMode !== "none" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="o-email">Owner email</Label>
+                  <Input id="o-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+              )}
               {ownerMode === "password" && (
                 <>
                   <div className="space-y-1.5">
@@ -496,6 +502,7 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
                 </>
               )}
             </div>
+
           </div>
         ) : done.mode === "password" ? (
           <div className="space-y-2">
