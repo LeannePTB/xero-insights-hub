@@ -56,7 +56,7 @@ function LoansPage() {
   const { clientId } = Route.useParams();
   const qc = useQueryClient();
 
-  const fetchClient = useServerFn(getClientInfo);
+  const fetchClient = useServerFn(getClient);
   const fetchTenants = useServerFn(listClientTenantsWithAccounts);
   const fetchRecon = useServerFn(getLoanReconciliation);
 
