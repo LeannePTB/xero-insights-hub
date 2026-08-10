@@ -247,7 +247,10 @@ export const createClient = createServerFn({ method: "POST" })
       throw new Error(`Client limit reached (${usedCount}/${limit}). Upgrade the subscription to add more clients.`);
     }
 
-    const { data: client, error } = await context.supabase
+    // Super admins manage organisations they don't belong to; RLS scopes inserts to firm owners.
+    const writer: any = isSuper ? supabaseAdmin : context.supabase;
+
+    const { data: client, error } = await writer
       .from("clients")
       .insert({ name, owner_user_id: context.userId, firm_id: firmId })
       .select("id")
@@ -259,9 +262,10 @@ export const createClient = createServerFn({ method: "POST" })
         client_id: client.id,
         xero_connection_id,
       }));
-      const { error: e2 } = await context.supabase.from("client_xero_orgs").insert(rows);
+      const { error: e2 } = await writer.from("client_xero_orgs").insert(rows);
       if (e2) throw new Error(e2.message);
     }
+
     return { id: client.id };
   });
 
