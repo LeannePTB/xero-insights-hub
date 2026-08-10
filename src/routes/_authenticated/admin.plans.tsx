@@ -393,7 +393,7 @@ function LevelSection({
         </Button>
       </div>
 
-      <div className="mt-4 overflow-hidden rounded-md border">
+      <div className="mt-4 overflow-x-auto rounded-md border">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>

@@ -36,9 +36,8 @@ import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    viewAs: typeof search.viewAs === "string" ? search.viewAs : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { viewAs?: string } =>
+    typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {},
   head: () => ({ meta: [{ title: "Client dashboard — Traction Advisory" }] }),
   component: ClientDashboard,
 });
