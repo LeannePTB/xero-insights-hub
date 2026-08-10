@@ -6,7 +6,6 @@ import { getMyContext } from "@/lib/roles.functions";
 import { savePlanLevel, deletePlanLevel, type PlanLevel, type PlanScope } from "@/lib/plan-levels.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ALL_WIDGETS, WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -113,23 +112,17 @@ function PlanLevelsPage() {
 
   if (ctxQ.isLoading || levelsQ.isLoading) {
     return (
-      <AdminShell>
-        <div className="grid min-h-[60vh] place-items-center text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-        </div>
-      </AdminShell>
+      <div className="grid min-h-[60vh] place-items-center text-muted-foreground">
+        <Loader2 className="h-5 w-5 animate-spin" />
+      </div>
     );
   }
   if (!ctxQ.data?.isSuperAdmin) {
-    return (
-      <AdminShell>
-        <p className="p-6 text-sm text-destructive">Super admins only.</p>
-      </AdminShell>
-    );
+    return <p className="p-6 text-sm text-destructive">Super admins only.</p>;
   }
 
   return (
-    <AdminShell>
+    <>
       <main className="w-full px-6 py-8 space-y-8">
         <header>
           <h1 className="font-display text-3xl font-semibold">Subscription levels</h1>
@@ -353,7 +346,7 @@ function PlanLevelsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </AdminShell>
+    </>
   );
 }
 
