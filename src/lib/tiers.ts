@@ -10,7 +10,8 @@ export type WidgetKey =
   | "accounting_breakeven"
   | "true_breakeven"
   | "cashflow"
-  | "xero_audit";
+  | "xero_audit"
+  | "loan_consolidation";
 
 export const ALL_WIDGETS: WidgetKey[] = [
   "health",
@@ -24,6 +25,7 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "true_breakeven",
   "cashflow",
   "xero_audit",
+  "loan_consolidation",
 ];
 
 // Fallback defaults (used only if the DB has no row for a tier).
