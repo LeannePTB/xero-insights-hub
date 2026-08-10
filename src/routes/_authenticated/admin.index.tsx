@@ -348,11 +348,11 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
   const [status, setStatus] = useState("trialing");
   const [endDate, setEndDate] = useState(isoDate(new Date(Date.now() + 7 * 864e5)));
   const [alwaysFree, setAlwaysFree] = useState(false);
-  const [ownerMode, setOwnerMode] = useState<"password" | "invite">("password");
+  const [ownerMode, setOwnerMode] = useState<"password" | "invite" | "none">("none");
   const [email, setEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [password, setPassword] = useState("");
-  const [done, setDone] = useState<null | { mode: "password" | "invite"; email: string; password?: string; inviteUrl?: string; emailStatus?: string | null }>(null);
+  const [done, setDone] = useState<null | { mode: "password" | "invite" | "none"; email?: string | null; password?: string; inviteUrl?: string; emailStatus?: string | null }>(null);
   const [copied, setCopied] = useState(false);
 
   const mut = useMutation({
@@ -365,7 +365,7 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
           trialEndsAt: status === "trialing" ? endDate : null,
           currentPeriodEnd: status === "active" ? endDate : null,
           isAlwaysFree: alwaysFree,
-          ownerEmail: email,
+          ownerEmail: ownerMode === "none" ? null : email,
           ownerMode,
           ownerPassword: ownerMode === "password" ? password : null,
           ownerName: ownerName || null,
@@ -374,10 +374,13 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
     onSuccess: (res: any) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       setDone(
-        res.mode === "password"
+        res.mode === "none"
+          ? { mode: "none" }
+          : res.mode === "password"
           ? { mode: "password", email: res.email, password }
           : { mode: "invite", email: res.email, inviteUrl: `${origin}/signup/${res.token}`, emailStatus: res.emailStatus },
       );
+
       toast.success("Organisation created");
       onCreated();
     },
@@ -387,7 +390,7 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
   function reset() {
     setName(""); setTier("starter"); setStatus("trialing");
     setEndDate(isoDate(new Date(Date.now() + 7 * 864e5)));
-    setAlwaysFree(false); setOwnerMode("password"); setEmail(""); setOwnerName("");
+    setAlwaysFree(false); setOwnerMode("none"); setEmail(""); setOwnerName("");
     setPassword(""); setDone(null); setCopied(false);
   }
 
@@ -408,8 +411,9 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
 
   const canSubmit =
     name.trim().length >= 2 &&
-    email.includes("@") &&
-    (ownerMode === "invite" || password.length >= 8);
+    (ownerMode === "none" ||
+      (email.includes("@") && (ownerMode === "invite" || password.length >= 8)));
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
@@ -468,7 +472,11 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
 
             <div className="space-y-3 rounded-lg border border-border p-3">
               <p className="text-sm font-medium">Owner access</p>
-              <div className="grid grid-cols-2 gap-2">
+              <p className="text-xs text-muted-foreground">Optional — you can add the owner later from the organisation page.</p>
+              <div className="grid grid-cols-3 gap-2">
+                <Button type="button" variant={ownerMode === "none" ? "default" : "outline"} size="sm" onClick={() => setOwnerMode("none")}>
+                  Add later
+                </Button>
                 <Button type="button" variant={ownerMode === "password" ? "default" : "outline"} size="sm" onClick={() => setOwnerMode("password")}>
                   Create login now
                 </Button>
@@ -476,10 +484,12 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
                   Send invite
                 </Button>
               </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="o-email">Owner email</Label>
-                <Input id="o-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              </div>
+              {ownerMode !== "none" && (
+                <div className="space-y-1.5">
+                  <Label htmlFor="o-email">Owner email</Label>
+                  <Input id="o-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+              )}
               {ownerMode === "password" && (
                 <>
                   <div className="space-y-1.5">
@@ -496,8 +506,14 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
                 </>
               )}
             </div>
+
+          </div>
+        ) : done.mode === "none" ? (
+          <div className="space-y-2">
+            <p className="text-sm">✓ Organisation created with no owner yet. Open the organisation to invite the owner or create their login when you're ready.</p>
           </div>
         ) : done.mode === "password" ? (
+
           <div className="space-y-2">
             <p className="text-sm">✓ Organisation created. The owner can sign in right now with these details.</p>
             <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-xs space-y-1">

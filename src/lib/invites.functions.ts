@@ -56,8 +56,8 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       trialEndsAt?: string | null;
       currentPeriodEnd?: string | null;
       isAlwaysFree?: boolean;
-      ownerEmail: string;
-      ownerMode: "password" | "invite";
+      ownerEmail?: string | null;
+      ownerMode: "password" | "invite" | "none";
       ownerPassword?: string | null;
       ownerName?: string | null;
     }) => i,
@@ -67,13 +67,14 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
 
     const name = (data.name ?? "").trim();
     if (name.length < 2 || name.length > 120) throw new Error("Please enter an organisation name.");
-    const email = validateEmail(data.ownerEmail);
+    const email = data.ownerMode === "none" ? "" : validateEmail(data.ownerEmail ?? "");
     if (data.ownerMode === "password") validatePassword(data.ownerPassword ?? "");
 
     const allowedTiers = ["starter", "growth", "scale", "firm", "free", "legacy"];
     const allowedStatuses = ["trialing", "active"];
     if (!allowedTiers.includes(data.tier)) throw new Error("Invalid plan tier.");
     if (!allowedStatuses.includes(data.status)) throw new Error("Invalid subscription status.");
+
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -93,7 +94,15 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     });
     if (sErr) throw new Error(sErr.message);
 
+    if (data.ownerMode === "none") {
+      await logAudit("organisation_created", "firm", firm.id, context.userId, {
+        firm_id: firm.id, tier: data.tier, status: data.status, owner_mode: "none",
+      });
+      return { ok: true, firmId: firm.id, email: null, mode: "none" as const, token: null, emailStatus: null };
+    }
+
     if (data.ownerMode === "password") {
+
       const { data: existing } = await (supabaseAdmin as any)
         .from("profiles")
         .select("id")
