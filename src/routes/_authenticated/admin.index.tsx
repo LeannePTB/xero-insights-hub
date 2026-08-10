@@ -7,7 +7,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Loader2, ShieldAlert, ArrowLeft } from "lucide-react";
+import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -94,9 +94,12 @@ function AdminPage() {
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/dashboard"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link>
-            </Button>
+            {!isSuper && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/dashboard"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link>
+              </Button>
+            )}
+
             <h1 className="text-xl font-semibold">Admin</h1>
             {isSuper ? <Badge variant="secondary">super-admin</Badge> : <Badge variant="outline">advisor admin</Badge>}
           </div>
@@ -262,8 +265,14 @@ function OrganisationsSection({
                         </Button>
                       )}
                       <Button size="sm" variant="outline" asChild>
+                        <Link to="/firms/$firmId" params={{ firmId: f.firm_id }} search={{ viewAs: "owner" }}>
+                          <Eye className="h-4 w-4 mr-1" /> View as
+                        </Link>
+                      </Button>
+                      <Button size="sm" variant="outline" asChild>
                         <Link to="/admin/firms/$firmId" params={{ firmId: f.firm_id }}>Plan &amp; members</Link>
                       </Button>
+
 
                     </div>
                   </td>

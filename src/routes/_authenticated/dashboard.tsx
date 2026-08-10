@@ -47,13 +47,28 @@ function Dashboard() {
     enabled: isAdvisor && !isSuperAdmin,
   });
 
-  // Auto-redirect viewers with exactly one client
+  // Role-aware landing: send people straight to where they work.
   useEffect(() => {
     if (!ctxQ.data) return;
-    if (!ctxQ.data.isAdvisor && ctxQ.data.viewerClients.length === 1) {
+    // Super admins manage the platform from the Admin area.
+    if (ctxQ.data.isSuperAdmin) {
+      navigate({ to: "/admin", replace: true });
+      return;
+    }
+    // Advisors / owners with a single organisation go straight into it.
+    if (ctxQ.data.isAdvisor) {
+      const mine = myFirmsQ.data?.firms ?? [];
+      if (mine.length === 1) {
+        navigate({ to: "/firms/$firmId", params: { firmId: mine[0].id }, replace: true });
+      }
+      return;
+    }
+    // Viewers with exactly one dashboard go straight to it.
+    if (ctxQ.data.viewerClients.length === 1) {
       navigate({ to: "/clients/$clientId", params: { clientId: ctxQ.data.viewerClients[0].id }, replace: true });
     }
-  }, [ctxQ.data, navigate]);
+  }, [ctxQ.data, myFirmsQ.data, navigate]);
+
 
   // Surface "?xero=connected" toast (when arriving here after a connect from /clients/new)
   useEffect(() => {
@@ -80,13 +95,30 @@ function Dashboard() {
     ? superFirmsQ.data?.firms ?? []
     : myFirmsQ.data?.firms ?? [];
 
+  // While a redirect to a single destination is pending, show the spinner
+  // rather than flashing a chooser with one card in it.
+  const redirecting =
+    isSuperAdmin ||
+    (isAdvisor && (myFirmsQ.data?.firms?.length ?? 0) === 1) ||
+    (!!ctxQ.data && !isAdvisor && viewerClients.length === 1);
+
   const loading =
+    redirecting ||
     ctxQ.isLoading ||
     (isSuperAdmin && superFirmsQ.isLoading) ||
     (isAdvisor && !isSuperAdmin && myFirmsQ.isLoading);
 
+  if (redirecting) {
+    return (
+      <div className="min-h-screen grid place-items-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
+
       <header className="border-b border-border/60 bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <BrandMark logoHeightClass="h-9" />

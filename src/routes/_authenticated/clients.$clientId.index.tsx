@@ -27,7 +27,8 @@ import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
-import { TIER_LABEL, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
+import { TIER_LABEL, ALL_TIERS, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
+import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
@@ -35,12 +36,19 @@ import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    viewAs: typeof search.viewAs === "string" ? search.viewAs : undefined,
+  }),
   head: () => ({ meta: [{ title: "Client dashboard — Traction Advisory" }] }),
   component: ClientDashboard,
 });
 
 function ClientDashboard() {
   const { clientId } = Route.useParams();
+  const { viewAs } = Route.useSearch();
+  const previewTier = (ALL_TIERS as readonly string[]).includes(viewAs ?? "")
+    ? (viewAs as DashboardTier)
+    : null;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchClient = useServerFn(getClient);
@@ -57,13 +65,16 @@ function ClientDashboard() {
   });
   const tierSettingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchTierSettings() });
 
-  const isAdvisor = ctxQ.data?.isAdvisor ?? false;
+  const realIsAdvisor = ctxQ.data?.isAdvisor ?? false;
+  // Preview mode: render exactly what a client viewer on this tier would get.
+  const previewing = !!previewTier && realIsAdvisor;
+  const isAdvisor = realIsAdvisor && !previewing;
   const viewerEntry = ctxQ.data?.viewerClients.find((c) => c.id === clientId);
   // For advisors, pick the highest enabled tier so the label reflects what's actually turned on.
   const enabledOrder: DashboardTier[] = ["multi_company", "investigate", "advisory", "basic"];
   const advisorTier: DashboardTier =
     enabledOrder.find((t) => tierSettingsQ.data?.enabled?.[t]) ?? "investigate";
-  const tier: DashboardTier = isAdvisor ? advisorTier : (viewerEntry?.tier ?? "basic");
+  const tier: DashboardTier = previewTier ?? (isAdvisor ? advisorTier : (viewerEntry?.tier ?? "basic"));
 
   const widgetsQ = useQuery({
     queryKey: ["effective-widgets", clientId, tier],
@@ -165,6 +176,12 @@ function ClientDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      {previewing && (
+        <ViewAsBanner
+          label={`${client.name} — as a ${TIER_LABEL[tier]} client`}
+          note="Layout and tier gating only; data access is unchanged"
+        />
+      )}
       <header className="border-b border-border/60 bg-card">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
           <BrandMark logoHeightClass="h-9" />
