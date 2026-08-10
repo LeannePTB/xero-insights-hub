@@ -38,6 +38,7 @@ const EMPTY = (scope: PlanScope): Draft => ({
   xero_org_limit: 1,
   allows_multi_org: false,
   widgets: [],
+  allowed_tiers: [],
   sort_order: 100,
   enabled: true,
 });
@@ -52,6 +53,7 @@ type Draft = {
   xero_org_limit: number;
   allows_multi_org: boolean;
   widgets: string[];
+  allowed_tiers: string[];
   sort_order: number;
   enabled: boolean;
 };
@@ -122,6 +124,7 @@ function PlanLevelsPage() {
           hint="What an accounting firm subscribes to. The client limit is the default quota; you can override it per organisation."
           scope="firm"
           levels={firmLevels}
+          tierLevels={dashLevels}
           onNew={() => setDraft(EMPTY("firm"))}
           onEdit={(l) => setDraft({ ...l, id: l.id })}
           onDelete={setPendingDelete}
@@ -220,6 +223,41 @@ function PlanLevelsPage() {
                 <Switch checked={draft.enabled} onCheckedChange={(v) => setDraft({ ...draft, enabled: v })} />
               </div>
 
+              {draft.scope === "firm" && (
+                <div>
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Included dashboard tiers
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Which client dashboards an organisation on this plan can hand out. Leave all unticked to allow every tier.
+                  </p>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {dashLevels.map((t) => (
+                      <label
+                        key={t.id}
+                        className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={draft.allowed_tiers.includes(t.key)}
+                          onCheckedChange={() =>
+                            setDraft({
+                              ...draft,
+                              allowed_tiers: draft.allowed_tiers.includes(t.key)
+                                ? draft.allowed_tiers.filter((x) => x !== t.key)
+                                : [...draft.allowed_tiers, t.key],
+                            })
+                          }
+                        />
+                        <span>{t.label}</span>
+                      </label>
+                    ))}
+                    {dashLevels.length === 0 && (
+                      <p className="text-xs text-muted-foreground">Create dashboard tiers below first.</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {draft.scope === "dashboard" && (
                 <>
                   <div className="flex items-center justify-between rounded-md border p-3">
@@ -303,6 +341,7 @@ function LevelSection({
   hint,
   scope,
   levels,
+  tierLevels,
   onNew,
   onEdit,
   onDelete,
@@ -311,6 +350,7 @@ function LevelSection({
   hint: string;
   scope: PlanScope;
   levels: PlanLevel[];
+  tierLevels?: PlanLevel[];
   onNew: () => void;
   onEdit: (l: PlanLevel) => void;
   onDelete: (l: PlanLevel) => void;
@@ -336,6 +376,7 @@ function LevelSection({
             <tr>
               <th className="px-4 py-2">Name</th>
               {scope === "firm" && <th className="px-4 py-2">Clients</th>}
+              {scope === "firm" && <th className="px-4 py-2">Dashboard tiers</th>}
               <th className="px-4 py-2">Xero files</th>
               {scope === "dashboard" && <th className="px-4 py-2">Widgets</th>}
               <th className="px-4 py-2 text-right">Actions</th>
@@ -359,6 +400,21 @@ function LevelSection({
                 </td>
                 {scope === "firm" && (
                   <td className="px-4 py-3 tabular-nums">{l.client_limit >= 9999 ? "Unlimited" : l.client_limit}</td>
+                )}
+                {scope === "firm" && (
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-1">
+                      {(l.allowed_tiers ?? []).length === 0 ? (
+                        <span className="text-xs text-muted-foreground">All tiers</span>
+                      ) : (
+                        (l.allowed_tiers ?? []).map((k) => (
+                          <Badge key={k} variant="secondary">
+                            {tierLevels?.find((t) => t.key === k)?.label ?? k}
+                          </Badge>
+                        ))
+                      )}
+                    </div>
+                  </td>
                 )}
                 <td className="px-4 py-3 tabular-nums">{l.xero_org_limit}</td>
                 {scope === "dashboard" && (
