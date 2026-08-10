@@ -6,7 +6,6 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   getClient,
   renameClient,
-  attachXeroOrg,
   detachXeroOrg,
   deleteClient,
   listClientAccess,
@@ -67,7 +66,6 @@ function ClientSettings() {
   const disconnect = useServerFn(disconnectXero);
 
   const rename = useServerFn(renameClient);
-  const attach = useServerFn(attachXeroOrg);
   const detach = useServerFn(detachXeroOrg);
   const del = useServerFn(deleteClient);
   const invite = useServerFn(inviteClientViewer);
@@ -134,12 +132,6 @@ function ClientSettings() {
   const renameMut = useMutation({
     mutationFn: () => rename({ data: { clientId, name } }),
     onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["client", clientId] }); qc.invalidateQueries({ queryKey: ["clients"] }); },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const attachMut = useMutation({
-    mutationFn: (xeroConnectionId: string) => attach({ data: { clientId, xeroConnectionId } }),
-    onSuccess: () => { toast.success("Linked"); qc.invalidateQueries({ queryKey: ["client", clientId] }); },
     onError: (e: any) => toast.error(e.message),
   });
 
