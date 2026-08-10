@@ -33,9 +33,8 @@ import { toast } from "sonner";
 
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
-  validateSearch: (search: Record<string, unknown>) => ({
-    viewAs: typeof search.viewAs === "string" ? search.viewAs : undefined,
-  }),
+  validateSearch: (search: Record<string, unknown>): { viewAs?: string } =>
+    typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {},
   head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
   component: FirmPage,
 });
