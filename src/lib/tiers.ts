@@ -41,6 +41,7 @@ const ADVANCED: WidgetKey[] = [
   "true_breakeven",
   "cashflow",
   "xero_audit",
+  "loan_consolidation",
 ];
 export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
   basic: ["health", "receivables", "payables", "pnl", "unreconciled"],
@@ -75,6 +76,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   true_breakeven: "True Break-Even (Cash)",
   cashflow: "Cash Flow",
   xero_audit: "Xero File Audit",
+  loan_consolidation: "Loan Consolidation",
 };
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
