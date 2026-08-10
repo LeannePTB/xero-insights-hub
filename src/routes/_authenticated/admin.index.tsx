@@ -390,7 +390,7 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
   function reset() {
     setName(""); setTier("starter"); setStatus("trialing");
     setEndDate(isoDate(new Date(Date.now() + 7 * 864e5)));
-    setAlwaysFree(false); setOwnerMode("password"); setEmail(""); setOwnerName("");
+    setAlwaysFree(false); setOwnerMode("none"); setEmail(""); setOwnerName("");
     setPassword(""); setDone(null); setCopied(false);
   }
 
