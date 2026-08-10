@@ -162,6 +162,7 @@ export const getMyFirm = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .eq("firm_id", data.firmId)
       .maybeSingle();
+    let db: any = context.supabase;
     if (!membership) {
       // Super admins manage every subscription, including ones they don't belong to.
       const { data: superRow } = await context.supabase
@@ -171,13 +172,14 @@ export const getMyFirm = createServerFn({ method: "POST" })
         .eq("role", "super_admin")
         .maybeSingle();
       if (!superRow) throw new Error("Forbidden");
+      db = (await import("@/integrations/supabase/client.server")).supabaseAdmin;
     }
     const [{ data: firm, error }, { data: sub }, { count: clientCount }] = await Promise.all([
-      context.supabase.from("firms").select("id, name, is_always_free").eq("id", data.firmId).maybeSingle(),
-      context.supabase.from("subscriptions").select("tier, status, trial_ends_at, current_period_end, client_limit_override").eq("firm_id", data.firmId).maybeSingle(),
-      context.supabase.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", data.firmId),
+      db.from("firms").select("id, name, is_always_free").eq("id", data.firmId).maybeSingle(),
+      db.from("subscriptions").select("tier, status, trial_ends_at, current_period_end, client_limit_override").eq("firm_id", data.firmId).maybeSingle(),
+      db.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", data.firmId),
     ]);
-    const { data: planRows } = await (context.supabase as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
+    const { data: planRows } = await (db as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
     const catalogue = firmLimitCatalogue(planRows);
     if (error) throw new Error(error.message);
     if (!firm) throw new Error("Firm not found.");

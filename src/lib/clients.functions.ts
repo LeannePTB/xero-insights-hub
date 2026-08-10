@@ -27,7 +27,13 @@ export const listClients = createServerFn({ method: "POST" })
       if (!firmId) return { clients: [] };
     }
 
-    let q = context.supabase
+    // Super admins manage every organisation, including ones they don't belong to,
+    // so they read through the admin client (RLS scopes reads to firm membership).
+    const db: any = isSuper
+      ? (await import("@/integrations/supabase/client.server")).supabaseAdmin
+      : context.supabase;
+
+    let q = db
       .from("clients")
       .select(
         "id, name, firm_id, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
@@ -260,6 +266,16 @@ export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
+    // Super admins manage every organisation; RLS scopes deletes to firm owners.
+    const { data: superRow } = await context.supabase
+      .from("user_roles").select("role")
+      .eq("user_id", context.userId).eq("role", "super_admin").maybeSingle();
+    if (superRow) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: adminErr } = await supabaseAdmin.from("clients").delete().eq("id", data.clientId);
+      if (adminErr) throw new Error(adminErr.message);
+      return { ok: true };
+    }
     const { error } = await context.supabase.from("clients").delete().eq("id", data.clientId);
     if (error) throw new Error(error.message);
     return { ok: true };
