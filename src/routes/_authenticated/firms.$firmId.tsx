@@ -329,7 +329,7 @@ function FirmPage() {
                                   <span
                                     key={`out-${t}`}
                                     className="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400"
-                                    title={`Not included in the ${planV.label} plan`}
+                                    title={`Not included in the ${planV.planLabel} plan`}
                                   >
                                     {TIER_LABEL[t]} · not in plan
                                   </span>
