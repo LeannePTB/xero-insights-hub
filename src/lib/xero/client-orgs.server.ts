@@ -131,3 +131,28 @@ export async function getSelectableConnectionsForClient(
   }
   return out;
 }
+
+/**
+ * Connections created by this user that are not linked to any client yet.
+ * Used by create-client / attach flows where no OAuth session state exists.
+ */
+export async function getUnassignedConnectionsForUser(userId: string) {
+  const { data: connections, error } = await supabaseAdmin
+    .from("xero_connections")
+    .select("id, tenant_id, tenant_name, tenant_type, created_at, status, disconnected_at, base_currency")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw new Error(error.message);
+  if (!connections?.length) return [];
+
+  const { data: allAssigned, error: assignedError } = await supabaseAdmin
+    .from("client_xero_orgs")
+    .select("xero_connections(tenant_id)");
+  if (assignedError) throw new Error(assignedError.message);
+  const assignedTenantIds = new Set(
+    (allAssigned ?? [])
+      .map((row) => (row.xero_connections as { tenant_id?: string } | null)?.tenant_id)
+      .filter((tenantId): tenantId is string => Boolean(tenantId)),
+  );
+  return connections.filter((connection) => !assignedTenantIds.has(connection.tenant_id));
+}
