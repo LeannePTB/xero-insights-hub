@@ -508,7 +508,12 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
             </div>
 
           </div>
+        ) : done.mode === "none" ? (
+          <div className="space-y-2">
+            <p className="text-sm">✓ Organisation created with no owner yet. Open the organisation to invite the owner or create their login when you're ready.</p>
+          </div>
         ) : done.mode === "password" ? (
+
           <div className="space-y-2">
             <p className="text-sm">✓ Organisation created. The owner can sign in right now with these details.</p>
             <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-xs space-y-1">
