@@ -94,9 +94,12 @@ function AdminPage() {
       <header className="border-b">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/dashboard"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link>
-            </Button>
+            {!isSuper && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/dashboard"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link>
+              </Button>
+            )}
+
             <h1 className="text-xl font-semibold">Admin</h1>
             {isSuper ? <Badge variant="secondary">super-admin</Badge> : <Badge variant="outline">advisor admin</Badge>}
           </div>
