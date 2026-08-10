@@ -199,9 +199,10 @@ function OrganisationsSection({
                   <td className="px-4 py-3 font-medium">{firm.name}</td>
                   <td className="px-4 py-3 text-right">
                     <Button size="sm" variant="outline" asChild>
-                      <Link to="/firms/$firmId" params={{ firmId: firm.id }}>Open clients</Link>
+                      <Link to="/firms/$firmId" params={{ firmId: firm.id }}>Clients &amp; plan</Link>
                     </Button>
                   </td>
+
                 </tr>
               ))}
               {myFirms.length === 0 && (
@@ -265,12 +266,13 @@ function OrganisationsSection({
                     <div className="flex justify-end gap-2">
                       {ownFirmIds.has(f.firm_id) && (
                         <Button size="sm" variant="outline" asChild>
-                          <Link to="/firms/$firmId" params={{ firmId: f.firm_id }}>Open clients</Link>
+                          <Link to="/firms/$firmId" params={{ firmId: f.firm_id }}>Clients</Link>
                         </Button>
                       )}
                       <Button size="sm" variant="outline" asChild>
-                        <Link to="/admin/firms/$firmId" params={{ firmId: f.firm_id }}>Admin details</Link>
+                        <Link to="/admin/firms/$firmId" params={{ firmId: f.firm_id }}>Plan &amp; members</Link>
                       </Button>
+
                     </div>
                   </td>
                 </tr>

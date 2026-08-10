@@ -1,14 +1,29 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listClients } from "@/lib/clients.functions";
+import { listClients, deleteClient } from "@/lib/clients.functions";
 import { getMyFirm } from "@/lib/firms.functions";
+import { getMyContext } from "@/lib/roles.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, ChevronRight, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Building2, ChevronRight, CreditCard, Loader2, MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
 import { ALL_TIERS, TIER_LABEL, type DashboardTier } from "@/lib/tiers";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 
 import { Badge } from "@/components/ui/badge";
 import { firmPlanView, toneClasses } from "@/lib/firmPlans";
@@ -20,12 +35,18 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId")({
   component: FirmPage,
 });
 
+
 function FirmPage() {
   const { firmId } = Route.useParams();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const fetchFirm = useServerFn(getMyFirm);
   const fetchClients = useServerFn(listClients);
   const fetchTierSettings = useServerFn(listTierSettings);
+  const fetchCtx = useServerFn(getMyContext);
+  const removeClient = useServerFn(deleteClient);
+  const [planOpen, setPlanOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   const firmQ = useQuery({
     queryKey: ["my-firm", firmId],
@@ -39,12 +60,26 @@ function FirmPage() {
     enabled: !!firmQ.data,
   });
 
+  const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
+  const isSuper = ctxQ.data?.isSuperAdmin ?? false;
+
   const tierSettingsQ = useQuery({
     queryKey: ["tier-settings"],
     queryFn: () => fetchTierSettings(),
     enabled: !!firmQ.data,
   });
   const enabledTiers = ALL_TIERS.filter((t) => tierSettingsQ.data?.enabled?.[t] ?? true);
+
+  const deleteMut = useMutation({
+    mutationFn: (clientId: string) => removeClient({ data: { clientId } }),
+    onSuccess: () => {
+      toast.success("Client removed");
+      setPendingDelete(null);
+      qc.invalidateQueries({ queryKey: ["clients", firmId] });
+      qc.invalidateQueries({ queryKey: ["my-firm", firmId] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not remove client"),
+  });
 
   useEffect(() => {
     if (firmQ.error) {
@@ -80,24 +115,108 @@ function FirmPage() {
           <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All organisations</Link>
         </Button>
 
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-display text-3xl font-semibold">{firm.name}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-              <Badge variant="secondary">{planV.planLabel}</Badge>
-              <Badge variant="outline" className={toneClasses(planV.statusTone)}>{planV.statusLabel}</Badge>
-              <span className="text-muted-foreground tabular-nums">
-                {plan.clientCount}/{plan.clientLimit} clients used
-              </span>
-              {planV.dueLabel && <span className="text-muted-foreground">· {planV.dueLabel}</span>}
-            </div>
-          </div>
-          <Button asChild disabled={atLimit} title={atLimit ? "Client limit reached — upgrade the plan" : ""}>
-            <Link to="/clients/new" search={{ firmId } as any} disabled={atLimit as any}>
-              <Plus className="mr-2 h-4 w-4" /> New client
-            </Link>
-          </Button>
+        <div>
+          <h1 className="font-display text-3xl font-semibold">{firm.name}</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Clients for this organisation. Add or remove them here.
+          </p>
         </div>
+
+        {/* Plan & subscription */}
+        <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <CreditCard className="h-4 w-4 text-muted-foreground" /> Plan &amp; subscription
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                <Badge variant="secondary">{planV.planLabel}</Badge>
+                <Badge variant="outline" className={toneClasses(planV.statusTone)}>{planV.statusLabel}</Badge>
+                <span className="text-muted-foreground tabular-nums">
+                  {plan.clientCount} of {plan.clientLimit} clients used
+                </span>
+                {planV.dueLabel && <span className="text-muted-foreground">· {planV.dueLabel}</span>}
+              </div>
+            </div>
+            {isSuper ? (
+              <Button variant="outline" size="sm" onClick={() => setPlanOpen(true)}>
+                <Settings className="mr-2 h-4 w-4" /> Edit plan
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">Contact support to change this plan.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Add client */}
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="font-display text-xl font-semibold">Clients</h2>
+          <div className="flex items-center gap-3">
+            {atLimit && (
+              <span className="text-xs text-muted-foreground">
+                Client limit reached — upgrade the plan to add more.
+              </span>
+            )}
+            <Button asChild={!atLimit} disabled={atLimit}>
+              {atLimit ? (
+                <span><Plus className="mr-2 h-4 w-4" /> New client</span>
+              ) : (
+                <Link to="/clients/new" search={{ firmId } as any}>
+                  <Plus className="mr-2 h-4 w-4" /> New client
+                </Link>
+              )}
+            </Button>
+          </div>
+        </div>
+
+        <Dialog open={planOpen} onOpenChange={setPlanOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Plan &amp; subscription</DialogTitle>
+              <DialogDescription>{firm.name}</DialogDescription>
+            </DialogHeader>
+            <SubscriptionEditor
+              firmId={firmId}
+              subscription={{
+                tier: plan.tier,
+                status: plan.status,
+                trial_ends_at: plan.trialEndsAt,
+                current_period_end: plan.currentPeriodEnd,
+                cancel_at_period_end: (plan as any).cancelAtPeriodEnd ?? false,
+              }}
+              isAlwaysFree={!!plan.isAlwaysFree}
+              onChanged={() => {
+                qc.invalidateQueries({ queryKey: ["my-firm", firmId] });
+                setPlanOpen(false);
+              }}
+              submitLabel="Save plan"
+            />
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Remove client</DialogTitle>
+              <DialogDescription>
+                Remove “{pendingDelete?.name}” from {firm.name}? This deletes the client and all viewer
+                access. Linked Xero organisations stay connected and can be reused.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2">
+              <Button variant="ghost" onClick={() => setPendingDelete(null)}>Cancel</Button>
+              <Button
+                variant="destructive"
+                disabled={deleteMut.isPending}
+                onClick={() => pendingDelete && deleteMut.mutate(pendingDelete.id)}
+              >
+                {deleteMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Remove client
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
 
 
         <div className="mt-8">
@@ -180,14 +299,41 @@ function FirmPage() {
                           </div>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <Link
-                            to="/clients/$clientId"
-                            params={{ clientId: c.id }}
-                            className="inline-flex items-center text-muted-foreground hover:text-foreground"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Link>
+                          <div className="flex items-center justify-end gap-1">
+                            <Link
+                              to="/clients/$clientId"
+                              params={{ clientId: c.id }}
+                              className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Link>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${c.name}`}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                  <Link to="/clients/$clientId" params={{ clientId: c.id }}>Open</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Settings</Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    setPendingDelete({ id: c.id, name: c.name });
+                                  }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Remove client
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </td>
+
                       </tr>
                     );
                   })}
