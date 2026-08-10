@@ -207,7 +207,7 @@ export const listClientXeroOptions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { clientId: string; state?: string }) => input)
   .handler(async ({ data, context }) => {
-    const { userCanManageClient, getClientOrgAllowance, getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
+    const { userCanManageClient, getClientOrgAllowance, getSelectableConnectionsForClient } = await import("@/lib/xero/client-orgs.server");
     if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this client subscription.");
     const allowance = await getClientOrgAllowance(data.clientId);
     if (!data.state) return { connections: [], allowance };
@@ -220,9 +220,8 @@ export const listClientXeroOptions = createServerFn({ method: "POST" })
       .eq("client_id", data.clientId)
       .maybeSingle();
     if (!oauthState?.completed_at || new Date(oauthState.expires_at).getTime() < Date.now()) return { connections: [], allowance };
-    const pending = new Set(oauthState.pending_tenant_ids);
-    const available = await getUnassignedConnectionsForUser(context.userId);
-    return { connections: available.filter((connection) => pending.has(connection.tenant_id)), allowance };
+    const connections = await getSelectableConnectionsForClient(data.clientId, oauthState.pending_tenant_ids ?? []);
+    return { connections, allowance };
   });
 
 export const linkClientXeroOptions = createServerFn({ method: "POST" })
@@ -230,7 +229,7 @@ export const linkClientXeroOptions = createServerFn({ method: "POST" })
   .inputValidator((input: { clientId: string; state: string; connectionIds: string[] }) => input)
   .handler(async ({ data, context }) => {
     const uniqueIds = [...new Set(data.connectionIds)];
-    const { userCanManageClient, getClientOrgAllowance, getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
+    const { userCanManageClient, getClientOrgAllowance, getSelectableConnectionsForClient, getClientFirmId } = await import("@/lib/xero/client-orgs.server");
     if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this client subscription.");
     const allowance = await getClientOrgAllowance(data.clientId);
     if (uniqueIds.length < 1) throw new Error("Select at least one Xero organisation.");
@@ -244,17 +243,24 @@ export const linkClientXeroOptions = createServerFn({ method: "POST" })
       .eq("client_id", data.clientId)
       .maybeSingle();
     if (!oauthState?.completed_at || new Date(oauthState.expires_at).getTime() < Date.now()) throw new Error("This Xero selection has expired. Connect again.");
-    const pending = new Set(oauthState.pending_tenant_ids);
-    const available = (await getUnassignedConnectionsForUser(context.userId))
-      .filter((connection) => pending.has(connection.tenant_id));
-    if (uniqueIds.some((id) => !available.some((connection) => connection.id === id))) throw new Error("One of those Xero organisations is no longer available.");
+    const candidates = await getSelectableConnectionsForClient(data.clientId, oauthState.pending_tenant_ids ?? []);
+    const selectable = candidates.filter((connection) => connection.available);
+    if (uniqueIds.some((id) => !selectable.some((connection) => connection.id === id))) {
+      throw new Error("One of those Xero organisations is no longer available — it may already be linked to another subscription.");
+    }
     const { error } = await supabaseAdmin.from("client_xero_orgs").insert(
       uniqueIds.map((xero_connection_id) => ({ client_id: data.clientId, xero_connection_id })),
     );
     if (error) throw new Error(error.message);
+    // Stamp the organisation onto the connections so they stay scoped to it.
+    const firmId = await getClientFirmId(data.clientId);
+    if (firmId) {
+      await supabaseAdmin.from("xero_connections").update({ firm_id: firmId }).in("id", uniqueIds);
+    }
     await supabaseAdmin.from("xero_oauth_states").delete().eq("state", data.state);
     return { linked: uniqueIds.length };
   });
+
 
 const ALLOWED_CUSTOM_HOSTS = new Set([
   "tractionadvisory.com.au",
