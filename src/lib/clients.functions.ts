@@ -398,6 +398,16 @@ export const updateClientAccessTier = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { id: string; tier: DashboardTier }) => i)
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("client_access")
+      .select("client_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (row?.client_id) {
+      const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
+      await assertTierInPlanForClient(context.userId, row.client_id, data.tier);
+    }
     const { error } = await context.supabase
       .from("client_access")
       .update({ tier: data.tier })
@@ -432,6 +442,9 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
     if (!advisorRoles || advisorRoles.length === 0) {
       throw new Error("Only advisors can invite client viewers.");
     }
+
+    const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
+    await assertTierInPlanForClient(context.userId, data.clientId, data.tier);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -492,6 +505,9 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
     if (!advisorRoles || advisorRoles.length === 0) {
       throw new Error("Only advisors can create client viewers.");
     }
+
+    const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
+    await assertTierInPlanForClient(context.userId, data.clientId, data.tier);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
