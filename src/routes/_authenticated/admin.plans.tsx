@@ -425,6 +425,9 @@ function LevelSection({
                     <Button size="sm" variant="outline" onClick={() => onEdit(l)}>
                       <Pencil className="mr-1 h-3 w-3" /> Edit
                     </Button>
+                    <Button size="sm" variant="outline" onClick={() => onDuplicate(l)}>
+                      <Copy className="mr-1 h-3 w-3" /> Duplicate
+                    </Button>
                     <Button size="sm" variant="ghost" onClick={() => onDelete(l)}>
                       <Trash2 className="h-3 w-3" />
                     </Button>
