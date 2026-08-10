@@ -88,7 +88,7 @@ export const getClient = createServerFn({ method: "POST" })
     const { data: client, error } = await context.supabase
       .from("clients")
       .select(
-        "id, name, owner_user_id, report_basis, basis_overrides, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name, status, disconnected_at))",
+        "id, name, owner_user_id, report_basis, basis_overrides, max_xero_orgs, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name, status, disconnected_at))",
       )
       .eq("id", data.clientId)
       .maybeSingle();
@@ -164,17 +164,6 @@ export const deleteClientNote = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
-async function clientIsMultiCompany(supabase: any, clientId: string) {
-  const { data, error } = await supabase
-    .from("client_access")
-    .select("id")
-    .eq("client_id", clientId)
-    .eq("tier", "multi_company")
-    .limit(1);
-  if (error) throw new Error(error.message);
-  return (data?.length ?? 0) > 0;
-}
 
 export const createClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -317,24 +306,36 @@ export const attachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; xeroConnectionId: string }) => i)
   .handler(async ({ data, context }) => {
-    const { data: existing, error: countErr } = await context.supabase
-      .from("client_xero_orgs")
-      .select("id")
-      .eq("client_id", data.clientId);
-    if (countErr) throw new Error(countErr.message);
-    if ((existing?.length ?? 0) >= 1) {
-      const multi = await clientIsMultiCompany(context.supabase, data.clientId);
-      if (!multi) {
-        throw new Error(
-          "Only the Multi company tier can link more than one Xero organisation. Grant a viewer the Multi company tier for this client first.",
-        );
-      }
+    const { getClientOrgAllowance, getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
+    const allowance = await getClientOrgAllowance(data.clientId);
+    if (allowance.remaining < 1) throw new Error(`This subscription has reached its Xero file allowance of ${allowance.allowance}.`);
+    const available = await getUnassignedConnectionsForUser(context.userId);
+    if (!available.some((connection) => connection.id === data.xeroConnectionId)) {
+      throw new Error("That Xero organisation is already assigned to another client subscription or is not yours to link.");
     }
     const { error } = await context.supabase
       .from("client_xero_orgs")
       .insert({ client_id: data.clientId, xero_connection_id: data.xeroConnectionId });
     if (error) throw new Error(error.message);
     return { ok: true };
+  });
+
+export const setClientXeroAllowance = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; allowance: number }) => i)
+  .handler(async ({ data, context }) => {
+    const allowance = Math.floor(data.allowance);
+    if (!Number.isFinite(allowance) || allowance < 1 || allowance > 100) {
+      throw new Error("Xero file allowance must be between 1 and 100.");
+    }
+    const { userCanManageClient, getClientOrgAllowance } = await import("@/lib/xero/client-orgs.server");
+    if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this subscription.");
+    const current = await getClientOrgAllowance(data.clientId);
+    if (!current.isMulti && allowance !== 1) throw new Error("Only Multi company subscriptions can allow more than one Xero file.");
+    if (allowance < current.used) throw new Error(`Unlink Xero files before reducing the allowance below ${current.used}.`);
+    const { error } = await context.supabase.from("clients").update({ max_xero_orgs: allowance }).eq("id", data.clientId);
+    if (error) throw new Error(error.message);
+    return { allowance };
   });
 
 export const detachXeroOrg = createServerFn({ method: "POST" })
