@@ -282,7 +282,7 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
-          tier: Database["public"]["Enums"]["dashboard_tier"]
+          tier: string
           updated_at: string
           user_id: string
         }
@@ -290,7 +290,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
-          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          tier?: string
           updated_at?: string
           user_id: string
         }
@@ -298,7 +298,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
-          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          tier?: string
           updated_at?: string
           user_id?: string
         }
@@ -889,6 +889,54 @@ export type Database = {
         }
         Relationships: []
       }
+      plan_levels: {
+        Row: {
+          allows_multi_org: boolean
+          client_limit: number
+          created_at: string
+          description: string
+          enabled: boolean
+          id: string
+          key: string
+          label: string
+          scope: string
+          sort_order: number
+          updated_at: string
+          widgets: string[]
+          xero_org_limit: number
+        }
+        Insert: {
+          allows_multi_org?: boolean
+          client_limit?: number
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          id?: string
+          key: string
+          label: string
+          scope: string
+          sort_order?: number
+          updated_at?: string
+          widgets?: string[]
+          xero_org_limit?: number
+        }
+        Update: {
+          allows_multi_org?: boolean
+          client_limit?: number
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          id?: string
+          key?: string
+          label?: string
+          scope?: string
+          sort_order?: number
+          updated_at?: string
+          widgets?: string[]
+          xero_org_limit?: number
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -1057,6 +1105,7 @@ export type Database = {
       subscriptions: {
         Row: {
           cancel_at_period_end: boolean
+          client_limit_override: number | null
           created_at: string
           current_period_end: string | null
           firm_id: string
@@ -1064,12 +1113,13 @@ export type Database = {
           status: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
-          tier: Database["public"]["Enums"]["subscription_tier"]
+          tier: string
           trial_ends_at: string | null
           updated_at: string
         }
         Insert: {
           cancel_at_period_end?: boolean
+          client_limit_override?: number | null
           created_at?: string
           current_period_end?: string | null
           firm_id: string
@@ -1077,12 +1127,13 @@ export type Database = {
           status?: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
-          tier?: Database["public"]["Enums"]["subscription_tier"]
+          tier?: string
           trial_ends_at?: string | null
           updated_at?: string
         }
         Update: {
           cancel_at_period_end?: boolean
+          client_limit_override?: number | null
           created_at?: string
           current_period_end?: string | null
           firm_id?: string
@@ -1090,7 +1141,7 @@ export type Database = {
           status?: Database["public"]["Enums"]["subscription_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
-          tier?: Database["public"]["Enums"]["subscription_tier"]
+          tier?: string
           trial_ends_at?: string | null
           updated_at?: string
         }
@@ -1138,17 +1189,17 @@ export type Database = {
       tier_settings: {
         Row: {
           enabled: boolean
-          tier: Database["public"]["Enums"]["dashboard_tier"]
+          tier: string
           updated_at: string
         }
         Insert: {
           enabled?: boolean
-          tier: Database["public"]["Enums"]["dashboard_tier"]
+          tier: string
           updated_at?: string
         }
         Update: {
           enabled?: boolean
-          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          tier?: string
           updated_at?: string
         }
         Relationships: []
@@ -1158,7 +1209,7 @@ export type Database = {
           client_id: string | null
           created_at: string
           id: string
-          tier: Database["public"]["Enums"]["dashboard_tier"]
+          tier: string
           updated_at: string
           widgets: string[]
         }
@@ -1166,7 +1217,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
-          tier: Database["public"]["Enums"]["dashboard_tier"]
+          tier: string
           updated_at?: string
           widgets?: string[]
         }
@@ -1174,7 +1225,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           id?: string
-          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          tier?: string
           updated_at?: string
           widgets?: string[]
         }
@@ -1497,7 +1548,7 @@ export type Database = {
           is_always_free: boolean | null
           recent_error_count: number | null
           status: Database["public"]["Enums"]["subscription_status"] | null
-          tier: Database["public"]["Enums"]["subscription_tier"] | null
+          tier: string | null
           trial_ends_at: string | null
         }
         Relationships: []

@@ -207,6 +207,7 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
       current_period_end?: string | null;
       cancel_at_period_end?: boolean | null;
       is_always_free?: boolean | null;
+      client_limit_override?: number | null;
     }) => i,
   )
   .handler(async ({ data, context }) => {
@@ -214,9 +215,10 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const subPatch: Record<string, any> = {};
-    for (const k of ["tier", "status", "trial_ends_at", "current_period_end", "cancel_at_period_end"] as const) {
+    for (const k of ["tier", "status", "trial_ends_at", "current_period_end", "cancel_at_period_end", "client_limit_override"] as const) {
       if (data[k] !== undefined) subPatch[k] = data[k];
     }
+
 
     if (Object.keys(subPatch).length > 0) {
       const { data: existing } = await supabaseAdmin

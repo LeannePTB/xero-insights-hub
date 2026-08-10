@@ -193,7 +193,15 @@ export const createClient = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .eq("firm_id", firmId)
         .maybeSingle();
-      if (!membership) throw new Error("You are not a member of that business.");
+      if (!membership) {
+        const { data: superRow } = await context.supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", context.userId)
+          .eq("role", "super_admin")
+          .maybeSingle();
+        if (!superRow) throw new Error("You are not a member of that business.");
+      }
     } else {
       const { data: membership } = await context.supabase
         .from("firm_members")
@@ -208,14 +216,19 @@ export const createClient = createServerFn({ method: "POST" })
     if (!firmId) throw new Error("No business associated with your account.");
 
     // Enforce firm subscription client quota.
-    const { clientLimitFor } = await import("@/lib/firmPlans");
+    const { clientLimitFor, firmLimitCatalogue } = await import("@/lib/firmPlans");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: firmRow }, { data: subRow }, { count: usedCount }] = await Promise.all([
+    const [{ data: firmRow }, { data: subRow }, { count: usedCount }, { data: planRows }] = await Promise.all([
       supabaseAdmin.from("firms").select("is_always_free").eq("id", firmId).maybeSingle(),
-      supabaseAdmin.from("subscriptions").select("tier, status").eq("firm_id", firmId).maybeSingle(),
+      supabaseAdmin.from("subscriptions").select("tier, status, client_limit_override").eq("firm_id", firmId).maybeSingle(),
       supabaseAdmin.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", firmId),
+      (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm"),
     ]);
-    const limit = clientLimitFor((subRow as any)?.tier, (firmRow as any)?.is_always_free);
+    const limit = clientLimitFor((subRow as any)?.tier, (firmRow as any)?.is_always_free, {
+      override: (subRow as any)?.client_limit_override ?? null,
+      catalogue: firmLimitCatalogue(planRows as any),
+    });
+
     const status = (subRow as any)?.status ?? null;
     const okStatus = !status || ["active", "trialing", "past_due"].includes(status) || (firmRow as any)?.is_always_free;
     if (!okStatus) {

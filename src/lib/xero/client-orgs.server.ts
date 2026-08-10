@@ -8,11 +8,12 @@ export type ClientOrgAllowance = {
 };
 
 export async function getClientOrgAllowance(clientId: string): Promise<ClientOrgAllowance> {
-  const [{ data: client, error: clientError }, { data: access, error: accessError }, { count, error: countError }] =
+  const [{ data: client, error: clientError }, { data: access, error: accessError }, { count, error: countError }, { data: levels }] =
     await Promise.all([
       supabaseAdmin.from("clients").select("max_xero_orgs").eq("id", clientId).maybeSingle(),
-      supabaseAdmin.from("client_access").select("id").eq("client_id", clientId).eq("tier", "multi_company").limit(1),
+      supabaseAdmin.from("client_access").select("tier").eq("client_id", clientId),
       supabaseAdmin.from("client_xero_orgs").select("id", { count: "exact", head: true }).eq("client_id", clientId),
+      (supabaseAdmin as any).from("plan_levels").select("key, xero_org_limit, allows_multi_org").eq("scope", "dashboard"),
     ]);
 
   if (clientError) throw new Error(clientError.message);
@@ -20,11 +21,22 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
   if (countError) throw new Error(countError.message);
   if (!client) throw new Error("Client subscription not found.");
 
-  const isMulti = (access?.length ?? 0) > 0;
-  const allowance = isMulti ? Math.max(1, client.max_xero_orgs) : 1;
+  // Multi-file support comes from the tier catalogue, so new tiers can allow it too.
+  const byKey = new Map<string, { xero_org_limit: number; allows_multi_org: boolean }>();
+  for (const l of (levels ?? []) as any[]) byKey.set(l.key, l);
+  let isMulti = false;
+  let tierLimit = 1;
+  for (const row of (access ?? []) as any[]) {
+    const level = byKey.get(row.tier);
+    if (level?.allows_multi_org) isMulti = true;
+    if (level) tierLimit = Math.max(tierLimit, level.xero_org_limit ?? 1);
+  }
+
+  const allowance = isMulti ? Math.max(1, client.max_xero_orgs, tierLimit) : 1;
   const used = count ?? 0;
   return { allowance, used, isMulti, remaining: Math.max(0, allowance - used) };
 }
+
 
 export async function userCanManageClient(userId: string, clientId: string): Promise<boolean> {
   const [{ data: client }, { data: roles }] = await Promise.all([

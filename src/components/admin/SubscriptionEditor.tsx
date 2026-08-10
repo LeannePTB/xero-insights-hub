@@ -9,9 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { TIER_LABEL as FIRM_TIER_LABEL } from "@/lib/firmPlans";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
 
-export const FIRM_TIERS = ["starter", "growth", "scale", "firm", "free", "legacy"] as const;
 export const FIRM_STATUSES = ["trialing", "active", "past_due", "canceled", "paused"];
 
 export function toDateInput(s: string | null | undefined) {
@@ -34,12 +33,20 @@ export function SubscriptionEditor({
   submitLabel?: string;
 }) {
   const updateFn = useServerFn(adminUpdateSubscription);
+  const { levels } = usePlanLevels("firm");
   const [tier, setTier] = useState<string>(subscription?.tier ?? "starter");
   const [status, setStatus] = useState<string>(subscription?.status ?? "trialing");
   const [trialEnds, setTrialEnds] = useState<string>(toDateInput(subscription?.trial_ends_at));
   const [periodEnd, setPeriodEnd] = useState<string>(toDateInput(subscription?.current_period_end));
   const [cancelEnd, setCancelEnd] = useState<boolean>(!!subscription?.cancel_at_period_end);
   const [alwaysFree, setAlwaysFree] = useState<boolean>(!!isAlwaysFree);
+  const [limitOverride, setLimitOverride] = useState<string>(
+    subscription?.client_limit_override != null ? String(subscription.client_limit_override) : "",
+  );
+
+  // Keep the current value selectable even if its level was retired.
+  const options = levels.filter((l) => l.enabled || l.key === tier);
+  const selectedLevel = levels.find((l) => l.key === tier);
 
   const mut = useMutation({
     mutationFn: () =>
@@ -52,6 +59,7 @@ export function SubscriptionEditor({
           current_period_end: periodEnd ? new Date(periodEnd).toISOString() : null,
           cancel_at_period_end: cancelEnd,
           is_always_free: alwaysFree,
+          client_limit_override: limitOverride.trim() === "" ? null : Math.max(0, Number(limitOverride)),
         },
       }),
     onSuccess: () => {
@@ -61,18 +69,20 @@ export function SubscriptionEditor({
     onError: (e: any) => toast.error(e.message),
   });
 
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label>Tier</Label>
+          <Label>Plan</Label>
           <Select value={tier} onValueChange={setTier}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select a plan" /></SelectTrigger>
             <SelectContent>
-              {FIRM_TIERS.map((t) => <SelectItem key={t} value={t}>{FIRM_TIER_LABEL[t] ?? t}</SelectItem>)}
+              {options.map((l) => <SelectItem key={l.key} value={l.key}>{l.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-1.5">
           <Label>Status</Label>
           <Select value={status} onValueChange={setStatus}>
@@ -104,7 +114,23 @@ export function SubscriptionEditor({
           </div>
           <Switch checked={alwaysFree} onCheckedChange={setAlwaysFree} />
         </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label>Client limit override</Label>
+          <Input
+            type="number"
+            min={0}
+            value={limitOverride}
+            placeholder={
+              selectedLevel ? `Plan default: ${selectedLevel.client_limit >= 9999 ? "unlimited" : selectedLevel.client_limit}` : "Plan default"
+            }
+            onChange={(e) => setLimitOverride(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Leave blank to use the plan default. Set a number to give this organisation its own client quota.
+          </p>
+        </div>
       </div>
+
 
       <div>
         <Button onClick={() => mut.mutate()} disabled={mut.isPending}>

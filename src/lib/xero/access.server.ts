@@ -16,10 +16,19 @@ export async function getEffectiveTier(
   const clientId = (cxo?.client_id as string | undefined) ?? null;
   const firmId = (cxo?.clients?.firm_id as string | undefined) ?? null;
 
-  // Subscription-scoped access only:
+  // Access rules:
+  //  - super admins may manage any subscription end to end (Xero links, settings, dashboards)
   //  - firm members (any role) see the firm's clients with full "investigate" tier
   //  - users with an explicit client_access row see at their granted tier
-  //  - everyone else (global advisor, super_admin, etc.) is denied
+  //  - everyone else is denied
+  const { data: superRow } = await (supabaseAdmin as any)
+    .from("user_roles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
+  if (superRow) return { isAdvisor: true, tier: "investigate", clientId };
+
   if (firmId) {
     const { data: member } = await (supabaseAdmin as any)
       .from("firm_members")
@@ -29,6 +38,7 @@ export async function getEffectiveTier(
       .maybeSingle();
     if (member) return { isAdvisor: true, tier: "investigate", clientId };
   }
+
 
   if (clientId) {
     const { data: tierRows } = await (supabaseAdmin as any)
