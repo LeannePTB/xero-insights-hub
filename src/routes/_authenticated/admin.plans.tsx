@@ -130,7 +130,7 @@ function PlanLevelsPage() {
 
   return (
     <AdminShell>
-      <main className="mx-auto max-w-5xl px-6 py-10 space-y-10">
+      <main className="w-full px-6 py-8 space-y-8">
         <header>
           <h1 className="font-display text-3xl font-semibold">Subscription levels</h1>
           <p className="mt-1 text-sm text-muted-foreground">
