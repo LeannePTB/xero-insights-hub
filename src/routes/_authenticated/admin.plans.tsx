@@ -15,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Plus, Pencil, Trash2, Layers } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Layers, Copy } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/plans")({
@@ -57,6 +57,25 @@ type Draft = {
   sort_order: number;
   enabled: boolean;
 };
+
+/** Pre-filled copy of a level — new key/label, no id, so saving creates a new row. */
+function duplicateOf(l: PlanLevel): Draft {
+  return {
+    id: null,
+    scope: l.scope,
+    key: `${l.key}_copy`,
+    label: `${l.label} (copy)`,
+    description: l.description ?? "",
+    client_limit: l.client_limit,
+    xero_org_limit: l.xero_org_limit,
+    allows_multi_org: l.allows_multi_org,
+    widgets: [...(l.widgets ?? [])],
+    allowed_tiers: [...(l.allowed_tiers ?? [])],
+    sort_order: (l.sort_order ?? 100) + 1,
+    enabled: l.enabled,
+  };
+}
+
 
 function PlanLevelsPage() {
   const qc = useQueryClient();
@@ -127,6 +146,7 @@ function PlanLevelsPage() {
           tierLevels={dashLevels}
           onNew={() => setDraft(EMPTY("firm"))}
           onEdit={(l) => setDraft({ ...l, id: l.id })}
+          onDuplicate={(l) => setDraft(duplicateOf(l))}
           onDelete={setPendingDelete}
         />
 
@@ -137,6 +157,7 @@ function PlanLevelsPage() {
           levels={dashLevels}
           onNew={() => setDraft(EMPTY("dashboard"))}
           onEdit={(l) => setDraft({ ...l, id: l.id })}
+          onDuplicate={(l) => setDraft(duplicateOf(l))}
           onDelete={setPendingDelete}
         />
       </main>
@@ -344,6 +365,7 @@ function LevelSection({
   tierLevels,
   onNew,
   onEdit,
+  onDuplicate,
   onDelete,
 }: {
   title: string;
@@ -353,6 +375,7 @@ function LevelSection({
   tierLevels?: PlanLevel[];
   onNew: () => void;
   onEdit: (l: PlanLevel) => void;
+  onDuplicate: (l: PlanLevel) => void;
   onDelete: (l: PlanLevel) => void;
 }) {
   return (
