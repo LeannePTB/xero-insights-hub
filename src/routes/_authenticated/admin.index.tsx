@@ -265,8 +265,14 @@ function OrganisationsSection({
                         </Button>
                       )}
                       <Button size="sm" variant="outline" asChild>
+                        <Link to="/firms/$firmId" params={{ firmId: f.firm_id }} search={{ viewAs: "owner" }}>
+                          <Eye className="h-4 w-4 mr-1" /> View as
+                        </Link>
+                      </Button>
+                      <Button size="sm" variant="outline" asChild>
                         <Link to="/admin/firms/$firmId" params={{ firmId: f.firm_id }}>Plan &amp; members</Link>
                       </Button>
+
 
                     </div>
                   </td>
