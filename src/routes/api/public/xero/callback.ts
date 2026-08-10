@@ -11,6 +11,7 @@ type StateRow = {
   created_at: string | null;
   client_id: string | null;
   flow: string | null;
+  known_tenant_ids: string[];
 };
 
 export const Route = createFileRoute("/api/public/xero/callback")({
@@ -31,7 +32,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         if (state) {
           const { data, error: stateLookupErr } = await supabaseAdmin
             .from("xero_oauth_states")
-            .select("user_id, code_verifier, return_origin, created_at, client_id, flow")
+            .select("user_id, code_verifier, return_origin, created_at, client_id, flow, known_tenant_ids")
             .eq("state", state)
             .maybeSingle();
           if (!stateLookupErr && data) {
@@ -72,7 +73,6 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           return redirectTo(`${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=state_expired`);
         }
         const codeVerifier: string | null = stateRow.code_verifier ?? null;
-        await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
 
         const tokenBody: Record<string, string> = {
           grant_type: "authorization_code",
@@ -115,12 +115,14 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         // ─────────────────────────────────────────────────────────────────────
         if (flow === "signin") {
           if (!tokens.id_token) {
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             console.error("Xero sign-in missing id_token", { scope: tokens.scope });
             return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent("Xero did not return an identity token. Confirm openid/profile/email scopes are enabled on the Xero app.")}`);
           }
           const claims = decodeJwtPayload(tokens.id_token);
           const xeroEmail = typeof claims?.email === "string" ? claims.email.toLowerCase().trim() : null;
           if (!xeroEmail) {
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent("Your Xero account did not return an email. Verify your Xero email is confirmed and try again.")}`);
           }
 
@@ -149,6 +151,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               target_id: xeroEmail,
               meta: { reason: "not_invited" },
             });
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent(`No invited account found for ${xeroEmail}. Access is invite-only — contact Positive Traction to be added.`)}`);
           }
 
@@ -170,6 +173,8 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             target_id: matchedUser.id,
             meta: { email: xeroEmail },
           });
+
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
 
           return redirectTo(linkData.properties.action_link);
         }
@@ -245,53 +250,40 @@ export const Route = createFileRoute("/api/public/xero/callback")({
 
         const initiatingClientId = stateRow.client_id ?? null;
         if (initiatingClientId && tenants.length > 0) {
-          const tenantIds = tenants.map((t) => t.tenantId);
+          const knownTenantIds = new Set(stateRow.known_tenant_ids ?? []);
+          const tenantIds = tenants.map((t) => t.tenantId).filter((tenantId) => !knownTenantIds.has(tenantId));
           const { data: conns } = await supabaseAdmin
             .from("xero_connections")
             .select("id, tenant_id")
             .eq("user_id", userId)
             .in("tenant_id", tenantIds);
 
-          const { data: existingLinks } = await supabaseAdmin
-            .from("client_xero_orgs")
-            .select("xero_connection_id")
-            .eq("client_id", initiatingClientId);
-          const existingCount = existingLinks?.length ?? 0;
-          const alreadyLinkedIds = new Set((existingLinks ?? []).map((r) => r.xero_connection_id));
+          const { getClientOrgAllowance, getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
+          const allowance = await getClientOrgAllowance(initiatingClientId);
+          const availableIds = new Set((await getUnassignedConnectionsForUser(userId)).map((connection) => connection.id));
+          const candidates = (conns ?? []).filter((connection) => availableIds.has(connection.id));
 
-          let isMulti = false;
-          if (existingCount >= 1) {
-            const { data: tiers } = await supabaseAdmin
-              .from("client_access")
-              .select("tier")
-              .eq("client_id", initiatingClientId);
-            isMulti = (tiers ?? []).some((r) => r.tier === "multi_company");
-          }
-
-          const newConnIds = (conns ?? [])
-            .map((c) => c.id)
-            .filter((id) => !alreadyLinkedIds.has(id));
-
-          if (newConnIds.length > 0) {
-            if (existingCount >= 1 && !isMulti) {
-              return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero_error=multi_company_required`);
-            }
-            const linkRows = newConnIds.map((cid) => ({
+          if (candidates.length === 1 && allowance.remaining > 0) {
+            const { error: linkErr } = await supabaseAdmin.from("client_xero_orgs").insert({
               client_id: initiatingClientId,
-              xero_connection_id: cid,
-            }));
-            const { error: linkErr } = await supabaseAdmin
-              .from("client_xero_orgs")
-              .insert(linkRows);
-            if (linkErr) {
-              console.error("client_xero_orgs auto-link failed", linkErr);
-              return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero_error=link_failed`);
-            }
+              xero_connection_id: candidates[0].id,
+            });
+            if (linkErr) return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero_error=${encodeURIComponent(linkErr.message)}`);
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+            return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero=connected`);
           }
-
-          return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero=connected`);
+          if (candidates.length > 0) {
+            await supabaseAdmin.from("xero_oauth_states").update({
+              pending_tenant_ids: candidates.map((connection) => connection.tenant_id),
+              completed_at: new Date().toISOString(),
+            }).eq("state", state);
+            return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero=choose&state=${encodeURIComponent(state)}`);
+          }
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+          return redirectTo(`${returnOrigin}/clients/${initiatingClientId}/settings?xero_error=${encodeURIComponent("No newly authorised Xero organisation was available for this subscription.")}`);
         }
 
+        await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
         return redirectTo(`${returnOrigin}/dashboard?xero=connected`);
       },
     },

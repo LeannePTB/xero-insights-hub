@@ -527,7 +527,7 @@ export type Database = {
           {
             foreignKeyName: "client_xero_orgs_xero_connection_id_fkey"
             columns: ["xero_connection_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "xero_connections"
             referencedColumns: ["id"]
           },
@@ -540,6 +540,7 @@ export type Database = {
           created_at: string
           firm_id: string | null
           id: string
+          max_xero_orgs: number
           name: string
           notes: string
           owner_user_id: string
@@ -552,6 +553,7 @@ export type Database = {
           created_at?: string
           firm_id?: string | null
           id?: string
+          max_xero_orgs?: number
           name: string
           notes?: string
           owner_user_id: string
@@ -564,6 +566,7 @@ export type Database = {
           created_at?: string
           firm_id?: string | null
           id?: string
+          max_xero_orgs?: number
           name?: string
           notes?: string
           owner_user_id?: string
@@ -1443,9 +1446,12 @@ export type Database = {
         Row: {
           client_id: string | null
           code_verifier: string | null
+          completed_at: string | null
           created_at: string
           expires_at: string
           flow: string
+          known_tenant_ids: string[]
+          pending_tenant_ids: string[]
           return_origin: string | null
           state: string
           user_id: string | null
@@ -1453,9 +1459,12 @@ export type Database = {
         Insert: {
           client_id?: string | null
           code_verifier?: string | null
+          completed_at?: string | null
           created_at?: string
           expires_at?: string
           flow?: string
+          known_tenant_ids?: string[]
+          pending_tenant_ids?: string[]
           return_origin?: string | null
           state: string
           user_id?: string | null
@@ -1463,9 +1472,12 @@ export type Database = {
         Update: {
           client_id?: string | null
           code_verifier?: string | null
+          completed_at?: string | null
           created_at?: string
           expires_at?: string
           flow?: string
+          known_tenant_ids?: string[]
+          pending_tenant_ids?: string[]
           return_origin?: string | null
           state?: string
           user_id?: string | null

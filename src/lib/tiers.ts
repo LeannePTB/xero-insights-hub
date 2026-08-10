@@ -61,7 +61,7 @@ export const TIER_DESCRIPTION: Record<DashboardTier, string> = {
   basic: "Health, receivables, payables, P&L and unreconciled transactions.",
   advisory: "Everything in Standard plus tax, super and break-even analysis.",
   investigate: "Full advisory view across one Xero organisation.",
-  multi_company: "Full dashboard across multiple linked Xero organisations. Required to link more than one Xero file to a client.",
+  multi_company: "Full dashboard across the number of Xero organisations allowed for this subscription.",
 };
 
 export const WIDGET_LABEL: Record<WidgetKey, string> = {

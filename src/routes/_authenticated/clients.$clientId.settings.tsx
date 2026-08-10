@@ -6,7 +6,6 @@ import { useServerFn } from "@tanstack/react-start";
 import {
   getClient,
   renameClient,
-  attachXeroOrg,
   detachXeroOrg,
   deleteClient,
   listClientAccess,
@@ -16,11 +15,13 @@ import {
   revokeClientAccess,
   updateClientReportBasis,
   updateClientBasisOverride,
+  setClientXeroAllowance,
   type BasisOverrideWidget,
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
-import { listXeroConnections, startXeroConnect, disconnectXero } from "@/lib/xero/connections.functions";
+import { startXeroConnect, disconnectXero, listClientXeroOptions, linkClientXeroOptions } from "@/lib/xero/connections.functions";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,13 +58,14 @@ function ClientSettings() {
   const qc = useQueryClient();
 
   const fetchClient = useServerFn(getClient);
-  const fetchConnections = useServerFn(listXeroConnections);
   const fetchAccess = useServerFn(listClientAccess);
+  const fetchXeroOptions = useServerFn(listClientXeroOptions);
+  const linkXeroOptions = useServerFn(linkClientXeroOptions);
+  const saveXeroAllowance = useServerFn(setClientXeroAllowance);
   const startConnect = useServerFn(startXeroConnect);
   const disconnect = useServerFn(disconnectXero);
 
   const rename = useServerFn(renameClient);
-  const attach = useServerFn(attachXeroOrg);
   const detach = useServerFn(detachXeroOrg);
   const del = useServerFn(deleteClient);
   const invite = useServerFn(inviteClientViewer);
@@ -80,7 +82,11 @@ function ClientSettings() {
   
 
   const clientQ = useQuery({ queryKey: ["client", clientId], queryFn: () => fetchClient({ data: { clientId } }) });
-  const connQ = useQuery({ queryKey: ["xero-connections"], queryFn: () => fetchConnections() });
+  const chooserState = typeof window === "undefined" ? undefined : new URLSearchParams(window.location.search).get("state") ?? undefined;
+  const optionsQ = useQuery({
+    queryKey: ["client-xero-options", clientId, chooserState],
+    queryFn: () => fetchXeroOptions({ data: { clientId, state: chooserState } }),
+  });
   const accessQ = useQuery({ queryKey: ["client-access", clientId], queryFn: () => fetchAccess({ data: { clientId } }) });
   const tierCfgQ = useQuery({
     queryKey: ["tier-config", clientId],
@@ -107,9 +113,12 @@ function ClientSettings() {
   const [viewerPassword, setViewerPassword] = useState("");
   const [showViewerPw, setShowViewerPw] = useState(false);
   const [lastViewerCreated, setLastViewerCreated] = useState<{ email: string; password: string } | null>(null);
+  const [selectedXeroIds, setSelectedXeroIds] = useState<Set<string>>(new Set());
+  const [xeroAllowance, setXeroAllowance] = useState(1);
 
   useEffect(() => {
     if (clientQ.data?.client?.name && name === "") setName(clientQ.data.client.name as string);
+    if (clientQ.data?.client?.max_xero_orgs) setXeroAllowance(clientQ.data.client.max_xero_orgs as number);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientQ.data?.client?.name]);
 
@@ -126,9 +135,24 @@ function ClientSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const attachMut = useMutation({
-    mutationFn: (xeroConnectionId: string) => attach({ data: { clientId, xeroConnectionId } }),
-    onSuccess: () => { toast.success("Linked"); qc.invalidateQueries({ queryKey: ["client", clientId] }); },
+  const linkOptionsMut = useMutation({
+    mutationFn: () => linkXeroOptions({ data: { clientId, state: chooserState ?? "", connectionIds: [...selectedXeroIds] } }),
+    onSuccess: ({ linked }) => {
+      toast.success(`${linked} Xero organisation${linked === 1 ? "" : "s"} linked`);
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      window.history.replaceState({}, "", window.location.pathname);
+      setSelectedXeroIds(new Set());
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const allowanceMut = useMutation({
+    mutationFn: () => saveXeroAllowance({ data: { clientId, allowance: xeroAllowance } }),
+    onSuccess: () => {
+      toast.success("Xero file allowance saved");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["client-xero-options", clientId] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -206,12 +230,12 @@ function ClientSettings() {
       toast.success("Xero organisation linked");
       qc.invalidateQueries({ queryKey: ["client", clientId] });
       qc.invalidateQueries({ queryKey: ["xero-connections"] });
-    } else if (err === "multi_company_required") {
-      toast.error("This client already has a Xero org linked. Grant the Multi company tier to link more.");
+    } else if (status === "choose") {
+      toast.info("Choose which newly authorised Xero files belong to this subscription.");
     } else if (err) {
       toast.error(err);
     }
-    if (status || err) {
+    if ((status && status !== "choose") || err) {
       params.delete("xero");
       params.delete("xero_error");
       const qs = params.toString();
@@ -227,8 +251,8 @@ function ClientSettings() {
   if (!client) return <p className="p-6 text-sm text-destructive">Client not found.</p>;
 
   const linkedOrgs: any[] = client.client_xero_orgs ?? [];
-  const linkedIds = new Set(linkedOrgs.map((o) => o.xero_connection_id));
-  const availableConns = (connQ.data?.connections ?? []).filter((c: any) => !linkedIds.has(c.id));
+  const availableConns = optionsQ.data?.connections ?? [];
+  const allowance = optionsQ.data?.allowance;
 
   return (
     <div className="min-h-screen bg-background">
@@ -276,8 +300,16 @@ function ClientSettings() {
 
         {/* Xero orgs */}
         <Section title="Xero organisations" action={
-          <ConnectWithXeroButton variant="connect" size="sm" onClick={handleConnect} label="Connect a Xero org" />
+          <ConnectWithXeroButton variant="connect" size="sm" onClick={handleConnect} label="Connect a Xero file" />
         }>
+          <div className="mb-4 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
+            <div>
+              <Label htmlFor="xero-file-allowance">Allowed Xero files</Label>
+              <Input id="xero-file-allowance" type="number" min={1} max={100} value={xeroAllowance} onChange={(event) => setXeroAllowance(Number(event.target.value))} className="mt-1 w-28" />
+            </div>
+            <Button variant="outline" onClick={() => allowanceMut.mutate()} disabled={allowanceMut.isPending}>Save allowance</Button>
+            {allowance ? <p className="pb-2 text-xs text-muted-foreground">{allowance.used} of {allowance.allowance} linked{allowance.isMulti ? " · Multi company" : " · standard"}</p> : null}
+          </div>
           <p className="mb-3 text-xs text-muted-foreground">
             If a widget says Xero needs reconnecting, use <strong>Reconnect to Xero</strong> — it re-runs Xero sign-in and refreshes the tokens for that org in place.
           </p>
@@ -353,19 +385,28 @@ function ClientSettings() {
               })}
             </ul>
           )}
-          {availableConns.length > 0 && (
-            <div className="mt-4 rounded-md border border-dashed border-border p-3">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Link existing</p>
+          {chooserState && availableConns.length > 0 && (
+            <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
+              <p className="mb-2 text-sm font-semibold">Choose files for this subscription</p>
+              <p className="mb-3 text-xs text-muted-foreground">Only the files selected here will be visible to this client's users. You can select up to {allowance?.remaining ?? 0}.</p>
               <ul className="space-y-1">
                 {availableConns.map((c: any) => (
-                  <li key={c.id} className="flex items-center justify-between text-sm">
-                    <span>{c.tenant_name}</span>
-                    <Button variant="ghost" size="sm" onClick={() => attachMut.mutate(c.id)}>
-                      <Link2 className="mr-1 h-3.5 w-3.5" /> Link
-                    </Button>
+                  <li key={c.id}>
+                    <label className="flex cursor-pointer items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50">
+                      <Checkbox checked={selectedXeroIds.has(c.id)} onCheckedChange={() => setSelectedXeroIds((current) => {
+                        const next = new Set(current);
+                        if (next.has(c.id)) next.delete(c.id);
+                        else if (next.size < (allowance?.remaining ?? 0)) next.add(c.id);
+                        return next;
+                      })} />
+                      <span className="text-sm font-medium">{c.tenant_name}</span>
+                    </label>
                   </li>
                 ))}
               </ul>
+              <Button className="mt-3" onClick={() => linkOptionsMut.mutate()} disabled={selectedXeroIds.size === 0 || linkOptionsMut.isPending}>
+                <Link2 className="mr-2 h-4 w-4" /> Link selected
+              </Button>
             </div>
           )}
         </Section>
