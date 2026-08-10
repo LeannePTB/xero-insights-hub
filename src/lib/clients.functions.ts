@@ -193,7 +193,15 @@ export const createClient = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .eq("firm_id", firmId)
         .maybeSingle();
-      if (!membership) throw new Error("You are not a member of that business.");
+      if (!membership) {
+        const { data: superRow } = await context.supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", context.userId)
+          .eq("role", "super_admin")
+          .maybeSingle();
+        if (!superRow) throw new Error("You are not a member of that business.");
+      }
     } else {
       const { data: membership } = await context.supabase
         .from("firm_members")

@@ -162,7 +162,16 @@ export const getMyFirm = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .eq("firm_id", data.firmId)
       .maybeSingle();
-    if (!membership) throw new Error("Forbidden");
+    if (!membership) {
+      // Super admins manage every subscription, including ones they don't belong to.
+      const { data: superRow } = await context.supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", context.userId)
+        .eq("role", "super_admin")
+        .maybeSingle();
+      if (!superRow) throw new Error("Forbidden");
+    }
     const [{ data: firm, error }, { data: sub }, { count: clientCount }] = await Promise.all([
       context.supabase.from("firms").select("id, name, is_always_free").eq("id", data.firmId).maybeSingle(),
       context.supabase.from("subscriptions").select("tier, status, trial_ends_at, current_period_end, client_limit_override").eq("firm_id", data.firmId).maybeSingle(),
