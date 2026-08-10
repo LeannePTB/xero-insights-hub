@@ -20,10 +20,21 @@ So separate organisations are unaffected in spirit: they never saw the platform-
 - The Admin header's "Back" button currently returns to `/dashboard`. For a super admin that would bounce straight back to Admin, so Back is removed for super admins (their sidebar is the navigation) and kept for advisor-admins.
 - Advisors who land inside their organisation still reach Admin (Tier widgets, Advisors) via the existing Admin entry point.
 - Sign-out and the MFA / set-password / invite flows keep pointing at `/dashboard`, which then forwards to the right place — no duplicated redirect logic in five files.
+## "View as" — check what an organisation or client actually sees
+
+Add a **View as** control so you can preview the app the way another role experiences it:
+
+- On the Admin → Organisations row: a "View as organisation" action that opens that organisation's page as its owner would see it (their clients, their plan, their tier-limited widgets).
+- On an organisation's client list: a "View as client" action that opens that client's dashboard with the viewer's tier applied — only the widgets that tier unlocks, no admin-only controls.
+- While previewing, a sticky banner across the top says who you are viewing as, with an "Exit preview" button that returns you to Admin.
+
+Important boundary: super admins are deliberately blocked from client financial figures (the "no client data" rule already enforced in the database). So the preview shows the true layout, tier gating, navigation and empty/locked states, but financial values stay redacted for a super admin. An advisor who legitimately has access to that client sees the real numbers in preview. This keeps the compliance position intact while still letting you verify the build is correct for each tier.
 
 ## Technical notes
 
 - Add the routing decision in `src/routes/_authenticated/dashboard.tsx` using the existing `getMyContext` result (`isSuperAdmin`, `isAdvisor`, `viewerClients`) plus `listMyFirms` for the advisor firm count, redirecting with `replace: true` so Back does not loop.
 - Show the existing loading spinner while context resolves so no list flashes before the redirect.
 - Adjust the Back button condition in `src/routes/_authenticated/admin.index.tsx`.
-- No database, permission or server-function changes.
+- View-as is a client-side presentation mode carried in a search param (e.g. `?viewAs=owner|viewer`) plus a small React context, with a `ViewAsBanner` component. It changes which controls and widgets render; it does not mint a session or bypass any server-side permission check — data access stays governed by the existing row-level rules.
+- No database or permission changes.
+
