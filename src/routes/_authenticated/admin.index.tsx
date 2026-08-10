@@ -411,8 +411,9 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
 
   const canSubmit =
     name.trim().length >= 2 &&
-    email.includes("@") &&
-    (ownerMode === "invite" || password.length >= 8);
+    (ownerMode === "none" ||
+      (email.includes("@") && (ownerMode === "invite" || password.length >= 8)));
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
