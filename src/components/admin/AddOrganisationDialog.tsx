@@ -71,7 +71,7 @@ export function AddOrganisationDialog({
       );
 
       toast.success("Organisation created");
-      qc.invalidateQueries({ queryKey: ["firms-admin"] });
+      qc.invalidateQueries({ queryKey: ["admin-firms"] });
       qc.invalidateQueries({ queryKey: ["firms-overview"] });
       qc.invalidateQueries({ queryKey: ["my-firms"] });
       onCreated?.();
