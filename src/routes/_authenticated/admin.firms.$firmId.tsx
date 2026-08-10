@@ -28,6 +28,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Loader2, KeyRound, Mail, ShieldAlert, History, CreditCard, Users, Building2, Check, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
+
 
 export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
   head: () => ({ meta: [{ title: "Organisation — Admin" }] }),
