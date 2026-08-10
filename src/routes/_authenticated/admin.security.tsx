@@ -113,7 +113,7 @@ function SecurityDocsPage() {
   const { data: contact } = useQuery({
     queryKey: ["xero-assessment-contact"],
     queryFn: () => getFn(),
-    enabled: hasAccess,
+    enabled: isSuper,
   });
 
   const [form, setForm] = useState<XeroAssessmentContact>({});
