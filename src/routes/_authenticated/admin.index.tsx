@@ -115,8 +115,6 @@ function AdminPage() {
           onCreated={() => firmsQ.refetch()}
         />
 
-        <AdminQuickLinks isSuper={isSuper} />
-
         {!isSuper && (
           <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
             Your account has advisor admin access. Organisation-wide billing, security documentation and compliance settings require the super-admin role.
