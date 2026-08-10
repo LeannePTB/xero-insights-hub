@@ -325,6 +325,7 @@ function SecurityDocsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
         <nav className="space-y-1">
