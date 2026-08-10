@@ -1,14 +1,29 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { listClients } from "@/lib/clients.functions";
+import { listClients, deleteClient } from "@/lib/clients.functions";
 import { getMyFirm } from "@/lib/firms.functions";
+import { getMyContext } from "@/lib/roles.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Building2, ChevronRight, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, Building2, ChevronRight, CreditCard, Loader2, MoreHorizontal, Plus, Settings, Trash2 } from "lucide-react";
 import { ALL_TIERS, TIER_LABEL, type DashboardTier } from "@/lib/tiers";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 
 import { Badge } from "@/components/ui/badge";
 import { firmPlanView, toneClasses } from "@/lib/firmPlans";
@@ -19,6 +34,7 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId")({
   head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
   component: FirmPage,
 });
+
 
 function FirmPage() {
   const { firmId } = Route.useParams();
