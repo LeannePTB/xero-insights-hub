@@ -54,6 +54,7 @@ export const savePlanLevel = createServerFn({ method: "POST" })
       xero_org_limit?: number;
       allows_multi_org?: boolean;
       widgets?: string[];
+      allowed_tiers?: string[];
       sort_order?: number;
       enabled?: boolean;
     }) => i,
