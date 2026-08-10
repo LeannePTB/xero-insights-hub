@@ -47,13 +47,28 @@ function Dashboard() {
     enabled: isAdvisor && !isSuperAdmin,
   });
 
-  // Auto-redirect viewers with exactly one client
+  // Role-aware landing: send people straight to where they work.
   useEffect(() => {
     if (!ctxQ.data) return;
-    if (!ctxQ.data.isAdvisor && ctxQ.data.viewerClients.length === 1) {
+    // Super admins manage the platform from the Admin area.
+    if (ctxQ.data.isSuperAdmin) {
+      navigate({ to: "/admin", replace: true });
+      return;
+    }
+    // Advisors / owners with a single organisation go straight into it.
+    if (ctxQ.data.isAdvisor) {
+      const mine = myFirmsQ.data?.firms ?? [];
+      if (mine.length === 1) {
+        navigate({ to: "/firms/$firmId", params: { firmId: mine[0].id }, replace: true });
+      }
+      return;
+    }
+    // Viewers with exactly one dashboard go straight to it.
+    if (ctxQ.data.viewerClients.length === 1) {
       navigate({ to: "/clients/$clientId", params: { clientId: ctxQ.data.viewerClients[0].id }, replace: true });
     }
-  }, [ctxQ.data, navigate]);
+  }, [ctxQ.data, myFirmsQ.data, navigate]);
+
 
   // Surface "?xero=connected" toast (when arriving here after a connect from /clients/new)
   useEffect(() => {
