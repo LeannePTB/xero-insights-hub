@@ -159,6 +159,19 @@ export const startXeroConnect = createServerFn({ method: "POST" })
       );
     }
 
+    let knownTenantIds: string[] = [];
+    if (data.clientId) {
+      const { userCanManageClient, getClientOrgAllowance } = await import("@/lib/xero/client-orgs.server");
+      if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this client subscription.");
+      const allowance = await getClientOrgAllowance(data.clientId);
+      if (allowance.remaining < 1) throw new Error(`This subscription has reached its Xero file allowance of ${allowance.allowance}.`);
+      const { data: known, error: knownError } = await context.supabase
+        .from("xero_connections")
+        .select("tenant_id");
+      if (knownError) throw new Error(knownError.message);
+      knownTenantIds = [...new Set((known ?? []).map((connection) => connection.tenant_id))];
+    }
+
     const state = randomBytes(24).toString("hex");
     // OAuth 2.0 PKCE (S256) — required by Xero security standard.
     const codeVerifier = base64url(randomBytes(48));
@@ -172,6 +185,8 @@ export const startXeroConnect = createServerFn({ method: "POST" })
         code_verifier: codeVerifier,
         return_origin: returnOrigin,
         client_id: data.clientId ?? null,
+        known_tenant_ids: knownTenantIds,
+        pending_tenant_ids: [],
       });
     if (error) throw new Error(error.message);
 
@@ -186,6 +201,59 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     console.info("Starting Xero OAuth", { redirectUri: XERO_CALLBACK_URL, scopes: SCOPES, returnOrigin });
     return { authorizeUrl: url.toString() };
 
+  });
+
+export const listClientXeroOptions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { clientId: string; state?: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { userCanManageClient, getClientOrgAllowance, getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
+    if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this client subscription.");
+    const allowance = await getClientOrgAllowance(data.clientId);
+    if (!data.state) return { connections: [], allowance };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: oauthState } = await supabaseAdmin
+      .from("xero_oauth_states")
+      .select("pending_tenant_ids, expires_at, completed_at")
+      .eq("state", data.state)
+      .eq("user_id", context.userId)
+      .eq("client_id", data.clientId)
+      .maybeSingle();
+    if (!oauthState?.completed_at || new Date(oauthState.expires_at).getTime() < Date.now()) return { connections: [], allowance };
+    const pending = new Set(oauthState.pending_tenant_ids);
+    const available = await getUnassignedConnectionsForUser(context.userId);
+    return { connections: available.filter((connection) => pending.has(connection.tenant_id)), allowance };
+  });
+
+export const linkClientXeroOptions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { clientId: string; state: string; connectionIds: string[] }) => input)
+  .handler(async ({ data, context }) => {
+    const uniqueIds = [...new Set(data.connectionIds)];
+    const { userCanManageClient, getClientOrgAllowance, getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
+    if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this client subscription.");
+    const allowance = await getClientOrgAllowance(data.clientId);
+    if (uniqueIds.length < 1) throw new Error("Select at least one Xero organisation.");
+    if (uniqueIds.length > allowance.remaining) throw new Error(`You can link ${allowance.remaining} more Xero file${allowance.remaining === 1 ? "" : "s"}.`);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: oauthState } = await supabaseAdmin
+      .from("xero_oauth_states")
+      .select("pending_tenant_ids, expires_at, completed_at")
+      .eq("state", data.state)
+      .eq("user_id", context.userId)
+      .eq("client_id", data.clientId)
+      .maybeSingle();
+    if (!oauthState?.completed_at || new Date(oauthState.expires_at).getTime() < Date.now()) throw new Error("This Xero selection has expired. Connect again.");
+    const pending = new Set(oauthState.pending_tenant_ids);
+    const available = (await getUnassignedConnectionsForUser(context.userId))
+      .filter((connection) => pending.has(connection.tenant_id));
+    if (uniqueIds.some((id) => !available.some((connection) => connection.id === id))) throw new Error("One of those Xero organisations is no longer available.");
+    const { error } = await supabaseAdmin.from("client_xero_orgs").insert(
+      uniqueIds.map((xero_connection_id) => ({ client_id: data.clientId, xero_connection_id })),
+    );
+    if (error) throw new Error(error.message);
+    await supabaseAdmin.from("xero_oauth_states").delete().eq("state", data.state);
+    return { linked: uniqueIds.length };
   });
 
 const ALLOWED_CUSTOM_HOSTS = new Set([
