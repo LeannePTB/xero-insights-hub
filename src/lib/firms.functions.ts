@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { clientLimitFor } from "@/lib/firmPlans";
+import { clientLimitFor, firmLimitCatalogue } from "@/lib/firmPlans";
 
 
 export type FirmOverviewCard = {
@@ -49,11 +49,13 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
     if (firmIds.length === 0) return { firms: [] };
 
     const [{ data: subs }, { data: clients }, { data: firmMeta }, { data: myMembership }] = await Promise.all([
-      (supabaseAdmin as any).from("subscriptions").select("firm_id, tier, status, trial_ends_at, current_period_end").in("firm_id", firmIds),
+      (supabaseAdmin as any).from("subscriptions").select("firm_id, tier, status, trial_ends_at, current_period_end, client_limit_override").in("firm_id", firmIds),
       (supabaseAdmin as any).from("clients").select("firm_id").in("firm_id", firmIds),
       (supabaseAdmin as any).from("firms").select("id, is_always_free").in("id", firmIds),
       (supabaseAdmin as any).from("firm_members").select("firm_id").eq("user_id", context.userId),
     ]);
+    const { data: planRows } = await (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
+    const catalogue = firmLimitCatalogue(planRows);
 
     const subByFirm = new Map<string, any>();
     for (const s of subs ?? []) subByFirm.set(s.firm_id, s);
@@ -72,7 +74,7 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
         tier: sub?.tier ?? null,
         status: sub?.status ?? null,
         clientCount: countByFirm.get(f.id) ?? 0,
-        clientLimit: clientLimitFor(sub?.tier, isAlwaysFree),
+        clientLimit: clientLimitFor(sub?.tier, isAlwaysFree, { override: sub?.client_limit_override ?? null, catalogue }),
         isAlwaysFree,
         trialEndsAt: sub?.trial_ends_at ?? null,
         currentPeriodEnd: sub?.current_period_end ?? null,
@@ -109,10 +111,12 @@ export const listMyFirms = createServerFn({ method: "GET" })
 
     const firmIds = firms.map((f) => f.id);
     const [{ data: subs }, { data: clients }, { data: firmMeta }] = await Promise.all([
-      context.supabase.from("subscriptions").select("firm_id, tier, status, trial_ends_at, current_period_end").in("firm_id", firmIds),
+      context.supabase.from("subscriptions").select("firm_id, tier, status, trial_ends_at, current_period_end, client_limit_override").in("firm_id", firmIds),
       context.supabase.from("clients").select("firm_id").in("firm_id", firmIds),
       context.supabase.from("firms").select("id, is_always_free").in("id", firmIds),
     ]);
+    const { data: planRows } = await (context.supabase as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
+    const catalogue = firmLimitCatalogue(planRows);
     const subByFirm = new Map<string, any>();
     for (const s of (subs ?? []) as any[]) subByFirm.set(s.firm_id, s);
     const countByFirm = new Map<string, number>();
@@ -130,7 +134,7 @@ export const listMyFirms = createServerFn({ method: "GET" })
           tier: sub?.tier ?? null,
           status: sub?.status ?? null,
           clientCount: countByFirm.get(f.id) ?? 0,
-          clientLimit: clientLimitFor(sub?.tier, isAlwaysFree),
+          clientLimit: clientLimitFor(sub?.tier, isAlwaysFree, { override: sub?.client_limit_override ?? null, catalogue }),
           isAlwaysFree,
           trialEndsAt: sub?.trial_ends_at ?? null,
           currentPeriodEnd: sub?.current_period_end ?? null,
@@ -161,9 +165,11 @@ export const getMyFirm = createServerFn({ method: "POST" })
     if (!membership) throw new Error("Forbidden");
     const [{ data: firm, error }, { data: sub }, { count: clientCount }] = await Promise.all([
       context.supabase.from("firms").select("id, name, is_always_free").eq("id", data.firmId).maybeSingle(),
-      context.supabase.from("subscriptions").select("tier, status, trial_ends_at, current_period_end").eq("firm_id", data.firmId).maybeSingle(),
+      context.supabase.from("subscriptions").select("tier, status, trial_ends_at, current_period_end, client_limit_override").eq("firm_id", data.firmId).maybeSingle(),
       context.supabase.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", data.firmId),
     ]);
+    const { data: planRows } = await (context.supabase as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
+    const catalogue = firmLimitCatalogue(planRows);
     if (error) throw new Error(error.message);
     if (!firm) throw new Error("Firm not found.");
     const s: any = sub ?? {};
@@ -174,7 +180,7 @@ export const getMyFirm = createServerFn({ method: "POST" })
       tier: s.tier ?? null,
       status: s.status ?? null,
       clientCount: clientCount ?? 0,
-      clientLimit: clientLimitFor(s.tier, isAlwaysFree),
+      clientLimit: clientLimitFor(s.tier, isAlwaysFree, { override: s.client_limit_override ?? null, catalogue }),
       isAlwaysFree,
       trialEndsAt: s.trial_ends_at ?? null,
       currentPeriodEnd: s.current_period_end ?? null,
