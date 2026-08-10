@@ -121,7 +121,7 @@ function FirmDetailPage() {
           <FirmClientsSection
             firmId={firmId}
             firmName={firm.name}
-            clientLimit={detailQ.data?.clientLimit}
+            clientLimit={(detailQ.data as any)?.clientLimit}
             showHealth={false}
             onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
           />
