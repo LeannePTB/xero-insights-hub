@@ -891,6 +891,7 @@ export type Database = {
       }
       plan_levels: {
         Row: {
+          allowed_tiers: string[]
           allows_multi_org: boolean
           client_limit: number
           created_at: string
@@ -906,6 +907,7 @@ export type Database = {
           xero_org_limit: number
         }
         Insert: {
+          allowed_tiers?: string[]
           allows_multi_org?: boolean
           client_limit?: number
           created_at?: string
@@ -921,6 +923,7 @@ export type Database = {
           xero_org_limit?: number
         }
         Update: {
+          allowed_tiers?: string[]
           allows_multi_org?: boolean
           client_limit?: number
           created_at?: string
