@@ -251,8 +251,9 @@ function SecurityDocsPage() {
         </div>
       </div>
 
-      <SecurityPostureCard />
+      {isSuper && <SecurityPostureCard />}
 
+      {isSuper && (
       <Card>
         <CardContent className="p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
