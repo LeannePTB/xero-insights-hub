@@ -42,6 +42,129 @@ function validateEmail(email: string) {
 }
 
 /**
+ * Super-admin: create a brand-new organisation, its subscription and its owner
+ * in a single step. The owner either gets a login immediately (password mode)
+ * or an invite link/email (invite mode).
+ */
+export const adminCreateOrganisation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (i: {
+      name: string;
+      tier: string;
+      status: string;
+      trialEndsAt?: string | null;
+      currentPeriodEnd?: string | null;
+      isAlwaysFree?: boolean;
+      ownerEmail: string;
+      ownerMode: "password" | "invite";
+      ownerPassword?: string | null;
+      ownerName?: string | null;
+    }) => i,
+  )
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+
+    const name = (data.name ?? "").trim();
+    if (name.length < 2 || name.length > 120) throw new Error("Please enter an organisation name.");
+    const email = validateEmail(data.ownerEmail);
+    if (data.ownerMode === "password") validatePassword(data.ownerPassword ?? "");
+
+    const allowedTiers = ["starter", "growth", "scale", "firm", "free", "legacy"];
+    const allowedStatuses = ["trialing", "active"];
+    if (!allowedTiers.includes(data.tier)) throw new Error("Invalid plan tier.");
+    if (!allowedStatuses.includes(data.status)) throw new Error("Invalid subscription status.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: firm, error: fErr } = await (supabaseAdmin as any)
+      .from("firms")
+      .insert({ name, is_always_free: !!data.isAlwaysFree })
+      .select("id, name")
+      .single();
+    if (fErr) throw new Error(fErr.message);
+
+    const { error: sErr } = await (supabaseAdmin as any).from("subscriptions").insert({
+      firm_id: firm.id,
+      tier: data.tier,
+      status: data.status,
+      trial_ends_at: data.status === "trialing" ? (data.trialEndsAt ?? null) : null,
+      current_period_end: data.status === "active" ? (data.currentPeriodEnd ?? null) : null,
+    });
+    if (sErr) throw new Error(sErr.message);
+
+    if (data.ownerMode === "password") {
+      const { data: existing } = await (supabaseAdmin as any)
+        .from("profiles")
+        .select("id")
+        .eq("email", email)
+        .maybeSingle();
+      if (existing?.id) throw new Error("An account with this email already exists.");
+
+      const displayName = (data.ownerName ?? "").trim().slice(0, 120) || email;
+      const { data: created, error: cErr } = await (supabaseAdmin as any).auth.admin.createUser({
+        email,
+        password: data.ownerPassword,
+        email_confirm: true,
+        user_metadata: { display_name: displayName },
+      });
+      if (cErr) throw new Error(cErr.message);
+      const ownerId = created?.user?.id;
+      if (!ownerId) throw new Error("Could not create the owner account.");
+
+      await (supabaseAdmin as any).from("profiles").upsert({ id: ownerId, email, display_name: displayName });
+      await (supabaseAdmin as any)
+        .from("user_roles")
+        .upsert({ user_id: ownerId, role: "firm_owner" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+      const { error: mErr } = await (supabaseAdmin as any)
+        .from("firm_members")
+        .insert({ firm_id: firm.id, user_id: ownerId, role: "owner" });
+      if (mErr && !/duplicate/i.test(mErr.message)) throw new Error(mErr.message);
+      await (supabaseAdmin as any).from("firms").update({ owner_user_id: ownerId }).eq("id", firm.id);
+
+      await logAudit("organisation_created", "firm", firm.id, context.userId, {
+        firm_id: firm.id, email, tier: data.tier, status: data.status, owner_mode: "password",
+      });
+
+      return { ok: true, firmId: firm.id, email, mode: "password" as const, token: null, emailStatus: null };
+    }
+
+    const token = randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+    const { error: iErr } = await (supabaseAdmin as any).from("access_invites").insert({
+      firm_id: firm.id,
+      email,
+      role: "owner",
+      token_hash: hashToken(token),
+      expires_at: expiresAt,
+      invited_by: context.userId,
+    });
+    if (iErr) throw new Error(iErr.message);
+
+    await logAudit("organisation_created", "firm", firm.id, context.userId, {
+      firm_id: firm.id, email, tier: data.tier, status: data.status, owner_mode: "invite",
+    });
+
+    const inviteUrl = `https://tractionadvisory.com.au/signup/${token}`;
+    let emailStatus: string = "skipped";
+    try {
+      const { enqueueAppEmail } = await import("@/lib/email/send.server");
+      const res = await enqueueAppEmail({
+        templateName: "firm-invite",
+        recipientEmail: email,
+        idempotencyKey: `firm-invite-${firm.id}-${token.slice(0, 8)}`,
+        templateData: { inviteUrl, role: "owner", firmName: firm.name, inviterName: null },
+      });
+      emailStatus = res.status;
+    } catch (e) {
+      console.error("Failed to enqueue invite email", e);
+      emailStatus = "failed";
+    }
+
+    return { ok: true, firmId: firm.id, email, mode: "invite" as const, token, emailStatus };
+  });
+
+/**
  * Super-admin: create a brand-new firm + owner invite in one step.
  * Firm gets a placeholder name; owner sets the real business name on signup.
  */

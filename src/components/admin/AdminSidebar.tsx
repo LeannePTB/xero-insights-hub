@@ -15,7 +15,6 @@ import {
   Building2,
   Shield,
   SlidersHorizontal,
-  Plus,
   Users,
 } from "lucide-react";
 
@@ -23,7 +22,6 @@ const items = [
   { title: "Organisations", url: "/admin", icon: Building2 },
   { title: "Security & Compliance", url: "/admin/security", icon: Shield },
   { title: "Tier widgets", url: "/settings/tiers", icon: SlidersHorizontal },
-  { title: "New client", url: "/clients/new", icon: Plus },
   { title: "Advisors", url: "/settings/advisors", icon: Users },
 ];
 
