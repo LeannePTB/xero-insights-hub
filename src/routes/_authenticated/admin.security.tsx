@@ -113,7 +113,7 @@ function SecurityDocsPage() {
   const { data: contact } = useQuery({
     queryKey: ["xero-assessment-contact"],
     queryFn: () => getFn(),
-    enabled: hasAccess,
+    enabled: isSuper,
   });
 
   const [form, setForm] = useState<XeroAssessmentContact>({});
@@ -226,9 +226,11 @@ function SecurityDocsPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button size="sm" onClick={downloadXeroPdf}>
-            Download Xero PDF
-          </Button>
+          {isSuper && (
+            <Button size="sm" onClick={downloadXeroPdf}>
+              Download Xero PDF
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={downloadAll}>
             Download all (.md)
           </Button>
@@ -249,8 +251,9 @@ function SecurityDocsPage() {
         </div>
       </div>
 
-      <SecurityPostureCard />
+      {isSuper && <SecurityPostureCard />}
 
+      {isSuper && (
       <Card>
         <CardContent className="p-6 space-y-4">
           <div className="flex items-start justify-between gap-4">
@@ -322,6 +325,7 @@ function SecurityDocsPage() {
           </div>
         </CardContent>
       </Card>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
         <nav className="space-y-1">
