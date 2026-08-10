@@ -352,7 +352,7 @@ function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: 
   const [email, setEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [password, setPassword] = useState("");
-  const [done, setDone] = useState<null | { mode: "password" | "invite"; email: string; password?: string; inviteUrl?: string; emailStatus?: string | null }>(null);
+  const [done, setDone] = useState<null | { mode: "password" | "invite" | "none"; email?: string | null; password?: string; inviteUrl?: string; emailStatus?: string | null }>(null);
   const [copied, setCopied] = useState(false);
 
   const mut = useMutation({
