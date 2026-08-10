@@ -226,9 +226,11 @@ function SecurityDocsPage() {
           </p>
         </div>
         <div className="flex gap-2 flex-wrap">
-          <Button size="sm" onClick={downloadXeroPdf}>
-            Download Xero PDF
-          </Button>
+          {isSuper && (
+            <Button size="sm" onClick={downloadXeroPdf}>
+              Download Xero PDF
+            </Button>
+          )}
           <Button size="sm" variant="outline" onClick={downloadAll}>
             Download all (.md)
           </Button>
