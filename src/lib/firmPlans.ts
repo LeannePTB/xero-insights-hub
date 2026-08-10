@@ -37,11 +37,27 @@ export const TIER_PRICE_KEY: Record<Exclude<FirmTier, "free" | "legacy">, string
   firm: "traction_firm_monthly",
 };
 
-export function clientLimitFor(tier: string | null | undefined, isAlwaysFree?: boolean | null): number {
+export function clientLimitFor(
+  tier: string | null | undefined,
+  isAlwaysFree?: boolean | null,
+  opts?: { override?: number | null; catalogue?: Record<string, number> | null },
+): number {
+  // A per-organisation override always wins, so support can hand out extra seats.
+  if (opts?.override != null && Number.isFinite(opts.override)) return Math.max(0, opts.override);
   if (isAlwaysFree) return CLIENT_LIMITS.free;
   const t = (tier ?? "legacy") as FirmTier;
+  const fromCatalogue = tier ? opts?.catalogue?.[tier] : undefined;
+  if (fromCatalogue != null) return fromCatalogue;
   return CLIENT_LIMITS[t] ?? CLIENT_LIMITS.legacy;
 }
+
+/** Maps the `plan_levels` rows for scope `firm` into a key -> client limit lookup. */
+export function firmLimitCatalogue(rows: Array<{ key: string; client_limit: number }> | null | undefined) {
+  const out: Record<string, number> = {};
+  for (const r of rows ?? []) out[r.key] = r.client_limit;
+  return out;
+}
+
 
 export type FirmPlanView = {
   tier: FirmTier | null;
