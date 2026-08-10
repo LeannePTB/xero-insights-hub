@@ -9,9 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { TIER_LABEL as FIRM_TIER_LABEL } from "@/lib/firmPlans";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
 
-export const FIRM_TIERS = ["starter", "growth", "scale", "firm", "free", "legacy"] as const;
 export const FIRM_STATUSES = ["trialing", "active", "past_due", "canceled", "paused"];
 
 export function toDateInput(s: string | null | undefined) {
@@ -34,12 +33,20 @@ export function SubscriptionEditor({
   submitLabel?: string;
 }) {
   const updateFn = useServerFn(adminUpdateSubscription);
+  const { levels } = usePlanLevels("firm");
   const [tier, setTier] = useState<string>(subscription?.tier ?? "starter");
   const [status, setStatus] = useState<string>(subscription?.status ?? "trialing");
   const [trialEnds, setTrialEnds] = useState<string>(toDateInput(subscription?.trial_ends_at));
   const [periodEnd, setPeriodEnd] = useState<string>(toDateInput(subscription?.current_period_end));
   const [cancelEnd, setCancelEnd] = useState<boolean>(!!subscription?.cancel_at_period_end);
   const [alwaysFree, setAlwaysFree] = useState<boolean>(!!isAlwaysFree);
+  const [limitOverride, setLimitOverride] = useState<string>(
+    subscription?.client_limit_override != null ? String(subscription.client_limit_override) : "",
+  );
+
+  // Keep the current value selectable even if its level was retired.
+  const options = levels.filter((l) => l.enabled || l.key === tier);
+  const selectedLevel = levels.find((l) => l.key === tier);
 
   const mut = useMutation({
     mutationFn: () =>
@@ -52,6 +59,7 @@ export function SubscriptionEditor({
           current_period_end: periodEnd ? new Date(periodEnd).toISOString() : null,
           cancel_at_period_end: cancelEnd,
           is_always_free: alwaysFree,
+          client_limit_override: limitOverride.trim() === "" ? null : Math.max(0, Number(limitOverride)),
         },
       }),
     onSuccess: () => {
@@ -60,6 +68,7 @@ export function SubscriptionEditor({
     },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   return (
     <div className="space-y-4">
