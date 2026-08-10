@@ -74,14 +74,15 @@ export function SubscriptionEditor({
     <div className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
-          <Label>Tier</Label>
+          <Label>Plan</Label>
           <Select value={tier} onValueChange={setTier}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger><SelectValue placeholder="Select a plan" /></SelectTrigger>
             <SelectContent>
-              {FIRM_TIERS.map((t) => <SelectItem key={t} value={t}>{FIRM_TIER_LABEL[t] ?? t}</SelectItem>)}
+              {options.map((l) => <SelectItem key={l.key} value={l.key}>{l.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
+
         <div className="space-y-1.5">
           <Label>Status</Label>
           <Select value={status} onValueChange={setStatus}>
