@@ -114,7 +114,23 @@ export function SubscriptionEditor({
           </div>
           <Switch checked={alwaysFree} onCheckedChange={setAlwaysFree} />
         </div>
+        <div className="space-y-1.5 md:col-span-2">
+          <Label>Client limit override</Label>
+          <Input
+            type="number"
+            min={0}
+            value={limitOverride}
+            placeholder={
+              selectedLevel ? `Plan default: ${selectedLevel.client_limit >= 9999 ? "unlimited" : selectedLevel.client_limit}` : "Plan default"
+            }
+            onChange={(e) => setLimitOverride(e.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Leave blank to use the plan default. Set a number to give this organisation its own client quota.
+          </p>
+        </div>
       </div>
+
 
       <div>
         <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
