@@ -27,7 +27,13 @@ export const listClients = createServerFn({ method: "POST" })
       if (!firmId) return { clients: [] };
     }
 
-    let q = context.supabase
+    // Super admins manage every organisation, including ones they don't belong to,
+    // so they read through the admin client (RLS scopes reads to firm membership).
+    const db: any = isSuper
+      ? (await import("@/integrations/supabase/client.server")).supabaseAdmin
+      : context.supabase;
+
+    let q = db
       .from("clients")
       .select(
         "id, name, firm_id, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
