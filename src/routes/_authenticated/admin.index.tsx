@@ -323,73 +323,191 @@ function AdminQuickLinks({ isSuper }: { isSuper: boolean }) {
   );
 }
 
-function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
-  const create = useServerFn(adminCreateFirmAndInvite);
+function isoDate(d: Date) {
+  return d.toISOString().slice(0, 10);
+}
+
+function AddOrganisationDialog({ onCreated, variant = "default" }: { onCreated: () => void; variant?: "default" | "outline" }) {
+  const create = useServerFn(adminCreateOrganisation);
   const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [tier, setTier] = useState("starter");
+  const [status, setStatus] = useState("trialing");
+  const [endDate, setEndDate] = useState(isoDate(new Date(Date.now() + 7 * 864e5)));
+  const [alwaysFree, setAlwaysFree] = useState(false);
+  const [ownerMode, setOwnerMode] = useState<"password" | "invite">("password");
   const [email, setEmail] = useState("");
-  const [businessName, setBusinessName] = useState("");
-  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
-  const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const [ownerName, setOwnerName] = useState("");
+  const [password, setPassword] = useState("");
+  const [done, setDone] = useState<null | { mode: "password" | "invite"; email: string; password?: string; inviteUrl?: string; emailStatus?: string | null }>(null);
   const [copied, setCopied] = useState(false);
 
   const mut = useMutation({
-    mutationFn: () => create({ data: { email, businessName: businessName || null } }),
-    onSuccess: (res) => {
+    mutationFn: () =>
+      create({
+        data: {
+          name,
+          tier,
+          status,
+          trialEndsAt: status === "trialing" ? endDate : null,
+          currentPeriodEnd: status === "active" ? endDate : null,
+          isAlwaysFree: alwaysFree,
+          ownerEmail: email,
+          ownerMode,
+          ownerPassword: ownerMode === "password" ? password : null,
+          ownerName: ownerName || null,
+        },
+      }),
+    onSuccess: (res: any) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
-      setInviteUrl(`${origin}/signup/${res.token}`);
-      setEmailStatus((res as any).emailStatus ?? null);
+      setDone(
+        res.mode === "password"
+          ? { mode: "password", email: res.email, password }
+          : { mode: "invite", email: res.email, inviteUrl: `${origin}/signup/${res.token}`, emailStatus: res.emailStatus },
+      );
+      toast.success("Organisation created");
       onCreated();
     },
-    onError: (e: any) => toast.error(e?.message ?? "Could not create invite"),
+    onError: (e: any) => toast.error(e?.message ?? "Could not create the organisation"),
   });
 
   function reset() {
-    setEmail(""); setBusinessName(""); setInviteUrl(null); setCopied(false); setEmailStatus(null);
+    setName(""); setTier("starter"); setStatus("trialing");
+    setEndDate(isoDate(new Date(Date.now() + 7 * 864e5)));
+    setAlwaysFree(false); setOwnerMode("password"); setEmail(""); setOwnerName("");
+    setPassword(""); setDone(null); setCopied(false);
   }
 
-  async function copy() {
-    if (!inviteUrl) return;
-    await navigator.clipboard.writeText(inviteUrl);
-    setCopied(true);
-    toast.success("Invite link copied");
+  function generatePassword() {
+    const chars = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let out = "";
+    const bytes = new Uint32Array(14);
+    crypto.getRandomValues(bytes);
+    for (const b of bytes) out += chars[b % chars.length];
+    setPassword(out + "7a");
   }
+
+  async function copyText(text: string) {
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success("Copied");
+  }
+
+  const canSubmit =
+    name.trim().length >= 2 &&
+    email.includes("@") &&
+    (ownerMode === "invite" || password.length >= 8);
 
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
-      <Button size="sm" onClick={() => setOpen(true)}>
-        <UserPlus className="h-4 w-4 mr-2" /> Invite organisation
+      <Button size="sm" variant={variant} onClick={() => setOpen(true)}>
+        <UserPlus className="h-4 w-4 mr-2" /> Add organisation
       </Button>
-      <DialogContent>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Invite a new organisation</DialogTitle>
+          <DialogTitle>Add an organisation</DialogTitle>
           <DialogDescription>
-            Creates a new organisation with a 7-day trial and an owner invite. Share the link with them.
+            Creates the organisation, its plan and its owner login in one step.
           </DialogDescription>
         </DialogHeader>
 
-        {!inviteUrl ? (
-          <div className="space-y-3">
+        {!done ? (
+          <div className="space-y-5">
             <div className="space-y-1.5">
-              <Label htmlFor="i-email">Owner email</Label>
-              <Input id="i-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <Label htmlFor="o-name">Organisation name</Label>
+              <Input id="o-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Accounting" />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="i-biz">Organisation name (optional)</Label>
-              <Input id="i-biz" value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Owner can set this themselves" />
+
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <p className="text-sm font-medium">Plan</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Tier</Label>
+                  <Select value={tier} onValueChange={setTier}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {["starter", "growth", "scale", "firm", "free", "legacy"].map((t) => (
+                        <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Status</Label>
+                  <Select value={status} onValueChange={setStatus}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="trialing">Trialing</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="o-date">{status === "trialing" ? "Trial ends" : "Next bill date"}</Label>
+                <Input id="o-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="o-free" className="font-normal">Always free</Label>
+                <Switch id="o-free" checked={alwaysFree} onCheckedChange={setAlwaysFree} />
+              </div>
             </div>
+
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <p className="text-sm font-medium">Owner access</p>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant={ownerMode === "password" ? "default" : "outline"} size="sm" onClick={() => setOwnerMode("password")}>
+                  Create login now
+                </Button>
+                <Button type="button" variant={ownerMode === "invite" ? "default" : "outline"} size="sm" onClick={() => setOwnerMode("invite")}>
+                  Send invite
+                </Button>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="o-email">Owner email</Label>
+                <Input id="o-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              </div>
+              {ownerMode === "password" && (
+                <>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="o-owner">Owner name (optional)</Label>
+                    <Input id="o-owner" value={ownerName} onChange={(e) => setOwnerName(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="o-pw">Password</Label>
+                    <div className="flex gap-2">
+                      <Input id="o-pw" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters, letters and numbers" />
+                      <Button type="button" variant="outline" size="sm" onClick={generatePassword}>Generate</Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        ) : done.mode === "password" ? (
+          <div className="space-y-2">
+            <p className="text-sm">✓ Organisation created. The owner can sign in right now with these details.</p>
+            <div className="rounded-md border border-border bg-muted/40 p-3 font-mono text-xs space-y-1">
+              <div>{done.email}</div>
+              <div>{done.password}</div>
+            </div>
+            <Button size="sm" variant="outline" onClick={() => copyText(`${done.email}\n${done.password}`)}>
+              {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />} Copy credentials
+            </Button>
+            <p className="text-xs text-muted-foreground">This password is shown once — copy it before closing.</p>
           </div>
         ) : (
           <div className="space-y-2">
             <p className="text-sm">
-              {emailStatus === "queued"
+              {done.emailStatus === "queued"
                 ? "✓ Invite email sent to the owner."
-                : emailStatus === "suppressed"
+                : done.emailStatus === "suppressed"
                 ? "⚠ This address is on the suppression list — share the link manually."
-                : "Invite created. The email couldn't be sent — share this link manually."}
+                : "Organisation created. The email couldn't be sent — share this link manually."}
             </p>
             <div className="flex gap-2">
-              <Input readOnly value={inviteUrl} className="font-mono text-xs" />
-              <Button size="icon" variant="outline" onClick={copy}>
+              <Input readOnly value={done.inviteUrl} className="font-mono text-xs" />
+              <Button size="icon" variant="outline" onClick={() => copyText(done.inviteUrl!)}>
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
@@ -398,10 +516,10 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
         )}
 
         <DialogFooter>
-          {!inviteUrl ? (
-            <Button onClick={() => mut.mutate()} disabled={mut.isPending || !email}>
+          {!done ? (
+            <Button onClick={() => mut.mutate()} disabled={mut.isPending || !canSubmit}>
               {mut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Create invite
+              Create organisation
             </Button>
           ) : (
             <Button variant="outline" onClick={() => setOpen(false)}>Done</Button>
@@ -411,3 +529,4 @@ function InviteFirmOwnerDialog({ onCreated }: { onCreated: () => void }) {
     </Dialog>
   );
 }
+
