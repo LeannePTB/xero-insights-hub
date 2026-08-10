@@ -7,7 +7,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Loader2, ShieldAlert, Shield, SlidersHorizontal, Users, ArrowLeft } from "lucide-react";
+import { Building2, Loader2, ShieldAlert, ArrowLeft } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -114,8 +114,6 @@ function AdminPage() {
           myFirms={myFirmsQ.data?.firms ?? []}
           onCreated={() => firmsQ.refetch()}
         />
-
-        <AdminQuickLinks isSuper={isSuper} />
 
         {!isSuper && (
           <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
@@ -297,39 +295,3 @@ function SectionTitle() {
     </div>
   );
 }
-
-function AdminQuickLinks({ isSuper }: { isSuper: boolean }) {
-  const links = [
-    ...(isSuper
-      ? [
-          { title: "Security & Compliance", description: "Open the Xero security documentation and compliance tools.", to: "/admin/security" as const, icon: Shield },
-        ]
-      : []),
-    { title: "Tier widgets", description: "Choose which dashboard cards belong in each tier.", to: "/settings/tiers" as const, icon: SlidersHorizontal },
-    { title: "Advisors", description: "Invite advisors and manage advisor access.", to: "/settings/advisors" as const, icon: Users },
-  ];
-
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {links.map((item) => (
-        <Link
-          key={item.title}
-          to={item.to}
-          className="group rounded-lg border border-border bg-card p-5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
-              <item.icon className="h-5 w-5" />
-            </div>
-          </div>
-          <h2 className="mt-4 font-display text-lg font-semibold leading-tight">{item.title}</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-
-
-
