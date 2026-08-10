@@ -133,94 +133,22 @@ function SubscriptionSection({
   isAlwaysFree: boolean;
   onChanged: () => void;
 }) {
-  const updateFn = useServerFn(adminUpdateSubscription);
-  const [tier, setTier] = useState<string>(subscription?.tier ?? "starter");
-  const [status, setStatus] = useState<string>(subscription?.status ?? "trialing");
-  const [trialEnds, setTrialEnds] = useState<string>(fmtDate(subscription?.trial_ends_at));
-  const [periodEnd, setPeriodEnd] = useState<string>(fmtDate(subscription?.current_period_end));
-  const [cancelEnd, setCancelEnd] = useState<boolean>(!!subscription?.cancel_at_period_end);
-  const [alwaysFree, setAlwaysFree] = useState<boolean>(!!isAlwaysFree);
-
-  const mut = useMutation({
-    mutationFn: () =>
-      updateFn({
-        data: {
-          firmId,
-          tier,
-          status,
-          trial_ends_at: trialEnds ? new Date(trialEnds).toISOString() : null,
-          current_period_end: periodEnd ? new Date(periodEnd).toISOString() : null,
-          cancel_at_period_end: cancelEnd,
-          is_always_free: alwaysFree,
-        },
-      }),
-    onSuccess: () => {
-      toast.success("Subscription updated");
-      onChanged();
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   return (
     <section className="rounded-lg border p-6 space-y-4">
       <div className="flex items-center gap-2">
         <CreditCard className="h-4 w-4" />
         <h2 className="text-lg font-semibold">Subscription</h2>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label>Tier</Label>
-          <Select value={tier} onValueChange={setTier}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {TIERS.map((t) => <SelectItem key={t} value={t}>{FIRM_TIER_LABEL[t] ?? t}</SelectItem>)}
-            </SelectContent>
-          </Select>
-
-        </div>
-        <div className="space-y-1.5">
-          <Label>Status</Label>
-          <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {STATUSES.map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label>Trial ends</Label>
-          <Input type="date" value={trialEnds} onChange={(e) => setTrialEnds(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
-          <Label>Current period end</Label>
-          <Input type="date" value={periodEnd} onChange={(e) => setPeriodEnd(e.target.value)} />
-        </div>
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <div>
-            <p className="text-sm font-medium">Cancel at period end</p>
-            <p className="text-xs text-muted-foreground">Subscription ends on the date above.</p>
-          </div>
-          <Switch checked={cancelEnd} onCheckedChange={setCancelEnd} />
-        </div>
-        <div className="flex items-center justify-between rounded-md border p-3">
-          <div>
-            <p className="text-sm font-medium">Always free</p>
-            <p className="text-xs text-muted-foreground">Never charge this organisation regardless of tier.</p>
-          </div>
-          <Switch checked={alwaysFree} onCheckedChange={setAlwaysFree} />
-        </div>
-      </div>
-
-      <div>
-        <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
-          {mut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-          Save subscription
-        </Button>
-      </div>
+      <SubscriptionEditor
+        firmId={firmId}
+        subscription={subscription}
+        isAlwaysFree={isAlwaysFree}
+        onChanged={onChanged}
+      />
     </section>
   );
 }
+
 
 function MembersSection({
   firmId,
