@@ -118,6 +118,7 @@ function AdminPage() {
           firmsLoading={isSuper ? firmsQ.isLoading : myFirmsQ.isLoading}
           firmsError={isSuper ? firmsQ.error : myFirmsQ.error}
           myFirms={myFirmsQ.data?.firms ?? []}
+          onCreated={() => firmsQ.refetch()}
         />
 
         <AdminQuickLinks isSuper={isSuper} />
@@ -145,12 +146,14 @@ function OrganisationsSection({
   firmsLoading,
   firmsError,
   myFirms,
+  onCreated,
 }: {
   isSuper: boolean;
   firms: FirmRow[] | undefined;
   firmsLoading: boolean;
   firmsError: unknown;
   myFirms: { id: string; name: string }[];
+  onCreated: () => void;
 }) {
   const ownFirmIds = new Set(myFirms.map((firm) => firm.id));
 
@@ -274,7 +277,14 @@ function OrganisationsSection({
               );
             })}
             {(firms ?? []).length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">No organisations yet.</td></tr>
+              <tr>
+                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                  <p>No organisations yet.</p>
+                  <div className="mt-3 flex justify-center">
+                    <AddOrganisationDialog onCreated={onCreated} variant="outline" />
+                  </div>
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
