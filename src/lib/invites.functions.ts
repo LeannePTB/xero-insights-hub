@@ -94,7 +94,15 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     });
     if (sErr) throw new Error(sErr.message);
 
+    if (data.ownerMode === "none") {
+      await logAudit("organisation_created", "firm", firm.id, context.userId, {
+        firm_id: firm.id, tier: data.tier, status: data.status, owner_mode: "none",
+      });
+      return { ok: true, firmId: firm.id, email: null, mode: "none" as const, token: null, emailStatus: null };
+    }
+
     if (data.ownerMode === "password") {
+
       const { data: existing } = await (supabaseAdmin as any)
         .from("profiles")
         .select("id")
