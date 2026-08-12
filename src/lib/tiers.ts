@@ -10,8 +10,10 @@ export type WidgetKey =
   | "accounting_breakeven"
   | "true_breakeven"
   | "cashflow"
+  | "cashflow_scenario"
   | "xero_audit"
   | "loan_consolidation";
+
 
 export const ALL_WIDGETS: WidgetKey[] = [
   "health",
