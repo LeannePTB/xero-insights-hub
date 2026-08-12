@@ -158,25 +158,3 @@ function Stat({ label, value, tone = "" }: { label: string; value: string; tone?
     </div>
   );
 }
-
-function MiniBars({ months, values, fmt }: { months: string[]; values: number[]; fmt: (n: number) => string }) {
-  const max = Math.max(...values, 1);
-  return (
-    <div className="mt-5">
-      <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-        Revenue by month
-      </p>
-      <div className="flex h-24 items-end gap-2">
-        {months.map((m, i) => (
-          <div key={m} className="flex flex-1 flex-col items-center gap-1" title={fmt(values[i] ?? 0)}>
-            <div
-              className="w-full rounded-t bg-primary/80"
-              style={{ height: `${Math.max(2, ((values[i] ?? 0) / max) * 100)}%` }}
-            />
-            <span className="text-[10px] text-muted-foreground">{monthLabel(m)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
