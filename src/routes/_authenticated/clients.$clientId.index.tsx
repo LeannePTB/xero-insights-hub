@@ -144,7 +144,10 @@ function ClientDashboard() {
       // xero_audit rendered under Business Health, not in advanced grid
 
     }
+    if (widgets.includes("cashflow_scenario"))
+      advanced.push({ id: "cashflow_scenario", node: <ScenarioWidget clientId={clientId} /> });
     return { standardCards: standard, advancedCards: advanced };
+
   }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
 
   const showHealth = widgets.includes("health");
