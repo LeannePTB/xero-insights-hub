@@ -92,12 +92,10 @@ export function ScenarioWidget({
         </div>
       </div>
 
-      <DateRangeControls
-        fromDate={fromDate}
-        toDate={toDate}
-        onFromChange={setFromDate}
-        onToChange={setToDate}
-      />
+      <div className="mt-4">
+        <MonthPicker value={month} onChange={setMonth} />
+      </div>
+
 
       {isLoading ? (
         <div className="flex h-32 items-center justify-center text-muted-foreground">
