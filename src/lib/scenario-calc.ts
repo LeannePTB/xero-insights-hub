@@ -1,4 +1,4 @@
-import type { ScenarioCustomer, ScenarioExpense, ScenarioInvoice } from "@/lib/scenario.functions";
+import type { ScenarioCustomer, ScenarioExpense, ScenarioInvoice } from "@/lib/xero/scenario.functions";
 
 export function monthKey(dateISO: string): string {
   return dateISO.slice(0, 7);
