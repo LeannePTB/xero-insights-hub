@@ -8,25 +8,12 @@ import { getScenarioData, resetScenario } from "@/lib/xero/scenario.functions";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { formatMoney, useTenantCurrency } from "@/components/dashboard/useTenantCurrency";
 import {
-  DateRangeControls,
-  toISO,
-  usePersistedDate,
-} from "@/components/dashboard/DateRangeControls";
-import {
-  buildMatrix,
-  computeTotals,
-  currentMonthKey,
-  monthLabel,
-} from "@/lib/scenario-calc";
-
-function startOfRange() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() - 5, 1);
-}
-function endOfMonth() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
-}
+  MonthPicker,
+  monthBounds,
+  monthLabelOf,
+  usePersistedMonth,
+} from "@/components/dashboard/MonthPicker";
+import { buildMatrix, computeTotals } from "@/lib/scenario-calc";
 
 export function ScenarioWidget({
   clientId,
@@ -43,11 +30,8 @@ export function ScenarioWidget({
   const currency = useTenantCurrency(tenantId);
   const fmt = (n: number) => formatMoney(n, currency);
 
-  const storageKey = `scenario-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfRange);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfMonth);
-  const fromStr = toISO(fromDate);
-  const toStr = toISO(toDate);
+  const [month, setMonth] = usePersistedMonth(`scenario-month:${tenantId}`);
+  const { from: fromStr, to: toStr } = monthBounds(month);
   const [shouldLoad, setShouldLoad] = useState(true);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
@@ -64,16 +48,17 @@ export function ScenarioWidget({
 
   const view = useMemo(() => {
     if (!data) return null;
-    const months = data.months.slice(-6);
+    const months = data.months;
     return {
       months,
       matrix: buildMatrix(data.customers, data.invoices, months),
-      monthTotals: computeTotals(data.invoices, data.expenses, currentMonthKey()),
+      monthTotals: computeTotals(data.invoices, data.expenses, months[0] ?? month),
       rangeTotals: computeTotals(data.invoices, data.expenses, null),
     };
-  }, [data]);
+  }, [data, month]);
 
   const isEmpty = !!data && data.invoices.length === 0 && data.expenses.length === 0;
+
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
