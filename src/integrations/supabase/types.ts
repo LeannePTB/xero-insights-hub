@@ -1012,6 +1012,177 @@ export type Database = {
         }
         Relationships: []
       }
+      scenario_customers: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          xero_contact_id: string | null
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          name: string
+          updated_at?: string
+          xero_contact_id?: string | null
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          xero_contact_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_customers_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scenario_expenses: {
+        Row: {
+          amount: number
+          category: string
+          client_id: string
+          created_at: string
+          date: string
+          id: string
+          name: string
+          recurring_monthly: boolean
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          category?: string
+          client_id: string
+          created_at?: string
+          date?: string
+          id?: string
+          name: string
+          recurring_monthly?: boolean
+          type?: string
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          category?: string
+          client_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          name?: string
+          recurring_monthly?: boolean
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_expenses_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scenario_invoices: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          customer_id: string | null
+          description: string
+          excluded: boolean
+          id: string
+          issue_date: string
+          status: string
+          updated_at: string
+          xero_invoice_id: string | null
+          xero_tenant_id: string | null
+        }
+        Insert: {
+          amount?: number
+          client_id: string
+          created_at?: string
+          customer_id?: string | null
+          description?: string
+          excluded?: boolean
+          id?: string
+          issue_date?: string
+          status?: string
+          updated_at?: string
+          xero_invoice_id?: string | null
+          xero_tenant_id?: string | null
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          customer_id?: string | null
+          description?: string
+          excluded?: boolean
+          id?: string
+          issue_date?: string
+          status?: string
+          updated_at?: string
+          xero_invoice_id?: string | null
+          xero_tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_invoices_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scenario_invoices_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "scenario_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scenario_settings: {
+        Row: {
+          client_id: string
+          created_at: string
+          currency: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          currency?: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          currency?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scenario_settings_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       security_contact_details: {
         Row: {
           abn: string | null
