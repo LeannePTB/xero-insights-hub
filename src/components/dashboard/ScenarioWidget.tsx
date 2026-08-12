@@ -121,18 +121,17 @@ export function ScenarioWidget({
 
           <div className="mt-3 grid grid-cols-2 gap-3">
             <Stat
-              label={`Net position · ${monthLabel(currentMonthKey())}`}
+              label={`Net position · ${monthLabelOf(month)}`}
               value={fmt(view.monthTotals.net)}
               tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
             />
             <Stat
-              label="Net position · period"
-              value={fmt(view.rangeTotals.net)}
-              tone={view.rangeTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
+              label="Revenue this month"
+              value={fmt(view.monthTotals.revenue)}
             />
           </div>
 
-          <MiniBars months={view.months} values={view.matrix.columnTotals} fmt={fmt} />
+
 
           {view.rangeTotals.excludedRevenue > 0 && (
             <Button
