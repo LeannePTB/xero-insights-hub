@@ -143,11 +143,11 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:true_breakeven`, node: <TrueBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("true_breakeven")} /> });
       if (widgets.includes("cashflow"))
         advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
+      if (widgets.includes("cashflow_scenario"))
+        advanced.push({ id: `${o.id}:cashflow_scenario`, node: <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
       // xero_audit rendered under Business Health, not in advanced grid
 
     }
-    if (widgets.includes("cashflow_scenario"))
-      advanced.push({ id: "cashflow_scenario", node: <ScenarioWidget clientId={clientId} /> });
     return { standardCards: standard, advancedCards: advanced };
 
   }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);

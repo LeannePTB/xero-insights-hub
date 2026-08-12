@@ -2,28 +2,58 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowRight, Loader2, RotateCcw, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, Loader2, RefreshCw, RotateCcw, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getScenario, resetScenario, seedScenarioExamples } from "@/lib/scenario.functions";
-import { formatMoney } from "@/components/dashboard/useTenantCurrency";
+import { getScenarioData, resetScenario } from "@/lib/xero/scenario.functions";
+import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
+import { formatMoney, useTenantCurrency } from "@/components/dashboard/useTenantCurrency";
+import {
+  DateRangeControls,
+  toISO,
+  usePersistedDate,
+} from "@/components/dashboard/DateRangeControls";
 import {
   buildMatrix,
   computeTotals,
   currentMonthKey,
   monthLabel,
-  monthsFrom,
 } from "@/lib/scenario-calc";
 
-export function ScenarioWidget({ clientId }: { clientId: string }) {
-  const fetchScenario = useServerFn(getScenario);
-  const seed = useServerFn(seedScenarioExamples);
+function startOfRange() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() - 5, 1);
+}
+function endOfMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+}
+
+export function ScenarioWidget({
+  clientId,
+  tenantId,
+  tenantName,
+}: {
+  clientId: string;
+  tenantId: string;
+  tenantName: string;
+}) {
+  const fetchScenario = useServerFn(getScenarioData);
   const reset = useServerFn(resetScenario);
   const qc = useQueryClient();
-  const [seeding, setSeeding] = useState(false);
+  const currency = useTenantCurrency(tenantId);
+  const fmt = (n: number) => formatMoney(n, currency);
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["scenario", clientId],
-    queryFn: () => fetchScenario({ data: { clientId } }),
+  const storageKey = `scenario-range:${tenantId}`;
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfRange);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfMonth);
+  const fromStr = toISO(fromDate);
+  const toStr = toISO(toDate);
+  const [shouldLoad, setShouldLoad] = useState(true);
+
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ["scenario", clientId, tenantId, fromStr, toStr],
+    queryFn: () => fetchScenario({ data: { clientId, tenantId, fromDate: fromStr, toDate: toStr } }),
+    enabled: shouldLoad,
     retry: false,
   });
 
@@ -34,79 +64,95 @@ export function ScenarioWidget({ clientId }: { clientId: string }) {
 
   const view = useMemo(() => {
     if (!data) return null;
-    const months = monthsFrom(data.invoices, data.expenses).slice(-6);
-    const matrix = buildMatrix(data.customers, data.invoices, months);
-    const month = currentMonthKey();
+    const months = data.months.slice(-6);
     return {
       months,
-      matrix,
-      monthTotals: computeTotals(data.invoices, data.expenses, month),
-      yearTotals: computeTotals(data.invoices, data.expenses, null),
+      matrix: buildMatrix(data.customers, data.invoices, months),
+      monthTotals: computeTotals(data.invoices, data.expenses, currentMonthKey()),
+      rangeTotals: computeTotals(data.invoices, data.expenses, null),
     };
   }, [data]);
 
-  const fmt = (n: number) => formatMoney(n, data?.currency ?? "AUD");
   const isEmpty = !!data && data.invoices.length === 0 && data.expenses.length === 0;
-
-  async function handleSeed() {
-    setSeeding(true);
-    try {
-      await seed({ data: { clientId } });
-      await qc.invalidateQueries({ queryKey: ["scenario", clientId] });
-    } finally {
-      setSeeding(false);
-    }
-  }
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
       <div className="flex items-start justify-between gap-3">
         <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-primary" /> Cashflow Scenario
           </h3>
-          <p className="text-xs text-muted-foreground">Money in vs money out, with what-if exclusions</p>
+          <p className="text-xs text-muted-foreground">
+            {fromStr} → {toStr}
+          </p>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <Link to="/clients/$clientId/cashflow-scenario" params={{ clientId }}>
-            Open <ArrowRight className="ml-1 h-3.5 w-3.5" />
-          </Link>
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setShouldLoad(true);
+              refetch();
+            }}
+            disabled={isFetching}
+            title="Refresh"
+          >
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/clients/$clientId/cashflow-scenario" params={{ clientId }} search={{ tenantId }}>
+              Open <ArrowRight className="ml-1 h-3.5 w-3.5" />
+            </Link>
+          </Button>
+        </div>
       </div>
+
+      <DateRangeControls
+        fromDate={fromDate}
+        toDate={toDate}
+        onFromChange={setFromDate}
+        onToChange={setToDate}
+      />
 
       {isLoading ? (
         <div className="flex h-32 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading scenario…
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading from Xero…
         </div>
       ) : error ? (
-        <p className="mt-6 text-sm text-destructive">{(error as Error).message}</p>
+        <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       ) : isEmpty ? (
-        <div className="mt-6 rounded-lg border border-dashed border-border p-6 text-center">
-          <p className="text-sm text-muted-foreground">No scenario data yet.</p>
-          <Button className="mt-3" size="sm" onClick={handleSeed} disabled={seeding}>
-            {seeding && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add example data
-          </Button>
-        </div>
+        <p className="mt-6 text-sm text-muted-foreground">
+          No invoices or expenses in Xero for this period.
+        </p>
       ) : view ? (
         <>
           <div className="mt-5 grid grid-cols-3 gap-3">
-            <Stat label="Baseline (all invoices)" value={fmt(view.yearTotals.baselineRevenue)} />
-            <Stat label="Current scenario" value={fmt(view.yearTotals.revenue)} />
+            <Stat label="Baseline (all invoices)" value={fmt(view.rangeTotals.baselineRevenue)} />
+            <Stat label="Current scenario" value={fmt(view.rangeTotals.revenue)} />
             <Stat
               label="Difference"
-              value={fmt(-view.yearTotals.excludedRevenue)}
-              tone={view.yearTotals.excludedRevenue > 0 ? "text-rose-600" : "text-muted-foreground"}
+              value={fmt(-view.rangeTotals.excludedRevenue)}
+              tone={view.rangeTotals.excludedRevenue > 0 ? "text-rose-600" : "text-muted-foreground"}
             />
           </div>
 
           <div className="mt-3 grid grid-cols-2 gap-3">
-            <Stat label={`Net position · ${monthLabel(currentMonthKey())}`} value={fmt(view.monthTotals.net)} tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"} />
-            <Stat label="Net position · all months" value={fmt(view.yearTotals.net)} tone={view.yearTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"} />
+            <Stat
+              label={`Net position · ${monthLabel(currentMonthKey())}`}
+              value={fmt(view.monthTotals.net)}
+              tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
+            />
+            <Stat
+              label="Net position · period"
+              value={fmt(view.rangeTotals.net)}
+              tone={view.rangeTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
+            />
           </div>
 
           <MiniBars months={view.months} values={view.matrix.columnTotals} fmt={fmt} />
 
-          {view.yearTotals.excludedRevenue > 0 && (
+          {view.rangeTotals.excludedRevenue > 0 && (
             <Button
               variant="ghost"
               size="sm"
