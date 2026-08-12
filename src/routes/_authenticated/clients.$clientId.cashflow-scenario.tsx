@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/select";
 import { BrandMark } from "@/components/BrandMark";
 import { getClient } from "@/lib/clients.functions";
-import { listClientXeroOrgs } from "@/lib/xero/connections.functions";
 import { formatMoney, useTenantCurrency } from "@/components/dashboard/useTenantCurrency";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import {
@@ -77,7 +76,6 @@ function CashflowScenarioPage() {
   const qc = useQueryClient();
 
   const fetchClient = useServerFn(getClient);
-  const fetchOrgs = useServerFn(listClientXeroOrgs);
   const fetchScenario = useServerFn(getScenarioData);
   const toggleExcluded = useServerFn(setInvoiceExcluded);
   const reset = useServerFn(resetScenario);
@@ -86,12 +84,8 @@ function CashflowScenarioPage() {
     queryKey: ["client", clientId],
     queryFn: () => fetchClient({ data: { clientId } }),
   });
-  const orgsQ = useQuery({
-    queryKey: ["clientXeroOrgs", clientId],
-    queryFn: () => fetchOrgs({ data: { clientId } }),
-  });
-
-  const orgs = (orgsQ.data ?? []) as any[];
+  const client = clientQ.data?.client;
+  const orgs = (client?.client_xero_orgs ?? []) as any[];
   const tenantId =
     search.tenantId ?? (orgs[0]?.xero_connections?.tenant_id as string | undefined);
   const tenantName =
@@ -160,7 +154,7 @@ function CashflowScenarioPage() {
           <div>
             <h1 className="font-display text-2xl font-semibold">Cashflow Scenario</h1>
             <p className="text-sm text-muted-foreground">
-              {clientQ.data?.name ?? "Client"} · {tenantName} · live from Xero
+              {client?.name ?? "Client"} · {tenantName} · live from Xero
             </p>
           </div>
           <div className="flex items-center gap-2">
