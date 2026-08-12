@@ -20,6 +20,8 @@ import { PnlWidget } from "@/components/dashboard/PnlWidget";
 
 import { AccountingBreakevenWidget } from "@/components/dashboard/AccountingBreakevenWidget";
 import { TrueBreakevenWidget } from "@/components/dashboard/TrueBreakevenWidget";
+import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
+
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
