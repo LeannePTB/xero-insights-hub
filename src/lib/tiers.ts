@@ -10,8 +10,10 @@ export type WidgetKey =
   | "accounting_breakeven"
   | "true_breakeven"
   | "cashflow"
+  | "cashflow_scenario"
   | "xero_audit"
   | "loan_consolidation";
+
 
 export const ALL_WIDGETS: WidgetKey[] = [
   "health",
@@ -24,6 +26,7 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "accounting_breakeven",
   "true_breakeven",
   "cashflow",
+  "cashflow_scenario",
   "xero_audit",
   "loan_consolidation",
 ];
@@ -40,6 +43,7 @@ const ADVANCED: WidgetKey[] = [
   "accounting_breakeven",
   "true_breakeven",
   "cashflow",
+  "cashflow_scenario",
   "xero_audit",
   "loan_consolidation",
 ];
@@ -75,6 +79,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   accounting_breakeven: "Accounting Break-Even",
   true_breakeven: "True Break-Even (Cash)",
   cashflow: "Cash Flow",
+  cashflow_scenario: "Cashflow Scenario",
   xero_audit: "Xero File Audit",
   loan_consolidation: "Loan Consolidation",
 };

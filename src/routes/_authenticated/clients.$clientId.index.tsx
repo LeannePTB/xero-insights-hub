@@ -20,6 +20,8 @@ import { PnlWidget } from "@/components/dashboard/PnlWidget";
 
 import { AccountingBreakevenWidget } from "@/components/dashboard/AccountingBreakevenWidget";
 import { TrueBreakevenWidget } from "@/components/dashboard/TrueBreakevenWidget";
+import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
+
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
@@ -144,7 +146,10 @@ function ClientDashboard() {
       // xero_audit rendered under Business Health, not in advanced grid
 
     }
+    if (widgets.includes("cashflow_scenario"))
+      advanced.push({ id: "cashflow_scenario", node: <ScenarioWidget clientId={clientId} /> });
     return { standardCards: standard, advancedCards: advanced };
+
   }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
 
   const showHealth = widgets.includes("health");
