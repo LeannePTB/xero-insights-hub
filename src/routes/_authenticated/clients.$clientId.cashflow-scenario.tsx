@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -17,10 +17,11 @@ import { getClient } from "@/lib/clients.functions";
 import { formatMoney, useTenantCurrency } from "@/components/dashboard/useTenantCurrency";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import {
-  DateRangeControls,
-  toISO,
-  usePersistedDate,
-} from "@/components/dashboard/DateRangeControls";
+  MonthPicker,
+  monthBounds,
+  monthLabelOf,
+  usePersistedMonth,
+} from "@/components/dashboard/MonthPicker";
 import {
   getScenarioData,
   resetScenario,
@@ -28,14 +29,7 @@ import {
   type ScenarioExpense,
   type ScenarioInvoice,
 } from "@/lib/xero/scenario.functions";
-import {
-  buildMatrix,
-  computeTotals,
-  currentMonthKey,
-  groupExpenses,
-  monthKey,
-  monthLabel,
-} from "@/lib/scenario-calc";
+import { buildMatrix, computeTotals, groupExpenses, monthKey } from "@/lib/scenario-calc";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/cashflow-scenario")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -60,15 +54,6 @@ export const Route = createFileRoute("/_authenticated/clients/$clientId/cashflow
   }),
   component: CashflowScenarioPage,
 });
-
-function startOfRange() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() - 5, 1);
-}
-function endOfMonth() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
-}
 
 function CashflowScenarioPage() {
   const { clientId } = Route.useParams();
@@ -95,11 +80,8 @@ function CashflowScenarioPage() {
   const currency = useTenantCurrency(tenantId);
   const fmt = (n: number) => formatMoney(n, currency);
 
-  const storageKey = `scenario-range:${tenantId ?? "none"}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfRange);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfMonth);
-  const fromStr = toISO(fromDate);
-  const toStr = toISO(toDate);
+  const [month, setMonth] = usePersistedMonth(`scenario-month:${tenantId ?? "none"}`);
+  const { from: fromStr, to: toStr } = monthBounds(month);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["scenario", clientId, tenantId, fromStr, toStr],
@@ -108,8 +90,6 @@ function CashflowScenarioPage() {
     queryFn: () =>
       fetchScenario({ data: { clientId, tenantId: tenantId!, fromDate: fromStr, toDate: toStr } }),
   });
-
-  const [selectedMonth, setSelectedMonth] = useState<string>(currentMonthKey());
 
   const excludeMut = useMutation({
     mutationFn: (v: { xeroInvoiceId: string; excluded: boolean }) =>
@@ -124,7 +104,6 @@ function CashflowScenarioPage() {
   const view = useMemo(() => {
     if (!data) return null;
     const months = data.months;
-    const month = months.includes(selectedMonth) ? selectedMonth : (months[months.length - 1] ?? currentMonthKey());
     return {
       months,
       month,
@@ -134,7 +113,7 @@ function CashflowScenarioPage() {
       monthInvoices: data.invoices.filter((i: ScenarioInvoice) => monthKey(i.issue_date) === month),
       monthExpenses: data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month),
     };
-  }, [data, selectedMonth]);
+  }, [data, month]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -191,12 +170,9 @@ function CashflowScenarioPage() {
           </div>
         </div>
 
-        <DateRangeControls
-          fromDate={fromDate}
-          toDate={toDate}
-          onFromChange={setFromDate}
-          onToChange={setToDate}
-        />
+        <div className="mt-4">
+          <MonthPicker value={month} onChange={setMonth} />
+        </div>
 
         {!tenantId ? (
           <p className="mt-8 text-sm text-muted-foreground">
@@ -222,7 +198,7 @@ function CashflowScenarioPage() {
             </section>
 
             <section className="mt-3 grid gap-3 sm:grid-cols-4">
-              <Stat label={`Revenue · ${monthLabel(view.month)}`} value={fmt(view.monthTotals.revenue)} />
+              <Stat label={`Revenue · ${monthLabelOf(month)}`} value={fmt(view.monthTotals.revenue)} />
               <Stat label="Fixed expenses" value={fmt(view.monthTotals.fixed)} />
               <Stat label="Variable expenses" value={fmt(view.monthTotals.variable)} />
               <Stat
@@ -236,18 +212,7 @@ function CashflowScenarioPage() {
             <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-display text-lg font-semibold">Revenue by customer per month</h2>
-                <Select value={view.month} onValueChange={setSelectedMonth}>
-                  <SelectTrigger className="h-8 w-[150px] text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {view.months.map((m) => (
-                      <SelectItem key={m} value={m}>
-                        {monthLabel(m)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <span className="text-xs text-muted-foreground">{monthLabelOf(month)}</span>
               </div>
               <div className="mt-4 overflow-x-auto">
                 <table className="w-full min-w-[640px] text-sm">
@@ -256,7 +221,7 @@ function CashflowScenarioPage() {
                       <th className="py-2 pr-4 font-semibold">Customer</th>
                       {view.months.map((m) => (
                         <th key={m} className="py-2 px-2 text-right font-semibold">
-                          {monthLabel(m)}
+                          {monthLabelOf(m)}
                         </th>
                       ))}
                       <th className="py-2 pl-2 text-right font-semibold">Total</th>
@@ -293,7 +258,7 @@ function CashflowScenarioPage() {
             {/* Invoices for the month */}
             <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
               <h2 className="font-display text-lg font-semibold">
-                Invoices · {monthLabel(view.month)}
+                Invoices · {monthLabelOf(month)}
               </h2>
               {view.monthInvoices.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">No invoices in this month.</p>

@@ -159,11 +159,13 @@ export const getScenarioData = createServerFn({ method: "POST" })
       if (batch.length < 100) break;
     }
 
-    // Monthly P&L for the expense side.
+    // P&L for the expense side. Xero only accepts periods 1..11, so a single
+    // month is fetched as a plain date-range report instead.
+    const extraPeriods = Math.min(11, Math.max(0, months.length - 1));
     const plRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
-      date: data.toDate,
-      periods: String(Math.max(0, months.length - 1)),
-      timeframe: "MONTH",
+      ...(extraPeriods > 0
+        ? { date: data.toDate, periods: String(extraPeriods), timeframe: "MONTH" }
+        : { fromDate: data.fromDate, toDate: data.toDate }),
       ...(basis === "cash" ? { paymentsOnly: "true" } : {}),
     });
     const expenseLines = parseMonthlyExpenses(plRes.Reports?.[0], months);
