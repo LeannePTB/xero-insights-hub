@@ -68,9 +68,8 @@ export function ScenarioWidget({
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <SlidersHorizontal className="h-4 w-4 text-primary" /> Cashflow Scenario
           </h3>
-          <p className="text-xs text-muted-foreground">
-            {fromStr} → {toStr}
-          </p>
+          <p className="text-xs text-muted-foreground">{monthLabelOf(month)}</p>
+
         </div>
         <div className="flex items-center gap-1">
           <Button
