@@ -128,11 +128,11 @@ export const getLatestAudit = createServerFn({ method: "POST" })
 
     const [{ data: findings }, { data: snoozes }] = await Promise.all([
       (supabaseAdmin as any).from("audit_findings").select("*").eq("run_id", run.id).order("severity"),
-      (supabaseAdmin as any).from("audit_finding_snoozes").select("finding_key, snoozed_until, note").eq("tenant_id", data.tenantId),
+      (supabaseAdmin as any).from("audit_finding_snoozes").select("finding_key, snoozed_until, note, resolved, resolved_at").eq("tenant_id", data.tenantId),
     ]);
-    const snoozeMap: Record<string, { until: string | null; note: string | null }> = {};
+    const snoozeMap: Record<string, { until: string | null; note: string | null; resolved: boolean; resolvedAt: string | null }> = {};
     for (const s of snoozes ?? []) {
-      snoozeMap[s.finding_key] = { until: s.snoozed_until, note: s.note };
+      snoozeMap[s.finding_key] = { until: s.snoozed_until, note: s.note, resolved: !!s.resolved, resolvedAt: s.resolved_at ?? null };
     }
     return { run, findings: findings ?? [], snoozes: snoozeMap };
   });
@@ -164,6 +164,37 @@ export const snoozeFinding = createServerFn({ method: "POST" })
       }, { onConflict: "tenant_id,finding_key" });
     if (error) throw new Error(error.message);
     return { ok: true, until };
+  });
+
+export const resolveFinding = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) =>
+    z.object({
+      tenantId: z.string().min(1),
+      findingKey: z.string().min(1),
+      resolved: z.boolean(),
+      note: z.string().max(500).optional(),
+    }).parse(d),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { getConnectionByTenant } = await import("@/lib/xero/api.server");
+    await getConnectionByTenant(data.tenantId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as any)
+      .from("audit_finding_snoozes")
+      .upsert({
+        tenant_id: data.tenantId,
+        finding_key: data.findingKey,
+        snoozed_until: null,
+        snoozed_by: context.userId,
+        note: data.note ?? null,
+        resolved: data.resolved,
+        resolved_at: data.resolved ? new Date().toISOString() : null,
+        resolved_by: data.resolved ? context.userId : null,
+      }, { onConflict: "tenant_id,finding_key" });
+    if (error) throw new Error(error.message);
+    return { ok: true, resolved: data.resolved };
   });
 
 export const unsnoozeFinding = createServerFn({ method: "POST" })

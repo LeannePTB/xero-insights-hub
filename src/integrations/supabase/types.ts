@@ -70,6 +70,9 @@ export type Database = {
           created_at: string
           finding_key: string
           note: string | null
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
           snoozed_by: string | null
           snoozed_until: string | null
           tenant_id: string
@@ -78,6 +81,9 @@ export type Database = {
           created_at?: string
           finding_key: string
           note?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
           snoozed_by?: string | null
           snoozed_until?: string | null
           tenant_id: string
@@ -86,6 +92,9 @@ export type Database = {
           created_at?: string
           finding_key?: string
           note?: string | null
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
           snoozed_by?: string | null
           snoozed_until?: string | null
           tenant_id?: string

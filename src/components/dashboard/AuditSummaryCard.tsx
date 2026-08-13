@@ -33,11 +33,12 @@ export function AuditSummaryCard({ tenantId, tenantName, clientId }: Props) {
 
   const run = q.data?.run;
   const findings: Array<{ finding_key: string; severity: "high" | "medium" | "low" }> = q.data?.findings ?? [];
-  const snoozes: Record<string, { until: string | null; note: string | null }> = q.data?.snoozes ?? {};
+  const snoozes: Record<string, { until: string | null; note: string | null; resolved?: boolean }> = (q.data?.snoozes as any) ?? {};
   const now = Date.now();
   const active = findings.filter((f) => {
     const s = snoozes[f.finding_key];
     if (!s) return true;
+    if (s.resolved) return false; // resolved
     if (s.until === null) return false; // indefinite
     return new Date(s.until).getTime() <= now;
   });
