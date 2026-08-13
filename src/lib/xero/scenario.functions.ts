@@ -109,8 +109,13 @@ function parseMonthlyExpenses(report: any, fallbackMonths: string[]): { name: st
     if (section.RowType !== "Section") continue;
     const title = (section.Title || "").toLowerCase();
     const isExpense =
-      title.includes("expense") || title.includes("cost of sales") || title.includes("operating");
+      title.includes("expense") ||
+      title.includes("cost of sales") ||
+      title.includes("cost of goods") ||
+      title.includes("direct cost") ||
+      title.includes("operating");
     if (!isExpense) continue;
+
     for (const r of section.Rows ?? []) {
       if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) continue;
       const name = r.Cells[0]?.Value;
@@ -170,8 +175,12 @@ export const getScenarioData = createServerFn({ method: "POST" })
     });
     const expenseLines = parseMonthlyExpenses(plRes.Reports?.[0], months);
 
-    // Fixed / variable tags plus saved exclusions.
-    const sb = context.supabase as any;
+    // Fixed / variable tags plus saved exclusions. Read with the trusted server
+    // client after widget access has been checked: advisors and firm members have
+    // no client_access row, so the RLS helper would hide their own data.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const sb = supabaseAdmin as any;
+
     const [tagsRes, exclRes] = await Promise.all([
       sb
         .from("client_cost_classifications")
@@ -229,11 +238,31 @@ export const getScenarioData = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Scenario exclusions are owned by the client, but advisors, firm members and
+ * super admins have no `client_access` row, so the table's RLS helper denies
+ * their writes. Authorise explicitly, then write with the trusted client.
+ */
+async function assertScenarioWriteAccess(userId: string, clientId: string) {
+  const { userCanManageClient } = await import("./client-orgs.server");
+  if (await userCanManageClient(userId, clientId)) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: access } = await (supabaseAdmin as any)
+    .from("client_access")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("client_id", clientId)
+    .maybeSingle();
+  if (!access) throw new Error("You cannot change this scenario.");
+}
+
 export const setInvoiceExcluded = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; xeroInvoiceId: string; excluded: boolean }) => i)
   .handler(async ({ data, context }) => {
-    const sb = context.supabase as any;
+    await assertScenarioWriteAccess(context.userId, data.clientId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const sb = supabaseAdmin as any;
     if (data.excluded) {
       const { error } = await sb
         .from("scenario_exclusions")
@@ -257,10 +286,13 @@ export const resetScenario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any)
+    await assertScenarioWriteAccess(context.userId, data.clientId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as any)
       .from("scenario_exclusions")
       .delete()
       .eq("client_id", data.clientId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+

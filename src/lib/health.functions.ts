@@ -431,31 +431,32 @@ function sumLiabilities(report: any): number {
   return liabilities;
 }
 
-// Aged Payables/Receivables summary report → total + overdue (>0 days bucket)
-function summariseAgedReport(report: any): { total: number; overdue: number } {
-  // Xero aged-by-contact summary report rows: each contact row has cells:
-  // [Contact, Current, <1mo, 1mo, 2mo, Older, Total]
+// Outstanding invoices → total owed + overdue portion. Derived from the Invoices
+// endpoint (accounting.invoices.read) because the Aged*ByContact reports are
+// per-contact reports that our connection scopes do not grant.
+function summariseOutstandingInvoices(
+  invoices: { AmountDue?: number | string; DueDate?: string }[] | null | undefined,
+  asOfDate: string,
+): { total: number; overdue: number } {
+  const asOf = new Date(`${asOfDate}T23:59:59`);
   let total = 0;
   let overdue = 0;
-  const sections: ReportRow[] = report?.Rows ?? [];
-  function walk(rows: ReportRow[] | undefined) {
-    if (!rows) return;
-    for (const r of rows) {
-      if (r.RowType === "Section") walk(r.Rows);
-      else if ((r.RowType === "Row" || r.RowType === "SummaryRow") && r.Cells) {
-        const cells = r.Cells.map((c) => c?.Value ?? "");
-        // Total is the last cell; current is the second cell (after contact)
-        if (cells.length >= 6 && r.RowType === "SummaryRow") {
-          const t = parseAmount(cells[cells.length - 1]);
-          const current = parseAmount(cells[1]);
-          total += t;
-          overdue += Math.max(0, t - current);
-        }
-      }
-    }
+  for (const inv of invoices ?? []) {
+    const due = Number(inv.AmountDue ?? 0);
+    if (!Number.isFinite(due) || due <= 0) continue;
+    total += due;
+    const dueDate = parseXeroDateValue(inv.DueDate);
+    if (dueDate && dueDate.getTime() < asOf.getTime()) overdue += due;
   }
-  walk(sections);
   return { total, overdue };
+}
+
+function parseXeroDateValue(s?: string): Date | null {
+  if (!s) return null;
+  const m = s.match(/\/Date\((-?\d+)/);
+  if (m) return new Date(parseInt(m[1] as string, 10));
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 function statusFor(value: number, thresholds: { good: number; watch: number }, lowerIsBetter = false): PillarStatus {
@@ -522,13 +523,16 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     };
     const bsStartDate = dayBefore(fy.from);
 
-    const [pnlRes, priorPnlRes, bsRes, bsStartRes, agedRecRes, agedPayRes, orgRes] = await Promise.all([
+    const outstandingWhere = (type: "ACCREC" | "ACCPAY") =>
+      `Type=="${type}"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"&&AmountDue>0`;
+
+    const [pnlRes, priorPnlRes, bsRes, bsStartRes, arInvRes, apInvRes, orgRes] = await Promise.all([
       safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: fy.from, toDate: fy.to }),
       safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: priorFrom, toDate: priorToStr }),
       safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: asOfDate }),
       safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: bsStartDate }),
-      safeGet<{ Reports: any[] }>("Reports/AgedReceivablesByContact", { date: asOfDate }),
-      safeGet<{ Reports: any[] }>("Reports/AgedPayablesByContact", { date: asOfDate }),
+      safeGet<{ Invoices: any[] }>("Invoices", { where: outstandingWhere("ACCREC") }),
+      safeGet<{ Invoices: any[] }>("Invoices", { where: outstandingWhere("ACCPAY") }),
       safeGet<{ Organisations: any[] }>("Organisations"),
     ]);
 
@@ -537,8 +541,9 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const bs = summariseBs(bsRes?.Reports?.[0] ?? {});
     const bsStart = summariseBs(bsStartRes?.Reports?.[0] ?? {});
     const liabilities = sumLiabilities(bsRes?.Reports?.[0] ?? {});
-    const ap = summariseAgedReport(agedPayRes?.Reports?.[0] ?? {});
-    const ar = summariseAgedReport(agedRecRes?.Reports?.[0] ?? {});
+    const ap = summariseOutstandingInvoices(apInvRes?.Invoices, asOfDate);
+    const ar = summariseOutstandingInvoices(arInvRes?.Invoices, asOfDate);
+
     const currency = (orgRes?.Organisations?.[0]?.BaseCurrency as string) ?? "AUD";
 
     // Income breakdown for "single source" detection (top revenue account share)

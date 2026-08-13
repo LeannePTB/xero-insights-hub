@@ -10,6 +10,8 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Loader2, UserPlus, Copy, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
+
 
 function isoDate(d: Date) {
   return d.toISOString().slice(0, 10);
@@ -28,6 +30,12 @@ export function AddOrganisationDialog({
   label?: string;
 }) {
   const create = useServerFn(adminCreateOrganisation);
+  const { levels: firmLevels } = usePlanLevels("firm");
+  const tierOptions: { key: string; label: string }[] =
+    firmLevels.length > 0
+      ? firmLevels.map((l) => ({ key: l.key, label: l.label }))
+      : ["starter", "growth", "scale", "firm", "free", "legacy"].map((k) => ({ key: k, label: k }));
+
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -144,11 +152,12 @@ export function AddOrganisationDialog({
                   <Select value={tier} onValueChange={setTier}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["starter", "growth", "scale", "firm", "free", "legacy"].map((t) => (
-                        <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                      {tierOptions.map((t) => (
+                        <SelectItem key={t.key} value={t.key} className="capitalize">{t.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+
                 </div>
                 <div className="space-y-1.5">
                   <Label>Status</Label>
