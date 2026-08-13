@@ -216,3 +216,91 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
 
     return { upgrades, contactEmail };
   });
+
+// ---------------------------------------------------------------------------
+// Per-client widget control.
+// The organisation's plan sets the ceiling (which tiers it may use → which
+// widgets exist for it); each client then gets its own explicit widget list.
+// ---------------------------------------------------------------------------
+
+const TIER_ORDER: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
+
+export const getClientWidgets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; tierOverride?: DashboardTier | null }) => i)
+  .handler(async ({ data, context }) => {
+    const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
+    const planTiers = await allowedTiersForClient(data.clientId);
+    const tiers = TIER_ORDER.filter((t) => !planTiers || planTiers.includes(t));
+    const planTierList = tiers.length ? tiers : (["basic"] as DashboardTier[]);
+
+    // Global tier defaults (the starting point a client inherits).
+    const { data: cfgRows } = await context.supabase
+      .from("tier_widget_config")
+      .select("client_id, tier, widgets")
+      .is("client_id", null);
+    const globalFor = (t: DashboardTier): WidgetKey[] => {
+      const row = (cfgRows ?? []).find((r: any) => r.tier === t);
+      return sanitizeWidgets((row?.widgets ?? DEFAULT_TIER_WIDGETS[t]) as string[]);
+    };
+
+    const availableSet = new Set<WidgetKey>();
+    for (const t of planTierList) for (const w of globalFor(t)) availableSet.add(w);
+    const availableWidgets = ALL_WIDGETS.filter((w) => availableSet.has(w));
+
+    const { data: client } = await context.supabase
+      .from("clients")
+      .select("dashboard_widgets")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    const saved = (client as any)?.dashboard_widgets as string[] | null | undefined;
+    const configured = Array.isArray(saved);
+
+    const highest = planTierList[planTierList.length - 1] as DashboardTier;
+    const fallback = globalFor(data.tierOverride ?? highest);
+    const widgets = data.tierOverride
+      ? fallback
+      : configured
+      ? sanitizeWidgets(saved!).filter((w) => availableSet.has(w))
+      : fallback.filter((w) => availableSet.has(w));
+
+    return {
+      widgets,
+      availableWidgets,
+      configured,
+      planTiers: planTierList,
+      highestTier: highest,
+    };
+  });
+
+export const saveClientWidgets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; widgets: WidgetKey[] | null }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let value: string[] | null = null;
+    if (data.widgets !== null) {
+      const planTiers = await allowedTiersForClient(data.clientId);
+      const tiers = TIER_ORDER.filter((t) => !planTiers || planTiers.includes(t));
+      const { data: cfgRows } = await supabaseAdmin
+        .from("tier_widget_config")
+        .select("tier, widgets")
+        .is("client_id", null);
+      const allowed = new Set<WidgetKey>();
+      for (const t of (tiers.length ? tiers : (["basic"] as DashboardTier[]))) {
+        const row = (cfgRows ?? []).find((r: any) => r.tier === t);
+        for (const w of sanitizeWidgets((row?.widgets ?? DEFAULT_TIER_WIDGETS[t]) as string[])) allowed.add(w);
+      }
+      value = sanitizeWidgets(data.widgets).filter((w) => allowed.has(w));
+    }
+
+    const { error } = await (supabaseAdmin as any)
+      .from("clients")
+      .update({ dashboard_widgets: value })
+      .eq("id", data.clientId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
