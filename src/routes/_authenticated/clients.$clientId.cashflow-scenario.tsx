@@ -562,6 +562,32 @@ function CashflowScenarioPage() {
               })}
             </section>
 
+            {/* Excluded income */}
+            <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+              <div className="flex items-center justify-between">
+                <h2 className="font-display text-lg font-semibold">Excluded income</h2>
+                <span className="tabular-nums text-sm font-semibold text-rose-600">
+                  {fmt(view.monthInvoices.filter((i: ScenarioInvoice) => i.excluded).reduce((a, i) => a + i.amount, 0))}
+                </span>
+              </div>
+              {view.monthInvoices.filter((i: ScenarioInvoice) => i.excluded).length === 0 ? (
+                <p className="mt-3 text-sm text-muted-foreground">No invoices have been excluded for this month.</p>
+              ) : (
+                <ul className="mt-4 space-y-1.5">
+                  {view.monthInvoices
+                    .filter((i: ScenarioInvoice) => i.excluded)
+                    .map((inv: ScenarioInvoice) => (
+                      <li key={inv.id} className="flex items-center justify-between text-sm">
+                        <span className="truncate pr-3">
+                          {inv.customer_id ?? "Unassigned"} · {inv.description}
+                        </span>
+                        <span className="tabular-nums">{fmt(inv.amount)}</span>
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </section>
+
             <p className="mt-6 text-xs text-muted-foreground">
               Figures come from the Xero Profit &amp; Loss on the accrual basis, so wages and
               superannuation are included. Operating expenses are split using the fixed/variable tags
