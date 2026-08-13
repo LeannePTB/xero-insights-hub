@@ -299,6 +299,7 @@ function AuditPage() {
                       </div>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{f.message}</p>
+                    <TransactionLinks finding={f} />
                     {isResolved && (
                       <p className="mt-1 text-xs text-muted-foreground">
                         Resolved{s?.resolvedAt ? ` on ${new Date(s.resolvedAt).toLocaleDateString()}` : ""}
@@ -316,6 +317,32 @@ function AuditPage() {
           )}
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+function TransactionLinks({ finding }: { finding: any }) {
+  const ev = finding?.evidence ?? {};
+  const ids: string[] = Array.isArray(ev.paymentIds) ? ev.paymentIds : [];
+  const dates: string[] = Array.isArray(ev.dates) ? ev.dates : [];
+  const base: string | null = finding?.deep_link ?? null;
+  const anchorId: string | null = finding?.entity_id ?? null;
+  if (ids.length < 2 || !base || !anchorId) return null;
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+      <span className="text-muted-foreground">Transactions in Xero:</span>
+      {ids.map((id, i) => (
+        <a
+          key={id}
+          href={base.split(anchorId).join(id)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
+        >
+          <ExternalLink className="h-3 w-3" />
+          {dates[i] ?? `Payment ${i + 1}`}
+        </a>
+      ))}
     </div>
   );
 }
