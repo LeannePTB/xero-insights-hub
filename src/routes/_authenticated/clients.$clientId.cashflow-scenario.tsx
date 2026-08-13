@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Loader2, RefreshCw, RotateCcw } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -133,6 +133,7 @@ function CashflowScenarioPage() {
 
   const [customer, setCustomer] = useState<string>("");
   const [scope, setScope] = useState<"month" | "all">("month");
+  const [matrixOpen, setMatrixOpen] = useState(false);
 
   const view = useMemo(() => {
     if (!data) return null;
