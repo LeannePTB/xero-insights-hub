@@ -65,13 +65,17 @@ export const savePlanLevel = createServerFn({ method: "POST" })
     if (!key) throw new Error("A key is required.");
     if (!data.label.trim()) throw new Error("A label is required.");
 
+    const clientLimit = Math.max(0, data.client_limit ?? 0);
     const row = {
       scope: data.scope,
       key,
       label: data.label.trim(),
       description: data.description ?? "",
-      client_limit: Math.max(0, data.client_limit ?? 0),
-      xero_org_limit: Math.max(1, data.xero_org_limit ?? 1),
+      client_limit: clientLimit,
+      // One Xero file per client on an organisation plan — only Multi company
+      // dashboard tiers let a single client consolidate more than one file.
+      xero_org_limit:
+        data.scope === "firm" ? Math.max(1, clientLimit) : Math.max(1, data.xero_org_limit ?? 1),
       allows_multi_org: !!data.allows_multi_org,
       widgets: data.widgets ?? [],
       allowed_tiers: data.scope === "firm" ? (data.allowed_tiers ?? []) : [],

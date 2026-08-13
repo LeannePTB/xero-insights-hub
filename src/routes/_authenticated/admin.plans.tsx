@@ -205,26 +205,44 @@ function PlanLevelsPage() {
                     <Input
                       type="number"
                       min={0}
-                      value={draft.client_limit}
-                      onChange={(e) => setDraft({ ...draft, client_limit: Number(e.target.value) })}
+                      value={draft.client_limit === 0 ? "" : String(draft.client_limit)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d]/g, "");
+                        setDraft({ ...draft, client_limit: raw === "" ? 0 : Number(raw) });
+                      }}
                     />
+                    <p className="text-[11px] text-muted-foreground">
+                      One Xero file per client — this plan allows {Math.max(1, draft.client_limit)} Xero file(s) in total.
+                    </p>
                   </div>
                 )}
-                <div className="space-y-1.5">
-                  <Label>Xero files allowed</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={draft.xero_org_limit}
-                    onChange={(e) => setDraft({ ...draft, xero_org_limit: Number(e.target.value) })}
-                  />
-                </div>
+                {draft.scope === "dashboard" && (
+                  <div className="space-y-1.5">
+                    <Label>Xero files per client</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      disabled={!draft.allows_multi_org}
+                      value={draft.allows_multi_org ? String(draft.xero_org_limit) : "1"}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d]/g, "");
+                        setDraft({ ...draft, xero_org_limit: raw === "" ? 1 : Number(raw) });
+                      }}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Only Multi company tiers can consolidate more than one file.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label>Sort order</Label>
                   <Input
                     type="number"
-                    value={draft.sort_order}
-                    onChange={(e) => setDraft({ ...draft, sort_order: Number(e.target.value) })}
+                    value={String(draft.sort_order)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d-]/g, "");
+                      setDraft({ ...draft, sort_order: raw === "" || raw === "-" ? 0 : Number(raw) });
+                    }}
                   />
                 </div>
               </div>
@@ -275,17 +293,19 @@ function PlanLevelsPage() {
                     )}
                   </div>
                   {(() => {
-                    const maxTierFiles = Math.max(
-                      1,
-                      ...dashLevels
-                        .filter((t) => draft.allowed_tiers.includes(t.key))
-                        .map((t) => t.xero_org_limit ?? 1),
+                    const multi = dashLevels.filter(
+                      (t) => draft.allowed_tiers.includes(t.key) && t.allows_multi_org,
                     );
-                    if (maxTierFiles <= draft.xero_org_limit) return null;
+                    if (multi.length === 0) {
+                      return (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          No Multi company tier included — each client on this plan links one Xero file.
+                        </p>
+                      );
+                    }
                     return (
-                      <p className="mt-2 text-xs text-destructive">
-                        This plan allows {draft.xero_org_limit} Xero file(s), but an included tier allows{" "}
-                        {maxTierFiles}. Raise “Xero files allowed” to {maxTierFiles} or the plan cap will win.
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Consolidation allowed via {multi.map((t) => `${t.label} (${t.xero_org_limit} files)`).join(", ")}.
                       </p>
                     );
                   })()}
@@ -301,13 +321,18 @@ function PlanLevelsPage() {
                     </div>
                     <Switch
                       checked={draft.allows_multi_org}
-                      onCheckedChange={(v) => setDraft({ ...draft, allows_multi_org: v })}
+                      onCheckedChange={(v) =>
+                        setDraft({
+                          ...draft,
+                          allows_multi_org: v,
+                          xero_org_limit: v ? Math.max(2, draft.xero_org_limit) : 1,
+                        })
+                      }
                     />
                   </div>
                   {draft.allows_multi_org && draft.xero_org_limit <= 1 && (
                     <p className="text-xs text-destructive">
-                      This tier allows multiple Xero files but the limit is 1 — set “Xero files allowed” to the number
-                      this step should include.
+                      Set “Xero files per client” to the number this step should include.
                     </p>
                   )}
                   <div>
@@ -462,7 +487,20 @@ function LevelSection({
                     </div>
                   </td>
                 )}
-                <td className="px-4 py-3 tabular-nums">{l.xero_org_limit}</td>
+                <td className="px-4 py-3 tabular-nums">
+                  {scope === "firm" ? (
+                    <div>
+                      <span>{l.client_limit >= 9999 ? "Unlimited" : Math.max(1, l.client_limit)}</span>
+                      <div className="text-[11px] text-muted-foreground">
+                        {(l.allowed_tiers ?? []).some((k) => tierLevels?.find((x) => x.key === k)?.allows_multi_org)
+                          ? "1 per client · consolidation via Multi company"
+                          : "1 per client"}
+                      </div>
+                    </div>
+                  ) : (
+                    l.xero_org_limit
+                  )}
+                </td>
                 {scope === "dashboard" && (
                   <td className="px-4 py-3 text-muted-foreground">{l.widgets.length} selected</td>
                 )}

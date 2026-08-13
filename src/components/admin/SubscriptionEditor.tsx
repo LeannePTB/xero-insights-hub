@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { adminUpdateSubscription } from "@/lib/admin.functions";
@@ -43,6 +43,28 @@ export function SubscriptionEditor({
   const [limitOverride, setLimitOverride] = useState<string>(
     subscription?.client_limit_override != null ? String(subscription.client_limit_override) : "",
   );
+
+  // The parent often renders before its query resolves; resync once the real
+  // subscription arrives so edits aren't made against placeholder values.
+  useEffect(() => {
+    setTier(subscription?.tier ?? "starter");
+    setStatus(subscription?.status ?? "trialing");
+    setTrialEnds(toDateInput(subscription?.trial_ends_at));
+    setPeriodEnd(toDateInput(subscription?.current_period_end));
+    setCancelEnd(!!subscription?.cancel_at_period_end);
+    setLimitOverride(
+      subscription?.client_limit_override != null ? String(subscription.client_limit_override) : "",
+    );
+  }, [
+    subscription?.tier,
+    subscription?.status,
+    subscription?.trial_ends_at,
+    subscription?.current_period_end,
+    subscription?.cancel_at_period_end,
+    subscription?.client_limit_override,
+  ]);
+
+  useEffect(() => setAlwaysFree(!!isAlwaysFree), [isAlwaysFree]);
 
   // Keep the current value selectable even if its level was retired.
   const options = levels.filter((l) => l.enabled || l.key === tier);
