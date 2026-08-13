@@ -33,6 +33,14 @@ import {
   type ScenarioInvoice,
 } from "@/lib/xero/scenario.functions";
 import { buildMatrix, computeTotals, groupBySection, groupExpenses, monthKey } from "@/lib/scenario-calc";
+import {
+  basisNote,
+  isModelled,
+  resolveGroupCost,
+  usePersistedCostBasis,
+  type CostGroup,
+} from "@/lib/scenario-basis";
+import { CostBasisControls } from "@/components/dashboard/CostBasisControls";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/cashflow-scenario")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -135,21 +143,46 @@ function CashflowScenarioPage() {
   const [scope, setScope] = useState<"month" | "all">("month");
   const [matrixOpen, setMatrixOpen] = useState(false);
   const [invoicesOpen, setInvoicesOpen] = useState(false);
+  const [costBasis, setCostBasis, resetCostBasis] = usePersistedCostBasis(
+    `scenario-cost-basis:${clientId}:${tenantId ?? "none"}`,
+  );
 
   const view = useMemo(() => {
     if (!data) return null;
     const months = data.months;
+    const monthExpenses = data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month);
+    const sumGroups = (gs: { subtotal: number }[]) => gs.reduce((a, g) => a + g.subtotal, 0);
+    const actuals: Record<CostGroup, number> = {
+      cogs: sumGroups(groupBySection(monthExpenses, "cogs")),
+      fixed: sumGroups(groupExpenses(monthExpenses, "Fixed", "operating")),
+      variable: sumGroups(groupExpenses(monthExpenses, "Variable", "operating")),
+    };
+    const avg: Record<CostGroup, number> | null = data.avg3
+      ? { cogs: data.avg3.cogs, fixed: data.avg3.fixed, variable: data.avg3.variable }
+      : null;
+    const applied: Record<CostGroup, number> = {
+      cogs: resolveGroupCost(actuals.cogs, avg?.cogs ?? null, costBasis.cogs),
+      fixed: resolveGroupCost(actuals.fixed, avg?.fixed ?? null, costBasis.fixed),
+      variable: resolveGroupCost(actuals.variable, avg?.variable ?? null, costBasis.variable),
+    };
+    const monthTotals = computeTotals(data.invoices, data.expenses, month);
+    const appliedCosts = applied.cogs + applied.fixed + applied.variable;
     return {
       months,
       month,
       matrix: buildMatrix(data.customers, data.invoices, months),
-      monthTotals: computeTotals(data.invoices, data.expenses, month),
+      monthTotals,
+      costActuals: actuals,
+      costAvg: avg,
+      costApplied: applied,
+      scenarioNet: monthTotals.revenue - appliedCosts,
       rangeTotals: computeTotals(data.invoices, data.expenses, null),
       monthInvoices: data.invoices.filter((i: ScenarioInvoice) => monthKey(i.issue_date) === month),
-      monthExpenses: data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month),
+      monthExpenses,
       monthPnl: (data.pnl ?? []).find((p) => p.month === month) ?? null,
     };
-  }, [data, month]);
+  }, [data, month, costBasis]);
+
 
 
   const customerNames = useMemo(() => {
@@ -284,30 +317,45 @@ function CashflowScenarioPage() {
                 />
               </div>
 
+              <CostBasisControls
+                basis={costBasis}
+                onChange={setCostBasis}
+                onReset={resetCostBasis}
+                actuals={view.costActuals}
+                avg={view.costAvg}
+                fmt={fmt}
+              />
+
               <div className="mt-3 grid gap-3 sm:grid-cols-5">
                 <Stat label={`Scenario revenue · ${monthLabelOf(month)} (excl. GST)`} value={fmt(view.monthTotals.revenue)} />
                 <Stat
                   label="Cost of sales"
-                  value={fmt(view.monthTotals.cogs)}
-                  note={data?.avg3 ? `3-mo avg ${fmt(data.avg3.cogs)}` : undefined}
+                  value={fmt(view.costApplied.cogs)}
+                  note={basisNote(view.costActuals.cogs, view.costAvg?.cogs ?? null, costBasis.cogs, fmt)}
                 />
                 <Stat
                   label="Fixed expenses"
-                  value={fmt(view.monthTotals.fixed)}
-                  note={data?.avg3 ? `3-mo avg ${fmt(data.avg3.fixed)}` : undefined}
+                  value={fmt(view.costApplied.fixed)}
+                  note={basisNote(view.costActuals.fixed, view.costAvg?.fixed ?? null, costBasis.fixed, fmt)}
                 />
                 <Stat
                   label="Variable expenses"
-                  value={fmt(view.monthTotals.variable)}
-                  note={data?.avg3 ? `3-mo avg ${fmt(data.avg3.variable)}` : undefined}
+                  value={fmt(view.costApplied.variable)}
+                  note={basisNote(
+                    view.costActuals.variable,
+                    view.costAvg?.variable ?? null,
+                    costBasis.variable,
+                    fmt,
+                  )}
                 />
 
                 <Stat
                   label="Net position"
-                  value={fmt(view.monthTotals.net)}
-                  tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
+                  value={fmt(view.scenarioNet)}
+                  tone={view.scenarioNet >= 0 ? "text-emerald-600" : "text-rose-600"}
                 />
               </div>
+
 
 
             {/* Matrix */}
@@ -531,8 +579,14 @@ function CashflowScenarioPage() {
               <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
                 <div className="flex items-center justify-between">
                   <h2 className="font-display text-lg font-semibold">Cost of sales</h2>
-                  <span className="tabular-nums text-sm font-semibold">{fmt(view.monthTotals.cogs)}</span>
+                  <span className="tabular-nums text-sm font-semibold">{fmt(view.costActuals.cogs)}</span>
                 </div>
+                {isModelled(costBasis.cogs) && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Scenario uses {fmt(view.costApplied.cogs)} — lines below are the actual Xero
+                    accounts.
+                  </p>
+                )}
                 {groupBySection(view.monthExpenses, "cogs").length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">
                     No cost of sales in this month.
@@ -551,6 +605,7 @@ function CashflowScenarioPage() {
               {(["Fixed", "Variable"] as const).map((type) => {
                 const groups = groupExpenses(view.monthExpenses, type, "operating");
                 const total = groups.reduce((a, g) => a + g.subtotal, 0);
+                const key: CostGroup = type === "Fixed" ? "fixed" : "variable";
                 return (
                   <div
                     key={type}
@@ -560,11 +615,18 @@ function CashflowScenarioPage() {
                       <h2 className="font-display text-lg font-semibold">{type} expenses</h2>
                       <span className="tabular-nums text-sm font-semibold">{fmt(total)}</span>
                     </div>
+                    {isModelled(costBasis[key]) && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Scenario uses {fmt(view.costApplied[key])} — lines below are the actual Xero
+                        accounts.
+                      </p>
+                    )}
                     {groups.length === 0 ? (
                       <p className="mt-3 text-sm text-muted-foreground">
                         Nothing tagged as {type.toLowerCase()} in this month.
                       </p>
                     ) : (
+
                       <ul className="mt-4 space-y-1.5">
                         {groups.map((g) => (
                           <li key={g.category} className="flex items-center justify-between text-sm">
