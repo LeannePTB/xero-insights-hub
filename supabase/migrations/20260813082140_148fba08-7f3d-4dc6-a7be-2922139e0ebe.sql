@@ -1,0 +1,1 @@
+ALTER FUNCTION app_private.move_xero_file_to_client(uuid, uuid, uuid) SECURITY INVOKER;
