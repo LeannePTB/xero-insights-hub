@@ -35,7 +35,7 @@ import { TIER_LABEL, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
-import { getEffectiveWidgets } from "@/lib/tier-config.functions";
+import { getClientWidgets } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
@@ -56,7 +56,7 @@ function ClientDashboard() {
   const qc = useQueryClient();
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
-  const fetchWidgets = useServerFn(getEffectiveWidgets);
+  const fetchWidgets = useServerFn(getClientWidgets);
   const fetchOrder = useServerFn(getCardOrder);
   const saveOrderFn = useServerFn(saveCardOrder);
 
@@ -76,8 +76,8 @@ function ClientDashboard() {
     previewTier ?? viewerEntry?.tier ?? "basic";
 
   const widgetsQ = useQuery({
-    queryKey: ["effective-widgets", clientId, tier],
-    queryFn: () => fetchWidgets({ data: { clientId, tier } }),
+    queryKey: ["client-widgets", clientId, previewTier ?? "actual"],
+    queryFn: () => fetchWidgets({ data: { clientId, tierOverride: previewTier } }),
     enabled: !!ctxQ.data,
   });
   const widgets = widgetsQ.data?.widgets ?? [];
