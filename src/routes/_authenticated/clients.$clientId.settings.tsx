@@ -319,7 +319,14 @@ function ClientSettings() {
               <Input id="xero-file-allowance" type="number" min={1} max={100} value={xeroAllowance} onChange={(event) => setXeroAllowance(Number(event.target.value))} className="mt-1 w-28" />
             </div>
             <Button variant="outline" onClick={() => allowanceMut.mutate()} disabled={allowanceMut.isPending}>Save allowance</Button>
-            {allowance ? <p className="pb-2 text-xs text-muted-foreground">{allowance.used} of {allowance.allowance} linked{allowance.isMulti ? " · Multi company" : " · standard"}</p> : null}
+            {allowance ? (
+              <p className="pb-2 text-xs text-muted-foreground">
+                {allowance.used} of {allowance.allowance} linked
+                {allowance.isMulti
+                  ? ` · ${allowance.sourceLabel ?? "Multi company"} tier — ${allowance.allowance} Xero files`
+                  : " · standard (single Xero file)"}
+              </p>
+            ) : null}
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
             If a widget says Xero needs reconnecting, use <strong>Reconnect to Xero</strong> — it re-runs Xero sign-in and refreshes the tokens for that org in place.

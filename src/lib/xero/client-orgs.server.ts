@@ -5,6 +5,8 @@ export type ClientOrgAllowance = {
   used: number;
   isMulti: boolean;
   remaining: number;
+  /** Which tier the allowance came from, e.g. "Multi company 10". */
+  sourceLabel: string | null;
 };
 
 export async function getClientOrgAllowance(clientId: string): Promise<ClientOrgAllowance> {
@@ -13,7 +15,7 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
       supabaseAdmin.from("clients").select("max_xero_orgs").eq("id", clientId).maybeSingle(),
       supabaseAdmin.from("client_access").select("tier").eq("client_id", clientId),
       supabaseAdmin.from("client_xero_orgs").select("id", { count: "exact", head: true }).eq("client_id", clientId),
-      (supabaseAdmin as any).from("plan_levels").select("key, xero_org_limit, allows_multi_org").eq("scope", "dashboard"),
+      (supabaseAdmin as any).from("plan_levels").select("key, label, xero_org_limit, allows_multi_org").eq("scope", "dashboard"),
     ]);
 
   if (clientError) throw new Error(clientError.message);
@@ -22,19 +24,23 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
   if (!client) throw new Error("Client subscription not found.");
 
   // Multi-file support comes from the tier catalogue, so new tiers can allow it too.
-  const byKey = new Map<string, { xero_org_limit: number; allows_multi_org: boolean }>();
+  const byKey = new Map<string, { label?: string; xero_org_limit: number; allows_multi_org: boolean }>();
   for (const l of (levels ?? []) as any[]) byKey.set(l.key, l);
   let isMulti = false;
   let tierLimit = 1;
+  let sourceLabel: string | null = null;
   for (const row of (access ?? []) as any[]) {
     const level = byKey.get(row.tier);
     if (level?.allows_multi_org) isMulti = true;
-    if (level) tierLimit = Math.max(tierLimit, level.xero_org_limit ?? 1);
+    if (level && (level.xero_org_limit ?? 1) >= tierLimit) {
+      tierLimit = Math.max(tierLimit, level.xero_org_limit ?? 1);
+      sourceLabel = level.label ?? row.tier;
+    }
   }
 
   const allowance = isMulti ? Math.max(1, client.max_xero_orgs, tierLimit) : 1;
   const used = count ?? 0;
-  return { allowance, used, isMulti, remaining: Math.max(0, allowance - used) };
+  return { allowance, used, isMulti, remaining: Math.max(0, allowance - used), sourceLabel };
 }
 
 

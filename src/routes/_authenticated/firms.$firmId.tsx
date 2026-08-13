@@ -181,6 +181,7 @@ function FirmPage() {
                       {summary.tiers.map((t) => (
                         <Badge key={t.key} variant="secondary" className="text-[11px]">
                           {t.label}
+                          {t.allowsMultiOrg ? ` · ${t.xeroFiles} Xero files` : ""}
                         </Badge>
                       ))}
                     </div>
