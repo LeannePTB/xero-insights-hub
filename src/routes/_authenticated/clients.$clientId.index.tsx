@@ -213,17 +213,13 @@ function ClientDashboard() {
           {isAdvisor && (
             <div className="flex items-center gap-2">
               <Button variant="outline" asChild className="shrink-0">
-                <Link to="/clients/$clientId/loans" params={{ clientId }}>
-                  <Building2 className="mr-2 h-4 w-4" /> Loan Consolidation
-                </Link>
-              </Button>
-              <Button variant="outline" asChild className="shrink-0">
                 <Link to="/clients/$clientId/settings" params={{ clientId }}>
                   <Settings className="mr-2 h-4 w-4" /> Settings
                 </Link>
               </Button>
             </div>
           )}
+
         </div>
 
         {orgs.length > 0 && (
