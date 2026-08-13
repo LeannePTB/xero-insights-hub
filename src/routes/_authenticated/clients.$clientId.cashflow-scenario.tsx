@@ -102,7 +102,17 @@ function CashflowScenarioPage() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["scenario", clientId] }),
     onError: (e: any) => toast.error(e?.message ?? "Could not update this invoice"),
   });
+  const bulkMut = useMutation({
+    mutationFn: (v: { xeroInvoiceIds: string[]; excluded: boolean }) =>
+      toggleExcludedBulk({ data: { clientId, ...v } }),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["scenario", clientId] });
+      toast.success(v.excluded ? "All invoices excluded for this month" : "All invoices included");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not update these invoices"),
+  });
   const resetMut = useMutation({
+
     mutationFn: () => reset({ data: { clientId } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["scenario", clientId] }),
     onError: (e: any) => toast.error(e?.message ?? "Could not reset the scenario"),
