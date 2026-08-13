@@ -34,32 +34,59 @@ export type ConsolidatedPayables = {
 
 const MANAGE_ROLES = ["advisor", "super_admin", "firm_owner"];
 
-async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  const { data: client } = await supabase
-    .from("clients")
-    .select("firm_id, owner_user_id")
-    .eq("id", clientId)
+/** A consolidation group resolved to its firm, member clients and Xero tenants. */
+type ResolvedGroup = {
+  firmId: string;
+  name: string;
+  clientIds: string[];
+  tenants: { tenantId: string; tenantName: string }[];
+};
+
+async function resolveGroup(supabase: any, userId: string, groupId: string): Promise<ResolvedGroup> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: group } = await supabaseAdmin
+    .from("consolidation_groups")
+    .select("id, firm_id, name")
+    .eq("id", groupId)
     .maybeSingle();
-  if (!client) return false;
-  if (client.owner_user_id === userId) return true;
+  if (!group) throw new Error("Consolidation group not found.");
+
   const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  if (roles?.some((r: any) => MANAGE_ROLES.includes(r.role))) return true;
-  if (!client.firm_id) return false;
-  const { data: member } = await supabase
-    .from("firm_members")
-    .select("id")
-    .eq("firm_id", client.firm_id)
-    .eq("user_id", userId)
-    .maybeSingle();
-  if (member) return true;
-  const { data: access } = await supabase
-    .from("client_access")
-    .select("id")
-    .eq("client_id", clientId)
-    .eq("user_id", userId)
-    .maybeSingle();
-  return !!access;
+  let allowed = Boolean(roles?.some((r: any) => MANAGE_ROLES.includes(r.role)));
+  if (!allowed) {
+    const { data: member } = await supabase
+      .from("firm_members")
+      .select("id")
+      .eq("firm_id", group.firm_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    allowed = Boolean(member);
+  }
+  if (!allowed) throw new Error("You don't have access to this organisation.");
+
+  const { data: members } = await supabaseAdmin
+    .from("consolidation_group_members")
+    .select("client_id")
+    .eq("group_id", groupId);
+  const clientIds = (members ?? []).map((m: any) => m.client_id as string);
+  if (!clientIds.length) return { firmId: group.firm_id, name: group.name, clientIds: [], tenants: [] };
+
+  const { data: orgs } = await supabaseAdmin
+    .from("client_xero_orgs")
+    .select("client_id, xero_connections(tenant_id, tenant_name)")
+    .in("client_id", clientIds);
+
+  const tenants: { tenantId: string; tenantName: string }[] = [];
+  const seen = new Set<string>();
+  for (const o of (orgs ?? []) as any[]) {
+    const t = o?.xero_connections;
+    if (!t?.tenant_id || seen.has(t.tenant_id)) continue;
+    seen.add(t.tenant_id);
+    tenants.push({ tenantId: t.tenant_id, tenantName: t.tenant_name ?? "Unknown" });
+  }
+  return { firmId: group.firm_id, name: group.name, clientIds, tenants };
 }
+
 
 function parseXeroDate(s?: string): Date | null {
   if (!s) return null;
@@ -190,25 +217,26 @@ async function getLoanElimination(
   }
 }
 
+async function eliminationForGroup(
+  clientIds: string[],
+  tenantIds: string[],
+  asAt: string,
+  side: "receivable" | "payable",
+) {
+  let total = 0;
+  for (const clientId of clientIds) {
+    total += await getLoanElimination(clientId, tenantIds, asAt, side);
+  }
+  return Math.round(total * 100) / 100;
+}
+
 export const getConsolidatedReceivables = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { clientId: string; tenantIds: string[]; asAt: string }) => i)
+  .inputValidator((i: { groupId: string; asAt: string }) => i)
   .handler(async ({ data, context }) => {
-    if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
-      throw new Error("You don't have access to this client.");
-    }
-    if (data.tenantIds.length < 2) {
-      throw new Error("Select at least two organisations to consolidate.");
-    }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: orgs } = await supabaseAdmin
-      .from("client_xero_orgs")
-      .select("id, xero_connections(tenant_id, tenant_name)")
-      .eq("client_id", data.clientId);
-    const nameByTenant = new Map<string, string>();
-    for (const o of (orgs ?? []) as any[]) {
-      const t = o?.xero_connections;
-      if (t?.tenant_id) nameByTenant.set(t.tenant_id, t.tenant_name ?? "Unknown");
+    const group = await resolveGroup(context.supabase, context.userId, data.groupId);
+    if (group.tenants.length < 2) {
+      throw new Error("Add at least two companies with a linked Xero file to this group.");
     }
 
     const labels = ["Current", "1–30 days", "31–60 days", "61–90 days", "90+ days"];
@@ -220,8 +248,7 @@ export const getConsolidatedReceivables = createServerFn({ method: "POST" })
     const byTenant: { tenantId: string; tenantName: string; totalOutstanding: number; totalOverdue: number }[] = [];
     const tenantNames: string[] = [];
 
-    for (const tenantId of data.tenantIds) {
-      const tenantName = nameByTenant.get(tenantId) ?? "Unknown";
+    for (const { tenantId, tenantName } of group.tenants) {
       tenantNames.push(tenantName);
       const ageing = await getTenantAgeing(tenantId, "ACCREC", tenantName);
       invoiceCount += ageing.invoiceCount;
@@ -238,12 +265,13 @@ export const getConsolidatedReceivables = createServerFn({ method: "POST" })
       }
     }
 
-    const elimination = await getLoanElimination(data.clientId, data.tenantIds, data.asAt, "receivable");
+    const tenantIds = group.tenants.map((t) => t.tenantId);
+    const elimination = await eliminationForGroup(group.clientIds, tenantIds, data.asAt, "receivable");
     const netOutstanding = Math.max(0, Math.round((totalOutstanding - elimination) * 100) / 100);
 
     const result: ConsolidatedAgeing = {
       asOf: data.asAt,
-      tenantCount: data.tenantIds.length,
+      tenantCount: group.tenants.length,
       tenantNames,
       totalOutstanding: netOutstanding,
       totalOverdue: Math.max(0, totalOverdue - elimination),
@@ -261,23 +289,11 @@ export const getConsolidatedReceivables = createServerFn({ method: "POST" })
 
 export const getConsolidatedPayables = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { clientId: string; tenantIds: string[]; asAt: string }) => i)
+  .inputValidator((i: { groupId: string; asAt: string }) => i)
   .handler(async ({ data, context }) => {
-    if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
-      throw new Error("You don't have access to this client.");
-    }
-    if (data.tenantIds.length < 2) {
-      throw new Error("Select at least two organisations to consolidate.");
-    }
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: orgs } = await supabaseAdmin
-      .from("client_xero_orgs")
-      .select("id, xero_connections(tenant_id, tenant_name)")
-      .eq("client_id", data.clientId);
-    const nameByTenant = new Map<string, string>();
-    for (const o of (orgs ?? []) as any[]) {
-      const t = o?.xero_connections;
-      if (t?.tenant_id) nameByTenant.set(t.tenant_id, t.tenant_name ?? "Unknown");
+    const group = await resolveGroup(context.supabase, context.userId, data.groupId);
+    if (group.tenants.length < 2) {
+      throw new Error("Add at least two companies with a linked Xero file to this group.");
     }
 
     const labels = ["Current", "1–30 days", "31–60 days", "61–90 days", "90+ days"];
@@ -289,8 +305,7 @@ export const getConsolidatedPayables = createServerFn({ method: "POST" })
     const byTenant: { tenantId: string; tenantName: string; totalOutstanding: number; totalOverdue: number }[] = [];
     const tenantNames: string[] = [];
 
-    for (const tenantId of data.tenantIds) {
-      const tenantName = nameByTenant.get(tenantId) ?? "Unknown";
+    for (const { tenantId, tenantName } of group.tenants) {
       tenantNames.push(tenantName);
       const ageing = await getTenantAgeing(tenantId, "ACCPAY", tenantName);
       invoiceCount += ageing.invoiceCount;
@@ -307,12 +322,13 @@ export const getConsolidatedPayables = createServerFn({ method: "POST" })
       }
     }
 
-    const elimination = await getLoanElimination(data.clientId, data.tenantIds, data.asAt, "payable");
+    const tenantIds = group.tenants.map((t) => t.tenantId);
+    const elimination = await eliminationForGroup(group.clientIds, tenantIds, data.asAt, "payable");
     const netOutstanding = Math.max(0, Math.round((totalOutstanding - elimination) * 100) / 100);
 
     const result: ConsolidatedPayables = {
       asOf: data.asAt,
-      tenantCount: data.tenantIds.length,
+      tenantCount: group.tenants.length,
       tenantNames,
       totalOutstanding: netOutstanding,
       totalOverdue: Math.max(0, totalOverdue - elimination),

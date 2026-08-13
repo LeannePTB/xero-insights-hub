@@ -15,24 +15,19 @@ function fmt(n: number, ccy = "AUD") {
 }
 
 export function ConsolidatedReceivablesWidget({
-  clientId,
-  tenantIds,
-  tenantNames,
+  groupId,
   asAt,
   label = "Consolidated Accounts Receivable",
 }: {
-  clientId: string;
-  tenantIds: string[];
-  tenantNames: string[];
+  groupId: string;
   asAt: string;
   label?: string;
 }) {
   const fetch = useServerFn(getConsolidatedReceivables);
   const { data, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ["consolidated-receivables", clientId, tenantIds.sort().join(","), asAt],
-    queryFn: () => fetch({ data: { clientId, tenantIds, asAt } }),
+    queryKey: ["consolidated-receivables", groupId, asAt],
+    queryFn: () => fetch({ data: { groupId, asAt } }),
     retry: false,
-    enabled: tenantIds.length >= 2,
   });
 
   return (
@@ -51,24 +46,19 @@ export function ConsolidatedReceivablesWidget({
 }
 
 export function ConsolidatedPayablesWidget({
-  clientId,
-  tenantIds,
-  tenantNames,
+  groupId,
   asAt,
   label = "Consolidated Accounts Payable",
 }: {
-  clientId: string;
-  tenantIds: string[];
-  tenantNames: string[];
+  groupId: string;
   asAt: string;
   label?: string;
 }) {
   const fetch = useServerFn(getConsolidatedPayables);
   const { data, isLoading, error, refetch, isFetching } = useQuery({
-    queryKey: ["consolidated-payables", clientId, tenantIds.sort().join(","), asAt],
-    queryFn: () => fetch({ data: { clientId, tenantIds, asAt } }),
+    queryKey: ["consolidated-payables", groupId, asAt],
+    queryFn: () => fetch({ data: { groupId, asAt } }),
     retry: false,
-    enabled: tenantIds.length >= 2,
   });
 
   return (
@@ -85,6 +75,7 @@ export function ConsolidatedPayablesWidget({
     />
   );
 }
+
 
 function AgeingCard({
   label,

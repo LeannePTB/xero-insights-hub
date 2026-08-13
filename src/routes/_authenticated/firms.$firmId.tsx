@@ -16,6 +16,7 @@ import {
 import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
+import { ConsolidationGroupsSection } from "@/components/admin/ConsolidationGroupsSection";
 import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
 
@@ -246,6 +247,11 @@ function FirmPage() {
             planLabel={planV.planLabel}
           />
         </div>
+
+        <div className="mt-8">
+          <ConsolidationGroupsSection firmId={firmId} />
+        </div>
+
       </main>
     </div>
   );
