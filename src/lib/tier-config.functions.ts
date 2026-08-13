@@ -11,9 +11,10 @@ async function assertAdvisor(supabase: any, userId: string) {
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .eq("role", "advisor");
+    .in("role", ["advisor", "super_admin", "firm_owner", "firm_staff"]);
   if (!data || data.length === 0) throw new Error("Advisor only.");
 }
+
 
 // Returns global defaults plus, optionally, the overrides for one client.
 export const listTierConfig = createServerFn({ method: "POST" })
