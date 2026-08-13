@@ -1,0 +1,1 @@
+ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS consolidation_mode text NOT NULL DEFAULT 'individual'; ALTER TABLE public.clients ADD COLUMN IF NOT EXISTS consolidation_org_ids uuid[] NOT NULL DEFAULT '{}';

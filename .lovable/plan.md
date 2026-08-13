@@ -1,38 +1,46 @@
-# Consolidated view for multi-company clients
+# Multi-company consolidated dashboard plan
 
-Clients on a Multi company tier link several Xero files. Today the dashboard always renders one set of cards per file. This adds a consolidation option so an advisor can choose to show a single combined view instead — across the files they pick.
+## Goal
+Add a consolidation option for multi-company subscriptions. Advisors can choose which Xero organisations to consolidate; the client dashboard then shows individual companies AND a consolidated view side-by-side, with intercompany loan balances eliminated using the existing loan consolidation pairings.
 
-## What the advisor sets (client settings)
+## What we will build
 
-In the client's settings, under the Xero organisations section, a new "Consolidation" panel appears **only** when the client's tier allows multiple Xero files:
+1. **Consolidation settings on each client**  
+   - Add `consolidation_mode` and `consolidation_org_ids` fields to `public.clients` (already applied).  
+   - Update `getClient` to return the new fields.  
+   - Add a `saveClientConsolidation` server function that validates the user is an advisor or firm owner.  
+   - Add a `ConsolidationPanel` in the client settings page to toggle consolidation and select which organisations to include.  
+   - Gate the panel so it only appears when the client has a multi-company plan (`max_xero_orgs > 1`).
 
-- Display mode: **Individual companies** (default) or **Consolidated**
-- Companies to consolidate: tick boxes for each linked Xero file (defaults to all)
-- A note explaining that intercompany balances between the selected files are netted out using the loan pairings already configured on the Loan Consolidation page
+2. **Consolidated AR/AP cards**  
+   - Create `getConsolidatedAgeing` server function in `src/lib/xero/consolidated.functions.ts` that:  
+     - Accepts a list of `tenantIds` and the client id.  
+     - Fetches AR/AP ageing for each tenant using the existing Xero functions.  
+     - Aggregates the buckets, totals, and top customers/suppliers.  
+     - Reads the `loan_consolidation_accounts` pairings and subtracts the paired balances from the consolidated totals so intercompany loans are eliminated.  
+   - Create `ConsolidatedReceivablesWidget` and `ConsolidatedPayablesWidget` that show the combined totals plus a per-company breakdown.
 
-Saved per client, so the client viewer sees whatever the advisor chose.
+3. **Dashboard layout changes**  
+   - In `src/routes/_authenticated/clients.$clientId.index.tsx`:  
+     - Read `consolidation_mode` and `consolidation_org_ids`.  
+     - Build the selected-org list from the client's `client_xero_orgs`.  
+     - Show individual AR/AP cards for organisations that are **not** selected for consolidation.  
+     - Show consolidated AR/AP cards for the selected group when the mode is `consolidated`.  
+     - Keep all other widgets (P&L, tax, breakeven, etc.) per individual organisation.  
+     - Add a small badge or label so users can see which view is individual vs consolidated.
 
-## What the client dashboard shows
+4. **Loan consolidation**  
+   - The existing `LoanConsolidationWidget` remains client-wide.  
+   - The consolidated ageing will use the same `loan_consolidation_accounts` pairings to eliminate intercompany balances.
 
-When the mode is Consolidated:
+## What the user sees
+- On each multi-company client, an advisor opens Settings, enables "Consolidated view", and ticks the companies to combine.  
+- On the dashboard, un-ticked companies still show their own AR/AP cards.  
+- Ticked companies get a single consolidated AR/AP card that adds their balances and removes intercompany loans.  
+- All companies are still listed individually at the top of the page so the advisor can see every file.
 
-- **Aged Receivables (consolidated)** — one card summing the ageing buckets of the selected companies, with a per-company breakdown line underneath so it's clear where the balance sits.
-- **Aged Payables (consolidated)** — same treatment.
-- Intercompany amounts are removed: any receivable/payable that sits on an account pair configured in Loan Consolidation for two of the selected companies is excluded from the combined totals, and shown as a separate "Intercompany eliminated" line so the numbers reconcile back to the raw sum.
-- **Loan Consolidation** keeps exactly the layout and settings structure ported from the Hub project — the same matrix card, the same Loans page and Loan accounts pairing screen, the same `loan_consolidation_accounts` pairing model. Nothing about it is redesigned; it is only scoped to the companies ticked for consolidation, and it stays the single place where account pairings are configured.
-- All other cards (P&L, health, tax, break-even, cashflow, audit) keep rendering per company as they do now.
-
-Companies not ticked keep showing individually, so the dashboard always has a full list of all companies and the consolidated view sits alongside them.
-
-## Technical notes
-
-- Migration: add `consolidation_mode text not null default 'individual'` and `consolidation_org_ids uuid[] not null default '{}'` to `public.clients`. No new table needed; existing client policies and grants cover it.
-- `src/lib/clients.functions.ts`: return the two new fields on `getClient`; add a `saveClientConsolidation` server fn (advisor/firm-member/super-admin only, reusing `userCanManageClient`) that validates the mode is only settable when `getClientOrgAllowance().isMulti` is true and that every selected id is a linked `client_xero_orgs` row.
-- New `src/lib/xero/consolidated.functions.ts`: `getConsolidatedAgeing({ clientId, kind: 'receivables' | 'payables' })` — fetch each selected tenant's ageing via the existing receivables/payables server helpers in parallel, sum buckets, then subtract intercompany amounts derived from the Hub-ported pairing engine (`loan_consolidation_accounts` + `loan-recon.server.ts` / `loan-mismatch.server.ts`) where both sides belong to selected tenants. No new pairing model or parallel settings screen — it reads the same pairings the Loans pages already manage. Returns `{ total, buckets, perCompany[], eliminated }`. Access checked with the existing `assertWidgetAccess` for `receivables` / `payables`.
-- New `src/components/dashboard/ConsolidatedAgeingWidget.tsx` rendering that DTO, with a per-company list and the eliminated line, styled to match the existing `LoanConsolidationWidget` card.
-- `src/routes/_authenticated/clients.$clientId.index.tsx`: when consolidation is on, replace the per-org receivables/payables cards for the selected orgs with the two consolidated cards, and pass the selected tenant list to `LoanConsolidationWidget` (and through to `clients.$clientId.loans.tsx` / `loans-accounts.tsx`, which keep their current Hub layout).
-- New `src/components/dashboard/ConsolidationPanel.tsx` in client settings, gated on the multi-org allowance, following the same section/settings pattern as the existing Loan accounts screen.
-
-## Out of scope for now
-
-P&L, tax/super, break-even, cashflow and health stay per company — those can be consolidated later once the receivables/payables view is proven.
+## Technical details
+- Reuse existing `getAgedReceivables` / `getAgedPayables` to fetch data for each tenant.  
+- Use the existing `loan_consolidation_accounts` table and `runLoanReconciliation` logic to identify paired balances.  
+- Store the selected org ids as `client_xero_orgs.id` UUIDs in `consolidation_org_ids` for stable references.  
+- `consolidation_mode` defaults to `individual` so current behaviour is unchanged until an advisor turns it on.

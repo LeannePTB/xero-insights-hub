@@ -545,6 +545,8 @@ export type Database = {
       clients: {
         Row: {
           basis_overrides: Json
+          consolidation_mode: string
+          consolidation_org_ids: string[]
           cost_classification_enabled: boolean
           created_at: string
           dashboard_widgets: string[] | null
@@ -559,6 +561,8 @@ export type Database = {
         }
         Insert: {
           basis_overrides?: Json
+          consolidation_mode?: string
+          consolidation_org_ids?: string[]
           cost_classification_enabled?: boolean
           created_at?: string
           dashboard_widgets?: string[] | null
@@ -573,6 +577,8 @@ export type Database = {
         }
         Update: {
           basis_overrides?: Json
+          consolidation_mode?: string
+          consolidation_org_ids?: string[]
           cost_classification_enabled?: boolean
           created_at?: string
           dashboard_widgets?: string[] | null
