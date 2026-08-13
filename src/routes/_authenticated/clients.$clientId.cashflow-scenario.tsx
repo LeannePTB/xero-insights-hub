@@ -591,6 +591,7 @@ function CashflowScenarioPage() {
                 </ul>
               )}
             </section>
+            </section>
 
             <p className="mt-6 text-xs text-muted-foreground">
               Figures come from the Xero Profit &amp; Loss on the accrual basis, so wages and
