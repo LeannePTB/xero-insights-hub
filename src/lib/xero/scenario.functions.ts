@@ -47,6 +47,8 @@ type XeroInvoice = {
   Date?: string;
   DueDate?: string;
   Total?: number;
+  TotalTax?: number;
+  SubTotal?: number;
   Reference?: string;
   InvoiceNumber?: string;
   Contact?: { Name?: string };
@@ -78,6 +80,14 @@ function monthRange(from: Date, to: Date): string[] {
     cur.setMonth(cur.getMonth() + 1);
   }
   return out;
+}
+
+/** GST-exclusive invoice value, so scenario revenue lines up with the P&L. */
+function netAmount(inv: XeroInvoice): number {
+  if (typeof inv.SubTotal === "number") return inv.SubTotal;
+  const total = Number(inv.Total ?? 0);
+  if (typeof inv.TotalTax === "number") return total - inv.TotalTax;
+  return total;
 }
 
 function statusFor(inv: XeroInvoice): "Paid" | "Pending" | "Overdue" {
@@ -259,7 +269,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
         id: inv.InvoiceID,
         customer_id: name || null,
         description: inv.Reference?.trim() || inv.InvoiceNumber || "Invoice",
-        amount: Number(inv.Total ?? 0),
+        amount: netAmount(inv),
         issue_date: iso(issued),
         status: statusFor(inv),
         excluded: excluded.has(inv.InvoiceID),

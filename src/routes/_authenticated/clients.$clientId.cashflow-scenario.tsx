@@ -269,7 +269,7 @@ function CashflowScenarioPage() {
 
             {/* Summary */}
             <section className="mt-6 grid gap-3 sm:grid-cols-3">
-              <Stat label="Baseline invoice revenue (period)" value={fmt(view.rangeTotals.baselineRevenue)} />
+              <Stat label="Baseline invoice revenue (period, excl. GST)" value={fmt(view.rangeTotals.baselineRevenue)} />
               <Stat label="Current scenario (period)" value={fmt(view.rangeTotals.revenue)} />
               <Stat
                 label="Difference"
@@ -280,7 +280,7 @@ function CashflowScenarioPage() {
 
 
             <section className="mt-3 grid gap-3 sm:grid-cols-5">
-              <Stat label={`Scenario revenue · ${monthLabelOf(month)}`} value={fmt(view.monthTotals.revenue)} />
+              <Stat label={`Scenario revenue · ${monthLabelOf(month)} (excl. GST)`} value={fmt(view.monthTotals.revenue)} />
               <Stat label="Cost of sales" value={fmt(view.monthTotals.cogs)} />
               <Stat label="Fixed expenses" value={fmt(view.monthTotals.fixed)} />
               <Stat label="Variable expenses" value={fmt(view.monthTotals.variable)} />
