@@ -128,11 +128,11 @@ export const getLatestAudit = createServerFn({ method: "POST" })
 
     const [{ data: findings }, { data: snoozes }] = await Promise.all([
       (supabaseAdmin as any).from("audit_findings").select("*").eq("run_id", run.id).order("severity"),
-      (supabaseAdmin as any).from("audit_finding_snoozes").select("finding_key, snoozed_until, note").eq("tenant_id", data.tenantId),
+      (supabaseAdmin as any).from("audit_finding_snoozes").select("finding_key, snoozed_until, note, resolved, resolved_at").eq("tenant_id", data.tenantId),
     ]);
-    const snoozeMap: Record<string, { until: string | null; note: string | null }> = {};
+    const snoozeMap: Record<string, { until: string | null; note: string | null; resolved: boolean; resolvedAt: string | null }> = {};
     for (const s of snoozes ?? []) {
-      snoozeMap[s.finding_key] = { until: s.snoozed_until, note: s.note };
+      snoozeMap[s.finding_key] = { until: s.snoozed_until, note: s.note, resolved: !!s.resolved, resolvedAt: s.resolved_at ?? null };
     }
     return { run, findings: findings ?? [], snoozes: snoozeMap };
   });
