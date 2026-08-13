@@ -449,9 +449,29 @@ function CashflowScenarioPage() {
             </section>
 
             {/* Expenses */}
-            <section className="mt-6 grid gap-6 md:grid-cols-2">
+            <section className="mt-6 grid gap-6 md:grid-cols-3">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-lg font-semibold">Cost of sales</h2>
+                  <span className="tabular-nums text-sm font-semibold">{fmt(view.monthTotals.cogs)}</span>
+                </div>
+                {groupBySection(view.monthExpenses, "cogs").length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    No cost of sales in this month.
+                  </p>
+                ) : (
+                  <ul className="mt-4 space-y-1.5">
+                    {groupBySection(view.monthExpenses, "cogs").map((g) => (
+                      <li key={g.category} className="flex items-center justify-between text-sm">
+                        <span className="truncate pr-3">{g.category}</span>
+                        <span className="tabular-nums">{fmt(g.subtotal)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               {(["Fixed", "Variable"] as const).map((type) => {
-                const groups = groupExpenses(view.monthExpenses, type);
+                const groups = groupExpenses(view.monthExpenses, type, "operating");
                 const total = groups.reduce((a, g) => a + g.subtotal, 0);
                 return (
                   <div
@@ -482,9 +502,11 @@ function CashflowScenarioPage() {
             </section>
 
             <p className="mt-6 text-xs text-muted-foreground">
-              Expenses are split using the fixed/variable tags in client settings — untagged accounts
-              are treated as variable.
+              Figures come from the Xero Profit &amp; Loss on the accrual basis, so wages and
+              superannuation are included. Operating expenses are split using the fixed/variable tags
+              in client settings — untagged accounts are treated as variable.
             </p>
+
           </>
         ) : null}
       </main>
