@@ -353,12 +353,23 @@ function CashflowScenarioPage() {
 
             {/* Invoices for the month */}
             <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="font-display text-lg font-semibold">
+              <button
+                type="button"
+                onClick={() => setInvoicesOpen((v) => !v)}
+                className="flex w-full flex-wrap items-center justify-between gap-3 text-left"
+                aria-expanded={invoicesOpen}
+              >
+                <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
+                  <ChevronRight
+                    className={`h-4 w-4 text-muted-foreground transition-transform ${invoicesOpen ? "rotate-90" : ""}`}
+                  />
                   Invoices · {monthLabelOf(month)}
+                  <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                    {view.monthInvoices.length}
+                  </span>
                 </h2>
                 {view.monthInvoices.length > 0 && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="outline"
                       size="sm"
@@ -390,71 +401,73 @@ function CashflowScenarioPage() {
                     </Button>
                   </div>
                 )}
-              </div>
+              </button>
 
-              {customerNames.length > 0 && (
-                <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
-                  <span className="text-xs text-muted-foreground">What if</span>
-                  <Select value={customer} onValueChange={setCustomer}>
-                    <SelectTrigger className="h-9 w-[240px] text-xs">
-                      <SelectValue placeholder="Select a customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customerNames.map((n) => (
-                        <SelectItem key={n} value={n}>
-                          {n}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={scope} onValueChange={(v) => setScope(v as "month" | "all")}>
-                    <SelectTrigger className="h-9 w-[150px] text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="month">This month</SelectItem>
-                      <SelectItem value="all">All months shown</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
-                    onClick={() =>
-                      customerMut.mutate({
-                        xeroInvoiceIds: customerInvoiceIds,
-                        excluded: true,
-                        label: customer,
-                      })
-                    }
-                  >
-                    {customerMut.isPending ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : null}
-                    Mark as unpaid
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
-                    onClick={() =>
-                      customerMut.mutate({
-                        xeroInvoiceIds: customerInvoiceIds,
-                        excluded: false,
-                        label: customer,
-                      })
-                    }
-                  >
-                    Mark as paid
-                  </Button>
-                  {customer && (
-                    <span className="text-xs text-muted-foreground">
-                      {customerInvoiceIds.length} invoice
-                      {customerInvoiceIds.length === 1 ? "" : "s"}
-                    </span>
-                  )}
-                </div>
-              )}
+              <div className={`${invoicesOpen ? "" : "hidden"}`}>
+                {customerNames.length > 0 && (
+                  <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
+                    <span className="text-xs text-muted-foreground">What if</span>
+                    <Select value={customer} onValueChange={setCustomer}>
+                      <SelectTrigger className="h-9 w-[240px] text-xs">
+                        <SelectValue placeholder="Select a customer" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customerNames.map((n) => (
+                          <SelectItem key={n} value={n}>
+                            {n}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={scope} onValueChange={(v) => setScope(v as "month" | "all")}>
+                      <SelectTrigger className="h-9 w-[150px] text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="month">This month</SelectItem>
+                        <SelectItem value="all">All months shown</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
+                      onClick={() =>
+                        customerMut.mutate({
+                          xeroInvoiceIds: customerInvoiceIds,
+                          excluded: true,
+                          label: customer,
+                        })
+                      }
+                    >
+                      {customerMut.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Mark as unpaid
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
+                      onClick={() =>
+                        customerMut.mutate({
+                          xeroInvoiceIds: customerInvoiceIds,
+                          excluded: false,
+                          label: customer,
+                        })
+                      }
+                    >
+                      Mark as paid
+                    </Button>
+                    {customer && (
+                      <span className="text-xs text-muted-foreground">
+                        {customerInvoiceIds.length} invoice
+                        {customerInvoiceIds.length === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                )}
+
 
 
               {view.monthInvoices.length === 0 ? (
