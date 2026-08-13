@@ -32,13 +32,23 @@ export type ScenarioPnlMonth = {
   netProfit: number;
 };
 
+export type ScenarioAverages = {
+  months: string[];
+  cogs: number;
+  fixed: number;
+  variable: number;
+};
+
 export type ScenarioData = {
   months: string[];
   customers: ScenarioCustomer[];
   invoices: ScenarioInvoice[];
   expenses: ScenarioExpense[];
   pnl: ScenarioPnlMonth[];
+  /** Trailing 3-month averages for the expense groups (reference only). */
+  avg3: ScenarioAverages | null;
 };
+
 
 
 type XeroInvoice = {
@@ -292,13 +302,46 @@ export const getScenarioData = createServerFn({ method: "POST" })
       });
     }
 
+    // Trailing 3-month averages for the expense groups, shown as a reference on
+    // the summary cards. Fetched separately so the selected month stays intact.
+    let avg3: ScenarioAverages | null = null;
+    try {
+      const last = new Date(to.getFullYear(), to.getMonth() + 1, 0);
+      const first = new Date(to.getFullYear(), to.getMonth() - 2, 1);
+      const avgMonths = monthRange(first, last);
+      const avgRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
+        date: iso(last),
+        periods: "2",
+        timeframe: "MONTH",
+      });
+      const avgLines = parseMonthlyPnl(avgRes.Reports?.[0], avgMonths).filter(
+        (l) => l.section !== "income",
+      );
+      let cogs = 0;
+      let fixed = 0;
+      let variable = 0;
+      for (const l of avgLines) {
+        const tag = tags.get(l.name.toLowerCase());
+        if (tag === "excluded") continue;
+        if (l.section === "cogs") cogs += l.amount;
+        else if (tag === "fixed") fixed += l.amount;
+        else variable += l.amount;
+      }
+      const n = avgMonths.length || 1;
+      avg3 = { months: avgMonths, cogs: cogs / n, fixed: fixed / n, variable: variable / n };
+    } catch {
+      avg3 = null;
+    }
+
     return {
       months,
       customers: [...customerNames].sort().map((n) => ({ id: n, name: n })),
       invoices,
       expenses,
       pnl: summarisePnl(pnlLines, months),
+      avg3,
     };
+
   });
 
 

@@ -286,9 +286,22 @@ function CashflowScenarioPage() {
 
               <div className="mt-3 grid gap-3 sm:grid-cols-5">
                 <Stat label={`Scenario revenue · ${monthLabelOf(month)} (excl. GST)`} value={fmt(view.monthTotals.revenue)} />
-                <Stat label="Cost of sales" value={fmt(view.monthTotals.cogs)} />
-                <Stat label="Fixed expenses" value={fmt(view.monthTotals.fixed)} />
-                <Stat label="Variable expenses" value={fmt(view.monthTotals.variable)} />
+                <Stat
+                  label="Cost of sales"
+                  value={fmt(view.monthTotals.cogs)}
+                  note={data?.avg3 ? `3-mo avg ${fmt(data.avg3.cogs)}` : undefined}
+                />
+                <Stat
+                  label="Fixed expenses"
+                  value={fmt(view.monthTotals.fixed)}
+                  note={data?.avg3 ? `3-mo avg ${fmt(data.avg3.fixed)}` : undefined}
+                />
+                <Stat
+                  label="Variable expenses"
+                  value={fmt(view.monthTotals.variable)}
+                  note={data?.avg3 ? `3-mo avg ${fmt(data.avg3.variable)}` : undefined}
+                />
+
                 <Stat
                   label="Net position"
                   value={fmt(view.monthTotals.net)}
@@ -606,11 +619,23 @@ function CashflowScenarioPage() {
   );
 }
 
-function Stat({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
+function Stat({
+  label,
+  value,
+  tone = "",
+  note,
+}: {
+  label: string;
+  value: string;
+  tone?: string;
+  note?: string;
+}) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
       <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
       <p className={`mt-1 text-xl font-semibold tracking-tight tabular-nums ${tone}`}>{value}</p>
+      {note ? <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">{note}</p> : null}
     </div>
   );
 }
+
