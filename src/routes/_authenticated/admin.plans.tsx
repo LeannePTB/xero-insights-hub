@@ -262,13 +262,33 @@ function PlanLevelsPage() {
                             })
                           }
                         />
-                        <span>{t.label}</span>
+                        <span>
+                          {t.label}
+                          {t.allows_multi_org && (
+                            <span className="ml-1 text-xs text-muted-foreground">· {t.xero_org_limit} files</span>
+                          )}
+                        </span>
                       </label>
                     ))}
                     {dashLevels.length === 0 && (
                       <p className="text-xs text-muted-foreground">Create dashboard tiers below first.</p>
                     )}
                   </div>
+                  {(() => {
+                    const maxTierFiles = Math.max(
+                      1,
+                      ...dashLevels
+                        .filter((t) => draft.allowed_tiers.includes(t.key))
+                        .map((t) => t.xero_org_limit ?? 1),
+                    );
+                    if (maxTierFiles <= draft.xero_org_limit) return null;
+                    return (
+                      <p className="mt-2 text-xs text-destructive">
+                        This plan allows {draft.xero_org_limit} Xero file(s), but an included tier allows{" "}
+                        {maxTierFiles}. Raise “Xero files allowed” to {maxTierFiles} or the plan cap will win.
+                      </p>
+                    );
+                  })()}
                 </div>
               )}
 
@@ -284,6 +304,12 @@ function PlanLevelsPage() {
                       onCheckedChange={(v) => setDraft({ ...draft, allows_multi_org: v })}
                     />
                   </div>
+                  {draft.allows_multi_org && draft.xero_org_limit <= 1 && (
+                    <p className="text-xs text-destructive">
+                      This tier allows multiple Xero files but the limit is 1 — set “Xero files allowed” to the number
+                      this step should include.
+                    </p>
+                  )}
                   <div>
                     <Label className="text-xs uppercase tracking-wide text-muted-foreground">Widgets</Label>
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -410,7 +436,7 @@ function LevelSection({
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{l.label}</span>
                     {!l.enabled && <Badge variant="outline">off</Badge>}
-                    {l.allows_multi_org && <Badge variant="secondary">multi-file</Badge>}
+                    {l.allows_multi_org && <Badge variant="secondary">{l.xero_org_limit} Xero files</Badge>}
                   </div>
                   <div className="font-mono text-[11px] text-muted-foreground">{l.key}</div>
                 </td>
@@ -423,11 +449,15 @@ function LevelSection({
                       {(l.allowed_tiers ?? []).length === 0 ? (
                         <span className="text-xs text-muted-foreground">All tiers</span>
                       ) : (
-                        (l.allowed_tiers ?? []).map((k) => (
-                          <Badge key={k} variant="secondary">
-                            {tierLevels?.find((t) => t.key === k)?.label ?? k}
-                          </Badge>
-                        ))
+                        (l.allowed_tiers ?? []).map((k) => {
+                          const t = tierLevels?.find((x) => x.key === k);
+                          return (
+                            <Badge key={k} variant="secondary">
+                              {t?.label ?? k}
+                              {t?.allows_multi_org ? ` · ${t.xero_org_limit} files` : ""}
+                            </Badge>
+                          );
+                        })
                       )}
                     </div>
                   </td>
