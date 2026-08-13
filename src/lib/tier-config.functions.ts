@@ -223,13 +223,12 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
 // widgets exist for it); each client then gets its own explicit widget list.
 // ---------------------------------------------------------------------------
 
-const TIER_ORDER: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
-
 export const getClientWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; tierOverride?: DashboardTier | null }) => i)
   .handler(async ({ data, context }) => {
     const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
+    const TIER_ORDER: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
     const planTiers = await allowedTiersForClient(data.clientId);
     const tiers = TIER_ORDER.filter((t) => !planTiers || planTiers.includes(t));
     const planTierList = tiers.length ? tiers : (["basic"] as DashboardTier[]);
@@ -283,6 +282,7 @@ export const saveClientWidgets = createServerFn({ method: "POST" })
 
     let value: string[] | null = null;
     if (data.widgets !== null) {
+      const TIER_ORDER: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
       const planTiers = await allowedTiersForClient(data.clientId);
       const tiers = TIER_ORDER.filter((t) => !planTiers || planTiers.includes(t));
       const { data: cfgRows } = await supabaseAdmin
