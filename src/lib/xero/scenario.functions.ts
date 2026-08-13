@@ -221,9 +221,10 @@ export const getScenarioData = createServerFn({ method: "POST" })
       ...(extraPeriods > 0
         ? { date: data.toDate, periods: String(extraPeriods), timeframe: "MONTH" }
         : { fromDate: data.fromDate, toDate: data.toDate }),
-      ...(basis === "cash" ? { paymentsOnly: "true" } : {}),
     });
-    const expenseLines = parseMonthlyExpenses(plRes.Reports?.[0], months);
+    const pnlLines = parseMonthlyPnl(plRes.Reports?.[0], months);
+    const expenseLines = pnlLines.filter((l) => l.section !== "income");
+
 
     // Fixed / variable tags plus saved exclusions. Read with the trusted server
     // client after widget access has been checked: advisors and firm members have
