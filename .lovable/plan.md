@@ -22,7 +22,7 @@ When the mode is Consolidated:
 - **Loan Consolidation** keeps exactly the layout and settings structure ported from the Hub project — the same matrix card, the same Loans page and Loan accounts pairing screen, the same `loan_consolidation_accounts` pairing model. Nothing about it is redesigned; it is only scoped to the companies ticked for consolidation, and it stays the single place where account pairings are configured.
 - All other cards (P&L, health, tax, break-even, cashflow, audit) keep rendering per company as they do now.
 
-Companies not ticked keep showing individually so nothing disappears.
+Companies not ticked keep showing individually, so the dashboard always has a full list of all companies and the consolidated view sits alongside them.
 
 ## Technical notes
 
