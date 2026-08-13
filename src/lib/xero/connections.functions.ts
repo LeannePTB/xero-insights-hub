@@ -220,7 +220,7 @@ export const listClientXeroOptions = createServerFn({ method: "POST" })
       .eq("client_id", data.clientId)
       .maybeSingle();
     if (!oauthState?.completed_at || new Date(oauthState.expires_at).getTime() < Date.now()) return { connections: [], allowance };
-    const connections = await getSelectableConnectionsForClient(data.clientId, oauthState.pending_tenant_ids ?? []);
+    const connections = await getSelectableConnectionsForClient(data.clientId, oauthState.pending_tenant_ids ?? [], context.userId);
     return { connections, allowance };
   });
 
@@ -243,7 +243,7 @@ export const linkClientXeroOptions = createServerFn({ method: "POST" })
       .eq("client_id", data.clientId)
       .maybeSingle();
     if (!oauthState?.completed_at || new Date(oauthState.expires_at).getTime() < Date.now()) throw new Error("This Xero selection has expired. Connect again.");
-    const candidates = await getSelectableConnectionsForClient(data.clientId, oauthState.pending_tenant_ids ?? []);
+    const candidates = await getSelectableConnectionsForClient(data.clientId, oauthState.pending_tenant_ids ?? [], context.userId);
     const selectable = candidates.filter((connection) => connection.available);
     if (uniqueIds.some((id) => !selectable.some((connection) => connection.id === id))) {
       throw new Error("One of those Xero organisations is no longer available — it may already be linked to another subscription.");
@@ -261,6 +261,72 @@ export const linkClientXeroOptions = createServerFn({ method: "POST" })
     return { linked: uniqueIds.length };
   });
 
+
+/**
+ * Move a Xero file from the subscription that currently holds it onto this
+ * client subscription. Requires manage rights on both sides (super admins have
+ * them everywhere) and a free slot in the target's file allowance.
+ */
+export const moveXeroFileToClient = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { clientId: string; connectionId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { userCanManageClient, getClientOrgAllowance, getClientFirmId, isSuperAdmin } = await import(
+      "@/lib/xero/client-orgs.server"
+    );
+    if (!(await userCanManageClient(context.userId, data.clientId))) {
+      throw new Error("You cannot manage this client subscription.");
+    }
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: existing, error: lookupErr } = await supabaseAdmin
+      .from("client_xero_orgs")
+      .select("id, client_id, xero_connection_id, clients(name, firm_id)")
+      .eq("xero_connection_id", data.connectionId)
+      .maybeSingle();
+    if (lookupErr) throw new Error(lookupErr.message);
+    if (!existing) throw new Error("That Xero file is no longer linked to another subscription — refresh and link it directly.");
+    if (existing.client_id === data.clientId) throw new Error("That Xero file is already on this subscription.");
+
+    const superAdmin = await isSuperAdmin(context.userId);
+    const targetFirmId = await getClientFirmId(data.clientId);
+    const sourceFirmId = (existing.clients as any)?.firm_id ?? null;
+    if (!superAdmin) {
+      if (!targetFirmId || sourceFirmId !== targetFirmId) {
+        throw new Error("That Xero file belongs to another organisation. A platform admin can move it.");
+      }
+      if (!(await userCanManageClient(context.userId, existing.client_id))) {
+        throw new Error("You cannot manage the subscription that currently holds this Xero file.");
+      }
+    }
+
+    const allowance = await getClientOrgAllowance(data.clientId);
+    if (allowance.remaining < 1) {
+      throw new Error(`This subscription has reached its Xero file allowance of ${allowance.allowance}.`);
+    }
+
+    const { error: delErr } = await supabaseAdmin.from("client_xero_orgs").delete().eq("id", existing.id);
+    if (delErr) throw new Error(delErr.message);
+    const { error: insErr } = await supabaseAdmin
+      .from("client_xero_orgs")
+      .insert({ client_id: data.clientId, xero_connection_id: data.connectionId });
+    if (insErr) {
+      // Put it back so the file is never left orphaned.
+      await supabaseAdmin.from("client_xero_orgs").insert({ client_id: existing.client_id, xero_connection_id: data.connectionId });
+      throw new Error(insErr.message);
+    }
+    if (targetFirmId) {
+      await supabaseAdmin.from("xero_connections").update({ firm_id: targetFirmId }).eq("id", data.connectionId);
+    }
+    await supabaseAdmin.from("audit_log").insert({
+      actor_user_id: context.userId,
+      action: "xero_file_moved",
+      target_type: "xero_connection",
+      target_id: data.connectionId,
+      meta: { from_client_id: existing.client_id, to_client_id: data.clientId, from_client_name: (existing.clients as any)?.name ?? null },
+    });
+    return { moved: true as const };
+  });
 
 const ALLOWED_CUSTOM_HOSTS = new Set([
   "tractionadvisory.com.au",
