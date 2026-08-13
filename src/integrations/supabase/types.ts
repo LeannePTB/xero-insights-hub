@@ -1715,14 +1715,6 @@ export type Database = {
         }
         Returns: number
       }
-      move_xero_file_to_client: {
-        Args: {
-          _actor_user_id: string
-          _connection_id: string
-          _target_client_id: string
-        }
-        Returns: undefined
-      }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
