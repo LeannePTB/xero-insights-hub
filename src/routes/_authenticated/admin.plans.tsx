@@ -321,13 +321,18 @@ function PlanLevelsPage() {
                     </div>
                     <Switch
                       checked={draft.allows_multi_org}
-                      onCheckedChange={(v) => setDraft({ ...draft, allows_multi_org: v })}
+                      onCheckedChange={(v) =>
+                        setDraft({
+                          ...draft,
+                          allows_multi_org: v,
+                          xero_org_limit: v ? Math.max(2, draft.xero_org_limit) : 1,
+                        })
+                      }
                     />
                   </div>
                   {draft.allows_multi_org && draft.xero_org_limit <= 1 && (
                     <p className="text-xs text-destructive">
-                      This tier allows multiple Xero files but the limit is 1 — set “Xero files allowed” to the number
-                      this step should include.
+                      Set “Xero files per client” to the number this step should include.
                     </p>
                   )}
                   <div>
