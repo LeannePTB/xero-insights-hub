@@ -70,10 +70,9 @@ function ClientDashboard() {
   const previewing = !!previewTier && realIsAdvisor;
   const isAdvisor = realIsAdvisor && !previewing;
   const viewerEntry = ctxQ.data?.viewerClients.find((c) => c.id === clientId);
-  // The dashboard must reflect the client's assigned tier, not the advisor's
-  // access level. Clients without an assigned viewer are Standard by default.
-  const tier: DashboardTier =
-    previewTier ?? viewerEntry?.tier ?? "basic";
+  // Tier is only a label now — the widget list itself comes from the client's
+  // own configuration (bounded by the organisation's plan).
+  const tierLabelSource = viewerEntry?.tier ?? null;
 
   const widgetsQ = useQuery({
     queryKey: ["client-widgets", clientId, previewTier ?? "actual"],
