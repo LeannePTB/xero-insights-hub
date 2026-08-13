@@ -186,7 +186,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
   .inputValidator((i: { clientId: string; tenantId: string; fromDate: string; toDate: string }) => i)
   .handler(async ({ data, context }): Promise<ScenarioData> => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
-    const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
+    const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "cashflow_scenario");
 
     const from = new Date(`${data.fromDate}T00:00:00`);
