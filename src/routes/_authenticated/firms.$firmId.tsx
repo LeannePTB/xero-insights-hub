@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CreditCard, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, CreditCard, Loader2, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,8 @@ import {
 import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
+import { getFirmPlanSummary } from "@/lib/tier-config.functions";
+import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
 
 import { Badge } from "@/components/ui/badge";
 import { firmPlanView, toneClasses } from "@/lib/firmPlans";
@@ -39,6 +41,21 @@ function FirmPage() {
   const fetchFirm = useServerFn(getMyFirm);
   const fetchCtx = useServerFn(getMyContext);
   const [planOpen, setPlanOpen] = useState(false);
+  const [includedOpen, setIncludedOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(`firm-plan-included:${firmId}`) === "1";
+  });
+  useEffect(() => {
+    sessionStorage.setItem(`firm-plan-included:${firmId}`, includedOpen ? "1" : "0");
+  }, [includedOpen, firmId]);
+  const fetchSummary = useServerFn(getFirmPlanSummary);
+  const summaryQ = useQuery({
+    queryKey: ["firm-plan-summary", firmId],
+    queryFn: () => fetchSummary({ data: { firmId } }),
+    enabled: includedOpen,
+    staleTime: 5 * 60_000,
+  });
+  const summary = summaryQ.data;
 
   const firmQ = useQuery({
     queryKey: ["my-firm", firmId],
