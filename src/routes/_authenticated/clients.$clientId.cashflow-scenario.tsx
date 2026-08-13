@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -95,11 +96,14 @@ function CashflowScenarioPage() {
     mutationFn: (v: { xeroInvoiceId: string; excluded: boolean }) =>
       toggleExcluded({ data: { clientId, ...v } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["scenario", clientId] }),
+    onError: (e: any) => toast.error(e?.message ?? "Could not update this invoice"),
   });
   const resetMut = useMutation({
     mutationFn: () => reset({ data: { clientId } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["scenario", clientId] }),
+    onError: (e: any) => toast.error(e?.message ?? "Could not reset the scenario"),
   });
+
 
   const view = useMemo(() => {
     if (!data) return null;
