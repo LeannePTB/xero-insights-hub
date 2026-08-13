@@ -318,6 +318,11 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           );
           const selectable = candidates.filter((c) => c.available);
 
+          if (candidates.length > 0 && candidates.every((candidate) => candidate.linkedToThisClient)) {
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+            return redirectTo(`${returnOrigin}${settingsPath}?xero=connected`);
+          }
+
           if (selectable.length === 1 && candidates.length === 1 && allowance.remaining > 0) {
             const { error: linkErr } = await supabaseAdmin.from("client_xero_orgs").insert({
               client_id: initiatingClientId,

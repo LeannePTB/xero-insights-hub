@@ -212,18 +212,6 @@ export const createClient = createServerFn({ method: "POST" })
         "Only the Multi company tier can link more than one Xero organisation. Create the client with one org, then grant a viewer the Multi company tier to link more.",
       );
     }
-    if (data.xeroConnectionIds.length > 0) {
-      const { getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
-      const available = await getUnassignedConnectionsForUser(context.userId);
-      if (
-        data.xeroConnectionIds.some((id) => !available.some((connection) => connection.id === id))
-      ) {
-        throw new Error(
-          "A selected Xero organisation is already assigned to another subscription or is not yours.",
-        );
-      }
-    }
-
     // Resolve target firm: explicit firmId (must be a member) OR caller's first firm.
     let firmId: string | null = data.firmId ?? null;
     let isSuper = false;
@@ -256,6 +244,14 @@ export const createClient = createServerFn({ method: "POST" })
     }
 
     if (!firmId) throw new Error("No business associated with your account.");
+
+    if (data.xeroConnectionIds.length > 0) {
+      const { getUnassignedConnectionsForFirm } = await import("@/lib/xero/client-orgs.server");
+      const available = await getUnassignedConnectionsForFirm(firmId, true);
+      if (data.xeroConnectionIds.some((id) => !available.some((connection) => connection.id === id))) {
+        throw new Error("A selected Xero organisation is already assigned or belongs to another organisation.");
+      }
+    }
 
     // Enforce firm subscription client quota.
     const { clientLimitFor, firmLimitCatalogue } = await import("@/lib/firmPlans");
@@ -296,7 +292,7 @@ export const createClient = createServerFn({ method: "POST" })
     }
 
     // Super admins manage organisations they don't belong to; RLS scopes inserts to firm owners.
-    const writer: any = isSuper ? supabaseAdmin : context.supabase;
+    const writer: any = supabaseAdmin;
 
     const { data: client, error } = await writer
       .from("clients")
@@ -312,6 +308,7 @@ export const createClient = createServerFn({ method: "POST" })
       }));
       const { error: e2 } = await writer.from("client_xero_orgs").insert(rows);
       if (e2) throw new Error(e2.message);
+      await supabaseAdmin.from("xero_connections").update({ firm_id: firmId }).in("id", data.xeroConnectionIds);
     }
 
     return { id: client.id };
@@ -400,23 +397,28 @@ export const attachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; xeroConnectionId: string }) => i)
   .handler(async ({ data, context }) => {
-    const { getClientOrgAllowance, getUnassignedConnectionsForUser } =
+    const { getClientOrgAllowance, getUnassignedConnectionsForFirm, userCanManageClient, getClientFirmId } =
       await import("@/lib/xero/client-orgs.server");
+    if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this subscription.");
     const allowance = await getClientOrgAllowance(data.clientId);
     if (allowance.remaining < 1)
       throw new Error(
         `This subscription has reached its Xero file allowance of ${allowance.allowance}.`,
       );
-    const available = await getUnassignedConnectionsForUser(context.userId);
+    const firmId = await getClientFirmId(data.clientId);
+    if (!firmId) throw new Error("This client is not attached to an organisation.");
+    const available = await getUnassignedConnectionsForFirm(firmId, true);
     if (!available.some((connection) => connection.id === data.xeroConnectionId)) {
       throw new Error(
         "That Xero organisation is already assigned to another client subscription or is not yours to link.",
       );
     }
-    const { error } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
       .from("client_xero_orgs")
       .insert({ client_id: data.clientId, xero_connection_id: data.xeroConnectionId });
     if (error) throw new Error(error.message);
+    await supabaseAdmin.from("xero_connections").update({ firm_id: firmId }).eq("id", data.xeroConnectionId);
     return { ok: true };
   });
 

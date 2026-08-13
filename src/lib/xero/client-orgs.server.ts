@@ -193,7 +193,11 @@ export async function getSelectableConnectionsForClient(
   if (!connections?.length) return [];
 
   const scoped = connections.filter((c: any) =>
-    superAdmin || !firmId ? true : c.firm_id === firmId || c.firm_id === null,
+    superAdmin
+      ? true
+      : firmId
+        ? c.firm_id === firmId || c.firm_id === null
+        : c.firm_id === null,
   );
 
   const { data: assigned, error: assignedError } = await supabaseAdmin
@@ -206,7 +210,7 @@ export async function getSelectableConnectionsForClient(
 
   const byTenant = new Map<
     string,
-    { clientId: string; clientName: string | null; firmId: string | null }
+    { clientId: string; clientName: string | null; firmId: string | null; connectionId: string }
   >();
   for (const row of (assigned ?? []) as any[]) {
     const tid = row.xero_connections?.tenant_id;
@@ -215,6 +219,7 @@ export async function getSelectableConnectionsForClient(
         clientId: row.client_id,
         clientName: row.clients?.name ?? null,
         firmId: row.clients?.firm_id ?? null,
+        connectionId: row.xero_connection_id,
       });
     }
   }
@@ -229,7 +234,9 @@ export async function getSelectableConnectionsForClient(
     const linkedToThisClient = link?.clientId === clientId;
     const sameFirm = Boolean(link && firmId && link.firmId === firmId);
     out.push({
-      id: c.id,
+      // A duplicate per-user token row may exist for a tenant. Actions on an
+      // assigned tenant must use the physical row referenced by the link.
+      id: link?.connectionId ?? c.id,
       tenant_id: c.tenant_id,
       tenant_name: c.tenant_name,
       tenant_type: c.tenant_type ?? null,
@@ -270,4 +277,20 @@ export async function getUnassignedConnectionsForUser(userId: string) {
       .filter((tenantId): tenantId is string => Boolean(tenantId)),
   );
   return connections.filter((connection) => !assignedTenantIds.has(connection.tenant_id));
+}
+
+/** Unassigned Xero files belonging to an organisation, regardless of which member authorised them. */
+export async function getUnassignedConnectionsForFirm(firmId: string, includeUnstamped = false) {
+  let query = supabaseAdmin
+    .from("xero_connections")
+    .select("id, tenant_id, tenant_name, tenant_type, created_at, status, disconnected_at, base_currency, firm_id")
+    .order("created_at", { ascending: true });
+  query = includeUnstamped ? query.or(`firm_id.eq.${firmId},firm_id.is.null`) : query.eq("firm_id", firmId);
+  const { data: connections, error } = await query;
+  if (error) throw new Error(error.message);
+  if (!connections?.length) return [];
+  const { data: assigned, error: assignedError } = await supabaseAdmin.from("client_xero_orgs").select("xero_connection_id");
+  if (assignedError) throw new Error(assignedError.message);
+  const assignedIds = new Set((assigned ?? []).map((row) => row.xero_connection_id));
+  return connections.filter((connection) => !assignedIds.has(connection.id));
 }

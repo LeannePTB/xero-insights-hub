@@ -189,6 +189,9 @@ export async function getConnectionByTenant(tenantId: string): Promise<Connectio
     .from("xero_connections")
     .select(CONNECTION_COLUMNS)
     .eq("tenant_id", tenantId)
+    .eq("status", "connected")
+    .order("updated_at", { ascending: false })
+    .limit(1)
     .maybeSingle();
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Xero connection not found for this organisation.");
