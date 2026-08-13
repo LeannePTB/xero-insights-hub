@@ -28,6 +28,12 @@ export function AddOrganisationDialog({
   label?: string;
 }) {
   const create = useServerFn(adminCreateOrganisation);
+  const { levels: firmLevels } = usePlanLevels("firm");
+  const tierOptions: { key: string; label: string }[] =
+    firmLevels.length > 0
+      ? firmLevels.map((l) => ({ key: l.key, label: l.label }))
+      : ["starter", "growth", "scale", "firm", "free", "legacy"].map((k) => ({ key: k, label: k }));
+
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
