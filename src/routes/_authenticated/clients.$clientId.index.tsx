@@ -80,6 +80,8 @@ function ClientDashboard() {
     enabled: !!ctxQ.data,
   });
   const widgets = widgetsQ.data?.widgets ?? [];
+  const tier: DashboardTier =
+    previewTier ?? tierLabelSource ?? (widgetsQ.data?.highestTier as DashboardTier | undefined) ?? "basic";
 
   const orderQ = useQuery({
     queryKey: ["card-order", clientId],
