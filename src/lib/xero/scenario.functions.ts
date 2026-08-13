@@ -32,13 +32,23 @@ export type ScenarioPnlMonth = {
   netProfit: number;
 };
 
+export type ScenarioAverages = {
+  months: string[];
+  cogs: number;
+  fixed: number;
+  variable: number;
+};
+
 export type ScenarioData = {
   months: string[];
   customers: ScenarioCustomer[];
   invoices: ScenarioInvoice[];
   expenses: ScenarioExpense[];
   pnl: ScenarioPnlMonth[];
+  /** Trailing 3-month averages for the expense groups (reference only). */
+  avg3: ScenarioAverages | null;
 };
+
 
 
 type XeroInvoice = {
