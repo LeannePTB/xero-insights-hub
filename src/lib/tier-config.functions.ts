@@ -168,10 +168,20 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
       byKey.set(`${(r as any).client_id ?? "global"}:${(r as any).tier}`, sanitizeWidgets((r as any).widgets ?? []));
     }
     const resolve = (t: DashboardTier): WidgetKey[] =>
-      byKey.get(`${data.clientId}:${t}`) ?? byKey.get(`global:${t}`) ?? DEFAULT_TIER_WIDGETS[t];
+      byKey.get(`${data.clientId}:${t}`) ?? byKey.get(`global:${t}`) ?? defaultWidgetsFor(t);
 
     const currentWidgets = new Set<WidgetKey>(resolve(data.currentTier));
-    const order: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
+
+    // Tier order comes from the catalogue so custom steps (e.g. multi_10) rank
+    // correctly instead of falling outside a hardcoded list.
+    const { data: catRows } = await context.supabase
+      .from("plan_levels")
+      .select("key, label, description, xero_org_limit, allows_multi_org, enabled, sort_order")
+      .eq("scope", "dashboard")
+      .order("sort_order", { ascending: true });
+    const catalogue = ((catRows ?? []) as any[]).filter((l) => l.enabled !== false);
+    const order: string[] = catalogue.length ? catalogue.map((l) => l.key as string) : [...ALL_TIERS];
+    const meta = new Map<string, any>(catalogue.map((l) => [l.key as string, l]));
     const currentIdx = order.indexOf(data.currentTier);
 
     // Only advertise tiers this organisation's plan actually includes.
@@ -180,11 +190,25 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
 
     const upgrades = order
       .map((tier, idx) => ({ tier, idx }))
-      .filter(({ tier, idx }) => idx > currentIdx && enabledMap[tier] && (!planTiers || planTiers.includes(tier)))
+      .filter(
+        ({ tier, idx }) =>
+          idx > currentIdx &&
+          (enabledMap[tier as DashboardTier] ?? true) &&
+          (!planTiers || planTiers.includes(tier)),
+      )
       .map(({ tier }) => {
-        const widgets = resolve(tier);
+        const widgets = resolve(tier as DashboardTier);
         const extra = widgets.filter((w) => !currentWidgets.has(w));
-        return { tier, widgets, extraWidgets: extra };
+        const m = meta.get(tier);
+        return {
+          tier,
+          label: (m?.label as string | undefined) ?? null,
+          description: (m?.description as string | undefined) ?? null,
+          xeroFiles: (m?.xero_org_limit as number | undefined) ?? 1,
+          allowsMultiOrg: !!m?.allows_multi_org,
+          widgets,
+          extraWidgets: extra,
+        };
       })
       .filter((u) => u.extraWidgets.length > 0);
 
@@ -262,7 +286,7 @@ export const getClientWidgets = createServerFn({ method: "POST" })
       const lvl: any = catalogue.find((l: any) => l.key === data.tierOverride);
       const preview = lvl
         ? sanitizeWidgets((lvl.widgets ?? []) as string[])
-        : DEFAULT_TIER_WIDGETS[data.tierOverride];
+        : defaultWidgetsFor(data.tierOverride);
       return { widgets: preview, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string };
     }
 
@@ -344,7 +368,12 @@ export const getFirmPlanSummary = createServerFn({ method: "POST" })
       clientLimit: (firmPlan?.client_limit as number | undefined) ?? null,
       xeroOrgLimit: (firmPlan?.xero_org_limit as number | undefined) ?? null,
       allowsMultiOrg: !!firmPlan?.allows_multi_org,
-      tiers: usable.map((l) => ({ key: l.key as string, label: l.label as string })),
+      tiers: usable.map((l) => ({
+        key: l.key as string,
+        label: l.label as string,
+        xeroFiles: (l.xero_org_limit as number | undefined) ?? 1,
+        allowsMultiOrg: !!l.allows_multi_org,
+      })),
       widgets: ALL_WIDGETS.filter((w) => set.has(w)),
     };
   });

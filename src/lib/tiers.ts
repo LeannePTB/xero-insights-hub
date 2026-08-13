@@ -88,3 +88,14 @@ export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "
 
 // Only this tier can have more than one Xero organisation linked to a client.
 export const MULTI_ORG_TIER: DashboardTier = "multi_company";
+
+/** Catalogue-safe lookups: tier keys are super-admin editable (e.g. multi_10). */
+export function tierLabel(key: string, fallback?: string | null): string {
+  return (TIER_LABEL as Record<string, string>)[key] ?? fallback ?? key;
+}
+export function tierDescription(key: string, fallback?: string | null): string {
+  return (TIER_DESCRIPTION as Record<string, string>)[key] ?? fallback ?? "";
+}
+export function defaultWidgetsFor(key: string): WidgetKey[] {
+  return (DEFAULT_TIER_WIDGETS as Record<string, WidgetKey[]>)[key] ?? DEFAULT_TIER_WIDGETS.basic;
+}
