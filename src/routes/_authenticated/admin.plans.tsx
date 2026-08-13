@@ -487,7 +487,20 @@ function LevelSection({
                     </div>
                   </td>
                 )}
-                <td className="px-4 py-3 tabular-nums">{l.xero_org_limit}</td>
+                <td className="px-4 py-3 tabular-nums">
+                  {scope === "firm" ? (
+                    <div>
+                      <span>{l.client_limit >= 9999 ? "Unlimited" : Math.max(1, l.client_limit)}</span>
+                      <div className="text-[11px] text-muted-foreground">
+                        {(l.allowed_tiers ?? []).some((k) => tierLevels?.find((x) => x.key === k)?.allows_multi_org)
+                          ? "1 per client · consolidation via Multi company"
+                          : "1 per client"}
+                      </div>
+                    </div>
+                  ) : (
+                    l.xero_org_limit
+                  )}
+                </td>
                 {scope === "dashboard" && (
                   <td className="px-4 py-3 text-muted-foreground">{l.widgets.length} selected</td>
                 )}
