@@ -19,7 +19,7 @@ When the mode is Consolidated:
 - **Aged Receivables (consolidated)** — one card summing the ageing buckets of the selected companies, with a per-company breakdown line underneath so it's clear where the balance sits.
 - **Aged Payables (consolidated)** — same treatment.
 - Intercompany amounts are removed: any receivable/payable that sits on an account pair configured in Loan Consolidation for two of the selected companies is excluded from the combined totals, and shown as a separate "Intercompany eliminated" line so the numbers reconcile back to the raw sum.
-- **Loan Consolidation** card stays as-is but is scoped to the selected companies.
+- **Loan Consolidation** keeps exactly the layout and settings structure ported from the Hub project — the same matrix card, the same Loans page and Loan accounts pairing screen, the same `loan_consolidation_accounts` pairing model. Nothing about it is redesigned; it is only scoped to the companies ticked for consolidation, and it stays the single place where account pairings are configured.
 - All other cards (P&L, health, tax, break-even, cashflow, audit) keep rendering per company as they do now.
 
 Companies not ticked keep showing individually so nothing disappears.
