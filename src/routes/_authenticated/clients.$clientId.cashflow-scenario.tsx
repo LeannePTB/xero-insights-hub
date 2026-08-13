@@ -145,8 +145,10 @@ function CashflowScenarioPage() {
       rangeTotals: computeTotals(data.invoices, data.expenses, null),
       monthInvoices: data.invoices.filter((i: ScenarioInvoice) => monthKey(i.issue_date) === month),
       monthExpenses: data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month),
+      monthPnl: (data.pnl ?? []).find((p) => p.month === month) ?? null,
     };
   }, [data, month]);
+
 
   const customerNames = useMemo(() => {
     const set = new Set<string>();
