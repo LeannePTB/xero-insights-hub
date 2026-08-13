@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -111,6 +111,19 @@ function CashflowScenarioPage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not update these invoices"),
   });
+  const customerMut = useMutation({
+    mutationFn: (v: { xeroInvoiceIds: string[]; excluded: boolean; label: string }) =>
+      toggleExcludedBulk({ data: { clientId, xeroInvoiceIds: v.xeroInvoiceIds, excluded: v.excluded } }),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["scenario", clientId] });
+      toast.success(
+        `${v.excluded ? "Excluded" : "Included"} ${v.xeroInvoiceIds.length} invoice${
+          v.xeroInvoiceIds.length === 1 ? "" : "s"
+        } for ${v.label}`,
+      );
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not update these invoices"),
+  });
   const resetMut = useMutation({
 
     mutationFn: () => reset({ data: { clientId } }),
@@ -118,6 +131,8 @@ function CashflowScenarioPage() {
     onError: (e: any) => toast.error(e?.message ?? "Could not reset the scenario"),
   });
 
+  const [customer, setCustomer] = useState<string>("");
+  const [scope, setScope] = useState<"month" | "all">("month");
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -132,6 +147,22 @@ function CashflowScenarioPage() {
       monthExpenses: data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month),
     };
   }, [data, month]);
+
+  const customerNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of (data?.invoices ?? []) as ScenarioInvoice[]) {
+      set.add(i.customer_id ?? "Unassigned");
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const customerInvoiceIds = useMemo(() => {
+    if (!customer) return [] as string[];
+    const pool = (scope === "month" ? view?.monthInvoices : data?.invoices) ?? [];
+    return (pool as ScenarioInvoice[])
+      .filter((i) => (i.customer_id ?? "Unassigned") === customer)
+      .map((i) => i.id);
+  }, [customer, scope, view, data]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -313,6 +344,71 @@ function CashflowScenarioPage() {
                   </div>
                 )}
               </div>
+
+              {customerNames.length > 0 && (
+                <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
+                  <span className="text-xs text-muted-foreground">What if</span>
+                  <Select value={customer} onValueChange={setCustomer}>
+                    <SelectTrigger className="h-9 w-[240px] text-xs">
+                      <SelectValue placeholder="Select a customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customerNames.map((n) => (
+                        <SelectItem key={n} value={n}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={scope} onValueChange={(v) => setScope(v as "month" | "all")}>
+                    <SelectTrigger className="h-9 w-[150px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="month">This month</SelectItem>
+                      <SelectItem value="all">All months shown</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
+                    onClick={() =>
+                      customerMut.mutate({
+                        xeroInvoiceIds: customerInvoiceIds,
+                        excluded: true,
+                        label: customer,
+                      })
+                    }
+                  >
+                    {customerMut.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Mark as unpaid
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
+                    onClick={() =>
+                      customerMut.mutate({
+                        xeroInvoiceIds: customerInvoiceIds,
+                        excluded: false,
+                        label: customer,
+                      })
+                    }
+                  >
+                    Mark as paid
+                  </Button>
+                  {customer && (
+                    <span className="text-xs text-muted-foreground">
+                      {customerInvoiceIds.length} invoice
+                      {customerInvoiceIds.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
+              )}
+
 
               {view.monthInvoices.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">No invoices in this month.</p>
