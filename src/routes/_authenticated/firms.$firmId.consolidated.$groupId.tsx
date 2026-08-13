@@ -93,8 +93,8 @@ function ConsolidatedGroupPage() {
                 <div className="flex items-center justify-between gap-4">
                   <h2 className="font-display text-lg font-semibold">Loan consolidation</h2>
                 </div>
-                {group.clients.map((c) =>
-                  c.orgs.map((o) => (
+                {group.clients.map((c: any) =>
+                  c.orgs.map((o: any) => (
                     <div key={o.tenantId} className="space-y-2">
                       <LoanConsolidationWidget
                         clientId={c.clientId}
