@@ -214,7 +214,6 @@ export const createClient = createServerFn({ method: "POST" })
     }
     // Resolve target firm: explicit firmId (must be a member) OR caller's first firm.
     let firmId: string | null = data.firmId ?? null;
-    let isSuper = false;
     if (firmId) {
       const { data: membership } = await context.supabase
         .from("firm_members")
@@ -230,7 +229,6 @@ export const createClient = createServerFn({ method: "POST" })
           .eq("role", "super_admin")
           .maybeSingle();
         if (!superRow) throw new Error("You are not a member of that business.");
-        isSuper = true;
       }
     } else {
       const { data: membership } = await context.supabase
