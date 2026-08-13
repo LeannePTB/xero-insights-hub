@@ -135,21 +135,46 @@ function CashflowScenarioPage() {
   const [scope, setScope] = useState<"month" | "all">("month");
   const [matrixOpen, setMatrixOpen] = useState(false);
   const [invoicesOpen, setInvoicesOpen] = useState(false);
+  const [costBasis, setCostBasis, resetCostBasis] = usePersistedCostBasis(
+    `scenario-cost-basis:${clientId}:${tenantId ?? "none"}`,
+  );
 
   const view = useMemo(() => {
     if (!data) return null;
     const months = data.months;
+    const monthExpenses = data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month);
+    const sumGroups = (gs: { subtotal: number }[]) => gs.reduce((a, g) => a + g.subtotal, 0);
+    const actuals: Record<CostGroup, number> = {
+      cogs: sumGroups(groupBySection(monthExpenses, "cogs")),
+      fixed: sumGroups(groupExpenses(monthExpenses, "Fixed", "operating")),
+      variable: sumGroups(groupExpenses(monthExpenses, "Variable", "operating")),
+    };
+    const avg: Record<CostGroup, number> | null = data.avg3
+      ? { cogs: data.avg3.cogs, fixed: data.avg3.fixed, variable: data.avg3.variable }
+      : null;
+    const applied: Record<CostGroup, number> = {
+      cogs: resolveGroupCost(actuals.cogs, avg?.cogs ?? null, costBasis.cogs),
+      fixed: resolveGroupCost(actuals.fixed, avg?.fixed ?? null, costBasis.fixed),
+      variable: resolveGroupCost(actuals.variable, avg?.variable ?? null, costBasis.variable),
+    };
+    const monthTotals = computeTotals(data.invoices, data.expenses, month);
+    const appliedCosts = applied.cogs + applied.fixed + applied.variable;
     return {
       months,
       month,
       matrix: buildMatrix(data.customers, data.invoices, months),
-      monthTotals: computeTotals(data.invoices, data.expenses, month),
+      monthTotals,
+      costActuals: actuals,
+      costAvg: avg,
+      costApplied: applied,
+      scenarioNet: monthTotals.revenue - appliedCosts,
       rangeTotals: computeTotals(data.invoices, data.expenses, null),
       monthInvoices: data.invoices.filter((i: ScenarioInvoice) => monthKey(i.issue_date) === month),
-      monthExpenses: data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month),
+      monthExpenses,
       monthPnl: (data.pnl ?? []).find((p) => p.month === month) ?? null,
     };
-  }, [data, month]);
+  }, [data, month, costBasis]);
+
 
 
   const customerNames = useMemo(() => {
