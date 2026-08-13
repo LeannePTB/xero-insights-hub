@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Loader2, RefreshCw, RotateCcw } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -133,6 +133,7 @@ function CashflowScenarioPage() {
 
   const [customer, setCustomer] = useState<string>("");
   const [scope, setScope] = useState<"month" | "all">("month");
+  const [matrixOpen, setMatrixOpen] = useState(false);
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -293,11 +294,22 @@ function CashflowScenarioPage() {
 
             {/* Matrix */}
             <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="font-display text-lg font-semibold">Revenue by customer per month</h2>
+              <button
+                type="button"
+                onClick={() => setMatrixOpen((v) => !v)}
+                className="flex w-full flex-wrap items-center justify-between gap-3 text-left"
+                aria-expanded={matrixOpen}
+              >
+                <h2 className="flex items-center gap-2 font-display text-lg font-semibold">
+                  <ChevronRight
+                    className={`h-4 w-4 text-muted-foreground transition-transform ${matrixOpen ? "rotate-90" : ""}`}
+                  />
+                  Revenue by customer per month
+                </h2>
                 <span className="text-xs text-muted-foreground">{monthLabelOf(month)}</span>
-              </div>
-              <div className="mt-4 overflow-x-auto">
+              </button>
+              <div className={`mt-4 overflow-x-auto ${matrixOpen ? "" : "hidden"}`}>
+
                 <table className="w-full min-w-[640px] text-sm">
                   <thead>
                     <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
