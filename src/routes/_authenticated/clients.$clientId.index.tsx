@@ -145,6 +145,9 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("cashflow_scenario"))
         advanced.push({ id: `${o.id}:cashflow_scenario`, node: <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+      if (widgets.includes("loan_consolidation"))
+        advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+
       // xero_audit rendered under Business Health, not in advanced grid
 
     }
