@@ -459,34 +459,6 @@ function parseXeroDateValue(s?: string): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
-// Aged Payables/Receivables summary report → total + overdue (>0 days bucket)
-
-function summariseAgedReport(report: any): { total: number; overdue: number } {
-  // Xero aged-by-contact summary report rows: each contact row has cells:
-  // [Contact, Current, <1mo, 1mo, 2mo, Older, Total]
-  let total = 0;
-  let overdue = 0;
-  const sections: ReportRow[] = report?.Rows ?? [];
-  function walk(rows: ReportRow[] | undefined) {
-    if (!rows) return;
-    for (const r of rows) {
-      if (r.RowType === "Section") walk(r.Rows);
-      else if ((r.RowType === "Row" || r.RowType === "SummaryRow") && r.Cells) {
-        const cells = r.Cells.map((c) => c?.Value ?? "");
-        // Total is the last cell; current is the second cell (after contact)
-        if (cells.length >= 6 && r.RowType === "SummaryRow") {
-          const t = parseAmount(cells[cells.length - 1]);
-          const current = parseAmount(cells[1]);
-          total += t;
-          overdue += Math.max(0, t - current);
-        }
-      }
-    }
-  }
-  walk(sections);
-  return { total, overdue };
-}
-
 function statusFor(value: number, thresholds: { good: number; watch: number }, lowerIsBetter = false): PillarStatus {
   if (lowerIsBetter) {
     if (value <= thresholds.good) return "good";
