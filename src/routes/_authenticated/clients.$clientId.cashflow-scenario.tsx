@@ -111,6 +111,19 @@ function CashflowScenarioPage() {
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not update these invoices"),
   });
+  const customerMut = useMutation({
+    mutationFn: (v: { xeroInvoiceIds: string[]; excluded: boolean; label: string }) =>
+      toggleExcludedBulk({ data: { clientId, xeroInvoiceIds: v.xeroInvoiceIds, excluded: v.excluded } }),
+    onSuccess: (_r, v) => {
+      qc.invalidateQueries({ queryKey: ["scenario", clientId] });
+      toast.success(
+        `${v.excluded ? "Excluded" : "Included"} ${v.xeroInvoiceIds.length} invoice${
+          v.xeroInvoiceIds.length === 1 ? "" : "s"
+        } for ${v.label}`,
+      );
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not update these invoices"),
+  });
   const resetMut = useMutation({
 
     mutationFn: () => reset({ data: { clientId } }),
@@ -118,6 +131,8 @@ function CashflowScenarioPage() {
     onError: (e: any) => toast.error(e?.message ?? "Could not reset the scenario"),
   });
 
+  const [customer, setCustomer] = useState<string>("");
+  const [scope, setScope] = useState<"month" | "all">("month");
 
   const view = useMemo(() => {
     if (!data) return null;
@@ -132,6 +147,22 @@ function CashflowScenarioPage() {
       monthExpenses: data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month),
     };
   }, [data, month]);
+
+  const customerNames = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of (data?.invoices ?? []) as ScenarioInvoice[]) {
+      set.add(i.customer_id ?? "Unassigned");
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const customerInvoiceIds = useMemo(() => {
+    if (!customer) return [] as string[];
+    const pool = (scope === "month" ? view?.monthInvoices : data?.invoices) ?? [];
+    return (pool as ScenarioInvoice[])
+      .filter((i) => (i.customer_id ?? "Unassigned") === customer)
+      .map((i) => i.id);
+  }, [customer, scope, view, data]);
 
   return (
     <div className="min-h-screen bg-background">
