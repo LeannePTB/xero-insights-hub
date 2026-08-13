@@ -258,23 +258,13 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             return redirectTo(`${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent("Xero didn't return any organisations for that login. Run Connect a Xero file again and tick the organisation you want on Xero's consent screen.")}`);
           }
 
-          // Stamp the organisation onto every connection from this authorisation
-          // so an org's users only ever see their own Xero files.
           const firmId = await getClientFirmId(initiatingClientId);
           const allTenantIds = tenants.map((t) => t.tenantId);
-          if (firmId) {
-            await supabaseAdmin
-              .from("xero_connections")
-              .update({ firm_id: firmId })
-              .eq("user_id", userId)
-              .in("tenant_id", allTenantIds)
-              .is("firm_id", null);
-          }
 
           const allowance = await getClientOrgAllowance(initiatingClientId);
           // Include organisations Xero already treats as "connected" — the user
           // still needs to be able to pick them for this subscription.
-          const candidates = await getSelectableConnectionsForClient(initiatingClientId, allTenantIds);
+          const candidates = await getSelectableConnectionsForClient(initiatingClientId, allTenantIds, userId);
           const selectable = candidates.filter((c) => c.available);
 
           if (selectable.length === 1 && candidates.length === 1 && allowance.remaining > 0) {
@@ -283,6 +273,14 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               xero_connection_id: selectable[0].id,
             });
             if (linkErr) return redirectTo(`${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent(linkErr.message)}`);
+            if (firmId) await supabaseAdmin.from("xero_connections").update({ firm_id: firmId }).eq("id", selectable[0].id);
+            await supabaseAdmin.from("audit_log").insert({
+              actor_user_id: userId,
+              action: "xero_file_linked",
+              target_type: "xero_connection",
+              target_id: selectable[0].id,
+              meta: { client_id: initiatingClientId, firm_id: firmId },
+            });
             await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(`${returnOrigin}${settingsPath}?xero=connected`);
           }

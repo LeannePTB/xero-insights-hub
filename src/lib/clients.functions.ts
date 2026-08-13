@@ -417,18 +417,29 @@ export const detachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
-    const { data: row, error: readErr } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error: readErr } = await supabaseAdmin
       .from("client_xero_orgs")
-      .select("xero_connection_id")
+      .select("client_id, xero_connection_id")
       .eq("id", data.id)
       .maybeSingle();
     if (readErr) throw new Error(readErr.message);
-    const { error } = await context.supabase.from("client_xero_orgs").delete().eq("id", data.id);
+    if (!row) throw new Error("Xero link not found.");
+    const { userCanManageClient } = await import("@/lib/xero/client-orgs.server");
+    if (!(await userCanManageClient(context.userId, row.client_id))) throw new Error("You cannot unlink this Xero file.");
+    const { error } = await supabaseAdmin.from("client_xero_orgs").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     // Release the organisation stamp so the file can be linked elsewhere.
     if (row?.xero_connection_id) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      await supabaseAdmin.from("xero_connections").update({ firm_id: null }).eq("id", row.xero_connection_id);
+      const { count } = await supabaseAdmin.from("client_xero_orgs").select("id", { count: "exact", head: true }).eq("xero_connection_id", row.xero_connection_id);
+      if ((count ?? 0) === 0) await supabaseAdmin.from("xero_connections").update({ firm_id: null }).eq("id", row.xero_connection_id);
+      await supabaseAdmin.from("audit_log").insert({
+        actor_user_id: context.userId,
+        action: "xero_file_unlinked",
+        target_type: "xero_connection",
+        target_id: row.xero_connection_id,
+        meta: { client_id: row.client_id },
+      });
     }
     return { ok: true };
   });

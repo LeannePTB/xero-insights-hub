@@ -147,22 +147,15 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     const { enforceRateLimit } = await import("@/lib/rate-limit.server");
     await enforceRateLimit(`xero:connect:${context.userId}`, 10, 3600);
 
-    // Enforce tier-based connection hard-cap and access state before starting OAuth.
-    const { computeFirmAccess } = await import("@/lib/access.functions");
-    const access = await computeFirmAccess(context.userId);
-    if (access.state === "locked") {
-      throw new Error("Your subscription is not active. Update billing before connecting another Xero file.");
-    }
-    if (access.state !== "no_firm" && access.connectionCount >= access.connectionLimit) {
-      throw new Error(
-        `You've reached your plan limit of ${access.connectionLimit} Xero file${access.connectionLimit === 1 ? "" : "s"}. Upgrade your plan to connect more.`,
-      );
-    }
-
     let knownTenantIds: string[] = [];
     if (data.clientId) {
-      const { userCanManageClient, getClientOrgAllowance } = await import("@/lib/xero/client-orgs.server");
+      const { userCanManageClient, getClientOrgAllowance, getClientFirmConnectionAccess } = await import("@/lib/xero/client-orgs.server");
       if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this client subscription.");
+      const access = await getClientFirmConnectionAccess(data.clientId);
+      if (access.state === "locked") throw new Error(`${access.firmName}'s subscription is not active.`);
+      if (access.connectionCount >= access.connectionLimit) {
+        throw new Error(`${access.firmName} has reached its plan limit of ${access.connectionLimit} Xero file${access.connectionLimit === 1 ? "" : "s"}.`);
+      }
       const allowance = await getClientOrgAllowance(data.clientId);
       if (allowance.remaining < 1) throw new Error(`This subscription has reached its Xero file allowance of ${allowance.allowance}.`);
       const { data: known, error: knownError } = await context.supabase
@@ -257,6 +250,13 @@ export const linkClientXeroOptions = createServerFn({ method: "POST" })
     if (firmId) {
       await supabaseAdmin.from("xero_connections").update({ firm_id: firmId }).in("id", uniqueIds);
     }
+    await supabaseAdmin.from("audit_log").insert(uniqueIds.map((connectionId) => ({
+      actor_user_id: context.userId,
+      action: "xero_file_linked",
+      target_type: "xero_connection",
+      target_id: connectionId,
+      meta: { client_id: data.clientId, firm_id: firmId },
+    })));
     await supabaseAdmin.from("xero_oauth_states").delete().eq("state", data.state);
     return { linked: uniqueIds.length };
   });
@@ -305,19 +305,12 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
       throw new Error(`This subscription has reached its Xero file allowance of ${allowance.allowance}.`);
     }
 
-    const { error: delErr } = await supabaseAdmin.from("client_xero_orgs").delete().eq("id", existing.id);
-    if (delErr) throw new Error(delErr.message);
-    const { error: insErr } = await supabaseAdmin
-      .from("client_xero_orgs")
-      .insert({ client_id: data.clientId, xero_connection_id: data.connectionId });
-    if (insErr) {
-      // Put it back so the file is never left orphaned.
-      await supabaseAdmin.from("client_xero_orgs").insert({ client_id: existing.client_id, xero_connection_id: data.connectionId });
-      throw new Error(insErr.message);
-    }
-    if (targetFirmId) {
-      await supabaseAdmin.from("xero_connections").update({ firm_id: targetFirmId }).eq("id", data.connectionId);
-    }
+    const { error: moveError } = await (supabaseAdmin as any).rpc("move_xero_file_to_client", {
+      _connection_id: data.connectionId,
+      _target_client_id: data.clientId,
+      _actor_user_id: context.userId,
+    });
+    if (moveError) throw new Error(moveError.message);
     await supabaseAdmin.from("audit_log").insert({
       actor_user_id: context.userId,
       action: "xero_file_moved",
@@ -362,12 +355,19 @@ export const disconnectXero = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     // Look up the connection row (we need the Xero connection id + tokens to
     // revoke remotely before deleting locally).
-    const { data: row, error: lookupErr } = await context.supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row, error: lookupErr } = await supabaseAdmin
       .from("xero_connections")
-      .select("id, tenant_id, tenant_name")
+      .select("id, tenant_id, tenant_name, user_id, client_xero_orgs(client_id)")
       .eq("tenant_id", data.tenantId)
       .maybeSingle();
     if (lookupErr) throw new Error(lookupErr.message);
+    if (!row) throw new Error("Xero connection not found.");
+    const linkedClientId = (row.client_xero_orgs as Array<{ client_id: string }> | null)?.[0]?.client_id;
+    if (linkedClientId) {
+      const { userCanManageClient } = await import("@/lib/xero/client-orgs.server");
+      if (!(await userCanManageClient(context.userId, linkedClientId))) throw new Error("You cannot disconnect this Xero file.");
+    } else if (row.user_id !== context.userId) throw new Error("You cannot disconnect this Xero file.");
 
     // Best-effort remote revoke. Xero requires us to call DELETE /connections
     // and revoke the refresh token so the org no longer shows our app as
@@ -375,7 +375,6 @@ export const disconnectXero = createServerFn({ method: "POST" })
     // block the local cleanup.
     if (row) {
       try {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { getConnectionByTenant } = await import("@/lib/xero/api.server");
 
         let conn: Awaited<ReturnType<typeof getConnectionByTenant>> | null = null;
@@ -436,7 +435,7 @@ export const disconnectXero = createServerFn({ method: "POST" })
       }
     }
 
-    const { error } = await context.supabase
+    const { error } = await supabaseAdmin
       .from("xero_connections")
       .delete()
       .eq("tenant_id", data.tenantId);

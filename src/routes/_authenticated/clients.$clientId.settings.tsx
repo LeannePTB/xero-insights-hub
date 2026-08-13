@@ -165,6 +165,7 @@ function ClientSettings() {
       qc.invalidateQueries({ queryKey: ["client", clientId] });
       qc.invalidateQueries({ queryKey: ["client-xero-options", clientId] });
       qc.invalidateQueries({ queryKey: ["xero-connections"] });
+      window.history.replaceState({}, "", window.location.pathname);
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -254,7 +255,7 @@ function ClientSettings() {
       qc.invalidateQueries({ queryKey: ["client", clientId] });
       qc.invalidateQueries({ queryKey: ["xero-connections"] });
     } else if (status === "choose") {
-      toast.info("Choose which newly authorised Xero files belong to this subscription.");
+      toast.info("Choose which Xero files belong to this subscription.");
     } else if (err) {
       toast.error(err);
     }
@@ -446,6 +447,7 @@ function ClientSettings() {
                               : `Linked to ${c.linkedClientName ?? "another subscription"}${c.linkedFirmName ? ` — ${c.linkedFirmName}` : ""}`}
                           </span>
                         )}
+                        {!disabled && <span className="text-xs text-muted-foreground">Available</span>}
                       </label>
                       {c.movable && (
                         <AlertDialog>

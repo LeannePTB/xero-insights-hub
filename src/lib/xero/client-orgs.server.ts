@@ -62,6 +62,48 @@ export async function userCanManageClient(userId: string, clientId: string): Pro
   return Boolean(membership);
 }
 
+export type ClientFirmConnectionAccess = {
+  firmId: string;
+  firmName: string;
+  state: "ok" | "trial" | "locked";
+  connectionCount: number;
+  connectionLimit: number;
+};
+
+/** Resolve connection limits from the target client's organisation, never the caller's first membership. */
+export async function getClientFirmConnectionAccess(clientId: string): Promise<ClientFirmConnectionAccess> {
+  const { data: client, error: clientError } = await supabaseAdmin
+    .from("clients")
+    .select("firm_id")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (clientError) throw new Error(clientError.message);
+  if (!client?.firm_id) throw new Error("This client is not attached to an organisation.");
+
+  const firmId = client.firm_id;
+  const [{ data: firm }, { data: subscription }, { count }, { data: levels }] = await Promise.all([
+    supabaseAdmin.from("firms").select("name, is_always_free").eq("id", firmId).maybeSingle(),
+    supabaseAdmin.from("subscriptions").select("tier, status, trial_ends_at").eq("firm_id", firmId).maybeSingle(),
+    supabaseAdmin.from("client_xero_orgs").select("id, clients!inner(firm_id)", { count: "exact", head: true }).eq("clients.firm_id", firmId),
+    (supabaseAdmin as any).from("plan_levels").select("key, xero_org_limit").eq("scope", "firm"),
+  ]);
+  if (!firm) throw new Error("Organisation not found.");
+
+  const plan = (levels ?? []).find((row: any) => row.key === subscription?.tier);
+  const connectionLimit = Math.max(1, Number(plan?.xero_org_limit ?? 1));
+  const status = subscription?.status ?? null;
+  const trialExpired = status === "trialing" && subscription?.trial_ends_at
+    ? new Date(subscription.trial_ends_at).getTime() < Date.now()
+    : false;
+  const state = firm.is_always_free || status === "active"
+    ? "ok"
+    : status === "trialing" && !trialExpired
+      ? "trial"
+      : "locked";
+
+  return { firmId, firmName: firm.name, state, connectionCount: count ?? 0, connectionLimit };
+}
+
 export async function getClientFirmId(clientId: string): Promise<string | null> {
   const { data } = await supabaseAdmin.from("clients").select("firm_id").eq("id", clientId).maybeSingle();
   return (data?.firm_id as string | null) ?? null;
