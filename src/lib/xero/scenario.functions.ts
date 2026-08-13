@@ -282,7 +282,35 @@ export const setInvoiceExcluded = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Bulk include/exclude a list of invoices (e.g. "assume nobody paid this month").
+export const setInvoicesExcludedBulk = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; xeroInvoiceIds: string[]; excluded: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    await assertScenarioWriteAccess(context.userId, data.clientId);
+    const ids = Array.from(new Set(data.xeroInvoiceIds.filter(Boolean)));
+    if (ids.length === 0) return { ok: true, count: 0 };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const sb = supabaseAdmin as any;
+    if (data.excluded) {
+      const rows = ids.map((id) => ({ client_id: data.clientId, xero_invoice_id: id }));
+      const { error } = await sb
+        .from("scenario_exclusions")
+        .upsert(rows, { onConflict: "client_id,xero_invoice_id" });
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await sb
+        .from("scenario_exclusions")
+        .delete()
+        .eq("client_id", data.clientId)
+        .in("xero_invoice_id", ids);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true, count: ids.length };
+  });
+
 export const resetScenario = createServerFn({ method: "POST" })
+
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
