@@ -269,7 +269,7 @@ function CashflowScenarioPage() {
             )}
 
             {/* Scenario */}
-            <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+            <section className="mt-8">
               <div className="mb-5 border-b border-border/60 pb-4">
                 <h2 className="font-display text-xl font-semibold">Scenario</h2>
                 <p className="text-sm text-muted-foreground">If this, then that</p>
@@ -295,7 +295,6 @@ function CashflowScenarioPage() {
                   tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
                 />
               </div>
-            </section>
 
 
             {/* Matrix */}
