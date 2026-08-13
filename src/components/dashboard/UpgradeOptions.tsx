@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUpgradeOptions } from "@/lib/tier-config.functions";
-import { TIER_LABEL, TIER_DESCRIPTION, WIDGET_LABEL, type DashboardTier } from "@/lib/tiers";
+import { TIER_LABEL, WIDGET_LABEL, tierLabel, tierDescription, type DashboardTier } from "@/lib/tiers";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -25,14 +25,14 @@ export function UpgradeOptions({
   if (!q.data || q.data.upgrades.length === 0) return null;
   const { upgrades, contactEmail } = q.data;
 
-  function handleRequest(tier: DashboardTier) {
+  function handleRequest(tier: string, label: string) {
     const subject = `Dashboard upgrade request — ${clientName}`;
     const body =
-      `Hi,\n\nI'd like to upgrade the ${clientName} dashboard to the ${TIER_LABEL[tier]} tier.\n\n` +
+      `Hi,\n\nI'd like to upgrade the ${clientName} dashboard to the ${label} tier.\n\n` +
       `Could you let me know the cost and next steps?\n\nThanks.`;
     if (!contactEmail) {
       toast.message("Contact your advisor to request this upgrade.", {
-        description: `Ask for the ${TIER_LABEL[tier]} dashboard for ${clientName}.`,
+        description: `Ask for the ${label} dashboard for ${clientName}.`,
       });
       return;
     }
@@ -60,9 +60,14 @@ export function UpgradeOptions({
           >
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <h3 className="font-display text-base font-semibold">{TIER_LABEL[u.tier]}</h3>
+                <h3 className="font-display text-base font-semibold">{tierLabel(u.tier, u.label)}</h3>
+                {u.allowsMultiOrg && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    {u.xeroFiles} Xero files
+                  </span>
+                )}
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">{TIER_DESCRIPTION[u.tier]}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{tierDescription(u.tier, u.description)}</p>
               <div className="mt-3">
                 <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                   Adds
@@ -79,7 +84,7 @@ export function UpgradeOptions({
                 </div>
               </div>
             </div>
-            <Button size="sm" variant="outline" onClick={() => handleRequest(u.tier)} className="shrink-0">
+            <Button size="sm" variant="outline" onClick={() => handleRequest(u.tier, tierLabel(u.tier, u.label))} className="shrink-0">
               Request upgrade <ArrowUpRight className="ml-1 h-4 w-4" />
             </Button>
           </div>
