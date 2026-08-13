@@ -278,8 +278,9 @@ function CashflowScenarioPage() {
             </section>
 
 
-            <section className="mt-3 grid gap-3 sm:grid-cols-4">
-              <Stat label={`Revenue · ${monthLabelOf(month)}`} value={fmt(view.monthTotals.revenue)} />
+            <section className="mt-3 grid gap-3 sm:grid-cols-5">
+              <Stat label={`Scenario revenue · ${monthLabelOf(month)}`} value={fmt(view.monthTotals.revenue)} />
+              <Stat label="Cost of sales" value={fmt(view.monthTotals.cogs)} />
               <Stat label="Fixed expenses" value={fmt(view.monthTotals.fixed)} />
               <Stat label="Variable expenses" value={fmt(view.monthTotals.variable)} />
               <Stat
@@ -288,6 +289,7 @@ function CashflowScenarioPage() {
                 tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
               />
             </section>
+
 
             {/* Matrix */}
             <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
