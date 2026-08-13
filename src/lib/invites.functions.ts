@@ -70,13 +70,23 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     const email = data.ownerMode === "none" ? "" : validateEmail(data.ownerEmail ?? "");
     if (data.ownerMode === "password") validatePassword(data.ownerPassword ?? "");
 
-    const allowedTiers = ["starter", "growth", "scale", "firm", "free", "legacy"];
+    const builtInTiers = ["starter", "growth", "scale", "firm", "free", "legacy"];
     const allowedStatuses = ["trialing", "active"];
-    if (!allowedTiers.includes(data.tier)) throw new Error("Invalid plan tier.");
     if (!allowedStatuses.includes(data.status)) throw new Error("Invalid subscription status.");
 
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Super admins can define extra organisation plans in the Subscription levels
+    // page, so accept any enabled firm-scoped plan key as well as the built-ins.
+    const { data: planRows } = await (supabaseAdmin as any)
+      .from("plan_levels")
+      .select("key")
+      .eq("scope", "firm")
+      .eq("enabled", true);
+    const allowedTiers = new Set([...builtInTiers, ...((planRows ?? []) as any[]).map((r) => String(r.key))]);
+    if (!allowedTiers.has(data.tier)) throw new Error("Invalid plan tier.");
+
+
 
     const { data: firm, error: fErr } = await (supabaseAdmin as any)
       .from("firms")
