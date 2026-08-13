@@ -345,6 +345,71 @@ function CashflowScenarioPage() {
                 )}
               </div>
 
+              {customerNames.length > 0 && (
+                <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
+                  <span className="text-xs text-muted-foreground">What if</span>
+                  <Select value={customer} onValueChange={setCustomer}>
+                    <SelectTrigger className="h-9 w-[240px] text-xs">
+                      <SelectValue placeholder="Select a customer" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {customerNames.map((n) => (
+                        <SelectItem key={n} value={n}>
+                          {n}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={scope} onValueChange={(v) => setScope(v as "month" | "all")}>
+                    <SelectTrigger className="h-9 w-[150px] text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="month">This month</SelectItem>
+                      <SelectItem value="all">All months shown</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
+                    onClick={() =>
+                      customerMut.mutate({
+                        xeroInvoiceIds: customerInvoiceIds,
+                        excluded: true,
+                        label: customer,
+                      })
+                    }
+                  >
+                    {customerMut.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : null}
+                    Mark as unpaid
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={!customer || customerInvoiceIds.length === 0 || customerMut.isPending}
+                    onClick={() =>
+                      customerMut.mutate({
+                        xeroInvoiceIds: customerInvoiceIds,
+                        excluded: false,
+                        label: customer,
+                      })
+                    }
+                  >
+                    Mark as paid
+                  </Button>
+                  {customer && (
+                    <span className="text-xs text-muted-foreground">
+                      {customerInvoiceIds.length} invoice
+                      {customerInvoiceIds.length === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </div>
+              )}
+
+
               {view.monthInvoices.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">No invoices in this month.</p>
               ) : (
