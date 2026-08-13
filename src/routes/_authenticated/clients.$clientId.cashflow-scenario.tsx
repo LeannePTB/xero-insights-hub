@@ -32,7 +32,7 @@ import {
   type ScenarioExpense,
   type ScenarioInvoice,
 } from "@/lib/xero/scenario.functions";
-import { buildMatrix, computeTotals, groupExpenses, monthKey } from "@/lib/scenario-calc";
+import { buildMatrix, computeTotals, groupBySection, groupExpenses, monthKey } from "@/lib/scenario-calc";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/cashflow-scenario")({
   validateSearch: (search: Record<string, unknown>) => ({
