@@ -32,7 +32,7 @@ import {
   type ScenarioExpense,
   type ScenarioInvoice,
 } from "@/lib/xero/scenario.functions";
-import { buildMatrix, computeTotals, groupExpenses, monthKey } from "@/lib/scenario-calc";
+import { buildMatrix, computeTotals, groupBySection, groupExpenses, monthKey } from "@/lib/scenario-calc";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/cashflow-scenario")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -145,8 +145,10 @@ function CashflowScenarioPage() {
       rangeTotals: computeTotals(data.invoices, data.expenses, null),
       monthInvoices: data.invoices.filter((i: ScenarioInvoice) => monthKey(i.issue_date) === month),
       monthExpenses: data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month),
+      monthPnl: (data.pnl ?? []).find((p) => p.month === month) ?? null,
     };
   }, [data, month]);
+
 
   const customerNames = useMemo(() => {
     const set = new Set<string>();
@@ -235,9 +237,38 @@ function CashflowScenarioPage() {
           <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
         ) : view ? (
           <>
+            {/* Xero P&L reconciliation */}
+            {view.monthPnl && (
+              <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-display text-lg font-semibold">
+                    Profit &amp; Loss · {monthLabelOf(month)}
+                  </h2>
+                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Accrual basis
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-5">
+                  <Stat label="Trading income" value={fmt(view.monthPnl.income)} />
+                  <Stat label="Cost of sales" value={fmt(view.monthPnl.cogs)} />
+                  <Stat label="Gross profit" value={fmt(view.monthPnl.grossProfit)} />
+                  <Stat label="Operating expenses" value={fmt(view.monthPnl.operating)} />
+                  <Stat
+                    label="Net profit"
+                    value={fmt(view.monthPnl.netProfit)}
+                    tone={view.monthPnl.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Straight from Xero. The scenario figures below use invoices raised in the month, so
+                  they can differ from Trading Income.
+                </p>
+              </section>
+            )}
+
             {/* Summary */}
             <section className="mt-6 grid gap-3 sm:grid-cols-3">
-              <Stat label="Baseline revenue (period)" value={fmt(view.rangeTotals.baselineRevenue)} />
+              <Stat label="Baseline invoice revenue (period)" value={fmt(view.rangeTotals.baselineRevenue)} />
               <Stat label="Current scenario (period)" value={fmt(view.rangeTotals.revenue)} />
               <Stat
                 label="Difference"
@@ -246,8 +277,10 @@ function CashflowScenarioPage() {
               />
             </section>
 
-            <section className="mt-3 grid gap-3 sm:grid-cols-4">
-              <Stat label={`Revenue · ${monthLabelOf(month)}`} value={fmt(view.monthTotals.revenue)} />
+
+            <section className="mt-3 grid gap-3 sm:grid-cols-5">
+              <Stat label={`Scenario revenue · ${monthLabelOf(month)}`} value={fmt(view.monthTotals.revenue)} />
+              <Stat label="Cost of sales" value={fmt(view.monthTotals.cogs)} />
               <Stat label="Fixed expenses" value={fmt(view.monthTotals.fixed)} />
               <Stat label="Variable expenses" value={fmt(view.monthTotals.variable)} />
               <Stat
@@ -256,6 +289,7 @@ function CashflowScenarioPage() {
                 tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
               />
             </section>
+
 
             {/* Matrix */}
             <section className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -449,9 +483,29 @@ function CashflowScenarioPage() {
             </section>
 
             {/* Expenses */}
-            <section className="mt-6 grid gap-6 md:grid-cols-2">
+            <section className="mt-6 grid gap-6 md:grid-cols-3">
+              <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+                <div className="flex items-center justify-between">
+                  <h2 className="font-display text-lg font-semibold">Cost of sales</h2>
+                  <span className="tabular-nums text-sm font-semibold">{fmt(view.monthTotals.cogs)}</span>
+                </div>
+                {groupBySection(view.monthExpenses, "cogs").length === 0 ? (
+                  <p className="mt-3 text-sm text-muted-foreground">
+                    No cost of sales in this month.
+                  </p>
+                ) : (
+                  <ul className="mt-4 space-y-1.5">
+                    {groupBySection(view.monthExpenses, "cogs").map((g) => (
+                      <li key={g.category} className="flex items-center justify-between text-sm">
+                        <span className="truncate pr-3">{g.category}</span>
+                        <span className="tabular-nums">{fmt(g.subtotal)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
               {(["Fixed", "Variable"] as const).map((type) => {
-                const groups = groupExpenses(view.monthExpenses, type);
+                const groups = groupExpenses(view.monthExpenses, type, "operating");
                 const total = groups.reduce((a, g) => a + g.subtotal, 0);
                 return (
                   <div
@@ -482,9 +536,11 @@ function CashflowScenarioPage() {
             </section>
 
             <p className="mt-6 text-xs text-muted-foreground">
-              Expenses are split using the fixed/variable tags in client settings — untagged accounts
-              are treated as variable.
+              Figures come from the Xero Profit &amp; Loss on the accrual basis, so wages and
+              superannuation are included. Operating expenses are split using the fixed/variable tags
+              in client settings — untagged accounts are treated as variable.
             </p>
+
           </>
         ) : null}
       </main>

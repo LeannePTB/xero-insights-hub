@@ -18,8 +18,18 @@ export type ScenarioExpense = {
   name: string;
   amount: number;
   type: "Fixed" | "Variable";
+  section: "cogs" | "operating";
   category: string;
   date: string;
+};
+
+export type ScenarioPnlMonth = {
+  month: string;
+  income: number;
+  cogs: number;
+  grossProfit: number;
+  operating: number;
+  netProfit: number;
 };
 
 export type ScenarioData = {
@@ -27,7 +37,9 @@ export type ScenarioData = {
   customers: ScenarioCustomer[];
   invoices: ScenarioInvoice[];
   expenses: ScenarioExpense[];
+  pnl: ScenarioPnlMonth[];
 };
+
 
 type XeroInvoice = {
   InvoiceID: string;
@@ -89,12 +101,30 @@ type ReportRow = {
   Cells?: { Value: string }[];
 };
 
+type PnlLine = { name: string; month: string; amount: number; section: "income" | "cogs" | "operating" };
+
+function classifySection(rawTitle: string): "income" | "cogs" | "operating" | null {
+  const title = rawTitle.toLowerCase();
+  if (
+    title.includes("cost of sales") ||
+    title.includes("cost of goods") ||
+    title.includes("direct cost")
+  ) {
+    return "cogs";
+  }
+  if (title.includes("expense") || title.includes("operating")) return "operating";
+  if (title.includes("other income")) return null;
+  if (title.includes("income") || title.includes("revenue") || title.includes("sales")) return "income";
+  return null;
+}
+
 /**
- * Parses a multi-column (timeframe=MONTH) P&L into expense lines per month.
- * Column month keys are taken from the header row where parseable, and fall
- * back to the requested month list when Xero's labels can't be read.
+ * Parses a P&L (single or multi-column) into per-month lines tagged with the
+ * section they came from. Column month keys are taken from the header row where
+ * parseable, and fall back to the requested month list when Xero's labels can't
+ * be read.
  */
-function parseMonthlyExpenses(report: any, fallbackMonths: string[]): { name: string; month: string; amount: number }[] {
+function parseMonthlyPnl(report: any, fallbackMonths: string[]): PnlLine[] {
   const sections: ReportRow[] = report?.Rows ?? [];
   const header = sections.find((s) => s.RowType === "Header");
   const headerCells = (header?.Cells ?? []).slice(1).map((c) => c?.Value ?? "");
@@ -104,17 +134,11 @@ function parseMonthlyExpenses(report: any, fallbackMonths: string[]): { name: st
     return fallbackMonths[i] ?? "";
   });
 
-  const out: { name: string; month: string; amount: number }[] = [];
+  const out: PnlLine[] = [];
   for (const section of sections) {
     if (section.RowType !== "Section") continue;
-    const title = (section.Title || "").toLowerCase();
-    const isExpense =
-      title.includes("expense") ||
-      title.includes("cost of sales") ||
-      title.includes("cost of goods") ||
-      title.includes("direct cost") ||
-      title.includes("operating");
-    if (!isExpense) continue;
+    const kind = classifySection(section.Title || "");
+    if (!kind) continue;
 
     for (const r of section.Rows ?? []) {
       if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) continue;
@@ -125,12 +149,36 @@ function parseMonthlyExpenses(report: any, fallbackMonths: string[]): { name: st
         if (!month) continue;
         const amount = parseAmount(r.Cells[i]?.Value);
         if (!amount) continue;
-        out.push({ name, month, amount });
+        out.push({ name, month, amount, section: kind });
       }
     }
   }
   return out;
 }
+
+/** Roll the parsed lines up into a Xero-style P&L summary per month. */
+function summarisePnl(lines: PnlLine[], months: string[]): ScenarioPnlMonth[] {
+  return months.map((month) => {
+    let income = 0;
+    let cogs = 0;
+    let operating = 0;
+    for (const l of lines) {
+      if (l.month !== month) continue;
+      if (l.section === "income") income += l.amount;
+      else if (l.section === "cogs") cogs += l.amount;
+      else operating += l.amount;
+    }
+    return {
+      month,
+      income,
+      cogs,
+      grossProfit: income - cogs,
+      operating,
+      netProfit: income - cogs - operating,
+    };
+  });
+}
+
 
 /** Live Cashflow Scenario data straight from the connected Xero organisation. */
 export const getScenarioData = createServerFn({ method: "POST" })
@@ -138,14 +186,16 @@ export const getScenarioData = createServerFn({ method: "POST" })
   .inputValidator((i: { clientId: string; tenantId: string; fromDate: string; toDate: string }) => i)
   .handler(async ({ data, context }): Promise<ScenarioData> => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
-    const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
+    const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "cashflow_scenario");
 
     const from = new Date(`${data.fromDate}T00:00:00`);
     const to = new Date(`${data.toDate}T00:00:00`);
     const months = monthRange(from, to);
     const conn = await getConnectionByTenant(data.tenantId);
-    const basis = await getClientReportBasis(data.tenantId);
+    // The Cashflow Scenario always reports on the accrual basis so it lines up
+    // with the Xero Profit & Loss (payments-only drops accrued wages/super).
+
 
     const where =
       `Type=="ACCREC"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"` +
@@ -171,9 +221,10 @@ export const getScenarioData = createServerFn({ method: "POST" })
       ...(extraPeriods > 0
         ? { date: data.toDate, periods: String(extraPeriods), timeframe: "MONTH" }
         : { fromDate: data.fromDate, toDate: data.toDate }),
-      ...(basis === "cash" ? { paymentsOnly: "true" } : {}),
     });
-    const expenseLines = parseMonthlyExpenses(plRes.Reports?.[0], months);
+    const pnlLines = parseMonthlyPnl(plRes.Reports?.[0], months);
+    const expenseLines = pnlLines.filter((l) => l.section !== "income");
+
 
     // Fixed / variable tags plus saved exclusions. Read with the trusted server
     // client after widget access has been checked: advisors and firm members have
@@ -225,6 +276,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
         name: line.name,
         amount: line.amount,
         type: tag === "fixed" ? "Fixed" : "Variable",
+        section: line.section === "cogs" ? "cogs" : "operating",
         category: line.name,
         date: `${line.month}-01`,
       });
@@ -235,8 +287,10 @@ export const getScenarioData = createServerFn({ method: "POST" })
       customers: [...customerNames].sort().map((n) => ({ id: n, name: n })),
       invoices,
       expenses,
+      pnl: summarisePnl(pnlLines, months),
     };
   });
+
 
 /**
  * Scenario exclusions are owned by the client, but advisors, firm members and

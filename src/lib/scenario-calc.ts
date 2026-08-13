@@ -71,6 +71,8 @@ export type Totals = {
   excludedRevenue: number;
   fixed: number;
   variable: number;
+  cogs: number;
+  operating: number;
   expenses: number;
   net: number;
   baselineNet: number;
@@ -92,10 +94,14 @@ export function computeTotals(
   }
   let fixed = 0;
   let variable = 0;
+  let cogs = 0;
+  let operating = 0;
   for (const e of expenses) {
     if (!inScope(e.date)) continue;
     if (e.type === "Variable") variable += e.amount;
     else fixed += e.amount;
+    if (e.section === "cogs") cogs += e.amount;
+    else operating += e.amount;
   }
   const total = fixed + variable;
   return {
@@ -104,16 +110,23 @@ export function computeTotals(
     excludedRevenue: baselineRevenue - revenue,
     fixed,
     variable,
+    cogs,
+    operating,
     expenses: total,
     net: revenue - total,
     baselineNet: baselineRevenue - total,
   };
 }
 
-export function groupExpenses(expenses: ScenarioExpense[], type: "Fixed" | "Variable") {
+export function groupExpenses(
+  expenses: ScenarioExpense[],
+  type: "Fixed" | "Variable",
+  section?: "cogs" | "operating",
+) {
   const map = new Map<string, ScenarioExpense[]>();
   for (const e of expenses) {
     if ((e.type === "Variable" ? "Variable" : "Fixed") !== type) continue;
+    if (section && (e.section ?? "operating") !== section) continue;
     if (!map.has(e.category)) map.set(e.category, []);
     map.get(e.category)!.push(e);
   }
@@ -125,3 +138,16 @@ export function groupExpenses(expenses: ScenarioExpense[], type: "Fixed" | "Vari
     }))
     .sort((a, b) => b.subtotal - a.subtotal);
 }
+
+/** Group every expense line in a P&L section, regardless of fixed/variable tag. */
+export function groupBySection(expenses: ScenarioExpense[], section: "cogs" | "operating") {
+  const map = new Map<string, number>();
+  for (const e of expenses) {
+    if ((e.section ?? "operating") !== section) continue;
+    map.set(e.category, (map.get(e.category) ?? 0) + e.amount);
+  }
+  return [...map.entries()]
+    .map(([category, subtotal]) => ({ category, subtotal }))
+    .sort((a, b) => b.subtotal - a.subtotal);
+}
+
