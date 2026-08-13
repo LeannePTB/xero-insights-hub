@@ -276,6 +276,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
         name: line.name,
         amount: line.amount,
         type: tag === "fixed" ? "Fixed" : "Variable",
+        section: line.section === "cogs" ? "cogs" : "operating",
         category: line.name,
         date: `${line.month}-01`,
       });
@@ -286,8 +287,10 @@ export const getScenarioData = createServerFn({ method: "POST" })
       customers: [...customerNames].sort().map((n) => ({ id: n, name: n })),
       invoices,
       expenses,
+      pnl: summarisePnl(pnlLines, months),
     };
   });
+
 
 /**
  * Scenario exclusions are owned by the client, but advisors, firm members and
