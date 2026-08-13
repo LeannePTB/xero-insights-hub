@@ -27,6 +27,7 @@ import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidatio
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
+import { ConsolidatedReceivablesWidget, ConsolidatedPayablesWidget } from "@/components/dashboard/ConsolidatedAgeingWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
@@ -124,6 +125,49 @@ function ClientDashboard() {
     const standard: SortableCard[] = [];
     const advanced: SortableCard[] = [];
     if (!client) return { standardCards: standard, advancedCards: advanced };
+
+    const consolidationMode = (client.consolidation_mode as "individual" | "consolidated" | undefined) ?? "individual";
+    const consolidationOrgIds: string[] = (client.consolidation_org_ids as string[]) ?? [];
+    const consolidatedOrgs = orgs.filter((o) => consolidationOrgIds.includes(o.id as string));
+    const consolidatedTenantIds = consolidatedOrgs
+      .map((o) => o.xero_connections?.tenant_id as string | undefined)
+      .filter((id): id is string => !!id);
+    const consolidatedTenantNames = consolidatedOrgs.map(
+      (o) => (o.xero_connections?.tenant_name as string) ?? "Unknown",
+    );
+    const asAt = new Date().toISOString().split("T")[0];
+
+    if (consolidationMode === "consolidated" && consolidatedTenantIds.length >= 2) {
+      if (widgets.includes("receivables")) {
+        standard.push({
+          id: `consolidated:receivables`,
+          fullWidth: true,
+          node: (
+            <ConsolidatedReceivablesWidget
+              clientId={clientId}
+              tenantIds={consolidatedTenantIds}
+              tenantNames={consolidatedTenantNames}
+              asAt={asAt}
+            />
+          ),
+        });
+      }
+      if (widgets.includes("payables")) {
+        standard.push({
+          id: `consolidated:payables`,
+          fullWidth: true,
+          node: (
+            <ConsolidatedPayablesWidget
+              clientId={clientId}
+              tenantIds={consolidatedTenantIds}
+              tenantNames={consolidatedTenantNames}
+              asAt={asAt}
+            />
+          ),
+        });
+      }
+    }
+
     for (const o of orgs) {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";

@@ -45,6 +45,7 @@ import { ALL_TIERS, TIER_LABEL, type DashboardTier, type WidgetKey } from "@/lib
 import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
 import { ClientWidgetsPanel } from "@/components/dashboard/ClientWidgetsPanel";
+import { ConsolidationPanel } from "@/components/dashboard/ConsolidationPanel";
 // import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
 import { Switch } from "@/components/ui/switch";
 import { listCostClassifications, setCostClassificationEnabled } from "@/lib/cost-classification.functions";
@@ -445,6 +446,20 @@ function ClientSettings() {
             </div>
           )}
 
+        </Section>
+
+        {/* Consolidation */}
+        <Section title="Consolidation">
+          <ConsolidationPanel
+            clientId={clientId}
+            orgs={linkedOrgs.map((o) => ({
+              id: o.id as string,
+              tenantName: (o.xero_connections?.tenant_name as string) ?? "Unknown",
+              tenantId: o.xero_connections?.tenant_id as string | undefined,
+            }))}
+            mode={(client.consolidation_mode as "individual" | "consolidated") ?? "individual"}
+            selectedOrgIds={(client.consolidation_org_ids as string[]) ?? []}
+          />
         </Section>
 
         {/* Viewer access */}
