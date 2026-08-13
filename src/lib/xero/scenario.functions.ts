@@ -109,8 +109,13 @@ function parseMonthlyExpenses(report: any, fallbackMonths: string[]): { name: st
     if (section.RowType !== "Section") continue;
     const title = (section.Title || "").toLowerCase();
     const isExpense =
-      title.includes("expense") || title.includes("cost of sales") || title.includes("operating");
+      title.includes("expense") ||
+      title.includes("cost of sales") ||
+      title.includes("cost of goods") ||
+      title.includes("direct cost") ||
+      title.includes("operating");
     if (!isExpense) continue;
+
     for (const r of section.Rows ?? []) {
       if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) continue;
       const name = r.Cells[0]?.Value;
