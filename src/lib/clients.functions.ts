@@ -412,6 +412,39 @@ export const setClientXeroAllowance = createServerFn({ method: "POST" })
     return { allowance };
   });
 
+export const saveClientConsolidation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (i: { clientId: string; mode: "individual" | "consolidated"; orgIds: string[] }) => i,
+  )
+  .handler(async ({ data, context }) => {
+    const { userCanManageClient } = await import("@/lib/xero/client-orgs.server");
+    if (!(await userCanManageClient(context.userId, data.clientId))) {
+      throw new Error("You cannot manage this client's consolidation settings.");
+    }
+    const { data: client } = await context.supabase
+      .from("clients")
+      .select("max_xero_orgs, client_xero_orgs(id)")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    if (!client) throw new Error("Client not found.");
+    if ((client.max_xero_orgs ?? 1) <= 1 && data.mode === "consolidated") {
+      throw new Error("Consolidation is only available for multi-company subscriptions.");
+    }
+    const linkedIds = new Set((client.client_xero_orgs as any[]).map((o) => o.id));
+    const invalid = data.orgIds.filter((id) => !linkedIds.has(id));
+    if (invalid.length) throw new Error("Selected organisations are not linked to this client.");
+    if (data.mode === "consolidated" && data.orgIds.length < 2) {
+      throw new Error("Select at least two organisations to consolidate.");
+    }
+    const { error } = await context.supabase
+      .from("clients")
+      .update({ consolidation_mode: data.mode, consolidation_org_ids: data.orgIds })
+      .eq("id", data.clientId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const detachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { id: string }) => i)
