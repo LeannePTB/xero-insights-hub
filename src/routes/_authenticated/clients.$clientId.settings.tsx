@@ -583,38 +583,13 @@ function ClientSettings() {
           setClassEnabled={setClassEnabled}
         />
 
-        {/* Per-client tier overrides */}
-        <Section title="Dashboard widgets per tier" action={
+        {/* Per-client widget control */}
+        <Section title="What this client sees" action={
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/settings/tiers">Edit defaults</Link>
+            <Link to="/settings/tiers">Edit plan defaults</Link>
           </Button>
         }>
-          <p className="mb-4 text-xs text-muted-foreground">
-            Override which widgets appear for this client. Leave a tier on its global default by clicking "Use default".
-          </p>
-          {tierCfgQ.isLoading ? (
-            <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
-          ) : (
-            <div className="space-y-4">
-              {enabledTiers.map((t) => {
-                const override = tierCfgQ.data?.client?.[t] ?? null;
-                const fallback = tierCfgQ.data?.global[t] ?? [];
-                const current = override ?? fallback;
-                return (
-                  <TierEditor
-                    key={t}
-                    tier={t}
-                    initial={current}
-                    saving={tierSaveMut.isPending}
-                    onSave={(widgets) => tierSaveMut.mutate({ tier: t, widgets })}
-                    onReset={override ? () => tierSaveMut.mutate({ tier: t, widgets: null }) : undefined}
-                    resetLabel="Use default"
-                    title={`${TIER_LABEL[t]} ${override ? "· custom for this client" : "· using default"}`}
-                  />
-                );
-              })}
-            </div>
-          )}
+          <ClientWidgetsPanel clientId={clientId} />
         </Section>
 
         <Section title="Danger zone">
