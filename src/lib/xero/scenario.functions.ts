@@ -89,12 +89,30 @@ type ReportRow = {
   Cells?: { Value: string }[];
 };
 
+type PnlLine = { name: string; month: string; amount: number; section: "income" | "cogs" | "operating" };
+
+function classifySection(rawTitle: string): "income" | "cogs" | "operating" | null {
+  const title = rawTitle.toLowerCase();
+  if (
+    title.includes("cost of sales") ||
+    title.includes("cost of goods") ||
+    title.includes("direct cost")
+  ) {
+    return "cogs";
+  }
+  if (title.includes("expense") || title.includes("operating")) return "operating";
+  if (title.includes("other income")) return null;
+  if (title.includes("income") || title.includes("revenue") || title.includes("sales")) return "income";
+  return null;
+}
+
 /**
- * Parses a multi-column (timeframe=MONTH) P&L into expense lines per month.
- * Column month keys are taken from the header row where parseable, and fall
- * back to the requested month list when Xero's labels can't be read.
+ * Parses a P&L (single or multi-column) into per-month lines tagged with the
+ * section they came from. Column month keys are taken from the header row where
+ * parseable, and fall back to the requested month list when Xero's labels can't
+ * be read.
  */
-function parseMonthlyExpenses(report: any, fallbackMonths: string[]): { name: string; month: string; amount: number }[] {
+function parseMonthlyPnl(report: any, fallbackMonths: string[]): PnlLine[] {
   const sections: ReportRow[] = report?.Rows ?? [];
   const header = sections.find((s) => s.RowType === "Header");
   const headerCells = (header?.Cells ?? []).slice(1).map((c) => c?.Value ?? "");
@@ -104,17 +122,11 @@ function parseMonthlyExpenses(report: any, fallbackMonths: string[]): { name: st
     return fallbackMonths[i] ?? "";
   });
 
-  const out: { name: string; month: string; amount: number }[] = [];
+  const out: PnlLine[] = [];
   for (const section of sections) {
     if (section.RowType !== "Section") continue;
-    const title = (section.Title || "").toLowerCase();
-    const isExpense =
-      title.includes("expense") ||
-      title.includes("cost of sales") ||
-      title.includes("cost of goods") ||
-      title.includes("direct cost") ||
-      title.includes("operating");
-    if (!isExpense) continue;
+    const kind = classifySection(section.Title || "");
+    if (!kind) continue;
 
     for (const r of section.Rows ?? []) {
       if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) continue;
@@ -125,12 +137,36 @@ function parseMonthlyExpenses(report: any, fallbackMonths: string[]): { name: st
         if (!month) continue;
         const amount = parseAmount(r.Cells[i]?.Value);
         if (!amount) continue;
-        out.push({ name, month, amount });
+        out.push({ name, month, amount, section: kind });
       }
     }
   }
   return out;
 }
+
+/** Roll the parsed lines up into a Xero-style P&L summary per month. */
+function summarisePnl(lines: PnlLine[], months: string[]): ScenarioPnlMonth[] {
+  return months.map((month) => {
+    let income = 0;
+    let cogs = 0;
+    let operating = 0;
+    for (const l of lines) {
+      if (l.month !== month) continue;
+      if (l.section === "income") income += l.amount;
+      else if (l.section === "cogs") cogs += l.amount;
+      else operating += l.amount;
+    }
+    return {
+      month,
+      income,
+      cogs,
+      grossProfit: income - cogs,
+      operating,
+      netProfit: income - cogs - operating,
+    };
+  });
+}
+
 
 /** Live Cashflow Scenario data straight from the connected Xero organisation. */
 export const getScenarioData = createServerFn({ method: "POST" })
