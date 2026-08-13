@@ -193,11 +193,7 @@ export async function getSelectableConnectionsForClient(
   if (!connections?.length) return [];
 
   const scoped = connections.filter((c: any) =>
-    superAdmin
-      ? true
-      : firmId
-        ? c.firm_id === firmId || c.firm_id === null
-        : c.firm_id === null,
+    superAdmin ? true : firmId ? c.firm_id === firmId || c.firm_id === null : c.firm_id === null,
   );
 
   const { data: assigned, error: assignedError } = await supabaseAdmin
@@ -283,13 +279,19 @@ export async function getUnassignedConnectionsForUser(userId: string) {
 export async function getUnassignedConnectionsForFirm(firmId: string, includeUnstamped = false) {
   let query = supabaseAdmin
     .from("xero_connections")
-    .select("id, tenant_id, tenant_name, tenant_type, created_at, status, disconnected_at, base_currency, firm_id")
+    .select(
+      "id, tenant_id, tenant_name, tenant_type, created_at, status, disconnected_at, base_currency, firm_id",
+    )
     .order("created_at", { ascending: true });
-  query = includeUnstamped ? query.or(`firm_id.eq.${firmId},firm_id.is.null`) : query.eq("firm_id", firmId);
+  query = includeUnstamped
+    ? query.or(`firm_id.eq.${firmId},firm_id.is.null`)
+    : query.eq("firm_id", firmId);
   const { data: connections, error } = await query;
   if (error) throw new Error(error.message);
   if (!connections?.length) return [];
-  const { data: assigned, error: assignedError } = await supabaseAdmin.from("client_xero_orgs").select("xero_connection_id");
+  const { data: assigned, error: assignedError } = await supabaseAdmin
+    .from("client_xero_orgs")
+    .select("xero_connection_id");
   if (assignedError) throw new Error(assignedError.message);
   const assignedIds = new Set((assigned ?? []).map((row) => row.xero_connection_id));
   return connections.filter((connection) => !assignedIds.has(connection.id));

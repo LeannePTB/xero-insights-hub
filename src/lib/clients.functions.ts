@@ -246,8 +246,12 @@ export const createClient = createServerFn({ method: "POST" })
     if (data.xeroConnectionIds.length > 0) {
       const { getUnassignedConnectionsForFirm } = await import("@/lib/xero/client-orgs.server");
       const available = await getUnassignedConnectionsForFirm(firmId, true);
-      if (data.xeroConnectionIds.some((id) => !available.some((connection) => connection.id === id))) {
-        throw new Error("A selected Xero organisation is already assigned or belongs to another organisation.");
+      if (
+        data.xeroConnectionIds.some((id) => !available.some((connection) => connection.id === id))
+      ) {
+        throw new Error(
+          "A selected Xero organisation is already assigned or belongs to another organisation.",
+        );
       }
     }
 
@@ -306,7 +310,10 @@ export const createClient = createServerFn({ method: "POST" })
       }));
       const { error: e2 } = await writer.from("client_xero_orgs").insert(rows);
       if (e2) throw new Error(e2.message);
-      await supabaseAdmin.from("xero_connections").update({ firm_id: firmId }).in("id", data.xeroConnectionIds);
+      await supabaseAdmin
+        .from("xero_connections")
+        .update({ firm_id: firmId })
+        .in("id", data.xeroConnectionIds);
     }
 
     return { id: client.id };
@@ -395,9 +402,14 @@ export const attachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; xeroConnectionId: string }) => i)
   .handler(async ({ data, context }) => {
-    const { getClientOrgAllowance, getUnassignedConnectionsForFirm, userCanManageClient, getClientFirmId } =
-      await import("@/lib/xero/client-orgs.server");
-    if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this subscription.");
+    const {
+      getClientOrgAllowance,
+      getUnassignedConnectionsForFirm,
+      userCanManageClient,
+      getClientFirmId,
+    } = await import("@/lib/xero/client-orgs.server");
+    if (!(await userCanManageClient(context.userId, data.clientId)))
+      throw new Error("You cannot manage this subscription.");
     const allowance = await getClientOrgAllowance(data.clientId);
     if (allowance.remaining < 1)
       throw new Error(
@@ -416,7 +428,10 @@ export const attachXeroOrg = createServerFn({ method: "POST" })
       .from("client_xero_orgs")
       .insert({ client_id: data.clientId, xero_connection_id: data.xeroConnectionId });
     if (error) throw new Error(error.message);
-    await supabaseAdmin.from("xero_connections").update({ firm_id: firmId }).eq("id", data.xeroConnectionId);
+    await supabaseAdmin
+      .from("xero_connections")
+      .update({ firm_id: firmId })
+      .eq("id", data.xeroConnectionId);
     return { ok: true };
   });
 

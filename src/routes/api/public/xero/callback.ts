@@ -318,7 +318,10 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           );
           const selectable = candidates.filter((c) => c.available);
 
-          if (candidates.length > 0 && candidates.every((candidate) => candidate.linkedToThisClient)) {
+          if (
+            candidates.length > 0 &&
+            candidates.every((candidate) => candidate.linkedToThisClient)
+          ) {
             await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(`${returnOrigin}${settingsPath}?xero=connected`);
           }

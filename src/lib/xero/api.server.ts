@@ -8,16 +8,26 @@ const API_BASE = "https://api.xero.com/api.xro/2.0";
 const XERO_TIMEOUT_MS = 20_000;
 
 const MISSING_SCOPE_HINTS: Record<string, string> = {
-  "Reports/ActivityStatement": "Xero needs the tax reports read permission for Activity Statement data. Reconnect this organisation and approve the updated read-only permissions.",
-  "Reports/BankSummary": "Xero needs the bank summary reports read permission. Reconnect this organisation and approve the updated read-only permissions.",
-  "Reports/BalanceSheet": "Xero needs the balance sheet reports read permission. Reconnect this organisation and approve the updated read-only permissions.",
-  "Reports/ProfitAndLoss": "Xero needs the profit and loss reports read permission. Reconnect this organisation and approve the updated read-only permissions.",
-  "Accounts": "Xero needs the settings read permission to list bank accounts. Reconnect this organisation and approve the updated read-only permissions.",
-  "Organisations": "Xero needs the settings read permission to read organisation details. Reconnect this organisation and approve the updated read-only permissions.",
-  "Invoices": "Xero needs the invoices read permission. Reconnect this organisation and approve the updated read-only permissions.",
-  "CreditNotes": "Xero needs the invoices read permission for credit notes. Reconnect this organisation and approve the updated read-only permissions.",
-  "Prepayments": "Xero needs the payments read permission for prepayments. Reconnect this organisation and approve the updated read-only permissions.",
-  "Overpayments": "Xero needs the payments read permission for overpayments. Reconnect this organisation and approve the updated read-only permissions.",
+  "Reports/ActivityStatement":
+    "Xero needs the tax reports read permission for Activity Statement data. Reconnect this organisation and approve the updated read-only permissions.",
+  "Reports/BankSummary":
+    "Xero needs the bank summary reports read permission. Reconnect this organisation and approve the updated read-only permissions.",
+  "Reports/BalanceSheet":
+    "Xero needs the balance sheet reports read permission. Reconnect this organisation and approve the updated read-only permissions.",
+  "Reports/ProfitAndLoss":
+    "Xero needs the profit and loss reports read permission. Reconnect this organisation and approve the updated read-only permissions.",
+  Accounts:
+    "Xero needs the settings read permission to list bank accounts. Reconnect this organisation and approve the updated read-only permissions.",
+  Organisations:
+    "Xero needs the settings read permission to read organisation details. Reconnect this organisation and approve the updated read-only permissions.",
+  Invoices:
+    "Xero needs the invoices read permission. Reconnect this organisation and approve the updated read-only permissions.",
+  CreditNotes:
+    "Xero needs the invoices read permission for credit notes. Reconnect this organisation and approve the updated read-only permissions.",
+  Prepayments:
+    "Xero needs the payments read permission for prepayments. Reconnect this organisation and approve the updated read-only permissions.",
+  Overpayments:
+    "Xero needs the payments read permission for overpayments. Reconnect this organisation and approve the updated read-only permissions.",
 };
 
 export type Connection = {
@@ -45,7 +55,6 @@ type ConnectionRow = {
 
 const CONNECTION_COLUMNS =
   "id, user_id, tenant_id, tenant_name, access_token_enc, refresh_token_enc, expires_at, scopes";
-
 
 function basicAuth() {
   const clientId = process.env.XERO_CLIENT_ID;
@@ -95,7 +104,6 @@ async function materializeConnection(row: ConnectionRow): Promise<Connection> {
   };
 }
 
-
 async function refreshAccessToken(conn: Connection): Promise<Connection> {
   const res = await fetchWithTimeout(TOKEN_URL, {
     method: "POST",
@@ -126,7 +134,13 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
       }
     }
     const lower = body.toLowerCase();
-    if (lower.includes("invalid_grant") || lower.includes("invalid_client") || lower.includes("unauthorized_client") || res.status === 400 || res.status === 401) {
+    if (
+      lower.includes("invalid_grant") ||
+      lower.includes("invalid_client") ||
+      lower.includes("unauthorized_client") ||
+      res.status === 400 ||
+      res.status === 401
+    ) {
       console.error(`[xero] refresh failed for tenant ${conn.tenant_id}: ${res.status} ${body}`);
       // Xero issues tokens at the user level — a failed refresh invalidates
       // every linked org. Surface that to the UI via the status column.
@@ -134,7 +148,9 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
         .from("xero_connections")
         .update({ status: "disconnected", disconnected_at: new Date().toISOString() })
         .eq("user_id", conn.user_id);
-      throw new Error("Xero reconnect required: this organisation needs to be reconnected before data can load.");
+      throw new Error(
+        "Xero reconnect required: this organisation needs to be reconnected before data can load.",
+      );
     }
     throw new Error(`Xero token refresh failed: ${res.status} ${body}`);
   }
@@ -227,7 +243,9 @@ export async function xeroGet<T = unknown>(
     return xeroGet<T>(conn, path, params, retries - 1);
   }
   if (res.status === 429) {
-    throw new Error("Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.");
+    throw new Error(
+      "Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.",
+    );
   }
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
