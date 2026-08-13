@@ -579,8 +579,14 @@ function CashflowScenarioPage() {
               <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
                 <div className="flex items-center justify-between">
                   <h2 className="font-display text-lg font-semibold">Cost of sales</h2>
-                  <span className="tabular-nums text-sm font-semibold">{fmt(view.monthTotals.cogs)}</span>
+                  <span className="tabular-nums text-sm font-semibold">{fmt(view.costActuals.cogs)}</span>
                 </div>
+                {isModelled(costBasis.cogs) && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Scenario uses {fmt(view.costApplied.cogs)} — lines below are the actual Xero
+                    accounts.
+                  </p>
+                )}
                 {groupBySection(view.monthExpenses, "cogs").length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">
                     No cost of sales in this month.
@@ -599,6 +605,7 @@ function CashflowScenarioPage() {
               {(["Fixed", "Variable"] as const).map((type) => {
                 const groups = groupExpenses(view.monthExpenses, type, "operating");
                 const total = groups.reduce((a, g) => a + g.subtotal, 0);
+                const key: CostGroup = type === "Fixed" ? "fixed" : "variable";
                 return (
                   <div
                     key={type}
@@ -608,11 +615,18 @@ function CashflowScenarioPage() {
                       <h2 className="font-display text-lg font-semibold">{type} expenses</h2>
                       <span className="tabular-nums text-sm font-semibold">{fmt(total)}</span>
                     </div>
+                    {isModelled(costBasis[key]) && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Scenario uses {fmt(view.costApplied[key])} — lines below are the actual Xero
+                        accounts.
+                      </p>
+                    )}
                     {groups.length === 0 ? (
                       <p className="mt-3 text-sm text-muted-foreground">
                         Nothing tagged as {type.toLowerCase()} in this month.
                       </p>
                     ) : (
+
                       <ul className="mt-4 space-y-1.5">
                         {groups.map((g) => (
                           <li key={g.category} className="flex items-center justify-between text-sm">
