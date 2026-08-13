@@ -27,6 +27,7 @@ import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidatio
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
+import { ConsolidatedReceivablesWidget, ConsolidatedPayablesWidget } from "@/components/dashboard/ConsolidatedAgeingWidget";
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
