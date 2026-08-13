@@ -79,15 +79,35 @@ function ClientDashboard() {
   const enabledOrder: DashboardTier[] = ["multi_company", "investigate", "advisory", "basic"];
   const advisorTier: DashboardTier =
     enabledOrder.find((t) => tierSettingsQ.data?.enabled?.[t]) ?? "investigate";
-  const tier: DashboardTier = previewTier ?? (isAdvisor ? advisorTier : (viewerEntry?.tier ?? "basic"));
+  const tier: DashboardTier =
+    previewTier ?? (viewerEntry?.tier ?? (isAdvisor ? advisorTier : "basic"));
+
+  // Advisors can temporarily reveal every widget (remembered for the session).
+  const showAllKey = `show-all-widgets:${clientId}`;
+  const [showAllWidgets, setShowAllWidgets] = useState(false);
+  useEffect(() => {
+    try {
+      setShowAllWidgets(sessionStorage.getItem(showAllKey) === "1");
+    } catch {
+      /* ignore */
+    }
+  }, [showAllKey]);
+  const toggleShowAll = (v: boolean) => {
+    setShowAllWidgets(v);
+    try {
+      sessionStorage.setItem(showAllKey, v ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
 
   const widgetsQ = useQuery({
     queryKey: ["effective-widgets", clientId, tier],
     queryFn: () => fetchWidgets({ data: { clientId, tier } }),
-    enabled: !!ctxQ.data && !isAdvisor,
+    enabled: !!ctxQ.data,
   });
-  // Advisors always see every widget, regardless of saved tier config.
-  const widgets = isAdvisor ? ALL_WIDGETS : (widgetsQ.data?.widgets ?? []);
+  const widgets =
+    isAdvisor && showAllWidgets ? ALL_WIDGETS : (widgetsQ.data?.widgets ?? []);
 
   const orderQ = useQuery({
     queryKey: ["card-order", clientId],
