@@ -261,9 +261,45 @@ function CashflowScenarioPage() {
 
             {/* Invoices for the month */}
             <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-              <h2 className="font-display text-lg font-semibold">
-                Invoices · {monthLabelOf(month)}
-              </h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-display text-lg font-semibold">
+                  Invoices · {monthLabelOf(month)}
+                </h2>
+                {view.monthInvoices.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={bulkMut.isPending}
+                      onClick={() =>
+                        bulkMut.mutate({
+                          xeroInvoiceIds: view.monthInvoices.map((i: ScenarioInvoice) => i.id),
+                          excluded: true,
+                        })
+                      }
+                    >
+                      {bulkMut.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : null}
+                      Exclude all (nobody paid)
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={bulkMut.isPending}
+                      onClick={() =>
+                        bulkMut.mutate({
+                          xeroInvoiceIds: view.monthInvoices.map((i: ScenarioInvoice) => i.id),
+                          excluded: false,
+                        })
+                      }
+                    >
+                      Include all
+                    </Button>
+                  </div>
+                )}
+              </div>
+
               {view.monthInvoices.length === 0 ? (
                 <p className="mt-3 text-sm text-muted-foreground">No invoices in this month.</p>
               ) : (
