@@ -2,13 +2,13 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getLatestAudit, runXeroAudit, snoozeFinding, unsnoozeFinding } from "@/lib/xero/audit.functions";
+import { getLatestAudit, runXeroAudit, snoozeFinding, unsnoozeFinding, resolveFinding } from "@/lib/xero/audit.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, RefreshCw, Loader2, ExternalLink, BellOff, Bell, Play } from "lucide-react";
+import { ArrowLeft, RefreshCw, Loader2, ExternalLink, BellOff, Bell, Play, Check, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/audit/$tenantId")({
@@ -31,10 +31,12 @@ function AuditPage() {
   const runFn = useServerFn(runXeroAudit);
   const snoozeFn = useServerFn(snoozeFinding);
   const unsnoozeFn = useServerFn(unsnoozeFinding);
+  const resolveFn = useServerFn(resolveFinding);
 
   const [catFilter, setCatFilter] = useState<string>("all");
   const [sevFilter, setSevFilter] = useState<string>("all");
   const [showSnoozed, setShowSnoozed] = useState(false);
+  const [showResolved, setShowResolved] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const q = useQuery({
@@ -61,30 +63,43 @@ function AuditPage() {
     mutationFn: (findingKey: string) => unsnoozeFn({ data: { tenantId, findingKey } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["xero-audit-latest", tenantId] }),
   });
+  const resolveMut = useMutation({
+    mutationFn: (vars: { findingKey: string; resolved: boolean }) =>
+      resolveFn({ data: { tenantId, findingKey: vars.findingKey, resolved: vars.resolved } }),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.resolved ? "Marked as resolved" : "Reopened");
+      qc.invalidateQueries({ queryKey: ["xero-audit-latest", tenantId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not update finding"),
+  });
 
   const run = q.data?.run;
   const findings: any[] = q.data?.findings ?? [];
-  const snoozes: Record<string, { until: string | null; note: string | null }> = q.data?.snoozes ?? {};
+  const snoozes: Record<string, { until: string | null; note: string | null; resolved?: boolean; resolvedAt?: string | null }> =
+    (q.data?.snoozes as any) ?? {};
 
   const visible = useMemo(() => {
     const now = Date.now();
     return findings
       .filter((f) => {
         const s = snoozes[f.finding_key];
-        const isSnoozed = s && (s.until === null || new Date(s.until).getTime() > now);
+        const isResolved = !!s?.resolved;
+        const isSnoozed = !isResolved && s && (s.until === null || new Date(s.until).getTime() > now);
+        if (!showResolved && isResolved) return false;
         if (!showSnoozed && isSnoozed) return false;
         if (catFilter !== "all" && f.category !== catFilter) return false;
         if (sevFilter !== "all" && f.severity !== sevFilter) return false;
         return true;
       })
       .sort((a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9));
-  }, [findings, snoozes, catFilter, sevFilter, showSnoozed]);
+  }, [findings, snoozes, catFilter, sevFilter, showSnoozed, showResolved]);
 
   const selectableKeys = useMemo(() => {
     const now = Date.now();
     return visible
       .filter((f) => {
         const s = snoozes[f.finding_key];
+        if (s?.resolved) return false;
         return !(s && (s.until === null || new Date(s.until).getTime() > now));
       })
       .map((f) => f.finding_key as string);
@@ -125,6 +140,22 @@ function AuditPage() {
       qc.invalidateQueries({ queryKey: ["xero-audit-latest", tenantId] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Bulk snooze failed"),
+  });
+
+  const bulkResolveMut = useMutation({
+    mutationFn: async () => {
+      const keys = Array.from(selected);
+      for (const k of keys) {
+        await resolveFn({ data: { tenantId, findingKey: k, resolved: true } });
+      }
+      return keys.length;
+    },
+    onSuccess: (count) => {
+      toast.success(`Resolved ${count} finding${count === 1 ? "" : "s"}`);
+      setSelected(new Set());
+      qc.invalidateQueries({ queryKey: ["xero-audit-latest", tenantId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Bulk resolve failed"),
   });
 
   return (
@@ -174,6 +205,9 @@ function AuditPage() {
             <Button size="sm" variant={showSnoozed ? "secondary" : "ghost"} onClick={() => setShowSnoozed((v) => !v)}>
               {showSnoozed ? "Hide snoozed" : "Show snoozed"}
             </Button>
+            <Button size="sm" variant={showResolved ? "secondary" : "ghost"} onClick={() => setShowResolved((v) => !v)}>
+              {showResolved ? "Hide resolved" : "Show resolved"}
+            </Button>
             {selectableKeys.length > 0 && (
               <label className="ml-2 flex items-center gap-2 text-sm">
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
@@ -185,6 +219,9 @@ function AuditPage() {
           {selected.size > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
               <span className="font-medium">{selected.size} selected</span>
+              <Button size="sm" disabled={bulkResolveMut.isPending} onClick={() => bulkResolveMut.mutate()}>
+                <Check className="mr-1 h-3 w-3" /> Mark resolved
+              </Button>
               <span className="text-muted-foreground">Snooze for:</span>
               {[
                 { label: "7 days", days: 7 as number | null },
@@ -216,12 +253,13 @@ function AuditPage() {
             <ul className="divide-y">
               {visible.map((f) => {
                 const s = snoozes[f.finding_key];
-                const isSnoozed = s && (s.until === null || new Date(s.until).getTime() > Date.now());
+                const isResolved = !!s?.resolved;
+                const isSnoozed = !isResolved && s && (s.until === null || new Date(s.until).getTime() > Date.now());
                 const isSelected = selected.has(f.finding_key);
                 return (
                   <li key={f.id} className="py-3">
                     <div className="flex flex-wrap items-start gap-2">
-                      {!isSnoozed && (
+                      {!isSnoozed && !isResolved && (
                         <Checkbox
                           className="mt-1"
                           checked={isSelected}
@@ -240,16 +278,32 @@ function AuditPage() {
                             </a>
                           </Button>
                         ) : null}
-                        {isSnoozed ? (
-                          <Button size="sm" variant="ghost" onClick={() => unsnoozeMut.mutate(f.finding_key)}>
-                            <Bell className="mr-1 h-3 w-3" /> Unsnooze
+                        {isResolved ? (
+                          <Button size="sm" variant="ghost" onClick={() => resolveMut.mutate({ findingKey: f.finding_key, resolved: false })} disabled={resolveMut.isPending}>
+                            <Undo2 className="mr-1 h-3 w-3" /> Reopen
                           </Button>
                         ) : (
-                          <SnoozeMenu onPick={(days) => snoozeMut.mutate({ findingKey: f.finding_key, days })} />
+                          <>
+                            <Button size="sm" variant="ghost" onClick={() => resolveMut.mutate({ findingKey: f.finding_key, resolved: true })} disabled={resolveMut.isPending}>
+                              <Check className="mr-1 h-3 w-3" /> Resolve
+                            </Button>
+                            {isSnoozed ? (
+                              <Button size="sm" variant="ghost" onClick={() => unsnoozeMut.mutate(f.finding_key)}>
+                                <Bell className="mr-1 h-3 w-3" /> Unsnooze
+                              </Button>
+                            ) : (
+                              <SnoozeMenu onPick={(days) => snoozeMut.mutate({ findingKey: f.finding_key, days })} />
+                            )}
+                          </>
                         )}
                       </div>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{f.message}</p>
+                    {isResolved && (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        Resolved{s?.resolvedAt ? ` on ${new Date(s.resolvedAt).toLocaleDateString()}` : ""}
+                      </p>
+                    )}
                     {isSnoozed && (
                       <p className="mt-1 text-xs text-muted-foreground">
                         Snoozed {s.until ? `until ${new Date(s.until).toLocaleDateString()}` : "indefinitely"}
