@@ -448,6 +448,20 @@ function ClientSettings() {
 
         </Section>
 
+        {/* Consolidation */}
+        <Section title="Consolidation">
+          <ConsolidationPanel
+            clientId={clientId}
+            orgs={linkedOrgs.map((o) => ({
+              id: o.id as string,
+              tenantName: (o.xero_connections?.tenant_name as string) ?? "Unknown",
+              tenantId: o.xero_connections?.tenant_id as string | undefined,
+            }))}
+            mode={(client.consolidation_mode as "individual" | "consolidated") ?? "individual"}
+            selectedOrgIds={(client.consolidation_org_ids as string[]) ?? []}
+          />
+        </Section>
+
         {/* Viewer access */}
         <Section title="Viewer access">
           <div className="mb-3 inline-flex rounded-md border border-border p-0.5 text-xs">
