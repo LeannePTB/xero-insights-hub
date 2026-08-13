@@ -21,7 +21,7 @@ import {
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
-import { startXeroConnect, disconnectXero, listClientXeroOptions, linkClientXeroOptions } from "@/lib/xero/connections.functions";
+import { startXeroConnect, disconnectXero, listClientXeroOptions, linkClientXeroOptions, moveXeroFileToClient } from "@/lib/xero/connections.functions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -63,6 +63,7 @@ function ClientSettings() {
   const fetchAccess = useServerFn(listClientAccess);
   const fetchXeroOptions = useServerFn(listClientXeroOptions);
   const linkXeroOptions = useServerFn(linkClientXeroOptions);
+  const moveXeroFile = useServerFn(moveXeroFileToClient);
   const saveXeroAllowance = useServerFn(setClientXeroAllowance);
   const startConnect = useServerFn(startXeroConnect);
   const disconnect = useServerFn(disconnectXero);
@@ -153,6 +154,17 @@ function ClientSettings() {
       qc.invalidateQueries({ queryKey: ["client", clientId] });
       window.history.replaceState({}, "", window.location.pathname);
       setSelectedXeroIds(new Set());
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const moveXeroMut = useMutation({
+    mutationFn: (connectionId: string) => moveXeroFile({ data: { clientId, connectionId } }),
+    onSuccess: () => {
+      toast.success("Xero file moved to this subscription");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["client-xero-options", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-connections"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -411,8 +423,8 @@ function ClientSettings() {
                 {availableConns.map((c: any) => {
                   const disabled = c.available === false;
                   return (
-                    <li key={c.id}>
-                      <label className={`flex items-center gap-3 rounded-md px-2 py-2 ${disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/50"}`}>
+                    <li key={c.id} className="flex items-center justify-between gap-2">
+                      <label className={`flex flex-1 items-center gap-3 rounded-md px-2 py-2 ${disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/50"}`}>
                         <Checkbox
                           disabled={disabled}
                           checked={selectedXeroIds.has(c.id)}
@@ -431,10 +443,32 @@ function ClientSettings() {
                           <span className="text-xs text-muted-foreground">
                             {c.linkedToThisClient
                               ? "Already linked to this subscription"
-                              : `Linked to another subscription${c.linkedClientName ? ` (${c.linkedClientName})` : ""}`}
+                              : `Linked to ${c.linkedClientName ?? "another subscription"}${c.linkedFirmName ? ` — ${c.linkedFirmName}` : ""}`}
                           </span>
                         )}
                       </label>
+                      {c.movable && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm" disabled={moveXeroMut.isPending || (allowance?.remaining ?? 0) < 1}>
+                              Move here
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Move {c.tenant_name} to this subscription?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                It will be unlinked from {c.linkedClientName ?? "its current subscription"}
+                                {c.linkedFirmName ? ` (${c.linkedFirmName})` : ""} and its users will lose access to this Xero file.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => moveXeroMut.mutate(c.id)}>Move file</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </li>
                   );
                 })}

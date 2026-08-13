@@ -74,27 +74,42 @@ export type SelectableConnection = {
   tenant_type: string | null;
   status: string | null;
   available: boolean;
+  /** Caller may take this file off its current subscription and attach it here. */
+  movable: boolean;
+  linkedClientId: string | null;
   linkedClientName: string | null;
+  linkedFirmName: string | null;
   linkedToThisClient: boolean;
 };
+
+export async function isSuperAdmin(userId: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
+  return Boolean(data);
+}
 
 /**
  * Candidates for linking to a client subscription.
  *
- * Scoped two ways:
- *  - only tenants authorised in this OAuth session (tenantIds)
- *  - only connections that belong to this client's organisation (or are not
- *    yet stamped with one), so one login's unrelated Xero files never appear.
+ * Scoped to the tenants authorised in this OAuth session, then to files that
+ * belong to this client's organisation (or no organisation yet). Super admins
+ * also see files stamped to other organisations so a file can be moved.
  *
- * Files already linked elsewhere are returned with available=false so the UI
- * can explain why they can't be picked, instead of silently dropping them.
+ * Files already linked elsewhere come back with available=false plus a
+ * `movable` flag, so the UI can offer "Move here" instead of a dead end.
  */
 export async function getSelectableConnectionsForClient(
   clientId: string,
   tenantIds: string[],
+  callerUserId?: string,
 ): Promise<SelectableConnection[]> {
   if (!tenantIds.length) return [];
   const firmId = await getClientFirmId(clientId);
+  const superAdmin = callerUserId ? await isSuperAdmin(callerUserId) : false;
 
   const { data: connections, error } = await supabaseAdmin
     .from("xero_connections")
@@ -104,17 +119,28 @@ export async function getSelectableConnectionsForClient(
   if (error) throw new Error(error.message);
   if (!connections?.length) return [];
 
-  const scoped = connections.filter((c: any) => (firmId ? c.firm_id === firmId || c.firm_id === null : true));
+  const scoped = connections.filter((c: any) =>
+    superAdmin || !firmId ? true : c.firm_id === firmId || c.firm_id === null,
+  );
 
   const { data: assigned, error: assignedError } = await supabaseAdmin
     .from("client_xero_orgs")
-    .select("client_id, xero_connection_id, clients(name), xero_connections(tenant_id)");
+    .select("client_id, xero_connection_id, clients(name, firm_id), xero_connections(tenant_id)");
   if (assignedError) throw new Error(assignedError.message);
 
-  const byTenant = new Map<string, { clientId: string; clientName: string | null }>();
+  const { data: firms } = await supabaseAdmin.from("firms").select("id, name");
+  const firmNames = new Map<string, string>((firms ?? []).map((f: any) => [f.id, f.name]));
+
+  const byTenant = new Map<string, { clientId: string; clientName: string | null; firmId: string | null }>();
   for (const row of (assigned ?? []) as any[]) {
     const tid = row.xero_connections?.tenant_id;
-    if (tid) byTenant.set(tid, { clientId: row.client_id, clientName: row.clients?.name ?? null });
+    if (tid) {
+      byTenant.set(tid, {
+        clientId: row.client_id,
+        clientName: row.clients?.name ?? null,
+        firmId: row.clients?.firm_id ?? null,
+      });
+    }
   }
 
   // De-dupe by tenant (a tenant may have rows for multiple connecting users).
@@ -124,6 +150,8 @@ export async function getSelectableConnectionsForClient(
     if (seen.has(c.tenant_id)) continue;
     seen.add(c.tenant_id);
     const link = byTenant.get(c.tenant_id);
+    const linkedToThisClient = link?.clientId === clientId;
+    const sameFirm = Boolean(link && firmId && link.firmId === firmId);
     out.push({
       id: c.id,
       tenant_id: c.tenant_id,
@@ -131,8 +159,11 @@ export async function getSelectableConnectionsForClient(
       tenant_type: c.tenant_type ?? null,
       status: c.status ?? null,
       available: !link,
-      linkedClientName: link ? link.clientName : null,
-      linkedToThisClient: link?.clientId === clientId,
+      movable: Boolean(link) && !linkedToThisClient && (superAdmin || sameFirm),
+      linkedClientId: link?.clientId ?? null,
+      linkedClientName: link?.clientName ?? null,
+      linkedFirmName: link?.firmId ? firmNames.get(link.firmId) ?? null : null,
+      linkedToThisClient,
     });
   }
   return out;

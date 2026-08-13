@@ -417,10 +417,22 @@ export const detachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
+    const { data: row, error: readErr } = await context.supabase
+      .from("client_xero_orgs")
+      .select("xero_connection_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
     const { error } = await context.supabase.from("client_xero_orgs").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+    // Release the organisation stamp so the file can be linked elsewhere.
+    if (row?.xero_connection_id) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("xero_connections").update({ firm_id: null }).eq("id", row.xero_connection_id);
+    }
     return { ok: true };
   });
+
 
 export const listClientAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
