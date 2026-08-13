@@ -304,3 +304,47 @@ export const saveClientWidgets = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Read-only summary of what an organisation's plan includes: limits, dashboard
+ * tiers, and the default card list new clients inherit.
+ */
+export const getFirmPlanSummary = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { firmId: string }) => i)
+  .handler(async ({ data, context }) => {
+    const { data: sub } = await (context.supabase as any)
+      .from("subscriptions")
+      .select("tier")
+      .eq("firm_id", data.firmId)
+      .maybeSingle();
+    const planKey = (sub?.tier as string | undefined) ?? null;
+
+    const { data: levels } = await (context.supabase as any)
+      .from("plan_levels")
+      .select("scope, key, label, widgets, allowed_tiers, client_limit, xero_org_limit, allows_multi_org, sort_order, enabled")
+      .order("sort_order", { ascending: true });
+    const all = (levels ?? []) as any[];
+
+    const firmPlan = planKey ? all.find((l) => l.scope === "firm" && l.key === planKey) : null;
+    const allowed = ((firmPlan?.allowed_tiers ?? []) as string[]).filter(Boolean);
+    const planTiers = allowed.length ? allowed : null;
+
+    const catalogue = all.filter((l) => l.scope === "dashboard" && l.enabled !== false);
+    const included = catalogue.filter((l) => !planTiers || planTiers.includes(l.key));
+    const usable = included.length ? included : catalogue.filter((l) => l.key === "basic");
+
+    const set = new Set<WidgetKey>();
+    for (const l of usable) for (const w of sanitizeWidgets((l.widgets ?? []) as string[])) set.add(w);
+    if (set.size === 0) for (const w of DEFAULT_TIER_WIDGETS.basic) set.add(w);
+
+    return {
+      planKey,
+      planLabel: (firmPlan?.label as string | undefined) ?? null,
+      clientLimit: (firmPlan?.client_limit as number | undefined) ?? null,
+      xeroOrgLimit: (firmPlan?.xero_org_limit as number | undefined) ?? null,
+      allowsMultiOrg: !!firmPlan?.allows_multi_org,
+      tiers: usable.map((l) => ({ key: l.key as string, label: l.label as string })),
+      widgets: ALL_WIDGETS.filter((w) => set.has(w)),
+    };
+  });
