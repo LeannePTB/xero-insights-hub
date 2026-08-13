@@ -133,7 +133,7 @@ function CashflowScenarioPage() {
 
   const [customer, setCustomer] = useState<string>("");
   const [scope, setScope] = useState<"month" | "all">("month");
-  const [matrixOpen, setMatrixOpen] = useState(false);
+  const [invoicesOpen, setInvoicesOpen] = useState(false);
 
   const view = useMemo(() => {
     if (!data) return null;
