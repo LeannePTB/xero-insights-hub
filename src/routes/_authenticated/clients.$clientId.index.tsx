@@ -238,7 +238,17 @@ function ClientDashboard() {
             </p>
           </div>
           {isAdvisor && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2">
+                <Switch
+                  id="show-all-widgets"
+                  checked={showAllWidgets}
+                  onCheckedChange={toggleShowAll}
+                />
+                <Label htmlFor="show-all-widgets" className="cursor-pointer text-xs whitespace-nowrap">
+                  Show all widgets
+                </Label>
+              </div>
               <Button variant="outline" asChild className="shrink-0">
                 <Link to="/clients/$clientId/settings" params={{ clientId }}>
                   <Settings className="mr-2 h-4 w-4" /> Settings
