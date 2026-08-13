@@ -238,11 +238,31 @@ export const getScenarioData = createServerFn({ method: "POST" })
     };
   });
 
+/**
+ * Scenario exclusions are owned by the client, but advisors, firm members and
+ * super admins have no `client_access` row, so the table's RLS helper denies
+ * their writes. Authorise explicitly, then write with the trusted client.
+ */
+async function assertScenarioWriteAccess(userId: string, clientId: string) {
+  const { userCanManageClient } = await import("./client-orgs.server");
+  if (await userCanManageClient(userId, clientId)) return;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: access } = await (supabaseAdmin as any)
+    .from("client_access")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("client_id", clientId)
+    .maybeSingle();
+  if (!access) throw new Error("You cannot change this scenario.");
+}
+
 export const setInvoiceExcluded = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; xeroInvoiceId: string; excluded: boolean }) => i)
   .handler(async ({ data, context }) => {
-    const sb = context.supabase as any;
+    await assertScenarioWriteAccess(context.userId, data.clientId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const sb = supabaseAdmin as any;
     if (data.excluded) {
       const { error } = await sb
         .from("scenario_exclusions")
@@ -266,10 +286,13 @@ export const resetScenario = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
-    const { error } = await (context.supabase as any)
+    await assertScenarioWriteAccess(context.userId, data.clientId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as any)
       .from("scenario_exclusions")
       .delete()
       .eq("client_id", data.clientId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
