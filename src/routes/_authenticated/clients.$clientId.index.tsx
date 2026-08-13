@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -37,6 +37,8 @@ import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
@@ -77,15 +79,35 @@ function ClientDashboard() {
   const enabledOrder: DashboardTier[] = ["multi_company", "investigate", "advisory", "basic"];
   const advisorTier: DashboardTier =
     enabledOrder.find((t) => tierSettingsQ.data?.enabled?.[t]) ?? "investigate";
-  const tier: DashboardTier = previewTier ?? (isAdvisor ? advisorTier : (viewerEntry?.tier ?? "basic"));
+  const tier: DashboardTier =
+    previewTier ?? (viewerEntry?.tier ?? (isAdvisor ? advisorTier : "basic"));
+
+  // Advisors can temporarily reveal every widget (remembered for the session).
+  const showAllKey = `show-all-widgets:${clientId}`;
+  const [showAllWidgets, setShowAllWidgets] = useState(false);
+  useEffect(() => {
+    try {
+      setShowAllWidgets(sessionStorage.getItem(showAllKey) === "1");
+    } catch {
+      /* ignore */
+    }
+  }, [showAllKey]);
+  const toggleShowAll = (v: boolean) => {
+    setShowAllWidgets(v);
+    try {
+      sessionStorage.setItem(showAllKey, v ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  };
 
   const widgetsQ = useQuery({
     queryKey: ["effective-widgets", clientId, tier],
     queryFn: () => fetchWidgets({ data: { clientId, tier } }),
-    enabled: !!ctxQ.data && !isAdvisor,
+    enabled: !!ctxQ.data,
   });
-  // Advisors always see every widget, regardless of saved tier config.
-  const widgets = isAdvisor ? ALL_WIDGETS : (widgetsQ.data?.widgets ?? []);
+  const widgets =
+    isAdvisor && showAllWidgets ? ALL_WIDGETS : (widgetsQ.data?.widgets ?? []);
 
   const orderQ = useQuery({
     queryKey: ["card-order", clientId],
@@ -216,7 +238,17 @@ function ClientDashboard() {
             </p>
           </div>
           {isAdvisor && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2">
+                <Switch
+                  id="show-all-widgets"
+                  checked={showAllWidgets}
+                  onCheckedChange={toggleShowAll}
+                />
+                <Label htmlFor="show-all-widgets" className="cursor-pointer text-xs whitespace-nowrap">
+                  Show all widgets
+                </Label>
+              </div>
               <Button variant="outline" asChild className="shrink-0">
                 <Link to="/clients/$clientId/settings" params={{ clientId }}>
                   <Settings className="mr-2 h-4 w-4" /> Settings
