@@ -273,7 +273,7 @@ function CashflowScenarioPage() {
               <Stat label="Baseline invoice revenue (period, excl. GST)" value={fmt(view.rangeTotals.baselineRevenue)} />
               <Stat label="Current scenario (period)" value={fmt(view.rangeTotals.revenue)} />
               <Stat
-                label="Difference"
+                label="Excluded revenue (period)"
                 value={fmt(-view.rangeTotals.excludedRevenue)}
                 tone={view.rangeTotals.excludedRevenue > 0 ? "text-rose-600" : "text-muted-foreground"}
               />
