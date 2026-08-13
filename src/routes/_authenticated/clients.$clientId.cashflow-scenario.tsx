@@ -67,6 +67,8 @@ function CashflowScenarioPage() {
   const fetchScenario = useServerFn(getScenarioData);
   const toggleExcluded = useServerFn(setInvoiceExcluded);
   const reset = useServerFn(resetScenario);
+  const toggleExcludedBulk = useServerFn(setInvoicesExcludedBulk);
+
 
   const clientQ = useQuery({
     queryKey: ["client", clientId],
