@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getClientWidgets, saveClientWidgets } from "@/lib/tier-config.functions";
-import { ALL_WIDGETS, TIER_LABEL, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { ALL_WIDGETS, WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
@@ -42,8 +42,7 @@ export function ClientWidgetsPanel({ clientId }: { clientId: string }) {
   }
 
   const available = new Set((q.data?.availableWidgets ?? []) as WidgetKey[]);
-  const planTiers = (q.data?.planTiers ?? []) as DashboardTier[];
-  const planLabel = planTiers.map((t) => TIER_LABEL[t]).join(", ");
+  const planLabel = q.data?.planLabel ?? "";
 
   function toggle(w: WidgetKey, on: boolean) {
     setSelected((prev) => {

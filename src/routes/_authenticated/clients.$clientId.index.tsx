@@ -80,8 +80,11 @@ function ClientDashboard() {
     enabled: !!ctxQ.data,
   });
   const widgets = widgetsQ.data?.widgets ?? [];
-  const tier: DashboardTier =
-    previewTier ?? tierLabelSource ?? (widgetsQ.data?.highestTier as DashboardTier | undefined) ?? "basic";
+  const tier: DashboardTier = previewTier ?? tierLabelSource ?? "basic";
+  const tierLabel =
+    previewTier || tierLabelSource
+      ? TIER_LABEL[tier]
+      : widgetsQ.data?.planLabel?.split(", ").pop() ?? TIER_LABEL[tier];
 
   const orderQ = useQuery({
     queryKey: ["card-order", clientId],
@@ -208,7 +211,7 @@ function ClientDashboard() {
             )}
             <h1 className="truncate font-display text-2xl font-semibold sm:text-3xl">{client.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {TIER_LABEL[tier]} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
+              {tierLabel} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
             </p>
           </div>
           {isAdvisor && (
