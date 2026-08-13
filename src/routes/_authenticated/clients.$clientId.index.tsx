@@ -35,7 +35,7 @@ import { TIER_LABEL, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
-import { getEffectiveWidgets } from "@/lib/tier-config.functions";
+import { getClientWidgets } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
@@ -56,7 +56,7 @@ function ClientDashboard() {
   const qc = useQueryClient();
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
-  const fetchWidgets = useServerFn(getEffectiveWidgets);
+  const fetchWidgets = useServerFn(getClientWidgets);
   const fetchOrder = useServerFn(getCardOrder);
   const saveOrderFn = useServerFn(saveCardOrder);
 
@@ -70,17 +70,21 @@ function ClientDashboard() {
   const previewing = !!previewTier && realIsAdvisor;
   const isAdvisor = realIsAdvisor && !previewing;
   const viewerEntry = ctxQ.data?.viewerClients.find((c) => c.id === clientId);
-  // The dashboard must reflect the client's assigned tier, not the advisor's
-  // access level. Clients without an assigned viewer are Standard by default.
-  const tier: DashboardTier =
-    previewTier ?? viewerEntry?.tier ?? "basic";
+  // Tier is only a label now — the widget list itself comes from the client's
+  // own configuration (bounded by the organisation's plan).
+  const tierLabelSource = viewerEntry?.tier ?? null;
 
   const widgetsQ = useQuery({
-    queryKey: ["effective-widgets", clientId, tier],
-    queryFn: () => fetchWidgets({ data: { clientId, tier } }),
+    queryKey: ["client-widgets", clientId, previewTier ?? "actual"],
+    queryFn: () => fetchWidgets({ data: { clientId, tierOverride: previewTier } }),
     enabled: !!ctxQ.data,
   });
   const widgets = widgetsQ.data?.widgets ?? [];
+  const tier: DashboardTier = previewTier ?? tierLabelSource ?? "basic";
+  const tierLabel =
+    previewTier || tierLabelSource
+      ? TIER_LABEL[tier]
+      : widgetsQ.data?.planLabel?.split(", ").pop() ?? TIER_LABEL[tier];
 
   const orderQ = useQuery({
     queryKey: ["card-order", clientId],
@@ -207,7 +211,7 @@ function ClientDashboard() {
             )}
             <h1 className="truncate font-display text-2xl font-semibold sm:text-3xl">{client.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {TIER_LABEL[tier]} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
+              {tierLabel} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
             </p>
           </div>
           {isAdvisor && (

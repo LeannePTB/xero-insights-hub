@@ -216,3 +216,91 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
 
     return { upgrades, contactEmail };
   });
+
+// ---------------------------------------------------------------------------
+// Per-client widget control.
+// The organisation's plan sets the ceiling (which tiers it may use → which
+// widgets exist for it); each client then gets its own explicit widget list.
+// ---------------------------------------------------------------------------
+
+export const getClientWidgets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; tierOverride?: DashboardTier | null }) => i)
+  .handler(async ({ data, context }) => {
+    const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
+    const planTiers = await allowedTiersForClient(data.clientId);
+
+    // Dashboard tier catalogue (super-admin editable, may contain custom keys).
+    const { data: levels } = await context.supabase
+      .from("plan_levels")
+      .select("key, label, widgets, sort_order, enabled")
+      .eq("scope", "dashboard")
+      .order("sort_order", { ascending: true });
+    const catalogue = (levels ?? []).filter((l: any) => l.enabled !== false);
+    const included = catalogue.filter((l: any) => !planTiers || planTiers.includes(l.key));
+    const usable = included.length ? included : catalogue.filter((l: any) => l.key === "basic");
+
+    const availableSet = new Set<WidgetKey>();
+    for (const l of usable) for (const w of sanitizeWidgets(((l as any).widgets ?? []) as string[])) availableSet.add(w);
+    // Fall back to the built-in defaults when the catalogue is empty.
+    if (availableSet.size === 0) for (const w of DEFAULT_TIER_WIDGETS.basic) availableSet.add(w);
+    const availableWidgets = ALL_WIDGETS.filter((w) => availableSet.has(w));
+
+    const { data: client } = await context.supabase
+      .from("clients")
+      .select("dashboard_widgets")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    const saved = (client as any)?.dashboard_widgets as string[] | null | undefined;
+    const configured = Array.isArray(saved);
+
+    const top: any = usable[usable.length - 1];
+    const planLabel = usable.map((l: any) => l.label as string).join(", ");
+
+    // "View as <tier>" preview renders that tier's catalogue list verbatim.
+    if (data.tierOverride) {
+      const lvl: any = catalogue.find((l: any) => l.key === data.tierOverride);
+      const preview = lvl
+        ? sanitizeWidgets((lvl.widgets ?? []) as string[])
+        : DEFAULT_TIER_WIDGETS[data.tierOverride];
+      return { widgets: preview, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string };
+    }
+
+    const widgets = configured
+      ? sanitizeWidgets(saved!).filter((w) => availableSet.has(w))
+      : availableWidgets;
+
+    return { widgets, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string };
+  });
+
+export const saveClientWidgets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; widgets: WidgetKey[] | null }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let value: string[] | null = null;
+    if (data.widgets !== null) {
+      const planTiers = await allowedTiersForClient(data.clientId);
+      const { data: levels } = await supabaseAdmin
+        .from("plan_levels")
+        .select("key, widgets, enabled")
+        .eq("scope", "dashboard");
+      const usable = (levels ?? []).filter(
+        (l: any) => l.enabled !== false && (!planTiers || planTiers.includes(l.key)),
+      );
+      const allowed = new Set<WidgetKey>();
+      for (const l of usable) for (const w of sanitizeWidgets(((l as any).widgets ?? []) as string[])) allowed.add(w);
+      if (allowed.size === 0) for (const w of DEFAULT_TIER_WIDGETS.basic) allowed.add(w);
+      value = sanitizeWidgets(data.widgets).filter((w) => allowed.has(w));
+    }
+
+    const { error } = await (supabaseAdmin as any)
+      .from("clients")
+      .update({ dashboard_widgets: value })
+      .eq("id", data.clientId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });

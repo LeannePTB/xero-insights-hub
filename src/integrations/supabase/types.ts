@@ -538,6 +538,7 @@ export type Database = {
           basis_overrides: Json
           cost_classification_enabled: boolean
           created_at: string
+          dashboard_widgets: string[] | null
           firm_id: string | null
           id: string
           max_xero_orgs: number
@@ -551,6 +552,7 @@ export type Database = {
           basis_overrides?: Json
           cost_classification_enabled?: boolean
           created_at?: string
+          dashboard_widgets?: string[] | null
           firm_id?: string | null
           id?: string
           max_xero_orgs?: number
@@ -564,6 +566,7 @@ export type Database = {
           basis_overrides?: Json
           cost_classification_enabled?: boolean
           created_at?: string
+          dashboard_widgets?: string[] | null
           firm_id?: string | null
           id?: string
           max_xero_orgs?: number
