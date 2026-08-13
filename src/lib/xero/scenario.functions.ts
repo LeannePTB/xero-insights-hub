@@ -175,8 +175,12 @@ export const getScenarioData = createServerFn({ method: "POST" })
     });
     const expenseLines = parseMonthlyExpenses(plRes.Reports?.[0], months);
 
-    // Fixed / variable tags plus saved exclusions.
-    const sb = context.supabase as any;
+    // Fixed / variable tags plus saved exclusions. Read with the trusted server
+    // client after widget access has been checked: advisors and firm members have
+    // no client_access row, so the RLS helper would hide their own data.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const sb = supabaseAdmin as any;
+
     const [tagsRes, exclRes] = await Promise.all([
       sb
         .from("client_cost_classifications")
