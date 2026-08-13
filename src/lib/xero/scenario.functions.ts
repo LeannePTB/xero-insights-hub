@@ -193,7 +193,9 @@ export const getScenarioData = createServerFn({ method: "POST" })
     const to = new Date(`${data.toDate}T00:00:00`);
     const months = monthRange(from, to);
     const conn = await getConnectionByTenant(data.tenantId);
-    const basis = await getClientReportBasis(data.tenantId);
+    // The Cashflow Scenario always reports on the accrual basis so it lines up
+    // with the Xero Profit & Loss (payments-only drops accrued wages/super).
+
 
     const where =
       `Type=="ACCREC"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"` +
