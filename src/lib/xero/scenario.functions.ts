@@ -18,8 +18,18 @@ export type ScenarioExpense = {
   name: string;
   amount: number;
   type: "Fixed" | "Variable";
+  section: "cogs" | "operating";
   category: string;
   date: string;
+};
+
+export type ScenarioPnlMonth = {
+  month: string;
+  income: number;
+  cogs: number;
+  grossProfit: number;
+  operating: number;
+  netProfit: number;
 };
 
 export type ScenarioData = {
@@ -27,7 +37,9 @@ export type ScenarioData = {
   customers: ScenarioCustomer[];
   invoices: ScenarioInvoice[];
   expenses: ScenarioExpense[];
+  pnl: ScenarioPnlMonth[];
 };
+
 
 type XeroInvoice = {
   InvoiceID: string;
