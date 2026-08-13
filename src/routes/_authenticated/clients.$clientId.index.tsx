@@ -21,6 +21,8 @@ import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { AccountingBreakevenWidget } from "@/components/dashboard/AccountingBreakevenWidget";
 import { TrueBreakevenWidget } from "@/components/dashboard/TrueBreakevenWidget";
 import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
+import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
+
 
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
@@ -145,6 +147,9 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("cashflow_scenario"))
         advanced.push({ id: `${o.id}:cashflow_scenario`, node: <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+      if (widgets.includes("loan_consolidation"))
+        advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+
       // xero_audit rendered under Business Health, not in advanced grid
 
     }
@@ -213,17 +218,13 @@ function ClientDashboard() {
           {isAdvisor && (
             <div className="flex items-center gap-2">
               <Button variant="outline" asChild className="shrink-0">
-                <Link to="/clients/$clientId/loans" params={{ clientId }}>
-                  <Building2 className="mr-2 h-4 w-4" /> Loan Consolidation
-                </Link>
-              </Button>
-              <Button variant="outline" asChild className="shrink-0">
                 <Link to="/clients/$clientId/settings" params={{ clientId }}>
                   <Settings className="mr-2 h-4 w-4" /> Settings
                 </Link>
               </Button>
             </div>
           )}
+
         </div>
 
         {orgs.length > 0 && (
