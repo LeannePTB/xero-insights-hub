@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CreditCard, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, CreditCard, Loader2, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,6 +16,8 @@ import {
 import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
+import { getFirmPlanSummary } from "@/lib/tier-config.functions";
+import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
 
 import { Badge } from "@/components/ui/badge";
 import { firmPlanView, toneClasses } from "@/lib/firmPlans";
@@ -39,6 +41,21 @@ function FirmPage() {
   const fetchFirm = useServerFn(getMyFirm);
   const fetchCtx = useServerFn(getMyContext);
   const [planOpen, setPlanOpen] = useState(false);
+  const [includedOpen, setIncludedOpen] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return sessionStorage.getItem(`firm-plan-included:${firmId}`) === "1";
+  });
+  useEffect(() => {
+    sessionStorage.setItem(`firm-plan-included:${firmId}`, includedOpen ? "1" : "0");
+  }, [includedOpen, firmId]);
+  const fetchSummary = useServerFn(getFirmPlanSummary);
+  const summaryQ = useQuery({
+    queryKey: ["firm-plan-summary", firmId],
+    queryFn: () => fetchSummary({ data: { firmId } }),
+    enabled: includedOpen,
+    staleTime: 5 * 60_000,
+  });
+  const summary = summaryQ.data;
 
   const firmQ = useQuery({
     queryKey: ["my-firm", firmId],
@@ -113,14 +130,86 @@ function FirmPage() {
                 {planV.dueLabel && <span className="text-muted-foreground">· {planV.dueLabel}</span>}
               </div>
             </div>
-            {isSuper ? (
-              <Button variant="outline" size="sm" onClick={() => setPlanOpen(true)}>
-                <Settings className="mr-2 h-4 w-4" /> Edit plan
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="sm" onClick={() => setIncludedOpen((v) => !v)}>
+                {includedOpen ? <ChevronDown className="mr-1 h-4 w-4" /> : <ChevronRight className="mr-1 h-4 w-4" />}
+                What&apos;s included
               </Button>
-            ) : (
-              <p className="text-xs text-muted-foreground">Contact support to change this plan.</p>
-            )}
+              {isSuper ? (
+                <Button variant="outline" size="sm" onClick={() => setPlanOpen(true)}>
+                  <Settings className="mr-2 h-4 w-4" /> Edit plan
+                </Button>
+              ) : (
+                <p className="text-xs text-muted-foreground">Contact support to change this plan.</p>
+              )}
+            </div>
           </div>
+
+          {includedOpen && (
+            <div className="mt-5 space-y-4 border-t border-border pt-4">
+              {summaryQ.isLoading && (
+                <p className="text-xs text-muted-foreground">
+                  <Loader2 className="mr-2 inline h-3 w-3 animate-spin" /> Loading plan details…
+                </p>
+              )}
+              {summary && (
+                <>
+                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                    <span>
+                      Clients allowed: <strong className="text-foreground tabular-nums">{plan.clientLimit}</strong>
+                    </span>
+                    {summary.xeroOrgLimit != null && (
+                      <span>
+                        Xero files per client:{" "}
+                        <strong className="text-foreground tabular-nums">{summary.xeroOrgLimit}</strong>
+                      </span>
+                    )}
+                    <span>
+                      Multiple Xero files per client:{" "}
+                      <strong className="text-foreground">{summary.allowsMultiOrg ? "Yes" : "No"}</strong>
+                    </span>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Dashboard tiers included
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {summary.tiers.length === 0 && (
+                        <span className="text-xs text-muted-foreground">None configured</span>
+                      )}
+                      {summary.tiers.map((t) => (
+                        <Badge key={t.key} variant="secondary" className="text-[11px]">
+                          {t.label}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Cards included by default
+                    </p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {summary.widgets.map((w) => (
+                        <span
+                          key={w}
+                          className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+                        >
+                          {WIDGET_LABEL[w as WidgetKey] ?? w}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    New clients start with these cards. Open a client&apos;s settings to turn individual cards on or
+                    off for them.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <Dialog open={planOpen} onOpenChange={setPlanOpen}>
