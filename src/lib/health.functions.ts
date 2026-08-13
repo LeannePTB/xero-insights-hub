@@ -551,13 +551,16 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     };
     const bsStartDate = dayBefore(fy.from);
 
-    const [pnlRes, priorPnlRes, bsRes, bsStartRes, agedRecRes, agedPayRes, orgRes] = await Promise.all([
+    const outstandingWhere = (type: "ACCREC" | "ACCPAY") =>
+      `Type=="${type}"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"&&AmountDue>0`;
+
+    const [pnlRes, priorPnlRes, bsRes, bsStartRes, arInvRes, apInvRes, orgRes] = await Promise.all([
       safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: fy.from, toDate: fy.to }),
       safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: priorFrom, toDate: priorToStr }),
       safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: asOfDate }),
       safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: bsStartDate }),
-      safeGet<{ Reports: any[] }>("Reports/AgedReceivablesByContact", { date: asOfDate }),
-      safeGet<{ Reports: any[] }>("Reports/AgedPayablesByContact", { date: asOfDate }),
+      safeGet<{ Invoices: any[] }>("Invoices", { where: outstandingWhere("ACCREC") }),
+      safeGet<{ Invoices: any[] }>("Invoices", { where: outstandingWhere("ACCPAY") }),
       safeGet<{ Organisations: any[] }>("Organisations"),
     ]);
 
@@ -566,8 +569,9 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const bs = summariseBs(bsRes?.Reports?.[0] ?? {});
     const bsStart = summariseBs(bsStartRes?.Reports?.[0] ?? {});
     const liabilities = sumLiabilities(bsRes?.Reports?.[0] ?? {});
-    const ap = summariseAgedReport(agedPayRes?.Reports?.[0] ?? {});
-    const ar = summariseAgedReport(agedRecRes?.Reports?.[0] ?? {});
+    const ap = summariseOutstandingInvoices(apInvRes?.Invoices, asOfDate);
+    const ar = summariseOutstandingInvoices(arInvRes?.Invoices, asOfDate);
+
     const currency = (orgRes?.Organisations?.[0]?.BaseCurrency as string) ?? "AUD";
 
     // Income breakdown for "single source" detection (top revenue account share)
