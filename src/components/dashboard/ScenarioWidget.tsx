@@ -110,7 +110,7 @@ export function ScenarioWidget({
       ) : view ? (
         <>
           <div className="mt-5 grid grid-cols-3 gap-3">
-            <Stat label="Baseline (all invoices)" value={fmt(view.rangeTotals.baselineRevenue)} />
+            <Stat label="Baseline (all invoices, excl. GST)" value={fmt(view.rangeTotals.baselineRevenue)} />
             <Stat label="Current scenario" value={fmt(view.rangeTotals.revenue)} />
             <Stat
               label="Difference"
