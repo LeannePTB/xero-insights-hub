@@ -293,17 +293,19 @@ function PlanLevelsPage() {
                     )}
                   </div>
                   {(() => {
-                    const maxTierFiles = Math.max(
-                      1,
-                      ...dashLevels
-                        .filter((t) => draft.allowed_tiers.includes(t.key))
-                        .map((t) => t.xero_org_limit ?? 1),
+                    const multi = dashLevels.filter(
+                      (t) => draft.allowed_tiers.includes(t.key) && t.allows_multi_org,
                     );
-                    if (maxTierFiles <= draft.xero_org_limit) return null;
+                    if (multi.length === 0) {
+                      return (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          No Multi company tier included — each client on this plan links one Xero file.
+                        </p>
+                      );
+                    }
                     return (
-                      <p className="mt-2 text-xs text-destructive">
-                        This plan allows {draft.xero_org_limit} Xero file(s), but an included tier allows{" "}
-                        {maxTierFiles}. Raise “Xero files allowed” to {maxTierFiles} or the plan cap will win.
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Consolidation allowed via {multi.map((t) => `${t.label} (${t.xero_org_limit} files)`).join(", ")}.
                       </p>
                     );
                   })()}
