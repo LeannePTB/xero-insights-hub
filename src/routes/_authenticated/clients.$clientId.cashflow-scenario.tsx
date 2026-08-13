@@ -237,9 +237,38 @@ function CashflowScenarioPage() {
           <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
         ) : view ? (
           <>
+            {/* Xero P&L reconciliation */}
+            {view.monthPnl && (
+              <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h2 className="font-display text-lg font-semibold">
+                    Profit &amp; Loss · {monthLabelOf(month)}
+                  </h2>
+                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    Accrual basis
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-5">
+                  <Stat label="Trading income" value={fmt(view.monthPnl.income)} />
+                  <Stat label="Cost of sales" value={fmt(view.monthPnl.cogs)} />
+                  <Stat label="Gross profit" value={fmt(view.monthPnl.grossProfit)} />
+                  <Stat label="Operating expenses" value={fmt(view.monthPnl.operating)} />
+                  <Stat
+                    label="Net profit"
+                    value={fmt(view.monthPnl.netProfit)}
+                    tone={view.monthPnl.netProfit >= 0 ? "text-emerald-600" : "text-rose-600"}
+                  />
+                </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Straight from Xero. The scenario figures below use invoices raised in the month, so
+                  they can differ from Trading Income.
+                </p>
+              </section>
+            )}
+
             {/* Summary */}
             <section className="mt-6 grid gap-3 sm:grid-cols-3">
-              <Stat label="Baseline revenue (period)" value={fmt(view.rangeTotals.baselineRevenue)} />
+              <Stat label="Baseline invoice revenue (period)" value={fmt(view.rangeTotals.baselineRevenue)} />
               <Stat label="Current scenario (period)" value={fmt(view.rangeTotals.revenue)} />
               <Stat
                 label="Difference"
@@ -247,6 +276,7 @@ function CashflowScenarioPage() {
                 tone={view.rangeTotals.excludedRevenue > 0 ? "text-rose-600" : "text-muted-foreground"}
               />
             </section>
+
 
             <section className="mt-3 grid gap-3 sm:grid-cols-4">
               <Stat label={`Revenue · ${monthLabelOf(month)}`} value={fmt(view.monthTotals.revenue)} />
