@@ -506,6 +506,7 @@ function CashflowScenarioPage() {
                   ))}
                 </div>
               )}
+            </div>
             </section>
 
             {/* Expenses */}
