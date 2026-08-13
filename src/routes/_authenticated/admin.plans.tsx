@@ -205,26 +205,44 @@ function PlanLevelsPage() {
                     <Input
                       type="number"
                       min={0}
-                      value={draft.client_limit}
-                      onChange={(e) => setDraft({ ...draft, client_limit: Number(e.target.value) })}
+                      value={draft.client_limit === 0 ? "" : String(draft.client_limit)}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d]/g, "");
+                        setDraft({ ...draft, client_limit: raw === "" ? 0 : Number(raw) });
+                      }}
                     />
+                    <p className="text-[11px] text-muted-foreground">
+                      One Xero file per client — this plan allows {Math.max(1, draft.client_limit)} Xero file(s) in total.
+                    </p>
                   </div>
                 )}
-                <div className="space-y-1.5">
-                  <Label>Xero files allowed</Label>
-                  <Input
-                    type="number"
-                    min={1}
-                    value={draft.xero_org_limit}
-                    onChange={(e) => setDraft({ ...draft, xero_org_limit: Number(e.target.value) })}
-                  />
-                </div>
+                {draft.scope === "dashboard" && (
+                  <div className="space-y-1.5">
+                    <Label>Xero files per client</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      disabled={!draft.allows_multi_org}
+                      value={draft.allows_multi_org ? String(draft.xero_org_limit) : "1"}
+                      onChange={(e) => {
+                        const raw = e.target.value.replace(/[^\d]/g, "");
+                        setDraft({ ...draft, xero_org_limit: raw === "" ? 1 : Number(raw) });
+                      }}
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      Only Multi company tiers can consolidate more than one file.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-1.5">
                   <Label>Sort order</Label>
                   <Input
                     type="number"
-                    value={draft.sort_order}
-                    onChange={(e) => setDraft({ ...draft, sort_order: Number(e.target.value) })}
+                    value={String(draft.sort_order)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d-]/g, "");
+                      setDraft({ ...draft, sort_order: raw === "" || raw === "-" ? 0 : Number(raw) });
+                    }}
                   />
                 </div>
               </div>
