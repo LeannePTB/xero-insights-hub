@@ -11,9 +11,10 @@ async function assertAdvisor(supabase: any, userId: string) {
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .eq("role", "advisor");
+    .in("role", ["advisor", "super_admin", "firm_owner", "firm_staff"]);
   if (!data || data.length === 0) throw new Error("Advisor only.");
 }
+
 
 // Returns global defaults plus, optionally, the overrides for one client.
 export const listTierConfig = createServerFn({ method: "POST" })
@@ -63,37 +64,41 @@ export const saveTierWidgets = createServerFn({ method: "POST" })
     }
 
     const widgets = sanitizeWidgets(data.widgets ?? []);
-    // upsert keyed on (client_id, tier); NULL client_id needs manual handling.
-    if (data.clientId === null) {
-      const { data: existing } = await supabaseAdmin
-        .from("tier_widget_config")
-        .select("id")
-        .is("client_id", null)
-        .eq("tier", data.tier)
-        .maybeSingle();
-      if (existing) {
-        const { error } = await supabaseAdmin
-          .from("tier_widget_config")
-          .update({ widgets })
-          .eq("id", existing.id);
-        if (error) throw new Error(error.message);
-      } else {
-        const { error } = await supabaseAdmin
-          .from("tier_widget_config")
-          .insert({ client_id: null, tier: data.tier, widgets });
-        if (error) throw new Error(error.message);
+
+    // Client-level overrides may only target tiers the organisation's plan includes.
+    if (data.clientId) {
+      const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
+      const planTiers = await allowedTiersForClient(data.clientId);
+      if (planTiers && !planTiers.includes(data.tier)) {
+        throw new Error("This tier is not included in the organisation's plan.");
       }
+    }
+
+    // Unique indexes on this table are partial (one for global rows, one for
+    // client rows), so ON CONFLICT can't be used — do select/update/insert.
+    let query = supabaseAdmin
+      .from("tier_widget_config")
+      .select("id")
+      .eq("tier", data.tier);
+    query = data.clientId === null ? query.is("client_id", null) : query.eq("client_id", data.clientId);
+    const { data: existing, error: findErr } = await query.maybeSingle();
+    if (findErr) throw new Error(findErr.message);
+
+    if (existing) {
+      const { error } = await supabaseAdmin
+        .from("tier_widget_config")
+        .update({ widgets })
+        .eq("id", existing.id);
+      if (error) throw new Error(error.message);
     } else {
       const { error } = await supabaseAdmin
         .from("tier_widget_config")
-        .upsert(
-          { client_id: data.clientId, tier: data.tier, widgets },
-          { onConflict: "client_id,tier" },
-        );
+        .insert({ client_id: data.clientId, tier: data.tier, widgets });
       if (error) throw new Error(error.message);
     }
     return { ok: true };
   });
+
 
 // Resolves effective widgets for a client + tier (client override → global → defaults).
 export const getEffectiveWidgets = createServerFn({ method: "POST" })
