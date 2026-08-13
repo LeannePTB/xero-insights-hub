@@ -246,6 +246,11 @@ function FirmPage() {
             planLabel={planV.planLabel}
           />
         </div>
+
+        <div className="mt-8">
+          <ConsolidationGroupsSection firmId={firmId} />
+        </div>
+
       </main>
     </div>
   );
