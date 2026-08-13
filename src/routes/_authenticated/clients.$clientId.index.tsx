@@ -31,14 +31,12 @@ import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
-import { TIER_LABEL, ALL_TIERS, ALL_WIDGETS, type DashboardTier } from "@/lib/tiers";
+import { TIER_LABEL, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
-import { getEffectiveWidgets, listTierSettings } from "@/lib/tier-config.functions";
+import { getEffectiveWidgets } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
@@ -59,7 +57,6 @@ function ClientDashboard() {
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
   const fetchWidgets = useServerFn(getEffectiveWidgets);
-  const fetchTierSettings = useServerFn(listTierSettings);
   const fetchOrder = useServerFn(getCardOrder);
   const saveOrderFn = useServerFn(saveCardOrder);
 
@@ -68,46 +65,22 @@ function ClientDashboard() {
     queryKey: ["client", clientId],
     queryFn: () => fetchClient({ data: { clientId } }),
   });
-  const tierSettingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchTierSettings() });
-
   const realIsAdvisor = ctxQ.data?.isAdvisor ?? false;
   // Preview mode: render exactly what a client viewer on this tier would get.
   const previewing = !!previewTier && realIsAdvisor;
   const isAdvisor = realIsAdvisor && !previewing;
   const viewerEntry = ctxQ.data?.viewerClients.find((c) => c.id === clientId);
-  // For advisors, pick the highest enabled tier so the label reflects what's actually turned on.
-  const enabledOrder: DashboardTier[] = ["multi_company", "investigate", "advisory", "basic"];
-  const advisorTier: DashboardTier =
-    enabledOrder.find((t) => tierSettingsQ.data?.enabled?.[t]) ?? "investigate";
+  // The dashboard must reflect the client's assigned tier, not the advisor's
+  // access level. Clients without an assigned viewer are Standard by default.
   const tier: DashboardTier =
-    previewTier ?? (viewerEntry?.tier ?? (isAdvisor ? advisorTier : "basic"));
-
-  // Advisors can temporarily reveal every widget (remembered for the session).
-  const showAllKey = `show-all-widgets:${clientId}`;
-  const [showAllWidgets, setShowAllWidgets] = useState(false);
-  useEffect(() => {
-    try {
-      setShowAllWidgets(sessionStorage.getItem(showAllKey) === "1");
-    } catch {
-      /* ignore */
-    }
-  }, [showAllKey]);
-  const toggleShowAll = (v: boolean) => {
-    setShowAllWidgets(v);
-    try {
-      sessionStorage.setItem(showAllKey, v ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
-  };
+    previewTier ?? viewerEntry?.tier ?? "basic";
 
   const widgetsQ = useQuery({
     queryKey: ["effective-widgets", clientId, tier],
     queryFn: () => fetchWidgets({ data: { clientId, tier } }),
     enabled: !!ctxQ.data,
   });
-  const widgets =
-    isAdvisor && showAllWidgets ? ALL_WIDGETS : (widgetsQ.data?.widgets ?? []);
+  const widgets = widgetsQ.data?.widgets ?? [];
 
   const orderQ = useQuery({
     queryKey: ["card-order", clientId],
@@ -238,23 +211,11 @@ function ClientDashboard() {
             </p>
           </div>
           {isAdvisor && (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2">
-                <Switch
-                  id="show-all-widgets"
-                  checked={showAllWidgets}
-                  onCheckedChange={toggleShowAll}
-                />
-                <Label htmlFor="show-all-widgets" className="cursor-pointer text-xs whitespace-nowrap">
-                  Show all widgets
-                </Label>
-              </div>
-              <Button variant="outline" asChild className="shrink-0">
-                <Link to="/clients/$clientId/settings" params={{ clientId }}>
-                  <Settings className="mr-2 h-4 w-4" /> Settings
-                </Link>
-              </Button>
-            </div>
+            <Button variant="outline" asChild className="shrink-0">
+              <Link to="/clients/$clientId/settings" params={{ clientId }}>
+                <Settings className="mr-2 h-4 w-4" /> Settings
+              </Link>
+            </Button>
           )}
 
         </div>
