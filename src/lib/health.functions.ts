@@ -431,7 +431,36 @@ function sumLiabilities(report: any): number {
   return liabilities;
 }
 
+// Outstanding invoices → total owed + overdue portion. Derived from the Invoices
+// endpoint (accounting.invoices.read) because the Aged*ByContact reports are
+// per-contact reports that our connection scopes do not grant.
+function summariseOutstandingInvoices(
+  invoices: { AmountDue?: number | string; DueDate?: string }[] | null | undefined,
+  asOfDate: string,
+): { total: number; overdue: number } {
+  const asOf = new Date(`${asOfDate}T23:59:59`);
+  let total = 0;
+  let overdue = 0;
+  for (const inv of invoices ?? []) {
+    const due = Number(inv.AmountDue ?? 0);
+    if (!Number.isFinite(due) || due <= 0) continue;
+    total += due;
+    const dueDate = parseXeroDateValue(inv.DueDate);
+    if (dueDate && dueDate.getTime() < asOf.getTime()) overdue += due;
+  }
+  return { total, overdue };
+}
+
+function parseXeroDateValue(s?: string): Date | null {
+  if (!s) return null;
+  const m = s.match(/\/Date\((-?\d+)/);
+  if (m) return new Date(parseInt(m[1] as string, 10));
+  const d = new Date(s);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 // Aged Payables/Receivables summary report → total + overdue (>0 days bucket)
+
 function summariseAgedReport(report: any): { total: number; overdue: number } {
   // Xero aged-by-contact summary report rows: each contact row has cells:
   // [Contact, Current, <1mo, 1mo, 2mo, Older, Total]
