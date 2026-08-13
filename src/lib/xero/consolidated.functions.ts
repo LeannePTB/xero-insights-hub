@@ -1,11 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { AgeingBucket, AgedReceivables, AgedPayables } from "@/lib/xero/receivables.functions";
-import type { AgeingBucket as PayableAgeingBucket, AgedPayables as PayableAgedPayables } from "@/lib/xero/payables.functions";
+import type { AgeingBucket, AgedReceivables } from "@/lib/xero/receivables.functions";
+import type { AgeingBucket as PayableAgeingBucket, AgedPayables } from "@/lib/xero/payables.functions";
 
-// Re-export types for the widgets.
 export type { AgeingBucket, AgedReceivables };
-export type { PayableAgeingBucket, PayableAgedPayables };
+export type { PayableAgeingBucket, AgedPayables };
 
 export type ConsolidatedAgeing = {
   asOf: string;
@@ -36,7 +35,11 @@ export type ConsolidatedPayables = {
 const MANAGE_ROLES = ["advisor", "super_admin", "firm_owner"];
 
 async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  const { data: client } = await supabase.from("clients").select("firm_id, owner_user_id").eq("id", clientId).maybeSingle();
+  const { data: client } = await supabase
+    .from("clients")
+    .select("firm_id, owner_user_id")
+    .eq("id", clientId)
+    .maybeSingle();
   if (!client) return false;
   if (client.owner_user_id === userId) return true;
   const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
@@ -83,12 +86,13 @@ type XeroInvoice = {
   Contact?: { Name?: string };
 };
 
-async function fetchUnpaidInvoices(
-  conn: any,
-  xeroGet: any,
+async function fetchUnpaidInvoicesForTenant(
+  tenantId: string,
   type: "ACCREC" | "ACCPAY",
   maxPages = 5,
 ): Promise<XeroInvoice[]> {
+  const { getConnectionByTenant, xeroGet } = await import("./api.server");
+  const conn = await getConnectionByTenant(tenantId);
   const invoices: XeroInvoice[] = [];
   for (let page = 1; page <= maxPages; page++) {
     const res = await xeroGet<{ Invoices?: XeroInvoice[] }>(conn, "Invoices", {
@@ -104,8 +108,7 @@ async function fetchUnpaidInvoices(
 }
 
 async function getTenantAgeing(
-  conn: any,
-  xeroGet: any,
+  tenantId: string,
   type: "ACCREC" | "ACCPAY",
   tenantName: string,
 ): Promise<{
@@ -114,9 +117,8 @@ async function getTenantAgeing(
   invoiceCount: number;
   buckets: AgeingBucket[];
   topContacts: { name: string; amount: number }[];
-  byTenant: { tenantName: string; totalOutstanding: number; totalOverdue: number };
 }> {
-  const invoices = await fetchUnpaidInvoices(conn, xeroGet, type);
+  const invoices = await fetchUnpaidInvoicesForTenant(tenantId, type);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const labels = ["Current", "1–30 days", "31–60 days", "61–90 days", "90+ days"];
@@ -140,29 +142,26 @@ async function getTenantAgeing(
     contactMap.set(contact, (contactMap.get(contact) ?? 0) + amount);
   }
 
-  const topContacts = [...contactMap.entries()]
-    .map(([name, amount]) => ({ name, amount }))
-    .sort((a, b) => b.amount - a.amount)
-    .slice(0, 5);
-
   return {
     totalOutstanding,
     totalOverdue,
     invoiceCount: invoices.filter((i) => (Number(i.AmountDue) || 0) > 0).length,
     buckets: labels.map((l) => bucketMap.get(l)!),
-    topContacts,
-    byTenant: { tenantName, totalOutstanding, totalOverdue },
+    topContacts: [...contactMap.entries()]
+      .map(([name, amount]) => ({ name, amount }))
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5),
   };
 }
 
 async function getLoanElimination(
-  supabaseAdmin: any,
   clientId: string,
   tenantIds: string[],
   asAt: string,
   side: "receivable" | "payable",
 ): Promise<number> {
   try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { runLoanReconciliation } = await import("@/lib/loan-recon.server");
     const result = await runLoanReconciliation({
       supabase: supabaseAdmin,
@@ -198,11 +197,20 @@ export const getConsolidatedReceivables = createServerFn({ method: "POST" })
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
       throw new Error("You don't have access to this client.");
     }
-    if (data.tenantIds.length < 2) throw new Error("Select at least two organisations to consolidate.");
-    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    if (data.tenantIds.length < 2) {
+      throw new Error("Select at least two organisations to consolidate.");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: orgs } = await supabaseAdmin
+      .from("client_xero_orgs")
+      .select("id, xero_connections(tenant_id, tenant_name)")
+      .eq("client_id", data.clientId);
+    const nameByTenant = new Map<string, string>();
+    for (const o of (orgs ?? []) as any[]) {
+      const t = o?.xero_connections;
+      if (t?.tenant_id) nameByTenant.set(t.tenant_id, t.tenant_name ?? "Unknown");
+    }
 
-    const supabaseAdminTyped = supabaseAdmin;
     const labels = ["Current", "1–30 days", "31–60 days", "61–90 days", "90+ days"];
     const bucketMap = new Map<string, AgeingBucket>(labels.map((l) => [l, { label: l, count: 0, amount: 0 }]));
     const customerMap = new Map<string, number>();
@@ -213,10 +221,9 @@ export const getConsolidatedReceivables = createServerFn({ method: "POST" })
     const tenantNames: string[] = [];
 
     for (const tenantId of data.tenantIds) {
-      const conn = await getConnectionByTenant(tenantId);
-      const tenantName = conn.tenantName ?? "Unknown";
+      const tenantName = nameByTenant.get(tenantId) ?? "Unknown";
       tenantNames.push(tenantName);
-      const ageing = await getTenantAgeing(conn, xeroGet, "ACCREC", tenantName);
+      const ageing = await getTenantAgeing(tenantId, "ACCREC", tenantName);
       invoiceCount += ageing.invoiceCount;
       totalOutstanding += ageing.totalOutstanding;
       totalOverdue += ageing.totalOverdue;
@@ -226,12 +233,12 @@ export const getConsolidatedReceivables = createServerFn({ method: "POST" })
         target.count += b.count;
         target.amount += b.amount;
       }
-      for (const [name, amount] of new Map(ageing.topContacts.map((c) => [c.name, c.amount] as [string, number]))) {
-        customerMap.set(name, (customerMap.get(name) ?? 0) + amount);
+      for (const c of ageing.topContacts) {
+        customerMap.set(c.name, (customerMap.get(c.name) ?? 0) + c.amount);
       }
     }
 
-    const elimination = await getLoanElimination(supabaseAdminTyped, data.clientId, data.tenantIds, data.asAt, "receivable");
+    const elimination = await getLoanElimination(data.clientId, data.tenantIds, data.asAt, "receivable");
     const netOutstanding = Math.max(0, Math.round((totalOutstanding - elimination) * 100) / 100);
 
     const result: ConsolidatedAgeing = {
@@ -259,11 +266,20 @@ export const getConsolidatedPayables = createServerFn({ method: "POST" })
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
       throw new Error("You don't have access to this client.");
     }
-    if (data.tenantIds.length < 2) throw new Error("Select at least two organisations to consolidate.");
-    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    if (data.tenantIds.length < 2) {
+      throw new Error("Select at least two organisations to consolidate.");
+    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: orgs } = await supabaseAdmin
+      .from("client_xero_orgs")
+      .select("id, xero_connections(tenant_id, tenant_name)")
+      .eq("client_id", data.clientId);
+    const nameByTenant = new Map<string, string>();
+    for (const o of (orgs ?? []) as any[]) {
+      const t = o?.xero_connections;
+      if (t?.tenant_id) nameByTenant.set(t.tenant_id, t.tenant_name ?? "Unknown");
+    }
 
-    const supabaseAdminTyped = supabaseAdmin;
     const labels = ["Current", "1–30 days", "31–60 days", "61–90 days", "90+ days"];
     const bucketMap = new Map<string, PayableAgeingBucket>(labels.map((l) => [l, { label: l, count: 0, amount: 0 }]));
     const supplierMap = new Map<string, number>();
@@ -274,10 +290,9 @@ export const getConsolidatedPayables = createServerFn({ method: "POST" })
     const tenantNames: string[] = [];
 
     for (const tenantId of data.tenantIds) {
-      const conn = await getConnectionByTenant(tenantId);
-      const tenantName = conn.tenantName ?? "Unknown";
+      const tenantName = nameByTenant.get(tenantId) ?? "Unknown";
       tenantNames.push(tenantName);
-      const ageing = await getTenantAgeing(conn, xeroGet, "ACCPAY", tenantName);
+      const ageing = await getTenantAgeing(tenantId, "ACCPAY", tenantName);
       invoiceCount += ageing.invoiceCount;
       totalOutstanding += ageing.totalOutstanding;
       totalOverdue += ageing.totalOverdue;
@@ -287,12 +302,12 @@ export const getConsolidatedPayables = createServerFn({ method: "POST" })
         target.count += b.count;
         target.amount += b.amount;
       }
-      for (const [name, amount] of new Map(ageing.topContacts.map((c) => [c.name, c.amount] as [string, number]))) {
-        supplierMap.set(name, (supplierMap.get(name) ?? 0) + amount);
+      for (const c of ageing.topContacts) {
+        supplierMap.set(c.name, (supplierMap.get(c.name) ?? 0) + c.amount);
       }
     }
 
-    const elimination = await getLoanElimination(supabaseAdminTyped, data.clientId, data.tenantIds, data.asAt, "payable");
+    const elimination = await getLoanElimination(data.clientId, data.tenantIds, data.asAt, "payable");
     const netOutstanding = Math.max(0, Math.round((totalOutstanding - elimination) * 100) / 100);
 
     const result: ConsolidatedPayables = {
