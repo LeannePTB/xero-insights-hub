@@ -144,11 +144,12 @@ export function AddOrganisationDialog({
                   <Select value={tier} onValueChange={setTier}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {["starter", "growth", "scale", "firm", "free", "legacy"].map((t) => (
-                        <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                      {tierOptions.map((t) => (
+                        <SelectItem key={t.key} value={t.key} className="capitalize">{t.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+
                 </div>
                 <div className="space-y-1.5">
                   <Label>Status</Label>
