@@ -21,12 +21,24 @@ import {
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
-import { startXeroConnect, disconnectXero, listClientXeroOptions, linkClientXeroOptions, moveXeroFileToClient } from "@/lib/xero/connections.functions";
+import {
+  startXeroConnect,
+  disconnectXero,
+  listClientXeroOptions,
+  linkClientXeroOptions,
+  moveXeroFileToClient,
+} from "@/lib/xero/connections.functions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +51,18 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ArrowLeft, Trash2, Loader2, UserPlus, Link2, KeyRound, Eye, EyeOff, Copy, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Trash2,
+  Loader2,
+  UserPlus,
+  Link2,
+  KeyRound,
+  Eye,
+  EyeOff,
+  Copy,
+  AlertCircle,
+} from "lucide-react";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { ALL_TIERS, TIER_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 import { TierEditor } from "@/routes/_authenticated/settings.tiers";
@@ -47,7 +70,10 @@ import { CostClassificationPanel } from "@/components/dashboard/CostClassificati
 import { ClientWidgetsPanel } from "@/components/dashboard/ClientWidgetsPanel";
 // import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
 import { Switch } from "@/components/ui/switch";
-import { listCostClassifications, setCostClassificationEnabled } from "@/lib/cost-classification.functions";
+import {
+  listCostClassifications,
+  setCostClassificationEnabled,
+} from "@/lib/cost-classification.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/settings")({
   head: () => ({ meta: [{ title: "Client settings — Traction Advisory" }] }),
@@ -81,21 +107,30 @@ function ClientSettings() {
   const fetchClassifications = useServerFn(listCostClassifications);
   const setClassEnabled = useServerFn(setCostClassificationEnabled);
 
-
-  
-
-  const clientQ = useQuery({ queryKey: ["client", clientId], queryFn: () => fetchClient({ data: { clientId } }) });
-  const chooserState = typeof window === "undefined" ? undefined : new URLSearchParams(window.location.search).get("state") ?? undefined;
+  const clientQ = useQuery({
+    queryKey: ["client", clientId],
+    queryFn: () => fetchClient({ data: { clientId } }),
+  });
+  const chooserState =
+    typeof window === "undefined"
+      ? undefined
+      : (new URLSearchParams(window.location.search).get("state") ?? undefined);
   const optionsQ = useQuery({
     queryKey: ["client-xero-options", clientId, chooserState],
     queryFn: () => fetchXeroOptions({ data: { clientId, state: chooserState } }),
   });
-  const accessQ = useQuery({ queryKey: ["client-access", clientId], queryFn: () => fetchAccess({ data: { clientId } }) });
+  const accessQ = useQuery({
+    queryKey: ["client-access", clientId],
+    queryFn: () => fetchAccess({ data: { clientId } }),
+  });
   const tierCfgQ = useQuery({
     queryKey: ["tier-config", clientId],
     queryFn: () => fetchTierCfg({ data: { clientId } }),
   });
-  const tierSettingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchTierSettings() });
+  const tierSettingsQ = useQuery({
+    queryKey: ["tier-settings"],
+    queryFn: () => fetchTierSettings(),
+  });
   const fetchPlanTiers = useServerFn(getAllowedTiersForClient);
   const planTiersQ = useQuery({
     queryKey: ["plan-tiers", "client", clientId],
@@ -124,13 +159,17 @@ function ClientSettings() {
   const [viewerMode, setViewerMode] = useState<"invite" | "password">("invite");
   const [viewerPassword, setViewerPassword] = useState("");
   const [showViewerPw, setShowViewerPw] = useState(false);
-  const [lastViewerCreated, setLastViewerCreated] = useState<{ email: string; password: string } | null>(null);
+  const [lastViewerCreated, setLastViewerCreated] = useState<{
+    email: string;
+    password: string;
+  } | null>(null);
   const [selectedXeroIds, setSelectedXeroIds] = useState<Set<string>>(new Set());
   const [xeroAllowance, setXeroAllowance] = useState(1);
 
   useEffect(() => {
     if (clientQ.data?.client?.name && name === "") setName(clientQ.data.client.name as string);
-    if (clientQ.data?.client?.max_xero_orgs) setXeroAllowance(clientQ.data.client.max_xero_orgs as number);
+    if (clientQ.data?.client?.max_xero_orgs)
+      setXeroAllowance(clientQ.data.client.max_xero_orgs as number);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientQ.data?.client?.name]);
 
@@ -143,12 +182,19 @@ function ClientSettings() {
 
   const renameMut = useMutation({
     mutationFn: () => rename({ data: { clientId, name } }),
-    onSuccess: () => { toast.success("Saved"); qc.invalidateQueries({ queryKey: ["client", clientId] }); qc.invalidateQueries({ queryKey: ["clients"] }); },
+    onSuccess: () => {
+      toast.success("Saved");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
   const linkOptionsMut = useMutation({
-    mutationFn: () => linkXeroOptions({ data: { clientId, state: chooserState ?? "", connectionIds: [...selectedXeroIds] } }),
+    mutationFn: () =>
+      linkXeroOptions({
+        data: { clientId, state: chooserState ?? "", connectionIds: [...selectedXeroIds] },
+      }),
     onSuccess: ({ linked }) => {
       toast.success(`${linked} Xero organisation${linked === 1 ? "" : "s"} linked`);
       qc.invalidateQueries({ queryKey: ["client", clientId] });
@@ -182,7 +228,11 @@ function ClientSettings() {
 
   const detachMut = useMutation({
     mutationFn: (id: string) => detach({ data: { id } }),
-    onSuccess: () => { toast.success("Unlinked"); qc.invalidateQueries({ queryKey: ["client", clientId] }); qc.invalidateQueries({ queryKey: ["xero-connections"] }); },
+    onSuccess: () => {
+      toast.success("Unlinked");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-connections"] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -198,7 +248,10 @@ function ClientSettings() {
 
   const deleteMut = useMutation({
     mutationFn: () => del({ data: { clientId } }),
-    onSuccess: () => { toast.success("Client deleted"); navigate({ to: "/dashboard", replace: true }); },
+    onSuccess: () => {
+      toast.success("Client deleted");
+      navigate({ to: "/dashboard", replace: true });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -213,7 +266,10 @@ function ClientSettings() {
   });
 
   const createViewerPwMut = useMutation({
-    mutationFn: () => createViewerPw({ data: { clientId, email: inviteEmail, password: viewerPassword, tier: inviteTier } }),
+    mutationFn: () =>
+      createViewerPw({
+        data: { clientId, email: inviteEmail, password: viewerPassword, tier: inviteTier },
+      }),
     onSuccess: () => {
       toast.success(`Viewer created — ${inviteEmail}`);
       setLastViewerCreated({ email: inviteEmail, password: viewerPassword });
@@ -225,24 +281,38 @@ function ClientSettings() {
   });
 
   const tierMut = useMutation({
-    mutationFn: ({ id, tier }: { id: string; tier: DashboardTier }) => updateTier({ data: { id, tier } }),
-    onSuccess: () => { toast.success("Tier updated"); qc.invalidateQueries({ queryKey: ["client-access", clientId] }); },
+    mutationFn: ({ id, tier }: { id: string; tier: DashboardTier }) =>
+      updateTier({ data: { id, tier } }),
+    onSuccess: () => {
+      toast.success("Tier updated");
+      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
   const revokeMut = useMutation({
     mutationFn: (id: string) => revoke({ data: { id } }),
-    onSuccess: () => { toast.success("Access removed"); qc.invalidateQueries({ queryKey: ["client-access", clientId] }); },
+    onSuccess: () => {
+      toast.success("Access removed");
+      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
   async function handleConnect() {
     const authWindow = window.open("about:blank", "_blank");
     try {
-      const { authorizeUrl } = await startConnect({ data: { origin: window.location.origin, clientId } });
-      if (authWindow) { authWindow.opener = null; authWindow.location.href = authorizeUrl; }
-      else window.location.href = authorizeUrl;
-    } catch (e: any) { authWindow?.close(); toast.error(e.message); }
+      const { authorizeUrl } = await startConnect({
+        data: { origin: window.location.origin, clientId },
+      });
+      if (authWindow) {
+        authWindow.opener = null;
+        authWindow.location.href = authorizeUrl;
+      } else window.location.href = authorizeUrl;
+    } catch (e: any) {
+      authWindow?.close();
+      toast.error(e.message);
+    }
   }
 
   useEffect(() => {
@@ -269,7 +339,11 @@ function ClientSettings() {
   }, []);
 
   if (clientQ.isLoading) {
-    return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>;
+    return (
+      <div className="grid min-h-screen place-items-center text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+      </div>
+    );
   }
   const client = clientQ.data?.client;
   if (!client) return <p className="p-6 text-sm text-destructive">Client not found.</p>;
@@ -282,7 +356,9 @@ function ClientSettings() {
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
         <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/clients/$clientId" params={{ clientId }}><ArrowLeft className="mr-1 h-4 w-4" /> Back to dashboard</Link>
+          <Link to="/clients/$clientId" params={{ clientId }}>
+            <ArrowLeft className="mr-1 h-4 w-4" /> Back to dashboard
+          </Link>
         </Button>
         <div>
           <h1 className="font-display text-3xl font-semibold">{client.name} · Settings</h1>
@@ -292,7 +368,10 @@ function ClientSettings() {
         <Section title="Client name">
           <div className="flex gap-2">
             <Input value={name} onChange={(e) => setName(e.target.value)} />
-            <Button onClick={() => renameMut.mutate()} disabled={!name.trim() || name === client.name || renameMut.isPending}>
+            <Button
+              onClick={() => renameMut.mutate()}
+              disabled={!name.trim() || name === client.name || renameMut.isPending}
+            >
               {renameMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save
             </Button>
           </div>
@@ -301,9 +380,13 @@ function ClientSettings() {
         {/* Report basis */}
         <Section title="Report basis">
           <p className="mb-3 text-xs text-muted-foreground">
-            Sets the client's accounting basis. Below, choose which dashboard cards should use it instead of always reporting on Accrual. Viewers don't see any of this.
+            Sets the client's accounting basis. Below, choose which dashboard cards should use it
+            instead of always reporting on Accrual. Viewers don't see any of this.
           </p>
-          <BasisSelectRow clientId={clientId} current={(client.report_basis as ReportBasis) ?? "accrual"} />
+          <BasisSelectRow
+            clientId={clientId}
+            current={(client.report_basis as ReportBasis) ?? "accrual"}
+          />
           <div className="mt-5 border-t border-border pt-4">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Per-card override
@@ -319,19 +402,38 @@ function ClientSettings() {
           </div>
         </Section>
 
-
-
-
         {/* Xero orgs */}
-        <Section title="Xero organisations" action={
-          <ConnectWithXeroButton variant="connect" size="sm" onClick={handleConnect} label="Connect a Xero file" />
-        }>
+        <Section
+          title="Xero organisations"
+          action={
+            <ConnectWithXeroButton
+              variant="connect"
+              size="sm"
+              onClick={handleConnect}
+              label="Connect a Xero file"
+            />
+          }
+        >
           <div className="mb-4 flex flex-wrap items-end gap-2 rounded-md border border-border bg-muted/30 p-3">
             <div>
               <Label htmlFor="xero-file-allowance">Allowed Xero files</Label>
-              <Input id="xero-file-allowance" type="number" min={1} max={100} value={xeroAllowance} onChange={(event) => setXeroAllowance(Number(event.target.value))} className="mt-1 w-28" />
+              <Input
+                id="xero-file-allowance"
+                type="number"
+                min={1}
+                max={100}
+                value={xeroAllowance}
+                onChange={(event) => setXeroAllowance(Number(event.target.value))}
+                className="mt-1 w-28"
+              />
             </div>
-            <Button variant="outline" onClick={() => allowanceMut.mutate()} disabled={allowanceMut.isPending}>Save allowance</Button>
+            <Button
+              variant="outline"
+              onClick={() => allowanceMut.mutate()}
+              disabled={allowanceMut.isPending}
+            >
+              Save allowance
+            </Button>
             {allowance ? (
               <p className="pb-2 text-xs text-muted-foreground">
                 {allowance.used} of {allowance.allowance} linked
@@ -342,7 +444,8 @@ function ClientSettings() {
             ) : null}
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            If a widget says Xero needs reconnecting, use <strong>Reconnect to Xero</strong> — it re-runs Xero sign-in and refreshes the tokens for that org in place.
+            If a widget says Xero needs reconnecting, use <strong>Reconnect to Xero</strong> — it
+            re-runs Xero sign-in and refreshes the tokens for that org in place.
           </p>
           {linkedOrgs.length === 0 ? (
             <p className="text-sm text-muted-foreground">No Xero orgs linked yet.</p>
@@ -354,7 +457,10 @@ function ClientSettings() {
                 const status: string = o.xero_connections?.status ?? "connected";
                 const isDisconnected = status === "disconnected";
                 return (
-                  <li key={o.id} className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2">
+                  <li
+                    key={o.id}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-background px-3 py-2"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{tenantName}</span>
                       {isDisconnected ? (
@@ -370,7 +476,10 @@ function ClientSettings() {
                     <div className="flex items-center gap-1.5">
                       {tenantId ? (
                         <Button asChild variant="ghost" size="sm" title="View integration log">
-                          <Link to="/clients/$clientId/xero-log/$tenantId" params={{ clientId, tenantId }}>
+                          <Link
+                            to="/clients/$clientId/xero-log/$tenantId"
+                            params={{ clientId, tenantId }}
+                          >
                             Log
                           </Link>
                         </Button>
@@ -391,9 +500,13 @@ function ClientSettings() {
                           <AlertDialogHeader>
                             <AlertDialogTitle>Disconnect {tenantName}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              <strong>Unlink from this client</strong> removes the link only — the Xero connection stays available to link to other clients.
-                              <br /><br />
-                              <strong>Disconnect from Xero</strong> revokes our access at Xero and removes the connection here. Reconnecting requires a fresh Xero sign-in.
+                              <strong>Unlink from this client</strong> removes the link only — the
+                              Xero connection stays available to link to other clients.
+                              <br />
+                              <br />
+                              <strong>Disconnect from Xero</strong> revokes our access at Xero and
+                              removes the connection here. Reconnecting requires a fresh Xero
+                              sign-in.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
@@ -419,13 +532,18 @@ function ClientSettings() {
           {chooserState && availableConns.length > 0 && (
             <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
               <p className="mb-2 text-sm font-semibold">Choose files for this subscription</p>
-              <p className="mb-3 text-xs text-muted-foreground">Only the files selected here will be visible to this client's users. You can select up to {allowance?.remaining ?? 0}.</p>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Only the files selected here will be visible to this client's users. You can select
+                up to {allowance?.remaining ?? 0}.
+              </p>
               <ul className="space-y-1">
                 {availableConns.map((c: any) => {
                   const disabled = c.available === false;
                   return (
                     <li key={c.id} className="flex items-center justify-between gap-2">
-                      <label className={`flex flex-1 items-center gap-3 rounded-md px-2 py-2 ${disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/50"}`}>
+                      <label
+                        className={`flex flex-1 items-center gap-3 rounded-md px-2 py-2 ${disabled ? "opacity-60" : "cursor-pointer hover:bg-muted/50"}`}
+                      >
                         <Checkbox
                           disabled={disabled}
                           checked={selectedXeroIds.has(c.id)}
@@ -447,26 +565,38 @@ function ClientSettings() {
                               : `Linked to ${c.linkedClientName ?? "another subscription"}${c.linkedFirmName ? ` — ${c.linkedFirmName}` : ""}`}
                           </span>
                         )}
-                        {!disabled && <span className="text-xs text-muted-foreground">Available</span>}
+                        {!disabled && (
+                          <span className="text-xs text-muted-foreground">Available</span>
+                        )}
                       </label>
                       {c.movable && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button variant="outline" size="sm" disabled={moveXeroMut.isPending || (allowance?.remaining ?? 0) < 1}>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={moveXeroMut.isPending || (allowance?.remaining ?? 0) < 1}
+                            >
                               Move here
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Move {c.tenant_name} to this subscription?</AlertDialogTitle>
+                              <AlertDialogTitle>
+                                Move {c.tenant_name} to this subscription?
+                              </AlertDialogTitle>
                               <AlertDialogDescription>
-                                It will be unlinked from {c.linkedClientName ?? "its current subscription"}
-                                {c.linkedFirmName ? ` (${c.linkedFirmName})` : ""} and its users will lose access to this Xero file.
+                                It will be unlinked from{" "}
+                                {c.linkedClientName ?? "its current subscription"}
+                                {c.linkedFirmName ? ` (${c.linkedFirmName})` : ""} and its users
+                                will lose access to this Xero file.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => moveXeroMut.mutate(c.id)}>Move file</AlertDialogAction>
+                              <AlertDialogAction onClick={() => moveXeroMut.mutate(c.id)}>
+                                Move file
+                              </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
@@ -475,12 +605,15 @@ function ClientSettings() {
                   );
                 })}
               </ul>
-              <Button className="mt-3" onClick={() => linkOptionsMut.mutate()} disabled={selectedXeroIds.size === 0 || linkOptionsMut.isPending}>
+              <Button
+                className="mt-3"
+                onClick={() => linkOptionsMut.mutate()}
+                disabled={selectedXeroIds.size === 0 || linkOptionsMut.isPending}
+              >
                 <Link2 className="mr-2 h-4 w-4" /> Link selected
               </Button>
             </div>
           )}
-
         </Section>
 
         {/* Viewer access */}
@@ -488,14 +621,20 @@ function ClientSettings() {
           <div className="mb-3 inline-flex rounded-md border border-border p-0.5 text-xs">
             <button
               type="button"
-              onClick={() => { setViewerMode("invite"); setLastViewerCreated(null); }}
+              onClick={() => {
+                setViewerMode("invite");
+                setLastViewerCreated(null);
+              }}
               className={`rounded px-3 py-1.5 transition ${viewerMode === "invite" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
               Send email invite
             </button>
             <button
               type="button"
-              onClick={() => { setViewerMode("password"); setLastViewerCreated(null); }}
+              onClick={() => {
+                setViewerMode("password");
+                setLastViewerCreated(null);
+              }}
               className={`rounded px-3 py-1.5 transition ${viewerMode === "password" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
             >
               Create with password
@@ -505,15 +644,35 @@ function ClientSettings() {
           {viewerMode === "invite" ? (
             <>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Input type="email" placeholder="viewer@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="flex-1" />
+                <Input
+                  type="email"
+                  placeholder="viewer@example.com"
+                  value={inviteEmail}
+                  onChange={(e) => setInviteEmail(e.target.value)}
+                  className="flex-1"
+                />
                 <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as DashboardTier)}>
-                  <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="sm:w-52">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
-                    {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
+                    {enabledTiers.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {TIER_LABEL[t]}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <Button onClick={() => inviteMut.mutate()} disabled={!inviteEmail.includes("@") || inviteMut.isPending}>
-                  {inviteMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />} Invite
+                <Button
+                  onClick={() => inviteMut.mutate()}
+                  disabled={!inviteEmail.includes("@") || inviteMut.isPending}
+                >
+                  {inviteMut.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <UserPlus className="mr-2 h-4 w-4" />
+                  )}{" "}
+                  Invite
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
@@ -524,11 +683,26 @@ function ClientSettings() {
             <>
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input type="email" placeholder="viewer@example.com" value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} className="flex-1" />
-                  <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as DashboardTier)}>
-                    <SelectTrigger className="sm:w-52"><SelectValue /></SelectTrigger>
+                  <Input
+                    type="email"
+                    placeholder="viewer@example.com"
+                    value={inviteEmail}
+                    onChange={(e) => setInviteEmail(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Select
+                    value={inviteTier}
+                    onValueChange={(v) => setInviteTier(v as DashboardTier)}
+                  >
+                    <SelectTrigger className="sm:w-52">
+                      <SelectValue />
+                    </SelectTrigger>
                     <SelectContent>
-                      {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
+                      {enabledTiers.map((t) => (
+                        <SelectItem key={t} value={t}>
+                          {TIER_LABEL[t]}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -551,15 +725,24 @@ function ClientSettings() {
                 </div>
                 <Button
                   onClick={() => createViewerPwMut.mutate()}
-                  disabled={!inviteEmail.includes("@") || viewerPassword.length < 8 || createViewerPwMut.isPending}
+                  disabled={
+                    !inviteEmail.includes("@") ||
+                    viewerPassword.length < 8 ||
+                    createViewerPwMut.isPending
+                  }
                   className="self-start"
                 >
-                  {createViewerPwMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                  {createViewerPwMut.isPending ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <KeyRound className="mr-2 h-4 w-4" />
+                  )}
                   Create viewer
                 </Button>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
-                Account is active immediately — no email click required. Share the credentials securely; they can change the password from Account settings after signing in.
+                Account is active immediately — no email click required. Share the credentials
+                securely; they can change the password from Account settings after signing in.
               </p>
               {lastViewerCreated && (
                 <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs">
@@ -589,22 +772,42 @@ function ClientSettings() {
 
           <div className="mt-4">
             {accessQ.isLoading ? (
-              <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
+              <div className="text-sm text-muted-foreground">
+                <Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…
+              </div>
             ) : (accessQ.data?.access ?? []).length === 0 ? (
               <p className="text-sm text-muted-foreground">No viewers yet.</p>
             ) : (
               <ul className="space-y-1.5">
                 {(accessQ.data?.access ?? []).map((a: any) => (
-                  <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                  <li
+                    key={a.id}
+                    className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2"
+                  >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium">{a.display_name ?? a.email ?? a.user_id}</p>
-                      {a.email && a.display_name && <p className="truncate text-xs text-muted-foreground">{a.email}</p>}
+                      <p className="truncate text-sm font-medium">
+                        {a.display_name ?? a.email ?? a.user_id}
+                      </p>
+                      {a.email && a.display_name && (
+                        <p className="truncate text-xs text-muted-foreground">{a.email}</p>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Select value={a.tier} onValueChange={(v) => tierMut.mutate({ id: a.id, tier: v as DashboardTier })}>
-                        <SelectTrigger className="h-8 w-44"><SelectValue /></SelectTrigger>
+                      <Select
+                        value={a.tier}
+                        onValueChange={(v) =>
+                          tierMut.mutate({ id: a.id, tier: v as DashboardTier })
+                        }
+                      >
+                        <SelectTrigger className="h-8 w-44">
+                          <SelectValue />
+                        </SelectTrigger>
                         <SelectContent>
-                          {enabledTiers.map((t) => (<SelectItem key={t} value={t}>{TIER_LABEL[t]}</SelectItem>))}
+                          {enabledTiers.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {TIER_LABEL[t]}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <Button variant="ghost" size="sm" onClick={() => revokeMut.mutate(a.id)}>
@@ -628,24 +831,33 @@ function ClientSettings() {
         />
 
         {/* Per-client widget control */}
-        <Section title="What this client sees" action={
-          <Button variant="ghost" size="sm" asChild>
-            <Link to="/settings/tiers">Edit plan defaults</Link>
-          </Button>
-        }>
+        <Section
+          title="What this client sees"
+          action={
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/settings/tiers">Edit plan defaults</Link>
+            </Button>
+          }
+        >
           <ClientWidgetsPanel clientId={clientId} />
         </Section>
 
         <Section title="Danger zone">
           <Button
             variant="destructive"
-            onClick={() => { if (confirm(`Delete client "${client.name}"? This cannot be undone.`)) deleteMut.mutate(); }}
+            onClick={() => {
+              if (confirm(`Delete client "${client.name}"? This cannot be undone.`))
+                deleteMut.mutate();
+            }}
             disabled={deleteMut.isPending}
           >
             {deleteMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             <Trash2 className="mr-2 h-4 w-4" /> Delete client
           </Button>
-          <p className="mt-2 text-xs text-muted-foreground">This removes the client and all viewer access. Linked Xero organisations stay connected and can be reused.</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            This removes the client and all viewer access. Linked Xero organisations stay connected
+            and can be reused.
+          </p>
         </Section>
         {/* SubscriptionPanel hidden until payments re-enabled */}
       </main>
@@ -653,7 +865,15 @@ function ClientSettings() {
   );
 }
 
-function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
+function Section({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
       <div className="mb-4 flex items-center justify-between">
@@ -696,14 +916,17 @@ function CostClassificationSection({
   });
 
   return (
-    <section id="cost-classification" className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] scroll-mt-6">
+    <section
+      id="cost-classification"
+      className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] scroll-mt-6"
+    >
       <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-lg font-semibold">Cost classification</h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Tag each expense account as <strong>Fixed</strong>, <strong>Variable</strong>, or <strong>Excluded</strong> for
-            break-even. Use the separate <strong>Wages</strong> marker for Business Health only; it does not
-            change fixed-cost treatment.
+            Tag each expense account as <strong>Fixed</strong>, <strong>Variable</strong>, or{" "}
+            <strong>Excluded</strong> for break-even. Use the separate <strong>Wages</strong> marker
+            for Business Health only; it does not change fixed-cost treatment.
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -757,9 +980,7 @@ function BasisSelectRow({ clientId, current }: { clientId: string; current: Repo
     },
     onError: (e: any) => toast.error(e?.message ?? "Failed to update basis"),
   });
-  return (
-    <BasisSelect value={current} onChange={(v) => mut.mutate(v)} disabled={mut.isPending} />
-  );
+  return <BasisSelect value={current} onChange={(v) => mut.mutate(v)} disabled={mut.isPending} />;
 }
 
 const BASIS_OVERRIDE_WIDGETS: { key: BasisOverrideWidget; label: string; defaultOn?: boolean }[] = [
@@ -769,7 +990,7 @@ const BASIS_OVERRIDE_WIDGETS: { key: BasisOverrideWidget; label: string; default
   { key: "receivables", label: "Aged Receivables" },
   { key: "payables", label: "Aged Payables" },
   { key: "cashflow", label: "Cash Flow" },
-  
+
   { key: "accounting_breakeven", label: "Accounting Break-Even" },
   { key: "true_breakeven", label: "True Break-Even (Cash)" },
 ];
@@ -824,5 +1045,3 @@ function BasisOverrideList({
     </ul>
   );
 }
-
-

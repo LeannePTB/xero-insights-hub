@@ -1,6 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { ALL_TIERS, ALL_WIDGETS, DEFAULT_TIER_WIDGETS, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import {
+  ALL_TIERS,
+  ALL_WIDGETS,
+  DEFAULT_TIER_WIDGETS,
+  type DashboardTier,
+  type WidgetKey,
+} from "@/lib/tiers";
 
 function sanitizeWidgets(widgets: string[] | null | undefined): WidgetKey[] {
   return (widgets ?? []).filter((w): w is WidgetKey => (ALL_WIDGETS as string[]).includes(w));
@@ -13,14 +19,20 @@ export const listClients = createServerFn({ method: "POST" })
     // Determine the firm scope. Super-admins may pass any firmId (or none → all).
     // Everyone else is restricted to their own firm.
     const { data: roleRows } = await context.supabase
-      .from("user_roles").select("role").eq("user_id", context.userId);
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
     const isSuper = !!roleRows?.some((r: any) => r.role === "super_admin");
 
     let firmId: string | null = data?.firmId ?? null;
     if (!isSuper) {
       const { data: m } = await context.supabase
-        .from("firm_members").select("firm_id").eq("user_id", context.userId)
-        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+        .from("firm_members")
+        .select("firm_id")
+        .eq("user_id", context.userId)
+        .order("created_at", { ascending: true })
+        .limit(1)
+        .maybeSingle();
       const myFirm = m?.firm_id ?? null;
       if (firmId && firmId !== myFirm) throw new Error("Not a member of that business.");
       firmId = myFirm;
@@ -42,7 +54,6 @@ export const listClients = createServerFn({ method: "POST" })
     if (firmId) q = q.eq("firm_id", firmId);
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
-
 
     const clientIds = (rows ?? []).map((c: any) => c.id);
     let configRows: any[] = [];
@@ -86,7 +97,6 @@ export const listClients = createServerFn({ method: "POST" })
     return { clients };
   });
 
-
 export const getClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string }) => i)
@@ -119,7 +129,6 @@ export const getClient = createServerFn({ method: "POST" })
     throw new Error("Client not found.");
   });
 
-
 export const listClientNotes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string }) => i)
@@ -138,12 +147,17 @@ export const listClientNotes = createServerFn({ method: "POST" })
         .from("profiles")
         .select("id, display_name, email")
         .in("id", ids);
-      authorMap = new Map((profiles ?? []).map((p: any) => [p.id, { display_name: p.display_name, email: p.email }]));
+      authorMap = new Map(
+        (profiles ?? []).map((p: any) => [p.id, { display_name: p.display_name, email: p.email }]),
+      );
     }
     return {
       notes: (rows ?? []).map((r: any) => ({
         ...r,
-        author_name: authorMap.get(r.author_id)?.display_name ?? authorMap.get(r.author_id)?.email ?? "Unknown",
+        author_name:
+          authorMap.get(r.author_id)?.display_name ??
+          authorMap.get(r.author_id)?.email ??
+          "Unknown",
         is_mine: r.author_id === context.userId,
       })),
     };
@@ -187,7 +201,6 @@ export const deleteClientNote = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 export const createClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { name: string; xeroConnectionIds: string[]; firmId?: string }) => i)
@@ -202,8 +215,12 @@ export const createClient = createServerFn({ method: "POST" })
     if (data.xeroConnectionIds.length > 0) {
       const { getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
       const available = await getUnassignedConnectionsForUser(context.userId);
-      if (data.xeroConnectionIds.some((id) => !available.some((connection) => connection.id === id))) {
-        throw new Error("A selected Xero organisation is already assigned to another subscription or is not yours.");
+      if (
+        data.xeroConnectionIds.some((id) => !available.some((connection) => connection.id === id))
+      ) {
+        throw new Error(
+          "A selected Xero organisation is already assigned to another subscription or is not yours.",
+        );
       }
     }
 
@@ -240,28 +257,42 @@ export const createClient = createServerFn({ method: "POST" })
 
     if (!firmId) throw new Error("No business associated with your account.");
 
-
     // Enforce firm subscription client quota.
     const { clientLimitFor, firmLimitCatalogue } = await import("@/lib/firmPlans");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: firmRow }, { data: subRow }, { count: usedCount }, { data: planRows }] = await Promise.all([
-      supabaseAdmin.from("firms").select("is_always_free").eq("id", firmId).maybeSingle(),
-      supabaseAdmin.from("subscriptions").select("tier, status, client_limit_override").eq("firm_id", firmId).maybeSingle(),
-      supabaseAdmin.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", firmId),
-      (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm"),
-    ]);
+    const [{ data: firmRow }, { data: subRow }, { count: usedCount }, { data: planRows }] =
+      await Promise.all([
+        supabaseAdmin.from("firms").select("is_always_free").eq("id", firmId).maybeSingle(),
+        supabaseAdmin
+          .from("subscriptions")
+          .select("tier, status, client_limit_override")
+          .eq("firm_id", firmId)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("clients")
+          .select("id", { count: "exact", head: true })
+          .eq("firm_id", firmId),
+        (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm"),
+      ]);
     const limit = clientLimitFor((subRow as any)?.tier, (firmRow as any)?.is_always_free, {
       override: (subRow as any)?.client_limit_override ?? null,
       catalogue: firmLimitCatalogue(planRows as any),
     });
 
     const status = (subRow as any)?.status ?? null;
-    const okStatus = !status || ["active", "trialing", "past_due"].includes(status) || (firmRow as any)?.is_always_free;
+    const okStatus =
+      !status ||
+      ["active", "trialing", "past_due"].includes(status) ||
+      (firmRow as any)?.is_always_free;
     if (!okStatus) {
-      throw new Error("This business has no active subscription. Please renew before adding clients.");
+      throw new Error(
+        "This business has no active subscription. Please renew before adding clients.",
+      );
     }
     if ((usedCount ?? 0) >= limit) {
-      throw new Error(`Client limit reached (${usedCount}/${limit}). Upgrade the subscription to add more clients.`);
+      throw new Error(
+        `Client limit reached (${usedCount}/${limit}). Upgrade the subscription to add more clients.`,
+      );
     }
 
     // Super admins manage organisations they don't belong to; RLS scopes inserts to firm owners.
@@ -292,11 +323,17 @@ export const deleteClient = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     // Super admins manage every organisation; RLS scopes deletes to firm owners.
     const { data: superRow } = await context.supabase
-      .from("user_roles").select("role")
-      .eq("user_id", context.userId).eq("role", "super_admin").maybeSingle();
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "super_admin")
+      .maybeSingle();
     if (superRow) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error: adminErr } = await supabaseAdmin.from("clients").delete().eq("id", data.clientId);
+      const { error: adminErr } = await supabaseAdmin
+        .from("clients")
+        .delete()
+        .eq("id", data.clientId);
       if (adminErr) throw new Error(adminErr.message);
       return { ok: true };
     }
@@ -335,16 +372,13 @@ export type BasisOverrideWidget =
   | "superannuation"
   | "payables"
   | "receivables"
-  
   | "accounting_breakeven"
   | "true_breakeven"
   | "cashflow";
 
 export const updateClientBasisOverride = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(
-    (i: { clientId: string; widget: BasisOverrideWidget; enabled: boolean }) => i,
-  )
+  .inputValidator((i: { clientId: string; widget: BasisOverrideWidget; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
     const { data: row, error: readErr } = await context.supabase
       .from("clients")
@@ -366,12 +400,18 @@ export const attachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; xeroConnectionId: string }) => i)
   .handler(async ({ data, context }) => {
-    const { getClientOrgAllowance, getUnassignedConnectionsForUser } = await import("@/lib/xero/client-orgs.server");
+    const { getClientOrgAllowance, getUnassignedConnectionsForUser } =
+      await import("@/lib/xero/client-orgs.server");
     const allowance = await getClientOrgAllowance(data.clientId);
-    if (allowance.remaining < 1) throw new Error(`This subscription has reached its Xero file allowance of ${allowance.allowance}.`);
+    if (allowance.remaining < 1)
+      throw new Error(
+        `This subscription has reached its Xero file allowance of ${allowance.allowance}.`,
+      );
     const available = await getUnassignedConnectionsForUser(context.userId);
     if (!available.some((connection) => connection.id === data.xeroConnectionId)) {
-      throw new Error("That Xero organisation is already assigned to another client subscription or is not yours to link.");
+      throw new Error(
+        "That Xero organisation is already assigned to another client subscription or is not yours to link.",
+      );
     }
     const { error } = await context.supabase
       .from("client_xero_orgs")
@@ -388,30 +428,42 @@ export const setClientXeroAllowance = createServerFn({ method: "POST" })
     if (!Number.isFinite(allowance) || allowance < 1 || allowance > 100) {
       throw new Error("Xero file allowance must be between 1 and 100.");
     }
-    const { userCanManageClient, getClientOrgAllowance } = await import("@/lib/xero/client-orgs.server");
-    if (!(await userCanManageClient(context.userId, data.clientId))) throw new Error("You cannot manage this subscription.");
+    const { userCanManageClient, getClientOrgAllowance } =
+      await import("@/lib/xero/client-orgs.server");
+    if (!(await userCanManageClient(context.userId, data.clientId)))
+      throw new Error("You cannot manage this subscription.");
     const current = await getClientOrgAllowance(data.clientId);
-    if (!current.isMulti && allowance !== 1) throw new Error("Only Multi company subscriptions can allow more than one Xero file.");
-    if (allowance < current.used) throw new Error(`Unlink Xero files before reducing the allowance below ${current.used}.`);
+    if (!current.isMulti && allowance !== 1)
+      throw new Error("Only Multi company subscriptions can allow more than one Xero file.");
+    if (allowance < current.used)
+      throw new Error(`Unlink Xero files before reducing the allowance below ${current.used}.`);
     // Super admins manage every organisation; RLS scopes updates to their own firms.
     const { data: superRow } = await context.supabase
-      .from("user_roles").select("role")
-      .eq("user_id", context.userId).eq("role", "super_admin").maybeSingle();
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "super_admin")
+      .maybeSingle();
     if (superRow) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error: adminErr } = await supabaseAdmin
-        .from("clients").update({ max_xero_orgs: allowance }).eq("id", data.clientId);
+        .from("clients")
+        .update({ max_xero_orgs: allowance })
+        .eq("id", data.clientId);
       if (adminErr) throw new Error(adminErr.message);
       return { allowance };
     }
     const { data: updated, error } = await context.supabase
-      .from("clients").update({ max_xero_orgs: allowance }).eq("id", data.clientId).select("id");
+      .from("clients")
+      .update({ max_xero_orgs: allowance })
+      .eq("id", data.clientId)
+      .select("id");
     if (error) throw new Error(error.message);
-    if (!updated || updated.length === 0) throw new Error("You cannot change this subscription's Xero file allowance.");
+    if (!updated || updated.length === 0)
+      throw new Error("You cannot change this subscription's Xero file allowance.");
 
     return { allowance };
   });
-
 
 export const detachXeroOrg = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -426,13 +478,21 @@ export const detachXeroOrg = createServerFn({ method: "POST" })
     if (readErr) throw new Error(readErr.message);
     if (!row) throw new Error("Xero link not found.");
     const { userCanManageClient } = await import("@/lib/xero/client-orgs.server");
-    if (!(await userCanManageClient(context.userId, row.client_id))) throw new Error("You cannot unlink this Xero file.");
+    if (!(await userCanManageClient(context.userId, row.client_id)))
+      throw new Error("You cannot unlink this Xero file.");
     const { error } = await supabaseAdmin.from("client_xero_orgs").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     // Release the organisation stamp so the file can be linked elsewhere.
     if (row?.xero_connection_id) {
-      const { count } = await supabaseAdmin.from("client_xero_orgs").select("id", { count: "exact", head: true }).eq("xero_connection_id", row.xero_connection_id);
-      if ((count ?? 0) === 0) await supabaseAdmin.from("xero_connections").update({ firm_id: null }).eq("id", row.xero_connection_id);
+      const { count } = await supabaseAdmin
+        .from("client_xero_orgs")
+        .select("id", { count: "exact", head: true })
+        .eq("xero_connection_id", row.xero_connection_id);
+      if ((count ?? 0) === 0)
+        await supabaseAdmin
+          .from("xero_connections")
+          .update({ firm_id: null })
+          .eq("id", row.xero_connection_id);
       await supabaseAdmin.from("audit_log").insert({
         actor_user_id: context.userId,
         action: "xero_file_unlinked",
@@ -443,7 +503,6 @@ export const detachXeroOrg = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
-
 
 export const listClientAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -461,7 +520,10 @@ export const listClientAccess = createServerFn({ method: "POST" })
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
       .select("id, email, display_name")
-      .in("id", rows.map((r) => r.user_id));
+      .in(
+        "id",
+        rows.map((r) => r.user_id),
+      );
     const map = new Map((profiles ?? []).map((p) => [p.id, p]));
     return {
       access: rows.map((r) => ({
@@ -549,7 +611,10 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
     // Ensure viewer role (handle_new_user already inserts this for fresh users)
     await (supabaseAdmin as any)
       .from("user_roles")
-      .upsert({ user_id: userId, role: "client_viewer" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+      .upsert(
+        { user_id: userId, role: "client_viewer" },
+        { onConflict: "user_id,role", ignoreDuplicates: true },
+      );
 
     // Grant client access
     const { error } = await (supabaseAdmin as any)
@@ -563,16 +628,21 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
   });
 
 function validateViewerPassword(pw: string) {
-  if (typeof pw !== "string" || pw.length < 8) throw new Error("Password must be at least 8 characters.");
-  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) throw new Error("Password must include at least one letter and one number.");
+  if (typeof pw !== "string" || pw.length < 8)
+    throw new Error("Password must be at least 8 characters.");
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw))
+    throw new Error("Password must include at least one letter and one number.");
 }
 
 export const createClientViewerWithPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { clientId: string; email: string; password: string; tier: DashboardTier }) => i)
+  .inputValidator(
+    (i: { clientId: string; email: string; password: string; tier: DashboardTier }) => i,
+  )
   .handler(async ({ data, context }) => {
     const email = data.email.trim().toLowerCase();
-    if (!email.includes("@") || email.length > 254) throw new Error("Please enter a valid email address.");
+    if (!email.includes("@") || email.length > 254)
+      throw new Error("Please enter a valid email address.");
     validateViewerPassword(data.password);
 
     const { data: advisorRoles } = await context.supabase
@@ -607,7 +677,10 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
 
     await (supabaseAdmin as any)
       .from("user_roles")
-      .upsert({ user_id: userId, role: "client_viewer" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+      .upsert(
+        { user_id: userId, role: "client_viewer" },
+        { onConflict: "user_id,role", ignoreDuplicates: true },
+      );
 
     const { error: aErr } = await (supabaseAdmin as any)
       .from("client_access")

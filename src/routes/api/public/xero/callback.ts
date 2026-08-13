@@ -32,7 +32,9 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         if (state) {
           const { data, error: stateLookupErr } = await supabaseAdmin
             .from("xero_oauth_states")
-            .select("user_id, code_verifier, return_origin, created_at, client_id, flow, known_tenant_ids")
+            .select(
+              "user_id, code_verifier, return_origin, created_at, client_id, flow, known_tenant_ids",
+            )
             .eq("state", state)
             .maybeSingle();
           if (!stateLookupErr && data) {
@@ -45,7 +47,13 @@ export const Route = createFileRoute("/api/public/xero/callback")({
 
         if (error) {
           const errorDescription = rawErrorDescription ?? "";
-          console.error("Xero authorization failed", { error, errorDescription, callbackOrigin: origin, returnOrigin, flow });
+          console.error("Xero authorization failed", {
+            error,
+            errorDescription,
+            callbackOrigin: origin,
+            returnOrigin,
+            flow,
+          });
           if (state) await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
           const message =
             error === "invalid_scope"
@@ -57,20 +65,30 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               : `${stateRow?.client_id ? `/clients/${stateRow.client_id}/settings` : "/dashboard"}?xero_error=${encodeURIComponent(message)}`;
           return redirectTo(`${returnOrigin}${errorPath}`);
         }
-        if (!code || !state) return redirectTo(`${returnOrigin}/dashboard?xero_error=missing_params`);
+        if (!code || !state)
+          return redirectTo(`${returnOrigin}/dashboard?xero_error=missing_params`);
 
         const clientSecret = process.env.XERO_CLIENT_SECRET;
         const clientId = process.env.XERO_CLIENT_ID;
         if (!clientId || !clientSecret) {
-          return redirectTo(`${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=not_configured`);
+          return redirectTo(
+            `${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=not_configured`,
+          );
         }
 
         if (!stateRow) {
-          return redirectTo(`${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=invalid_state`);
+          return redirectTo(
+            `${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=invalid_state`,
+          );
         }
-        if (stateRow.created_at && Date.now() - new Date(stateRow.created_at).getTime() > 15 * 60 * 1000) {
+        if (
+          stateRow.created_at &&
+          Date.now() - new Date(stateRow.created_at).getTime() > 15 * 60 * 1000
+        ) {
           await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-          return redirectTo(`${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=state_expired`);
+          return redirectTo(
+            `${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=state_expired`,
+          );
         }
         const codeVerifier: string | null = stateRow.code_verifier ?? null;
 
@@ -98,10 +116,17 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         });
         if (!tokenRes.ok) {
           const t = await tokenRes.text();
-          console.error("Xero token exchange failed", { status: tokenRes.status, body: t, redirectUri: XERO_CALLBACK_URL, flow });
-          return redirectTo(`${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=token_exchange`);
+          console.error("Xero token exchange failed", {
+            status: tokenRes.status,
+            body: t,
+            redirectUri: XERO_CALLBACK_URL,
+            flow,
+          });
+          return redirectTo(
+            `${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=token_exchange`,
+          );
         }
-        const tokens = await tokenRes.json() as {
+        const tokens = (await tokenRes.json()) as {
           access_token: string;
           refresh_token?: string;
           expires_in: number;
@@ -117,13 +142,18 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           if (!tokens.id_token) {
             await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             console.error("Xero sign-in missing id_token", { scope: tokens.scope });
-            return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent("Xero did not return an identity token. Confirm openid/profile/email scopes are enabled on the Xero app.")}`);
+            return redirectTo(
+              `${returnOrigin}/auth?xero_error=${encodeURIComponent("Xero did not return an identity token. Confirm openid/profile/email scopes are enabled on the Xero app.")}`,
+            );
           }
           const claims = decodeJwtPayload(tokens.id_token);
-          const xeroEmail = typeof claims?.email === "string" ? claims.email.toLowerCase().trim() : null;
+          const xeroEmail =
+            typeof claims?.email === "string" ? claims.email.toLowerCase().trim() : null;
           if (!xeroEmail) {
             await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-            return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent("Your Xero account did not return an email. Verify your Xero email is confirmed and try again.")}`);
+            return redirectTo(
+              `${returnOrigin}/auth?xero_error=${encodeURIComponent("Your Xero account did not return an email. Verify your Xero email is confirmed and try again.")}`,
+            );
           }
 
           // Match against existing invited users only. We never auto-provision
@@ -132,13 +162,23 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           let page = 1;
           // listUsers paginates; loop a few pages defensively.
           while (page <= 10) {
-            const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 200 });
+            const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+              page,
+              perPage: 200,
+            });
             if (error) {
               console.error("Xero sign-in: listUsers failed", error);
-              return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent("Could not verify your account. Please try again or sign in with email/password.")}`);
+              return redirectTo(
+                `${returnOrigin}/auth?xero_error=${encodeURIComponent("Could not verify your account. Please try again or sign in with email/password.")}`,
+              );
             }
-            const found = data.users.find((u) => (u.email ?? "").toLowerCase().trim() === xeroEmail);
-            if (found) { matchedUser = { id: found.id, email: found.email }; break; }
+            const found = data.users.find(
+              (u) => (u.email ?? "").toLowerCase().trim() === xeroEmail,
+            );
+            if (found) {
+              matchedUser = { id: found.id, email: found.email };
+              break;
+            }
             if (data.users.length < 200) break;
             page += 1;
           }
@@ -152,7 +192,9 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               meta: { reason: "not_invited" },
             });
             await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-            return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent(`No invited account found for ${xeroEmail}. Access is invite-only — contact Positive Traction to be added.`)}`);
+            return redirectTo(
+              `${returnOrigin}/auth?xero_error=${encodeURIComponent(`No invited account found for ${xeroEmail}. Access is invite-only — contact Positive Traction to be added.`)}`,
+            );
           }
 
           // Mint a magic link the browser can follow to establish a session.
@@ -163,7 +205,9 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           });
           if (linkErr || !linkData?.properties?.action_link) {
             console.error("Xero sign-in: generateLink failed", linkErr);
-            return redirectTo(`${returnOrigin}/auth?xero_error=${encodeURIComponent("Could not start your session. Please try email/password sign-in.")}`);
+            return redirectTo(
+              `${returnOrigin}/auth?xero_error=${encodeURIComponent("Could not start your session. Please try email/password sign-in.")}`,
+            );
           }
 
           await supabaseAdmin.from("audit_log").insert({
@@ -199,7 +243,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         if (!tenantsRes.ok) {
           return redirectTo(`${returnOrigin}/dashboard?xero_error=tenants_lookup`);
         }
-        const tenants = await tenantsRes.json() as Array<{
+        const tenants = (await tenantsRes.json()) as Array<{
           tenantId: string;
           tenantName: string;
           tenantType: string;
@@ -251,11 +295,14 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         const initiatingClientId = stateRow.client_id ?? null;
         if (initiatingClientId) {
           const settingsPath = `/clients/${initiatingClientId}/settings`;
-          const { getClientOrgAllowance, getSelectableConnectionsForClient, getClientFirmId } = await import("@/lib/xero/client-orgs.server");
+          const { getClientOrgAllowance, getSelectableConnectionsForClient, getClientFirmId } =
+            await import("@/lib/xero/client-orgs.server");
 
           if (tenants.length === 0) {
             await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-            return redirectTo(`${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent("Xero didn't return any organisations for that login. Run Connect a Xero file again and tick the organisation you want on Xero's consent screen.")}`);
+            return redirectTo(
+              `${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent("Xero didn't return any organisations for that login. Run Connect a Xero file again and tick the organisation you want on Xero's consent screen.")}`,
+            );
           }
 
           const firmId = await getClientFirmId(initiatingClientId);
@@ -264,7 +311,11 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           const allowance = await getClientOrgAllowance(initiatingClientId);
           // Include organisations Xero already treats as "connected" — the user
           // still needs to be able to pick them for this subscription.
-          const candidates = await getSelectableConnectionsForClient(initiatingClientId, allTenantIds, userId);
+          const candidates = await getSelectableConnectionsForClient(
+            initiatingClientId,
+            allTenantIds,
+            userId,
+          );
           const selectable = candidates.filter((c) => c.available);
 
           if (selectable.length === 1 && candidates.length === 1 && allowance.remaining > 0) {
@@ -272,8 +323,15 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               client_id: initiatingClientId,
               xero_connection_id: selectable[0].id,
             });
-            if (linkErr) return redirectTo(`${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent(linkErr.message)}`);
-            if (firmId) await supabaseAdmin.from("xero_connections").update({ firm_id: firmId }).eq("id", selectable[0].id);
+            if (linkErr)
+              return redirectTo(
+                `${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent(linkErr.message)}`,
+              );
+            if (firmId)
+              await supabaseAdmin
+                .from("xero_connections")
+                .update({ firm_id: firmId })
+                .eq("id", selectable[0].id);
             await supabaseAdmin.from("audit_log").insert({
               actor_user_id: userId,
               action: "xero_file_linked",
@@ -285,16 +343,22 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             return redirectTo(`${returnOrigin}${settingsPath}?xero=connected`);
           }
           if (candidates.length > 0) {
-            await supabaseAdmin.from("xero_oauth_states").update({
-              pending_tenant_ids: candidates.map((connection) => connection.tenant_id),
-              completed_at: new Date().toISOString(),
-            }).eq("state", state);
-            return redirectTo(`${returnOrigin}${settingsPath}?xero=choose&state=${encodeURIComponent(state)}`);
+            await supabaseAdmin
+              .from("xero_oauth_states")
+              .update({
+                pending_tenant_ids: candidates.map((connection) => connection.tenant_id),
+                completed_at: new Date().toISOString(),
+              })
+              .eq("state", state);
+            return redirectTo(
+              `${returnOrigin}${settingsPath}?xero=choose&state=${encodeURIComponent(state)}`,
+            );
           }
           await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-          return redirectTo(`${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent("Those Xero organisations belong to another organisation in this app, so they can't be linked here.")}`);
+          return redirectTo(
+            `${returnOrigin}${settingsPath}?xero_error=${encodeURIComponent("Those Xero organisations belong to another organisation in this app, so they can't be linked here.")}`,
+          );
         }
-
 
         await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
         return redirectTo(`${returnOrigin}/dashboard?xero=connected`);
@@ -325,7 +389,11 @@ const ALLOWED_RETURN_HOSTS = new Set([
   "xero-shine-dashboards.lovable.app",
 ]);
 
-function getSafeReturnOrigin(returnOrigin: string | null, legacyCodeVerifier: string | null, fallback: string) {
+function getSafeReturnOrigin(
+  returnOrigin: string | null,
+  legacyCodeVerifier: string | null,
+  fallback: string,
+) {
   const candidates = [returnOrigin, legacyCodeVerifier];
   for (const candidate of candidates) {
     if (typeof candidate !== "string" || !candidate.startsWith("https://")) continue;

@@ -10,13 +10,23 @@ export type ClientOrgAllowance = {
 };
 
 export async function getClientOrgAllowance(clientId: string): Promise<ClientOrgAllowance> {
-  const [{ data: client, error: clientError }, { data: access, error: accessError }, { count, error: countError }, { data: levels }] =
-    await Promise.all([
-      supabaseAdmin.from("clients").select("max_xero_orgs").eq("id", clientId).maybeSingle(),
-      supabaseAdmin.from("client_access").select("tier").eq("client_id", clientId),
-      supabaseAdmin.from("client_xero_orgs").select("id", { count: "exact", head: true }).eq("client_id", clientId),
-      (supabaseAdmin as any).from("plan_levels").select("key, label, xero_org_limit, allows_multi_org").eq("scope", "dashboard"),
-    ]);
+  const [
+    { data: client, error: clientError },
+    { data: access, error: accessError },
+    { count, error: countError },
+    { data: levels },
+  ] = await Promise.all([
+    supabaseAdmin.from("clients").select("max_xero_orgs").eq("id", clientId).maybeSingle(),
+    supabaseAdmin.from("client_access").select("tier").eq("client_id", clientId),
+    supabaseAdmin
+      .from("client_xero_orgs")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", clientId),
+    (supabaseAdmin as any)
+      .from("plan_levels")
+      .select("key, label, xero_org_limit, allows_multi_org")
+      .eq("scope", "dashboard"),
+  ]);
 
   if (clientError) throw new Error(clientError.message);
   if (accessError) throw new Error(accessError.message);
@@ -24,7 +34,10 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
   if (!client) throw new Error("Client subscription not found.");
 
   // Multi-file support comes from the tier catalogue, so new tiers can allow it too.
-  const byKey = new Map<string, { label?: string; xero_org_limit: number; allows_multi_org: boolean }>();
+  const byKey = new Map<
+    string,
+    { label?: string; xero_org_limit: number; allows_multi_org: boolean }
+  >();
   for (const l of (levels ?? []) as any[]) byKey.set(l.key, l);
   let isMulti = false;
   let tierLimit = 1;
@@ -43,14 +56,17 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
   return { allowance, used, isMulti, remaining: Math.max(0, allowance - used), sourceLabel };
 }
 
-
 export async function userCanManageClient(userId: string, clientId: string): Promise<boolean> {
   const [{ data: client }, { data: roles }] = await Promise.all([
     supabaseAdmin.from("clients").select("owner_user_id, firm_id").eq("id", clientId).maybeSingle(),
     supabaseAdmin.from("user_roles").select("role").eq("user_id", userId),
   ]);
   if (!client) return false;
-  if (client.owner_user_id === userId || roles?.some((row) => row.role === "advisor" || row.role === "super_admin")) return true;
+  if (
+    client.owner_user_id === userId ||
+    roles?.some((row) => row.role === "advisor" || row.role === "super_admin")
+  )
+    return true;
   if (!client.firm_id) return false;
   const { data: membership } = await supabaseAdmin
     .from("firm_members")
@@ -71,7 +87,9 @@ export type ClientFirmConnectionAccess = {
 };
 
 /** Resolve connection limits from the target client's organisation, never the caller's first membership. */
-export async function getClientFirmConnectionAccess(clientId: string): Promise<ClientFirmConnectionAccess> {
+export async function getClientFirmConnectionAccess(
+  clientId: string,
+): Promise<ClientFirmConnectionAccess> {
   const { data: client, error: clientError } = await supabaseAdmin
     .from("clients")
     .select("firm_id")
@@ -83,8 +101,15 @@ export async function getClientFirmConnectionAccess(clientId: string): Promise<C
   const firmId = client.firm_id;
   const [{ data: firm }, { data: subscription }, { count }, { data: levels }] = await Promise.all([
     supabaseAdmin.from("firms").select("name, is_always_free").eq("id", firmId).maybeSingle(),
-    supabaseAdmin.from("subscriptions").select("tier, status, trial_ends_at").eq("firm_id", firmId).maybeSingle(),
-    supabaseAdmin.from("client_xero_orgs").select("id, clients!inner(firm_id)", { count: "exact", head: true }).eq("clients.firm_id", firmId),
+    supabaseAdmin
+      .from("subscriptions")
+      .select("tier, status, trial_ends_at")
+      .eq("firm_id", firmId)
+      .maybeSingle(),
+    supabaseAdmin
+      .from("client_xero_orgs")
+      .select("id, clients!inner(firm_id)", { count: "exact", head: true })
+      .eq("clients.firm_id", firmId),
     (supabaseAdmin as any).from("plan_levels").select("key, xero_org_limit").eq("scope", "firm"),
   ]);
   if (!firm) throw new Error("Organisation not found.");
@@ -92,20 +117,26 @@ export async function getClientFirmConnectionAccess(clientId: string): Promise<C
   const plan = (levels ?? []).find((row: any) => row.key === subscription?.tier);
   const connectionLimit = Math.max(1, Number(plan?.xero_org_limit ?? 1));
   const status = subscription?.status ?? null;
-  const trialExpired = status === "trialing" && subscription?.trial_ends_at
-    ? new Date(subscription.trial_ends_at).getTime() < Date.now()
-    : false;
-  const state = firm.is_always_free || status === "active"
-    ? "ok"
-    : status === "trialing" && !trialExpired
-      ? "trial"
-      : "locked";
+  const trialExpired =
+    status === "trialing" && subscription?.trial_ends_at
+      ? new Date(subscription.trial_ends_at).getTime() < Date.now()
+      : false;
+  const state =
+    firm.is_always_free || status === "active"
+      ? "ok"
+      : status === "trialing" && !trialExpired
+        ? "trial"
+        : "locked";
 
   return { firmId, firmName: firm.name, state, connectionCount: count ?? 0, connectionLimit };
 }
 
 export async function getClientFirmId(clientId: string): Promise<string | null> {
-  const { data } = await supabaseAdmin.from("clients").select("firm_id").eq("id", clientId).maybeSingle();
+  const { data } = await supabaseAdmin
+    .from("clients")
+    .select("firm_id")
+    .eq("id", clientId)
+    .maybeSingle();
   return (data?.firm_id as string | null) ?? null;
 }
 
@@ -173,7 +204,10 @@ export async function getSelectableConnectionsForClient(
   const { data: firms } = await supabaseAdmin.from("firms").select("id, name");
   const firmNames = new Map<string, string>((firms ?? []).map((f: any) => [f.id, f.name]));
 
-  const byTenant = new Map<string, { clientId: string; clientName: string | null; firmId: string | null }>();
+  const byTenant = new Map<
+    string,
+    { clientId: string; clientName: string | null; firmId: string | null }
+  >();
   for (const row of (assigned ?? []) as any[]) {
     const tid = row.xero_connections?.tenant_id;
     if (tid) {
@@ -204,7 +238,7 @@ export async function getSelectableConnectionsForClient(
       movable: Boolean(link) && !linkedToThisClient && (superAdmin || sameFirm),
       linkedClientId: link?.clientId ?? null,
       linkedClientName: link?.clientName ?? null,
-      linkedFirmName: link?.firmId ? firmNames.get(link.firmId) ?? null : null,
+      linkedFirmName: link?.firmId ? (firmNames.get(link.firmId) ?? null) : null,
       linkedToThisClient,
     });
   }
@@ -218,7 +252,9 @@ export async function getSelectableConnectionsForClient(
 export async function getUnassignedConnectionsForUser(userId: string) {
   const { data: connections, error } = await supabaseAdmin
     .from("xero_connections")
-    .select("id, tenant_id, tenant_name, tenant_type, created_at, status, disconnected_at, base_currency")
+    .select(
+      "id, tenant_id, tenant_name, tenant_type, created_at, status, disconnected_at, base_currency",
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: true });
   if (error) throw new Error(error.message);
