@@ -119,17 +119,16 @@ export function ScenarioWidget({
             />
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-3">
+          <div className="mt-3 grid grid-cols-3 gap-3">
             <Stat
               label={`Net position · ${monthLabelOf(month)}`}
               value={fmt(view.monthTotals.net)}
               tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
             />
-            <Stat
-              label="Revenue this month"
-              value={fmt(view.monthTotals.revenue)}
-            />
+            <Stat label="Cost of sales" value={fmt(view.monthTotals.cogs)} />
+            <Stat label="Operating expenses" value={fmt(view.monthTotals.operating)} />
           </div>
+
 
 
 
