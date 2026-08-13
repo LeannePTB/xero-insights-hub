@@ -27,6 +27,8 @@ import {
   getScenarioData,
   resetScenario,
   setInvoiceExcluded,
+  setInvoicesExcludedBulk,
+
   type ScenarioExpense,
   type ScenarioInvoice,
 } from "@/lib/xero/scenario.functions";
