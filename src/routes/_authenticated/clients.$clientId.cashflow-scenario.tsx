@@ -268,29 +268,33 @@ function CashflowScenarioPage() {
               </section>
             )}
 
-            {/* Summary */}
-            <section className="mt-6 grid gap-3 sm:grid-cols-3">
-              <Stat label="Baseline invoice revenue (period, excl. GST)" value={fmt(view.rangeTotals.baselineRevenue)} />
-              <Stat label="Current scenario (period)" value={fmt(view.rangeTotals.revenue)} />
-              <Stat
-                label="Excluded revenue (period)"
-                value={fmt(-view.rangeTotals.excludedRevenue)}
-                tone={view.rangeTotals.excludedRevenue > 0 ? "text-rose-600" : "text-muted-foreground"}
-              />
-            </section>
+            {/* Scenario */}
+            <section className="mt-8">
+              <div className="mb-5 border-b border-border/60 pb-4">
+                <h2 className="font-display text-xl font-semibold">Scenario</h2>
+                <p className="text-sm text-muted-foreground">If this, then that</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Stat label="Baseline invoice revenue (period, excl. GST)" value={fmt(view.rangeTotals.baselineRevenue)} />
+                <Stat label="Current scenario (period)" value={fmt(view.rangeTotals.revenue)} />
+                <Stat
+                  label="Excluded revenue (period)"
+                  value={fmt(-view.rangeTotals.excludedRevenue)}
+                  tone={view.rangeTotals.excludedRevenue > 0 ? "text-rose-600" : "text-muted-foreground"}
+                />
+              </div>
 
-
-            <section className="mt-3 grid gap-3 sm:grid-cols-5">
-              <Stat label={`Scenario revenue · ${monthLabelOf(month)} (excl. GST)`} value={fmt(view.monthTotals.revenue)} />
-              <Stat label="Cost of sales" value={fmt(view.monthTotals.cogs)} />
-              <Stat label="Fixed expenses" value={fmt(view.monthTotals.fixed)} />
-              <Stat label="Variable expenses" value={fmt(view.monthTotals.variable)} />
-              <Stat
-                label="Net position"
-                value={fmt(view.monthTotals.net)}
-                tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
-              />
-            </section>
+              <div className="mt-3 grid gap-3 sm:grid-cols-5">
+                <Stat label={`Scenario revenue · ${monthLabelOf(month)} (excl. GST)`} value={fmt(view.monthTotals.revenue)} />
+                <Stat label="Cost of sales" value={fmt(view.monthTotals.cogs)} />
+                <Stat label="Fixed expenses" value={fmt(view.monthTotals.fixed)} />
+                <Stat label="Variable expenses" value={fmt(view.monthTotals.variable)} />
+                <Stat
+                  label="Net position"
+                  value={fmt(view.monthTotals.net)}
+                  tone={view.monthTotals.net >= 0 ? "text-emerald-600" : "text-rose-600"}
+                />
+              </div>
 
 
             {/* Matrix */}
@@ -586,6 +590,7 @@ function CashflowScenarioPage() {
                     ))}
                 </ul>
               )}
+            </section>
             </section>
 
             <p className="mt-6 text-xs text-muted-foreground">
