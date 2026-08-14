@@ -187,6 +187,7 @@ export function FirmClientsSection({
                         <Link
                           to="/clients/$clientId"
                           params={{ clientId: c.id }}
+                          search={{ firmId }}
                           className="flex items-center gap-3 group"
                         >
                           <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary shrink-0">
@@ -235,6 +236,7 @@ export function FirmClientsSection({
                           <Link
                             to="/clients/$clientId"
                             params={{ clientId: c.id }}
+                            search={{ firmId }}
                             className="inline-flex items-center text-muted-foreground hover:text-foreground"
                           >
                             <ChevronRight className="h-4 w-4" />
