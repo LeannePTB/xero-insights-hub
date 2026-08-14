@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ChevronRight, CreditCard, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, CreditCard, Layers, Loader2, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -381,7 +381,7 @@ function FirmPage() {
 
         <div className="mt-8">
           <Button asChild variant="outline">
-            <Link to="/firms/$firmId/loans" params={{ firmId }}>
+            <Link to="/firms/$firmId/loans" params={{ firmId }} search={{ group: undefined }}>
               <Layers className="mr-2 h-4 w-4" /> Loan Consolidation
             </Link>
           </Button>
