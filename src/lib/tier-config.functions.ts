@@ -339,7 +339,7 @@ export const getFirmPlanSummary = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: sub } = await (context.supabase as any)
       .from("subscriptions")
-      .select("tier")
+      .select("tier, client_limit_override")
       .eq("firm_id", data.firmId)
       .maybeSingle();
     const planKey = (sub?.tier as string | undefined) ?? null;
