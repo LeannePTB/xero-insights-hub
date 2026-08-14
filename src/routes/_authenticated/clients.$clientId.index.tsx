@@ -68,8 +68,10 @@ function ClientDashboard() {
   });
   const realIsAdvisor = ctxQ.data?.isAdvisor ?? false;
   // Preview mode: render exactly what a client viewer on this tier would get.
-  const previewing = !!previewTier && realIsAdvisor;
+  // Only platform admins and advisors may preview.
+  const previewing = !!previewTier && (ctxQ.data?.canViewAs ?? false);
   const isAdvisor = realIsAdvisor && !previewing;
+
   const viewerEntry = ctxQ.data?.viewerClients.find((c) => c.id === clientId);
   // Tier is only a label now — the widget list itself comes from the client's
   // own configuration (bounded by the organisation's plan).
