@@ -138,6 +138,10 @@ function ClientSettings() {
     queryFn: () => fetchPlanTiers({ data: { clientId } }),
   });
   const planTiers = planTiersQ.data?.allowed ?? null;
+  const fetchMyContext = useServerFn(getMyContext);
+  const myCtxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
+  const isSuperAdmin = !!myCtxQ.data?.isSuperAdmin;
+
   // Only offer tiers the organisation's plan includes.
   const { levels: tierLevels } = usePlanLevels("dashboard");
   const catalogueKeys = (tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]) as DashboardTier[];
