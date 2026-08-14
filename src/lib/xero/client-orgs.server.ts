@@ -173,21 +173,21 @@ export async function isSuperAdmin(userId: string): Promise<boolean> {
 /**
  * Candidates for linking to a client subscription.
  *
- * Scoped to the tenants authorised in this OAuth session, then to files that
- * belong to this client's organisation (or no organisation yet). Super admins
- * also see files stamped to other organisations so a file can be moved.
+ * Scoped to the tenants authorised in this OAuth session, then strictly to
+ * files that belong to this client's organisation (or no organisation yet).
+ * This applies to everyone, including super admins — files stamped to another
+ * organisation are never listed.
  *
- * Files already linked elsewhere come back with available=false plus a
- * `movable` flag, so the UI can offer "Move here" instead of a dead end.
+ * Files already linked inside this organisation come back with
+ * available=false plus a `movable` flag, so the UI can offer "Move here".
  */
 export async function getSelectableConnectionsForClient(
   clientId: string,
   tenantIds: string[],
-  callerUserId?: string,
+  _callerUserId?: string,
 ): Promise<SelectableConnection[]> {
   if (!tenantIds.length) return [];
   const firmId = await getClientFirmId(clientId);
-  const superAdmin = callerUserId ? await isSuperAdmin(callerUserId) : false;
 
   const { data: connections, error } = await supabaseAdmin
     .from("xero_connections")
@@ -198,8 +198,9 @@ export async function getSelectableConnectionsForClient(
   if (!connections?.length) return [];
 
   const scoped = connections.filter((c: any) =>
-    superAdmin ? true : firmId ? c.firm_id === firmId || c.firm_id === null : c.firm_id === null,
+    firmId ? c.firm_id === firmId || c.firm_id === null : c.firm_id === null,
   );
+
 
   const { data: assigned, error: assignedError } = await supabaseAdmin
     .from("client_xero_orgs")
@@ -243,7 +244,7 @@ export async function getSelectableConnectionsForClient(
       tenant_type: c.tenant_type ?? null,
       status: c.status ?? null,
       available: !link,
-      movable: Boolean(link) && !linkedToThisClient && (superAdmin || sameFirm),
+      movable: Boolean(link) && !linkedToThisClient && sameFirm,
       linkedClientId: link?.clientId ?? null,
       linkedClientName: link?.clientName ?? null,
       linkedFirmName: link?.firmId ? (firmNames.get(link.firmId) ?? null) : null,

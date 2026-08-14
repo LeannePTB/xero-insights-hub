@@ -536,6 +536,13 @@ function ClientSettings() {
               })}
             </ul>
           )}
+          {chooserState && availableConns.length === 0 && !optionsQ.isFetching && (
+            <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+              Those Xero files belong to another organisation, so they can't be linked here. Run
+              "Connect a Xero file" again and tick an organisation that belongs to this
+              organisation's subscription.
+            </p>
+          )}
           {chooserState && availableConns.length > 0 && (
             <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
               <p className="mb-2 text-sm font-semibold">Choose files for this subscription</p>

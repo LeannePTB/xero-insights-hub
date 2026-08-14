@@ -329,16 +329,14 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
     const superAdmin = await isSuperAdmin(context.userId);
     const targetFirmId = await getClientFirmId(data.clientId);
     const sourceFirmId = (existing.clients as any)?.firm_id ?? null;
-    if (!superAdmin) {
-      if (!targetFirmId || sourceFirmId !== targetFirmId) {
-        throw new Error(
-          "That Xero file belongs to another organisation. A platform admin can move it.",
-        );
-      }
-      if (!(await userCanManageClient(context.userId, existing.client_id))) {
-        throw new Error("You cannot manage the subscription that currently holds this Xero file.");
-      }
+    // Xero files never cross organisations — not even for platform admins.
+    if (!targetFirmId || sourceFirmId !== targetFirmId) {
+      throw new Error("That Xero file belongs to another organisation and cannot be moved here.");
     }
+    if (!superAdmin && !(await userCanManageClient(context.userId, existing.client_id))) {
+      throw new Error("You cannot manage the subscription that currently holds this Xero file.");
+    }
+
 
     const allowance = await getClientOrgAllowance(data.clientId);
     if (allowance.remaining < 1) {
