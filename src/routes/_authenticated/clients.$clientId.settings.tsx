@@ -35,6 +35,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -64,6 +69,7 @@ import {
   EyeOff,
   Copy,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { ALL_TIERS, tierLabel, type DashboardTier, type WidgetKey } from "@/lib/tiers";
@@ -391,7 +397,7 @@ function ClientSettings() {
         </Section>
 
         {/* Report basis */}
-        <Section title="Report basis">
+        <Section title="Report basis" collapsible>
           <p className="mb-3 text-xs text-muted-foreground">
             Sets the client's accounting basis. Below, choose which dashboard cards should use it
             instead of always reporting on Accrual. Viewers don't see any of this.
@@ -853,6 +859,7 @@ function ClientSettings() {
         {/* Per-client widget control */}
         <Section
           title="What this client sees"
+          collapsible
           action={
             isSuperAdmin ? (
               <Button variant="ghost" size="sm" asChild>
@@ -860,7 +867,6 @@ function ClientSettings() {
               </Button>
             ) : undefined
           }
-
         >
           <ClientWidgetsPanel clientId={clientId} />
         </Section>
@@ -891,20 +897,43 @@ function ClientSettings() {
 function Section({
   title,
   action,
+  collapsible,
+  defaultOpen = true,
   children,
 }: {
   title: string;
   action?: React.ReactNode;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
   children: React.ReactNode;
 }) {
+  if (!collapsible) {
+    return (
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="font-display text-lg font-semibold">{title}</h2>
+          {action}
+        </div>
+        {children}
+      </section>
+    );
+  }
+
   return (
-    <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 className="font-display text-lg font-semibold">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </section>
+    <Collapsible defaultOpen={defaultOpen}>
+      <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+        <div className="mb-4 flex items-center justify-between">
+          <CollapsibleTrigger asChild>
+            <button className="group flex flex-1 items-center justify-between gap-2 text-left">
+              <h2 className="font-display text-lg font-semibold">{title}</h2>
+              <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+            </button>
+          </CollapsibleTrigger>
+          {action ? <div className="shrink-0">{action}</div> : null}
+        </div>
+        <CollapsibleContent>{children}</CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }
 
@@ -939,54 +968,63 @@ function CostClassificationSection({
   });
 
   return (
-    <section
-      id="cost-classification"
-      className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] scroll-mt-6"
-    >
-      <div className="mb-4 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="font-display text-lg font-semibold">Cost classification</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Tag each expense account as <strong>Fixed</strong>, <strong>Variable</strong>, or{" "}
-            <strong>Excluded</strong> for break-even. Use the separate <strong>Wages</strong> marker
-            for Business Health only; it does not change fixed-cost treatment.
-          </p>
+    <Collapsible defaultOpen={true}>
+      <section
+        id="cost-classification"
+        className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] scroll-mt-6"
+      >
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <CollapsibleTrigger asChild>
+            <button className="group flex-1 text-left">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="font-display text-lg font-semibold">Cost classification</h2>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Tag each expense account as <strong>Fixed</strong>, <strong>Variable</strong>, or{" "}
+                <strong>Excluded</strong> for break-even. Use the separate <strong>Wages</strong>{" "}
+                marker for Business Health only; it does not change fixed-cost treatment.
+              </p>
+            </button>
+          </CollapsibleTrigger>
+          <div className="flex shrink-0 items-center gap-2">
+            <span className="text-xs text-muted-foreground">{enabled ? "On" : "Off"}</span>
+            <Switch
+              checked={enabled}
+              onCheckedChange={(v) => toggleMut.mutate(v)}
+              disabled={toggleMut.isPending || enabledQ.isLoading}
+              aria-label="Enable cost classification"
+            />
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <span className="text-xs text-muted-foreground">{enabled ? "On" : "Off"}</span>
-          <Switch
-            checked={enabled}
-            onCheckedChange={(v) => toggleMut.mutate(v)}
-            disabled={toggleMut.isPending || enabledQ.isLoading}
-            aria-label="Enable cost classification"
-          />
-        </div>
-      </div>
-      {!enabled ? (
-        <p className="text-sm text-muted-foreground">
-          Cost classification is turned off. The Breakeven widget treats all operating expenses as
-          fixed, and Cost of Sales as variable.
-        </p>
-      ) : linkedOrgs.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Link a Xero organisation first.</p>
-      ) : (
-        <div className="space-y-4">
-          {linkedOrgs.map((o) => {
-            const tenantId: string | undefined = o.xero_connections?.tenant_id;
-            const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
-            if (!tenantId) return null;
-            return (
-              <CostClassificationPanel
-                key={o.id}
-                clientId={clientId}
-                tenantId={tenantId}
-                tenantName={tenantName}
-              />
-            );
-          })}
-        </div>
-      )}
-    </section>
+        <CollapsibleContent>
+          {!enabled ? (
+            <p className="text-sm text-muted-foreground">
+              Cost classification is turned off. The Breakeven widget treats all operating expenses as
+              fixed, and Cost of Sales as variable.
+            </p>
+          ) : linkedOrgs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Link a Xero organisation first.</p>
+          ) : (
+            <div className="space-y-4">
+              {linkedOrgs.map((o) => {
+                const tenantId: string | undefined = o.xero_connections?.tenant_id;
+                const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
+                if (!tenantId) return null;
+                return (
+                  <CostClassificationPanel
+                    key={o.id}
+                    clientId={clientId}
+                    tenantId={tenantId}
+                    tenantName={tenantName}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </CollapsibleContent>
+      </section>
+    </Collapsible>
   );
 }
 
