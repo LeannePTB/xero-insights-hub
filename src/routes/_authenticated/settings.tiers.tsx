@@ -4,16 +4,34 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyContext } from "@/lib/roles.functions";
 import { listTierConfig, saveTierWidgets, listTierSettings, setTierEnabled } from "@/lib/tier-config.functions";
-import { ALL_TIERS, ALL_WIDGETS, TIER_LABEL, TIER_DESCRIPTION, WIDGET_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { savePlanLevel, deletePlanLevel, type PlanLevel } from "@/lib/plan-levels.functions";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
+import { ALL_TIERS, ALL_WIDGETS, TIER_LABEL, TIER_DESCRIPTION, WIDGET_LABEL, tierLabel, tierDescription, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, Loader2, Save } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Loader2, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 
 export const Route = createFileRoute("/_authenticated/settings/tiers")({
-  head: () => ({ meta: [{ title: "Tier widgets — Traction Advisory" }] }),
+  head: () => ({
+    meta: [
+      { title: "Tier widgets — Traction Advisory" },
+      { name: "description", content: "Add, remove and configure the dashboard tiers your clients can be given." },
+    ],
+  }),
   component: TierSettings,
 });
 
@@ -24,6 +42,8 @@ function TierSettings() {
   const fetchSettings = useServerFn(listTierSettings);
   const saveFn = useServerFn(saveTierWidgets);
   const toggleFn = useServerFn(setTierEnabled);
+  const savePlanFn = useServerFn(savePlanLevel);
+  const deletePlanFn = useServerFn(deletePlanLevel);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const cfgQ = useQuery({
@@ -31,30 +51,82 @@ function TierSettings() {
     queryFn: () => fetchCfg({ data: { clientId: null } }),
   });
   const settingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchSettings() });
+  const levelsQ = usePlanLevels("dashboard");
 
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
+  const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
+
+  const [newTier, setNewTier] = useState<{ label: string; description: string } | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<PlanLevel | null>(null);
+
+  // Tier list comes from the catalogue; built-ins remain if the catalogue is empty.
+  const tiers = useMemo(() => {
+    const cat = levelsQ.levels;
+    if (cat.length) return cat.map((l) => l.key);
+    return [...ALL_TIERS] as string[];
+  }, [levelsQ.levels]);
+  const levelByKey = useMemo(
+    () => new Map(levelsQ.levels.map((l) => [l.key, l])),
+    [levelsQ.levels],
+  );
 
   const saveMut = useMutation({
-    mutationFn: ({ tier, widgets }: { tier: DashboardTier; widgets: WidgetKey[] }) =>
-      saveFn({ data: { clientId: null, tier, widgets } }),
+    mutationFn: ({ tier, widgets }: { tier: string; widgets: WidgetKey[] }) =>
+      saveFn({ data: { clientId: null, tier: tier as DashboardTier, widgets } }),
     onSuccess: () => {
       toast.success("Saved");
       qc.invalidateQueries({ queryKey: ["tier-config"] });
       qc.invalidateQueries({ queryKey: ["effective-widgets"] });
+      qc.invalidateQueries({ queryKey: ["client-widgets"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
 
   const toggleMut = useMutation({
-    mutationFn: (v: { tier: DashboardTier; enabled: boolean }) => toggleFn({ data: v }),
+    mutationFn: (v: { tier: string; enabled: boolean }) =>
+      toggleFn({ data: { tier: v.tier as DashboardTier, enabled: v.enabled } }),
     onSuccess: (_d, v) => {
-      toast.success(v.enabled ? `${TIER_LABEL[v.tier]} enabled` : `${TIER_LABEL[v.tier]} disabled`);
+      toast.success(v.enabled ? "Tier enabled" : "Tier disabled");
       qc.invalidateQueries({ queryKey: ["tier-settings"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
 
-  if (ctxQ.isLoading || cfgQ.isLoading) {
+  const addMut = useMutation({
+    mutationFn: (d: { label: string; description: string }) =>
+      savePlanFn({
+        data: {
+          scope: "dashboard",
+          key: d.label,
+          label: d.label,
+          description: d.description,
+          xero_org_limit: 1,
+          widgets: [],
+          sort_order: 100 + levelsQ.levels.length,
+          enabled: true,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Tier added");
+      setNewTier(null);
+      qc.invalidateQueries({ queryKey: ["plan-levels"] });
+      qc.invalidateQueries({ queryKey: ["tier-config"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not add tier"),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => deletePlanFn({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Tier removed");
+      setPendingDelete(null);
+      qc.invalidateQueries({ queryKey: ["plan-levels"] });
+      qc.invalidateQueries({ queryKey: ["tier-config"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not remove tier"),
+  });
+
+  if (ctxQ.isLoading || cfgQ.isLoading || levelsQ.isLoading) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>;
   }
   if (!isAdvisor) return <p className="p-6 text-sm text-destructive">Advisors only.</p>;
@@ -66,30 +138,101 @@ function TierSettings() {
           <Button variant="ghost" size="sm" asChild className="-ml-2">
             <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
           </Button>
-          <div>
-            <h1 className="font-display text-3xl font-semibold">Dashboard tier widgets</h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Turn each tier on or off and pick the widgets it shows. Disabled tiers won't appear when inviting viewers or assigning access.
-            </p>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h1 className="font-display text-3xl font-semibold">Dashboard tier widgets</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Turn each tier on or off and pick the widgets it shows. Disabled tiers won't appear when inviting viewers or assigning access.
+              </p>
+            </div>
+            {isSuperAdmin && (
+              <Button size="sm" variant="outline" onClick={() => setNewTier({ label: "", description: "" })}>
+                <Plus className="mr-2 h-4 w-4" /> New tier
+              </Button>
+            )}
           </div>
 
-          {ALL_TIERS.map((tier) => {
-            const enabled = settingsQ.data?.enabled?.[tier] ?? true;
+          {tiers.map((tier) => {
+            const enabled = (settingsQ.data?.enabled as Record<string, boolean> | undefined)?.[tier] ?? true;
+            const level = levelByKey.get(tier);
             return (
               <TierEditor
                 key={tier}
-                tier={tier}
-                initial={cfgQ.data?.global[tier] ?? []}
+                tier={tier as DashboardTier}
+                title={tierLabel(tier, level?.label)}
+                description={tierDescription(tier, level?.description)}
+                initial={((cfgQ.data?.global as Record<string, WidgetKey[]>)?.[tier]) ?? []}
                 saving={saveMut.isPending}
                 onSave={(widgets) => saveMut.mutate({ tier, widgets })}
                 enabled={enabled}
                 onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
                 toggleDisabled={toggleMut.isPending}
+                onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
               />
             );
           })}
         </main>
       </div>
+
+      <Dialog open={!!newTier} onOpenChange={(o) => !o && setNewTier(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>New dashboard tier</DialogTitle>
+            <DialogDescription>Give it a name, then pick its widgets on the page.</DialogDescription>
+          </DialogHeader>
+          {newTier && (
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label>Name</Label>
+                <Input
+                  value={newTier.label}
+                  onChange={(e) => setNewTier({ ...newTier, label: e.target.value })}
+                  placeholder="Growth"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Description</Label>
+                <Textarea
+                  rows={2}
+                  value={newTier.description}
+                  onChange={(e) => setNewTier({ ...newTier, description: e.target.value })}
+                  placeholder="What this tier includes."
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setNewTier(null)}>Cancel</Button>
+            <Button
+              onClick={() => newTier && addMut.mutate(newTier)}
+              disabled={!newTier?.label.trim() || addMut.isPending}
+            >
+              {addMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add tier
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Remove “{pendingDelete?.label}”?</DialogTitle>
+            <DialogDescription>
+              Tiers in use by a client can't be removed — move those clients first.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setPendingDelete(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => pendingDelete && deleteMut.mutate(pendingDelete.id)}
+              disabled={deleteMut.isPending}
+            >
+              {deleteMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Remove
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminShell>
   );
 }
@@ -106,6 +249,7 @@ export function TierEditor({
   enabled,
   onToggleEnabled,
   toggleDisabled,
+  onDelete,
 }: {
   tier: DashboardTier;
   initial: WidgetKey[];
@@ -118,6 +262,7 @@ export function TierEditor({
   enabled?: boolean;
   onToggleEnabled?: (v: boolean) => void;
   toggleDisabled?: boolean;
+  onDelete?: () => void;
 }) {
   const [selected, setSelected] = useState<Set<WidgetKey>>(new Set(initial));
   useEffect(() => { setSelected(new Set(initial)); }, [initial.join(",")]);
@@ -153,8 +298,13 @@ export function TierEditor({
               checked={!!enabled}
               onCheckedChange={onToggleEnabled}
               disabled={toggleDisabled}
-              aria-label={`Toggle ${TIER_LABEL[tier]}`}
+              aria-label={`Toggle ${title ?? TIER_LABEL[tier]}`}
             />
+          )}
+          {onDelete && (
+            <Button variant="ghost" size="sm" onClick={onDelete} aria-label="Remove tier">
+              <Trash2 className="h-4 w-4" />
+            </Button>
           )}
           {onReset && (
             <Button variant="ghost" size="sm" onClick={onReset} disabled={saving || isOff}>
