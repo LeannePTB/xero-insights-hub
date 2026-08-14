@@ -12,6 +12,8 @@ export type PlanLevel = {
   client_limit: number;
   xero_org_limit: number;
   allows_multi_org: boolean;
+  /** Marks the level as free of charge (no billing for clients on it). */
+  is_free: boolean;
   widgets: string[];
   /** Firm-scope only: dashboard tier keys this plan may grant. Empty = all. */
   allowed_tiers: string[];
@@ -20,7 +22,7 @@ export type PlanLevel = {
 };
 
 const COLS =
-  "id, scope, key, label, description, client_limit, xero_org_limit, allows_multi_org, widgets, allowed_tiers, sort_order, enabled";
+  "id, scope, key, label, description, client_limit, xero_org_limit, allows_multi_org, is_free, widgets, allowed_tiers, sort_order, enabled";
 
 /** Readable by any signed-in user — powers plan/tier dropdowns everywhere. */
 export const listPlanLevels = createServerFn({ method: "GET" })
@@ -53,6 +55,7 @@ export const savePlanLevel = createServerFn({ method: "POST" })
       client_limit?: number;
       xero_org_limit?: number;
       allows_multi_org?: boolean;
+      is_free?: boolean;
       widgets?: string[];
       allowed_tiers?: string[];
       sort_order?: number;
@@ -77,6 +80,7 @@ export const savePlanLevel = createServerFn({ method: "POST" })
       xero_org_limit:
         data.scope === "firm" ? Math.max(1, clientLimit) : Math.max(1, data.xero_org_limit ?? 1),
       allows_multi_org: !!data.allows_multi_org,
+      is_free: !!data.is_free,
       widgets: data.widgets ?? [],
       allowed_tiers: data.scope === "firm" ? (data.allowed_tiers ?? []) : [],
       sort_order: data.sort_order ?? 100,
