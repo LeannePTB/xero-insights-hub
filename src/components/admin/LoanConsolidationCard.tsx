@@ -22,22 +22,13 @@ export function LoanConsolidationCard({ firmId }: { firmId: string }) {
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-sm font-medium">
-            <Layers className="h-4 w-4 text-muted-foreground" /> Loan Consolidation
-          </div>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Consolidation groups for this organisation and the companies in each one.
-          </p>
+      <div>
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Layers className="h-4 w-4 text-muted-foreground" /> Loan Consolidation
         </div>
-        <div className="flex items-center gap-2">
-          <Button asChild variant="outline" size="sm">
-            <Link to="/firms/$firmId/loans" params={{ firmId }} search={{ group: undefined }}>
-              Open workspace
-            </Link>
-          </Button>
-        </div>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Consolidation groups for this organisation and the companies in each one.
+        </p>
       </div>
 
       <div className="mt-5 border-t border-border pt-4">
