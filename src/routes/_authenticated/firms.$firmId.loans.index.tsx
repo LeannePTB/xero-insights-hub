@@ -380,14 +380,15 @@ function LoanMatrixTab() {
                     );
                   })}
                   {file.rows.length > 0 && (
-                    <TableRow className="border-t-2 border-primary/40 hover:bg-transparent">
+                    <TableRow className="border-t-2 border-primary/30 bg-primary/5 hover:bg-primary/5">
                       <TableCell colSpan={6} />
-                      <TableCell className="border-l border-border text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <TableCell className="border-l border-border text-right text-xs font-semibold uppercase tracking-wider text-primary">
                         Total net
                       </TableCell>
-                      <TableCell className="tabular-nums font-semibold">{num(totalNet)}</TableCell>
+                      <TableCell className="tabular-nums font-semibold text-primary">{num(totalNet)}</TableCell>
                     </TableRow>
                   )}
+
                 </TableBody>
               </Table>
             </div>
