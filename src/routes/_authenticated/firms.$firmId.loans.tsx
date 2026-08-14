@@ -62,36 +62,10 @@ function LoansLayout() {
           </Link>
         </Button>
 
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-display text-2xl font-semibold flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" /> Company Loan Consolidation
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Match intercompany loan accounts across the Xero files in a group and see what doesn't balance.
-            </p>
-          </div>
-          <div className="w-64">
-            <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Group
-            </label>
-            <Select
-              value={selected}
-              onValueChange={(v) => navigate({ to: pathname, search: { group: v } })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={groupsQ.isLoading ? "Loading…" : "No groups yet"} />
-              </SelectTrigger>
-              <SelectContent>
-                {groups.map((g) => (
-                  <SelectItem key={g.id} value={g.id}>
-                    {g.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
+        <h1 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+          <Layers className="h-4 w-4" /> Company Loan Consolidation
+        </h1>
+
 
         <nav className="mt-6 flex gap-1 border-b border-border">
           {TABS.map((t) => {
