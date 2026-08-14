@@ -147,7 +147,10 @@ function LoanMatrixTab() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const sections = recon?.files ?? [];
+  // Unpaired accounts are excluded from the matrix — pair them on the Accounts tab.
+  const sections = (recon?.files ?? [])
+    .map((f: any) => ({ ...f, rows: f.rows.filter((r: ReconRow) => r.status !== "unpaired") }))
+    .filter((f: any) => f.rows.length > 0);
 
   return (
     <div className="space-y-6">
