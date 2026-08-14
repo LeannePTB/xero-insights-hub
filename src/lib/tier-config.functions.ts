@@ -37,13 +37,9 @@ export const listTierConfig = createServerFn({ method: "POST" })
       .from("plan_levels")
       .select("key")
       .eq("scope", "dashboard");
-    const tierKeys = Array.from(
-      new Set<string>([
-        ...ALL_TIERS,
-        ...((catRows ?? []) as any[]).map((r) => r.key as string),
-        ...((rows ?? []) as any[]).map((r) => r.tier as string),
-      ]),
-    );
+    const catKeys = ((catRows ?? []) as any[]).map((r) => r.key as string);
+    // Retired tiers must disappear everywhere, so stored rows never widen the list.
+    const tierKeys = Array.from(new Set<string>(catKeys.length ? catKeys : [...ALL_TIERS]));
 
     const build = (clientKey: string) =>
       Object.fromEntries(

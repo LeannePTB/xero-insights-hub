@@ -132,5 +132,22 @@ export const deletePlanLevel = createServerFn({ method: "POST" })
 
     const { error } = await (supabaseAdmin as any).from("plan_levels").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
+
+    if (level.scope === "dashboard") {
+      // Leave no trace of a retired tier: strip it from plans and drop its settings.
+      const { data: firmPlans } = await (supabaseAdmin as any)
+        .from("plan_levels")
+        .select("id, allowed_tiers")
+        .eq("scope", "firm");
+      for (const p of (firmPlans ?? []) as Array<{ id: string; allowed_tiers: string[] | null }>) {
+        const next = (p.allowed_tiers ?? []).filter((k) => k !== level.key);
+        if (next.length !== (p.allowed_tiers ?? []).length) {
+          await (supabaseAdmin as any).from("plan_levels").update({ allowed_tiers: next }).eq("id", p.id);
+        }
+      }
+      await (supabaseAdmin as any).from("tier_settings").delete().eq("tier", level.key);
+      await (supabaseAdmin as any).from("tier_widget_config").delete().eq("tier", level.key);
+    }
+
     return { ok: true };
   });

@@ -31,7 +31,8 @@ import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
-import { TIER_LABEL, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
+import { tierLabel as tierLabelFor, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
@@ -49,9 +50,7 @@ export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
 function ClientDashboard() {
   const { clientId } = Route.useParams();
   const { viewAs } = Route.useSearch();
-  const previewTier = (ALL_TIERS as readonly string[]).includes(viewAs ?? "")
-    ? (viewAs as DashboardTier)
-    : null;
+  const previewTier = (viewAs ?? "").trim() ? (viewAs as DashboardTier) : null;
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchClient = useServerFn(getClient);
@@ -81,10 +80,12 @@ function ClientDashboard() {
   });
   const widgets = widgetsQ.data?.widgets ?? [];
   const tier: DashboardTier = previewTier ?? tierLabelSource ?? "basic";
+  const { levels: tierLevels } = usePlanLevels("dashboard");
+  const catalogueTierLabel = tierLabelFor(tier, tierLevels.find((l) => l.key === tier)?.label);
   const tierLabel =
     previewTier || tierLabelSource
-      ? TIER_LABEL[tier]
-      : widgetsQ.data?.planLabel?.split(", ").pop() ?? TIER_LABEL[tier];
+      ? catalogueTierLabel
+      : widgetsQ.data?.planLabel?.split(", ").pop() ?? catalogueTierLabel;
 
   const orderQ = useQuery({
     queryKey: ["card-order", clientId],
@@ -190,7 +191,7 @@ function ClientDashboard() {
     <div className="min-h-screen bg-background">
       {previewing && (
         <ViewAsBanner
-          label={`${client.name} — as a ${TIER_LABEL[tier]} client`}
+          label={`${client.name} — as a ${catalogueTierLabel} client`}
           note="Layout and tier gating only; data access is unchanged"
         />
       )}

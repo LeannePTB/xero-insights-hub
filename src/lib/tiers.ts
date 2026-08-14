@@ -91,11 +91,13 @@ export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "
 export const MULTI_ORG_TIER: DashboardTier = "multi_company";
 
 /** Catalogue-safe lookups: tier keys are super-admin editable (e.g. multi_10). */
-export function tierLabel(key: string, fallback?: string | null): string {
-  return (TIER_LABEL as Record<string, string>)[key] ?? fallback ?? key;
+export function tierLabel(key: string, catalogueLabel?: string | null): string {
+  // The catalogue is the source of truth — built-ins are only a fallback for
+  // seeded keys that predate the editable tier list.
+  return catalogueLabel ?? (TIER_LABEL as Record<string, string>)[key] ?? key;
 }
-export function tierDescription(key: string, fallback?: string | null): string {
-  return (TIER_DESCRIPTION as Record<string, string>)[key] ?? fallback ?? "";
+export function tierDescription(key: string, catalogueDescription?: string | null): string {
+  return catalogueDescription ?? (TIER_DESCRIPTION as Record<string, string>)[key] ?? "";
 }
 export function defaultWidgetsFor(key: string): WidgetKey[] {
   return (DEFAULT_TIER_WIDGETS as Record<string, WidgetKey[]>)[key] ?? DEFAULT_TIER_WIDGETS.basic;

@@ -264,7 +264,9 @@ function PlanLevelsPage() {
                     Which client dashboards an organisation on this plan can hand out. Leave all unticked to allow every tier.
                   </p>
                   <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {dashLevels.map((t) => (
+                    {dashLevels
+                      .filter((t) => t.enabled || draft.allowed_tiers.includes(t.key))
+                      .map((t) => (
                       <label
                         key={t.id}
                         className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -288,7 +290,7 @@ function PlanLevelsPage() {
                         </span>
                       </label>
                     ))}
-                    {dashLevels.length === 0 && (
+                    {dashLevels.filter((t) => t.enabled || draft.allowed_tiers.includes(t.key)).length === 0 && (
                       <p className="text-xs text-muted-foreground">Create dashboard tiers below first.</p>
                     )}
                   </div>
