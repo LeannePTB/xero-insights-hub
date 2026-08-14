@@ -203,16 +203,15 @@ function CashflowScenarioPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-border/60 bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <BrandMark logoHeightClass="h-9" />
-          <Button variant="ghost" size="sm" asChild>
+      <AppHeader
+        actions={
+          <Button variant="secondary" size="sm" asChild>
             <Link to="/clients/$clientId" params={{ clientId }}>
               <ArrowLeft className="mr-2 h-4 w-4" /> Back
             </Link>
           </Button>
-        </div>
-      </header>
+        }
+      />
 
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="flex flex-wrap items-start justify-between gap-3">
