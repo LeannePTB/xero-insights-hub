@@ -26,8 +26,15 @@ import { toast } from "sonner";
 
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
-  validateSearch: (search: Record<string, unknown>): { viewAs?: string } =>
-    typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {},
+  validateSearch: (
+    search: Record<string, unknown>,
+  ): { viewAs?: string; xero_onboarded?: string; xero_error?: string } => ({
+    ...(typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {}),
+    ...(typeof search.xero_onboarded === "string"
+      ? { xero_onboarded: search.xero_onboarded }
+      : {}),
+    ...(typeof search.xero_error === "string" ? { xero_error: search.xero_error } : {}),
+  }),
   head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
   component: FirmPage,
 });
@@ -35,7 +42,7 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId")({
 
 function FirmPage() {
   const { firmId } = Route.useParams();
-  const { viewAs } = Route.useSearch();
+  const { viewAs, xero_onboarded: xeroOnboarded, xero_error: xeroError } = Route.useSearch();
   const previewing = viewAs === "owner";
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -67,6 +74,19 @@ function FirmPage() {
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   // While previewing as the organisation owner, hide platform-admin-only controls.
   const isSuper = (ctxQ.data?.isSuperAdmin ?? false) && !previewing;
+
+  useEffect(() => {
+    if (!xeroOnboarded && !xeroError) return;
+    if (xeroOnboarded) toast.success(xeroOnboarded);
+    if (xeroError) toast.error(xeroError);
+    qc.invalidateQueries({ queryKey: ["clients", firmId] });
+    navigate({
+      to: "/firms/$firmId",
+      params: { firmId },
+      search: (prev: any) => ({ ...prev, xero_onboarded: undefined, xero_error: undefined }),
+      replace: true,
+    });
+  }, [xeroOnboarded, xeroError, firmId, navigate, qc]);
 
   useEffect(() => {
     if (firmQ.error) {

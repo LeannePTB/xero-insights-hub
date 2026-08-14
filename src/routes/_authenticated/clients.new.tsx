@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
+import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 
 export const Route = createFileRoute("/_authenticated/clients/new")({
   head: () => ({ meta: [{ title: "New client — Traction Advisory" }] }),
@@ -45,6 +46,18 @@ function NewClient() {
         </Button>
         <h1 className="font-display text-3xl font-semibold">New client subscription</h1>
         <p className="mt-1 text-sm text-muted-foreground">Creates a client subscription (its own dashboard and Xero files) inside this organisation. Connect its Xero file from the client settings afterwards.</p>
+
+        {firmId && (
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+            <div>
+              <h2 className="font-medium">Already have their Xero file?</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Authorise the Xero organisation and we&apos;ll create the client for you, named after the Xero organisation.
+              </p>
+            </div>
+            <AddClientFromXeroButton firmId={firmId} />
+          </div>
+        )}
 
         <div className="mt-8 space-y-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
           <div>
