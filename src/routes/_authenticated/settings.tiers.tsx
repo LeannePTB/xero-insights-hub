@@ -363,22 +363,6 @@ export function TierEditor({
         </div>
       </div>
       <p className="mb-4 text-xs text-muted-foreground">{description ?? TIER_DESCRIPTION[tier]}</p>
-      {onToggleFree && (
-        <div className="mb-4 flex items-center justify-between rounded-md border border-border p-3">
-          <div>
-            <p className="text-sm font-medium">Free tier</p>
-            <p className="text-xs text-muted-foreground">
-              Clients on this tier are never charged.
-            </p>
-          </div>
-          <Switch
-            checked={!!isFree}
-            onCheckedChange={onToggleFree}
-            disabled={freeDisabled}
-            aria-label="Set tier as free"
-          />
-        </div>
-      )}
       <fieldset disabled={isOff} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {ALL_WIDGETS.map((w) => (
           <label
