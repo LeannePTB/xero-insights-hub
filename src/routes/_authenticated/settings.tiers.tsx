@@ -24,6 +24,7 @@ import {
 import { ArrowLeft, Loader2, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 
 export const Route = createFileRoute("/_authenticated/settings/tiers")({
   head: () => ({
@@ -153,7 +154,10 @@ function TierSettings() {
           </Button>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="font-display text-3xl font-semibold">Dashboard tier widgets</h1>
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="font-display text-3xl font-semibold">Dashboard tier widgets</h1>
+                {isSuperAdmin && <SuperAdminBadge />}
+              </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 Turn each tier on or off and pick the widgets it shows. Disabled tiers won't appear when inviting viewers or assigning access.
               </p>

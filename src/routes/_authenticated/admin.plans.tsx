@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Loader2, Plus, Pencil, Trash2, Layers, Copy } from "lucide-react";
 import { toast } from "sonner";
+import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 
 export const Route = createFileRoute("/_authenticated/admin/plans")({
   head: () => ({
@@ -125,7 +126,10 @@ function PlanLevelsPage() {
     <>
       <main className="w-full px-6 py-8 space-y-8">
         <header>
-          <h1 className="font-display text-3xl font-semibold">Subscription levels</h1>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="font-display text-3xl font-semibold">Subscription levels</h1>
+            <SuperAdminBadge />
+          </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Add, rename or retire the plans organisations subscribe to. Client dashboard tiers are managed in{" "}
             <Link to="/settings/tiers" className="underline underline-offset-2">Tier widgets</Link>.

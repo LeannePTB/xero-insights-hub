@@ -31,6 +31,7 @@ import sdlc from "../../../docs/security/sdlc.md?raw";
 import vulnMgmt from "../../../docs/security/vulnerability-management.md?raw";
 import xeroMapping from "../../../docs/security/xero-assessment-mapping.md?raw";
 import { SecurityPostureCard } from "@/components/admin/SecurityPostureCard";
+import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 
 export const Route = createFileRoute("/_authenticated/admin/security")({
   head: () => ({ meta: [{ title: "Security & Compliance · Admin" }] }),
@@ -213,9 +214,11 @@ function SecurityDocsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-semibold">Security &amp; Compliance</h1>
+        {isSuper && <SuperAdminBadge />}
       </div>
+
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>

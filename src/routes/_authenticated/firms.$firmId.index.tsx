@@ -18,6 +18,7 @@ import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
 import { FirmAuditLogCard } from "@/components/admin/FirmAuditLogCard";
+import { SuperAdminBadge, SuperAdminSection } from "@/components/admin/SuperAdminOnly";
 
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
@@ -210,12 +211,16 @@ function FirmPage() {
                 What&apos;s included
               </Button>
               {isSuper ? (
-                <Button variant="outline" size="sm" onClick={() => setPlanOpen(true)}>
-                  <Settings className="mr-2 h-4 w-4" /> Edit plan
-                </Button>
+                <div className="flex items-center gap-2">
+                  <SuperAdminBadge />
+                  <Button variant="outline" size="sm" onClick={() => setPlanOpen(true)}>
+                    <Settings className="mr-2 h-4 w-4" /> Edit plan
+                  </Button>
+                </div>
               ) : (
                 <p className="text-xs text-muted-foreground">Contact support to change this plan.</p>
               )}
+
             </div>
           </div>
 
@@ -389,9 +394,9 @@ function FirmPage() {
         </div>
 
         {isSuper && (
-          <div className="mt-8">
+          <SuperAdminSection className="mt-8" title="Audit log">
             <FirmAuditLogCard firmId={firmId} />
-          </div>
+          </SuperAdminSection>
         )}
 
 

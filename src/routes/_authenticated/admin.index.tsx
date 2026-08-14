@@ -8,6 +8,7 @@ import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog"
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye } from "lucide-react";
+import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -101,7 +102,7 @@ function AdminPage() {
             )}
 
             <h1 className="text-xl font-semibold">Admin</h1>
-            {isSuper ? <Badge variant="secondary">super-admin</Badge> : <Badge variant="outline">advisor admin</Badge>}
+            {isSuper ? <SuperAdminBadge /> : <Badge variant="outline">advisor admin</Badge>}
           </div>
           {isSuper && <AddOrganisationDialog onCreated={() => firmsQ.refetch()} />}
         </div>
