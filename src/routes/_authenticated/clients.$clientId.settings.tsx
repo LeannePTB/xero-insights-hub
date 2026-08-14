@@ -1,4 +1,5 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import {
+import { SuperAdminChip } from "@/components/admin/SuperAdminOnly"; createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -862,9 +863,12 @@ function ClientSettings() {
           collapsible
           action={
             isSuperAdmin ? (
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/settings/tiers">Edit plan defaults</Link>
-              </Button>
+              <div className="flex items-center gap-2">
+                <SuperAdminChip />
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/settings/tiers">Edit plan defaults</Link>
+                </Button>
+              </div>
             ) : undefined
           }
         >

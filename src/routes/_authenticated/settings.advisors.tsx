@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown } from "lucide-react";
 import { toast } from "sonner";
+import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { AdminShell } from "@/components/admin/AdminShell";
 
 
@@ -186,6 +187,7 @@ function AdvisorSettings() {
         </Button>
         <div>
           <h1 className="font-display text-3xl font-semibold">Advisors</h1>
+          {viewerIsSuperAdmin && <SuperAdminBadge className="ml-2 align-middle" />}
           <p className="mt-1 text-sm text-muted-foreground">
             Invite teammates to manage clients and dashboards. Advisors have full access to every client.
           </p>
