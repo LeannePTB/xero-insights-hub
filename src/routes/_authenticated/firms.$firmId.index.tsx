@@ -380,7 +380,11 @@ function FirmPage() {
         </div>
 
         <div className="mt-8">
-          <ConsolidationGroupsSection firmId={firmId} />
+          <Button asChild variant="outline">
+            <Link to="/firms/$firmId/loans" params={{ firmId }}>
+              <Layers className="mr-2 h-4 w-4" /> Loan Consolidation
+            </Link>
+          </Button>
         </div>
 
       </main>
