@@ -281,31 +281,52 @@ export const getClientWidgets = createServerFn({ method: "POST" })
     for (const l of usable) for (const w of sanitizeWidgets(((l as any).widgets ?? []) as string[])) availableSet.add(w);
     // Fall back to the built-in defaults when the catalogue is empty.
     if (availableSet.size === 0) for (const w of DEFAULT_TIER_WIDGETS.basic) availableSet.add(w);
-    const availableWidgets = ALL_WIDGETS.filter((w) => availableSet.has(w));
 
     const { data: client } = await context.supabase
       .from("clients")
-      .select("dashboard_widgets")
+      .select("dashboard_widgets, firm_id")
       .eq("id", data.clientId)
       .maybeSingle();
     const saved = (client as any)?.dashboard_widgets as string[] | null | undefined;
     const configured = Array.isArray(saved);
 
+    // Organisation-level defaults act as a ceiling: anything the firm has
+    // unticked in "cards included by default" is unavailable to its clients.
+    const firmId = (client as any)?.firm_id as string | null | undefined;
+    if (firmId) {
+      const { data: firmRow } = await (context.supabase as any)
+        .from("firms")
+        .select("default_widgets")
+        .eq("id", firmId)
+        .maybeSingle();
+      const firmDefaults = (firmRow?.default_widgets as string[] | null | undefined) ?? null;
+      if (Array.isArray(firmDefaults)) {
+        for (const w of Array.from(availableSet)) {
+          if (!firmDefaults.includes(w)) availableSet.delete(w);
+        }
+      }
+    }
+
+    const availableWidgets = ALL_WIDGETS.filter((w) => availableSet.has(w));
+
     const top: any = usable[usable.length - 1];
     const planLabel = usable.map((l: any) => l.label as string).join(", ");
 
-    // "View as <tier>" preview renders that tier's catalogue list verbatim.
+    // "View as <tier>" preview renders that tier's catalogue list verbatim,
+    // still bounded by the organisation's default-card selection.
     if (data.tierOverride) {
       const lvl: any = catalogue.find((l: any) => l.key === data.tierOverride);
-      const preview = lvl
+      const preview = (lvl
         ? sanitizeWidgets((lvl.widgets ?? []) as string[])
-        : defaultWidgetsFor(data.tierOverride);
+        : defaultWidgetsFor(data.tierOverride)
+      ).filter((w) => availableSet.has(w));
       return { widgets: preview, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string };
     }
 
     const widgets = configured
       ? sanitizeWidgets(saved!).filter((w) => availableSet.has(w))
       : availableWidgets;
+
 
     return { widgets, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string };
   });
