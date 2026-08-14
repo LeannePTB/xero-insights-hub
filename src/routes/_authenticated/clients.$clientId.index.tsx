@@ -89,7 +89,7 @@ function ClientDashboard() {
   const { levels: tierLevels } = usePlanLevels("dashboard");
   const catalogueTierLabel = tierLabelFor(tier, tierLevels.find((l) => l.key === tier)?.label);
   const tierLabel =
-    previewTier || tierLabelSource
+    effectivePreviewTier || tierLabelSource
       ? catalogueTierLabel
       : widgetsQ.data?.planLabel?.split(", ").pop() ?? catalogueTierLabel;
 
