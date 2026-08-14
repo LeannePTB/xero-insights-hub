@@ -140,6 +140,12 @@ export function ConsolidationGroupsSection({ firmId }: { firmId: string }) {
                       Open
                     </Link>
                   </Button>
+                  <Button asChild size="sm" variant="outline">
+                    <Link to="/firms/$firmId/loans" params={{ firmId }} search={{ group: g.id }}>
+                      Loan consolidation
+                    </Link>
+                  </Button>
+
                   <Button size="sm" variant="outline" onClick={() => openEdit(g)}>
                     <Pencil className="mr-2 h-3 w-3" /> Edit
                   </Button>

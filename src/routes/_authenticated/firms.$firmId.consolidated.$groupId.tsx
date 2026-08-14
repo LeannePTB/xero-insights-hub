@@ -8,7 +8,6 @@ import {
   ConsolidatedReceivablesWidget,
   ConsolidatedPayablesWidget,
 } from "@/components/dashboard/ConsolidatedAgeingWidget";
-import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/consolidated/$groupId")({
   head: () => ({
@@ -89,27 +88,18 @@ function ConsolidatedGroupPage() {
               <ConsolidatedReceivablesWidget groupId={groupId} asAt={asAt} />
               <ConsolidatedPayablesWidget groupId={groupId} asAt={asAt} />
 
-              <section className="space-y-4">
-                <div className="flex items-center justify-between gap-4">
-                  <h2 className="font-display text-lg font-semibold">Loan consolidation</h2>
-                </div>
-                {group.clients.map((c: any) =>
-                  c.orgs.map((o: any) => (
-                    <div key={o.tenantId} className="space-y-2">
-                      <LoanConsolidationWidget
-                        clientId={c.clientId}
-                        tenantId={o.tenantId}
-                        tenantName={o.tenantName}
-                      />
-                      <Button asChild variant="ghost" size="sm">
-                        <Link to="/clients/$clientId/loans-accounts" params={{ clientId: c.clientId }}>
-                          <Settings className="mr-2 h-3 w-3" /> Loan accounts for {c.clientName}
-                        </Link>
-                      </Button>
-                    </div>
-                  )),
-                )}
+              <section className="rounded-2xl border border-border bg-card p-6">
+                <h2 className="font-display text-lg font-semibold">Loan consolidation</h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Reconcile the intercompany loan accounts across every Xero file in this group.
+                </p>
+                <Button asChild size="sm" className="mt-4">
+                  <Link to="/firms/$firmId/loans" params={{ firmId }} search={{ group: groupId }}>
+                    <Settings className="mr-2 h-4 w-4" /> Open loan consolidation
+                  </Link>
+                </Button>
               </section>
+
             </>
           )}
         </>

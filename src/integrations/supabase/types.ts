@@ -958,6 +958,50 @@ export type Database = {
           },
         ]
       }
+      loan_consolidation_snapshots: {
+        Row: {
+          as_at: string
+          created_at: string
+          generated_at: string
+          generated_by: string | null
+          group_id: string
+          id: string
+          label: string | null
+          payload: Json
+          updated_at: string
+        }
+        Insert: {
+          as_at: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          group_id: string
+          id?: string
+          label?: string | null
+          payload?: Json
+          updated_at?: string
+        }
+        Update: {
+          as_at?: string
+          created_at?: string
+          generated_at?: string
+          generated_by?: string | null
+          group_id?: string
+          id?: string
+          label?: string | null
+          payload?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loan_consolidation_snapshots_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "consolidation_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       login_events: {
         Row: {
           email: string | null

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getLoanMismatchDetail } from "@/lib/loan-consolidation.functions";
+import { getLoanMismatchDetail, getGroupLoanMismatchDetail } from "@/lib/loan-consolidation.functions";
+import type { MismatchDifference } from "@/lib/loan-consolidation.functions";
 import { buildXeroTransactionLink } from "@/lib/xero/loan-account-link";
 import {
   Dialog,
@@ -36,22 +37,30 @@ export function MismatchDetailDialog({
   open,
   onOpenChange,
   clientId,
+  groupId,
   rowId,
   asAt,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  clientId: string;
+  /** Pass one of these: the per-client view or the group view. */
+  clientId?: string;
+  groupId?: string;
   rowId: string | null;
   asAt: string;
 }) {
   const fetchDetail = useServerFn(getLoanMismatchDetail);
+  const fetchGroupDetail = useServerFn(getGroupLoanMismatchDetail);
   const detailQ = useQuery({
-    queryKey: ["loan-mismatch", clientId, rowId, asAt],
+    queryKey: ["loan-mismatch", groupId ?? clientId, rowId, asAt],
     queryFn: () =>
-      fetchDetail({ data: { clientId, rowId: rowId!, asAt } }),
-    enabled: open && !!rowId,
+      groupId
+        ? fetchGroupDetail({ data: { groupId, rowId: rowId!, asAt } })
+        : fetchDetail({ data: { clientId: clientId!, rowId: rowId!, asAt } }),
+    enabled: open && !!rowId && Boolean(groupId || clientId),
   });
+
+
 
   const d = detailQ.data;
 
@@ -106,7 +115,7 @@ export function MismatchDetailDialog({
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   {d.differences.length} item{d.differences.length === 1 ? "" : "s"} to review
                 </p>
-                {d.differences.map((diff) => (
+                {d.differences.map((diff: MismatchDifference) => (
                   <div
                     key={diff.id}
                     className="rounded-lg border border-border bg-muted/40 p-3 text-sm"

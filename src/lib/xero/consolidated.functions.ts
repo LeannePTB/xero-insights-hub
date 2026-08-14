@@ -192,7 +192,7 @@ async function getLoanElimination(
     const { runLoanReconciliation } = await import("@/lib/loan-recon.server");
     const result = await runLoanReconciliation({
       supabase: supabaseAdmin,
-      clientId,
+      clientIds: [clientId],
       tenantIds,
       asAt,
     });

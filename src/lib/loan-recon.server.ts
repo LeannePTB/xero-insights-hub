@@ -69,17 +69,18 @@ function normalizeAccountIdentity(value: string) {
 
 export async function runLoanReconciliation(input: {
   supabase: any; // supabaseAdmin — access is gated by the caller
-  clientId: string;
+  /** One client for the per-client view, many for a consolidation group. */
+  clientIds: string[];
   tenantIds: string[] | null;
   asAt: string;
 }): Promise<ReconResult> {
-  const { supabase, clientId, asAt } = input;
+  const { supabase, clientIds, asAt } = input;
 
-  // Every Xero file linked to this client is a candidate.
+  // Every Xero file linked to these clients is a candidate.
   const { data: orgs } = await supabase
     .from("client_xero_orgs")
     .select("xero_connections(tenant_id, tenant_name)")
-    .eq("client_id", clientId);
+    .in("client_id", clientIds);
   const tenantById = new Map<string, ClientTenant>();
   for (const o of (orgs ?? []) as any[]) {
     const t = o?.xero_connections;
@@ -90,6 +91,7 @@ export async function runLoanReconciliation(input: {
       });
     }
   }
+
 
   let targetTenantIds: string[];
   if (input.tenantIds && input.tenantIds.length > 0) {
@@ -120,7 +122,7 @@ export async function runLoanReconciliation(input: {
     .select(
       "id, client_id, tenant_id, account_id, account_code, account_name, direction, counterparty_account_id, sort_order",
     )
-    .eq("client_id", clientId)
+    .in("client_id", clientIds)
     .in("tenant_id", targetTenantIds)
     .order("sort_order", { ascending: true })
     .order("account_code", { ascending: true });
