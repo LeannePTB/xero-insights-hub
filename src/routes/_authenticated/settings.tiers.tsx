@@ -194,7 +194,6 @@ function TierSettings() {
                 onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
                 toggleDisabled={toggleMut.isPending}
                 onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
-                onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
               />
             );
           })}
