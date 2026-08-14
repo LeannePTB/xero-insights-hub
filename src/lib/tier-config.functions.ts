@@ -362,11 +362,21 @@ export const getFirmPlanSummary = createServerFn({ method: "POST" })
     for (const l of usable) for (const w of sanitizeWidgets((l.widgets ?? []) as string[])) set.add(w);
     if (set.size === 0) for (const w of DEFAULT_TIER_WIDGETS.basic) set.add(w);
 
+    // Organisation plans are 1 client : 1 Xero file, so the effective client
+    // allowance (override included) is also the Xero file allowance and the
+    // maximum number of files that can sit in a consolidation group.
+    const override = (sub?.client_limit_override as number | undefined) ?? null;
+    const baseClientLimit = (firmPlan?.client_limit as number | undefined) ?? null;
+    const effectiveClientLimit = override ?? baseClientLimit;
+    const supportsConsolidation = !!firmPlan?.allows_multi_org || (effectiveClientLimit ?? 1) > 1;
+
     return {
       planKey,
       planLabel: (firmPlan?.label as string | undefined) ?? null,
-      clientLimit: (firmPlan?.client_limit as number | undefined) ?? null,
-      xeroOrgLimit: (firmPlan?.xero_org_limit as number | undefined) ?? null,
+      clientLimit: effectiveClientLimit,
+      xeroFileLimit: effectiveClientLimit,
+      consolidationLimit: supportsConsolidation ? effectiveClientLimit : null,
+      supportsConsolidation,
       allowsMultiOrg: !!firmPlan?.allows_multi_org,
       tiers: usable.map((l) => ({
         key: l.key as string,
