@@ -148,8 +148,6 @@ export async function fetchBalanceSheetBalances(opts: {
   return out;
 }
 
-// Kept as an alias for backward compatibility during the migration.
-export const fetchTrialBalance = fetchBalanceSheetBalances;
 
 
 // ---- Direct account transactions ------------------------------------------
