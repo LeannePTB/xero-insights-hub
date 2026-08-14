@@ -340,6 +340,7 @@ export function TierEditor({
   onToggleEnabled?: (v: boolean) => void;
   toggleDisabled?: boolean;
   onDelete?: () => void;
+  onEdit?: () => void;
 }) {
   const [selected, setSelected] = useState<Set<WidgetKey>>(new Set(initial));
   useEffect(() => { setSelected(new Set(initial)); }, [initial.join(",")]);
