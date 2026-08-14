@@ -86,7 +86,8 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
 
-// Only this tier can have more than one Xero organisation linked to a client.
+// Legacy constant. Multi-org capability is driven by the catalogue flag
+// `allows_multi_org` on each dashboard tier row, not by this key.
 export const MULTI_ORG_TIER: DashboardTier = "multi_company";
 
 /** Catalogue-safe lookups: tier keys are super-admin editable (e.g. multi_10). */
