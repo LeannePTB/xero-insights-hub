@@ -397,7 +397,7 @@ function ClientSettings() {
         </Section>
 
         {/* Report basis */}
-        <Section title="Report basis">
+        <Section title="Report basis" collapsible>
           <p className="mb-3 text-xs text-muted-foreground">
             Sets the client's accounting basis. Below, choose which dashboard cards should use it
             instead of always reporting on Accrual. Viewers don't see any of this.
