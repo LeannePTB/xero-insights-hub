@@ -302,7 +302,54 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           );
         }
 
+        // ─────────────────────────────────────────────────────────────────────
+        // Onboard flow: create a client subscription per authorised Xero file
+        // ─────────────────────────────────────────────────────────────────────
+        if (flow === "onboard" && stateRow.firm_id) {
+          const firmPath = `/firms/${stateRow.firm_id}`;
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+          if (tenants.length === 0) {
+            return redirectTo(
+              `${returnOrigin}${firmPath}?xero_error=${encodeURIComponent("Xero didn't return any organisations for that login. Try again and tick the organisation you want on Xero's consent screen.")}`,
+            );
+          }
+          try {
+            const { createClientsFromTenants } = await import("@/lib/xero/onboard.server");
+            const outcome = await createClientsFromTenants({
+              firmId: stateRow.firm_id,
+              userId,
+              tenantIds: tenants.map((t) => t.tenantId),
+            });
+            if (outcome.created.length === 0) {
+              const reason = outcome.skippedAssigned.length
+                ? `Those Xero organisations are already linked to a client (${outcome.skippedAssigned.join(", ")}).`
+                : outcome.skippedLimit.length
+                  ? "Your plan's client limit has been reached, so no new clients were created."
+                  : "No new clients could be created from that Xero login.";
+              return redirectTo(
+                `${returnOrigin}${firmPath}?xero_error=${encodeURIComponent(reason)}`,
+              );
+            }
+            const skipped = [...outcome.skippedAssigned, ...outcome.skippedLimit];
+            if (outcome.created.length === 1 && skipped.length === 0) {
+              return redirectTo(
+                `${returnOrigin}/clients/${outcome.created[0].clientId}?xero=connected`,
+              );
+            }
+            const summary = `Created ${outcome.created.length} client${outcome.created.length === 1 ? "" : "s"}: ${outcome.created.map((c) => c.name).join(", ")}.${skipped.length ? ` Skipped: ${skipped.join(", ")}.` : ""}`;
+            return redirectTo(
+              `${returnOrigin}${firmPath}?xero_onboarded=${encodeURIComponent(summary)}`,
+            );
+          } catch (onboardErr: any) {
+            console.error("Xero onboard client creation failed", onboardErr);
+            return redirectTo(
+              `${returnOrigin}${firmPath}?xero_error=${encodeURIComponent(onboardErr?.message ?? "Could not create the client.")}`,
+            );
+          }
+        }
+
         const initiatingClientId = stateRow.client_id ?? null;
+
         if (initiatingClientId) {
           const settingsPath = `/clients/${initiatingClientId}/settings`;
           const { getClientOrgAllowance, getSelectableConnectionsForClient, getClientFirmId } =
