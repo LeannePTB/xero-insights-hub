@@ -95,27 +95,35 @@ export type LoanAccountRow = {
   sort_order: number;
 };
 
-const MANAGE_ROLES = ["advisor", "super_admin", "firm_owner"];
-
 async function clientFirmId(supabase: any, clientId: string): Promise<string | null> {
   const { data } = await supabase.from("clients").select("firm_id").eq("id", clientId).maybeSingle();
   return data?.firm_id ?? null;
 }
 
-async function isFirmOwner(supabase: any, userId: string, firmId: string | null): Promise<boolean> {
-  if (!firmId) return false;
+async function firmMemberRole(
+  supabase: any,
+  userId: string,
+  firmId: string | null,
+): Promise<string | null> {
+  if (!firmId) return null;
   const { data } = await supabase
     .from("firm_members")
     .select("role")
     .eq("user_id", userId)
     .eq("firm_id", firmId)
     .maybeSingle();
-  return data?.role === "owner";
+  return (data?.role as string | undefined) ?? null;
 }
 
-async function hasManageRole(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  return !!(data ?? []).some((r: any) => MANAGE_ROLES.includes(r.role));
+/** Only the platform super admin crosses organisation boundaries. */
+async function isSuperAdminUser(supabase: any, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
+  return Boolean(data);
 }
 
 async function hasClientAccess(supabase: any, userId: string, clientId: string): Promise<boolean> {
@@ -129,14 +137,15 @@ async function hasClientAccess(supabase: any, userId: string, clientId: string):
 }
 
 async function canManageClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  if (await hasManageRole(supabase, userId)) return true;
-  return isFirmOwner(supabase, userId, await clientFirmId(supabase, clientId));
+  if (await isSuperAdminUser(supabase, userId)) return true;
+  return Boolean(await firmMemberRole(supabase, userId, await clientFirmId(supabase, clientId)));
 }
 
 async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
   if (await canManageClient(supabase, userId, clientId)) return true;
   return hasClientAccess(supabase, userId, clientId);
 }
+
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
@@ -491,17 +500,11 @@ async function resolveLoanGroup(
     .maybeSingle();
   if (!group) throw new Error("Consolidation group not found.");
 
-  let allowed = await hasManageRole(supabase, userId);
-  if (!allowed) {
-    const { data: member } = await supabase
-      .from("firm_members")
-      .select("id")
-      .eq("firm_id", (group as any).firm_id)
-      .eq("user_id", userId)
-      .maybeSingle();
-    allowed = Boolean(member);
-  }
+  const allowed =
+    Boolean(await firmMemberRole(supabase, userId, (group as any).firm_id)) ||
+    (await isSuperAdminUser(supabase, userId));
   if (!allowed) throw new Error("You don't have access to this organisation.");
+
 
   const { data: members } = await supabaseAdmin
     .from("consolidation_group_members")
@@ -775,17 +778,13 @@ export const autoSetupGroupLoanAccounts = createServerFn({ method: "POST" })
   .inputValidator((i: { groupId: string; apply?: boolean }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
-    if (!(await hasManageRole(context.supabase, context.userId))) {
-      const { data: member } = await context.supabase
-        .from("firm_members")
-        .select("role")
-        .eq("firm_id", group.firmId)
-        .eq("user_id", context.userId)
-        .maybeSingle();
-      if ((member as any)?.role !== "owner") {
-        throw new Error("Only the organisation's owners and advisors can set up loan accounts.");
+    if (!(await isSuperAdminUser(context.supabase, context.userId))) {
+      const role = await firmMemberRole(context.supabase, context.userId, group.firmId);
+      if (!role) {
+        throw new Error("Only the organisation's members can set up loan accounts.");
       }
     }
+
     const { autoSetupLoanAccounts } = await import("./loan-autosetup.server");
     const supabaseAdmin = await getSupabaseAdmin();
     return autoSetupLoanAccounts({

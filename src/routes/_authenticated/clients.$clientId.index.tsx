@@ -68,24 +68,28 @@ function ClientDashboard() {
   });
   const realIsAdvisor = ctxQ.data?.isAdvisor ?? false;
   // Preview mode: render exactly what a client viewer on this tier would get.
-  const previewing = !!previewTier && realIsAdvisor;
+  // Only platform admins and advisors may preview.
+  const previewing = !!previewTier && (ctxQ.data?.canViewAs ?? false);
   const isAdvisor = realIsAdvisor && !previewing;
+
   const viewerEntry = ctxQ.data?.viewerClients.find((c) => c.id === clientId);
   // Tier is only a label now — the widget list itself comes from the client's
   // own configuration (bounded by the organisation's plan).
   const tierLabelSource = viewerEntry?.tier ?? null;
 
+  const effectivePreviewTier = previewing ? previewTier : null;
   const widgetsQ = useQuery({
-    queryKey: ["client-widgets", clientId, previewTier ?? "actual"],
-    queryFn: () => fetchWidgets({ data: { clientId, tierOverride: previewTier } }),
+    queryKey: ["client-widgets", clientId, effectivePreviewTier ?? "actual"],
+    queryFn: () => fetchWidgets({ data: { clientId, tierOverride: effectivePreviewTier } }),
     enabled: !!ctxQ.data,
   });
   const widgets = widgetsQ.data?.widgets ?? [];
-  const tier: DashboardTier = previewTier ?? tierLabelSource ?? "basic";
+  const tier: DashboardTier = effectivePreviewTier ?? tierLabelSource ?? "basic";
+
   const { levels: tierLevels } = usePlanLevels("dashboard");
   const catalogueTierLabel = tierLabelFor(tier, tierLevels.find((l) => l.key === tier)?.label);
   const tierLabel =
-    previewTier || tierLabelSource
+    effectivePreviewTier || tierLabelSource
       ? catalogueTierLabel
       : widgetsQ.data?.planLabel?.split(", ").pop() ?? catalogueTierLabel;
 

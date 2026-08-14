@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const MANAGE_ROLES = ["advisor", "super_admin", "firm_owner"];
+// Only the platform super admin crosses organisation boundaries.
 
 export type GroupClient = {
   clientId: string;
@@ -28,16 +28,22 @@ export type ConsolidationGroupsView = {
 };
 
 async function assertFirmAccess(supabase: any, userId: string, firmId: string) {
-  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  if (roles?.some((r: any) => MANAGE_ROLES.includes(r.role))) return;
   const { data: member } = await supabase
     .from("firm_members")
     .select("id")
     .eq("firm_id", firmId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (!member) throw new Error("You don't have access to this organisation.");
+  if (member) return;
+  const { data: superRow } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
+  if (!superRow) throw new Error("You don't have access to this organisation.");
 }
+
 
 async function firmIdForGroup(admin: any, groupId: string): Promise<string> {
   const { data } = await admin.from("consolidation_groups").select("firm_id").eq("id", groupId).maybeSingle();
@@ -216,9 +222,6 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
       : { data: [] as any[] };
 
     const isSuperAdmin = Boolean((roles ?? []).some((r: any) => r.role === "super_admin"));
-    const isAdvisorOrOwner = Boolean(
-      (roles ?? []).some((r: any) => r.role === "advisor" || r.role === "firm_owner"),
-    );
     const { data: member } = await context.supabase
       .from("firm_members")
       .select("id")
@@ -230,8 +233,10 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
       firmId,
       id: (group as any)?.id as string,
       name: ((group as any)?.name as string) ?? "Group",
+      // Figures come from membership of this organisation.
       // Super admins manage setup but never see client financials.
-      canSeeFigures: isAdvisorOrOwner || Boolean(member) ? true : !isSuperAdmin,
+      canSeeFigures: Boolean(member) ? true : !isSuperAdmin,
+
       clients: ((clients ?? []) as any[]).map((c) => ({
         clientId: c.id as string,
         clientName: c.name as string,

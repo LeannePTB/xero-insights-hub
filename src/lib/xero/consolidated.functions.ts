@@ -32,7 +32,7 @@ export type ConsolidatedPayables = {
   byTenant: { tenantId: string; tenantName: string; totalOutstanding: number; totalOverdue: number }[];
 };
 
-const MANAGE_ROLES = ["advisor", "super_admin", "firm_owner"];
+// Only the platform super admin crosses organisation boundaries.
 
 /** A consolidation group resolved to its firm, member clients and Xero tenants. */
 type ResolvedGroup = {
@@ -51,18 +51,24 @@ async function resolveGroup(supabase: any, userId: string, groupId: string): Pro
     .maybeSingle();
   if (!group) throw new Error("Consolidation group not found.");
 
-  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  let allowed = Boolean(roles?.some((r: any) => MANAGE_ROLES.includes(r.role)));
+  const { data: member } = await supabase
+    .from("firm_members")
+    .select("id")
+    .eq("firm_id", group.firm_id)
+    .eq("user_id", userId)
+    .maybeSingle();
+  let allowed = Boolean(member);
   if (!allowed) {
-    const { data: member } = await supabase
-      .from("firm_members")
-      .select("id")
-      .eq("firm_id", group.firm_id)
+    const { data: roles } = await supabase
+      .from("user_roles")
+      .select("role")
       .eq("user_id", userId)
+      .eq("role", "super_admin")
       .maybeSingle();
-    allowed = Boolean(member);
+    allowed = Boolean(roles);
   }
   if (!allowed) throw new Error("You don't have access to this organisation.");
+
 
   const { data: members } = await supabaseAdmin
     .from("consolidation_group_members")

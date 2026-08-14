@@ -14,18 +14,19 @@ export const getMyContext = createServerFn({ method: "GET" })
     const isSuperAdmin = roleNames.includes("super_admin");
     const isFirmOwner = roleNames.includes("firm_owner");
 
-    const { data: membership } = await context.supabase
+    const { data: memberships } = await context.supabase
       .from("firm_members")
       .select("firm_id")
       .eq("user_id", context.userId)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .maybeSingle();
-    const firmId: string | null = (membership as any)?.firm_id ?? null;
+      .order("created_at", { ascending: true });
+    const firmIds = ((memberships ?? []) as any[]).map((m) => m.firm_id as string);
+    const firmId: string | null = firmIds[0] ?? null;
 
     // A firm member is treated as an advisor for UX purposes (sees client list, can add clients).
     const isAdvisor = hasAdvisorRole || !!firmId;
     const hasAdminAreaAccess = isSuperAdmin || hasAdvisorRole || isFirmOwner || !!firmId;
+    // Previewing the app as someone else is for platform admins and advisors only.
+    const canViewAs = isSuperAdmin || hasAdvisorRole;
 
     let viewerClients: { id: string; name: string; tier: DashboardTier }[] = [];
     if (!isAdvisor) {
@@ -37,6 +38,16 @@ export const getMyContext = createServerFn({ method: "GET" })
         .filter((a) => a.clients)
         .map((a) => ({ id: a.clients.id, name: a.clients.name, tier: a.tier as DashboardTier }));
     }
-    return { isAdvisor, isSuperAdmin, isFirmOwner, hasAdminAreaAccess, firmId, viewerClients };
+    return {
+      isAdvisor,
+      isSuperAdmin,
+      isFirmOwner,
+      hasAdminAreaAccess,
+      canViewAs,
+      firmId,
+      firmIds,
+      viewerClients,
+    };
+
   });
 

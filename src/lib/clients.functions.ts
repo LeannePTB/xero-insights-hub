@@ -26,18 +26,18 @@ export const listClients = createServerFn({ method: "POST" })
 
     let firmId: string | null = data?.firmId ?? null;
     if (!isSuper) {
-      const { data: m } = await context.supabase
+      // Every organisation the caller belongs to — never a global role shortcut.
+      const { data: memberships } = await context.supabase
         .from("firm_members")
         .select("firm_id")
         .eq("user_id", context.userId)
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      const myFirm = m?.firm_id ?? null;
-      if (firmId && firmId !== myFirm) throw new Error("Not a member of that business.");
-      firmId = myFirm;
+        .order("created_at", { ascending: true });
+      const myFirms = ((memberships ?? []) as any[]).map((m) => m.firm_id as string);
+      if (firmId && !myFirms.includes(firmId)) throw new Error("Not a member of that business.");
+      firmId = firmId ?? myFirms[0] ?? null;
       if (!firmId) return { clients: [] };
     }
+
 
     // Super admins manage every organisation, including ones they don't belong to,
     // so they read through the admin client (RLS scopes reads to firm membership).
