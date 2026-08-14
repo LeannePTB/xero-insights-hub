@@ -127,7 +127,16 @@ export async function fetchBalanceSheetBalances(opts: {
         const accountId = extractAccountId(accountCell);
         const attributeAccountCode = extractAccountCode(accountCell);
         const reportAccountLabel = accountCell?.Value?.trim() ?? "";
-        const trailingCodeMatch = reportAccountLabel.match(/\(([^()]+)\)\s*$/u);
+        // Only treat a trailing "(...)" as an account code when it actually
+        // looks like one (e.g. "(917)"). Names such as
+        // "Loan - X10 (DRTABT Projects)" are part of the account name, and
+        // stripping them collides with other accounts in the same file.
+        const trailingParenMatch = reportAccountLabel.match(/\(([^()]+)\)\s*$/u);
+        const trailingParenValue = trailingParenMatch?.[1]?.trim() ?? "";
+        const trailingCodeMatch =
+          trailingParenValue && /^[A-Za-z0-9._/-]{1,10}$/.test(trailingParenValue) && /\d/.test(trailingParenValue)
+            ? trailingParenMatch
+            : null;
         const parsedAccountCode = trailingCodeMatch?.[1]?.trim() ?? "";
         const accountCode = attributeAccountCode?.trim() || parsedAccountCode;
         const accountName = trailingCodeMatch

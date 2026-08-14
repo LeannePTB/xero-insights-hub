@@ -58,10 +58,11 @@ type TenantAccounts = {
 };
 
 function normalizeAccountIdentity(value: string) {
+  // Keep any trailing "(...)" — it distinguishes accounts such as
+  // "Loan - X10 (TracyDA)" from "Loan - X10 (DRTABT Projects)".
   return value
     .trim()
     .replace(/\s+/g, " ")
-    .replace(/\s*\([^()]+\)\s*$/u, "")
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim()
     .toLocaleLowerCase("en-AU");
