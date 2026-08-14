@@ -159,7 +159,21 @@ function TierSettings() {
               </p>
             </div>
             {isSuperAdmin && (
-              <Button size="sm" variant="outline" onClick={() => setNewTier({ label: "", description: "" })}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setDraft({
+                    key: "",
+                    label: "",
+                    description: "",
+                    xero_org_limit: 1,
+                    allows_multi_org: false,
+                    sort_order: 100 + levelsQ.levels.length,
+                    widgets: [],
+                  })
+                }
+              >
                 <Plus className="mr-2 h-4 w-4" /> New tier
               </Button>
             )}
