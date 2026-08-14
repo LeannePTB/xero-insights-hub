@@ -193,11 +193,7 @@ function TierSettings() {
                 enabled={enabled}
                 onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
                 toggleDisabled={toggleMut.isPending}
-                isFree={level?.is_free ?? false}
-                onToggleFree={
-                  isSuperAdmin && level ? (v) => freeMut.mutate({ level, isFree: v }) : undefined
-                }
-                freeDisabled={freeMut.isPending}
+                onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
                 onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
               />
             );
