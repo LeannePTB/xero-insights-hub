@@ -294,17 +294,18 @@ function LoanMatrixTab() {
             <div className="overflow-hidden rounded-2xl border border-border bg-card">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>This file — Account</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="w-10">Dir</TableHead>
-                    <TableHead className="border-l border-border">Counterparty</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="w-10">Dir</TableHead>
-                    <TableHead className="border-l border-border text-right">Net</TableHead>
-                    <TableHead>Status</TableHead>
+                  <TableRow className="border-b border-border bg-primary/5 hover:bg-primary/5">
+                    <TableHead className="text-base font-semibold text-foreground">This file — Account</TableHead>
+                    <TableHead className="text-right text-base font-semibold text-foreground">Balance</TableHead>
+                    <TableHead className="w-10 text-base font-semibold text-foreground">Dir</TableHead>
+                    <TableHead className="border-l border-border text-base font-semibold text-foreground">Counterparty</TableHead>
+                    <TableHead className="text-right text-base font-semibold text-foreground">Balance</TableHead>
+                    <TableHead className="w-10 text-base font-semibold text-foreground">Dir</TableHead>
+                    <TableHead className="border-l border-border text-right text-base font-semibold text-foreground">Net</TableHead>
+                    <TableHead className="text-base font-semibold text-foreground">Status</TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
                   {file.rows.length === 0 && (
                     <TableRow>
