@@ -38,7 +38,20 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
     ...(typeof search.xero_error === "string" ? { xero_error: search.xero_error } : {}),
     ...(typeof search.xero_pick === "string" ? { xero_pick: search.xero_pick } : {}),
   }),
-  head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
+  head: () => ({
+    meta: [
+      { title: "Organisation — Traction Advisory" },
+      {
+        name: "description",
+        content: "Manage this organisation's plan, clients, Xero files and consolidation groups.",
+      },
+      { property: "og:title", content: "Organisation — Traction Advisory" },
+      {
+        property: "og:description",
+        content: "Manage this organisation's plan, clients, Xero files and consolidation groups.",
+      },
+    ],
+  }),
   component: FirmPage,
 });
 
