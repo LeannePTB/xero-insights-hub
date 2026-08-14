@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeftRight, Loader2, Pencil, Save, Trash2, Wand2, X } from "lucide-react";
+import { ArrowLeftRight, Loader2, Pencil, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -28,7 +28,6 @@ import {
   listLiabilityAccountsForTenant,
   saveLoanPairing,
   unpairLoanAccount,
-  autoSetupGroupLoanAccounts,
   type LoanPair,
 } from "@/lib/loan-consolidation.functions";
 
@@ -56,7 +55,6 @@ function LoanPairingsTab() {
   const fetchAccounts = useServerFn(listLiabilityAccountsForTenant);
   const savePair = useServerFn(saveLoanPairing);
   const unpair = useServerFn(unpairLoanAccount);
-  const autoSetup = useServerFn(autoSetupGroupLoanAccounts);
 
   const groupsQ = useQuery({
     queryKey: ["consolidation-groups", firmId],
@@ -137,15 +135,6 @@ function LoanPairingsTab() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const autoMut = useMutation({
-    mutationFn: () => autoSetup({ data: { groupId: groupId!, apply: true } }),
-    onSuccess: () => {
-      toast.success("Auto-detect finished");
-      invalidate();
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const canSave =
     !!sideA.tenantId && !!sideA.accountId && !!sideB.tenantId && !!sideB.accountId;
 
@@ -211,20 +200,8 @@ function LoanPairingsTab() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {editing ? "Edit pairing" : "Add pairing"}
           </h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => autoMut.mutate()}
-            disabled={autoMut.isPending}
-          >
-            {autoMut.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Wand2 className="mr-2 h-4 w-4" />
-            )}
-            Auto-detect from Xero
-          </Button>
         </div>
+
 
         <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
           <SidePanel
@@ -281,7 +258,7 @@ function LoanPairingsTab() {
           </div>
         ) : pairs.length === 0 ? (
           <p className="py-8 text-sm text-muted-foreground">
-            No pairings yet. Build one above or run auto-detect.
+            No pairings yet. Build one above.
           </p>
         ) : (
           <Table className="mt-3">
