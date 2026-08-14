@@ -28,12 +28,13 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { viewAs?: string; xero_onboarded?: string; xero_error?: string } => ({
+  ): { viewAs?: string; xero_onboarded?: string; xero_error?: string; xero_pick?: string } => ({
     ...(typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {}),
     ...(typeof search.xero_onboarded === "string"
       ? { xero_onboarded: search.xero_onboarded }
       : {}),
     ...(typeof search.xero_error === "string" ? { xero_error: search.xero_error } : {}),
+    ...(typeof search.xero_pick === "string" ? { xero_pick: search.xero_pick } : {}),
   }),
   head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
   component: FirmPage,
@@ -42,7 +43,13 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId")({
 
 function FirmPage() {
   const { firmId } = Route.useParams();
-  const { viewAs, xero_onboarded: xeroOnboarded, xero_error: xeroError } = Route.useSearch();
+  const {
+    viewAs,
+    xero_onboarded: xeroOnboarded,
+    xero_error: xeroError,
+    xero_pick: xeroPick,
+  } = Route.useSearch();
+
   const previewing = viewAs === "owner";
   const navigate = useNavigate();
   const qc = useQueryClient();
