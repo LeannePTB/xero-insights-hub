@@ -201,40 +201,89 @@ function TierSettings() {
         </main>
       </div>
 
-      <Dialog open={!!newTier} onOpenChange={(o) => !o && setNewTier(null)}>
+      <Dialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New dashboard tier</DialogTitle>
-            <DialogDescription>Give it a name, then pick its widgets on the page.</DialogDescription>
+            <DialogTitle>{draft?.id ? "Edit dashboard tier" : "New dashboard tier"}</DialogTitle>
+            <DialogDescription>Name it and set how many Xero files it may link. Widgets are picked on the page.</DialogDescription>
           </DialogHeader>
-          {newTier && (
+          {draft && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Name</Label>
-                <Input
-                  value={newTier.label}
-                  onChange={(e) => setNewTier({ ...newTier, label: e.target.value })}
-                  placeholder="Growth"
-                />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Name</Label>
+                  <Input
+                    value={draft.label}
+                    onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+                    placeholder="Growth"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Key</Label>
+                  <Input
+                    value={draft.key}
+                    disabled={!!draft.id}
+                    onChange={(e) => setDraft({ ...draft, key: e.target.value })}
+                    placeholder="growth"
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {draft.id ? "Keys can't change once in use." : "Leave blank to build it from the name."}
+                  </p>
+                </div>
               </div>
+
               <div className="space-y-1.5">
                 <Label>Description</Label>
                 <Textarea
                   rows={2}
-                  value={newTier.description}
-                  onChange={(e) => setNewTier({ ...newTier, description: e.target.value })}
+                  value={draft.description}
+                  onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                   placeholder="What this tier includes."
                 />
               </div>
+
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div>
+                  <p className="text-sm font-medium">Multiple Xero files</p>
+                  <p className="text-xs text-muted-foreground">Allow a client on this tier to link more than one file.</p>
+                </div>
+                <Switch
+                  checked={draft.allows_multi_org}
+                  onCheckedChange={(v) =>
+                    setDraft({
+                      ...draft,
+                      allows_multi_org: v,
+                      xero_org_limit: v ? Math.max(2, draft.xero_org_limit) : 1,
+                    })
+                  }
+                />
+              </div>
+
+              {draft.allows_multi_org && (
+                <div className="space-y-1.5">
+                  <Label>Xero files allowed</Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    value={String(draft.xero_org_limit)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d]/g, "");
+                      setDraft({ ...draft, xero_org_limit: raw === "" ? 2 : Number(raw) });
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setNewTier(null)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setDraft(null)}>Cancel</Button>
             <Button
-              onClick={() => newTier && addMut.mutate(newTier)}
-              disabled={!newTier?.label.trim() || addMut.isPending}
+              onClick={() => draft && addMut.mutate(draft)}
+              disabled={!draft?.label.trim() || addMut.isPending}
             >
-              {addMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add tier
+              {addMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {draft?.id ? "Save tier" : "Add tier"}
             </Button>
           </DialogFooter>
         </DialogContent>
