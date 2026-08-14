@@ -778,17 +778,13 @@ export const autoSetupGroupLoanAccounts = createServerFn({ method: "POST" })
   .inputValidator((i: { groupId: string; apply?: boolean }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
-    if (!(await hasManageRole(context.supabase, context.userId))) {
-      const { data: member } = await context.supabase
-        .from("firm_members")
-        .select("role")
-        .eq("firm_id", group.firmId)
-        .eq("user_id", context.userId)
-        .maybeSingle();
-      if ((member as any)?.role !== "owner") {
-        throw new Error("Only the organisation's owners and advisors can set up loan accounts.");
+    if (!(await isSuperAdminUser(context.supabase, context.userId))) {
+      const role = await firmMemberRole(context.supabase, context.userId, group.firmId);
+      if (!role) {
+        throw new Error("Only the organisation's members can set up loan accounts.");
       }
     }
+
     const { autoSetupLoanAccounts } = await import("./loan-autosetup.server");
     const supabaseAdmin = await getSupabaseAdmin();
     return autoSetupLoanAccounts({
