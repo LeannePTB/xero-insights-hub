@@ -110,12 +110,17 @@ export async function getClientFirmConnectionAccess(
       .from("client_xero_orgs")
       .select("id, clients!inner(firm_id)", { count: "exact", head: true })
       .eq("clients.firm_id", firmId),
-    (supabaseAdmin as any).from("plan_levels").select("key, xero_org_limit").eq("scope", "firm"),
+    (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm"),
   ]);
   if (!firm) throw new Error("Organisation not found.");
 
   const plan = (levels ?? []).find((row: any) => row.key === subscription?.tier);
-  const connectionLimit = Math.max(1, Number(plan?.xero_org_limit ?? 1));
+  // One client : one Xero file — the effective client allowance (override
+  // included) is also the organisation's Xero file allowance.
+  const connectionLimit = Math.max(
+    1,
+    Number((subscription as any)?.client_limit_override ?? plan?.client_limit ?? 1),
+  );
   const status = subscription?.status ?? null;
   const trialExpired =
     status === "trialing" && subscription?.trial_ends_at
