@@ -822,3 +822,177 @@ export const getLoanScreenTarget = createServerFn({ method: "POST" })
       groupId: ((membership as any)?.group_id as string) ?? null,
     };
   });
+
+// ---- Pairing-first API (Hub parity) ----------------------------------------
+export type LoanPairSide = {
+  id: string;
+  clientId: string;
+  clientName: string;
+  tenantId: string;
+  tenantName: string;
+  accountId: string | null;
+  accountCode: string | null;
+  accountName: string | null;
+  accountType: string | null;
+  direction: "payable" | "receivable";
+};
+
+export type LoanPair = {
+  key: string;
+  a: LoanPairSide;
+  b: LoanPairSide;
+};
+
+/** Every two-sided loan pairing inside a consolidation group. */
+export const listGroupLoanPairings = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string }) => i)
+  .handler(async ({ data, context }) => {
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const supabaseAdmin = await getSupabaseAdmin();
+    const { data: rows } = group.clientIds.length
+      ? await supabaseAdmin
+          .from("loan_consolidation_accounts")
+          .select(
+            "id, client_id, tenant_id, account_id, account_code, account_name, account_type, direction, counterparty_account_id",
+          )
+          .in("client_id", group.clientIds)
+      : { data: [] as any[] };
+
+    const byId = new Map<string, any>();
+    for (const r of (rows ?? []) as any[]) byId.set(r.id, r);
+
+    const toSide = (r: any): LoanPairSide => ({
+      id: r.id,
+      clientId: r.client_id,
+      clientName: group.clientNameByTenant.get(r.tenant_id) ?? "",
+      tenantId: r.tenant_id,
+      tenantName: group.tenantNameById.get(r.tenant_id) ?? "(unnamed)",
+      accountId: r.account_id ?? null,
+      accountCode: r.account_code ?? null,
+      accountName: r.account_name ?? null,
+      accountType: r.account_type ?? null,
+      direction: r.direction === "receivable" ? "receivable" : "payable",
+    });
+
+    const seen = new Set<string>();
+    const pairs: LoanPair[] = [];
+    for (const r of byId.values()) {
+      if (!r.counterparty_account_id) continue;
+      const other = byId.get(r.counterparty_account_id);
+      if (!other) continue;
+      const key = [r.id, other.id].sort().join("|");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      pairs.push({ key, a: toSide(r), b: toSide(other) });
+    }
+    pairs.sort((x, y) => {
+      const c = x.a.clientName.localeCompare(y.a.clientName);
+      if (c !== 0) return c;
+      return (x.a.accountCode ?? "").localeCompare(y.a.accountCode ?? "");
+    });
+    return {
+      groupId: group.groupId,
+      groupName: group.groupName,
+      firmId: group.firmId,
+      pairs,
+    };
+  });
+
+type PairingSideInput = {
+  clientId: string;
+  tenantId: string;
+  accountId: string | null;
+  accountCode: string | null;
+  accountName: string | null;
+  accountType: string | null;
+  direction?: "payable" | "receivable";
+};
+
+/** Create (or replace) a pairing between two loan accounts, adding them if needed. */
+export const saveLoanPairing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (i: { a: PairingSideInput; b: PairingSideInput; replaceIds?: string[] }) => i,
+  )
+  .handler(async ({ data, context }) => {
+    for (const side of [data.a, data.b]) {
+      if (!(await canManageClient(context.supabase, context.userId, side.clientId))) {
+        throw new Error("Only the firm's owners and advisors can pair loan accounts.");
+      }
+    }
+    if (
+      data.a.tenantId === data.b.tenantId &&
+      data.a.accountId &&
+      data.a.accountId === data.b.accountId
+    ) {
+      throw new Error("Pick two different loan accounts.");
+    }
+
+    const supabaseAdmin = await getSupabaseAdmin();
+
+    // Clear the pairing being edited (both directions) before relinking.
+    for (const id of data.replaceIds ?? []) {
+      await supabaseAdmin
+        .from("loan_consolidation_accounts")
+        .update({ counterparty_account_id: null })
+        .eq("id", id);
+      await supabaseAdmin
+        .from("loan_consolidation_accounts")
+        .update({ counterparty_account_id: null })
+        .eq("counterparty_account_id", id);
+    }
+
+    const ensure = async (side: PairingSideInput): Promise<string> => {
+      let existing: any = null;
+      if (side.accountId) {
+        const { data: found } = await supabaseAdmin
+          .from("loan_consolidation_accounts")
+          .select("id")
+          .eq("client_id", side.clientId)
+          .eq("tenant_id", side.tenantId)
+          .eq("account_id", side.accountId)
+          .maybeSingle();
+        existing = found;
+      }
+      if (existing?.id) return existing.id as string;
+      const { data: inserted, error } = await supabaseAdmin
+        .from("loan_consolidation_accounts")
+        .insert({
+          client_id: side.clientId,
+          tenant_id: side.tenantId,
+          account_id: side.accountId,
+          account_code: side.accountCode,
+          account_name: side.accountName,
+          account_type: side.accountType,
+          direction: side.direction ?? "payable",
+          sort_order: 0,
+        })
+        .select("id")
+        .single();
+      if (error) throw new Error(error.message);
+      return inserted!.id as string;
+    };
+
+    const aId = await ensure(data.a);
+    const bId = await ensure(data.b);
+    if (aId === bId) throw new Error("Pick two different loan accounts.");
+
+    // A loan account can only have one counterparty — release any old links.
+    for (const id of [aId, bId]) {
+      await supabaseAdmin
+        .from("loan_consolidation_accounts")
+        .update({ counterparty_account_id: null })
+        .eq("counterparty_account_id", id);
+    }
+    await supabaseAdmin
+      .from("loan_consolidation_accounts")
+      .update({ counterparty_account_id: bId })
+      .eq("id", aId);
+    await supabaseAdmin
+      .from("loan_consolidation_accounts")
+      .update({ counterparty_account_id: aId })
+      .eq("id", bId);
+
+    return { ok: true, a: aId, b: bId };
+  });

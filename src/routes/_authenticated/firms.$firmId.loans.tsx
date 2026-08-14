@@ -36,7 +36,7 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/loans")({
 const TABS = [
   { to: "/firms/$firmId/loans", label: "Matrix", exact: true },
   { to: "/firms/$firmId/loans/groups", label: "Groups", exact: false },
-  { to: "/firms/$firmId/loans/accounts", label: "Loan accounts", exact: false },
+  { to: "/firms/$firmId/loans/accounts", label: "Accounts", exact: false },
 ] as const;
 
 function LoansLayout() {
