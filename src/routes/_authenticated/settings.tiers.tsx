@@ -115,31 +115,6 @@ function TierSettings() {
     onError: (e: any) => toast.error(e?.message ?? "Could not add tier"),
   });
 
-  const freeMut = useMutation({
-    mutationFn: ({ level, isFree }: { level: PlanLevel; isFree: boolean }) =>
-      savePlanFn({
-        data: {
-          id: level.id,
-          scope: level.scope,
-          key: level.key,
-          label: level.label,
-          description: level.description,
-          client_limit: level.client_limit,
-          xero_org_limit: level.xero_org_limit,
-          allows_multi_org: level.allows_multi_org,
-          is_free: isFree,
-          widgets: level.widgets,
-          allowed_tiers: level.allowed_tiers,
-          sort_order: level.sort_order,
-          enabled: level.enabled,
-        },
-      }),
-    onSuccess: (_d, v) => {
-      toast.success(v.isFree ? "Tier set as free" : "Tier is no longer free");
-      qc.invalidateQueries({ queryKey: ["plan-levels"] });
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Could not update tier"),
-  });
 
   const deleteMut = useMutation({
     mutationFn: (id: string) => deletePlanFn({ data: { id } }),
