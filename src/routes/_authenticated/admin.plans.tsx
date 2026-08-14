@@ -314,55 +314,6 @@ function PlanLevelsPage() {
                 </div>
               )}
 
-              {draft.scope === "dashboard" && (
-                <>
-                  <div className="flex items-center justify-between rounded-md border p-3">
-                    <div>
-                      <p className="text-sm font-medium">Multiple Xero files</p>
-                      <p className="text-xs text-muted-foreground">Allow a client on this tier to link more than one file.</p>
-                    </div>
-                    <Switch
-                      checked={draft.allows_multi_org}
-                      onCheckedChange={(v) =>
-                        setDraft({
-                          ...draft,
-                          allows_multi_org: v,
-                          xero_org_limit: v ? Math.max(2, draft.xero_org_limit) : 1,
-                        })
-                      }
-                    />
-                  </div>
-                  {draft.allows_multi_org && draft.xero_org_limit <= 1 && (
-                    <p className="text-xs text-destructive">
-                      Set “Xero files per client” to the number this step should include.
-                    </p>
-                  )}
-                  <div>
-                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">Widgets</Label>
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {ALL_WIDGETS.map((w) => (
-                        <label
-                          key={w}
-                          className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                        >
-                          <Checkbox
-                            checked={draft.widgets.includes(w)}
-                            onCheckedChange={() =>
-                              setDraft({
-                                ...draft,
-                                widgets: draft.widgets.includes(w)
-                                  ? draft.widgets.filter((x) => x !== w)
-                                  : [...draft.widgets, w],
-                              })
-                            }
-                          />
-                          <span>{WIDGET_LABEL[w as WidgetKey]}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           )}
           <DialogFooter>
