@@ -122,7 +122,7 @@ export async function runLoanReconciliation(input: {
     .select(
       "id, client_id, tenant_id, account_id, account_code, account_name, direction, counterparty_account_id, sort_order",
     )
-    .eq("client_id", clientId)
+    .in("client_id", clientIds)
     .in("tenant_id", targetTenantIds)
     .order("sort_order", { ascending: true })
     .order("account_code", { ascending: true });
