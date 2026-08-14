@@ -500,17 +500,11 @@ async function resolveLoanGroup(
     .maybeSingle();
   if (!group) throw new Error("Consolidation group not found.");
 
-  let allowed = await hasManageRole(supabase, userId);
-  if (!allowed) {
-    const { data: member } = await supabase
-      .from("firm_members")
-      .select("id")
-      .eq("firm_id", (group as any).firm_id)
-      .eq("user_id", userId)
-      .maybeSingle();
-    allowed = Boolean(member);
-  }
+  const allowed =
+    Boolean(await firmMemberRole(supabase, userId, (group as any).firm_id)) ||
+    (await isSuperAdminUser(supabase, userId));
   if (!allowed) throw new Error("You don't have access to this organisation.");
+
 
   const { data: members } = await supabaseAdmin
     .from("consolidation_group_members")
