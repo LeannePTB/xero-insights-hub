@@ -326,6 +326,7 @@ export function TierEditor({
   onToggleEnabled,
   toggleDisabled,
   onDelete,
+  onEdit,
 }: {
   tier: DashboardTier;
   initial: WidgetKey[];
