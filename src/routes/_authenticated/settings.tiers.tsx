@@ -195,6 +195,21 @@ function TierSettings() {
                 onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
                 toggleDisabled={toggleMut.isPending}
                 onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
+                onEdit={
+                  isSuperAdmin && level
+                    ? () =>
+                        setDraft({
+                          id: level.id,
+                          key: level.key,
+                          label: level.label,
+                          description: level.description ?? "",
+                          xero_org_limit: level.xero_org_limit ?? 1,
+                          allows_multi_org: !!level.allows_multi_org,
+                          sort_order: level.sort_order ?? 100,
+                          widgets: (level.widgets as string[]) ?? [],
+                        })
+                    : undefined
+                }
               />
             );
           })}
