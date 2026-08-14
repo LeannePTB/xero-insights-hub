@@ -13,6 +13,7 @@ import {
   createAdvisorWithPassword,
   sendAdvisorPasswordReset,
   setAdvisorPassword,
+  setAdvisorSuperAdmin,
   PRIMARY_ADVISOR_USER_ID,
 } from "@/lib/advisors.functions";
 import { getMyContext } from "@/lib/roles.functions";
@@ -26,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 
@@ -50,6 +51,7 @@ function AdvisorSettings() {
   const createPwFn = useServerFn(createAdvisorWithPassword);
   const sendResetFn = useServerFn(sendAdvisorPasswordReset);
   const setPwFn = useServerFn(setAdvisorPassword);
+  const setSuperFn = useServerFn(setAdvisorSuperAdmin);
 
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
@@ -130,6 +132,17 @@ function AdvisorSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const superMut = useMutation({
+    mutationFn: ({ userId, makeSuperAdmin }: { userId: string; makeSuperAdmin: boolean }) =>
+      setSuperFn({ data: { userId, makeSuperAdmin } }),
+    onSuccess: (r) => {
+      toast.success(r.isSuperAdmin ? "Super admin access granted" : "Super admin access removed");
+      qc.invalidateQueries({ queryKey: ["advisors"] });
+      qc.invalidateQueries({ queryKey: ["my-context"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const [resetTarget, setResetTarget] = useState<{ userId: string; label: string } | null>(null);
   const [newPw, setNewPw] = useState("");
   const [showNewPw, setShowNewPw] = useState(false);
@@ -159,6 +172,7 @@ function AdvisorSettings() {
   if (!ctxQ.data?.isAdvisor) return <p className="p-6 text-sm text-destructive">Advisors only.</p>;
 
   const advisors = listQ.data?.advisors ?? [];
+  const viewerIsSuperAdmin = listQ.data?.viewerIsSuperAdmin ?? false;
   const pendingIds = new Set(pendingQ.data?.pendingUserIds ?? []);
   const pendingCount = pendingIds.size;
 
@@ -315,6 +329,11 @@ function AdvisorSettings() {
                           {a.display_name ?? a.email ?? a.user_id}
                           {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
                           {isPrimary && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Primary</span>}
+                          {a.is_super_admin && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                              <Crown className="h-3 w-3" /> Super admin
+                            </span>
+                          )}
                           {isPending && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">Pending invite</span>}
                         </p>
                         {a.email && a.display_name && <p className="truncate text-xs text-muted-foreground">{a.email}</p>}
@@ -342,6 +361,24 @@ function AdvisorSettings() {
                             <Send className="h-3.5 w-3.5" />
                           </Button>
                         </>
+                      )}
+                      {viewerIsSuperAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const label = a.email ?? a.display_name ?? a.user_id;
+                            const msg = a.is_super_admin
+                              ? `Remove super admin access for ${label}?`
+                              : `Make ${label} a super admin? They'll get full platform access.`;
+                            if (confirm(msg)) superMut.mutate({ userId: a.user_id, makeSuperAdmin: !a.is_super_admin });
+                          }}
+                          disabled={superMut.isPending || (a.is_super_admin && a.is_self)}
+                          title={a.is_super_admin ? (a.is_self ? "You can't remove your own super admin access" : "Remove super admin") : "Make super admin"}
+                          className={a.is_super_admin ? "text-amber-600" : undefined}
+                        >
+                          <Crown className="h-3.5 w-3.5" />
+                        </Button>
                       )}
                       <Button
                         variant="ghost"
