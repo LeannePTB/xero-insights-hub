@@ -95,27 +95,35 @@ export type LoanAccountRow = {
   sort_order: number;
 };
 
-const MANAGE_ROLES = ["advisor", "super_admin", "firm_owner"];
-
 async function clientFirmId(supabase: any, clientId: string): Promise<string | null> {
   const { data } = await supabase.from("clients").select("firm_id").eq("id", clientId).maybeSingle();
   return data?.firm_id ?? null;
 }
 
-async function isFirmOwner(supabase: any, userId: string, firmId: string | null): Promise<boolean> {
-  if (!firmId) return false;
+async function firmMemberRole(
+  supabase: any,
+  userId: string,
+  firmId: string | null,
+): Promise<string | null> {
+  if (!firmId) return null;
   const { data } = await supabase
     .from("firm_members")
     .select("role")
     .eq("user_id", userId)
     .eq("firm_id", firmId)
     .maybeSingle();
-  return data?.role === "owner";
+  return (data?.role as string | undefined) ?? null;
 }
 
-async function hasManageRole(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  return !!(data ?? []).some((r: any) => MANAGE_ROLES.includes(r.role));
+/** Only the platform super admin crosses organisation boundaries. */
+async function isSuperAdminUser(supabase: any, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
+  return Boolean(data);
 }
 
 async function hasClientAccess(supabase: any, userId: string, clientId: string): Promise<boolean> {
@@ -129,14 +137,15 @@ async function hasClientAccess(supabase: any, userId: string, clientId: string):
 }
 
 async function canManageClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  if (await hasManageRole(supabase, userId)) return true;
-  return isFirmOwner(supabase, userId, await clientFirmId(supabase, clientId));
+  if (await isSuperAdminUser(supabase, userId)) return true;
+  return Boolean(await firmMemberRole(supabase, userId, await clientFirmId(supabase, clientId)));
 }
 
 async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
   if (await canManageClient(supabase, userId, clientId)) return true;
   return hasClientAccess(supabase, userId, clientId);
 }
+
 
 async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
