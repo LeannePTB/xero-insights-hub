@@ -9,7 +9,7 @@ import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle } from "lucide-react";
-import { BrandMark } from "@/components/BrandMark";
+import { AppHeader } from "@/components/AppHeader";
 import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.functions";
 import { toast } from "sonner";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
@@ -199,15 +199,7 @@ function ClientDashboard() {
           note="Layout and tier gating only; data access is unchanged"
         />
       )}
-      <header className="border-b border-border/60 bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <BrandMark logoHeightClass="h-9" />
-
-          <Button variant="ghost" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" /> Sign out
-          </Button>
-        </div>
-      </header>
+      <AppHeader />
 
       <main className="mx-auto max-w-6xl px-6 py-10">
         {/* SubscriptionGate disabled until payments re-enabled */}
