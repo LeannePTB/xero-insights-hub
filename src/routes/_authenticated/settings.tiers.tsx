@@ -328,11 +328,6 @@ export function TierEditor({
               {enabled ? "On" : "Off"}
             </span>
           )}
-          {isFree && (
-            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
-              Free
-            </span>
-          )}
         </div>
         <div className="flex items-center gap-2">
           {onToggleEnabled && (
