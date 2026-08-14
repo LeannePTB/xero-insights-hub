@@ -244,7 +244,7 @@ export async function getSelectableConnectionsForClient(
       tenant_type: c.tenant_type ?? null,
       status: c.status ?? null,
       available: !link,
-      movable: Boolean(link) && !linkedToThisClient && (superAdmin || sameFirm),
+      movable: Boolean(link) && !linkedToThisClient && sameFirm,
       linkedClientId: link?.clientId ?? null,
       linkedClientName: link?.clientName ?? null,
       linkedFirmName: link?.firmId ? (firmNames.get(link.firmId) ?? null) : null,
