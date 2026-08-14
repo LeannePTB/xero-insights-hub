@@ -25,14 +25,22 @@ export const listAdvisors = createServerFn({ method: "GET" })
       .eq("role", "advisor")
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
-    if (!rows?.length) return { advisors: [] };
+    if (!rows?.length) return { advisors: [], viewerIsSuperAdmin: false };
 
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
       .select("id, email, display_name")
       .in("id", rows.map((r) => r.user_id));
     const map = new Map((profiles ?? []).map((p) => [p.id, p]));
+
+    const { data: superRows } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "super_admin");
+    const supers = new Set(((superRows ?? []) as any[]).map((r) => r.user_id as string));
+
     return {
+      viewerIsSuperAdmin: supers.has(context.userId),
       advisors: rows.map((r) => ({
         id: r.id,
         user_id: r.user_id,
@@ -40,9 +48,52 @@ export const listAdvisors = createServerFn({ method: "GET" })
         email: map.get(r.user_id)?.email ?? null,
         display_name: map.get(r.user_id)?.display_name ?? null,
         is_self: r.user_id === context.userId,
+        is_super_admin: supers.has(r.user_id),
       })),
     };
   });
+
+export const setAdvisorSuperAdmin = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { userId: string; makeSuperAdmin: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    // Only an existing super admin may grant or revoke super admin.
+    const { data: mine } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "super_admin");
+    if (!mine || mine.length === 0) throw new Error("Only super admins can change super admin access.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.makeSuperAdmin) {
+      const { error } = await (supabaseAdmin as any)
+        .from("user_roles")
+        .upsert({ user_id: data.userId, role: "super_admin" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+      if (error) throw new Error(error.message);
+      return { ok: true, isSuperAdmin: true };
+    }
+
+    if (data.userId === context.userId) {
+      throw new Error("You can't remove your own super admin access.");
+    }
+    const { data: others } = await supabaseAdmin
+      .from("user_roles")
+      .select("user_id")
+      .eq("role", "super_admin")
+      .neq("user_id", data.userId);
+    if (!others || others.length === 0) throw new Error("At least one super admin must remain.");
+
+    const { error } = await (supabaseAdmin as any)
+      .from("user_roles")
+      .delete()
+      .eq("user_id", data.userId)
+      .eq("role", "super_admin");
+    if (error) throw new Error(error.message);
+    return { ok: true, isSuperAdmin: false };
+  });
+
 
 export const inviteAdvisor = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
