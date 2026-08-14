@@ -1631,6 +1631,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           expires_at: string
+          firm_id: string | null
           flow: string
           known_tenant_ids: string[]
           pending_tenant_ids: string[]
@@ -1644,6 +1645,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           expires_at?: string
+          firm_id?: string | null
           flow?: string
           known_tenant_ids?: string[]
           pending_tenant_ids?: string[]
@@ -1657,6 +1659,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           expires_at?: string
+          firm_id?: string | null
           flow?: string
           known_tenant_ids?: string[]
           pending_tenant_ids?: string[]
@@ -1664,7 +1667,22 @@ export type Database = {
           state?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "xero_oauth_states_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "xero_oauth_states_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
