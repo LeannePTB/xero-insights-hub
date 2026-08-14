@@ -59,11 +59,21 @@ function dirLabel(side: ReconRowSide | null): string {
 }
 
 const STATUS_BADGE: Record<ReconRow["status"], { label: string; cls: string }> = {
-  balanced: { label: "Balanced", cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
-  mismatch: { label: "Mismatch", cls: "bg-destructive/10 text-destructive" },
-  unpaired: { label: "Unpaired", cls: "bg-amber-500/10 text-amber-700 dark:text-amber-400" },
-  missing: { label: "Missing", cls: "bg-muted text-muted-foreground" },
+  balanced: {
+    label: "Balanced",
+    cls: "border-transparent bg-emerald-100 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-500/15 dark:text-emerald-300",
+  },
+  mismatch: {
+    label: "Mismatch",
+    cls: "border-transparent bg-destructive/10 text-destructive hover:bg-destructive/10",
+  },
+  unpaired: {
+    label: "Unpaired",
+    cls: "border-transparent bg-amber-100 text-amber-700 hover:bg-amber-100 dark:bg-amber-500/15 dark:text-amber-300",
+  },
+  missing: { label: "Missing", cls: "border-transparent bg-muted text-muted-foreground" },
 };
+
 
 function download(base64: string, filename: string, mimeType: string) {
   const bin = atob(base64);
@@ -284,17 +294,18 @@ function LoanMatrixTab() {
             <div className="overflow-hidden rounded-2xl border border-border bg-card">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>This file — Account</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="w-10">Dir</TableHead>
-                    <TableHead className="border-l border-border">Counterparty</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="w-10">Dir</TableHead>
-                    <TableHead className="border-l border-border text-right">Net</TableHead>
-                    <TableHead>Status</TableHead>
+                  <TableRow className="border-b border-border bg-primary/5 hover:bg-primary/5">
+                    <TableHead className="text-base font-semibold text-foreground">This file — Account</TableHead>
+                    <TableHead className="text-right text-base font-semibold text-foreground">Balance</TableHead>
+                    <TableHead className="w-10 text-base font-semibold text-foreground">Dir</TableHead>
+                    <TableHead className="border-l border-border text-base font-semibold text-foreground">Counterparty</TableHead>
+                    <TableHead className="text-right text-base font-semibold text-foreground">Balance</TableHead>
+                    <TableHead className="w-10 text-base font-semibold text-foreground">Dir</TableHead>
+                    <TableHead className="border-l border-border text-right text-base font-semibold text-foreground">Net</TableHead>
+                    <TableHead className="text-base font-semibold text-foreground">Status</TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
                   {file.rows.length === 0 && (
                     <TableRow>
@@ -316,8 +327,8 @@ function LoanMatrixTab() {
                           }
                         }}
                       >
-                        <TableCell>
-                          <p className="font-medium">
+                        <TableCell className="py-4">
+                          <p className="font-semibold text-foreground">
                             {row.account.accountCode ? `${row.account.accountCode} · ` : ""}
                             {row.account.accountName || "Unknown"}
                             <XeroLink side={row.account} />
@@ -330,11 +341,12 @@ function LoanMatrixTab() {
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{num(row.account.balance)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{dirLabel(row.account)}</TableCell>
-                        <TableCell className="border-l border-border">
+                        <TableCell className="border-l border-border py-4">
                           {row.counterparty ? (
                             <>
-                              <p className="text-sm font-medium">{row.counterparty.tenantName}</p>
+                              <p className="text-sm font-semibold text-foreground">{row.counterparty.tenantName}</p>
                               <p className="text-sm text-muted-foreground">
+
                                 {row.counterparty.accountCode ? `${row.counterparty.accountCode} · ` : ""}
                                 {row.counterparty.accountName || "Unknown"}
                                 <XeroLink side={row.counterparty} />
@@ -368,14 +380,15 @@ function LoanMatrixTab() {
                     );
                   })}
                   {file.rows.length > 0 && (
-                    <TableRow className="border-t-2 border-primary/40 hover:bg-transparent">
+                    <TableRow className="border-t-2 border-primary/30 bg-primary/5 hover:bg-primary/5">
                       <TableCell colSpan={6} />
-                      <TableCell className="border-l border-border text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      <TableCell className="border-l border-border text-right text-xs font-semibold uppercase tracking-wider text-primary">
                         Total net
                       </TableCell>
-                      <TableCell className="tabular-nums font-semibold">{num(totalNet)}</TableCell>
+                      <TableCell className="tabular-nums font-semibold text-primary">{num(totalNet)}</TableCell>
                     </TableRow>
                   )}
+
                 </TableBody>
               </Table>
             </div>
