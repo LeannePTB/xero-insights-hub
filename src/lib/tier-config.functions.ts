@@ -272,8 +272,10 @@ export const getClientWidgets = createServerFn({ method: "POST" })
       .eq("scope", "dashboard")
       .order("sort_order", { ascending: true });
     const catalogue = (levels ?? []).filter((l: any) => l.enabled !== false);
-    const included = catalogue.filter((l: any) => !planTiers || planTiers.includes(l.key));
+    const { cumulativeDashboardLevels } = await import("@/lib/plan-tiers");
+    const included = cumulativeDashboardLevels(catalogue as any[], planTiers);
     const usable = included.length ? included : catalogue.filter((l: any) => l.key === "basic");
+
 
     const availableSet = new Set<WidgetKey>();
     for (const l of usable) for (const w of sanitizeWidgets(((l as any).widgets ?? []) as string[])) availableSet.add(w);
