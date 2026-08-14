@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { listClients, deleteClient } from "@/lib/clients.functions";
-import { listTierSettings } from "@/lib/tier-config.functions";
+import { listTierSettings, getFirmPlanSummary } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { ALL_TIERS, tierLabel, type DashboardTier } from "@/lib/tiers";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
@@ -61,6 +61,14 @@ export function FirmClientsSection({
     queryFn: () => fetchClients({ data: { firmId } }),
   });
   const tierSettingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchTierSettings() });
+  const fetchFirmPlan = useServerFn(getFirmPlanSummary);
+  const firmPlanQ = useQuery({
+    queryKey: ["firm-plan-summary", firmId],
+    queryFn: () => fetchFirmPlan({ data: { firmId } }),
+  });
+  // Organisation default cards act as a ceiling for every client in the firm.
+  const firmWidgets = firmPlanQ.data?.widgets ?? null;
+  const healthAllowedByFirm = !firmWidgets || firmWidgets.includes("health");
   const planTiersQ = useQuery({
     queryKey: ["plan-tiers", "firm", firmId],
     queryFn: () => fetchPlanTiers({ data: { firmId } }),
@@ -200,7 +208,7 @@ export function FirmClientsSection({
                             <div className="mt-0.5 text-xs text-muted-foreground truncate">
                               {tenantNames || "No Xero org linked"}
                             </div>
-                            {showHealth &&
+                            {showHealth && healthAllowedByFirm &&
                               (c.clientWidgets === null || c.clientWidgets?.includes("health")) && (
                                 <ClientHealthBadge tenantId={tenantIds[0] ?? null} />
                               )}
