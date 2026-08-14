@@ -272,8 +272,10 @@ export const getClientWidgets = createServerFn({ method: "POST" })
       .eq("scope", "dashboard")
       .order("sort_order", { ascending: true });
     const catalogue = (levels ?? []).filter((l: any) => l.enabled !== false);
-    const included = catalogue.filter((l: any) => !planTiers || planTiers.includes(l.key));
+    const { cumulativeDashboardLevels } = await import("@/lib/plan-tiers");
+    const included = cumulativeDashboardLevels(catalogue as any[], planTiers);
     const usable = included.length ? included : catalogue.filter((l: any) => l.key === "basic");
+
 
     const availableSet = new Set<WidgetKey>();
     for (const l of usable) for (const w of sanitizeWidgets(((l as any).widgets ?? []) as string[])) availableSet.add(w);
@@ -321,11 +323,13 @@ export const saveClientWidgets = createServerFn({ method: "POST" })
       const planTiers = await allowedTiersForClient(data.clientId);
       const { data: levels } = await supabaseAdmin
         .from("plan_levels")
-        .select("key, widgets, enabled")
-        .eq("scope", "dashboard");
-      const usable = (levels ?? []).filter(
-        (l: any) => l.enabled !== false && (!planTiers || planTiers.includes(l.key)),
-      );
+        .select("key, widgets, enabled, sort_order")
+        .eq("scope", "dashboard")
+        .order("sort_order", { ascending: true });
+      const { cumulativeDashboardLevels } = await import("@/lib/plan-tiers");
+      const enabled = (levels ?? []).filter((l: any) => l.enabled !== false);
+      const usable = cumulativeDashboardLevels(enabled as any[], planTiers);
+
       const allowed = new Set<WidgetKey>();
       for (const l of usable) for (const w of sanitizeWidgets(((l as any).widgets ?? []) as string[])) allowed.add(w);
       if (allowed.size === 0) for (const w of DEFAULT_TIER_WIDGETS.basic) allowed.add(w);
