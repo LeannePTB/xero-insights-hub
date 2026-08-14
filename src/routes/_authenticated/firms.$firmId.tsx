@@ -159,15 +159,19 @@ function FirmPage() {
                     <span>
                       Clients allowed: <strong className="text-foreground tabular-nums">{plan.clientLimit}</strong>
                     </span>
-                    {summary.xeroOrgLimit != null && (
-                      <span>
-                        Xero files per client:{" "}
-                        <strong className="text-foreground tabular-nums">{summary.xeroOrgLimit}</strong>
-                      </span>
-                    )}
                     <span>
-                      Multiple Xero files per client:{" "}
-                      <strong className="text-foreground">{summary.allowsMultiOrg ? "Yes" : "No"}</strong>
+                      Xero files allowed:{" "}
+                      <strong className="text-foreground tabular-nums">
+                        {summary.xeroFileLimit ?? plan.clientLimit}
+                      </strong>
+                    </span>
+                    <span>
+                      Consolidation:{" "}
+                      <strong className="text-foreground">
+                        {summary.supportsConsolidation
+                          ? `up to ${summary.consolidationLimit ?? plan.clientLimit} Xero files`
+                          : "not included"}
+                      </strong>
                     </span>
                   </div>
 
