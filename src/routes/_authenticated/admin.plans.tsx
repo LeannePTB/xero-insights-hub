@@ -143,17 +143,6 @@ function PlanLevelsPage() {
           onDuplicate={(l) => setDraft(duplicateOf(l))}
           onDelete={setPendingDelete}
         />
-
-        <LevelSection
-          title="Client dashboard tiers"
-          hint="What each client sees. Pick the widgets and how many Xero files the tier may link."
-          scope="dashboard"
-          levels={dashLevels}
-          onNew={() => setDraft(EMPTY("dashboard"))}
-          onEdit={(l) => setDraft({ ...l, id: l.id })}
-          onDuplicate={(l) => setDraft(duplicateOf(l))}
-          onDelete={setPendingDelete}
-        />
       </main>
 
       <Dialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)}>
