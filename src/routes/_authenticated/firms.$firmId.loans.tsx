@@ -1,15 +1,8 @@
-import { createFileRoute, Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { listConsolidationGroups } from "@/lib/consolidation-groups.functions";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/loans")({
@@ -43,7 +36,6 @@ function LoansLayout() {
   const { firmId } = Route.useParams();
   const { group } = Route.useSearch();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const navigate = useNavigate();
 
   const fetchGroups = useServerFn(listConsolidationGroups);
   const groupsQ = useQuery({
