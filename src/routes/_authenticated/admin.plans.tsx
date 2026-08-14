@@ -291,9 +291,12 @@ function PlanLevelsPage() {
                       </label>
                     ))}
                     {dashLevels.filter((t) => t.enabled || draft.allowed_tiers.includes(t.key)).length === 0 && (
-                      <p className="text-xs text-muted-foreground">Create dashboard tiers below first.</p>
+                      <p className="text-xs text-muted-foreground">No dashboard tiers yet — create them in Tier widgets.</p>
                     )}
                   </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    <Link to="/settings/tiers" className="underline underline-offset-2">Manage tiers</Link> to add, rename or pick widgets.
+                  </p>
                   {(() => {
                     const multi = dashLevels.filter(
                       (t) => draft.allowed_tiers.includes(t.key) && t.allows_multi_org,
