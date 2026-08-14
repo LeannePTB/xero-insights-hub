@@ -48,7 +48,7 @@ export const listClients = createServerFn({ method: "POST" })
     let q = db
       .from("clients")
       .select(
-        "id, name, firm_id, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
+        "id, name, firm_id, created_at, dashboard_widgets, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
       )
       .order("name");
     if (firmId) q = q.eq("firm_id", firmId);
@@ -92,6 +92,11 @@ export const listClients = createServerFn({ method: "POST" })
         grantedTiers,
         clientTiers,
         tierWidgets: resolveTierWidgets(c.id),
+        // null = never configured (plan default applies); an array is an explicit
+        // per-client override and must win over any tier default.
+        clientWidgets: Array.isArray(c.dashboard_widgets)
+          ? sanitizeWidgets(c.dashboard_widgets as string[])
+          : null,
       };
     });
     return { clients };
