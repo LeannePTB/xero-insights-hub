@@ -11,6 +11,7 @@ import { ALL_TIERS, tierLabel, type DashboardTier } from "@/lib/tiers";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { Button } from "@/components/ui/button";
+import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -101,7 +102,8 @@ export function FirmClientsSection({
               Client limit reached — upgrade the plan to add more.
             </span>
           )}
-          <Button asChild={!atLimit} disabled={atLimit}>
+          <AddClientFromXeroButton firmId={firmId} disabled={atLimit} />
+          <Button variant="outline" asChild={!atLimit} disabled={atLimit}>
             {atLimit ? (
               <span><Plus className="mr-2 h-4 w-4" /> New client</span>
             ) : (
@@ -150,11 +152,14 @@ export function FirmClientsSection({
             <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
               A client is a company you track. Each client can hold one or more Xero organisations.
             </p>
-            <Button className="mt-6" asChild>
-              <Link to="/clients/new" search={{ firmId } as any}>
-                <Plus className="mr-2 h-4 w-4" /> New client
-              </Link>
-            </Button>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+              <AddClientFromXeroButton firmId={firmId} />
+              <Button variant="outline" asChild>
+                <Link to="/clients/new" search={{ firmId } as any}>
+                  <Plus className="mr-2 h-4 w-4" /> New client
+                </Link>
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)]">
