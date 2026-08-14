@@ -874,6 +874,7 @@ export type Database = {
       firms: {
         Row: {
           created_at: string
+          default_widgets: string[] | null
           id: string
           is_always_free: boolean
           name: string
@@ -882,6 +883,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          default_widgets?: string[] | null
           id?: string
           is_always_free?: boolean
           name: string
@@ -890,6 +892,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          default_widgets?: string[] | null
           id?: string
           is_always_free?: boolean
           name?: string
