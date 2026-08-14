@@ -17,6 +17,7 @@ import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
+import { FirmAuditLogCard } from "@/components/admin/FirmAuditLogCard";
 
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
@@ -386,6 +387,13 @@ function FirmPage() {
             planLabel={planV.planLabel}
           />
         </div>
+
+        {isSuper && (
+          <div className="mt-8">
+            <FirmAuditLogCard firmId={firmId} />
+          </div>
+        )}
+
 
 
       </main>
