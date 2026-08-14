@@ -79,8 +79,6 @@ export async function fetchBalanceSheetBalances(opts: {
   const json = await xeroGet<{ Reports?: XeroReport[] }>(conn, "Reports/BalanceSheet", {
     date: opts.date,
     standardLayout: "false",
-    trackingOptionID1: "",
-    trackingOptionID2: "",
   });
   const report = json.Reports?.[0];
   const out: XeroTrialBalanceBalances = {
