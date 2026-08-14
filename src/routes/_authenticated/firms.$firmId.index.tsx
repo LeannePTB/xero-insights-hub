@@ -19,7 +19,7 @@ import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { ConsolidationGroupsSection } from "@/components/admin/ConsolidationGroupsSection";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
-import { getFirmPlanSummary } from "@/lib/tier-config.functions";
+import { getFirmPlanSummary, saveFirmDefaultWidgets } from "@/lib/tier-config.functions";
 import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
 
 import { Badge } from "@/components/ui/badge";
