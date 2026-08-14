@@ -247,7 +247,24 @@ function FirmPage() {
           )}
         </div>
 
+        {xeroPick && (
+          <XeroOnboardPickerDialog
+            firmId={firmId}
+            state={xeroPick}
+            onDone={() => {
+              qc.invalidateQueries({ queryKey: ["clients", firmId] });
+              navigate({
+                to: "/firms/$firmId",
+                params: { firmId },
+                search: (prev: any) => ({ ...prev, xero_pick: undefined }),
+                replace: true,
+              });
+            }}
+          />
+        )}
+
         <Dialog open={planOpen} onOpenChange={setPlanOpen}>
+
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Plan &amp; subscription</DialogTitle>
