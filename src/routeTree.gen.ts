@@ -46,6 +46,7 @@ import { Route as AuthenticatedClientsClientIdLoansRouteImport } from './routes/
 import { Route as AuthenticatedClientsClientIdCashflowScenarioRouteImport } from './routes/_authenticated/clients.$clientId.cashflow-scenario'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
 import { Route as AuthenticatedFirmsFirmIdLoansIndexRouteImport } from './routes/_authenticated/firms.$firmId.loans.index'
+import { Route as AuthenticatedFirmsFirmIdLoansGroupsRouteImport } from './routes/_authenticated/firms.$firmId.loans.groups'
 import { Route as AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport } from './routes/_authenticated/firms.$firmId.consolidated.$groupId'
 import { Route as AuthenticatedClientsClientIdXeroLogTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.xero-log.$tenantId'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
@@ -255,6 +256,12 @@ const AuthenticatedFirmsFirmIdLoansIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
   } as any)
+const AuthenticatedFirmsFirmIdLoansGroupsRoute =
+  AuthenticatedFirmsFirmIdLoansGroupsRouteImport.update({
+    id: '/groups',
+    path: '/groups',
+    getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
+  } as any)
 const AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute =
   AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport.update({
     id: '/consolidated/$groupId',
@@ -327,6 +334,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
+  '/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
   '/firms/$firmId/loans/': typeof AuthenticatedFirmsFirmIdLoansIndexRoute
 }
 export interface FileRoutesByTo {
@@ -367,6 +375,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
+  '/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansIndexRoute
 }
 export interface FileRoutesById {
@@ -412,6 +421,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/_authenticated/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
   '/_authenticated/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
+  '/_authenticated/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
   '/_authenticated/firms/$firmId/loans/': typeof AuthenticatedFirmsFirmIdLoansIndexRoute
 }
 export interface FileRouteTypes {
@@ -457,6 +467,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/receivables/$tenantId'
     | '/clients/$clientId/xero-log/$tenantId'
     | '/firms/$firmId/consolidated/$groupId'
+    | '/firms/$firmId/loans/groups'
     | '/firms/$firmId/loans/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -497,6 +508,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/receivables/$tenantId'
     | '/clients/$clientId/xero-log/$tenantId'
     | '/firms/$firmId/consolidated/$groupId'
+    | '/firms/$firmId/loans/groups'
     | '/firms/$firmId/loans'
   id:
     | '__root__'
@@ -541,6 +553,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
     | '/_authenticated/clients/$clientId/xero-log/$tenantId'
     | '/_authenticated/firms/$firmId/consolidated/$groupId'
+    | '/_authenticated/firms/$firmId/loans/groups'
     | '/_authenticated/firms/$firmId/loans/'
   fileRoutesById: FileRoutesById
 }
@@ -824,6 +837,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansIndexRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
     }
+    '/_authenticated/firms/$firmId/loans/groups': {
+      id: '/_authenticated/firms/$firmId/loans/groups'
+      path: '/groups'
+      fullPath: '/firms/$firmId/loans/groups'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansGroupsRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
+    }
     '/_authenticated/firms/$firmId/consolidated/$groupId': {
       id: '/_authenticated/firms/$firmId/consolidated/$groupId'
       path: '/consolidated/$groupId'
@@ -880,11 +900,14 @@ const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
 interface AuthenticatedFirmsFirmIdLoansRouteChildren {
+  AuthenticatedFirmsFirmIdLoansGroupsRoute: typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
   AuthenticatedFirmsFirmIdLoansIndexRoute: typeof AuthenticatedFirmsFirmIdLoansIndexRoute
 }
 
 const AuthenticatedFirmsFirmIdLoansRouteChildren: AuthenticatedFirmsFirmIdLoansRouteChildren =
   {
+    AuthenticatedFirmsFirmIdLoansGroupsRoute:
+      AuthenticatedFirmsFirmIdLoansGroupsRoute,
     AuthenticatedFirmsFirmIdLoansIndexRoute:
       AuthenticatedFirmsFirmIdLoansIndexRoute,
   }
