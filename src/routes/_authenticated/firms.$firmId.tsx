@@ -17,6 +17,8 @@ import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { ConsolidationGroupsSection } from "@/components/admin/ConsolidationGroupsSection";
+import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
+
 import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
 
@@ -28,12 +30,13 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/_authenticated/firms/$firmId")({
   validateSearch: (
     search: Record<string, unknown>,
-  ): { viewAs?: string; xero_onboarded?: string; xero_error?: string } => ({
+  ): { viewAs?: string; xero_onboarded?: string; xero_error?: string; xero_pick?: string } => ({
     ...(typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {}),
     ...(typeof search.xero_onboarded === "string"
       ? { xero_onboarded: search.xero_onboarded }
       : {}),
     ...(typeof search.xero_error === "string" ? { xero_error: search.xero_error } : {}),
+    ...(typeof search.xero_pick === "string" ? { xero_pick: search.xero_pick } : {}),
   }),
   head: () => ({ meta: [{ title: "Organisation — Traction Advisory" }] }),
   component: FirmPage,
@@ -42,7 +45,13 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId")({
 
 function FirmPage() {
   const { firmId } = Route.useParams();
-  const { viewAs, xero_onboarded: xeroOnboarded, xero_error: xeroError } = Route.useSearch();
+  const {
+    viewAs,
+    xero_onboarded: xeroOnboarded,
+    xero_error: xeroError,
+    xero_pick: xeroPick,
+  } = Route.useSearch();
+
   const previewing = viewAs === "owner";
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -238,7 +247,24 @@ function FirmPage() {
           )}
         </div>
 
+        {xeroPick && (
+          <XeroOnboardPickerDialog
+            firmId={firmId}
+            state={xeroPick}
+            onDone={() => {
+              qc.invalidateQueries({ queryKey: ["clients", firmId] });
+              navigate({
+                to: "/firms/$firmId",
+                params: { firmId },
+                search: (prev: any) => ({ ...prev, xero_pick: undefined }),
+                replace: true,
+              });
+            }}
+          />
+        )}
+
         <Dialog open={planOpen} onOpenChange={setPlanOpen}>
+
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>Plan &amp; subscription</DialogTitle>

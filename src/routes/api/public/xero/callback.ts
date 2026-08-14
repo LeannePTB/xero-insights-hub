@@ -307,46 +307,63 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         // ─────────────────────────────────────────────────────────────────────
         if (flow === "onboard" && stateRow.firm_id) {
           const firmPath = `/firms/${stateRow.firm_id}`;
-          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
           if (tenants.length === 0) {
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(
               `${returnOrigin}${firmPath}?xero_error=${encodeURIComponent("Xero didn't return any organisations for that login. Try again and tick the organisation you want on Xero's consent screen.")}`,
             );
           }
           try {
-            const { createClientsFromTenants } = await import("@/lib/xero/onboard.server");
-            const outcome = await createClientsFromTenants({
-              firmId: stateRow.firm_id,
-              userId,
-              tenantIds: tenants.map((t) => t.tenantId),
-            });
-            if (outcome.created.length === 0) {
+            // Xero returns every organisation this login has ever authorised —
+            // only the ones that weren't known before this flow are "new".
+            const known = new Set(stateRow.known_tenant_ids ?? []);
+            const newTenantIds = tenants
+              .map((t) => t.tenantId)
+              .filter((id) => !known.has(id));
+
+            if (newTenantIds.length === 1) {
+              const { createClientsFromTenants } = await import("@/lib/xero/onboard.server");
+              const outcome = await createClientsFromTenants({
+                firmId: stateRow.firm_id,
+                userId,
+                tenantIds: newTenantIds,
+              });
+              await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+              if (outcome.created.length === 1) {
+                return redirectTo(
+                  `${returnOrigin}/clients/${outcome.created[0].clientId}?xero=connected`,
+                );
+              }
               const reason = outcome.skippedAssigned.length
-                ? `Those Xero organisations are already linked to a client (${outcome.skippedAssigned.join(", ")}).`
+                ? `That Xero organisation is already linked to a client (${outcome.skippedAssigned.join(", ")}).`
                 : outcome.skippedLimit.length
-                  ? "Your plan's client limit has been reached, so no new clients were created."
-                  : "No new clients could be created from that Xero login.";
+                  ? "Your plan's client limit has been reached, so no new client was created."
+                  : "No new client could be created from that Xero login.";
               return redirectTo(
                 `${returnOrigin}${firmPath}?xero_error=${encodeURIComponent(reason)}`,
               );
             }
-            const skipped = [...outcome.skippedAssigned, ...outcome.skippedLimit];
-            if (outcome.created.length === 1 && skipped.length === 0) {
-              return redirectTo(
-                `${returnOrigin}/clients/${outcome.created[0].clientId}?xero=connected`,
-              );
-            }
-            const summary = `Created ${outcome.created.length} client${outcome.created.length === 1 ? "" : "s"}: ${outcome.created.map((c) => c.name).join(", ")}.${skipped.length ? ` Skipped: ${skipped.join(", ")}.` : ""}`;
+
+            // Otherwise let the user confirm which organisations to turn into clients.
+            await supabaseAdmin
+              .from("xero_oauth_states")
+              .update({
+                pending_tenant_ids: tenants.map((t) => t.tenantId),
+                completed_at: new Date().toISOString(),
+              })
+              .eq("state", state);
             return redirectTo(
-              `${returnOrigin}${firmPath}?xero_onboarded=${encodeURIComponent(summary)}`,
+              `${returnOrigin}${firmPath}?xero_pick=${encodeURIComponent(state)}`,
             );
           } catch (onboardErr: any) {
             console.error("Xero onboard client creation failed", onboardErr);
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(
               `${returnOrigin}${firmPath}?xero_error=${encodeURIComponent(onboardErr?.message ?? "Could not create the client.")}`,
             );
           }
         }
+
 
         const initiatingClientId = stateRow.client_id ?? null;
 
