@@ -211,20 +211,8 @@ function LoanPairingsTab() {
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             {editing ? "Edit pairing" : "Add pairing"}
           </h3>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => autoMut.mutate()}
-            disabled={autoMut.isPending}
-          >
-            {autoMut.isPending ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <Wand2 className="mr-2 h-4 w-4" />
-            )}
-            Auto-detect from Xero
-          </Button>
         </div>
+
 
         <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-center">
           <SidePanel
