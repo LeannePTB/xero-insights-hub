@@ -250,12 +250,34 @@ function LoanMatrixTab() {
 
       {sections.map((file: any) => {
         const totalNet = file.rows.reduce((s: number, r: ReconRow) => s + (r.net ?? 0), 0);
+        const hasErrors = file.tenantErrors && file.tenantErrors.length > 0;
         return (
           <section key={file.tenant.tenantId} className="space-y-2">
             <h3 className="font-display text-lg font-semibold text-primary">
               {file.tenant.clientName ?? file.tenant.tenantName}
               <span className="ml-2 text-sm font-normal text-muted-foreground">{file.tenant.tenantName}</span>
             </h3>
+
+            {hasErrors && (
+              <div className="rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+                  <div className="space-y-1">
+                    <p className="font-medium text-destructive">Couldn’t load balances for this Xero file</p>
+                    {file.tenantErrors.map((e: any) => (
+                      <p
+                        key={e.tenantId}
+                        className="text-xs text-destructive/90"
+                        title={e.error}
+                      >
+                        {e.error.length > 120 ? `${e.error.slice(0, 120)}…` : e.error}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="overflow-hidden rounded-2xl border border-border bg-card">
               <Table>
                 <TableHeader>
@@ -297,7 +319,11 @@ function LoanMatrixTab() {
                             {row.account.accountName || "Unknown"}
                             <XeroLink side={row.account} />
                           </p>
-                          {row.account.error && <p className="text-xs text-destructive">{row.account.error}</p>}
+                          {row.account.error && (
+                            <p className="max-w-xs truncate text-xs text-destructive" title={row.account.error}>
+                              {row.account.error}
+                            </p>
+                          )}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{num(row.account.balance)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{dirLabel(row.account)}</TableCell>
@@ -311,7 +337,9 @@ function LoanMatrixTab() {
                                 <XeroLink side={row.counterparty} />
                               </p>
                               {row.counterparty.error && (
-                                <p className="text-xs text-destructive">{row.counterparty.error}</p>
+                                <p className="max-w-xs truncate text-xs text-destructive" title={row.counterparty.error}>
+                                  {row.counterparty.error}
+                                </p>
                               )}
                             </>
                           ) : (
