@@ -21,6 +21,8 @@ export type ConsolidationGroupsView = {
   firmId: string;
   firmName: string;
   multiCompany: boolean;
+  /** Max Xero files (clients) allowed in one consolidation group. */
+  consolidationLimit: number;
   groups: ConsolidationGroup[];
   clients: GroupClient[];
 };
@@ -106,6 +108,7 @@ export const listConsolidationGroups = createServerFn({ method: "POST" })
       firmId: data.firmId,
       firmName: (firm as any).name,
       multiCompany,
+      consolidationLimit: Math.max(1, Number(limit)),
       groups: groupList,
       clients: clientList,
     };
@@ -121,6 +124,25 @@ export const saveConsolidationGroup = createServerFn({ method: "POST" })
     if (data.clientIds.length < 2) throw new Error("Select at least two companies to consolidate.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // A group can hold up to the organisation's full Xero file allowance.
+    const { data: subRow } = await supabaseAdmin
+      .from("subscriptions")
+      .select("tier, client_limit_override")
+      .eq("firm_id", data.firmId)
+      .maybeSingle();
+    const { data: planRows } = await (supabaseAdmin as any)
+      .from("plan_levels")
+      .select("key, client_limit")
+      .eq("scope", "firm");
+    const planRow = ((planRows ?? []) as any[]).find((p) => p.key === (subRow as any)?.tier);
+    const groupLimit = Math.max(
+      1,
+      Number((subRow as any)?.client_limit_override ?? planRow?.client_limit ?? 1),
+    );
+    if (data.clientIds.length > groupLimit) {
+      throw new Error(`This plan allows up to ${groupLimit} Xero files in a consolidation group.`);
+    }
 
     // Every selected client must belong to this organisation.
     const { data: owned } = await supabaseAdmin
