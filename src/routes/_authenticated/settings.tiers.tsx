@@ -56,7 +56,17 @@ function TierSettings() {
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
   const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
 
-  const [newTier, setNewTier] = useState<{ label: string; description: string } | null>(null);
+  type TierDraft = {
+    id?: string;
+    key: string;
+    label: string;
+    description: string;
+    xero_org_limit: number;
+    allows_multi_org: boolean;
+    sort_order: number;
+    widgets: string[];
+  };
+  const [draft, setDraft] = useState<TierDraft | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PlanLevel | null>(null);
 
   // Tier list comes from the catalogue; built-ins remain if the catalogue is empty.
