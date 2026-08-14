@@ -205,6 +205,63 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     return { authorizeUrl: url.toString() };
   });
 
+/**
+ * Onboard flow: authorise a Xero file first, then create the client
+ * subscription automatically from the Xero organisation name on callback.
+ */
+export const startXeroOnboardConnect = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { origin: string; firmId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const clientId = process.env.XERO_CLIENT_ID;
+    if (!clientId) {
+      throw new Error(
+        "Xero is not configured yet. The app owner needs to add XERO_CLIENT_ID and XERO_CLIENT_SECRET.",
+      );
+    }
+
+    const { enforceRateLimit } = await import("@/lib/rate-limit.server");
+    await enforceRateLimit(`xero:connect:${context.userId}`, 10, 3600);
+
+    const { assertFirmCanAddClient } = await import("@/lib/xero/onboard.server");
+    await assertFirmCanAddClient(data.firmId, context.userId);
+
+    const { data: known, error: knownError } = await context.supabase
+      .from("xero_connections")
+      .select("tenant_id");
+    if (knownError) throw new Error(knownError.message);
+    const knownTenantIds = [...new Set((known ?? []).map((c) => c.tenant_id))];
+
+    const state = randomBytes(24).toString("hex");
+    const codeVerifier = base64url(randomBytes(48));
+    const codeChallenge = base64url(createHash("sha256").update(codeVerifier).digest());
+    const returnOrigin = normalizeOrigin(data.origin);
+    const { error } = await context.supabase.from("xero_oauth_states").insert({
+      state,
+      user_id: context.userId,
+      code_verifier: codeVerifier,
+      return_origin: returnOrigin,
+      client_id: null,
+      firm_id: data.firmId,
+      flow: "onboard",
+      known_tenant_ids: knownTenantIds,
+      pending_tenant_ids: [],
+    } as any);
+    if (error) throw new Error(error.message);
+
+    const url = new URL(XERO_AUTHORIZE_URL);
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("client_id", clientId);
+    url.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
+    url.searchParams.set("scope", SCOPES);
+    url.searchParams.set("state", state);
+    url.searchParams.set("code_challenge", codeChallenge);
+    url.searchParams.set("code_challenge_method", "S256");
+    return { authorizeUrl: url.toString() };
+  });
+
+
+
 export const listClientXeroOptions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { clientId: string; state?: string }) => input)
