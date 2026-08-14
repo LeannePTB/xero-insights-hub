@@ -100,7 +100,8 @@ function LoansPage() {
   });
 
   const result = reconQ.data;
-  const rows = result?.rows ?? [];
+  // Unpaired accounts are excluded from the matrix — pair them on the Accounts tab.
+  const rows = (result?.rows ?? []).filter((r) => r.status !== "unpaired");
 
   const selectedTenantName = tenants.find((t) => t.tenantId === tenantId)?.tenantName ?? "";
 
