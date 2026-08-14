@@ -151,7 +151,9 @@ export async function runLoanReconciliation(input: {
   for (const c of cptyRows) neededTenantIds.add(c.tenant_id);
   const allTenantIds = Array.from(neededTenantIds);
 
-  const { fetchTrialBalance, listAllAccounts, getShortCode } = await import("./xero/loan-xero.server");
+  const { fetchBalanceSheetBalances, listAllAccounts, getShortCode } = await import(
+    "./xero/loan-xero.server"
+  );
 
   const tenantErrors: Array<{ tenantId: string; error: string }> = [];
   const balancesByTenant = new Map<string, TenantBalances>();
@@ -164,7 +166,7 @@ export async function runLoanReconciliation(input: {
       allTenantIds.slice(i, i + BATCH).map(async (tid) => {
         try {
           const [balances, accts, shortCode] = await Promise.all([
-            fetchTrialBalance({ tenantId: tid, date: asAt }),
+            fetchBalanceSheetBalances({ tenantId: tid, date: asAt }),
             listAllAccounts(tid).catch(() => [] as any[]),
             getShortCode(tid),
           ]);
