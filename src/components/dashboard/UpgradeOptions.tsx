@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getUpgradeOptions } from "@/lib/tier-config.functions";
-import { TIER_LABEL, WIDGET_LABEL, tierLabel, tierDescription, type DashboardTier } from "@/lib/tiers";
+import { WIDGET_LABEL, tierLabel, tierDescription, type DashboardTier } from "@/lib/tiers";
 import { Button } from "@/components/ui/button";
 import { ArrowUpRight, Sparkles } from "lucide-react";
 import { toast } from "sonner";
@@ -49,7 +49,7 @@ export function UpgradeOptions({
         <h2 className="font-display text-lg font-semibold">Other dashboards available</h2>
       </div>
       <p className="mb-5 text-sm text-muted-foreground">
-        You're currently on the <strong>{TIER_LABEL[currentTier]}</strong> dashboard. These
+        You're currently on the <strong>{tierLabel(currentTier)}</strong> dashboard. These
         higher tiers unlock extra widgets — request an upgrade from your advisor.
       </p>
       <div className="space-y-3">
