@@ -15,6 +15,7 @@ import { toast } from "sonner";
 import { LogOut, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
+import { SuperAdminBadge, SuperAdminChip } from "@/components/admin/SuperAdminOnly";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -124,12 +125,13 @@ function Dashboard() {
         {isAdvisor && <AccessBanner />}
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="font-display text-3xl font-semibold">
+            <h1 className="flex flex-wrap items-center gap-3 font-display text-3xl font-semibold">
               {isSuperAdmin
                 ? "Subscriptions"
                 : isAdvisor
                 ? (firms.length === 1 ? "Your subscription" : "Your firms")
                 : "Your dashboards"}
+              {isSuperAdmin && <SuperAdminBadge />}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {isSuperAdmin
@@ -294,7 +296,8 @@ function SubscriptionCard({
       </dl>
 
       {isSuperAdmin && f.isOwn && (
-        <div className="mt-5 flex justify-end">
+        <div className="mt-5 flex items-center justify-end gap-2">
+          <SuperAdminChip />
           <Button variant="ghost" size="sm" asChild>
             <Link to="/admin/firms/$firmId" params={{ firmId: f.id }}>
               Manage subscription
