@@ -786,3 +786,26 @@ export const autoSetupGroupLoanAccounts = createServerFn({ method: "POST" })
       apply: data.apply !== false,
     });
   });
+
+/** Where a client's loan consolidation lives now: its organisation + group. */
+export const getLoanScreenTarget = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string }) => i)
+  .handler(async ({ data, context }) => {
+    if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
+      throw new Error("You don't have access to this client.");
+    }
+    const supabaseAdmin = await getSupabaseAdmin();
+    const [{ data: client }, { data: membership }] = await Promise.all([
+      supabaseAdmin.from("clients").select("firm_id").eq("id", data.clientId).maybeSingle(),
+      supabaseAdmin
+        .from("consolidation_group_members")
+        .select("group_id")
+        .eq("client_id", data.clientId)
+        .maybeSingle(),
+    ]);
+    return {
+      firmId: ((client as any)?.firm_id as string) ?? null,
+      groupId: ((membership as any)?.group_id as string) ?? null,
+    };
+  });
