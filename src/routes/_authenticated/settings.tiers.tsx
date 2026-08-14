@@ -280,9 +280,6 @@ export function TierEditor({
   enabled,
   onToggleEnabled,
   toggleDisabled,
-  isFree,
-  onToggleFree,
-  freeDisabled,
   onDelete,
 }: {
   tier: DashboardTier;
@@ -296,9 +293,6 @@ export function TierEditor({
   enabled?: boolean;
   onToggleEnabled?: (v: boolean) => void;
   toggleDisabled?: boolean;
-  isFree?: boolean;
-  onToggleFree?: (v: boolean) => void;
-  freeDisabled?: boolean;
   onDelete?: () => void;
 }) {
   const [selected, setSelected] = useState<Set<WidgetKey>>(new Set(initial));
