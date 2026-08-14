@@ -35,7 +35,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           const { data, error: stateLookupErr } = await supabaseAdmin
             .from("xero_oauth_states")
             .select(
-              "user_id, code_verifier, return_origin, created_at, client_id, flow, known_tenant_ids",
+              "user_id, code_verifier, return_origin, created_at, client_id, firm_id, flow, known_tenant_ids",
             )
             .eq("state", state)
             .maybeSingle();
@@ -45,7 +45,13 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           }
         }
 
-        const flow: "connect" | "signin" = stateRow?.flow === "signin" ? "signin" : "connect";
+        const flow: "connect" | "signin" | "onboard" =
+          stateRow?.flow === "signin"
+            ? "signin"
+            : stateRow?.flow === "onboard"
+              ? "onboard"
+              : "connect";
+        const onboardReturnPath = stateRow?.firm_id ? `/firms/${stateRow.firm_id}` : "/dashboard";
 
         if (error) {
           const errorDescription = rawErrorDescription ?? "";
@@ -64,7 +70,9 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           const errorPath =
             flow === "signin"
               ? `/auth?xero_error=${encodeURIComponent(message)}`
-              : `${stateRow?.client_id ? `/clients/${stateRow.client_id}/settings` : "/dashboard"}?xero_error=${encodeURIComponent(message)}`;
+              : flow === "onboard"
+                ? `${onboardReturnPath}?xero_error=${encodeURIComponent(message)}`
+                : `${stateRow?.client_id ? `/clients/${stateRow.client_id}/settings` : "/dashboard"}?xero_error=${encodeURIComponent(message)}`;
           return redirectTo(`${returnOrigin}${errorPath}`);
         }
         if (!code || !state)
