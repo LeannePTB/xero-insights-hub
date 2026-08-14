@@ -441,3 +441,348 @@ export const getLoanMismatchDetail = createServerFn({ method: "POST" })
     const { runLoanMismatchDetail } = await import("./loan-mismatch.server");
     return runLoanMismatchDetail({ supabase: supabaseAdmin, rowId: data.rowId, asAt: data.asAt });
   });
+
+// ---- Group-scoped (Company Loan Consolidation screen) ----------------------
+
+export const ALL_FILES = "__all__";
+
+export type GroupLoanFile = {
+  clientId: string;
+  clientName: string;
+  tenantId: string;
+  tenantName: string;
+  count: number;
+};
+
+type ResolvedLoanGroup = {
+  firmId: string;
+  groupId: string;
+  groupName: string;
+  clients: { clientId: string; clientName: string; tenantIds: string[] }[];
+  clientIds: string[];
+  clientNameByTenant: Map<string, string>;
+  clientIdByTenant: Map<string, string>;
+  tenantNameById: Map<string, string>;
+};
+
+async function resolveLoanGroup(
+  supabase: any,
+  userId: string,
+  groupId: string,
+): Promise<ResolvedLoanGroup> {
+  const supabaseAdmin = await getSupabaseAdmin();
+  const { data: group } = await supabaseAdmin
+    .from("consolidation_groups")
+    .select("id, firm_id, name")
+    .eq("id", groupId)
+    .maybeSingle();
+  if (!group) throw new Error("Consolidation group not found.");
+
+  let allowed = await hasManageRole(supabase, userId);
+  if (!allowed) {
+    const { data: member } = await supabase
+      .from("firm_members")
+      .select("id")
+      .eq("firm_id", (group as any).firm_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+    allowed = Boolean(member);
+  }
+  if (!allowed) throw new Error("You don't have access to this organisation.");
+
+  const { data: members } = await supabaseAdmin
+    .from("consolidation_group_members")
+    .select("client_id")
+    .eq("group_id", groupId);
+  const clientIds = ((members ?? []) as any[]).map((m) => m.client_id as string);
+
+  const { data: clients } = clientIds.length
+    ? await supabaseAdmin
+        .from("clients")
+        .select("id, name, client_xero_orgs(xero_connections(tenant_id, tenant_name))")
+        .in("id", clientIds)
+        .order("name")
+    : { data: [] as any[] };
+
+  const clientNameByTenant = new Map<string, string>();
+  const clientIdByTenant = new Map<string, string>();
+  const tenantNameById = new Map<string, string>();
+  const list = ((clients ?? []) as any[]).map((c) => {
+    const tenantIds: string[] = [];
+    for (const o of c.client_xero_orgs ?? []) {
+      const t = o?.xero_connections;
+      if (!t?.tenant_id) continue;
+      tenantIds.push(t.tenant_id);
+      clientNameByTenant.set(t.tenant_id, c.name);
+      clientIdByTenant.set(t.tenant_id, c.id);
+      tenantNameById.set(t.tenant_id, t.tenant_name ?? "(unnamed)");
+    }
+    return { clientId: c.id as string, clientName: c.name as string, tenantIds };
+  });
+
+  return {
+    firmId: (group as any).firm_id,
+    groupId,
+    groupName: (group as any).name ?? "Group",
+    clients: list,
+    clientIds,
+    clientNameByTenant,
+    clientIdByTenant,
+    tenantNameById,
+  };
+}
+
+/** Every Xero file in the group, with how many loan accounts are set up on it. */
+export const listGroupLoanFiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string }) => i)
+  .handler(async ({ data, context }) => {
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const supabaseAdmin = await getSupabaseAdmin();
+    const tenantIds = [...group.tenantNameById.keys()];
+    const { data: rows } = tenantIds.length
+      ? await supabaseAdmin
+          .from("loan_consolidation_accounts")
+          .select("tenant_id")
+          .in("tenant_id", tenantIds)
+      : { data: [] as any[] };
+    const counts = new Map<string, number>();
+    for (const r of (rows ?? []) as any[]) {
+      counts.set(r.tenant_id, (counts.get(r.tenant_id) ?? 0) + 1);
+    }
+    const files: GroupLoanFile[] = tenantIds
+      .map((tid) => ({
+        clientId: group.clientIdByTenant.get(tid)!,
+        clientName: group.clientNameByTenant.get(tid) ?? "",
+        tenantId: tid,
+        tenantName: group.tenantNameById.get(tid) ?? "(unnamed)",
+        count: counts.get(tid) ?? 0,
+      }))
+      .sort((a, b) => a.clientName.localeCompare(b.clientName));
+    return { groupId: group.groupId, groupName: group.groupName, firmId: group.firmId, files };
+  });
+
+async function runGroupRecon(group: ResolvedLoanGroup, tenantId: string | null, asAt: string) {
+  const supabaseAdmin = await getSupabaseAdmin();
+  const { runLoanReconciliation } = await import("./loan-recon.server");
+  const result = await runLoanReconciliation({
+    supabase: supabaseAdmin,
+    clientIds: group.clientIds,
+    tenantIds: tenantId && tenantId !== ALL_FILES ? [tenantId] : null,
+    asAt,
+  });
+  // Label every file with the company (client) it belongs to.
+  const label = (t: { tenantId: string; tenantName: string }) => ({
+    ...t,
+    clientName: group.clientNameByTenant.get(t.tenantId) ?? t.tenantName,
+  });
+  return {
+    ...result,
+    groupName: group.groupName,
+    tenant: label(result.tenant),
+    files: result.files.map((f) => ({ ...f, tenant: label(f.tenant) })),
+  };
+}
+
+export const getGroupLoanReconciliation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string }) => i)
+  .handler(async ({ data, context }) => {
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    return runGroupRecon(group, data.tenantId ?? null, data.asAt);
+  });
+
+export const getGroupLoanMismatchDetail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string; rowId: string; asAt: string }) => i)
+  .handler(async ({ data, context }) => {
+    await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const supabaseAdmin = await getSupabaseAdmin();
+    const { runLoanMismatchDetail } = await import("./loan-mismatch.server");
+    return runLoanMismatchDetail({ supabase: supabaseAdmin, rowId: data.rowId, asAt: data.asAt });
+  });
+
+function safeFileName(s: string): string {
+  return s.replace(/[^\w\s-]+/g, "").trim().replace(/\s+/g, "_") || "loan-consolidation";
+}
+
+function toBase64(bytes: Uint8Array): string {
+  let bin = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    bin += String.fromCharCode.apply(
+      null,
+      Array.from(bytes.subarray(i, i + chunk)) as unknown as number[],
+    );
+  }
+  return btoa(bin);
+}
+
+function toExportSections(recon: any) {
+  return (recon.files as any[]).map((f) => ({
+    tenant: {
+      tenantId: f.tenant.tenantId,
+      tenantName: f.tenant.tenantName,
+      crmCompanyName: f.tenant.clientName ?? f.tenant.tenantName,
+    },
+    rows: (f.rows as any[]).map((r) => ({
+      id: r.id,
+      account: {
+        tenantCrmName: recon.groupName,
+        tenantName: r.account.tenantName,
+        accountCode: r.account.accountCode,
+        accountName: r.account.accountName,
+        direction: r.account.direction,
+        balance: r.account.balance,
+        error: r.account.error,
+      },
+      counterparty: r.counterparty
+        ? {
+            tenantCrmName: recon.groupName,
+            tenantName: r.counterparty.tenantName,
+            accountCode: r.counterparty.accountCode,
+            accountName: r.counterparty.accountName,
+            direction: r.counterparty.direction,
+            balance: r.counterparty.balance,
+            error: r.counterparty.error,
+          }
+        : null,
+      net: r.net,
+      status: r.status,
+    })),
+  }));
+}
+
+export const downloadGroupLoanReconciliation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string; format: "pdf" | "xlsx" }) => i)
+  .handler(async ({ data, context }) => {
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const recon = await runGroupRecon(group, data.tenantId ?? null, data.asAt);
+    const sections = toExportSections(recon);
+    const all = !data.tenantId || data.tenantId === ALL_FILES;
+    const label = all ? "All_Xero_Files" : safeFileName((recon.tenant as any).clientName ?? recon.tenant.tenantName);
+    const builders = await import("./loan-consolidation-export.server");
+    const payload = { groupName: group.groupName, asAt: data.asAt, sections };
+    const bytes =
+      data.format === "pdf"
+        ? await builders.buildLoanReconciliationPdf(payload as any)
+        : await builders.buildLoanReconciliationXlsx(payload as any);
+    return {
+      base64: toBase64(bytes),
+      filename: `${safeFileName(group.groupName)}_${label}_Loan_Reconciliation_${data.asAt}.${data.format}`,
+      mimeType:
+        data.format === "pdf"
+          ? "application/pdf"
+          : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    };
+  });
+
+export const saveGroupLoanSnapshot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string }) => i)
+  .handler(async ({ data, context }) => {
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const recon = await runGroupRecon(group, data.tenantId ?? null, data.asAt);
+    const all = !data.tenantId || data.tenantId === ALL_FILES;
+    const supabaseAdmin = await getSupabaseAdmin();
+    const { error } = await supabaseAdmin.from("loan_consolidation_snapshots").insert({
+      group_id: data.groupId,
+      as_at: data.asAt,
+      label: all ? "All Xero files" : ((recon.tenant as any).clientName ?? recon.tenant.tenantName),
+      payload: recon as any,
+      generated_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const listGroupLoanSnapshots = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string }) => i)
+  .handler(async ({ data, context }) => {
+    await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const supabaseAdmin = await getSupabaseAdmin();
+    const { data: rows } = await supabaseAdmin
+      .from("loan_consolidation_snapshots")
+      .select("id, as_at, label, generated_at")
+      .eq("group_id", data.groupId)
+      .order("generated_at", { ascending: false })
+      .limit(20);
+    return {
+      snapshots: ((rows ?? []) as any[]).map((r) => ({
+        id: r.id as string,
+        asAt: r.as_at as string,
+        label: (r.label as string) ?? "",
+        generatedAt: r.generated_at as string,
+      })),
+    };
+  });
+
+export const getGroupLoanSnapshot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string; snapshotId: string }) => i)
+  .handler(async ({ data, context }) => {
+    await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const supabaseAdmin = await getSupabaseAdmin();
+    const { data: row } = await supabaseAdmin
+      .from("loan_consolidation_snapshots")
+      .select("id, as_at, label, payload, generated_at")
+      .eq("id", data.snapshotId)
+      .eq("group_id", data.groupId)
+      .maybeSingle();
+    if (!row) throw new Error("Saved report not found.");
+    return {
+      id: (row as any).id as string,
+      asAt: (row as any).as_at as string,
+      label: ((row as any).label as string) ?? "",
+      generatedAt: (row as any).generated_at as string,
+      payload: (row as any).payload,
+    };
+  });
+
+export const deleteGroupLoanSnapshot = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string; snapshotId: string }) => i)
+  .handler(async ({ data, context }) => {
+    await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const supabaseAdmin = await getSupabaseAdmin();
+    const { error } = await supabaseAdmin
+      .from("loan_consolidation_snapshots")
+      .delete()
+      .eq("id", data.snapshotId)
+      .eq("group_id", data.groupId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/** Suggest loan accounts + pairings for every file in the group, from Xero. */
+export const autoSetupGroupLoanAccounts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { groupId: string; apply?: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    if (!(await hasManageRole(context.supabase, context.userId))) {
+      const { data: member } = await context.supabase
+        .from("firm_members")
+        .select("role")
+        .eq("firm_id", group.firmId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if ((member as any)?.role !== "owner") {
+        throw new Error("Only the organisation's owners and advisors can set up loan accounts.");
+      }
+    }
+    const { autoSetupLoanAccounts } = await import("./loan-autosetup.server");
+    const supabaseAdmin = await getSupabaseAdmin();
+    return autoSetupLoanAccounts({
+      supabase: supabaseAdmin,
+      clients: group.clients.map((c) => ({
+        clientId: c.clientId,
+        clientName: c.clientName,
+        tenantIds: c.tenantIds,
+      })),
+      tenantNameById: Object.fromEntries(group.tenantNameById),
+      apply: data.apply !== false,
+    });
+  });
