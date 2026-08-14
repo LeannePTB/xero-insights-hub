@@ -854,10 +854,13 @@ function ClientSettings() {
         <Section
           title="What this client sees"
           action={
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/settings/tiers">Edit plan defaults</Link>
-            </Button>
+            isSuperAdmin ? (
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/settings/tiers">Edit plan defaults</Link>
+              </Button>
+            ) : undefined
           }
+
         >
           <ClientWidgetsPanel clientId={clientId} />
         </Section>
