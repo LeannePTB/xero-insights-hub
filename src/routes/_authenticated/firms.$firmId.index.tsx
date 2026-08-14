@@ -16,6 +16,7 @@ import {
 import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
+import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
 
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
