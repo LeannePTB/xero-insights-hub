@@ -115,7 +115,10 @@
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.62 0.10 290);
+  --admin-accent: oklch(0.78 0.15 55);
+  --admin-accent-foreground: oklch(0.17 0.03 290);
 }
+
 
 @layer base {
   html { font-size: 90%; }
