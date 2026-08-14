@@ -1,0 +1,1 @@
+ALTER TABLE public.plan_levels ADD COLUMN IF NOT EXISTS is_free boolean NOT NULL DEFAULT false;

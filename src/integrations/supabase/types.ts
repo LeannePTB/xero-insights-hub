@@ -994,6 +994,7 @@ export type Database = {
           description: string
           enabled: boolean
           id: string
+          is_free: boolean
           key: string
           label: string
           scope: string
@@ -1010,6 +1011,7 @@ export type Database = {
           description?: string
           enabled?: boolean
           id?: string
+          is_free?: boolean
           key: string
           label: string
           scope: string
@@ -1026,6 +1028,7 @@ export type Database = {
           description?: string
           enabled?: boolean
           id?: string
+          is_free?: boolean
           key?: string
           label?: string
           scope?: string
