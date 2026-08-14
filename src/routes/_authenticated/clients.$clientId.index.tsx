@@ -164,6 +164,8 @@ function ClientDashboard() {
   }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
 
   const showHealth = widgets.includes("health");
+  const showNotes = widgets.includes("notes");
+  const showUnreconciled = widgets.includes("unreconciled");
   const savedOrder = orderQ.data?.order ?? [];
   const standardIds = new Set(standardCards.map((c) => c.id));
   const advancedIds = new Set(advancedCards.map((c) => c.id));
@@ -260,10 +262,12 @@ function ClientDashboard() {
           {orgs.length === 0 ? (
             <>
               {showHealth && <HealthWidget clientName={client.name} />}
-              <div className="grid gap-6 md:grid-cols-2">
-                <NotesCard clientId={clientId} canEdit={isAdvisor} />
-                <UnreconciledCard clientId={clientId} />
-              </div>
+              {(showNotes || showUnreconciled) && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  {showNotes && <NotesCard clientId={clientId} canEdit={isAdvisor} />}
+                  {showUnreconciled && <UnreconciledCard clientId={clientId} />}
+                </div>
+              )}
               <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />
             </>
           ) : (
@@ -290,10 +294,12 @@ function ClientDashboard() {
                 </>
               )}
 
-              <div className="grid gap-6 md:grid-cols-2">
-                <NotesCard clientId={clientId} canEdit={isAdvisor} />
-                <UnreconciledCard clientId={clientId} />
-              </div>
+              {(showNotes || showUnreconciled) && (
+                <div className="grid gap-6 md:grid-cols-2">
+                  {showNotes && <NotesCard clientId={clientId} canEdit={isAdvisor} />}
+                  {showUnreconciled && <UnreconciledCard clientId={clientId} />}
+                </div>
+              )}
 
 
               {standardCards.length > 0 && (

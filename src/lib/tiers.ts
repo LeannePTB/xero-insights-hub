@@ -4,6 +4,7 @@ export type WidgetKey =
   | "receivables"
   | "payables"
   | "pnl"
+  | "notes"
   | "unreconciled"
   | "tax_liability"
   | "superannuation"
@@ -20,6 +21,7 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "receivables",
   "payables",
   "pnl",
+  "notes",
   "unreconciled",
   "tax_liability",
   "superannuation",
@@ -37,6 +39,7 @@ const ADVANCED: WidgetKey[] = [
   "receivables",
   "payables",
   "pnl",
+  "notes",
   "unreconciled",
   "tax_liability",
   "superannuation",
@@ -48,7 +51,7 @@ const ADVANCED: WidgetKey[] = [
   "loan_consolidation",
 ];
 export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
-  basic: ["health", "receivables", "payables", "pnl", "unreconciled"],
+  basic: ["health", "receivables", "payables", "pnl", "notes", "unreconciled"],
   advisory: ADVANCED,
   investigate: ADVANCED,
   multi_company: ADVANCED,
@@ -73,7 +76,8 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   receivables: "Aged Receivables",
   payables: "Aged Payables",
   pnl: "Profit & Loss",
-  unreconciled: "Unreconciled Transactions",
+  notes: "Notes",
+  unreconciled: "Uncoded Bankfeed Questions",
   tax_liability: "Tax Liabilities",
   superannuation: "Superannuation Liabilities",
   accounting_breakeven: "Accounting Break-Even",
