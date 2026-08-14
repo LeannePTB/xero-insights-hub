@@ -30,6 +30,7 @@ import { Route as AuthenticatedFirmsFirmIdRouteImport } from './routes/_authenti
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedAdminSecurityRouteImport } from './routes/_authenticated/admin.security'
 import { Route as AuthenticatedAdminPlansRouteImport } from './routes/_authenticated/admin.plans'
+import { Route as AuthenticatedFirmsFirmIdIndexRouteImport } from './routes/_authenticated/firms.$firmId.index'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
@@ -159,6 +160,12 @@ const AuthenticatedAdminPlansRoute = AuthenticatedAdminPlansRouteImport.update({
   path: '/plans',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedFirmsFirmIdIndexRoute =
+  AuthenticatedFirmsFirmIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
 const AuthenticatedClientsClientIdIndexRoute =
   AuthenticatedClientsClientIdIndexRouteImport.update({
     id: '/clients/$clientId/',
@@ -299,6 +306,7 @@ export interface FileRoutesByFullPath {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
+  '/firms/$firmId/': typeof AuthenticatedFirmsFirmIdIndexRoute
   '/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
@@ -318,7 +326,6 @@ export interface FileRoutesByTo {
   '/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
-  '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRouteWithChildren
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
@@ -338,6 +345,7 @@ export interface FileRoutesByTo {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/clients/$clientId': typeof AuthenticatedClientsClientIdIndexRoute
+  '/firms/$firmId': typeof AuthenticatedFirmsFirmIdIndexRoute
   '/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
@@ -380,6 +388,7 @@ export interface FileRoutesById {
   '/lovable/email/transactional/preview': typeof LovableEmailTransactionalPreviewRoute
   '/lovable/email/transactional/send': typeof LovableEmailTransactionalSendRoute
   '/_authenticated/clients/$clientId/': typeof AuthenticatedClientsClientIdIndexRoute
+  '/_authenticated/firms/$firmId/': typeof AuthenticatedFirmsFirmIdIndexRoute
   '/_authenticated/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/_authenticated/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
@@ -422,6 +431,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/clients/$clientId/'
+    | '/firms/$firmId/'
     | '/clients/$clientId/audit/$tenantId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
@@ -441,7 +451,6 @@ export interface FileRouteTypes {
     | '/admin/plans'
     | '/admin/security'
     | '/clients/new'
-    | '/firms/$firmId'
     | '/settings/account'
     | '/settings/activity'
     | '/settings/advisors'
@@ -461,6 +470,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/clients/$clientId'
+    | '/firms/$firmId'
     | '/clients/$clientId/audit/$tenantId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
@@ -502,6 +512,7 @@ export interface FileRouteTypes {
     | '/lovable/email/transactional/preview'
     | '/lovable/email/transactional/send'
     | '/_authenticated/clients/$clientId/'
+    | '/_authenticated/firms/$firmId/'
     | '/_authenticated/clients/$clientId/audit/$tenantId'
     | '/_authenticated/clients/$clientId/payables/$tenantId'
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
@@ -677,6 +688,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminPlansRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/firms/$firmId/': {
+      id: '/_authenticated/firms/$firmId/'
+      path: '/'
+      fullPath: '/firms/$firmId/'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdIndexRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
     '/_authenticated/clients/$clientId/': {
       id: '/_authenticated/clients/$clientId/'
       path: '/clients/$clientId'
@@ -824,11 +842,13 @@ const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
 interface AuthenticatedFirmsFirmIdRouteChildren {
+  AuthenticatedFirmsFirmIdIndexRoute: typeof AuthenticatedFirmsFirmIdIndexRoute
   AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute: typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
 }
 
 const AuthenticatedFirmsFirmIdRouteChildren: AuthenticatedFirmsFirmIdRouteChildren =
   {
+    AuthenticatedFirmsFirmIdIndexRoute: AuthenticatedFirmsFirmIdIndexRoute,
     AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute:
       AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute,
   }
