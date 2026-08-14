@@ -31,11 +31,26 @@ export const listTierConfig = createServerFn({ method: "POST" })
     for (const r of rows ?? []) {
       byKey.set(`${r.client_id ?? "global"}:${r.tier}`, sanitizeWidgets(r.widgets ?? []));
     }
+
+    // Tier keys are catalogue-driven (super admins can add/remove them).
+    const { data: catRows } = await context.supabase
+      .from("plan_levels")
+      .select("key")
+      .eq("scope", "dashboard");
+    const tierKeys = Array.from(
+      new Set<string>([
+        ...ALL_TIERS,
+        ...((catRows ?? []) as any[]).map((r) => r.key as string),
+        ...((rows ?? []) as any[]).map((r) => r.tier as string),
+      ]),
+    );
+
     const build = (clientKey: string) =>
       Object.fromEntries(
-        ALL_TIERS.map((t) => [
+        tierKeys.map((t) => [
           t,
-          byKey.get(`${clientKey}:${t}`) ?? (clientKey === "global" ? DEFAULT_TIER_WIDGETS[t] : null),
+          byKey.get(`${clientKey}:${t}`) ??
+            (clientKey === "global" ? defaultWidgetsFor(t) : null),
         ]),
       ) as Record<DashboardTier, WidgetKey[] | null>;
 
@@ -126,9 +141,9 @@ export const listTierSettings = createServerFn({ method: "GET" })
       .from("tier_settings")
       .select("tier, enabled");
     if (error) throw new Error(error.message);
-    const map = Object.fromEntries(ALL_TIERS.map((t) => [t, true])) as Record<DashboardTier, boolean>;
-    for (const r of data ?? []) map[r.tier as DashboardTier] = !!r.enabled;
-    return { enabled: map };
+    const map = Object.fromEntries(ALL_TIERS.map((t) => [t, true])) as Record<string, boolean>;
+    for (const r of data ?? []) map[r.tier as string] = !!r.enabled;
+    return { enabled: map as Record<DashboardTier, boolean> };
   });
 
 export const setTierEnabled = createServerFn({ method: "POST" })
