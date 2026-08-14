@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { LogOut, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
-import { BrandMark } from "@/components/BrandMark";
+import { AppHeader } from "@/components/AppHeader";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
 
 
