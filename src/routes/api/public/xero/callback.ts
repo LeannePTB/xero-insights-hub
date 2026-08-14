@@ -10,9 +10,11 @@ type StateRow = {
   return_origin: string | null;
   created_at: string | null;
   client_id: string | null;
+  firm_id: string | null;
   flow: string | null;
   known_tenant_ids: string[];
 };
+
 
 export const Route = createFileRoute("/api/public/xero/callback")({
   server: {
