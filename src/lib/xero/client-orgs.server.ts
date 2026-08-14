@@ -103,7 +103,7 @@ export async function getClientFirmConnectionAccess(
     supabaseAdmin.from("firms").select("name, is_always_free").eq("id", firmId).maybeSingle(),
     supabaseAdmin
       .from("subscriptions")
-      .select("tier, status, trial_ends_at")
+      .select("tier, status, trial_ends_at, client_limit_override")
       .eq("firm_id", firmId)
       .maybeSingle(),
     supabaseAdmin
