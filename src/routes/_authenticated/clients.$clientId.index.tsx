@@ -273,26 +273,25 @@ function ClientDashboard() {
           ) : (
             <>
               {showHealth && (
-                <>
-                  <HealthWidget
-                    clientName={client.name}
-                    clientId={clientId}
-                    tenantId={orgs[0]?.xero_connections?.tenant_id}
-                    tenantName={orgs[0]?.xero_connections?.tenant_name}
-                  />
-                  {widgets.includes("xero_audit") &&
-                    orgs.map((o) =>
-                      o.xero_connections?.tenant_id ? (
-                        <AuditSummaryCard
-                          key={`${o.id}:xero_audit`}
-                          tenantId={o.xero_connections.tenant_id}
-                          tenantName={o.xero_connections.tenant_name ?? "Unknown"}
-                          clientId={clientId}
-                        />
-                      ) : null,
-                    )}
-                </>
+                <HealthWidget
+                  clientName={client.name}
+                  clientId={clientId}
+                  tenantId={orgs[0]?.xero_connections?.tenant_id}
+                  tenantName={orgs[0]?.xero_connections?.tenant_name}
+                />
               )}
+
+              {widgets.includes("xero_audit") &&
+                orgs.map((o) =>
+                  o.xero_connections?.tenant_id ? (
+                    <AuditSummaryCard
+                      key={`${o.id}:xero_audit`}
+                      tenantId={o.xero_connections.tenant_id}
+                      tenantName={o.xero_connections.tenant_name ?? "Unknown"}
+                      clientId={clientId}
+                    />
+                  ) : null,
+                )}
 
               {(showNotes || showUnreconciled) && (
                 <div className="grid gap-6 md:grid-cols-2">
