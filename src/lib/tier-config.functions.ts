@@ -385,6 +385,17 @@ export const getFirmPlanSummary = createServerFn({ method: "POST" })
     const effectiveClientLimit = override ?? baseClientLimit;
     const supportsConsolidation = !!firmPlan?.allows_multi_org || (effectiveClientLimit ?? 1) > 1;
 
+    const { data: firmRow } = await (context.supabase as any)
+      .from("firms")
+      .select("default_widgets")
+      .eq("id", data.firmId)
+      .maybeSingle();
+    const firmDefaults = (firmRow?.default_widgets as string[] | null | undefined) ?? null;
+    const availableWidgets = ALL_WIDGETS.filter((w) => set.has(w));
+    const widgets = Array.isArray(firmDefaults)
+      ? availableWidgets.filter((w) => firmDefaults.includes(w))
+      : availableWidgets;
+
     return {
       planKey,
       planLabel: (firmPlan?.label as string | undefined) ?? null,
@@ -399,6 +410,65 @@ export const getFirmPlanSummary = createServerFn({ method: "POST" })
         xeroFiles: (l.xero_org_limit as number | undefined) ?? 1,
         allowsMultiOrg: !!l.allows_multi_org,
       })),
-      widgets: ALL_WIDGETS.filter((w) => set.has(w)),
+      widgets,
+      availableWidgets,
+      configured: Array.isArray(firmDefaults),
     };
   });
+
+/**
+ * Sets the organisation-wide default card list and applies it to every client
+ * in the organisation. Unticking a card turns it off for all clients; ticking
+ * one back on does not override a client's own "off" setting.
+ */
+export const saveFirmDefaultWidgets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { firmId: string; widgets: WidgetKey[] }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Membership check unless platform admin.
+    const { data: roles } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId);
+    const isSuper = (roles ?? []).some((r: any) => r.role === "super_admin");
+    if (!isSuper) {
+      const { data: member } = await context.supabase
+        .from("firm_members")
+        .select("id")
+        .eq("firm_id", data.firmId)
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      if (!member) throw new Error("Not a member of this organisation.");
+    }
+
+    const selected = sanitizeWidgets(data.widgets);
+
+    const { error: firmErr } = await (supabaseAdmin as any)
+      .from("firms")
+      .update({ default_widgets: selected })
+      .eq("id", data.firmId);
+    if (firmErr) throw new Error(firmErr.message);
+
+    // Apply to existing clients: intersect each client's effective list.
+    const { data: clients } = await (supabaseAdmin as any)
+      .from("clients")
+      .select("id, dashboard_widgets")
+      .eq("firm_id", data.firmId);
+
+    for (const c of (clients ?? []) as any[]) {
+      const current: string[] = Array.isArray(c.dashboard_widgets)
+        ? c.dashboard_widgets
+        : selected;
+      const next = sanitizeWidgets(current).filter((w) => selected.includes(w));
+      await (supabaseAdmin as any)
+        .from("clients")
+        .update({ dashboard_widgets: next })
+        .eq("id", c.id);
+    }
+
+    return { ok: true, clientsUpdated: (clients ?? []).length };
+  });
+
