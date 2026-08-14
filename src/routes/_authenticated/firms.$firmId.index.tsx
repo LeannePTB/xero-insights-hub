@@ -18,6 +18,7 @@ import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
 import { FirmAuditLogCard } from "@/components/admin/FirmAuditLogCard";
+import { SuperAdminBadge, SuperAdminSection } from "@/components/admin/SuperAdminOnly";
 
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
@@ -393,9 +394,9 @@ function FirmPage() {
         </div>
 
         {isSuper && (
-          <div className="mt-8">
+          <SuperAdminSection className="mt-8" title="Audit log">
             <FirmAuditLogCard firmId={firmId} />
-          </div>
+          </SuperAdminSection>
         )}
 
 
