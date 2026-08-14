@@ -21,6 +21,8 @@ import {
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
+import { getMyContext } from "@/lib/roles.functions";
+
 import {
   startXeroConnect,
   disconnectXero,
