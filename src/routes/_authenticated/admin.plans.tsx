@@ -127,7 +127,8 @@ function PlanLevelsPage() {
         <header>
           <h1 className="font-display text-3xl font-semibold">Subscription levels</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add, rename or retire the plans organisations subscribe to, and the dashboard tiers you grant each client.
+            Add, rename or retire the plans organisations subscribe to. Client dashboard tiers are managed in{" "}
+            <Link to="/settings/tiers" className="underline underline-offset-2">Tier widgets</Link>.
           </p>
         </header>
 
