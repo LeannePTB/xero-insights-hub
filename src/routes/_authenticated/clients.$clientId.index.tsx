@@ -77,13 +77,15 @@ function ClientDashboard() {
   // own configuration (bounded by the organisation's plan).
   const tierLabelSource = viewerEntry?.tier ?? null;
 
+  const effectivePreviewTier = previewing ? previewTier : null;
   const widgetsQ = useQuery({
-    queryKey: ["client-widgets", clientId, previewTier ?? "actual"],
-    queryFn: () => fetchWidgets({ data: { clientId, tierOverride: previewTier } }),
+    queryKey: ["client-widgets", clientId, effectivePreviewTier ?? "actual"],
+    queryFn: () => fetchWidgets({ data: { clientId, tierOverride: effectivePreviewTier } }),
     enabled: !!ctxQ.data,
   });
   const widgets = widgetsQ.data?.widgets ?? [];
-  const tier: DashboardTier = previewTier ?? tierLabelSource ?? "basic";
+  const tier: DashboardTier = effectivePreviewTier ?? tierLabelSource ?? "basic";
+
   const { levels: tierLevels } = usePlanLevels("dashboard");
   const catalogueTierLabel = tierLabelFor(tier, tierLevels.find((l) => l.key === tier)?.label);
   const tierLabel =
