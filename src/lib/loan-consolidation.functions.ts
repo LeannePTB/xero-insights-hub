@@ -424,7 +424,7 @@ export const getLoanReconciliation = createServerFn({ method: "POST" })
     const { runLoanReconciliation } = await import("./loan-recon.server");
     return runLoanReconciliation({
       supabase: supabaseAdmin,
-      clientId: data.clientId,
+      clientIds: [data.clientId],
       tenantIds: data.tenantId ? [data.tenantId] : null,
       asAt: data.asAt,
     });
