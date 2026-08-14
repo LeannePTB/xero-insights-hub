@@ -69,6 +69,7 @@ import {
   EyeOff,
   Copy,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { ALL_TIERS, tierLabel, type DashboardTier, type WidgetKey } from "@/lib/tiers";
