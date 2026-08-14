@@ -8,7 +8,6 @@ import {
   ConsolidatedReceivablesWidget,
   ConsolidatedPayablesWidget,
 } from "@/components/dashboard/ConsolidatedAgeingWidget";
-import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/consolidated/$groupId")({
   head: () => ({
