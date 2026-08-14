@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getLoanMismatchDetail } from "@/lib/loan-consolidation.functions";
+import { getLoanMismatchDetail, getGroupLoanMismatchDetail } from "@/lib/loan-consolidation.functions";
 import { buildXeroTransactionLink } from "@/lib/xero/loan-account-link";
 import {
   Dialog,
