@@ -142,6 +142,16 @@ async function getSupabaseAdmin() {
   return (await import("@/integrations/supabase/client.server")).supabaseAdmin;
 }
 
+async function tenantNameMap(supabaseAdmin: any): Promise<Map<string, string>> {
+  const { data } = await supabaseAdmin.from("xero_connections").select("tenant_id, tenant_name");
+  const m = new Map<string, string>();
+  for (const r of (data ?? []) as any[]) {
+    if (r?.tenant_id && !m.has(r.tenant_id)) m.set(r.tenant_id, r.tenant_name ?? "(unnamed)");
+  }
+  return m;
+}
+
+
 // ---- Tenant listing ---------------------------------------------------------
 export const listClientTenants = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
