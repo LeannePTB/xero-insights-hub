@@ -45,6 +45,7 @@ import { Route as AuthenticatedClientsClientIdLoansAccountsRouteImport } from '.
 import { Route as AuthenticatedClientsClientIdLoansRouteImport } from './routes/_authenticated/clients.$clientId.loans'
 import { Route as AuthenticatedClientsClientIdCashflowScenarioRouteImport } from './routes/_authenticated/clients.$clientId.cashflow-scenario'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
+import { Route as AuthenticatedFirmsFirmIdLoansIndexRouteImport } from './routes/_authenticated/firms.$firmId.loans.index'
 import { Route as AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport } from './routes/_authenticated/firms.$firmId.consolidated.$groupId'
 import { Route as AuthenticatedClientsClientIdXeroLogTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.xero-log.$tenantId'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
@@ -248,6 +249,12 @@ const AuthenticatedAdminFirmsFirmIdRoute =
     path: '/firms/$firmId',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedFirmsFirmIdLoansIndexRoute =
+  AuthenticatedFirmsFirmIdLoansIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
+  } as any)
 const AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute =
   AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport.update({
     id: '/consolidated/$groupId',
@@ -306,7 +313,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
-  '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRoute
+  '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -320,6 +327,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
+  '/firms/$firmId/loans/': typeof AuthenticatedFirmsFirmIdLoansIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -346,7 +354,6 @@ export interface FileRoutesByTo {
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
-  '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -360,6 +367,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
+  '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -390,7 +398,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
-  '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRoute
+  '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -404,6 +412,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
   '/_authenticated/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
   '/_authenticated/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
+  '/_authenticated/firms/$firmId/loans/': typeof AuthenticatedFirmsFirmIdLoansIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -448,6 +457,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/receivables/$tenantId'
     | '/clients/$clientId/xero-log/$tenantId'
     | '/firms/$firmId/consolidated/$groupId'
+    | '/firms/$firmId/loans/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -474,7 +484,6 @@ export interface FileRouteTypes {
     | '/clients/$clientId/loans-accounts'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
-    | '/firms/$firmId/loans'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -488,6 +497,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/receivables/$tenantId'
     | '/clients/$clientId/xero-log/$tenantId'
     | '/firms/$firmId/consolidated/$groupId'
+    | '/firms/$firmId/loans'
   id:
     | '__root__'
     | '/'
@@ -531,6 +541,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
     | '/_authenticated/clients/$clientId/xero-log/$tenantId'
     | '/_authenticated/firms/$firmId/consolidated/$groupId'
+    | '/_authenticated/firms/$firmId/loans/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -806,6 +817,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminFirmsFirmIdRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/firms/$firmId/loans/': {
+      id: '/_authenticated/firms/$firmId/loans/'
+      path: '/'
+      fullPath: '/firms/$firmId/loans/'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansIndexRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
+    }
     '/_authenticated/firms/$firmId/consolidated/$groupId': {
       id: '/_authenticated/firms/$firmId/consolidated/$groupId'
       path: '/consolidated/$groupId'
@@ -861,15 +879,31 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
+interface AuthenticatedFirmsFirmIdLoansRouteChildren {
+  AuthenticatedFirmsFirmIdLoansIndexRoute: typeof AuthenticatedFirmsFirmIdLoansIndexRoute
+}
+
+const AuthenticatedFirmsFirmIdLoansRouteChildren: AuthenticatedFirmsFirmIdLoansRouteChildren =
+  {
+    AuthenticatedFirmsFirmIdLoansIndexRoute:
+      AuthenticatedFirmsFirmIdLoansIndexRoute,
+  }
+
+const AuthenticatedFirmsFirmIdLoansRouteWithChildren =
+  AuthenticatedFirmsFirmIdLoansRoute._addFileChildren(
+    AuthenticatedFirmsFirmIdLoansRouteChildren,
+  )
+
 interface AuthenticatedFirmsFirmIdRouteChildren {
-  AuthenticatedFirmsFirmIdLoansRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
+  AuthenticatedFirmsFirmIdLoansRoute: typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   AuthenticatedFirmsFirmIdIndexRoute: typeof AuthenticatedFirmsFirmIdIndexRoute
   AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute: typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
 }
 
 const AuthenticatedFirmsFirmIdRouteChildren: AuthenticatedFirmsFirmIdRouteChildren =
   {
-    AuthenticatedFirmsFirmIdLoansRoute: AuthenticatedFirmsFirmIdLoansRoute,
+    AuthenticatedFirmsFirmIdLoansRoute:
+      AuthenticatedFirmsFirmIdLoansRouteWithChildren,
     AuthenticatedFirmsFirmIdIndexRoute: AuthenticatedFirmsFirmIdIndexRoute,
     AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute:
       AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute,
