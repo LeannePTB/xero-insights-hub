@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ChevronRight, CreditCard, Layers, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, CreditCard, Loader2, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
