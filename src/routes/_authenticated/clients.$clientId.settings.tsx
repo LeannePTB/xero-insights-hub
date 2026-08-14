@@ -859,6 +859,7 @@ function ClientSettings() {
         {/* Per-client widget control */}
         <Section
           title="What this client sees"
+          collapsible
           action={
             isSuperAdmin ? (
               <Button variant="ghost" size="sm" asChild>
@@ -866,7 +867,6 @@ function ClientSettings() {
               </Button>
             ) : undefined
           }
-
         >
           <ClientWidgetsPanel clientId={clientId} />
         </Section>
