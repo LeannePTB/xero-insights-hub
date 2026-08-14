@@ -548,3 +548,97 @@ export const disconnectXero = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Onboard picker: list the Xero organisations returned by the last onboard
+ * authorisation, flagging which can become new client subscriptions.
+ */
+export const listOnboardCandidates = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { firmId: string; state: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getFirmClientCapacity } = await import("@/lib/xero/onboard.server");
+
+    const { data: oauthState } = await supabaseAdmin
+      .from("xero_oauth_states")
+      .select("pending_tenant_ids, known_tenant_ids, expires_at, completed_at, firm_id")
+      .eq("state", data.state)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (
+      !oauthState?.completed_at ||
+      (oauthState as any).firm_id !== data.firmId ||
+      new Date(oauthState.expires_at).getTime() < Date.now()
+    ) {
+      return { candidates: [], remaining: 0 };
+    }
+
+    const tenantIds = oauthState.pending_tenant_ids ?? [];
+    const known = new Set(oauthState.known_tenant_ids ?? []);
+    const [{ data: connections }, { data: assigned }, capacity] = await Promise.all([
+      supabaseAdmin
+        .from("xero_connections")
+        .select("id, tenant_id, tenant_name")
+        .eq("user_id", context.userId)
+        .in("tenant_id", tenantIds.length ? tenantIds : ["__none__"]),
+      supabaseAdmin.from("client_xero_orgs").select("xero_connection_id, client_id"),
+      getFirmClientCapacity(data.firmId),
+    ]);
+    const assignedIds = new Set((assigned ?? []).map((r) => r.xero_connection_id));
+
+    const candidates = (connections ?? []).map((c) => {
+      const linked = assignedIds.has(c.id);
+      const isNew = !known.has(c.tenant_id);
+      return {
+        tenantId: c.tenant_id,
+        name: c.tenant_name ?? "Untitled organisation",
+        isNew,
+        alreadyLinked: linked,
+        available: !linked,
+      };
+    });
+    candidates.sort((a, b) => Number(b.isNew) - Number(a.isNew) || a.name.localeCompare(b.name));
+    return { candidates, remaining: capacity.remaining };
+  });
+
+/** Create client subscriptions only for the Xero organisations the user picked. */
+export const createClientsFromSelectedTenants = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { firmId: string; state: string; tenantIds: string[] }) => input)
+  .handler(async ({ data, context }) => {
+    const uniqueIds = [...new Set(data.tenantIds)];
+    if (uniqueIds.length < 1) throw new Error("Select at least one Xero organisation.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { assertFirmCanAddClient, createClientsFromTenants } = await import(
+      "@/lib/xero/onboard.server"
+    );
+    await assertFirmCanAddClient(data.firmId, context.userId);
+
+    const { data: oauthState } = await supabaseAdmin
+      .from("xero_oauth_states")
+      .select("pending_tenant_ids, expires_at, completed_at, firm_id")
+      .eq("state", data.state)
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    if (
+      !oauthState?.completed_at ||
+      (oauthState as any).firm_id !== data.firmId ||
+      new Date(oauthState.expires_at).getTime() < Date.now()
+    ) {
+      throw new Error("This Xero selection has expired. Start again.");
+    }
+    const pending = new Set(oauthState.pending_tenant_ids ?? []);
+    if (uniqueIds.some((id) => !pending.has(id))) {
+      throw new Error("One of those Xero organisations is no longer part of this authorisation.");
+    }
+
+    const outcome = await createClientsFromTenants({
+      firmId: data.firmId,
+      userId: context.userId,
+      tenantIds: uniqueIds,
+    });
+    await supabaseAdmin.from("xero_oauth_states").delete().eq("state", data.state);
+    return outcome;
+  });
