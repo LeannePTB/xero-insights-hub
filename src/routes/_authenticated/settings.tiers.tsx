@@ -379,6 +379,11 @@ export function TierEditor({
               aria-label={`Toggle ${title ?? TIER_LABEL[tier]}`}
             />
           )}
+          {onEdit && (
+            <Button variant="ghost" size="sm" onClick={onEdit} aria-label="Edit tier">
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
           {onDelete && (
             <Button variant="ghost" size="sm" onClick={onDelete} aria-label="Remove tier">
               <Trash2 className="h-4 w-4" />
