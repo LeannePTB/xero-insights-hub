@@ -222,9 +222,6 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
       : { data: [] as any[] };
 
     const isSuperAdmin = Boolean((roles ?? []).some((r: any) => r.role === "super_admin"));
-    const isAdvisorOrOwner = Boolean(
-      (roles ?? []).some((r: any) => r.role === "advisor" || r.role === "firm_owner"),
-    );
     const { data: member } = await context.supabase
       .from("firm_members")
       .select("id")
@@ -236,8 +233,10 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
       firmId,
       id: (group as any)?.id as string,
       name: ((group as any)?.name as string) ?? "Group",
+      // Figures come from membership of this organisation.
       // Super admins manage setup but never see client financials.
-      canSeeFigures: isAdvisorOrOwner || Boolean(member) ? true : !isSuperAdmin,
+      canSeeFigures: Boolean(member) ? true : !isSuperAdmin,
+
       clients: ((clients ?? []) as any[]).map((c) => ({
         clientId: c.id as string,
         clientName: c.name as string,
