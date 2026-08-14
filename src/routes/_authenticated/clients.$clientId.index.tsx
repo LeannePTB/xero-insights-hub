@@ -41,15 +41,17 @@ import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
-  validateSearch: (search: Record<string, unknown>): { viewAs?: string } =>
-    typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {},
+  validateSearch: (search: Record<string, unknown>): { viewAs?: string; firmId?: string } => ({
+    ...(typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {}),
+    ...(typeof search.firmId === "string" ? { firmId: search.firmId } : {}),
+  }),
   head: () => ({ meta: [{ title: "Client dashboard — Traction Advisory" }] }),
   component: ClientDashboard,
 });
 
 function ClientDashboard() {
   const { clientId } = Route.useParams();
-  const { viewAs } = Route.useSearch();
+  const { viewAs, firmId: sourceFirmId } = Route.useSearch();
   const previewTier = (viewAs ?? "").trim() ? (viewAs as DashboardTier) : null;
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -211,8 +213,11 @@ function ClientDashboard() {
           <div className="min-w-0">
             {isAdvisor && (
               <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-                {client.firm_id ? (
-                  <Link to="/firms/$firmId" params={{ firmId: client.firm_id as string }}>
+                {sourceFirmId || client.firm_id ? (
+                  <Link
+                    to="/firms/$firmId"
+                    params={{ firmId: sourceFirmId ?? (client.firm_id as string) }}
+                  >
                     <ArrowLeft className="mr-1 h-4 w-4" /> All clients
                   </Link>
                 ) : (
