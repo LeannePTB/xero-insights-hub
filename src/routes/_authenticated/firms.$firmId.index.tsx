@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ChevronRight, CreditCard, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, CreditCard, Layers, Loader2, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -16,7 +16,7 @@ import {
 import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
-import { ConsolidationGroupsSection } from "@/components/admin/ConsolidationGroupsSection";
+
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
 import { getFirmPlanSummary, saveFirmDefaultWidgets } from "@/lib/tier-config.functions";
@@ -380,7 +380,11 @@ function FirmPage() {
         </div>
 
         <div className="mt-8">
-          <ConsolidationGroupsSection firmId={firmId} />
+          <Button asChild variant="outline">
+            <Link to="/firms/$firmId/loans" params={{ firmId }} search={{ group: undefined }}>
+              <Layers className="mr-2 h-4 w-4" /> Loan Consolidation
+            </Link>
+          </Button>
         </div>
 
       </main>
