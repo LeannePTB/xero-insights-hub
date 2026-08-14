@@ -181,24 +181,25 @@ export const listClientTenantsWithAccounts = createServerFn({ method: "POST" })
     const supabaseAdmin = await getSupabaseAdmin();
     const { data: rows } = await supabaseAdmin
       .from("loan_consolidation_accounts")
-      .select("tenant_id, client_xero_orgs(xero_connections(tenant_name))")
+      .select("tenant_id")
       .eq("client_id", data.clientId);
-    const names = new Map<string, string>();
-    const seen = new Set<string>();
+    const names = await tenantNameMap(supabaseAdmin);
     const out: { tenantId: string; tenantName: string; count: number }[] = [];
     for (const r of (rows ?? []) as any[]) {
-      const name = r?.client_xero_orgs?.[0]?.xero_connections?.tenant_name ?? "(unnamed)";
-      if (!seen.has(r.tenant_id)) {
-        seen.add(r.tenant_id);
-        names.set(r.tenant_id, name);
-        out.push({ tenantId: r.tenant_id, tenantName: name, count: 0 });
+      let entry = out.find((o) => o.tenantId === r.tenant_id);
+      if (!entry) {
+        entry = {
+          tenantId: r.tenant_id,
+          tenantName: names.get(r.tenant_id) ?? "(unnamed)",
+          count: 0,
+        };
+        out.push(entry);
       }
+      entry.count += 1;
     }
-    for (const r of (rows ?? []) as any[]) {
-      const entry = out.find((o) => o.tenantId === r.tenant_id);
-      if (entry) entry.count += 1;
-    }
+    out.sort((a, b) => a.tenantName.localeCompare(b.tenantName));
     return { tenants: out };
+
   });
 
 // ---- Account selection / pairing ------------------------------------------
