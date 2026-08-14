@@ -211,7 +211,13 @@ function ClientDashboard() {
           <div className="min-w-0">
             {isAdvisor && (
               <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-                <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
+                {client.firm_id ? (
+                  <Link to="/firms/$firmId" params={{ firmId: client.firm_id as string }}>
+                    <ArrowLeft className="mr-1 h-4 w-4" /> All clients
+                  </Link>
+                ) : (
+                  <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
+                )}
               </Button>
             )}
             <h1 className="truncate font-display text-2xl font-semibold sm:text-3xl">{client.name}</h1>
