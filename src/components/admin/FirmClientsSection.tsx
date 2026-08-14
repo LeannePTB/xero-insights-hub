@@ -200,7 +200,10 @@ export function FirmClientsSection({
                             <div className="mt-0.5 text-xs text-muted-foreground truncate">
                               {tenantNames || "No Xero org linked"}
                             </div>
-                            {showHealth && <ClientHealthBadge tenantId={tenantIds[0] ?? null} />}
+                            {showHealth &&
+                              (c.clientWidgets === null || c.clientWidgets?.includes("health")) && (
+                                <ClientHealthBadge tenantId={tenantIds[0] ?? null} />
+                              )}
                           </div>
                         </Link>
                       </td>
