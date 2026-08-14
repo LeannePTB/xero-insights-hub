@@ -7,7 +7,8 @@ import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Plus, Trash2 } f
 import { listClients, deleteClient } from "@/lib/clients.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
-import { ALL_TIERS, TIER_LABEL, type DashboardTier } from "@/lib/tiers";
+import { ALL_TIERS, tierLabel, type DashboardTier } from "@/lib/tiers";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { Button } from "@/components/ui/button";
 import {
@@ -65,8 +66,14 @@ export function FirmClientsSection({
   });
 
   const planTiers = planTiersQ.data?.allowed ?? null;
-  const enabledTiers = ALL_TIERS.filter(
-    (t) => (tierSettingsQ.data?.enabled?.[t] ?? true) && (!planTiers || planTiers.includes(t)),
+  const { levels: tierLevels } = usePlanLevels("dashboard");
+  const catalogueKeys = (tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]) as DashboardTier[];
+  const labelFor = (t: string) => tierLabel(t, tierLevels.find((l) => l.key === t)?.label);
+  const enabledTiers = catalogueKeys.filter(
+    (t) =>
+      (tierLevels.find((l) => l.key === t)?.enabled ?? true) &&
+      (tierSettingsQ.data?.enabled?.[t] ?? true) &&
+      (!planTiers || planTiers.includes(t)),
   );
 
   const deleteMut = useMutation({
@@ -200,7 +207,7 @@ export function FirmClientsSection({
                                 key={t}
                                 className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary"
                               >
-                                {TIER_LABEL[t]}
+                                {labelFor(t)}
                               </span>
                             ))}
                           {granted.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
@@ -213,7 +220,7 @@ export function FirmClientsSection({
                                   className="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400"
                                   title={planLabel ? `Not included in the ${planLabel} plan` : "Not included in this plan"}
                                 >
-                                  {TIER_LABEL[t]} · not in plan
+                                  {labelFor(t)} · not in plan
                                 </span>
                               ))}
                         </div>
@@ -243,7 +250,7 @@ export function FirmClientsSection({
                               {(granted.length ? granted : enabledTiers).map((t) => (
                                 <DropdownMenuItem key={`view-as-${t}`} asChild>
                                   <Link to="/clients/$clientId" params={{ clientId: c.id }} search={{ viewAs: t }}>
-                                    <Eye className="mr-2 h-4 w-4" /> View as {TIER_LABEL[t]} client
+                                    <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
                                   </Link>
                                 </DropdownMenuItem>
                               ))}

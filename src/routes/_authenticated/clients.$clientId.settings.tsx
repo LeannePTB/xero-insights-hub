@@ -64,7 +64,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
-import { ALL_TIERS, TIER_LABEL, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { ALL_TIERS, tierLabel, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
 import { ClientWidgetsPanel } from "@/components/dashboard/ClientWidgetsPanel";
@@ -138,8 +139,14 @@ function ClientSettings() {
   });
   const planTiers = planTiersQ.data?.allowed ?? null;
   // Only offer tiers the organisation's plan includes.
-  const enabledTiers = ALL_TIERS.filter(
-    (t) => (tierSettingsQ.data?.enabled?.[t] ?? true) && (!planTiers || planTiers.includes(t)),
+  const { levels: tierLevels } = usePlanLevels("dashboard");
+  const catalogueKeys = (tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]) as DashboardTier[];
+  const labelFor = (t: string) => tierLabel(t, tierLevels.find((l) => l.key === t)?.label);
+  const enabledTiers = catalogueKeys.filter(
+    (t) =>
+      (tierLevels.find((l) => l.key === t)?.enabled ?? true) &&
+      (tierSettingsQ.data?.enabled?.[t] ?? true) &&
+      (!planTiers || planTiers.includes(t)),
   );
 
   const tierSaveMut = useMutation({
@@ -658,7 +665,7 @@ function ClientSettings() {
                   <SelectContent>
                     {enabledTiers.map((t) => (
                       <SelectItem key={t} value={t}>
-                        {TIER_LABEL[t]}
+                        {labelFor(t)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -700,7 +707,7 @@ function ClientSettings() {
                     <SelectContent>
                       {enabledTiers.map((t) => (
                         <SelectItem key={t} value={t}>
-                          {TIER_LABEL[t]}
+                          {labelFor(t)}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -805,7 +812,7 @@ function ClientSettings() {
                         <SelectContent>
                           {enabledTiers.map((t) => (
                             <SelectItem key={t} value={t}>
-                              {TIER_LABEL[t]}
+                              {labelFor(t)}
                             </SelectItem>
                           ))}
                         </SelectContent>
