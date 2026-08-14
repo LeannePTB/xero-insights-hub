@@ -103,26 +103,28 @@ function TierSettings() {
   });
 
   const addMut = useMutation({
-    mutationFn: (d: { label: string; description: string }) =>
+    mutationFn: (d: TierDraft) =>
       savePlanFn({
         data: {
+          id: d.id ?? null,
           scope: "dashboard",
-          key: d.label,
+          key: (d.key || d.label).trim(),
           label: d.label,
           description: d.description,
-          xero_org_limit: 1,
-          widgets: [],
-          sort_order: 100 + levelsQ.levels.length,
+          xero_org_limit: d.allows_multi_org ? Math.max(2, d.xero_org_limit) : 1,
+          allows_multi_org: d.allows_multi_org,
+          widgets: d.widgets,
+          sort_order: d.sort_order,
           enabled: true,
         },
       }),
-    onSuccess: () => {
-      toast.success("Tier added");
-      setNewTier(null);
+    onSuccess: (_r, d) => {
+      toast.success(d.id ? "Tier saved" : "Tier added");
+      setDraft(null);
       qc.invalidateQueries({ queryKey: ["plan-levels"] });
       qc.invalidateQueries({ queryKey: ["tier-config"] });
     },
-    onError: (e: any) => toast.error(e?.message ?? "Could not add tier"),
+    onError: (e: any) => toast.error(e?.message ?? "Could not save tier"),
   });
 
 
