@@ -374,6 +374,10 @@ function FirmPage() {
         </Dialog>
 
         <div className="mt-8">
+          <LoanConsolidationCard firmId={firmId} />
+        </div>
+
+        <div className="mt-8">
           <FirmClientsSection
             firmId={firmId}
             firmName={firm.name}
@@ -382,13 +386,6 @@ function FirmPage() {
           />
         </div>
 
-        <div className="mt-8">
-          <Button asChild variant="outline">
-            <Link to="/firms/$firmId/loans" params={{ firmId }} search={{ group: undefined }}>
-              <Layers className="mr-2 h-4 w-4" /> Loan Consolidation
-            </Link>
-          </Button>
-        </div>
 
       </main>
     </div>
