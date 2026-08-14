@@ -579,26 +579,40 @@ export const listOnboardCandidates = createServerFn({ method: "POST" })
     const [{ data: connections }, { data: assigned }, capacity] = await Promise.all([
       supabaseAdmin
         .from("xero_connections")
-        .select("id, tenant_id, tenant_name")
+        .select("id, tenant_id, tenant_name, firm_id")
         .eq("user_id", context.userId)
         .in("tenant_id", tenantIds.length ? tenantIds : ["__none__"]),
-      supabaseAdmin.from("client_xero_orgs").select("xero_connection_id, client_id"),
+      supabaseAdmin
+        .from("client_xero_orgs")
+        .select("xero_connection_id, client_id, clients!inner(firm_id)"),
       getFirmClientCapacity(data.firmId),
     ]);
-    const assignedIds = new Set((assigned ?? []).map((r) => r.xero_connection_id));
+    const assignedFirmByConnection = new Map<string, string | null>(
+      (assigned ?? []).map((r: any) => [r.xero_connection_id, r.clients?.firm_id ?? null]),
+    );
 
-    const candidates = (connections ?? []).map((c) => {
-      const linked = assignedIds.has(c.id);
-      const isNew = !known.has(c.tenant_id);
-      return {
-        tenantId: c.tenant_id,
-        name: c.tenant_name ?? "Untitled organisation",
-        isNew,
-        alreadyLinked: linked,
-        available: !linked,
-      };
-    });
+    const candidates = (connections ?? [])
+      // Only show files that belong to this organisation: newly authorised ones,
+      // or ones already stamped/linked to this firm. Never other firms' files.
+      .filter((c: any) => {
+        const linkedFirm = assignedFirmByConnection.get(c.id);
+        if (linkedFirm) return linkedFirm === data.firmId;
+        if (c.firm_id) return c.firm_id === data.firmId;
+        return !known.has(c.tenant_id);
+      })
+      .map((c) => {
+        const linked = assignedFirmByConnection.has(c.id);
+        const isNew = !known.has(c.tenant_id);
+        return {
+          tenantId: c.tenant_id,
+          name: c.tenant_name ?? "Untitled organisation",
+          isNew,
+          alreadyLinked: linked,
+          available: !linked,
+        };
+      });
     candidates.sort((a, b) => Number(b.isNew) - Number(a.isNew) || a.name.localeCompare(b.name));
+
     return { candidates, remaining: capacity.remaining };
   });
 
