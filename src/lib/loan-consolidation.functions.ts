@@ -260,33 +260,35 @@ export const listSelectedAccounts = createServerFn({ method: "POST" })
     let q = supabaseAdmin
       .from("loan_consolidation_accounts")
       .select(
-        "id, client_id, tenant_id, account_id, account_code, account_name, account_type, direction, sort_order, counterparty_account_id, counterparty:counterparty_account_id(account_name, tenant_id), client_xero_orgs(xero_connections(tenant_name))",
+        "id, client_id, tenant_id, account_id, account_code, account_name, account_type, direction, sort_order, counterparty_account_id, counterparty:counterparty_account_id(account_name, account_code, tenant_id)",
       )
       .eq("client_id", data.clientId)
       .order("sort_order", { ascending: true });
     if (data.tenantId) q = q.eq("tenant_id", data.tenantId);
     const { data: rows } = await q;
-    const byId = new Map<string, any>();
-    for (const r of (rows ?? []) as any[]) byId.set(r.id, r);
+    const names = await tenantNameMap(supabaseAdmin);
     const out: LoanAccountRow[] = (rows ?? []).map((r: any) => {
-      const cp = r.counterparty_account_id ? byId.get(r.counterparty_account_id) : null;
+      const cp = Array.isArray(r.counterparty) ? r.counterparty[0] : r.counterparty;
       return {
         id: r.id,
         client_id: r.client_id,
         tenant_id: r.tenant_id,
-        tenant_name: r.client_xero_orgs?.[0]?.xero_connections?.tenant_name ?? null,
+        tenant_name: names.get(r.tenant_id) ?? null,
         account_id: r.account_id,
         account_code: r.account_code,
         account_name: r.account_name,
         account_type: r.account_type,
         direction: r.direction === "receivable" ? "receivable" : "payable",
         counterparty_account_id: r.counterparty_account_id,
-        counterparty_name: cp?.account_name ?? null,
-        counterparty_tenant_name: cp ? byId.get(cp.id)?.tenant_name ?? null : null,
+        counterparty_name: cp
+          ? [cp.account_code, cp.account_name].filter(Boolean).join(" · ")
+          : null,
+        counterparty_tenant_name: cp ? names.get(cp.tenant_id) ?? null : null,
         sort_order: r.sort_order,
       };
     });
     return { rows: out };
+
   });
 
 export const addLoanAccount = createServerFn({ method: "POST" })
