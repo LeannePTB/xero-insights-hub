@@ -118,16 +118,7 @@ function Dashboard() {
 
   return (
     <div className="min-h-screen bg-background">
-
-      <header className="border-b border-border/60 bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <BrandMark logoHeightClass="h-9" />
-
-          <Button variant="ghost" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" /> Sign out
-          </Button>
-        </div>
-      </header>
+      <AppHeader />
 
       <main className="mx-auto max-w-6xl px-6 py-10">
         {isAdvisor && <AccessBanner />}
