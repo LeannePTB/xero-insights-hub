@@ -387,6 +387,13 @@ function FirmPage() {
           />
         </div>
 
+        {isSuper && (
+          <div className="mt-8">
+            <FirmAuditLogCard firmId={firmId} />
+          </div>
+        )}
+
+
 
       </main>
     </div>
