@@ -1,11 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyContext } from "@/lib/roles.functions";
 import { savePlanLevel, deletePlanLevel, type PlanLevel, type PlanScope } from "@/lib/plan-levels.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
-import { ALL_WIDGETS, WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -127,7 +127,8 @@ function PlanLevelsPage() {
         <header>
           <h1 className="font-display text-3xl font-semibold">Subscription levels</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add, rename or retire the plans organisations subscribe to, and the dashboard tiers you grant each client.
+            Add, rename or retire the plans organisations subscribe to. Client dashboard tiers are managed in{" "}
+            <Link to="/settings/tiers" className="underline underline-offset-2">Tier widgets</Link>.
           </p>
         </header>
 
@@ -138,17 +139,6 @@ function PlanLevelsPage() {
           levels={firmLevels}
           tierLevels={dashLevels}
           onNew={() => setDraft(EMPTY("firm"))}
-          onEdit={(l) => setDraft({ ...l, id: l.id })}
-          onDuplicate={(l) => setDraft(duplicateOf(l))}
-          onDelete={setPendingDelete}
-        />
-
-        <LevelSection
-          title="Client dashboard tiers"
-          hint="What each client sees. Pick the widgets and how many Xero files the tier may link."
-          scope="dashboard"
-          levels={dashLevels}
-          onNew={() => setDraft(EMPTY("dashboard"))}
           onEdit={(l) => setDraft({ ...l, id: l.id })}
           onDuplicate={(l) => setDraft(duplicateOf(l))}
           onDelete={setPendingDelete}
@@ -216,24 +206,6 @@ function PlanLevelsPage() {
                     </p>
                   </div>
                 )}
-                {draft.scope === "dashboard" && (
-                  <div className="space-y-1.5">
-                    <Label>Xero files per client</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      disabled={!draft.allows_multi_org}
-                      value={draft.allows_multi_org ? String(draft.xero_org_limit) : "1"}
-                      onChange={(e) => {
-                        const raw = e.target.value.replace(/[^\d]/g, "");
-                        setDraft({ ...draft, xero_org_limit: raw === "" ? 1 : Number(raw) });
-                      }}
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      Only Multi company tiers can consolidate more than one file.
-                    </p>
-                  </div>
-                )}
                 <div className="space-y-1.5">
                   <Label>Sort order</Label>
                   <Input
@@ -291,9 +263,12 @@ function PlanLevelsPage() {
                       </label>
                     ))}
                     {dashLevels.filter((t) => t.enabled || draft.allowed_tiers.includes(t.key)).length === 0 && (
-                      <p className="text-xs text-muted-foreground">Create dashboard tiers below first.</p>
+                      <p className="text-xs text-muted-foreground">No dashboard tiers yet — create them in Tier widgets.</p>
                     )}
                   </div>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    <Link to="/settings/tiers" className="underline underline-offset-2">Manage tiers</Link> to add, rename or pick widgets.
+                  </p>
                   {(() => {
                     const multi = dashLevels.filter(
                       (t) => draft.allowed_tiers.includes(t.key) && t.allows_multi_org,
@@ -314,55 +289,6 @@ function PlanLevelsPage() {
                 </div>
               )}
 
-              {draft.scope === "dashboard" && (
-                <>
-                  <div className="flex items-center justify-between rounded-md border p-3">
-                    <div>
-                      <p className="text-sm font-medium">Multiple Xero files</p>
-                      <p className="text-xs text-muted-foreground">Allow a client on this tier to link more than one file.</p>
-                    </div>
-                    <Switch
-                      checked={draft.allows_multi_org}
-                      onCheckedChange={(v) =>
-                        setDraft({
-                          ...draft,
-                          allows_multi_org: v,
-                          xero_org_limit: v ? Math.max(2, draft.xero_org_limit) : 1,
-                        })
-                      }
-                    />
-                  </div>
-                  {draft.allows_multi_org && draft.xero_org_limit <= 1 && (
-                    <p className="text-xs text-destructive">
-                      Set “Xero files per client” to the number this step should include.
-                    </p>
-                  )}
-                  <div>
-                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">Widgets</Label>
-                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-                      {ALL_WIDGETS.map((w) => (
-                        <label
-                          key={w}
-                          className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                        >
-                          <Checkbox
-                            checked={draft.widgets.includes(w)}
-                            onCheckedChange={() =>
-                              setDraft({
-                                ...draft,
-                                widgets: draft.widgets.includes(w)
-                                  ? draft.widgets.filter((x) => x !== w)
-                                  : [...draft.widgets, w],
-                              })
-                            }
-                          />
-                          <span>{WIDGET_LABEL[w as WidgetKey]}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           )}
           <DialogFooter>

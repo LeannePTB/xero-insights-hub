@@ -21,7 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, Plus, Save, Trash2 } from "lucide-react";
+import { ArrowLeft, Loader2, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 
@@ -56,7 +56,17 @@ function TierSettings() {
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
   const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
 
-  const [newTier, setNewTier] = useState<{ label: string; description: string } | null>(null);
+  type TierDraft = {
+    id?: string;
+    key: string;
+    label: string;
+    description: string;
+    xero_org_limit: number;
+    allows_multi_org: boolean;
+    sort_order: number;
+    widgets: string[];
+  };
+  const [draft, setDraft] = useState<TierDraft | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PlanLevel | null>(null);
 
   // Tier list comes from the catalogue; built-ins remain if the catalogue is empty.
@@ -93,26 +103,28 @@ function TierSettings() {
   });
 
   const addMut = useMutation({
-    mutationFn: (d: { label: string; description: string }) =>
+    mutationFn: (d: TierDraft) =>
       savePlanFn({
         data: {
+          id: d.id ?? null,
           scope: "dashboard",
-          key: d.label,
+          key: (d.key || d.label).trim(),
           label: d.label,
           description: d.description,
-          xero_org_limit: 1,
-          widgets: [],
-          sort_order: 100 + levelsQ.levels.length,
+          xero_org_limit: d.allows_multi_org ? Math.max(2, d.xero_org_limit) : 1,
+          allows_multi_org: d.allows_multi_org,
+          widgets: d.widgets,
+          sort_order: d.sort_order,
           enabled: true,
         },
       }),
-    onSuccess: () => {
-      toast.success("Tier added");
-      setNewTier(null);
+    onSuccess: (_r, d) => {
+      toast.success(d.id ? "Tier saved" : "Tier added");
+      setDraft(null);
       qc.invalidateQueries({ queryKey: ["plan-levels"] });
       qc.invalidateQueries({ queryKey: ["tier-config"] });
     },
-    onError: (e: any) => toast.error(e?.message ?? "Could not add tier"),
+    onError: (e: any) => toast.error(e?.message ?? "Could not save tier"),
   });
 
 
@@ -147,7 +159,21 @@ function TierSettings() {
               </p>
             </div>
             {isSuperAdmin && (
-              <Button size="sm" variant="outline" onClick={() => setNewTier({ label: "", description: "" })}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() =>
+                  setDraft({
+                    key: "",
+                    label: "",
+                    description: "",
+                    xero_org_limit: 1,
+                    allows_multi_org: false,
+                    sort_order: 100 + levelsQ.levels.length,
+                    widgets: [],
+                  })
+                }
+              >
                 <Plus className="mr-2 h-4 w-4" /> New tier
               </Button>
             )}
@@ -169,46 +195,110 @@ function TierSettings() {
                 onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
                 toggleDisabled={toggleMut.isPending}
                 onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
+                onEdit={
+                  isSuperAdmin && level
+                    ? () =>
+                        setDraft({
+                          id: level.id,
+                          key: level.key,
+                          label: level.label,
+                          description: level.description ?? "",
+                          xero_org_limit: level.xero_org_limit ?? 1,
+                          allows_multi_org: !!level.allows_multi_org,
+                          sort_order: level.sort_order ?? 100,
+                          widgets: (level.widgets as string[]) ?? [],
+                        })
+                    : undefined
+                }
               />
             );
           })}
         </main>
       </div>
 
-      <Dialog open={!!newTier} onOpenChange={(o) => !o && setNewTier(null)}>
+      <Dialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>New dashboard tier</DialogTitle>
-            <DialogDescription>Give it a name, then pick its widgets on the page.</DialogDescription>
+            <DialogTitle>{draft?.id ? "Edit dashboard tier" : "New dashboard tier"}</DialogTitle>
+            <DialogDescription>Name it and set how many Xero files it may link. Widgets are picked on the page.</DialogDescription>
           </DialogHeader>
-          {newTier && (
+          {draft && (
             <div className="space-y-4">
-              <div className="space-y-1.5">
-                <Label>Name</Label>
-                <Input
-                  value={newTier.label}
-                  onChange={(e) => setNewTier({ ...newTier, label: e.target.value })}
-                  placeholder="Growth"
-                />
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label>Name</Label>
+                  <Input
+                    value={draft.label}
+                    onChange={(e) => setDraft({ ...draft, label: e.target.value })}
+                    placeholder="Growth"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Key</Label>
+                  <Input
+                    value={draft.key}
+                    disabled={!!draft.id}
+                    onChange={(e) => setDraft({ ...draft, key: e.target.value })}
+                    placeholder="growth"
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    {draft.id ? "Keys can't change once in use." : "Leave blank to build it from the name."}
+                  </p>
+                </div>
               </div>
+
               <div className="space-y-1.5">
                 <Label>Description</Label>
                 <Textarea
                   rows={2}
-                  value={newTier.description}
-                  onChange={(e) => setNewTier({ ...newTier, description: e.target.value })}
+                  value={draft.description}
+                  onChange={(e) => setDraft({ ...draft, description: e.target.value })}
                   placeholder="What this tier includes."
                 />
               </div>
+
+              <div className="flex items-center justify-between rounded-md border p-3">
+                <div>
+                  <p className="text-sm font-medium">Multiple Xero files</p>
+                  <p className="text-xs text-muted-foreground">Allow a client on this tier to link more than one file.</p>
+                </div>
+                <Switch
+                  checked={draft.allows_multi_org}
+                  onCheckedChange={(v) =>
+                    setDraft({
+                      ...draft,
+                      allows_multi_org: v,
+                      xero_org_limit: v ? Math.max(2, draft.xero_org_limit) : 1,
+                    })
+                  }
+                />
+              </div>
+
+              {draft.allows_multi_org && (
+                <div className="space-y-1.5">
+                  <Label>Xero files allowed</Label>
+                  <Input
+                    type="number"
+                    min={2}
+                    value={String(draft.xero_org_limit)}
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/[^\d]/g, "");
+                      setDraft({ ...draft, xero_org_limit: raw === "" ? 2 : Number(raw) });
+                    }}
+                  />
+                </div>
+              )}
             </div>
           )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setNewTier(null)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setDraft(null)}>Cancel</Button>
             <Button
-              onClick={() => newTier && addMut.mutate(newTier)}
-              disabled={!newTier?.label.trim() || addMut.isPending}
+              onClick={() => draft && addMut.mutate(draft)}
+              disabled={!draft?.label.trim() || addMut.isPending}
             >
-              {addMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Add tier
+              {addMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {draft?.id ? "Save tier" : "Add tier"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -251,6 +341,7 @@ export function TierEditor({
   onToggleEnabled,
   toggleDisabled,
   onDelete,
+  onEdit,
 }: {
   tier: DashboardTier;
   initial: WidgetKey[];
@@ -264,6 +355,7 @@ export function TierEditor({
   onToggleEnabled?: (v: boolean) => void;
   toggleDisabled?: boolean;
   onDelete?: () => void;
+  onEdit?: () => void;
 }) {
   const [selected, setSelected] = useState<Set<WidgetKey>>(new Set(initial));
   useEffect(() => { setSelected(new Set(initial)); }, [initial.join(",")]);
@@ -301,6 +393,11 @@ export function TierEditor({
               disabled={toggleDisabled}
               aria-label={`Toggle ${title ?? TIER_LABEL[tier]}`}
             />
+          )}
+          {onEdit && (
+            <Button variant="ghost" size="sm" onClick={onEdit} aria-label="Edit tier">
+              <Pencil className="h-4 w-4" />
+            </Button>
           )}
           {onDelete && (
             <Button variant="ghost" size="sm" onClick={onDelete} aria-label="Remove tier">
