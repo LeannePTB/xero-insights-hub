@@ -31,6 +31,7 @@ import sdlc from "../../../docs/security/sdlc.md?raw";
 import vulnMgmt from "../../../docs/security/vulnerability-management.md?raw";
 import xeroMapping from "../../../docs/security/xero-assessment-mapping.md?raw";
 import { SecurityPostureCard } from "@/components/admin/SecurityPostureCard";
+import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 
 export const Route = createFileRoute("/_authenticated/admin/security")({
   head: () => ({ meta: [{ title: "Security & Compliance · Admin" }] }),
