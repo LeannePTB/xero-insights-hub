@@ -17,6 +17,8 @@ import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { ConsolidationGroupsSection } from "@/components/admin/ConsolidationGroupsSection";
+import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
+
 import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
 
