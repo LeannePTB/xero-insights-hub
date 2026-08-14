@@ -115,6 +115,32 @@ function TierSettings() {
     onError: (e: any) => toast.error(e?.message ?? "Could not add tier"),
   });
 
+  const freeMut = useMutation({
+    mutationFn: ({ level, isFree }: { level: PlanLevel; isFree: boolean }) =>
+      savePlanFn({
+        data: {
+          id: level.id,
+          scope: level.scope,
+          key: level.key,
+          label: level.label,
+          description: level.description,
+          client_limit: level.client_limit,
+          xero_org_limit: level.xero_org_limit,
+          allows_multi_org: level.allows_multi_org,
+          is_free: isFree,
+          widgets: level.widgets,
+          allowed_tiers: level.allowed_tiers,
+          sort_order: level.sort_order,
+          enabled: level.enabled,
+        },
+      }),
+    onSuccess: (_d, v) => {
+      toast.success(v.isFree ? "Tier set as free" : "Tier is no longer free");
+      qc.invalidateQueries({ queryKey: ["plan-levels"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not update tier"),
+  });
+
   const deleteMut = useMutation({
     mutationFn: (id: string) => deletePlanFn({ data: { id } }),
     onSuccess: () => {
@@ -167,6 +193,11 @@ function TierSettings() {
                 enabled={enabled}
                 onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
                 toggleDisabled={toggleMut.isPending}
+                isFree={level?.is_free ?? false}
+                onToggleFree={
+                  isSuperAdmin && level ? (v) => freeMut.mutate({ level, isFree: v }) : undefined
+                }
+                freeDisabled={freeMut.isPending}
                 onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
               />
             );
@@ -249,6 +280,9 @@ export function TierEditor({
   enabled,
   onToggleEnabled,
   toggleDisabled,
+  isFree,
+  onToggleFree,
+  freeDisabled,
   onDelete,
 }: {
   tier: DashboardTier;
@@ -262,6 +296,9 @@ export function TierEditor({
   enabled?: boolean;
   onToggleEnabled?: (v: boolean) => void;
   toggleDisabled?: boolean;
+  isFree?: boolean;
+  onToggleFree?: (v: boolean) => void;
+  freeDisabled?: boolean;
   onDelete?: () => void;
 }) {
   const [selected, setSelected] = useState<Set<WidgetKey>>(new Set(initial));
@@ -289,6 +326,11 @@ export function TierEditor({
           {onToggleEnabled && (
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
               {enabled ? "On" : "Off"}
+            </span>
+          )}
+          {isFree && (
+            <span className="rounded-full bg-accent px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-accent-foreground">
+              Free
             </span>
           )}
         </div>
@@ -321,6 +363,22 @@ export function TierEditor({
         </div>
       </div>
       <p className="mb-4 text-xs text-muted-foreground">{description ?? TIER_DESCRIPTION[tier]}</p>
+      {onToggleFree && (
+        <div className="mb-4 flex items-center justify-between rounded-md border border-border p-3">
+          <div>
+            <p className="text-sm font-medium">Free tier</p>
+            <p className="text-xs text-muted-foreground">
+              Clients on this tier are never charged.
+            </p>
+          </div>
+          <Switch
+            checked={!!isFree}
+            onCheckedChange={onToggleFree}
+            disabled={freeDisabled}
+            aria-label="Set tier as free"
+          />
+        </div>
+      )}
       <fieldset disabled={isOff} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {ALL_WIDGETS.map((w) => (
           <label
