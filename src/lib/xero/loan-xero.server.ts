@@ -30,7 +30,11 @@ export async function getShortCode(tenantId: string): Promise<string | null> {
   }
 }
 
-// ---- Trial Balance --------------------------------------------------------
+// ---- Balance Sheet account balances ---------------------------------------
+// Loan reconciliation uses Balance Sheet instead of Trial Balance because
+// the current Xero scopes include balance-sheet read access but not trial
+// balance access. This keeps the same return shape so callers don't change.
+
 type XeroReportCell = {
   Value?: string;
   Attributes?: Array<{ Value?: string; Id?: string }>;
@@ -39,6 +43,7 @@ type XeroReportRow = {
   RowType?: string;
   Cells?: XeroReportCell[];
   Rows?: XeroReportRow[];
+  Title?: string;
 };
 type XeroReport = { Rows?: XeroReportRow[] };
 
@@ -48,13 +53,34 @@ export type XeroTrialBalanceBalances = {
   byAccountName: Map<string, number>;
 };
 
-export async function fetchTrialBalance(opts: {
+function normalizeReportText(value: string) {
+  return value
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[^\p{L}\p{N}]+/gu, " ")
+    .trim()
+    .toLocaleLowerCase("en-AU");
+}
+
+function parseReportAmount(value: string | undefined): number {
+  const cleaned = (value ?? "").trim().replace(/[$,\s]/g, "");
+  if (!cleaned || cleaned === "—" || cleaned === "-") return 0;
+  const negative = cleaned.startsWith("(") && cleaned.endsWith(")");
+  const parsed = Number.parseFloat(cleaned.replace(/[()]/g, ""));
+  if (!Number.isFinite(parsed)) return 0;
+  return negative ? -parsed : parsed;
+}
+
+export async function fetchBalanceSheetBalances(opts: {
   tenantId: string;
   date: string; // YYYY-MM-DD
 }): Promise<XeroTrialBalanceBalances> {
   const conn = await getConnectionByTenant(opts.tenantId);
-  const json = await xeroGet<{ Reports?: XeroReport[] }>(conn, "Reports/TrialBalance", {
+  const json = await xeroGet<{ Reports?: XeroReport[] }>(conn, "Reports/BalanceSheet", {
     date: opts.date,
+    standardLayout: "false",
+    trackingOptionID1: "",
+    trackingOptionID2: "",
   });
   const report = json.Reports?.[0];
   const out: XeroTrialBalanceBalances = {
@@ -64,59 +90,44 @@ export async function fetchTrialBalance(opts: {
   };
   if (!report?.Rows) return out;
 
-  const normalize = (value: string) =>
-    value
-      .trim()
-      .replace(/\s+/g, " ")
-      .replace(/[^\p{L}\p{N}]+/gu, " ")
-      .trim()
-      .toLocaleLowerCase("en-AU");
-  const parseAmount = (value: string | undefined): number => {
-    const cleaned = (value ?? "").trim().replace(/[$,\s]/g, "");
-    if (!cleaned || cleaned === "—" || cleaned === "-") return 0;
-    const negative = cleaned.startsWith("(") && cleaned.endsWith(")");
-    const parsed = Number.parseFloat(cleaned.replace(/[()]/g, ""));
-    if (!Number.isFinite(parsed)) return 0;
-    return negative ? -parsed : parsed;
-  };
+  function sectionSign(title: string | undefined): number {
+    const t = normalizeReportText(title ?? "");
+    if (t.includes("liability") || t.includes("equity")) return -1;
+    return 1; // assets and anything else treated as debit-balance positive
+  }
 
-  let debitIndex = -1;
-  let creditIndex = -1;
-  const findHeader = (rows: XeroReportRow[]): boolean => {
-    for (const row of rows) {
-      if (row.RowType === "Header" && row.Cells?.length) {
-        const labels = row.Cells.map((cell) => normalize(cell.Value ?? ""));
-        debitIndex = labels.findIndex((label) => label.includes("ytd") && label.includes("debit"));
-        creditIndex = labels.findIndex((label) => label.includes("ytd") && label.includes("credit"));
-        if (debitIndex < 0) debitIndex = labels.findIndex((label) => label.includes("debit"));
-        if (creditIndex < 0) creditIndex = labels.findIndex((label) => label.includes("credit"));
-        if (debitIndex >= 0 && creditIndex >= 0) return true;
-      }
-      if (row.Rows && findHeader(row.Rows)) return true;
-    }
-    return false;
-  };
-  findHeader(report.Rows);
+  function extractAccountId(cell: XeroReportCell | undefined): string | undefined {
+    const attributes = cell?.Attributes ?? [];
+    return (
+      attributes.find((attribute) => {
+        const id = normalizeReportText(attribute.Id ?? "");
+        return id === "account" || id === "accountid" || id === "account id";
+      })?.Value ??
+      attributes.find((attribute) =>
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          attribute.Value ?? "",
+        ),
+      )?.Value
+    );
+  }
 
-  function walk(rows: XeroReportRow[]) {
+  function extractAccountCode(cell: XeroReportCell | undefined): string | undefined {
+    const attributes = cell?.Attributes ?? [];
+    return attributes.find((attribute) =>
+      normalizeReportText(attribute.Id ?? "").includes("code"),
+    )?.Value;
+  }
+
+  function walk(rows: XeroReportRow[], sign: number) {
     for (const r of rows) {
-      if (r.Rows) walk(r.Rows);
-      if (r.RowType === "Row" && r.Cells && r.Cells.length >= 3) {
+      if (r.Rows) {
+        const childSign = r.RowType === "Section" ? sectionSign(r.Title) : sign;
+        walk(r.Rows, childSign);
+      }
+      if (r.RowType === "Row" && r.Cells && r.Cells.length >= 2) {
         const accountCell = r.Cells[0];
-        const attributes = accountCell?.Attributes ?? [];
-        const accountId =
-          attributes.find((attribute) => {
-            const id = normalize(attribute.Id ?? "");
-            return id === "account" || id === "accountid" || id === "account id";
-          })?.Value ??
-          attributes.find((attribute) =>
-            /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-              attribute.Value ?? "",
-            ),
-          )?.Value;
-        const attributeAccountCode = attributes.find((attribute) =>
-          normalize(attribute.Id ?? "").includes("code"),
-        )?.Value;
+        const accountId = extractAccountId(accountCell);
+        const attributeAccountCode = extractAccountCode(accountCell);
         const reportAccountLabel = accountCell?.Value?.trim() ?? "";
         const trailingCodeMatch = reportAccountLabel.match(/\(([^()]+)\)\s*$/u);
         const parsedAccountCode = trailingCodeMatch?.[1]?.trim() ?? "";
@@ -124,22 +135,22 @@ export async function fetchTrialBalance(opts: {
         const accountName = trailingCodeMatch
           ? reportAccountLabel.slice(0, trailingCodeMatch.index).trim()
           : reportAccountLabel;
-        const resolvedDebitIndex = debitIndex >= 0 ? debitIndex : r.Cells.length >= 5 ? 3 : 1;
-        const resolvedCreditIndex = creditIndex >= 0 ? creditIndex : r.Cells.length >= 5 ? 4 : 2;
-        const balance =
-          parseAmount(r.Cells[resolvedDebitIndex]?.Value) -
-          parseAmount(r.Cells[resolvedCreditIndex]?.Value);
+        const balance = parseReportAmount(r.Cells[1]?.Value) * sign;
 
         if (accountId) out.byAccountId.set(accountId, balance);
-        if (accountCode) out.byAccountCode.set(normalize(accountCode), balance);
-        if (accountName) out.byAccountName.set(normalize(accountName), balance);
-        if (reportAccountLabel) out.byAccountName.set(normalize(reportAccountLabel), balance);
+        if (accountCode) out.byAccountCode.set(normalizeReportText(accountCode), balance);
+        if (accountName) out.byAccountName.set(normalizeReportText(accountName), balance);
+        if (reportAccountLabel) out.byAccountName.set(normalizeReportText(reportAccountLabel), balance);
       }
     }
   }
-  walk(report.Rows);
+  walk(report.Rows, 1);
   return out;
 }
+
+// Kept as an alias for backward compatibility during the migration.
+export const fetchTrialBalance = fetchBalanceSheetBalances;
+
 
 // ---- Direct account transactions ------------------------------------------
 export type XeroDirectAccountTransaction = {
