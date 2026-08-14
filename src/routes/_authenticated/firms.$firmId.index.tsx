@@ -65,7 +65,7 @@ function FirmPage() {
     xero_pick: xeroPick,
   } = Route.useSearch();
 
-  const previewing = viewAs === "owner";
+  const requestedPreview = viewAs === "owner";
   const navigate = useNavigate();
   const qc = useQueryClient();
   const fetchFirm = useServerFn(getMyFirm);
