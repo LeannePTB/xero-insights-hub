@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { BrandMark } from "@/components/BrandMark";
+import { AppHeader } from "@/components/AppHeader";
 import { getClient } from "@/lib/clients.functions";
 import { formatMoney, useTenantCurrency } from "@/components/dashboard/useTenantCurrency";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
