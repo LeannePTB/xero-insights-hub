@@ -87,6 +87,32 @@ function FirmPage() {
   });
   const summary = summaryQ.data;
 
+  const isMulti = !!(summary?.allowsMultiOrg || summary?.supportsConsolidation);
+  const [draftWidgets, setDraftWidgets] = useState<WidgetKey[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const selectedWidgets = (draftWidgets ?? (summary?.widgets ?? [])) as WidgetKey[];
+  const dirty =
+    draftWidgets !== null &&
+    (draftWidgets.length !== (summary?.widgets.length ?? 0) ||
+      draftWidgets.some((w) => !(summary?.widgets ?? []).includes(w)));
+  const saveFirmDefaults = useServerFn(saveFirmDefaultWidgets);
+  const saveDefaults = async () => {
+    if (!draftWidgets) return;
+    setSaving(true);
+    try {
+      await saveFirmDefaults({ data: { firmId, widgets: draftWidgets } });
+      setDraftWidgets(null);
+      await qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
+      qc.invalidateQueries({ queryKey: ["clients", firmId] });
+      toast.success("Default cards updated for all clients");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not save default cards");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+
   const firmQ = useQuery({
     queryKey: ["my-firm", firmId],
     queryFn: () => fetchFirm({ data: { firmId } }),
