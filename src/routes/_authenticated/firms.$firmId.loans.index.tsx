@@ -327,8 +327,8 @@ function LoanMatrixTab() {
                           }
                         }}
                       >
-                        <TableCell>
-                          <p className="font-medium">
+                        <TableCell className="py-4">
+                          <p className="font-semibold text-foreground">
                             {row.account.accountCode ? `${row.account.accountCode} · ` : ""}
                             {row.account.accountName || "Unknown"}
                             <XeroLink side={row.account} />
@@ -341,11 +341,12 @@ function LoanMatrixTab() {
                         </TableCell>
                         <TableCell className="text-right tabular-nums">{num(row.account.balance)}</TableCell>
                         <TableCell className="text-xs text-muted-foreground">{dirLabel(row.account)}</TableCell>
-                        <TableCell className="border-l border-border">
+                        <TableCell className="border-l border-border py-4">
                           {row.counterparty ? (
                             <>
-                              <p className="text-sm font-medium">{row.counterparty.tenantName}</p>
+                              <p className="text-sm font-semibold text-foreground">{row.counterparty.tenantName}</p>
                               <p className="text-sm text-muted-foreground">
+
                                 {row.counterparty.accountCode ? `${row.counterparty.accountCode} · ` : ""}
                                 {row.counterparty.accountName || "Unknown"}
                                 <XeroLink side={row.counterparty} />
