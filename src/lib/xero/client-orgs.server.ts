@@ -62,11 +62,9 @@ export async function userCanManageClient(userId: string, clientId: string): Pro
     supabaseAdmin.from("user_roles").select("role").eq("user_id", userId),
   ]);
   if (!client) return false;
-  if (
-    client.owner_user_id === userId ||
-    roles?.some((row) => row.role === "advisor" || row.role === "super_admin")
-  )
-    return true;
+  // Only the platform super admin crosses organisation boundaries.
+  if (roles?.some((row) => row.role === "super_admin")) return true;
+  if (client.owner_user_id === userId) return true;
   if (!client.firm_id) return false;
   const { data: membership } = await supabaseAdmin
     .from("firm_members")
@@ -77,6 +75,7 @@ export async function userCanManageClient(userId: string, clientId: string): Pro
     .maybeSingle();
   return Boolean(membership);
 }
+
 
 export type ClientFirmConnectionAccess = {
   firmId: string;

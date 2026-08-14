@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const MANAGE_ROLES = ["advisor", "super_admin", "firm_owner"];
+// Only the platform super admin crosses organisation boundaries.
 
 export type GroupClient = {
   clientId: string;
@@ -28,16 +28,22 @@ export type ConsolidationGroupsView = {
 };
 
 async function assertFirmAccess(supabase: any, userId: string, firmId: string) {
-  const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userId);
-  if (roles?.some((r: any) => MANAGE_ROLES.includes(r.role))) return;
   const { data: member } = await supabase
     .from("firm_members")
     .select("id")
     .eq("firm_id", firmId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (!member) throw new Error("You don't have access to this organisation.");
+  if (member) return;
+  const { data: superRow } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "super_admin")
+    .maybeSingle();
+  if (!superRow) throw new Error("You don't have access to this organisation.");
 }
+
 
 async function firmIdForGroup(admin: any, groupId: string): Promise<string> {
   const { data } = await admin.from("consolidation_groups").select("firm_id").eq("id", groupId).maybeSingle();
