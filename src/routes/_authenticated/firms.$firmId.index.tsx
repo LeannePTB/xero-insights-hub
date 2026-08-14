@@ -238,22 +238,64 @@ function FirmPage() {
                     <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                       Cards included by default
                     </p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {summary.widgets.map((w) => (
-                        <span
-                          key={w}
-                          className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
-                        >
-                          {WIDGET_LABEL[w as WidgetKey] ?? w}
-                        </span>
-                      ))}
-                    </div>
+                    {isMulti ? (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {(summary.availableWidgets ?? summary.widgets).map((w) => {
+                          const on = selectedWidgets.includes(w as WidgetKey);
+                          return (
+                            <button
+                              key={w}
+                              type="button"
+                              onClick={() =>
+                                setDraftWidgets(
+                                  on
+                                    ? selectedWidgets.filter((x) => x !== w)
+                                    : [...selectedWidgets, w as WidgetKey],
+                                )
+                              }
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                                on
+                                  ? "bg-primary/10 text-primary"
+                                  : "bg-muted text-muted-foreground line-through"
+                              }`}
+                            >
+                              {WIDGET_LABEL[w as WidgetKey] ?? w}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {summary.widgets.map((w) => (
+                          <span
+                            key={w}
+                            className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+                          >
+                            {WIDGET_LABEL[w as WidgetKey] ?? w}
+                          </span>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
+                  {isMulti && dirty && (
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={() => saveDefaults()} disabled={saving}>
+                        {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+                        Save for all clients
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setDraftWidgets(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
+
                   <p className="text-xs text-muted-foreground">
-                    New clients start with these cards. Open a client&apos;s settings to turn individual cards on or
-                    off for them.
+                    {isMulti
+                      ? "Untick a card to turn it off for every client in this organisation. New clients start with the ticked cards, and each client's own settings can still turn cards off individually."
+                      : "New clients start with these cards. Open a client's settings to turn individual cards on or off for them."}
                   </p>
+
                 </>
               )}
             </div>
