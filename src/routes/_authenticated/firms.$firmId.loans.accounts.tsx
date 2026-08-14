@@ -264,35 +264,45 @@ function LoanPairingsTab() {
           <Table className="mt-3">
             <TableHeader>
               <TableRow>
-                <TableHead>Side A</TableHead>
-                <TableHead>Side B</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Side A
+                </TableHead>
+                <TableHead className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Side B
+                </TableHead>
+                <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Actions
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {pairs.map((pair) => (
                 <TableRow key={pair.key}>
-                  <TableCell>
-                    <div className="font-medium">{pair.a.tenantName}</div>
+                  <TableCell className="py-4 align-middle">
+                    <div className="font-semibold">{pair.a.tenantName}</div>
                     <div className="text-sm text-muted-foreground">{accountLabel(pair.a)}</div>
                   </TableCell>
-                  <TableCell>
-                    <div className="flex items-start gap-2">
-                      <ArrowLeftRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div>
-                        <div className="font-medium">{pair.b.tenantName}</div>
-                        <div className="text-sm text-muted-foreground">{accountLabel(pair.b)}</div>
-                      </div>
+                  <TableCell className="py-4 align-middle">
+                    <div className="flex items-center gap-3">
+                      <ArrowLeftRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                      <span className="text-sm">
+                        {pair.b.tenantName} · {accountLabel(pair.b)}
+                      </span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => startEdit(pair)}>
+                  <TableCell className="py-4 text-right align-middle">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground"
+                      onClick={() => startEdit(pair)}
+                    >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-destructive"
+                      className="text-destructive hover:text-destructive"
                       onClick={() => deleteMut.mutate(pair)}
                       disabled={deleteMut.isPending}
                     >
@@ -303,6 +313,7 @@ function LoanPairingsTab() {
               ))}
             </TableBody>
           </Table>
+
         )}
       </div>
     </div>
