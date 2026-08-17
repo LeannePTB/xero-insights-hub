@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ChevronDown, ChevronRight, CreditCard, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, CreditCard, Loader2, Settings } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -17,10 +17,10 @@ import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
-import { FirmAuditLogCard } from "@/components/admin/FirmAuditLogCard";
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 
-import { SuperAdminBadge, SuperAdminSection } from "@/components/admin/SuperAdminOnly";
+import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
+
 
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
@@ -332,10 +332,17 @@ function FirmPage() {
         </div>
 
         {isSuper && (
-          <SuperAdminSection className="mt-8" title="Audit log">
-            <FirmAuditLogCard firmId={firmId} />
-          </SuperAdminSection>
+          <div className="mt-8">
+            <Link
+              to="/admin/firms/$firmId"
+              params={{ firmId }}
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              View audit log (Super Admin) <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         )}
+
 
 
 
