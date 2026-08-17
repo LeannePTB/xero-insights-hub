@@ -4,7 +4,7 @@ import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { logAuthEvent } from "@/lib/audit.functions";
-import ptLogo from "@/assets/pt-logo.png.asset.json";
+import ptLogo from "@/assets/traction-advisory-logo.png";
 
 type Props = {
   /** Optional actions rendered before the notification / account cluster. */
@@ -45,7 +45,7 @@ export function AppHeader({ actions }: Props) {
     <header className="sticky top-0 z-40 border-b border-border/60 bg-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link to="/" className="flex min-w-0 items-center gap-3" aria-label="Traction Advisory Dashboards">
-          <img src={ptLogo.url} alt="Traction Advisory" className="h-9 w-auto shrink-0" />
+          <img src={ptLogo} alt="Traction Advisory" className="h-9 w-auto shrink-0" />
           <span className="hidden border-l border-border pl-3 leading-tight sm:block">
             <span className="block text-[11px] font-bold uppercase tracking-[0.28em] text-accent">
               Traction Advisory

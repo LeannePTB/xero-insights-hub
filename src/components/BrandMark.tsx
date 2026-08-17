@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import ptLogo from "@/assets/pt-logo.png.asset.json";
+import ptLogo from "@/assets/traction-advisory-logo.png";
 
 type Props = {
   className?: string;
@@ -14,10 +14,10 @@ export function BrandMark({ className = "", onDark = false, logoHeightClass = "h
     <Link to="/" className={`flex items-center gap-3 ${className}`} aria-label="Traction Advisory Dashboards">
       {onDark ? (
         <span className="rounded-md bg-white/95 px-2 py-1 shadow-sm">
-          <img src={ptLogo.url} alt="Traction Advisory" className={`${logoHeightClass} w-auto`} />
+          <img src={ptLogo} alt="Traction Advisory" className={`${logoHeightClass} w-auto`} />
         </span>
       ) : (
-        <img src={ptLogo.url} alt="Traction Advisory" className={`${logoHeightClass} w-auto`} />
+        <img src={ptLogo} alt="Traction Advisory" className={`${logoHeightClass} w-auto`} />
       )}
       <span
         className={`hidden border-l pl-3 text-[11px] font-semibold uppercase tracking-[0.28em] sm:inline-block ${

@@ -62,6 +62,10 @@ export function SupportAccessCard({ firmId }: { firmId: string }) {
             />
             <span className="text-sm font-medium">{s.granted ? "On" : "Off"}</span>
           </div>
+        ) : s?.viewerIsMember ? (
+          <Badge className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50">
+            Access via membership
+          </Badge>
         ) : (
           <Badge variant={s?.granted ? "default" : "secondary"}>
             {s?.granted ? "Granted" : "Not granted"}
@@ -71,7 +75,12 @@ export function SupportAccessCard({ firmId }: { firmId: string }) {
 
       {s && (
         <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-          {s.granted ? (
+          {s.viewerIsMember && !s.canManage ? (
+            <span className="inline-flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
+              You can open this organisation's client data because you're a member of it.
+            </span>
+          ) : s.granted ? (
             <span className="inline-flex items-center gap-1.5">
               <ShieldCheck className="h-3.5 w-3.5 text-emerald-600" />
               Granted{s.grantedByName ? ` by ${s.grantedByName}` : ""}
@@ -95,6 +104,7 @@ export function SupportAccessCard({ firmId }: { firmId: string }) {
           )}
         </div>
       )}
+
     </section>
   );
 }
