@@ -317,7 +317,7 @@ function FirmPage() {
 
                   <p className="text-xs text-muted-foreground">
                     {isMulti
-                      ? "Untick a card to turn it off for every client in this organisation — changes save straight away. New clients start with the ticked cards, and each client's own settings can still turn cards off individually."
+                      ? "Click a card to turn it off for every client in this organisation — changes save straight away. New clients start with the selected cards, and each client's own settings can still turn cards off individually."
                       : "New clients start with these cards. Open a client's settings to turn individual cards on or off for them."}
                   </p>
 
