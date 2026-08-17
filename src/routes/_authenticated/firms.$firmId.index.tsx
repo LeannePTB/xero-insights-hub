@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Settings } from "lucide-react";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
+import { CompanyConsolidationsCard } from "@/components/admin/CompanyConsolidationsCard";
 import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 import { firmPlanView } from "@/lib/firmPlans";
