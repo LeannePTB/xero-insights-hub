@@ -263,7 +263,10 @@ export async function xeroGet<T = unknown>(
     await logXeroApiError(conn, path, res.status, body.slice(0, 500));
     throw new Error(`Xero ${path}: ${res.status} ${body}`);
   }
+  const { logXeroRead } = await import("@/lib/audit.server");
+  await logXeroRead(conn, path);
   return (await res.json()) as T;
+
 }
 
 async function logXeroApiError(
