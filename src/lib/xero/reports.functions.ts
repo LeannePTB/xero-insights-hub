@@ -647,40 +647,15 @@ export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
       }
     }
 
-    // Pull last 3 BAS quarters to derive lodged amounts and their due dates.
-    const quarters = recentBasQuarters(asAt, 3);
-    let asUnavailable = false;
-    let asMessage: string | undefined;
+    // Xero's Accounting API has no Activity Statement endpoint, so lodged BAS
+    // amounts (and therefore due/overdue splits) can't be sourced from Xero.
+    const asUnavailable = true;
+    const asMessage =
+      "Lodged BAS amounts aren't available from Xero's API, so tax can't be split into due and overdue. The balance sheet totals below are accurate.";
     const lodgedByCat: { gst: { dueDate: string; amount: number }[]; payg: { dueDate: string; amount: number }[] } = {
       gst: [],
       payg: [],
     };
-
-    for (const q of quarters) {
-      try {
-        const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ActivityStatement", {
-          fromDate: q.from,
-          toDate: q.to,
-        });
-        const report = res?.Reports?.[0];
-        if (!report) continue;
-        const { boxes } = extractBoxes(report);
-        const get = (k: string) => boxes[k] ?? 0;
-        const gstNet = get("1A") - get("1B");
-        const paygNet = get("W5") || get("W2") + get("W3") + get("W4");
-        const dueDate = isoAddDays(q.to, 28); // standard BAS lodgement window
-        if (gstNet !== 0) lodgedByCat.gst.push({ dueDate, amount: gstNet });
-        if (paygNet !== 0) lodgedByCat.payg.push({ dueDate, amount: paygNet });
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (/404|NotFound|not available|not found/i.test(msg)) {
-          asUnavailable = true;
-          asMessage = "Activity Statement isn't available for this Xero organisation – overdue can't be computed.";
-          break;
-        }
-        // Other errors: skip this quarter silently
-      }
-    }
 
     // Bucket each tax category against its BS balance.
     const today = new Date().toISOString().slice(0, 10);
