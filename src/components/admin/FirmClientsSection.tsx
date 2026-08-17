@@ -268,14 +268,16 @@ export function FirmClientsSection({
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Link
-                            to="/clients/$clientId"
-                            params={{ clientId: c.id }}
-                            search={{ firmId }}
-                            className="inline-flex items-center text-muted-foreground hover:text-foreground"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Link>
+                          {allowClientData && (
+                            <Link
+                              to="/clients/$clientId"
+                              params={{ clientId: c.id }}
+                              search={{ firmId }}
+                              className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Link>
+                          )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${c.name}`}>
@@ -283,19 +285,34 @@ export function FirmClientsSection({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link to="/clients/$clientId" params={{ clientId: c.id }}>Open</Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Settings</Link>
-                              </DropdownMenuItem>
-                              {(granted.length ? granted : enabledTiers).map((t) => (
-                                <DropdownMenuItem key={`view-as-${t}`} asChild>
-                                  <Link to="/clients/$clientId" params={{ clientId: c.id }} search={{ viewAs: t }}>
+                              {allowClientData && (
+                                <>
+                                  <DropdownMenuItem asChild>
+                                    <Link to="/clients/$clientId" params={{ clientId: c.id }}>Open</Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Settings</Link>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {(granted.length ? granted : enabledTiers).map((t) =>
+                                canOpenClientData ? (
+                                  <DropdownMenuItem key={`view-as-${t}`} asChild>
+                                    <Link to="/clients/$clientId" params={{ clientId: c.id }} search={{ viewAs: t }}>
+                                      <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
+                                    </Link>
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    key={`view-as-${t}`}
+                                    disabled
+                                    title="This organisation hasn't granted support access"
+                                  >
                                     <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
-                                  </Link>
-                                </DropdownMenuItem>
-                              ))}
+                                  </DropdownMenuItem>
+                                ),
+                              )}
+
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onSelect={(e) => {
