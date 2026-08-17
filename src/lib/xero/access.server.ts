@@ -17,7 +17,8 @@ export async function getEffectiveTier(
   const firmId = (cxo?.clients?.firm_id as string | undefined) ?? null;
 
   // Access rules:
-  //  - super admins may manage any subscription end to end (Xero links, settings, dashboards)
+  //  - super admins may reach client data ONLY when they belong to the firm or
+  //    the firm owner has switched support access on
   //  - firm members (any role) see the firm's clients with full "investigate" tier
   //  - users with an explicit client_access row see at their granted tier
   //  - everyone else is denied
@@ -27,7 +28,12 @@ export async function getEffectiveTier(
     .eq("user_id", userId)
     .eq("role", "super_admin")
     .maybeSingle();
-  if (superRow) return { isAdvisor: true, tier: "investigate", clientId };
+  if (superRow) {
+    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+    if (await platformStaffCanAccessFirm(userId, firmId)) {
+      return { isAdvisor: true, tier: "investigate", clientId };
+    }
+  }
 
   if (firmId) {
     const { data: member } = await (supabaseAdmin as any)
@@ -38,6 +44,8 @@ export async function getEffectiveTier(
       .maybeSingle();
     if (member) return { isAdvisor: true, tier: "investigate", clientId };
   }
+
+
 
 
   if (clientId) {
