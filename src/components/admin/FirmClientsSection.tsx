@@ -121,23 +121,25 @@ export function FirmClientsSection({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-semibold">{heading}</h2>
-        <div className="flex items-center gap-3">
-          {atLimit && (
-            <span className="text-xs text-muted-foreground">
-              Client limit reached — upgrade the plan to add more.
-            </span>
-          )}
-          <AddClientFromXeroButton firmId={firmId} disabled={atLimit} />
-          <Button variant="outline" asChild={!atLimit} disabled={atLimit}>
-            {atLimit ? (
-              <span><Plus className="mr-2 h-4 w-4" /> New client</span>
-            ) : (
-              <Link to="/clients/new" search={{ firmId } as any}>
-                <Plus className="mr-2 h-4 w-4" /> New client
-              </Link>
+        {showAddActions && (
+          <div className="flex items-center gap-3">
+            {atLimit && (
+              <span className="text-xs text-muted-foreground">
+                Client limit reached — upgrade the plan to add more.
+              </span>
             )}
-          </Button>
-        </div>
+            <AddClientFromXeroButton firmId={firmId} disabled={atLimit} />
+            <Button variant="outline" asChild={!atLimit} disabled={atLimit}>
+              {atLimit ? (
+                <span><Plus className="mr-2 h-4 w-4" /> New client</span>
+              ) : (
+                <Link to="/clients/new" search={{ firmId } as any}>
+                  <Plus className="mr-2 h-4 w-4" /> New client
+                </Link>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       <Dialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
