@@ -16,6 +16,10 @@ export type SupportAccessState = {
   viewerIsMember: boolean;
   /** True when the caller is platform staff (super admin / advisor). */
   viewerIsPlatformStaff: boolean;
+  /** True when the caller is a Traction Advisory super admin. */
+  viewerIsSuperAdmin: boolean;
+  /** True when the caller may manage the setting only because they are a super admin. */
+  managesAsSuperAdmin: boolean;
 };
 
 export const getSupportAccess = createServerFn({ method: "POST" })
@@ -52,9 +56,9 @@ export const getSupportAccess = createServerFn({ method: "POST" })
       grantedByName = profile?.display_name ?? profile?.email ?? null;
     }
 
-    const isPlatformStaff = ((roles ?? []) as any[]).some(
-      (r) => r.role === "super_admin" || r.role === "advisor",
-    );
+    const roleList = ((roles ?? []) as any[]).map((r) => r.role);
+    const isSuperAdmin = roleList.includes("super_admin");
+    const isPlatformStaff = isSuperAdmin || roleList.includes("advisor");
     const isOwner = firm.owner_user_id === context.userId;
 
     return {
@@ -64,7 +68,9 @@ export const getSupportAccess = createServerFn({ method: "POST" })
       revokedAt: (row?.revoked_at as string | null) ?? null,
       grantedByName,
       note: (row?.note as string | null) ?? null,
-      canManage: isOwner,
+      canManage: isOwner || isSuperAdmin,
+      viewerIsSuperAdmin: isSuperAdmin,
+      managesAsSuperAdmin: isSuperAdmin && !isOwner,
       viewerIsMember: !!member,
       viewerIsPlatformStaff: isPlatformStaff,
       viewerHasClientData: member
@@ -79,8 +85,8 @@ export const setSupportAccess = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId: string; granted: boolean; note?: string }) => i)
   .handler(async ({ data, context }) => {
-    // Owner-only: the setting is written through the caller's own session so
-    // row-level security enforces ownership.
+    // Written through the caller's own session so row-level security enforces
+    // that only the organisation owner or a super admin can change it.
     const { error } = await (context.supabase as any)
       .from("firm_support_access")
       .upsert(
@@ -94,6 +100,9 @@ export const setSupportAccess = createServerFn({ method: "POST" })
         },
         { onConflict: "firm_id" },
       );
-    if (error) throw new Error("Only the organisation owner can change support access.");
+    if (error)
+      throw new Error(
+        "Only the organisation owner or a Traction Advisory super admin can change support access.",
+      );
     return { ok: true, granted: data.granted };
   });

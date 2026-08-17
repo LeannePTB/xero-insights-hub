@@ -106,6 +106,11 @@ export function SupportAccessCard({ firmId }: { firmId: string }) {
 
               {s.canManage && (
                 <div className="flex items-center gap-3">
+                  {s.managesAsSuperAdmin && (
+                    <span className="rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                      Super Admin View
+                    </span>
+                  )}
                   <Switch
                     checked={!!s.granted}
                     disabled={mut.isPending}
