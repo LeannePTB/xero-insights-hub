@@ -38,6 +38,7 @@ export function FirmClientsSection({
   clientLimit,
   planLabel,
   showHealth = true,
+  allowClientData = true,
   heading = "Clients",
   onChanged,
 }: {
@@ -46,6 +47,8 @@ export function FirmClientsSection({
   clientLimit?: number;
   planLabel?: string;
   showHealth?: boolean;
+  /** When false, nothing links through to client data; only gated "View as". */
+  allowClientData?: boolean;
   heading?: string;
   onChanged?: () => void;
 }) {
@@ -54,7 +57,16 @@ export function FirmClientsSection({
   const fetchTierSettings = useServerFn(listTierSettings);
   const fetchPlanTiers = useServerFn(getAllowedTiersForFirm);
   const removeClient = useServerFn(deleteClient);
+  const fetchSupportAccess = useServerFn(getSupportAccess);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const supportQ = useQuery({
+    queryKey: ["support-access", firmId],
+    queryFn: () => fetchSupportAccess({ data: { firmId } }),
+    enabled: !allowClientData,
+  });
+  const canOpenClientData = allowClientData || !!supportQ.data?.viewerHasClientData;
+
 
   const clientsQ = useQuery({
     queryKey: ["clients", firmId],
