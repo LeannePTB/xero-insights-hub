@@ -246,6 +246,7 @@ export type Database = {
       }
       billing_events: {
         Row: {
+          client_id: string | null
           firm_id: string | null
           id: string
           occurred_at: string
@@ -254,6 +255,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          client_id?: string | null
           firm_id?: string | null
           id?: string
           occurred_at?: string
@@ -262,6 +264,7 @@ export type Database = {
           type: string
         }
         Update: {
+          client_id?: string | null
           firm_id?: string | null
           id?: string
           occurred_at?: string
@@ -270,6 +273,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "billing_events_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "billing_events_firm_id_fkey"
             columns: ["firm_id"]
@@ -400,11 +410,17 @@ export type Database = {
       client_subscriptions: {
         Row: {
           client_id: string
+          comp_reason: string | null
+          comped_at: string | null
+          comped_by: string | null
+          coupon_id: string | null
           created_at: string
           current_period_end: string | null
+          dashboard_tier: Database["public"]["Enums"]["dashboard_tier"]
           id: string
           past_due_since: string | null
           plan_name: string | null
+          promotion_code: string | null
           status: Database["public"]["Enums"]["client_subscription_status"]
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -414,11 +430,17 @@ export type Database = {
         }
         Insert: {
           client_id: string
+          comp_reason?: string | null
+          comped_at?: string | null
+          comped_by?: string | null
+          coupon_id?: string | null
           created_at?: string
           current_period_end?: string | null
+          dashboard_tier?: Database["public"]["Enums"]["dashboard_tier"]
           id?: string
           past_due_since?: string | null
           plan_name?: string | null
+          promotion_code?: string | null
           status?: Database["public"]["Enums"]["client_subscription_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -428,11 +450,17 @@ export type Database = {
         }
         Update: {
           client_id?: string
+          comp_reason?: string | null
+          comped_at?: string | null
+          comped_by?: string | null
+          coupon_id?: string | null
           created_at?: string
           current_period_end?: string | null
+          dashboard_tier?: Database["public"]["Enums"]["dashboard_tier"]
           id?: string
           past_due_since?: string | null
           plan_name?: string | null
+          promotion_code?: string | null
           status?: Database["public"]["Enums"]["client_subscription_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -1844,6 +1872,15 @@ export type Database = {
       check_rate_limit: {
         Args: { _key: string; _max: number; _window_seconds: number }
         Returns: boolean
+      }
+      client_entitlement: {
+        Args: { _client_id: string }
+        Returns: {
+          expires_at: string
+          in_grace: boolean
+          source: string
+          tier: Database["public"]["Enums"]["dashboard_tier"]
+        }[]
       }
       delete_email: {
         Args: { message_id: number; queue_name: string }
