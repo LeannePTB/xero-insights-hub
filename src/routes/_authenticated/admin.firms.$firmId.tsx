@@ -11,6 +11,7 @@ import {
   adminUpdateUserEmail,
   adminUpdateSubscription,
   adminRenameFirm,
+  adminSetSelfFirmMembership,
 } from "@/lib/admin.functions";
 import { adminInviteFirmMember } from "@/lib/invites.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
@@ -55,26 +56,55 @@ function fmtDate(s: string | null | undefined) {
 }
 
 function SupportAccessBadge({ firmId }: { firmId: string }) {
+  const qc = useQueryClient();
   const fetchState = useServerFn(getSupportAccess);
+  const setMembership = useServerFn(adminSetSelfFirmMembership);
   const q = useQuery({
     queryKey: ["support-access", firmId],
     queryFn: () => fetchState({ data: { firmId } }),
+  });
+  const mut = useMutation({
+    mutationFn: (join: boolean) => setMembership({ data: { firmId, join } }),
+    onSuccess: (r: any) => {
+      toast.success(r.member ? "You now have access to this organisation" : "You left this organisation");
+      qc.invalidateQueries({ queryKey: ["support-access", firmId] });
+      qc.invalidateQueries({ queryKey: ["admin-firm", firmId] });
+    },
+    onError: (e: any) => toast.error(e.message),
   });
   const s = q.data;
   if (!s) return <Badge variant="secondary" className="ml-auto">no client data</Badge>;
   return (
     <div className="ml-auto flex items-center gap-2">
-      <Badge variant="secondary">no client data</Badge>
-      <Badge variant={s.granted ? "default" : "outline"} title={
-        s.granted
-          ? `Support access granted${s.grantedByName ? ` by ${s.grantedByName}` : ""}${s.grantedAt ? ` on ${new Date(s.grantedAt).toLocaleString()}` : ""}`
-          : "This organisation hasn't granted support access"
-      }>
-        {s.granted ? "support access on" : "support access off"}
+      <Badge variant={s.viewerHasClientData ? "default" : "secondary"}>
+        {s.viewerHasClientData ? "client data available" : "no client data"}
       </Badge>
+      {s.viewerIsMember ? (
+        <Badge variant="outline">you are a member</Badge>
+      ) : (
+        <Badge variant={s.granted ? "default" : "outline"} title={
+          s.granted
+            ? `Support access granted${s.grantedByName ? ` by ${s.grantedByName}` : ""}${s.grantedAt ? ` on ${new Date(s.grantedAt).toLocaleString()}` : ""}`
+            : "This organisation hasn't granted support access"
+        }>
+          {s.granted ? "support access on" : "support access off"}
+        </Badge>
+      )}
+      {s.viewerIsPlatformStaff && (
+        <Button
+          size="sm"
+          variant={s.viewerIsMember ? "outline" : "default"}
+          disabled={mut.isPending}
+          onClick={() => mut.mutate(!s.viewerIsMember)}
+        >
+          {mut.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
+          {s.viewerIsMember ? "Leave organisation" : "Add me as staff"}
+        </Button>
+      )}
     </div>
   );
 }
+
 
 function FirmDetailPage() {
 

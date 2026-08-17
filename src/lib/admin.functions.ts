@@ -254,3 +254,41 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
     });
     return { ok: true };
   });
+
+/**
+ * Super admin joins/leaves an organisation as staff.
+ * Membership grants client-data access automatically (see support-access.server.ts).
+ */
+export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { firmId: string; join: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    if (data.join) {
+      const { error } = await (supabaseAdmin as any)
+        .from("firm_members")
+        .upsert(
+          { firm_id: data.firmId, user_id: context.userId, role: "staff" },
+          { onConflict: "firm_id,user_id" },
+        );
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await (supabaseAdmin as any)
+        .from("firm_members")
+        .delete()
+        .eq("firm_id", data.firmId)
+        .eq("user_id", context.userId);
+      if (error) throw new Error(error.message);
+    }
+
+    await logAudit(
+      data.join ? "platform_staff_joined_firm" : "platform_staff_left_firm",
+      "firm",
+      data.firmId,
+      context.userId,
+      { firm_id: data.firmId },
+    );
+    return { ok: true, member: data.join };
+  });
