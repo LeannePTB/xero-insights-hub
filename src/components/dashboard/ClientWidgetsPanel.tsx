@@ -17,6 +17,8 @@ export function ClientWidgetsPanel({ clientId }: { clientId: string }) {
   const q = useQuery({
     queryKey: ["client-widgets", clientId, "actual"],
     queryFn: () => fetchWidgets({ data: { clientId } }),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const [selected, setSelected] = useState<WidgetKey[] | null>(null);
@@ -28,7 +30,9 @@ export function ClientWidgetsPanel({ clientId }: { clientId: string }) {
     mutationFn: (widgets: WidgetKey[] | null) => save({ data: { clientId, widgets } }),
     onSuccess: () => {
       toast.success("Saved");
-      qc.invalidateQueries({ queryKey: ["client-widgets", clientId] });
+      // Clear every cached card list (dashboards for this and other clients).
+      qc.invalidateQueries({ queryKey: ["client-widgets"] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
     },
     onError: (e: any) => toast.error(e.message),
   });

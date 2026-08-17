@@ -91,24 +91,30 @@ function FirmPage() {
   const summary = summaryQ.data;
 
   const isMulti = !!(summary?.allowsMultiOrg || summary?.supportsConsolidation);
-  const [draftWidgets, setDraftWidgets] = useState<WidgetKey[] | null>(null);
+  // Optimistic copy while a toggle is being written.
+  const [pendingWidgets, setPendingWidgets] = useState<WidgetKey[] | null>(null);
   const [saving, setSaving] = useState(false);
-  const selectedWidgets = (draftWidgets ?? (summary?.widgets ?? [])) as WidgetKey[];
-  const dirty =
-    draftWidgets !== null &&
-    (draftWidgets.length !== (summary?.widgets.length ?? 0) ||
-      draftWidgets.some((w) => !(summary?.widgets ?? []).includes(w)));
+  const selectedWidgets = (pendingWidgets ?? (summary?.widgets ?? [])) as WidgetKey[];
   const saveFirmDefaults = useServerFn(saveFirmDefaultWidgets);
-  const saveDefaults = async () => {
-    if (!draftWidgets) return;
+  const toggleWidget = async (w: WidgetKey) => {
+    if (saving) return;
+    const on = selectedWidgets.includes(w);
+    const next = on ? selectedWidgets.filter((x) => x !== w) : [...selectedWidgets, w];
+    setPendingWidgets(next);
     setSaving(true);
     try {
-      await saveFirmDefaults({ data: { firmId, widgets: draftWidgets } });
-      setDraftWidgets(null);
+      await saveFirmDefaults({ data: { firmId, widgets: next } });
       await qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
-      qc.invalidateQueries({ queryKey: ["clients", firmId] });
-      toast.success("Default cards updated for all clients");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["client-widgets"] });
+      setPendingWidgets(null);
+      toast.success(
+        on
+          ? `${WIDGET_LABEL[w] ?? w} turned off for every client`
+          : `${WIDGET_LABEL[w] ?? w} turned on for new clients`,
+      );
     } catch (e: any) {
+      setPendingWidgets(null);
       toast.error(e?.message ?? "Could not save default cards");
     } finally {
       setSaving(false);
@@ -282,14 +288,9 @@ function FirmPage() {
                             <button
                               key={w}
                               type="button"
-                              onClick={() =>
-                                setDraftWidgets(
-                                  on
-                                    ? selectedWidgets.filter((x) => x !== w)
-                                    : [...selectedWidgets, w as WidgetKey],
-                                )
-                              }
-                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                              onClick={() => toggleWidget(w as WidgetKey)}
+                              disabled={saving}
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-60 ${
                                 on
                                   ? "bg-primary/10 text-primary"
                                   : "bg-muted text-muted-foreground line-through"
@@ -314,21 +315,15 @@ function FirmPage() {
                     )}
                   </div>
 
-                  {isMulti && dirty && (
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" onClick={() => saveDefaults()} disabled={saving}>
-                        {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                        Save for all clients
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setDraftWidgets(null)}>
-                        Cancel
-                      </Button>
-                    </div>
+                  {isMulti && saving && (
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
+                    </p>
                   )}
 
                   <p className="text-xs text-muted-foreground">
                     {isMulti
-                      ? "Untick a card to turn it off for every client in this organisation. New clients start with the ticked cards, and each client's own settings can still turn cards off individually."
+                      ? "Untick a card to turn it off for every client in this organisation — changes save straight away. New clients start with the ticked cards, and each client's own settings can still turn cards off individually."
                       : "New clients start with these cards. Open a client's settings to turn individual cards on or off for them."}
                   </p>
 
