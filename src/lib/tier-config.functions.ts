@@ -334,7 +334,7 @@ export const getClientWidgets = createServerFn({ method: "POST" })
         ? sanitizeWidgets((lvl.widgets ?? []) as string[])
         : defaultWidgetsFor(data.tierOverride)
       ).filter((w) => availableSet.has(w));
-      return { widgets: preview, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string };
+      return { widgets: preview, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string, entitlement };
     }
 
     const widgets = configured
@@ -342,7 +342,8 @@ export const getClientWidgets = createServerFn({ method: "POST" })
       : availableWidgets;
 
 
-    return { widgets, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string };
+    return { widgets, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string, entitlement };
+
   });
 
 export const saveClientWidgets = createServerFn({ method: "POST" })
