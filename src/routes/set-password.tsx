@@ -75,7 +75,7 @@ function SetPasswordPage() {
             Choose a password so you can sign back in any time.
           </p>
         </div>
-        <p className="text-xs text-primary-foreground/55">© {new Date().getFullYear()} Positive Traction</p>
+        <p className="text-xs text-primary-foreground/55">© {new Date().getFullYear()} Traction Advisory</p>
       </div>
 
       <div className="flex items-center justify-center p-6">

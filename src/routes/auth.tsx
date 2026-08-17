@@ -136,7 +136,7 @@ function AuthPage() {
             Clean Xero dashboards you will actually open — built around the metrics that matter.
           </p>
         </div>
-        <p className="relative z-20 text-xs text-primary-foreground/70">© {new Date().getFullYear()} Positive Traction</p>
+        <p className="relative z-20 text-xs text-primary-foreground/70">© {new Date().getFullYear()} Traction Advisory</p>
       </div>
 
       <div className="flex items-center justify-center p-6">
@@ -190,7 +190,7 @@ function AuthPage() {
               }}
             />
             <p className="pt-1 text-center text-xs text-muted-foreground">
-              Access is invite-only. Contact Positive Traction.
+              Access is invite-only. Contact Traction Advisory.
             </p>
           </div>
         </div>
