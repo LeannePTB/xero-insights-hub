@@ -38,6 +38,7 @@ import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/e
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
+import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
 import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
@@ -209,6 +210,12 @@ const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
   path: '/api/public/xero/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedFirmsFirmIdSettingsRoute =
+  AuthenticatedFirmsFirmIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
 const AuthenticatedFirmsFirmIdLoansRoute =
   AuthenticatedFirmsFirmIdLoansRouteImport.update({
     id: '/loans',
@@ -328,6 +335,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
+  '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -370,6 +378,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -417,6 +426,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
+  '/_authenticated/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -464,6 +474,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
     | '/firms/$firmId/loans'
+    | '/firms/$firmId/settings'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -506,6 +517,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/loans-accounts'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
+    | '/firms/$firmId/settings'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -552,6 +564,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/settings'
     | '/_authenticated/clients/$clientId/unreconciled'
     | '/_authenticated/firms/$firmId/loans'
+    | '/_authenticated/firms/$firmId/settings'
     | '/api/public/xero/callback'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -794,6 +807,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicXeroCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/firms/$firmId/settings': {
+      id: '/_authenticated/firms/$firmId/settings'
+      path: '/settings'
+      fullPath: '/firms/$firmId/settings'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
     '/_authenticated/firms/$firmId/loans': {
       id: '/_authenticated/firms/$firmId/loans'
       path: '/loans'
@@ -942,6 +962,7 @@ const AuthenticatedFirmsFirmIdLoansRouteWithChildren =
 
 interface AuthenticatedFirmsFirmIdRouteChildren {
   AuthenticatedFirmsFirmIdLoansRoute: typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
+  AuthenticatedFirmsFirmIdSettingsRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
   AuthenticatedFirmsFirmIdIndexRoute: typeof AuthenticatedFirmsFirmIdIndexRoute
   AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute: typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
 }
@@ -950,6 +971,8 @@ const AuthenticatedFirmsFirmIdRouteChildren: AuthenticatedFirmsFirmIdRouteChildr
   {
     AuthenticatedFirmsFirmIdLoansRoute:
       AuthenticatedFirmsFirmIdLoansRouteWithChildren,
+    AuthenticatedFirmsFirmIdSettingsRoute:
+      AuthenticatedFirmsFirmIdSettingsRoute,
     AuthenticatedFirmsFirmIdIndexRoute: AuthenticatedFirmsFirmIdIndexRoute,
     AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute:
       AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute,
