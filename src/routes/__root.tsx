@@ -77,7 +77,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Traction Advisory — Xero dashboards by Positive Traction" },
+      { title: "Traction Advisory — Xero dashboards" },
       { name: "description", content: "Built for builders. Backed by numbers. Clean Xero dashboards for property developers, trades and construction clients." },
       { property: "og:site_name", content: "Traction Advisory" },
       { property: "og:title", content: "Traction Advisory" },

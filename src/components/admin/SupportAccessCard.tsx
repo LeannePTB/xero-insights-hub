@@ -44,7 +44,7 @@ export function SupportAccessCard({ firmId }: { firmId: string }) {
           <div>
             <h2 className="text-base font-semibold">Support access</h2>
             <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-              Allow Positive Traction support staff to view this organisation's client data. Staff
+              Allow Traction Advisory support staff to view this organisation's client data. Staff
               who are members of this organisation always have access. Access stays on until you
               turn it off.
             </p>

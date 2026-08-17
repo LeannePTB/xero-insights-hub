@@ -458,7 +458,7 @@ export async function buildLoanReconciliationXlsx(
 ): Promise<Uint8Array> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Positive Traction";
+  wb.creator = "Traction Advisory";
   wb.created = new Date();
 
   const purpleFill = "FF53318D";
