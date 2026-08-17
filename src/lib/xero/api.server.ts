@@ -148,10 +148,19 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
         .from("xero_connections")
         .update({ status: "disconnected", disconnected_at: new Date().toISOString() })
         .eq("user_id", conn.user_id);
+      const { writeAudit } = await import("@/lib/audit.server");
+      await writeAudit({
+        actorUserId: conn.user_id,
+        action: "xero_reconnect_required",
+        targetType: "xero_connection",
+        targetId: conn.tenant_id,
+        meta: { status: res.status, reason: "refresh_token_rejected" },
+      });
       throw new Error(
         "Xero reconnect required: this organisation needs to be reconnected before data can load.",
       );
     }
+
     throw new Error(`Xero token refresh failed: ${res.status} ${body}`);
   }
   const t = (await res.json()) as {
@@ -178,7 +187,17 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
     .eq("user_id", conn.user_id);
   if (error) throw new Error(`Failed to save refreshed Xero tokens: ${error.message}`);
 
+  const { writeAudit } = await import("@/lib/audit.server");
+  await writeAudit({
+    actorUserId: conn.user_id,
+    action: "xero_token_refreshed",
+    targetType: "xero_connection",
+    targetId: conn.tenant_id,
+    meta: { expires_at, scopes: t.scope ?? conn.scopes ?? null },
+  });
+
   return { ...conn, access_token: t.access_token, refresh_token: t.refresh_token, expires_at };
+
 }
 
 export async function getConnection(userId: string, tenantId: string): Promise<Connection> {
@@ -263,7 +282,10 @@ export async function xeroGet<T = unknown>(
     await logXeroApiError(conn, path, res.status, body.slice(0, 500));
     throw new Error(`Xero ${path}: ${res.status} ${body}`);
   }
+  const { logXeroRead } = await import("@/lib/audit.server");
+  await logXeroRead(conn, path);
   return (await res.json()) as T;
+
 }
 
 async function logXeroApiError(

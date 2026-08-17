@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { logFailedSignIn } from "@/lib/audit.functions";
 import { Loader2 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
@@ -69,7 +70,14 @@ function AuthPage() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
-      if (error) throw error;
+      if (error) {
+        try {
+          await logFailedSignIn({ data: { email, reason: error.message } });
+        } catch {
+          /* audit is best-effort */
+        }
+        throw error;
+      }
       toast.success("Welcome back");
       await routeAfterAuth(navigate);
     } catch (e: any) {

@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { logAuthEvent } from "@/lib/audit.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -79,6 +80,11 @@ function MfaEnrollPage() {
         code: code.trim(),
       });
       if (verify.error) throw verify.error;
+      try {
+        await logAuthEvent({ data: { action: "mfa_enrolled" } });
+      } catch {
+        /* audit is best-effort */
+      }
       toast.success("Two-factor enabled");
       navigate({ to: "/dashboard", replace: true });
     } catch (e: any) {
