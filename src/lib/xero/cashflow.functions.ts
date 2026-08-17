@@ -147,15 +147,20 @@ export const getCashflow = createServerFn({ method: "POST" })
       });
     }
 
-    // Get closing balances from a BankSummary over the last 12 months.
+    // Get closing balances from a BankSummary. Xero rejects BankSummary windows
+    // longer than 365 days, so keep the most recent 365 days.
     const balToDate = new Date();
-    const balFromDate = new Date(balToDate.getFullYear(), balToDate.getMonth() - 12, 1);
+    const balFromDate = clampTo365Days(
+      new Date(balToDate.getFullYear(), balToDate.getMonth() - 12, 1),
+      balToDate,
+    );
     let totalCash = 0;
     try {
       const balSummary = await xeroGet<any>(conn, "Reports/BankSummary", {
         fromDate: toISO(balFromDate),
         toDate: toISO(balToDate),
       });
+
       // Parse closing balances per account from the report.
       const reports = balSummary?.Reports ?? [];
       for (const r of reports) {
