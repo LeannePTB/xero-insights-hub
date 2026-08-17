@@ -12,6 +12,10 @@ export type SupportAccessState = {
   canManage: boolean;
   /** True when the caller may open this organisation's client data. */
   viewerHasClientData: boolean;
+  /** True when the caller is a member of this organisation. */
+  viewerIsMember: boolean;
+  /** True when the caller is platform staff (super admin / advisor). */
+  viewerIsPlatformStaff: boolean;
 };
 
 export const getSupportAccess = createServerFn({ method: "POST" })
@@ -61,6 +65,8 @@ export const getSupportAccess = createServerFn({ method: "POST" })
       grantedByName,
       note: (row?.note as string | null) ?? null,
       canManage: isOwner,
+      viewerIsMember: !!member,
+      viewerIsPlatformStaff: isPlatformStaff,
       viewerHasClientData: member
         ? true
         : isPlatformStaff
