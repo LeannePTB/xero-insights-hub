@@ -892,7 +892,10 @@ function ClientSettings() {
             and can be reused.
           </p>
         </Section>
-        {/* SubscriptionPanel hidden until payments re-enabled */}
+        <Section title="Subscription" collapsible defaultOpen={false}>
+          <ClientSubscriptionSection clientId={clientId} />
+        </Section>
+
       </main>
     </div>
   );
