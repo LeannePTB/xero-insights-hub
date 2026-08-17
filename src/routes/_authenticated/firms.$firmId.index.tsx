@@ -216,16 +216,8 @@ function FirmPage() {
                 {includedOpen ? <ChevronDown className="mr-1 h-4 w-4" /> : <ChevronRight className="mr-1 h-4 w-4" />}
                 What&apos;s included
               </Button>
-              {isSuper ? (
-                <div className="flex items-center gap-2">
-                  <SuperAdminBadge />
-                  <Button variant="outline" size="sm" onClick={() => setPlanOpen(true)}>
-                    <Settings className="mr-2 h-4 w-4" /> Edit plan
-                  </Button>
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground">Contact support to change this plan.</p>
-              )}
+
+
 
             </div>
           </div>
