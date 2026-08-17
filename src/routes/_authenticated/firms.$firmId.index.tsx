@@ -169,7 +169,8 @@ function FirmPage() {
 
 
 
-        <div className="mt-8">
+        <div className="mt-8 grid gap-5 md:grid-cols-2">
+          <CompanyConsolidationsCard firmId={firmId} />
           <LoanConsolidationCard firmId={firmId} />
         </div>
 
