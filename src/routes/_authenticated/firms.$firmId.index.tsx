@@ -1,35 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, CreditCard, Loader2, Settings } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
+import { ArrowLeft, Loader2, Settings } from "lucide-react";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
-import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
-
-import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
-
-
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
-
-import { getFirmPlanSummary, saveFirmDefaultWidgets } from "@/lib/tier-config.functions";
-import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
-
-import { Badge } from "@/components/ui/badge";
-import { firmPlanView, toneClasses } from "@/lib/firmPlans";
+import { firmPlanView } from "@/lib/firmPlans";
 import { toast } from "sonner";
+
 
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
