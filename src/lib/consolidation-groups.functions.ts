@@ -228,8 +228,9 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
       .eq("firm_id", firmId)
       .eq("user_id", context.userId)
       .maybeSingle();
-    const { supportAccessActive } = await import("@/lib/support-access.server");
-    const grantActive = isSuperAdmin && !member ? await supportAccessActive(firmId) : false;
+    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+    const grantActive =
+      isSuperAdmin && !member ? await platformStaffCanAccessFirm(context.userId, firmId) : false;
 
     return {
       firmId,
