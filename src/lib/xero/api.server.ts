@@ -8,8 +8,6 @@ const API_BASE = "https://api.xero.com/api.xro/2.0";
 const XERO_TIMEOUT_MS = 20_000;
 
 const MISSING_SCOPE_HINTS: Record<string, string> = {
-  "Reports/ActivityStatement":
-    "Xero needs the tax reports read permission for Activity Statement data. Reconnect this organisation and approve the updated read-only permissions.",
   "Reports/BankSummary":
     "Xero needs the bank summary reports read permission. Reconnect this organisation and approve the updated read-only permissions.",
   "Reports/BalanceSheet":
