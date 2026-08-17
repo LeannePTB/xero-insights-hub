@@ -52,7 +52,30 @@ function fmtDate(s: string | null | undefined) {
   return new Date(s).toISOString().slice(0, 10);
 }
 
+function SupportAccessBadge({ firmId }: { firmId: string }) {
+  const fetchState = useServerFn(getSupportAccess);
+  const q = useQuery({
+    queryKey: ["support-access", firmId],
+    queryFn: () => fetchState({ data: { firmId } }),
+  });
+  const s = q.data;
+  if (!s) return <Badge variant="secondary" className="ml-auto">no client data</Badge>;
+  return (
+    <div className="ml-auto flex items-center gap-2">
+      <Badge variant="secondary">no client data</Badge>
+      <Badge variant={s.granted ? "default" : "outline"} title={
+        s.granted
+          ? `Support access granted${s.grantedByName ? ` by ${s.grantedByName}` : ""}${s.grantedAt ? ` on ${new Date(s.grantedAt).toLocaleString()}` : ""}`
+          : "This organisation hasn't granted support access"
+      }>
+        {s.granted ? "support access on" : "support access off"}
+      </Badge>
+    </div>
+  );
+}
+
 function FirmDetailPage() {
+
   const { firmId } = Route.useParams();
   const qc = useQueryClient();
   const getDetail = useServerFn(getFirmDetailAdmin);
