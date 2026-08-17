@@ -871,6 +871,54 @@ export type Database = {
           },
         ]
       }
+      firm_support_access: {
+        Row: {
+          created_at: string
+          firm_id: string
+          granted: boolean
+          granted_at: string | null
+          granted_by: string | null
+          note: string | null
+          revoked_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          firm_id: string
+          granted?: boolean
+          granted_at?: string | null
+          granted_by?: string | null
+          note?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          firm_id?: string
+          granted?: boolean
+          granted_at?: string | null
+          granted_by?: string | null
+          note?: string | null
+          revoked_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "firm_support_access_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "firm_support_access_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       firms: {
         Row: {
           created_at: string

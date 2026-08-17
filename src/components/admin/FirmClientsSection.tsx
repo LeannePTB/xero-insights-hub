@@ -7,6 +7,8 @@ import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Plus, Trash2 } f
 import { listClients, deleteClient } from "@/lib/clients.functions";
 import { listTierSettings, getFirmPlanSummary } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
+import { getSupportAccess } from "@/lib/support-access.functions";
+
 import { ALL_TIERS, tierLabel, type DashboardTier } from "@/lib/tiers";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
@@ -38,6 +40,7 @@ export function FirmClientsSection({
   clientLimit,
   planLabel,
   showHealth = true,
+  allowClientData = true,
   heading = "Clients",
   onChanged,
 }: {
@@ -46,6 +49,8 @@ export function FirmClientsSection({
   clientLimit?: number;
   planLabel?: string;
   showHealth?: boolean;
+  /** When false, nothing links through to client data; only gated "View as". */
+  allowClientData?: boolean;
   heading?: string;
   onChanged?: () => void;
 }) {
@@ -54,7 +59,16 @@ export function FirmClientsSection({
   const fetchTierSettings = useServerFn(listTierSettings);
   const fetchPlanTiers = useServerFn(getAllowedTiersForFirm);
   const removeClient = useServerFn(deleteClient);
+  const fetchSupportAccess = useServerFn(getSupportAccess);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+
+  const supportQ = useQuery({
+    queryKey: ["support-access", firmId],
+    queryFn: () => fetchSupportAccess({ data: { firmId } }),
+    enabled: !allowClientData,
+  });
+  const canOpenClientData = allowClientData || !!supportQ.data?.viewerHasClientData;
+
 
   const clientsQ = useQuery({
     queryKey: ["clients", firmId],
@@ -189,31 +203,41 @@ export function FirmClientsSection({
                     .map((o: any) => o.xero_connections?.tenant_name)
                     .filter(Boolean)
                     .join(", ");
+                  const nameBlock = (
+                    <>
+                      <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary shrink-0">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium leading-tight group-hover:text-primary transition-colors">
+                          {c.name}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground truncate">
+                          {tenantNames || "No Xero org linked"}
+                        </div>
+                        {allowClientData && showHealth && healthAllowedByFirm &&
+                          (c.clientWidgets === null || c.clientWidgets?.includes("health")) && (
+                            <ClientHealthBadge tenantId={tenantIds[0] ?? null} />
+                          )}
+                      </div>
+                    </>
+                  );
                   return (
                     <tr key={c.id} className="border-t border-border/60 hover:bg-muted/30 transition-colors">
                       <td className="px-5 py-4">
-                        <Link
-                          to="/clients/$clientId"
-                          params={{ clientId: c.id }}
-                          search={{ firmId }}
-                          className="flex items-center gap-3 group"
-                        >
-                          <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary shrink-0">
-                            <Building2 className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-medium leading-tight group-hover:text-primary transition-colors">
-                              {c.name}
-                            </div>
-                            <div className="mt-0.5 text-xs text-muted-foreground truncate">
-                              {tenantNames || "No Xero org linked"}
-                            </div>
-                            {showHealth && healthAllowedByFirm &&
-                              (c.clientWidgets === null || c.clientWidgets?.includes("health")) && (
-                                <ClientHealthBadge tenantId={tenantIds[0] ?? null} />
-                              )}
-                          </div>
-                        </Link>
+                        {allowClientData ? (
+                          <Link
+                            to="/clients/$clientId"
+                            params={{ clientId: c.id }}
+                            search={{ firmId }}
+                            className="flex items-center gap-3 group"
+                          >
+                            {nameBlock}
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-3">{nameBlock}</div>
+                        )}
+
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-1">
@@ -244,14 +268,16 @@ export function FirmClientsSection({
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          <Link
-                            to="/clients/$clientId"
-                            params={{ clientId: c.id }}
-                            search={{ firmId }}
-                            className="inline-flex items-center text-muted-foreground hover:text-foreground"
-                          >
-                            <ChevronRight className="h-4 w-4" />
-                          </Link>
+                          {allowClientData && (
+                            <Link
+                              to="/clients/$clientId"
+                              params={{ clientId: c.id }}
+                              search={{ firmId }}
+                              className="inline-flex items-center text-muted-foreground hover:text-foreground"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Link>
+                          )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${c.name}`}>
@@ -259,19 +285,34 @@ export function FirmClientsSection({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link to="/clients/$clientId" params={{ clientId: c.id }}>Open</Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Settings</Link>
-                              </DropdownMenuItem>
-                              {(granted.length ? granted : enabledTiers).map((t) => (
-                                <DropdownMenuItem key={`view-as-${t}`} asChild>
-                                  <Link to="/clients/$clientId" params={{ clientId: c.id }} search={{ viewAs: t }}>
+                              {allowClientData && (
+                                <>
+                                  <DropdownMenuItem asChild>
+                                    <Link to="/clients/$clientId" params={{ clientId: c.id }}>Open</Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem asChild>
+                                    <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Settings</Link>
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {(granted.length ? granted : enabledTiers).map((t) =>
+                                canOpenClientData ? (
+                                  <DropdownMenuItem key={`view-as-${t}`} asChild>
+                                    <Link to="/clients/$clientId" params={{ clientId: c.id }} search={{ viewAs: t }}>
+                                      <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
+                                    </Link>
+                                  </DropdownMenuItem>
+                                ) : (
+                                  <DropdownMenuItem
+                                    key={`view-as-${t}`}
+                                    disabled
+                                    title="This organisation hasn't granted support access"
+                                  >
                                     <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
-                                  </Link>
-                                </DropdownMenuItem>
-                              ))}
+                                  </DropdownMenuItem>
+                                ),
+                              )}
+
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
                                 onSelect={(e) => {

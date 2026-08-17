@@ -13,6 +13,8 @@ import {
   adminRenameFirm,
 } from "@/lib/admin.functions";
 import { adminInviteFirmMember } from "@/lib/invites.functions";
+import { getSupportAccess } from "@/lib/support-access.functions";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -52,7 +54,30 @@ function fmtDate(s: string | null | undefined) {
   return new Date(s).toISOString().slice(0, 10);
 }
 
+function SupportAccessBadge({ firmId }: { firmId: string }) {
+  const fetchState = useServerFn(getSupportAccess);
+  const q = useQuery({
+    queryKey: ["support-access", firmId],
+    queryFn: () => fetchState({ data: { firmId } }),
+  });
+  const s = q.data;
+  if (!s) return <Badge variant="secondary" className="ml-auto">no client data</Badge>;
+  return (
+    <div className="ml-auto flex items-center gap-2">
+      <Badge variant="secondary">no client data</Badge>
+      <Badge variant={s.granted ? "default" : "outline"} title={
+        s.granted
+          ? `Support access granted${s.grantedByName ? ` by ${s.grantedByName}` : ""}${s.grantedAt ? ` on ${new Date(s.grantedAt).toLocaleString()}` : ""}`
+          : "This organisation hasn't granted support access"
+      }>
+        {s.granted ? "support access on" : "support access off"}
+      </Badge>
+    </div>
+  );
+}
+
 function FirmDetailPage() {
+
   const { firmId } = Route.useParams();
   const qc = useQueryClient();
   const getDetail = useServerFn(getFirmDetailAdmin);
@@ -93,9 +118,10 @@ function FirmDetailPage() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
           <h1 className="text-xl font-semibold">{firm.name}</h1>
           {firm.is_always_free && <Badge variant="outline">always free</Badge>}
-          <Badge variant="secondary" className="ml-auto">no client data</Badge>
+          <SupportAccessBadge firmId={firmId} />
         </div>
       </header>
+
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-10">
         <BusinessNameSection
@@ -123,16 +149,16 @@ function FirmDetailPage() {
             firmName={firm.name}
             clientLimit={(detailQ.data as any)?.clientLimit}
             showHealth={false}
+            allowClientData={false}
             onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
           />
           <p className="text-xs text-muted-foreground">
-            Client names, tiers and linked Xero files only. Open the{" "}
-            <Link to="/firms/$firmId" params={{ firmId }} className="underline underline-offset-2">
-              organisation page
-            </Link>{" "}
-            for the full view.
+            Client names, tiers and linked Xero files only — nothing here opens client data. Client
+            dashboards are reachable through “View as”, and only when this organisation has granted
+            support access or you are a member of it.
           </p>
         </section>
+
 
         <AuditSection events={auditQ.data?.events ?? []} loading={auditQ.isLoading} />
       </main>
