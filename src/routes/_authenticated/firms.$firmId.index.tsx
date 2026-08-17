@@ -190,12 +190,22 @@ function FirmPage() {
           </Button>
         )}
 
-        <div>
-          <h1 className="font-display text-3xl font-semibold">{firm.name}</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Clients for this organisation. Add or remove them here.
-          </p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h1 className="font-display text-3xl font-semibold">{firm.name}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Clients for this organisation. Add or remove them here.
+            </p>
+          </div>
+          {!previewing && (
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/firms/$firmId/settings" params={{ firmId }}>
+                <Settings className="mr-1 h-4 w-4" /> Settings
+              </Link>
+            </Button>
+          )}
         </div>
+
 
         {/* Plan & subscription */}
         <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
