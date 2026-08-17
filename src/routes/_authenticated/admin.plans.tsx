@@ -138,7 +138,7 @@ function PlanLevelsPage() {
 
         <LevelSection
           title="Organisation plans"
-          hint="What an accounting firm subscribes to. The client limit is the default quota; you can override it per organisation."
+          hint="What an organisation subscribes to. The client limit is the default quota; you can override it per organisation."
           scope="firm"
           levels={firmLevels}
           tierLevels={dashLevels}

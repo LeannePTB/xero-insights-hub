@@ -182,7 +182,7 @@ export const getMyFirm = createServerFn({ method: "POST" })
     const { data: planRows } = await (db as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
     const catalogue = firmLimitCatalogue(planRows);
     if (error) throw new Error(error.message);
-    if (!firm) throw new Error("Firm not found.");
+    if (!firm) throw new Error("Organisation not found.");
     const s: any = sub ?? {};
     const isAlwaysFree = !!(firm as any).is_always_free;
     const plan: FirmOverviewCard = {

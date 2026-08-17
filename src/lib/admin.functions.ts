@@ -89,7 +89,7 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
       .eq("id", data.firmId)
       .maybeSingle();
     if (fErr) throw new Error(fErr.message);
-    if (!firm) throw new Error("Firm not found");
+    if (!firm) throw new Error("Organisation not found");
 
     const { data: members } = await supabaseAdmin
       .from("firm_members")

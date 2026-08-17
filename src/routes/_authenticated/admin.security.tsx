@@ -178,7 +178,7 @@ function SecurityDocsPage() {
           <div>
             <p className="font-medium text-destructive">Admin access required</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Security and compliance documents are restricted to firm advisors and admins.
+              Security and compliance documents are restricted to organisation advisors and admins.
             </p>
           </div>
         </div>
