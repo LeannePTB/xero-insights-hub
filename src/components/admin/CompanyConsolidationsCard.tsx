@@ -31,7 +31,7 @@ export function CompanyConsolidationsCard({ firmId }: { firmId: string }) {
           </p>
         </div>
         <Button asChild size="sm" variant="outline">
-          <Link to="/firms/$firmId/loans/groups" params={{ firmId }}>
+          <Link to="/firms/$firmId/loans/groups" params={{ firmId }} search={{ group: undefined }}>
             Open
           </Link>
         </Button>
