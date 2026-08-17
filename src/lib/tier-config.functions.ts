@@ -193,7 +193,15 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
     const catalogue = ((catRows ?? []) as any[]).filter((l) => l.enabled !== false);
     const order: string[] = catalogue.length ? catalogue.map((l) => l.key as string) : [...ALL_TIERS];
     const meta = new Map<string, any>(catalogue.map((l) => [l.key as string, l]));
-    const currentIdx = order.indexOf(data.currentTier);
+    // Upgrades are offered relative to what the client is actually entitled to
+    // today — a lapsed trial should immediately see the higher dashboards
+    // offered again rather than being treated as if it still had them.
+    const { clientEntitlement } = await import("@/lib/entitlement.server");
+    const entitlement = await clientEntitlement(context.supabase, data.clientId);
+    const entIdx = order.indexOf(entitlement.tier);
+    const passedIdx = order.indexOf(data.currentTier);
+    const currentIdx = entIdx >= 0 ? Math.min(passedIdx, entIdx) : passedIdx;
+
 
     // Only advertise tiers this organisation's plan actually includes.
     const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
@@ -274,7 +282,21 @@ export const getClientWidgets = createServerFn({ method: "POST" })
     const catalogue = (levels ?? []).filter((l: any) => l.enabled !== false);
     const { cumulativeDashboardLevels } = await import("@/lib/plan-tiers");
     const included = cumulativeDashboardLevels(catalogue as any[], planTiers);
-    const usable = included.length ? included : catalogue.filter((l: any) => l.key === "basic");
+    let usable = included.length ? included : catalogue.filter((l: any) => l.key === "basic");
+
+    // The client's own entitlement (paid / trial / comp / included) is a second
+    // ceiling on top of the organisation's plan. Expiry is evaluated at read
+    // time inside the database function, so a lapsed trial silently drops the
+    // client back to free Standard with no scheduled job involved.
+    const { clientEntitlement } = await import("@/lib/entitlement.server");
+    const entitlement = await clientEntitlement(context.supabase, data.clientId);
+    const entTier: any = catalogue.find((l: any) => l.key === entitlement.tier);
+    const entCeiling = (entTier?.sort_order ?? null) as number | null;
+    if (entCeiling !== null) {
+      const bounded = usable.filter((l: any) => (l.sort_order ?? 0) <= entCeiling);
+      usable = bounded.length ? bounded : usable.filter((l: any) => l.key === "basic");
+    }
+
 
 
     const availableSet = new Set<WidgetKey>();
@@ -320,7 +342,7 @@ export const getClientWidgets = createServerFn({ method: "POST" })
         ? sanitizeWidgets((lvl.widgets ?? []) as string[])
         : defaultWidgetsFor(data.tierOverride)
       ).filter((w) => availableSet.has(w));
-      return { widgets: preview, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string };
+      return { widgets: preview, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string, entitlement };
     }
 
     const widgets = configured
@@ -328,7 +350,8 @@ export const getClientWidgets = createServerFn({ method: "POST" })
       : availableWidgets;
 
 
-    return { widgets, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string };
+    return { widgets, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string, entitlement };
+
   });
 
 export const saveClientWidgets = createServerFn({ method: "POST" })

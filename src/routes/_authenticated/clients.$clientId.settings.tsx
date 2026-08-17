@@ -59,6 +59,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
 import {
   ArrowLeft,
   Trash2,
@@ -892,7 +893,10 @@ function ClientSettings() {
             and can be reused.
           </p>
         </Section>
-        {/* SubscriptionPanel hidden until payments re-enabled */}
+        <Section title="Subscription" collapsible defaultOpen={false}>
+          <ClientSubscriptionSection clientId={clientId} />
+        </Section>
+
       </main>
     </div>
   );
