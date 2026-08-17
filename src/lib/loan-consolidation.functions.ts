@@ -137,9 +137,16 @@ async function hasClientAccess(supabase: any, userId: string, clientId: string):
 }
 
 async function canManageClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  if (await isSuperAdminUser(supabase, userId)) return true;
-  return Boolean(await firmMemberRole(supabase, userId, await clientFirmId(supabase, clientId)));
+  const firmId = await clientFirmId(supabase, clientId);
+  if (Boolean(await firmMemberRole(supabase, userId, firmId))) return true;
+  if (await isSuperAdminUser(supabase, userId)) {
+    // Platform staff need an active support-access grant to reach client figures.
+    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+    return platformStaffCanAccessFirm(userId, firmId);
+  }
+  return false;
 }
+
 
 async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
   if (await canManageClient(supabase, userId, clientId)) return true;
