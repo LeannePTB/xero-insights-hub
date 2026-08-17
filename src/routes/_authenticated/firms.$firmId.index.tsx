@@ -17,10 +17,10 @@ import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
-import { FirmAuditLogCard } from "@/components/admin/FirmAuditLogCard";
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 
-import { SuperAdminBadge, SuperAdminSection } from "@/components/admin/SuperAdminOnly";
+import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
+
 
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
