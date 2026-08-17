@@ -148,10 +148,19 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
         .from("xero_connections")
         .update({ status: "disconnected", disconnected_at: new Date().toISOString() })
         .eq("user_id", conn.user_id);
+      const { writeAudit } = await import("@/lib/audit.server");
+      await writeAudit({
+        actorUserId: conn.user_id,
+        action: "xero_reconnect_required",
+        targetType: "xero_connection",
+        targetId: conn.tenant_id,
+        meta: { status: res.status, reason: "refresh_token_rejected" },
+      });
       throw new Error(
         "Xero reconnect required: this organisation needs to be reconnected before data can load.",
       );
     }
+
     throw new Error(`Xero token refresh failed: ${res.status} ${body}`);
   }
   const t = (await res.json()) as {
