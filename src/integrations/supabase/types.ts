@@ -1845,7 +1845,6 @@ export type Database = {
           total_staff: number
         }[]
       }
-      me_is_super_admin: { Args: never; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
