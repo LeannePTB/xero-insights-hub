@@ -79,7 +79,7 @@ export const getSupportAccess = createServerFn({ method: "POST" })
     ]);
     if (!firm) throw new Error("Organisation not found.");
 
-    const list = ((rows ?? []) as any[]) ?? [];
+    const list = (rows ?? []) as any[];
     const ids = Array.from(
       new Set(list.flatMap((r) => [r.grantee_user_id, r.granted_by]).filter(Boolean)),
     ) as string[];
