@@ -4,9 +4,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { Layers, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listConsolidationGroups } from "@/lib/consolidation-groups.functions";
+import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
 
 /**
- * Company Consolidations summary for an organisation.
+ * Company Consolidations hub for an organisation.
+ * Shows the consolidation groups summary and nests other consolidation tools.
  */
 export function CompanyConsolidationsCard({ firmId }: { firmId: string }) {
   const fetchGroups = useServerFn(listConsolidationGroups);
@@ -29,7 +31,7 @@ export function CompanyConsolidationsCard({ firmId }: { firmId: string }) {
           </p>
         </div>
         <Button asChild size="sm" variant="outline">
-          <Link to="/firms/$firmId/loans" params={{ firmId }} search={{ group: undefined }}>
+          <Link to="/firms/$firmId/loans/groups" params={{ firmId }} search={{ group: undefined }}>
             Open
           </Link>
         </Button>
@@ -57,6 +59,15 @@ export function CompanyConsolidationsCard({ firmId }: { firmId: string }) {
             {groups.length} {groups.length === 1 ? "group" : "groups"} configured.
           </p>
         )}
+      </div>
+
+      <div className="mt-5 border-t border-border pt-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Consolidation tools
+        </p>
+        <div className="mt-3">
+          <LoanConsolidationCard firmId={firmId} nested />
+        </div>
       </div>
     </div>
   );

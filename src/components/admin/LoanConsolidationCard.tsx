@@ -6,9 +6,19 @@ import { Building2, ArrowRight } from "lucide-react";
  * Loan Consolidation entry card for an organisation.
  * Links to the inter-company loan reconciliation workspace.
  */
-export function LoanConsolidationCard({ firmId }: { firmId: string }) {
+export function LoanConsolidationCard({
+  firmId,
+  nested,
+}: {
+  firmId: string;
+  nested?: boolean;
+}) {
+  const wrapperClass = nested
+    ? "rounded-xl border border-border bg-background p-5"
+    : "rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]";
+
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+    <div className={wrapperClass}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-sm font-medium">
