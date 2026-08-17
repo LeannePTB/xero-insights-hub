@@ -215,7 +215,7 @@ export function FirmClientsSection({
                         <div className="mt-0.5 text-xs text-muted-foreground truncate">
                           {tenantNames || "No Xero org linked"}
                         </div>
-                        {allowClientData && showHealth && healthAllowedByFirm &&
+                        {canOpenClientData && showHealth && healthAllowedByFirm &&
                           (c.clientWidgets === null || c.clientWidgets?.includes("health")) && (
                             <ClientHealthBadge tenantId={tenantIds[0] ?? null} />
                           )}
@@ -225,7 +225,7 @@ export function FirmClientsSection({
                   return (
                     <tr key={c.id} className="border-t border-border/60 hover:bg-muted/30 transition-colors">
                       <td className="px-5 py-4">
-                        {allowClientData ? (
+                        {canOpenClientData ? (
                           <Link
                             to="/clients/$clientId"
                             params={{ clientId: c.id }}
@@ -268,7 +268,7 @@ export function FirmClientsSection({
                       </td>
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
-                          {allowClientData && (
+                          {canOpenClientData && (
                             <Link
                               to="/clients/$clientId"
                               params={{ clientId: c.id }}
@@ -285,7 +285,7 @@ export function FirmClientsSection({
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              {allowClientData && (
+                              {canOpenClientData && (
                                 <>
                                   <DropdownMenuItem asChild>
                                     <Link to="/clients/$clientId" params={{ clientId: c.id }}>Open</Link>
