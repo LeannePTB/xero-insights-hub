@@ -187,7 +187,17 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
     .eq("user_id", conn.user_id);
   if (error) throw new Error(`Failed to save refreshed Xero tokens: ${error.message}`);
 
+  const { writeAudit } = await import("@/lib/audit.server");
+  await writeAudit({
+    actorUserId: conn.user_id,
+    action: "xero_token_refreshed",
+    targetType: "xero_connection",
+    targetId: conn.tenant_id,
+    meta: { expires_at, scopes: t.scope ?? conn.scopes ?? null },
+  });
+
   return { ...conn, access_token: t.access_token, refresh_token: t.refresh_token, expires_at };
+
 }
 
 export async function getConnection(userId: string, tenantId: string): Promise<Connection> {
