@@ -39,6 +39,7 @@ export type Connection = {
   refresh_token: string;
   expires_at: string;
   scopes: string | null;
+  firm_id: string | null;
 };
 
 // Raw shape pulled from the DB — encrypted-only since plaintext columns were dropped.
@@ -51,10 +52,11 @@ type ConnectionRow = {
   refresh_token_enc: string | null;
   expires_at: string;
   scopes: string | null;
+  firm_id: string | null;
 };
 
 const CONNECTION_COLUMNS =
-  "id, user_id, tenant_id, tenant_name, access_token_enc, refresh_token_enc, expires_at, scopes";
+  "id, user_id, tenant_id, tenant_name, access_token_enc, refresh_token_enc, expires_at, scopes, firm_id";
 
 function basicAuth() {
   const clientId = process.env.XERO_CLIENT_ID;
@@ -101,6 +103,7 @@ async function materializeConnection(row: ConnectionRow): Promise<Connection> {
     refresh_token: refresh,
     expires_at: row.expires_at,
     scopes: row.scopes,
+    firm_id: row.firm_id ?? null,
   };
 }
 
@@ -288,16 +291,31 @@ export async function xeroGet<T = unknown>(
 
 }
 
+// A permanently broken endpoint must not be able to flood the audit trail —
+// identical (tenant, endpoint, status) failures collapse into one entry per window.
+const ERROR_DEDUPE_MS = 5 * 60 * 1000;
+const recentErrors = new Map<string, number>();
+
 async function logXeroApiError(
-  conn: { user_id: string; tenant_id: string; tenant_name?: string | null },
+  conn: { user_id: string; tenant_id: string; tenant_name?: string | null; firm_id?: string | null },
   path: string,
   status: number,
   message: string,
 ) {
+  const key = `${conn.tenant_id}|${path}|${status}`;
+  const now = Date.now();
+  const last = recentErrors.get(key);
+  if (last && now - last < ERROR_DEDUPE_MS) return;
+  recentErrors.set(key, now);
+  if (recentErrors.size > 2000) {
+    for (const [k, t] of recentErrors) if (now - t > ERROR_DEDUPE_MS) recentErrors.delete(k);
+  }
+
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("audit_log").insert({
       actor_user_id: conn.user_id,
+      firm_id: conn.firm_id ?? null,
       action: "xero_api_error",
       target_type: "xero_connection",
       target_id: conn.tenant_id,
