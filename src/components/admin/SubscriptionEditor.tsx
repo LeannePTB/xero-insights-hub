@@ -13,6 +13,15 @@ import { usePlanLevels } from "@/hooks/usePlanLevels";
 
 export const FIRM_STATUSES = ["trialing", "active", "past_due", "canceled", "paused"];
 
+/** Display-only labels; the stored values are unchanged. */
+export const FIRM_STATUS_LABEL: Record<string, string> = {
+  trialing: "Trialing",
+  active: "Active",
+  past_due: "Past due",
+  canceled: "Cancelled",
+  paused: "Paused",
+};
+
 export function toDateInput(s: string | null | undefined) {
   if (!s) return "";
   return new Date(s).toISOString().slice(0, 10);
@@ -110,7 +119,7 @@ export function SubscriptionEditor({
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger><SelectValue /></SelectTrigger>
             <SelectContent>
-              {FIRM_STATUSES.map((t) => <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>)}
+              {FIRM_STATUSES.map((t) => <SelectItem key={t} value={t}>{FIRM_STATUS_LABEL[t] ?? t}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>

@@ -234,7 +234,7 @@ export const listLiabilityAccountsForTenant = createServerFn({ method: "POST" })
   .inputValidator((i: { clientId: string; tenantId: string }) => i)
   .handler(async ({ data, context }) => {
     if (!(await canManageClient(context.supabase, context.userId, data.clientId))) {
-      throw new Error("Only the firm's owners and advisors can set up loan accounts.");
+      throw new Error("Only the organisation's owners and advisors can set up loan accounts.");
     }
     const { listAllAccounts } = await import("./xero/loan-xero.server");
     const accounts = await listAllAccounts(data.tenantId);
@@ -323,7 +323,7 @@ export const addLoanAccount = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     if (!(await canManageClient(context.supabase, context.userId, data.clientId))) {
-      throw new Error("Only the firm's owners and advisors can set up loan accounts.");
+      throw new Error("Only the organisation's owners and advisors can set up loan accounts.");
     }
     const { data: inserted, error } = await context.supabase
       .from("loan_consolidation_accounts")
@@ -354,7 +354,7 @@ export const updateLoanAccount = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!row) throw new Error("Loan account not found");
     if (!(await canManageClient(context.supabase, context.userId, row.client_id))) {
-      throw new Error("Only the firm's owners and advisors can edit loan accounts.");
+      throw new Error("Only the organisation's owners and advisors can edit loan accounts.");
     }
     const { error } = await context.supabase
       .from("loan_consolidation_accounts")
@@ -376,7 +376,7 @@ export const pairLoanAccounts = createServerFn({ method: "POST" })
     if (!found.has(data.a) || !found.has(data.b)) throw new Error("Both loan accounts are required");
     const clientId = (rows ?? []).find((r: any) => r.id === data.a)?.client_id;
     if (!clientId || !(await canManageClient(context.supabase, context.userId, clientId))) {
-      throw new Error("Only the firm's owners and advisors can pair loan accounts.");
+      throw new Error("Only the organisation's owners and advisors can pair loan accounts.");
     }
     const supabaseAdmin = await getSupabaseAdmin();
     await supabaseAdmin
@@ -401,7 +401,7 @@ export const unpairLoanAccount = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!row) throw new Error("Loan account not found");
     if (!(await canManageClient(context.supabase, context.userId, row.client_id))) {
-      throw new Error("Only the firm's owners and advisors can unpair loan accounts.");
+      throw new Error("Only the organisation's owners and advisors can unpair loan accounts.");
     }
     const supabaseAdmin = await getSupabaseAdmin();
     await supabaseAdmin
@@ -426,7 +426,7 @@ export const deleteLoanAccount = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!row) throw new Error("Loan account not found");
     if (!(await canManageClient(context.supabase, context.userId, row.client_id))) {
-      throw new Error("Only the firm's owners and advisors can remove loan accounts.");
+      throw new Error("Only the organisation's owners and advisors can remove loan accounts.");
     }
     const supabaseAdmin = await getSupabaseAdmin();
     await supabaseAdmin
@@ -924,7 +924,7 @@ export const saveLoanPairing = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     for (const side of [data.a, data.b]) {
       if (!(await canManageClient(context.supabase, context.userId, side.clientId))) {
-        throw new Error("Only the firm's owners and advisors can pair loan accounts.");
+        throw new Error("Only the organisation's owners and advisors can pair loan accounts.");
       }
     }
     if (

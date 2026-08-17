@@ -15,7 +15,7 @@ export const TIER_LABEL: Record<FirmTier, string> = {
   starter: "Starter (5 clients)",
   growth: "Growth (10 clients)",
   scale: "Scale (20 clients)",
-  firm: "Firm (50 clients)",
+  firm: "Organisation (50 clients)",
   free: "Free forever",
   legacy: "Legacy",
 };
@@ -24,7 +24,7 @@ export const TIER_SHORT: Record<FirmTier, string> = {
   starter: "Starter",
   growth: "Growth",
   scale: "Scale",
-  firm: "Firm",
+  firm: "Organisation",
   free: "Free",
   legacy: "Legacy",
 };

@@ -129,7 +129,7 @@ function Dashboard() {
               {isSuperAdmin
                 ? "Subscriptions"
                 : isAdvisor
-                ? (firms.length === 1 ? "Your subscription" : "Your firms")
+                ? (firms.length === 1 ? "Your subscription" : "Your organisations")
                 : "Your dashboards"}
               {isSuperAdmin && <SuperAdminBadge />}
             </h1>
@@ -137,7 +137,7 @@ function Dashboard() {
               {isSuperAdmin
                 ? `${firms.length} organisation${firms.length === 1 ? "" : "s"} on the platform.`
                 : isAdvisor
-                ? "Manage your plan and open your firm to work with clients."
+                ? "Manage your plan and open your organisation to work with clients."
                 : "Select a dashboard to view."}
             </p>
           </div>
