@@ -74,6 +74,16 @@ function toISO(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Xero's BankSummary report rejects windows where fromDate and toDate are more
+// than 365 days apart. Keep the most recent 365 days of a longer request.
+const MAX_REPORT_WINDOW_DAYS = 365;
+function clampTo365Days(from: Date, to: Date): Date {
+  const maxMs = MAX_REPORT_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  if (to.getTime() - from.getTime() <= maxMs) return from;
+  return new Date(to.getTime() - maxMs);
+}
+
+
 function monthsBetween(from: Date, to: Date): Array<{ start: Date; end: Date; label: string }> {
   const months: Array<{ start: Date; end: Date; label: string }> = [];
   const cursor = new Date(from.getFullYear(), from.getMonth(), 1);
