@@ -13,6 +13,8 @@ import {
   adminRenameFirm,
 } from "@/lib/admin.functions";
 import { adminInviteFirmMember } from "@/lib/invites.functions";
+import { getSupportAccess } from "@/lib/support-access.functions";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
