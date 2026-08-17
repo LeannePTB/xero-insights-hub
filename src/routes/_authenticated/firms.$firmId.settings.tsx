@@ -185,6 +185,127 @@ function FirmSettingsPage() {
         )}
       </section>
 
+      {/* What's included + default cards */}
+      <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+        <h2 className="text-sm font-medium">What&apos;s included</h2>
+        {summaryQ.isLoading && (
+          <p className="mt-2 text-xs text-muted-foreground">
+            <Loader2 className="mr-2 inline h-3 w-3 animate-spin" /> Loading plan details…
+          </p>
+        )}
+        {summary && (
+          <div className="mt-4 space-y-4">
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+              <span>
+                Clients allowed:{" "}
+                <strong className="text-foreground tabular-nums">{view.clientLimit}</strong>
+              </span>
+              <span>
+                Xero files allowed:{" "}
+                <strong className="text-foreground tabular-nums">
+                  {summary.xeroFileLimit ?? view.clientLimit}
+                </strong>
+              </span>
+              <span>
+                Consolidation:{" "}
+                <strong className="text-foreground">
+                  {summary.supportsConsolidation
+                    ? `up to ${summary.consolidationLimit ?? view.clientLimit} Xero files`
+                    : "not included"}
+                </strong>
+              </span>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Dashboard tiers included
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {summary.tiers.length === 0 && (
+                  <span className="text-xs text-muted-foreground">None configured</span>
+                )}
+                {summary.tiers.map((t) => (
+                  <Badge key={t.key} variant="secondary" className="text-[11px]">
+                    {t.label}
+                    {t.allowsMultiOrg ? ` · ${t.xeroFiles} Xero files` : ""}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                Cards included by default
+              </p>
+              {isMulti ? (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {(summary.availableWidgets ?? summary.widgets).map((w) => {
+                    const on = selectedWidgets.includes(w as WidgetKey);
+                    return (
+                      <button
+                        key={w}
+                        type="button"
+                        onClick={() => toggleWidget(w as WidgetKey)}
+                        disabled={savingWidgets}
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-60 ${
+                          on
+                            ? "bg-primary/10 text-primary"
+                            : "bg-muted text-muted-foreground line-through"
+                        }`}
+                      >
+                        {WIDGET_LABEL[w as WidgetKey] ?? w}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {summary.widgets.map((w) => (
+                    <span
+                      key={w}
+                      className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+                    >
+                      {WIDGET_LABEL[w as WidgetKey] ?? w}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {isMulti && savingWidgets && (
+              <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
+              </p>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              {isMulti
+                ? "Click a card to turn it off for every client in this organisation — changes save straight away. New clients start with the selected cards, and each client's own settings can still turn cards off individually."
+                : "New clients start with these cards. Open a client's settings to turn individual cards on or off for them."}
+            </p>
+          </div>
+        )}
+      </section>
+
+      {/* Support access */}
+      <div className="mt-6">
+        <SupportAccessCard firmId={firmId} />
+      </div>
+
+      {view.isSuperAdmin && (
+        <div className="mt-6">
+          <Link
+            to="/admin/firms/$firmId"
+            params={{ firmId }}
+            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          >
+            View audit log (Super Admin) <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
+
+
       {/* Change plan */}
       <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
         <h2 className="text-sm font-medium">Change plan</h2>
