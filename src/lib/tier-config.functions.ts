@@ -274,7 +274,21 @@ export const getClientWidgets = createServerFn({ method: "POST" })
     const catalogue = (levels ?? []).filter((l: any) => l.enabled !== false);
     const { cumulativeDashboardLevels } = await import("@/lib/plan-tiers");
     const included = cumulativeDashboardLevels(catalogue as any[], planTiers);
-    const usable = included.length ? included : catalogue.filter((l: any) => l.key === "basic");
+    let usable = included.length ? included : catalogue.filter((l: any) => l.key === "basic");
+
+    // The client's own entitlement (paid / trial / comp / included) is a second
+    // ceiling on top of the organisation's plan. Expiry is evaluated at read
+    // time inside the database function, so a lapsed trial silently drops the
+    // client back to free Standard with no scheduled job involved.
+    const { clientEntitlement } = await import("@/lib/entitlement.server");
+    const entitlement = await clientEntitlement(context.supabase, data.clientId);
+    const entTier: any = catalogue.find((l: any) => l.key === entitlement.tier);
+    const entCeiling = (entTier?.sort_order ?? null) as number | null;
+    if (entCeiling !== null) {
+      const bounded = usable.filter((l: any) => (l.sort_order ?? 0) <= entCeiling);
+      usable = bounded.length ? bounded : usable.filter((l: any) => l.key === "basic");
+    }
+
 
 
     const availableSet = new Set<WidgetKey>();
