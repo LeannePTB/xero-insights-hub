@@ -17,6 +17,8 @@ export function ClientWidgetsPanel({ clientId }: { clientId: string }) {
   const q = useQuery({
     queryKey: ["client-widgets", clientId, "actual"],
     queryFn: () => fetchWidgets({ data: { clientId } }),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const [selected, setSelected] = useState<WidgetKey[] | null>(null);
