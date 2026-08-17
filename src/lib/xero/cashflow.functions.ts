@@ -147,7 +147,7 @@ export const getCashflow = createServerFn({ method: "POST" })
     const accounts: BankAccountBalance[] = [];
     for (const acc of bankAccounts) {
       // The Accounts endpoint doesn't return a balance; pull it from BankSummary per account.
-      // Simpler: compute by reading BankSummary for a wide window (last 12 months).
+      // Simpler: compute by reading BankSummary over the most recent 365 days.
       accounts.push({
         accountId: acc.AccountID,
         name: acc.Name,
