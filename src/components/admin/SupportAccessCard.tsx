@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { LifeBuoy, Loader2, ShieldCheck } from "lucide-react";
+import { LifeBuoy, Loader2, ShieldCheck, ChevronDown } from "lucide-react";
 import { getSupportAccess, setSupportAccess } from "@/lib/support-access.functions";
 import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 /**
  * Lets the organisation owner allow (or revoke) platform support staff access
