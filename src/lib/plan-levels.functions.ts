@@ -37,8 +37,11 @@ export const listPlanLevels = createServerFn({ method: "GET" })
     return { levels: (data ?? []) as PlanLevel[] };
   });
 
-async function assertSuperAdmin(supabase: any) {
-  const { data, error } = await supabase.rpc("me_is_super_admin");
+async function assertSuperAdmin(supabase: any, userId: string) {
+  const { data, error } = await supabase.rpc("has_role", {
+    _user_id: userId,
+    _role: "super_admin",
+  });
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Super admins only.");
 }
