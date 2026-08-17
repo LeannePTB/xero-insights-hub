@@ -124,6 +124,8 @@ export const getClient = createServerFn({ method: "POST" })
     const isSuper = !!roleRows?.some((r: any) => r.role === "super_admin");
     if (isSuper) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
+      await assertClientDataAccessForClient(context.userId, data.clientId);
       const { data: adminClient } = await supabaseAdmin
         .from("clients")
         .select(SELECT)
@@ -131,6 +133,7 @@ export const getClient = createServerFn({ method: "POST" })
         .maybeSingle();
       if (adminClient) return { client: adminClient as any };
     }
+
     throw new Error("Client not found.");
   });
 
