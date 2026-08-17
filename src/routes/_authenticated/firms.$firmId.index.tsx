@@ -70,7 +70,7 @@ function FirmPage() {
   // Previewing is for platform admins and advisors only.
   const previewing = requestedPreview && (ctxQ.data?.canViewAs ?? false);
   // While previewing as the organisation owner, hide platform-admin-only controls.
-  const isSuper = (ctxQ.data?.isSuperAdmin ?? false) && !previewing;
+
 
 
   useEffect(() => {
