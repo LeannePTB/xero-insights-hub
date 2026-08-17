@@ -11,6 +11,7 @@ import {
   adminUpdateUserEmail,
   adminUpdateSubscription,
   adminRenameFirm,
+  adminSetSelfFirmMembership,
 } from "@/lib/admin.functions";
 import { adminInviteFirmMember } from "@/lib/invites.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
