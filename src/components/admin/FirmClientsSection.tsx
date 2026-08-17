@@ -180,12 +180,22 @@ export function FirmClientsSection({
               A client is a company you track. Each client can hold one or more Xero organisations.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-              <AddClientFromXeroButton firmId={firmId} />
-              <Button variant="outline" asChild>
-                <Link to="/clients/new" search={{ firmId } as any}>
-                  <Plus className="mr-2 h-4 w-4" /> New client
-                </Link>
-              </Button>
+              {showAddActions ? (
+                <>
+                  <AddClientFromXeroButton firmId={firmId} />
+                  <Button variant="outline" asChild>
+                    <Link to="/clients/new" search={{ firmId } as any}>
+                      <Plus className="mr-2 h-4 w-4" /> New client
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" asChild>
+                  <Link to="/firms/$firmId/settings" params={{ firmId }}>
+                    <Plus className="mr-2 h-4 w-4" /> Add clients in settings
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         ) : (
