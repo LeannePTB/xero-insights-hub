@@ -835,6 +835,7 @@ export type Database = {
           firm_id: string
           id: string
           role: Database["public"]["Enums"]["firm_member_role"]
+          status: string
           updated_at: string
           user_id: string
         }
@@ -843,6 +844,7 @@ export type Database = {
           firm_id: string
           id?: string
           role?: Database["public"]["Enums"]["firm_member_role"]
+          status?: string
           updated_at?: string
           user_id: string
         }
@@ -851,6 +853,7 @@ export type Database = {
           firm_id?: string
           id?: string
           role?: Database["public"]["Enums"]["firm_member_role"]
+          status?: string
           updated_at?: string
           user_id?: string
         }
@@ -874,31 +877,46 @@ export type Database = {
       firm_support_access: {
         Row: {
           created_at: string
+          expires_at: string
           firm_id: string
           granted: boolean
           granted_at: string | null
           granted_by: string | null
+          grantee_user_id: string
+          id: string
           note: string | null
+          reason: string | null
+          requested_by: string | null
           revoked_at: string | null
           updated_at: string
         }
         Insert: {
           created_at?: string
+          expires_at: string
           firm_id: string
           granted?: boolean
           granted_at?: string | null
           granted_by?: string | null
+          grantee_user_id: string
+          id?: string
           note?: string | null
+          reason?: string | null
+          requested_by?: string | null
           revoked_at?: string | null
           updated_at?: string
         }
         Update: {
           created_at?: string
+          expires_at?: string
           firm_id?: string
           granted?: boolean
           granted_at?: string | null
           granted_by?: string | null
+          grantee_user_id?: string
+          id?: string
           note?: string | null
+          reason?: string | null
+          requested_by?: string | null
           revoked_at?: string | null
           updated_at?: string
         }
@@ -906,14 +924,14 @@ export type Database = {
           {
             foreignKeyName: "firm_support_access_firm_id_fkey"
             columns: ["firm_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "admin_firm_overview"
             referencedColumns: ["firm_id"]
           },
           {
             foreignKeyName: "firm_support_access_firm_id_fkey"
             columns: ["firm_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "firms"
             referencedColumns: ["id"]
           },
@@ -1870,6 +1888,14 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      user_can_access_client: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_access_firm: {
+        Args: { _firm_id: string; _user_id: string }
+        Returns: boolean
       }
     }
     Enums: {
