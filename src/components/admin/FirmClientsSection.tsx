@@ -42,6 +42,7 @@ export function FirmClientsSection({
   showHealth = true,
   allowClientData = true,
   heading = "Clients",
+  showAddActions = true,
   onChanged,
 }: {
   firmId: string;
@@ -52,6 +53,8 @@ export function FirmClientsSection({
   /** When false, nothing links through to client data; only gated "View as". */
   allowClientData?: boolean;
   heading?: string;
+  /** When false, the add-client buttons are hidden (they live in settings). */
+  showAddActions?: boolean;
   onChanged?: () => void;
 }) {
   const qc = useQueryClient();
