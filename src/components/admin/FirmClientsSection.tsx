@@ -203,31 +203,41 @@ export function FirmClientsSection({
                     .map((o: any) => o.xero_connections?.tenant_name)
                     .filter(Boolean)
                     .join(", ");
+                  const nameBlock = (
+                    <>
+                      <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary shrink-0">
+                        <Building2 className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium leading-tight group-hover:text-primary transition-colors">
+                          {c.name}
+                        </div>
+                        <div className="mt-0.5 text-xs text-muted-foreground truncate">
+                          {tenantNames || "No Xero org linked"}
+                        </div>
+                        {allowClientData && showHealth && healthAllowedByFirm &&
+                          (c.clientWidgets === null || c.clientWidgets?.includes("health")) && (
+                            <ClientHealthBadge tenantId={tenantIds[0] ?? null} />
+                          )}
+                      </div>
+                    </>
+                  );
                   return (
                     <tr key={c.id} className="border-t border-border/60 hover:bg-muted/30 transition-colors">
                       <td className="px-5 py-4">
-                        <Link
-                          to="/clients/$clientId"
-                          params={{ clientId: c.id }}
-                          search={{ firmId }}
-                          className="flex items-center gap-3 group"
-                        >
-                          <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary shrink-0">
-                            <Building2 className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0">
-                            <div className="font-medium leading-tight group-hover:text-primary transition-colors">
-                              {c.name}
-                            </div>
-                            <div className="mt-0.5 text-xs text-muted-foreground truncate">
-                              {tenantNames || "No Xero org linked"}
-                            </div>
-                            {showHealth && healthAllowedByFirm &&
-                              (c.clientWidgets === null || c.clientWidgets?.includes("health")) && (
-                                <ClientHealthBadge tenantId={tenantIds[0] ?? null} />
-                              )}
-                          </div>
-                        </Link>
+                        {allowClientData ? (
+                          <Link
+                            to="/clients/$clientId"
+                            params={{ clientId: c.id }}
+                            search={{ firmId }}
+                            className="flex items-center gap-3 group"
+                          >
+                            {nameBlock}
+                          </Link>
+                        ) : (
+                          <div className="flex items-center gap-3">{nameBlock}</div>
+                        )}
+
                       </td>
                       <td className="px-5 py-4">
                         <div className="flex flex-wrap gap-1">
