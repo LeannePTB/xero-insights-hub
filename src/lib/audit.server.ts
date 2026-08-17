@@ -49,7 +49,7 @@ const READ_DEDUPE_MS = 5 * 60 * 1000;
 const recentReads = new Map<string, number>();
 
 export async function logXeroRead(
-  conn: { user_id: string; tenant_id: string; tenant_name?: string | null },
+  conn: { user_id: string; tenant_id: string; tenant_name?: string | null; firm_id?: string | null },
   path: string,
 ): Promise<void> {
   const key = `${conn.user_id}|${conn.tenant_id}|${path}`;
@@ -64,6 +64,7 @@ export async function logXeroRead(
 
   await writeAudit({
     actorUserId: conn.user_id,
+    firmId: conn.firm_id ?? null,
     action: "xero_data_read",
     targetType: "xero_connection",
     targetId: conn.tenant_id,

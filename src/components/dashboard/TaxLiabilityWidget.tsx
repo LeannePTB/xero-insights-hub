@@ -2,11 +2,11 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
-import { getTaxLiabilityBuckets, getActivityStatementPeriod } from "@/lib/xero/reports.functions";
+import { getTaxLiabilityBuckets } from "@/lib/xero/reports.functions";
 import { CheckCircle2, AlertTriangle, Loader2, Receipt, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
-import { DateField, DateRangeControls, toISO, usePersistedDate } from "@/components/dashboard/DateRangeControls";
+import { DateField, toISO, usePersistedDate } from "@/components/dashboard/DateRangeControls";
 
 function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
@@ -47,34 +47,13 @@ export function TaxLiabilityWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchBuckets = useServerFn(getTaxLiabilityBuckets);
-  const fetchPeriod = useServerFn(getActivityStatementPeriod);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const [asAt, setAsAt] = usePersistedDate(`tax-liability-as-at:${tenantId}`, () => new Date());
   const asAtIso = toISO(asAt);
 
-  const today = new Date();
-  const [periodFrom, setPeriodFrom] = usePersistedDate(
-    `tax-liability-period-from:${tenantId}`,
-    () => new Date(today.getFullYear(), today.getMonth() - 1, 1),
-  );
-  const [periodTo, setPeriodTo] = usePersistedDate(
-    `tax-liability-period-to:${tenantId}`,
-    () => new Date(today.getFullYear(), today.getMonth(), 0),
-  );
-  const periodFromIso = toISO(periodFrom);
-  const periodToIso = toISO(periodTo);
-
   const balanceQ = useQuery({
     queryKey: ["xero-tax-buckets", tenantId, asAtIso, basis ?? "default"],
     queryFn: () => fetchBuckets({ data: { tenantId, date: asAtIso, basis } }),
-    enabled: shouldLoad,
-    retry: false,
-  });
-
-  const periodQ = useQuery({
-    queryKey: ["xero-as-period", tenantId, periodFromIso, periodToIso, basis ?? "default"],
-    queryFn: () =>
-      fetchPeriod({ data: { tenantId, fromDate: periodFromIso, toDate: periodToIso, basis } }),
     enabled: shouldLoad,
     retry: false,
   });
@@ -113,12 +92,11 @@ export function TaxLiabilityWidget({
             onClick={() => {
               setShouldLoad(true);
               balanceQ.refetch();
-              periodQ.refetch();
             }}
-            disabled={isFetching || periodQ.isFetching}
+            disabled={isFetching}
             title="Refresh"
           >
-            <RefreshCw className={`h-4 w-4 ${isFetching || periodQ.isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
           </Button>
         </div>
       </div>
@@ -133,34 +111,6 @@ export function TaxLiabilityWidget({
         </div>
       ) : (
         <>
-          {/* ============ This period (BAS) ============ */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                This period (BAS)
-              </p>
-            </div>
-            <DateRangeControls
-              fromDate={periodFrom}
-              toDate={periodTo}
-              onFromChange={setPeriodFrom}
-              onToChange={setPeriodTo}
-            />
-            {periodQ.isLoading ? (
-              <div className="mt-3 flex h-20 items-center justify-center text-muted-foreground">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
-              </div>
-            ) : periodQ.error ? (
-              <XeroErrorNotice
-                error={periodQ.error}
-                onRetry={() => periodQ.refetch()}
-                isRetrying={periodQ.isFetching}
-              />
-            ) : periodQ.data ? (
-              <PeriodSection data={periodQ.data} />
-            ) : null}
-          </div>
-
           {/* ============ Outstanding on balance sheet ============ */}
           <div className="mt-8 border-t border-border pt-6">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -243,70 +193,6 @@ export function TaxLiabilityWidget({
     </div>
   );
 }
-
-function PeriodSection({
-  data,
-}: {
-  data: {
-    source: "activity-statement" | "unavailable";
-    periodFrom: string;
-    periodTo: string;
-    gstOnSales: number;
-    gstOnPurchases: number;
-    netGst: number;
-    paygWithheld: number;
-    netPayment: number;
-    totalSales?: number;
-    message?: string;
-  };
-}) {
-  if (data.source === "unavailable") {
-    return (
-      <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs text-muted-foreground">
-        {data.message ??
-          "Exact BAS figures require Xero Activity Statement access. This app needs Xero partner certification before this period can load."}
-      </p>
-    );
-  }
-  return (
-    <div className="mt-3">
-      <p className="mb-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-        Source: Xero Activity Statement
-      </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <PeriodKpi label="GST on sales (1A)" value={data.gstOnSales} />
-        <PeriodKpi label="GST on purchases (1B)" value={data.gstOnPurchases} />
-        <PeriodKpi label="PAYG withheld (W5)" value={data.paygWithheld} />
-        <PeriodKpi label="Net payment (9)" value={data.netPayment} emphasis />
-      </div>
-      {data.message ? (
-        <p className="mt-3 rounded-lg border border-dashed border-border bg-background p-3 text-xs italic text-muted-foreground">
-          {data.message}
-        </p>
-      ) : null}
-    </div>
-  );
-}
-
-function PeriodKpi({ label, value, emphasis }: { label: string; value: number; emphasis?: boolean }) {
-  return (
-    <div
-      className={`rounded-xl border p-4 ${
-        emphasis ? "border-primary/30 bg-primary/5" : "border-border/60 bg-background"
-      }`}
-    >
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p
-        className={`mt-1.5 font-semibold tracking-tight tabular-nums ${
-          emphasis ? "text-2xl" : "text-xl"
-        }`}
-      >
-        {fmt(value)}
-      </p>
-    </div>
-  );
-}
-
 
 function BucketKpi({
   label,
