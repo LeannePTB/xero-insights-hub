@@ -331,6 +331,35 @@ function FirmSettingsPage() {
         )}
       </section>
 
+      {/* Add clients */}
+      <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+        <h2 className="text-sm font-medium">Add clients</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {view.clientCount} of {view.clientLimit} clients used.
+          {view.clientCount >= view.clientLimit
+            ? " Client limit reached — upgrade the plan to add more."
+            : " Connect a Xero file or set up a client manually."}
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <AddClientFromXeroButton firmId={firmId} disabled={view.clientCount >= view.clientLimit} />
+          <Button
+            variant="outline"
+            asChild={view.clientCount < view.clientLimit}
+            disabled={view.clientCount >= view.clientLimit}
+          >
+            {view.clientCount >= view.clientLimit ? (
+              <span>
+                <Plus className="mr-2 h-4 w-4" /> New client
+              </span>
+            ) : (
+              <Link to="/clients/new" search={{ firmId } as any}>
+                <Plus className="mr-2 h-4 w-4" /> New client
+              </Link>
+            )}
+          </Button>
+        </div>
+      </section>
+
       {/* Support access */}
       <div className="mt-6">
         <SupportAccessCard firmId={firmId} />
