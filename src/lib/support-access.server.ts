@@ -1,41 +1,43 @@
 // Server-only helpers for organisation "support access".
 //
-// Platform staff (super admins / advisors) may only reach an organisation's
-// client financial data when they are a member of that organisation OR the
-// organisation owner has switched support access on.
+// The access rule has exactly ONE implementation and it lives in the database
+// (public.user_can_access_firm / public.user_can_access_client). These helpers
+// are thin wrappers over those functions. Never reimplement the rule here.
+//
+// Membership of an organisation is enough on its own; a support grant is only
+// ever needed to reach an organisation you are NOT a member of.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
-export async function isFirmMember(userId: string, firmId: string): Promise<boolean> {
-  const { data } = await (supabaseAdmin as any)
-    .from("firm_members")
-    .select("user_id")
-    .eq("user_id", userId)
-    .eq("firm_id", firmId)
-    .maybeSingle();
-  return !!data;
-}
-
-export async function supportAccessActive(firmId: string): Promise<boolean> {
-  const { data } = await (supabaseAdmin as any)
-    .from("firm_support_access")
-    .select("granted")
-    .eq("firm_id", firmId)
-    .maybeSingle();
-  return !!data?.granted;
-}
-
-/** Membership OR an active support-access grant. */
+/** Membership (active) OR a live, named, unexpired support grant. Fails closed. */
 export async function platformStaffCanAccessFirm(
   userId: string,
   firmId: string | null | undefined,
 ): Promise<boolean> {
   if (!firmId) return false;
-  if (await isFirmMember(userId, firmId)) return true;
-  return supportAccessActive(firmId);
+  const { data, error } = await (supabaseAdmin as any).rpc("user_can_access_firm", {
+    _user_id: userId,
+    _firm_id: firmId,
+  });
+  if (error) return false;
+  return data === true;
+}
+
+/** @deprecated thin wrapper — use platformStaffCanAccessFirm. */
+export async function isFirmMember(userId: string, firmId: string): Promise<boolean> {
+  return platformStaffCanAccessFirm(userId, firmId);
+}
+
+/** @deprecated thin wrapper — the rule is per-user, so a userId is required. */
+export async function supportAccessActive(
+  firmId: string,
+  userId?: string,
+): Promise<boolean> {
+  if (!userId) return false;
+  return platformStaffCanAccessFirm(userId, firmId);
 }
 
 export const SUPPORT_ACCESS_DENIED =
-  "This organisation hasn't granted support access to its client data.";
+  "This organisation hasn't granted you support access to its client data.";
 
 export async function assertClientDataAccessForFirm(userId: string, firmId: string | null) {
   if (!(await platformStaffCanAccessFirm(userId, firmId))) {
@@ -43,12 +45,18 @@ export async function assertClientDataAccessForFirm(userId: string, firmId: stri
   }
 }
 
-/** Resolve the firm behind a client id, then apply the platform-staff rule. */
+/** Client-level check, resolved entirely in the database. Fails closed. */
+export async function canAccessClient(userId: string, clientId: string): Promise<boolean> {
+  const { data, error } = await (supabaseAdmin as any).rpc("user_can_access_client", {
+    _user_id: userId,
+    _client_id: clientId,
+  });
+  if (error) return false;
+  return data === true;
+}
+
 export async function assertClientDataAccessForClient(userId: string, clientId: string) {
-  const { data } = await (supabaseAdmin as any)
-    .from("clients")
-    .select("firm_id")
-    .eq("id", clientId)
-    .maybeSingle();
-  await assertClientDataAccessForFirm(userId, (data?.firm_id as string | null) ?? null);
+  if (!(await canAccessClient(userId, clientId))) {
+    throw new Error(SUPPORT_ACCESS_DENIED);
+  }
 }
