@@ -91,24 +91,30 @@ function FirmPage() {
   const summary = summaryQ.data;
 
   const isMulti = !!(summary?.allowsMultiOrg || summary?.supportsConsolidation);
-  const [draftWidgets, setDraftWidgets] = useState<WidgetKey[] | null>(null);
+  // Optimistic copy while a toggle is being written.
+  const [pendingWidgets, setPendingWidgets] = useState<WidgetKey[] | null>(null);
   const [saving, setSaving] = useState(false);
-  const selectedWidgets = (draftWidgets ?? (summary?.widgets ?? [])) as WidgetKey[];
-  const dirty =
-    draftWidgets !== null &&
-    (draftWidgets.length !== (summary?.widgets.length ?? 0) ||
-      draftWidgets.some((w) => !(summary?.widgets ?? []).includes(w)));
+  const selectedWidgets = (pendingWidgets ?? (summary?.widgets ?? [])) as WidgetKey[];
   const saveFirmDefaults = useServerFn(saveFirmDefaultWidgets);
-  const saveDefaults = async () => {
-    if (!draftWidgets) return;
+  const toggleWidget = async (w: WidgetKey) => {
+    if (saving) return;
+    const on = selectedWidgets.includes(w);
+    const next = on ? selectedWidgets.filter((x) => x !== w) : [...selectedWidgets, w];
+    setPendingWidgets(next);
     setSaving(true);
     try {
-      await saveFirmDefaults({ data: { firmId, widgets: draftWidgets } });
-      setDraftWidgets(null);
+      await saveFirmDefaults({ data: { firmId, widgets: next } });
       await qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
-      qc.invalidateQueries({ queryKey: ["clients", firmId] });
-      toast.success("Default cards updated for all clients");
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["client-widgets"] });
+      setPendingWidgets(null);
+      toast.success(
+        on
+          ? `${WIDGET_LABEL[w] ?? w} turned off for every client`
+          : `${WIDGET_LABEL[w] ?? w} turned on for new clients`,
+      );
     } catch (e: any) {
+      setPendingWidgets(null);
       toast.error(e?.message ?? "Could not save default cards");
     } finally {
       setSaving(false);
