@@ -1247,6 +1247,30 @@ export type Database = {
         }
         Relationships: []
       }
+      security_settings: {
+        Row: {
+          audit_retention_days: number
+          created_at: string
+          login_retention_days: number
+          singleton: boolean
+          updated_at: string
+        }
+        Insert: {
+          audit_retention_days?: number
+          created_at?: string
+          login_retention_days?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Update: {
+          audit_retention_days?: number
+          created_at?: string
+          login_retention_days?: number
+          singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       signup_requests: {
         Row: {
           contact_name: string
@@ -1791,6 +1815,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      purge_expired_security_logs: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
