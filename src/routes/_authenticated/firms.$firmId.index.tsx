@@ -332,10 +332,17 @@ function FirmPage() {
         </div>
 
         {isSuper && (
-          <SuperAdminSection className="mt-8" title="Audit log">
-            <FirmAuditLogCard firmId={firmId} />
-          </SuperAdminSection>
+          <div className="mt-8">
+            <Link
+              to="/admin/firms/$firmId"
+              params={{ firmId }}
+              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+            >
+              View audit log (Super Admin) <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
         )}
+
 
 
 
