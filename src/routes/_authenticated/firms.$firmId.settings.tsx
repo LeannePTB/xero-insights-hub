@@ -68,12 +68,52 @@ function FirmSettingsPage() {
     retry: false,
   });
 
+  const fetchSummary = useServerFn(getFirmPlanSummary);
+  const summaryQ = useQuery({
+    queryKey: ["firm-plan-summary", firmId],
+    queryFn: () => fetchSummary({ data: { firmId } }),
+    staleTime: 5 * 60_000,
+  });
+  const summary = summaryQ.data;
+  const isMulti = !!(summary?.allowsMultiOrg || summary?.supportsConsolidation);
+
+  // Optimistic copy while a default-card toggle is being written.
+  const [pendingWidgets, setPendingWidgets] = useState<WidgetKey[] | null>(null);
+  const [savingWidgets, setSavingWidgets] = useState(false);
+  const selectedWidgets = (pendingWidgets ?? summary?.widgets ?? []) as WidgetKey[];
+  const saveFirmDefaults = useServerFn(saveFirmDefaultWidgets);
+  const toggleWidget = async (w: WidgetKey) => {
+    if (savingWidgets) return;
+    const on = selectedWidgets.includes(w);
+    const next = on ? selectedWidgets.filter((x) => x !== w) : [...selectedWidgets, w];
+    setPendingWidgets(next);
+    setSavingWidgets(true);
+    try {
+      await saveFirmDefaults({ data: { firmId, widgets: next } });
+      await qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
+      qc.invalidateQueries({ queryKey: ["clients"] });
+      qc.invalidateQueries({ queryKey: ["client-widgets"] });
+      setPendingWidgets(null);
+      toast.success(
+        on
+          ? `${WIDGET_LABEL[w] ?? w} turned off for every client`
+          : `${WIDGET_LABEL[w] ?? w} turned on for new clients`,
+      );
+    } catch (e: any) {
+      setPendingWidgets(null);
+      toast.error(e?.message ?? "Could not save default cards");
+    } finally {
+      setSavingWidgets(false);
+    }
+  };
+
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["firm-subscription", firmId] });
     qc.invalidateQueries({ queryKey: ["my-firm", firmId] });
     qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
     qc.invalidateQueries({ queryKey: ["my-firms"] });
   };
+
 
   if (q.isLoading) {
     return (
