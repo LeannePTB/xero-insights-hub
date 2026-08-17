@@ -288,14 +288,9 @@ function FirmPage() {
                             <button
                               key={w}
                               type="button"
-                              onClick={() =>
-                                setDraftWidgets(
-                                  on
-                                    ? selectedWidgets.filter((x) => x !== w)
-                                    : [...selectedWidgets, w as WidgetKey],
-                                )
-                              }
-                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                              onClick={() => toggleWidget(w as WidgetKey)}
+                              disabled={saving}
+                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-60 ${
                                 on
                                   ? "bg-primary/10 text-primary"
                                   : "bg-muted text-muted-foreground line-through"
