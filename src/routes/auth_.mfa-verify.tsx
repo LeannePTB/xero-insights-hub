@@ -62,6 +62,11 @@ function MfaVerifyPage() {
       const msg = /invalid/i.test(raw)
         ? "That code didn't match. Check your device's clock is set to automatic time, wait for the next 6-digit code, then try again."
         : raw;
+      try {
+        await logAuthEvent({ data: { action: "mfa_challenge_failed" } });
+      } catch {
+        /* audit is best-effort */
+      }
       toast.error(msg);
       setCode("");
     } finally {
