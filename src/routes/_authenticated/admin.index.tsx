@@ -223,7 +223,7 @@ function OrganisationsSection({
               <th className="px-4 py-3">Usage</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Next bill / trial</th>
-              <th className="px-4 py-3">Errors (7d)</th>
+              <th className="px-4 py-3">Sync errors this week</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
