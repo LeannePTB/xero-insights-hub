@@ -19,7 +19,7 @@ export function LoanConsolidationCard({ firmId }: { firmId: string }) {
           </p>
         </div>
         <Button asChild size="sm" variant="outline">
-          <Link to="/firms/$firmId/loans" params={{ firmId }}>
+          <Link to="/firms/$firmId/loans" params={{ firmId }} search={{ group: undefined }}>
             Open
           </Link>
         </Button>
@@ -30,7 +30,7 @@ export function LoanConsolidationCard({ firmId }: { firmId: string }) {
           View balances, pairings, and mismatch details for group loans.
         </p>
         <Button asChild variant="link" className="mt-1 h-auto p-0 text-xs">
-          <Link to="/firms/$firmId/loans" params={{ firmId }}>
+          <Link to="/firms/$firmId/loans" params={{ firmId }} search={{ group: undefined }}>
             Go to loan consolidation <ArrowRight className="ml-1 h-3 w-3" />
           </Link>
         </Button>
