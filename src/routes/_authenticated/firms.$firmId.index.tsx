@@ -325,6 +325,14 @@ function FirmPage() {
           )}
         </div>
 
+        {isSuper && (
+          <SuperAdminSection className="mt-8" title="Audit log">
+            <FirmAuditLogCard firmId={firmId} />
+          </SuperAdminSection>
+        )}
+
+
+
         {xeroPick && (
           <XeroOnboardPickerDialog
             firmId={firmId}
