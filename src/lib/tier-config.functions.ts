@@ -193,7 +193,15 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
     const catalogue = ((catRows ?? []) as any[]).filter((l) => l.enabled !== false);
     const order: string[] = catalogue.length ? catalogue.map((l) => l.key as string) : [...ALL_TIERS];
     const meta = new Map<string, any>(catalogue.map((l) => [l.key as string, l]));
-    const currentIdx = order.indexOf(data.currentTier);
+    // Upgrades are offered relative to what the client is actually entitled to
+    // today — a lapsed trial should immediately see the higher dashboards
+    // offered again rather than being treated as if it still had them.
+    const { clientEntitlement } = await import("@/lib/entitlement.server");
+    const entitlement = await clientEntitlement(context.supabase, data.clientId);
+    const entIdx = order.indexOf(entitlement.tier);
+    const passedIdx = order.indexOf(data.currentTier);
+    const currentIdx = entIdx >= 0 ? Math.min(passedIdx, entIdx) : passedIdx;
+
 
     // Only advertise tiers this organisation's plan actually includes.
     const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
