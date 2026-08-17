@@ -42,6 +42,7 @@ export function FirmClientsSection({
   showHealth = true,
   allowClientData = true,
   heading = "Clients",
+  showAddActions = true,
   onChanged,
 }: {
   firmId: string;
@@ -52,6 +53,8 @@ export function FirmClientsSection({
   /** When false, nothing links through to client data; only gated "View as". */
   allowClientData?: boolean;
   heading?: string;
+  /** When false, the add-client buttons are hidden (they live in settings). */
+  showAddActions?: boolean;
   onChanged?: () => void;
 }) {
   const qc = useQueryClient();
@@ -118,23 +121,25 @@ export function FirmClientsSection({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-semibold">{heading}</h2>
-        <div className="flex items-center gap-3">
-          {atLimit && (
-            <span className="text-xs text-muted-foreground">
-              Client limit reached — upgrade the plan to add more.
-            </span>
-          )}
-          <AddClientFromXeroButton firmId={firmId} disabled={atLimit} />
-          <Button variant="outline" asChild={!atLimit} disabled={atLimit}>
-            {atLimit ? (
-              <span><Plus className="mr-2 h-4 w-4" /> New client</span>
-            ) : (
-              <Link to="/clients/new" search={{ firmId } as any}>
-                <Plus className="mr-2 h-4 w-4" /> New client
-              </Link>
+        {showAddActions && (
+          <div className="flex items-center gap-3">
+            {atLimit && (
+              <span className="text-xs text-muted-foreground">
+                Client limit reached — upgrade the plan to add more.
+              </span>
             )}
-          </Button>
-        </div>
+            <AddClientFromXeroButton firmId={firmId} disabled={atLimit} />
+            <Button variant="outline" asChild={!atLimit} disabled={atLimit}>
+              {atLimit ? (
+                <span><Plus className="mr-2 h-4 w-4" /> New client</span>
+              ) : (
+                <Link to="/clients/new" search={{ firmId } as any}>
+                  <Plus className="mr-2 h-4 w-4" /> New client
+                </Link>
+              )}
+            </Button>
+          </div>
+        )}
       </div>
 
       <Dialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
@@ -175,12 +180,22 @@ export function FirmClientsSection({
               A client is a company you track. Each client can hold one or more Xero organisations.
             </p>
             <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-              <AddClientFromXeroButton firmId={firmId} />
-              <Button variant="outline" asChild>
-                <Link to="/clients/new" search={{ firmId } as any}>
-                  <Plus className="mr-2 h-4 w-4" /> New client
-                </Link>
-              </Button>
+              {showAddActions ? (
+                <>
+                  <AddClientFromXeroButton firmId={firmId} />
+                  <Button variant="outline" asChild>
+                    <Link to="/clients/new" search={{ firmId } as any}>
+                      <Plus className="mr-2 h-4 w-4" /> New client
+                    </Link>
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" asChild>
+                  <Link to="/firms/$firmId/settings" params={{ firmId }}>
+                    <Plus className="mr-2 h-4 w-4" /> Add clients in settings
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         ) : (
