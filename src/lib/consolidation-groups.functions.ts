@@ -228,14 +228,17 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
       .eq("firm_id", firmId)
       .eq("user_id", context.userId)
       .maybeSingle();
+    const { supportAccessActive } = await import("@/lib/support-access.server");
+    const grantActive = isSuperAdmin && !member ? await supportAccessActive(firmId) : false;
 
     return {
       firmId,
       id: (group as any)?.id as string,
       name: ((group as any)?.name as string) ?? "Group",
-      // Figures come from membership of this organisation.
-      // Super admins manage setup but never see client financials.
-      canSeeFigures: Boolean(member) ? true : !isSuperAdmin,
+      // Figures come from membership of this organisation. Platform staff see
+      // them only while the organisation has granted support access.
+      canSeeFigures: Boolean(member) ? true : isSuperAdmin ? grantActive : true,
+
 
       clients: ((clients ?? []) as any[]).map((c) => ({
         clientId: c.id as string,
