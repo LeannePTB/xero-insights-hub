@@ -123,16 +123,16 @@ function FirmDetailPage() {
             firmName={firm.name}
             clientLimit={(detailQ.data as any)?.clientLimit}
             showHealth={false}
+            allowClientData={false}
             onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
           />
           <p className="text-xs text-muted-foreground">
-            Client names, tiers and linked Xero files only. Open the{" "}
-            <Link to="/firms/$firmId" params={{ firmId }} className="underline underline-offset-2">
-              organisation page
-            </Link>{" "}
-            for the full view.
+            Client names, tiers and linked Xero files only — nothing here opens client data. Client
+            dashboards are reachable through “View as”, and only when this organisation has granted
+            support access or you are a member of it.
           </p>
         </section>
+
 
         <AuditSection events={auditQ.data?.events ?? []} loading={auditQ.isLoading} />
       </main>
