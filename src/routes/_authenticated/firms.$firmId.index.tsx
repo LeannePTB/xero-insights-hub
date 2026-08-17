@@ -373,31 +373,8 @@ function FirmPage() {
           />
         )}
 
-        <Dialog open={planOpen} onOpenChange={setPlanOpen}>
 
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Plan &amp; subscription</DialogTitle>
-              <DialogDescription>{firm.name}</DialogDescription>
-            </DialogHeader>
-            <SubscriptionEditor
-              firmId={firmId}
-              subscription={{
-                tier: plan.tier,
-                status: plan.status,
-                trial_ends_at: plan.trialEndsAt,
-                current_period_end: plan.currentPeriodEnd,
-                cancel_at_period_end: (plan as any).cancelAtPeriodEnd ?? false,
-              }}
-              isAlwaysFree={!!plan.isAlwaysFree}
-              onChanged={() => {
-                qc.invalidateQueries({ queryKey: ["my-firm", firmId] });
-                setPlanOpen(false);
-              }}
-              submitLabel="Save plan"
-            />
-          </DialogContent>
-        </Dialog>
+
 
         <div className="mt-8">
           <LoanConsolidationCard firmId={firmId} />
