@@ -93,9 +93,10 @@ function FirmDetailPage() {
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
           <h1 className="text-xl font-semibold">{firm.name}</h1>
           {firm.is_always_free && <Badge variant="outline">always free</Badge>}
-          <Badge variant="secondary" className="ml-auto">no client data</Badge>
+          <SupportAccessBadge firmId={firmId} />
         </div>
       </header>
+
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-10">
         <BusinessNameSection
