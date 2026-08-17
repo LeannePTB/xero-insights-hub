@@ -133,13 +133,11 @@ function FirmPage() {
               Clients for this organisation. Add or remove them here.
             </p>
           </div>
-          {!previewing && (
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/firms/$firmId/settings" params={{ firmId }}>
-                <Settings className="mr-1 h-4 w-4" /> Settings
-              </Link>
-            </Button>
-          )}
+          <Button variant="outline" size="sm" asChild>
+            <Link to="/firms/$firmId/settings" params={{ firmId }}>
+              <Settings className="mr-1 h-4 w-4" /> Settings
+            </Link>
+          </Button>
         </div>
 
 
