@@ -315,16 +315,10 @@ function FirmPage() {
                     )}
                   </div>
 
-                  {isMulti && dirty && (
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" onClick={() => saveDefaults()} disabled={saving}>
-                        {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
-                        Save for all clients
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => setDraftWidgets(null)}>
-                        Cancel
-                      </Button>
-                    </div>
+                  {isMulti && saving && (
+                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
+                    </p>
                   )}
 
                   <p className="text-xs text-muted-foreground">
