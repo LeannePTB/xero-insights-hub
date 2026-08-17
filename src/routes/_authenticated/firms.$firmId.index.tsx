@@ -1,35 +1,18 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, CreditCard, Loader2, Settings } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
+import { ArrowLeft, Loader2, Settings } from "lucide-react";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { LoanConsolidationCard } from "@/components/admin/LoanConsolidationCard";
-import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
-
-import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
-
-
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
-
-import { getFirmPlanSummary, saveFirmDefaultWidgets } from "@/lib/tier-config.functions";
-import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
-
-import { Badge } from "@/components/ui/badge";
-import { firmPlanView, toneClasses } from "@/lib/firmPlans";
+import { firmPlanView } from "@/lib/firmPlans";
 import { toast } from "sonner";
+
 
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
@@ -75,53 +58,6 @@ function FirmPage() {
   const qc = useQueryClient();
   const fetchFirm = useServerFn(getMyFirm);
   const fetchCtx = useServerFn(getMyContext);
-  const [planOpen, setPlanOpen] = useState(false);
-  const [includedOpen, setIncludedOpen] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return sessionStorage.getItem(`firm-plan-included:${firmId}`) === "1";
-  });
-  useEffect(() => {
-    sessionStorage.setItem(`firm-plan-included:${firmId}`, includedOpen ? "1" : "0");
-  }, [includedOpen, firmId]);
-  const fetchSummary = useServerFn(getFirmPlanSummary);
-  const summaryQ = useQuery({
-    queryKey: ["firm-plan-summary", firmId],
-    queryFn: () => fetchSummary({ data: { firmId } }),
-    enabled: includedOpen,
-    staleTime: 5 * 60_000,
-  });
-  const summary = summaryQ.data;
-
-  const isMulti = !!(summary?.allowsMultiOrg || summary?.supportsConsolidation);
-  // Optimistic copy while a toggle is being written.
-  const [pendingWidgets, setPendingWidgets] = useState<WidgetKey[] | null>(null);
-  const [saving, setSaving] = useState(false);
-  const selectedWidgets = (pendingWidgets ?? (summary?.widgets ?? [])) as WidgetKey[];
-  const saveFirmDefaults = useServerFn(saveFirmDefaultWidgets);
-  const toggleWidget = async (w: WidgetKey) => {
-    if (saving) return;
-    const on = selectedWidgets.includes(w);
-    const next = on ? selectedWidgets.filter((x) => x !== w) : [...selectedWidgets, w];
-    setPendingWidgets(next);
-    setSaving(true);
-    try {
-      await saveFirmDefaults({ data: { firmId, widgets: next } });
-      await qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
-      qc.invalidateQueries({ queryKey: ["clients"] });
-      qc.invalidateQueries({ queryKey: ["client-widgets"] });
-      setPendingWidgets(null);
-      toast.success(
-        on
-          ? `${WIDGET_LABEL[w] ?? w} turned off for every client`
-          : `${WIDGET_LABEL[w] ?? w} turned on for new clients`,
-      );
-    } catch (e: any) {
-      setPendingWidgets(null);
-      toast.error(e?.message ?? "Could not save default cards");
-    } finally {
-      setSaving(false);
-    }
-  };
 
 
   const firmQ = useQuery({
@@ -134,7 +70,7 @@ function FirmPage() {
   // Previewing is for platform admins and advisors only.
   const previewing = requestedPreview && (ctxQ.data?.canViewAs ?? false);
   // While previewing as the organisation owner, hide platform-admin-only controls.
-  const isSuper = (ctxQ.data?.isSuperAdmin ?? false) && !previewing;
+
 
 
   useEffect(() => {
@@ -207,151 +143,7 @@ function FirmPage() {
         </div>
 
 
-        {/* Plan & subscription */}
-        <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 text-sm font-medium">
-                <CreditCard className="h-4 w-4 text-muted-foreground" /> Plan &amp; subscription
-              </div>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                <Badge variant="secondary">{planV.planLabel}</Badge>
-                <Badge variant="outline" className={toneClasses(planV.statusTone)}>{planV.statusLabel}</Badge>
-                <span className="text-muted-foreground tabular-nums">
-                  {plan.clientCount} of {plan.clientLimit} clients used
-                </span>
-                {planV.dueLabel && <span className="text-muted-foreground">· {planV.dueLabel}</span>}
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={() => setIncludedOpen((v) => !v)}>
-                {includedOpen ? <ChevronDown className="mr-1 h-4 w-4" /> : <ChevronRight className="mr-1 h-4 w-4" />}
-                What&apos;s included
-              </Button>
 
-
-
-            </div>
-          </div>
-
-          {includedOpen && (
-            <div className="mt-5 space-y-4 border-t border-border pt-4">
-              {summaryQ.isLoading && (
-                <p className="text-xs text-muted-foreground">
-                  <Loader2 className="mr-2 inline h-3 w-3 animate-spin" /> Loading plan details…
-                </p>
-              )}
-              {summary && (
-                <>
-                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-                    <span>
-                      Clients allowed: <strong className="text-foreground tabular-nums">{plan.clientLimit}</strong>
-                    </span>
-                    <span>
-                      Xero files allowed:{" "}
-                      <strong className="text-foreground tabular-nums">
-                        {summary.xeroFileLimit ?? plan.clientLimit}
-                      </strong>
-                    </span>
-                    <span>
-                      Consolidation:{" "}
-                      <strong className="text-foreground">
-                        {summary.supportsConsolidation
-                          ? `up to ${summary.consolidationLimit ?? plan.clientLimit} Xero files`
-                          : "not included"}
-                      </strong>
-                    </span>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Dashboard tiers included
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap gap-1.5">
-                      {summary.tiers.length === 0 && (
-                        <span className="text-xs text-muted-foreground">None configured</span>
-                      )}
-                      {summary.tiers.map((t) => (
-                        <Badge key={t.key} variant="secondary" className="text-[11px]">
-                          {t.label}
-                          {t.allowsMultiOrg ? ` · ${t.xeroFiles} Xero files` : ""}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Cards included by default
-                    </p>
-                    {isMulti ? (
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {(summary.availableWidgets ?? summary.widgets).map((w) => {
-                          const on = selectedWidgets.includes(w as WidgetKey);
-                          return (
-                            <button
-                              key={w}
-                              type="button"
-                              onClick={() => toggleWidget(w as WidgetKey)}
-                              disabled={saving}
-                              className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-60 ${
-                                on
-                                  ? "bg-primary/10 text-primary"
-                                  : "bg-muted text-muted-foreground line-through"
-                              }`}
-                            >
-                              {WIDGET_LABEL[w as WidgetKey] ?? w}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {summary.widgets.map((w) => (
-                          <span
-                            key={w}
-                            className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
-                          >
-                            {WIDGET_LABEL[w as WidgetKey] ?? w}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {isMulti && saving && (
-                    <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
-                    </p>
-                  )}
-
-                  <p className="text-xs text-muted-foreground">
-                    {isMulti
-                      ? "Click a card to turn it off for every client in this organisation — changes save straight away. New clients start with the selected cards, and each client's own settings can still turn cards off individually."
-                      : "New clients start with these cards. Open a client's settings to turn individual cards on or off for them."}
-                  </p>
-
-                </>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="mt-8">
-          <SupportAccessCard firmId={firmId} />
-        </div>
-
-        {isSuper && (
-          <div className="mt-8">
-            <Link
-              to="/admin/firms/$firmId"
-              params={{ firmId }}
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-            >
-              View audit log (Super Admin) <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-        )}
 
 
 
@@ -373,31 +165,8 @@ function FirmPage() {
           />
         )}
 
-        <Dialog open={planOpen} onOpenChange={setPlanOpen}>
 
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Plan &amp; subscription</DialogTitle>
-              <DialogDescription>{firm.name}</DialogDescription>
-            </DialogHeader>
-            <SubscriptionEditor
-              firmId={firmId}
-              subscription={{
-                tier: plan.tier,
-                status: plan.status,
-                trial_ends_at: plan.trialEndsAt,
-                current_period_end: plan.currentPeriodEnd,
-                cancel_at_period_end: (plan as any).cancelAtPeriodEnd ?? false,
-              }}
-              isAlwaysFree={!!plan.isAlwaysFree}
-              onChanged={() => {
-                qc.invalidateQueries({ queryKey: ["my-firm", firmId] });
-                setPlanOpen(false);
-              }}
-              submitLabel="Save plan"
-            />
-          </DialogContent>
-        </Dialog>
+
 
         <div className="mt-8">
           <LoanConsolidationCard firmId={firmId} />
