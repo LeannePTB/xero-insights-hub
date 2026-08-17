@@ -325,11 +325,16 @@ function FirmPage() {
           )}
         </div>
 
+        <div className="mt-8">
+          <SupportAccessCard firmId={firmId} />
+        </div>
+
         {isSuper && (
           <SuperAdminSection className="mt-8" title="Audit log">
             <FirmAuditLogCard firmId={firmId} />
           </SuperAdminSection>
         )}
+
 
 
 
