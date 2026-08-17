@@ -22,10 +22,10 @@ export function LoanConsolidationCard({ firmId }: { firmId: string }) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-sm font-medium">
-            <Layers className="h-4 w-4 text-muted-foreground" /> Loan Consolidation
+            <Layers className="h-4 w-4 text-muted-foreground" /> Company Consolidations
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            Consolidation groups and loan account reconciliation for this organisation.
+            Consolidation groups for this organisation and the companies in each one.
           </p>
         </div>
         <Button asChild size="sm" variant="outline">
