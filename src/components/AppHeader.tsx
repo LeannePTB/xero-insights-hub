@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { logAuthEvent } from "@/lib/audit.functions";
 import ptLogo from "@/assets/pt-logo.png.asset.json";
 
 type Props = {
@@ -31,6 +32,11 @@ export function AppHeader({ actions }: Props) {
   }, []);
 
   async function handleSignOut() {
+    try {
+      await logAuthEvent({ data: { action: "signed_out" } });
+    } catch {
+      /* audit is best-effort */
+    }
     await supabase.auth.signOut();
     navigate({ to: "/auth" });
   }

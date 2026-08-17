@@ -92,6 +92,11 @@ function AuthPage() {
           : "https://tractionadvisory.com.au/set-password";
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) throw error;
+      try {
+        await logFailedSignIn({ data: { email, reason: "password_reset_requested" } });
+      } catch {
+        /* audit is best-effort */
+      }
       toast.success("Password reset email sent. Check your inbox.");
     } catch (e: any) {
       toast.error(e.message ?? "Couldn't send reset email.");
