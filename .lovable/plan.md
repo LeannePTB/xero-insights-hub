@@ -17,9 +17,7 @@ No backend change needed — `getSupportAccess` already returns `viewerIsMember`
 
 All app text and the database records already say Traction Advisory (organisation names are "Traction Advisory" and "DRTABT Projects"). The only remaining source is the header logo image file itself — the artwork still has the old Positive Traction wordmark baked into the picture.
 
-Options:
-- You upload a Traction Advisory logo and I swap the image in.
-- Or I generate a simple Traction Advisory wordmark to use until you have final artwork.
+Action: generate a simple Traction Advisory wordmark (dark navy text, blue accent, transparent background) and swap it into the header in place of the old logo. You can replace it later with final artwork.
 
 If you tell me where else you see the words (page/screen), I'll track that one down too.
 
