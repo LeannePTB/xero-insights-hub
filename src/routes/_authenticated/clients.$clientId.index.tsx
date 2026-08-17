@@ -82,6 +82,10 @@ function ClientDashboard() {
     queryKey: ["client-widgets", clientId, effectivePreviewTier ?? "actual"],
     queryFn: () => fetchWidgets({ data: { clientId, tierOverride: effectivePreviewTier } }),
     enabled: !!ctxQ.data,
+    // Card visibility must never be served from a stale cache.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: "always",
   });
   const widgets = widgetsQ.data?.widgets ?? [];
   const tier: DashboardTier = effectivePreviewTier ?? tierLabelSource ?? "basic";
