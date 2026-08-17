@@ -66,7 +66,7 @@ export const savePlanLevel = createServerFn({ method: "POST" })
     }) => i,
   )
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const key = data.key.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
     if (!key) throw new Error("A key is required.");
     if (!data.label.trim()) throw new Error("A label is required.");
@@ -109,7 +109,7 @@ export const deletePlanLevel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: level } = await (supabaseAdmin as any)
