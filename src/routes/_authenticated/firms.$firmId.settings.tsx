@@ -3,7 +3,11 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, CreditCard, Loader2, ShieldAlert } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, Loader2, ShieldAlert } from "lucide-react";
+import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
+import { getFirmPlanSummary, saveFirmDefaultWidgets } from "@/lib/tier-config.functions";
+import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
