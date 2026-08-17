@@ -58,53 +58,6 @@ function FirmPage() {
   const qc = useQueryClient();
   const fetchFirm = useServerFn(getMyFirm);
   const fetchCtx = useServerFn(getMyContext);
-  const [planOpen, setPlanOpen] = useState(false);
-  const [includedOpen, setIncludedOpen] = useState(() => {
-    if (typeof window === "undefined") return false;
-    return sessionStorage.getItem(`firm-plan-included:${firmId}`) === "1";
-  });
-  useEffect(() => {
-    sessionStorage.setItem(`firm-plan-included:${firmId}`, includedOpen ? "1" : "0");
-  }, [includedOpen, firmId]);
-  const fetchSummary = useServerFn(getFirmPlanSummary);
-  const summaryQ = useQuery({
-    queryKey: ["firm-plan-summary", firmId],
-    queryFn: () => fetchSummary({ data: { firmId } }),
-    enabled: includedOpen,
-    staleTime: 5 * 60_000,
-  });
-  const summary = summaryQ.data;
-
-  const isMulti = !!(summary?.allowsMultiOrg || summary?.supportsConsolidation);
-  // Optimistic copy while a toggle is being written.
-  const [pendingWidgets, setPendingWidgets] = useState<WidgetKey[] | null>(null);
-  const [saving, setSaving] = useState(false);
-  const selectedWidgets = (pendingWidgets ?? (summary?.widgets ?? [])) as WidgetKey[];
-  const saveFirmDefaults = useServerFn(saveFirmDefaultWidgets);
-  const toggleWidget = async (w: WidgetKey) => {
-    if (saving) return;
-    const on = selectedWidgets.includes(w);
-    const next = on ? selectedWidgets.filter((x) => x !== w) : [...selectedWidgets, w];
-    setPendingWidgets(next);
-    setSaving(true);
-    try {
-      await saveFirmDefaults({ data: { firmId, widgets: next } });
-      await qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
-      qc.invalidateQueries({ queryKey: ["clients"] });
-      qc.invalidateQueries({ queryKey: ["client-widgets"] });
-      setPendingWidgets(null);
-      toast.success(
-        on
-          ? `${WIDGET_LABEL[w] ?? w} turned off for every client`
-          : `${WIDGET_LABEL[w] ?? w} turned on for new clients`,
-      );
-    } catch (e: any) {
-      setPendingWidgets(null);
-      toast.error(e?.message ?? "Could not save default cards");
-    } finally {
-      setSaving(false);
-    }
-  };
 
 
   const firmQ = useQuery({
