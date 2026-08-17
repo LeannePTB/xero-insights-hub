@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.firm_support_access_audit() FROM PUBLIC, anon, authenticated;
