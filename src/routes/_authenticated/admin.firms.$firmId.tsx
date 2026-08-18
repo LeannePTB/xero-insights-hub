@@ -41,9 +41,6 @@ export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
   component: FirmDetailPage,
 });
 
-// Plan names and the plan dropdown come from the `plan_levels` catalogue
-// (see SubscriptionEditor) — never from a hardcoded list.
-const STATUSES = ["trialing", "active", "past_due", "canceled", "paused"];
 
 
 function fmt(s: string | null | undefined) {
