@@ -305,28 +305,91 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }
 
         // ─────────────────────────────────────────────────────────────────────
-        // Reconnect flow: tokens and scopes are refreshed above. A file the
-        // organisation already has is never a new link, so nothing else to do.
+        // Reconnect flow: refresh tokens AND scopes on the rows the organisation's
+        // links actually point at. Never creates a client_xero_orgs link, never
+        // applies the plan gate. A tenant that isn't already linked to this
+        // organisation is a new file and falls through to the normal gated path.
         // ─────────────────────────────────────────────────────────────────────
-        if (stateRow.flow === "reconnect") {
+        if (flow === "reconnect") {
+          const { isTenantAlreadyLinkedToFirm, getClientFirmId } = await import(
+            "@/lib/xero/client-orgs.server"
+          );
+          const firmId =
+            stateRow.firm_id ??
+            (stateRow.client_id ? await getClientFirmId(stateRow.client_id) : null);
           const backPath = stateRow.client_id
             ? `/clients/${stateRow.client_id}/settings`
-            : stateRow.firm_id
-              ? `/firms/${stateRow.firm_id}`
+            : firmId
+              ? `/firms/${firmId}`
               : "/dashboard";
-          if (stateRow.firm_id) {
-            await supabaseAdmin
-              .from("xero_connections")
-              .update({ firm_id: stateRow.firm_id })
-              .in(
-                "tenant_id",
-                tenants.map((t) => t.tenantId),
-              )
-              .is("firm_id", null);
+
+          const linkedTenantIds: string[] = [];
+          const unlinkedTenants: typeof tenants = [];
+          for (const t of tenants) {
+            const linked = firmId ? await isTenantAlreadyLinkedToFirm(firmId, t.tenantId) : false;
+            if (linked) linkedTenantIds.push(t.tenantId);
+            else unlinkedTenants.push(t);
           }
-          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-          return redirectTo(`${returnOrigin}${backPath}?xero=reconnected`);
+
+          if (linkedTenantIds.length > 0) {
+            // A tenant can have a row per staff member; the client link may point
+            // at someone else's row. Refresh every row for this organisation's
+            // tenant so the linked row is never left stale.
+            const { data: refreshed, error: refreshErr } = await supabaseAdmin
+              .from("xero_connections")
+              .update({
+                access_token_enc: accessEnc,
+                refresh_token_enc: refreshEnc,
+                expires_at: expiresAt,
+                scopes: tokens.scope,
+                status: "connected",
+                disconnected_at: null,
+                ...(firmId ? { firm_id: firmId } : {}),
+              })
+              .in("tenant_id", linkedTenantIds)
+              .or(firmId ? `firm_id.eq.${firmId},firm_id.is.null` : "firm_id.is.null")
+              .select("id");
+            if (refreshErr) {
+              console.error("xero reconnect token refresh failed", refreshErr);
+              await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+              return redirectTo(
+                `${returnOrigin}${backPath}?xero_error=${encodeURIComponent("Could not save the refreshed Xero permissions. Please try reconnecting again.")}`,
+              );
+            }
+
+            // Missing-scope results are cached for 60s — drop the affected
+            // entries so widgets stop saying "Reconnect to enable this".
+            try {
+              const { invalidateMissingScopes } = await import("@/lib/xero/api.server");
+              invalidateMissingScopes((refreshed ?? []).map((r: any) => r.id as string));
+            } catch {
+              // cache invalidation is best-effort
+            }
+
+            await supabaseAdmin.from("audit_log").insert(
+              linkedTenantIds.map((tenantId) => ({
+                actor_user_id: userId,
+                action: "xero_reconnected",
+                target_type: "xero_connection",
+                target_id: tenantId,
+                meta: { firm_id: firmId, scopes: tokens.scope },
+              })),
+            );
+          }
+
+          // Nothing new authorised — done.
+          if (unlinkedTenants.length === 0 || !stateRow.client_id) {
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+            const suffix =
+              unlinkedTenants.length > 0
+                ? `?xero=reconnected&xero_skipped=${encodeURIComponent(unlinkedTenants.map((t) => t.tenantName).join(", "))}`
+                : "?xero=reconnected";
+            return redirectTo(`${returnOrigin}${backPath}${suffix}`);
+          }
+          // New files came back with the reconnect — fall through to the normal
+          // client-link path below, which applies the plan limit gate.
         }
+
 
         // ─────────────────────────────────────────────────────────────────────
         // Onboard flow: create a client subscription per authorised Xero file
