@@ -27,7 +27,9 @@ export function tiersForPlan(
   const plan = levels.find((l) => l.scope === "firm" && l.key === firmTierKey);
   if (!plan) return null;
   const allowed = plan.allowed_tiers ?? [];
-  return allowed.length ? allowed : null;
+  if (!allowed.length) return null;
+  const known = knownDashboardTiers(allowed);
+  return known.length ? known : ["basic"];
 }
 
 /** True when the tier is permitted by the plan (null = unrestricted). */

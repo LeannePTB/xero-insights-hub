@@ -19,8 +19,14 @@ export async function allowedTiersForFirm(firmId: string | null | undefined): Pr
     .eq("scope", "firm")
     .eq("key", tier)
     .maybeSingle();
-  const allowed = (level?.allowed_tiers ?? []) as string[];
-  return allowed.length ? allowed : null;
+  const raw = (level?.allowed_tiers ?? []) as string[];
+  if (!raw.length) return null;
+  // Plans can still list retired keys (e.g. `pt`), which are not dashboard
+  // tiers. Drop them instead of letting them reach the database, and fall back
+  // to Standard if that leaves nothing.
+  const { knownDashboardTiers } = await import("@/lib/plan-tiers");
+  const known = knownDashboardTiers(raw);
+  return known.length ? known : ["basic"];
 }
 
 export async function allowedTiersForClient(clientId: string): Promise<string[] | null> {
