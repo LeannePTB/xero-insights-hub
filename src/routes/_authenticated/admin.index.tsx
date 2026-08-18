@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye } from "lucide-react";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
+import { XeroApiErrorsSheet } from "@/components/admin/XeroApiErrorsSheet";
 
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -104,7 +105,18 @@ function AdminPage() {
             <h1 className="text-xl font-semibold">Admin</h1>
             {isSuper ? <SuperAdminBadge /> : <Badge variant="outline">advisor admin</Badge>}
           </div>
-          {isSuper && <AddOrganisationDialog onCreated={() => firmsQ.refetch()} />}
+          <div className="flex items-center gap-2">
+            {isSuper && (
+              <XeroApiErrorsSheet
+                trigger={
+                  <Button variant="outline" size="sm">
+                    Xero API errors (7 days)
+                  </Button>
+                }
+              />
+            )}
+            {isSuper && <AddOrganisationDialog onCreated={() => firmsQ.refetch()} />}
+          </div>
         </div>
 
       </header>
@@ -223,7 +235,7 @@ function OrganisationsSection({
               <th className="px-4 py-3">Usage</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Next bill / trial</th>
-              <th className="px-4 py-3">Sync errors this week</th>
+              <th className="px-4 py-3">Xero API errors (7 days)</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
@@ -252,11 +264,22 @@ function OrganisationsSection({
                       : fmtDate(f.current_period_end)}
                   </td>
                   <td className="px-4 py-3 tabular-nums">
-                    {f.recent_error_count > 0 ? (
-                      <span className="text-destructive font-medium">{f.recent_error_count}</span>
-                    ) : (
-                      <span className="text-muted-foreground">0</span>
-                    )}
+                    <XeroApiErrorsSheet
+                      firmId={f.firm_id}
+                      organisationName={f.firm_name}
+                      trigger={
+                        <button
+                          type="button"
+                          className={
+                            f.recent_error_count > 0
+                              ? "text-destructive font-medium underline underline-offset-4"
+                              : "text-muted-foreground underline underline-offset-4"
+                          }
+                        >
+                          {f.recent_error_count}
+                        </button>
+                      }
+                    />
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
