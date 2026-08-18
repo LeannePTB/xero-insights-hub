@@ -141,9 +141,26 @@ export function SubscriptionEditor({
         <div className="flex items-center justify-between rounded-md border p-3">
           <div>
             <p className="text-sm font-medium">Always free</p>
-            <p className="text-xs text-muted-foreground">Never charge this organisation regardless of tier.</p>
+            <p className="text-xs text-muted-foreground">Never charge this organisation regardless of plan.</p>
           </div>
           <Switch checked={alwaysFree} onCheckedChange={setAlwaysFree} />
+        </div>
+        <div className="flex items-center justify-between rounded-md border p-3 md:col-span-2">
+          <div className="pr-4">
+            <p className="text-sm font-medium">Consolidation tools</p>
+            <p className="text-xs text-muted-foreground">
+              Unlocks cross-client consolidation for this organisation, independent of the plan and
+              of client tiers.
+            </p>
+          </div>
+          <Switch
+            checked={consolidation}
+            disabled={consolidationMut.isPending || !subscription}
+            onCheckedChange={(v) => {
+              setConsolidation(v);
+              consolidationMut.mutate(v);
+            }}
+          />
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <Label>Client limit override</Label>
