@@ -34,14 +34,19 @@ async function assertFirmAccess(supabase: any, userId: string, firmId: string) {
     .eq("firm_id", firmId)
     .eq("user_id", userId)
     .maybeSingle();
-  if (member) return;
-  const { data: superRow } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (!superRow) throw new Error("You don't have access to this organisation.");
+  if (!member) {
+    const { data: superRow } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userId)
+      .eq("role", "super_admin")
+      .maybeSingle();
+    if (!superRow) throw new Error("You don't have access to this organisation.");
+  }
+  // Consolidation groups are part of the organisation-level consolidation
+  // feature — the plan decides. Fails closed.
+  const { assertFirmWidget } = await import("@/lib/widget-access.server");
+  await assertFirmWidget(supabase, firmId, "loan_consolidation");
 }
 
 
