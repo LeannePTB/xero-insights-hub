@@ -368,8 +368,14 @@ function ClientSettings() {
       toast.success("Xero organisation linked");
       qc.invalidateQueries({ queryKey: ["client", clientId] });
       qc.invalidateQueries({ queryKey: ["xero-connections"] });
+    } else if (status === "reconnected") {
+      toast.success("Xero organisation reconnected");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-connections"] });
+      qc.invalidateQueries({ queryKey: ["xero-scope-status"] });
     } else if (status === "choose") {
       toast.info("Choose which Xero files belong to this subscription.");
+
     } else if (err) {
       toast.error(err);
     }
