@@ -11,6 +11,7 @@ import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { CompanyConsolidationsCard } from "@/components/admin/CompanyConsolidationsCard";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 import { firmPlanView } from "@/lib/firmPlans";
+import { useFirmWidgets } from "@/hooks/useFirmWidget";
 import { toast } from "sonner";
 
 
