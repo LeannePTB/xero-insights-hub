@@ -75,6 +75,27 @@ export function SubscriptionEditor({
 
   useEffect(() => setAlwaysFree(!!isAlwaysFree), [isAlwaysFree]);
 
+  // Consolidation is an organisation add-on, saved on its own so the change is
+  // audited independently of the rest of the plan form.
+  const setConsolidationFn = useServerFn(adminSetFirmConsolidation);
+  const [consolidation, setConsolidation] = useState<boolean>(!!subscription?.consolidation_enabled);
+  useEffect(
+    () => setConsolidation(!!subscription?.consolidation_enabled),
+    [subscription?.consolidation_enabled],
+  );
+  const consolidationMut = useMutation({
+    mutationFn: (enabled: boolean) => setConsolidationFn({ data: { firmId, enabled } }),
+    onSuccess: (_r, enabled) => {
+      toast.success(enabled ? "Consolidation tools enabled" : "Consolidation tools disabled");
+      onChanged();
+    },
+    onError: (e: any, enabled) => {
+      // Fail closed: revert the control to the last known state.
+      setConsolidation(!enabled);
+      toast.error(e?.message ?? "Could not update the add-on");
+    },
+  });
+
   // Keep the current value selectable even if its level was retired.
   const options = levels.filter((l) => l.enabled || l.key === tier);
   const selectedLevel = levels.find((l) => l.key === tier);
