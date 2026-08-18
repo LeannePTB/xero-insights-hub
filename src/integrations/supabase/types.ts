@@ -1958,6 +1958,15 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      firm_plan_limits: {
+        Args: { _firm_id: string }
+        Returns: {
+          client_limit: number
+          clients_used: number
+          xero_files_used: number
+          xero_org_limit: number
+        }[]
+      }
       get_mfa_posture_counts: {
         Args: never
         Returns: {
@@ -2026,6 +2035,10 @@ export type Database = {
         Returns: string[]
       }
       xero_required_scopes: { Args: never; Returns: string[] }
+      xero_tenant_already_linked: {
+        Args: { _firm_id: string; _tenant_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role:
