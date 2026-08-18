@@ -335,11 +335,18 @@ function ClientSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  async function handleConnect() {
+  async function handleConnect(opts?: { tenantId?: string }) {
     const authWindow = window.open("about:blank", "_blank");
     try {
       const { authorizeUrl } = await startConnect({
-        data: { origin: window.location.origin, clientId },
+        data: {
+          origin: window.location.origin,
+          clientId,
+          // Reauthorising an existing file is never a new file, so it must not
+          // be gated by the organisation's Xero file allowance.
+          mode: opts?.tenantId ? "reconnect" : "new",
+          tenantId: opts?.tenantId,
+        },
       });
       if (authWindow) {
         authWindow.opener = null;
@@ -350,6 +357,7 @@ function ClientSettings() {
       toast.error(e.message);
     }
   }
+
 
   useEffect(() => {
     if (typeof window === "undefined") return;
