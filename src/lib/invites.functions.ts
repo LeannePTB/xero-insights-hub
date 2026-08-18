@@ -212,13 +212,17 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
           idempotencyKey: `firm-invite-${firm.id}-${token.slice(0, 8)}`,
           templateData: { inviteUrl, role: "owner", firmName: firm.name, inviterName: null },
         });
-      emailStatus = res.status;
-    } catch (e) {
-      console.error("Failed to enqueue invite email", e);
-      emailStatus = "failed";
-    }
+        emailStatus = res.status;
+      } catch (e) {
+        console.error("Failed to enqueue invite email", e);
+        emailStatus = "failed";
+      }
 
-    return { ok: true, firmId: firm.id, email, mode: "invite" as const, token, emailStatus };
+      return { ok: true, firmId: firm.id, email, mode: "invite" as const, token, emailStatus };
+    } catch (e) {
+      await rollback().catch(() => {});
+      throw e instanceof Error ? e : new Error("Could not create the organisation.");
+    }
   });
 
 /**
