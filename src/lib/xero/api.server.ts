@@ -289,37 +289,37 @@ export async function xeroGet<T = unknown>(
 
 }
 
-// A permanently broken endpoint must not be able to flood the audit trail —
-// identical (tenant, endpoint, status) failures collapse into one entry per window.
-const ERROR_DEDUPE_MS = 5 * 60 * 1000;
-const recentErrors = new Map<string, number>();
-
+// Operational telemetry only — recorded in public.xero_api_errors via a
+// SECURITY DEFINER RPC that aggregates by (tenant, path, status, day),
+// truncates the message and prunes rows older than 30 days. audit_log stays
+// reserved for access and security events.
 async function logXeroApiError(
-  conn: { user_id: string; tenant_id: string; tenant_name?: string | null; firm_id?: string | null },
+  conn: {
+    id?: string;
+    user_id: string;
+    tenant_id: string;
+    tenant_name?: string | null;
+    firm_id?: string | null;
+  },
   path: string,
   status: number,
   message: string,
 ) {
-  const key = `${conn.tenant_id}|${path}|${status}`;
-  const now = Date.now();
-  const last = recentErrors.get(key);
-  if (last && now - last < ERROR_DEDUPE_MS) return;
-  recentErrors.set(key, now);
-  if (recentErrors.size > 2000) {
-    for (const [k, t] of recentErrors) if (now - t > ERROR_DEDUPE_MS) recentErrors.delete(k);
-  }
-
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("audit_log").insert({
-      actor_user_id: conn.user_id,
-      firm_id: conn.firm_id ?? null,
-      action: "xero_api_error",
-      target_type: "xero_connection",
-      target_id: conn.tenant_id,
-      meta: { path, status, message, tenant_name: conn.tenant_name ?? null },
+    const { error } = await (supabaseAdmin as any).rpc("log_xero_api_error", {
+      _firm_id: conn.firm_id ?? null,
+      _connection_id: conn.id ?? null,
+      _tenant_id: conn.tenant_id ?? null,
+      _tenant_name: conn.tenant_name ?? null,
+      _path: path,
+      _status: status ?? null,
+      _message: message ?? null,
     });
+    if (error) console.warn("[xero] failed to record api error", error.message);
   } catch (e) {
-    console.warn("[xero] failed to write api error to audit_log", e);
+    // Telemetry must never break the caller's request.
+    console.warn("[xero] failed to record api error", e);
   }
 }
+

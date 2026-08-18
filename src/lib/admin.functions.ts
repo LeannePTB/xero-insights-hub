@@ -58,8 +58,28 @@ export const listFirmsAdmin = createServerFn({ method: "GET" })
       .select("*")
       .order("firm_created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return { firms: data ?? [] };
+
+    // recent_error_count in the view still counts audit_log, which no longer
+    // receives Xero telemetry. Recompute from xero_api_errors (last 7 days)
+    // so the number matches the drill-down sheet exactly.
+    const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: errRows } = await context.supabase
+      .from("xero_api_errors")
+      .select("firm_id, occurrences")
+      .gte("last_seen", since);
+    const counts = new Map<string, number>();
+    for (const r of (errRows ?? []) as any[]) {
+      if (!r.firm_id) continue;
+      counts.set(r.firm_id, (counts.get(r.firm_id) ?? 0) + (r.occurrences ?? 0));
+    }
+
+    const firms = (data ?? []).map((f: any) => ({
+      ...f,
+      recent_error_count: counts.get(f.firm_id) ?? 0,
+    }));
+    return { firms };
   });
+
 
 export const getFirmAuditAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
