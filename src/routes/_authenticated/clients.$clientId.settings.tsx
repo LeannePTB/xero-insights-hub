@@ -560,7 +560,28 @@ function ClientSettings() {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
+                    {missingScopes.length > 0 ? (
+                      <div className="w-full rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+                        <p className="font-semibold text-amber-700 dark:text-amber-400">
+                          This connection needs reauthorising to enable additional reports.
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          Currently unavailable for this organisation: {capabilityList(missingScopes)}.
+                          Reconnecting grants read-only access only — nothing is lost, and
+                          everything working today keeps working.
+                        </p>
+                        <div className="mt-2">
+                          <ConnectWithXeroButton
+                            variant="reconnect"
+                            size="sm"
+                            onClick={handleConnect}
+                            label="Reconnect"
+                          />
+                        </div>
+                      </div>
+                    ) : null}
                   </li>
+
                 );
               })}
             </ul>
