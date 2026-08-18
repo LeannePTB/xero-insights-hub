@@ -528,6 +528,10 @@ async function resolveLoanGroup(
     (await isSuperAdminUser(supabase, userId));
   if (!allowed) throw new Error("You don't have access to this organisation.");
 
+  // The organisation's plan must include loan consolidation (fails closed).
+  const { assertFirmWidget } = await import("@/lib/widget-access.server");
+  await assertFirmWidget(supabase, (group as any).firm_id, "loan_consolidation");
+
 
   const { data: members } = await supabaseAdmin
     .from("consolidation_group_members")
