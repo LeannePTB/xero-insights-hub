@@ -45,6 +45,8 @@ function LoansLayout() {
   const groupsQ = useQuery({
     queryKey: ["consolidation-groups", firmId],
     queryFn: () => fetchGroups({ data: { firmId } }),
+    enabled: allowed,
+    retry: false,
   });
   const groups = groupsQ.data?.groups ?? [];
   const selected = group ?? groups[0]?.id;
