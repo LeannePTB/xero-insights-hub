@@ -1663,6 +1663,73 @@ export type Database = {
         }
         Relationships: []
       }
+      xero_api_errors: {
+        Row: {
+          day: string
+          firm_id: string | null
+          first_seen: string
+          http_status: number | null
+          id: string
+          last_message: string | null
+          last_seen: string
+          occurrences: number
+          path: string
+          tenant_id: string | null
+          tenant_name: string | null
+          xero_connection_id: string | null
+        }
+        Insert: {
+          day?: string
+          firm_id?: string | null
+          first_seen?: string
+          http_status?: number | null
+          id?: string
+          last_message?: string | null
+          last_seen?: string
+          occurrences?: number
+          path: string
+          tenant_id?: string | null
+          tenant_name?: string | null
+          xero_connection_id?: string | null
+        }
+        Update: {
+          day?: string
+          firm_id?: string | null
+          first_seen?: string
+          http_status?: number | null
+          id?: string
+          last_message?: string | null
+          last_seen?: string
+          occurrences?: number
+          path?: string
+          tenant_id?: string | null
+          tenant_name?: string | null
+          xero_connection_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_api_errors_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "xero_api_errors_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xero_api_errors_xero_connection_id_fkey"
+            columns: ["xero_connection_id"]
+            isOneToOne: false
+            referencedRelation: "xero_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       xero_assessment_contact: {
         Row: {
           abn_acn: string | null
@@ -1899,6 +1966,18 @@ export type Database = {
           total_admins: number
           total_staff: number
         }[]
+      }
+      log_xero_api_error: {
+        Args: {
+          _connection_id: string
+          _firm_id: string
+          _message: string
+          _path: string
+          _status: number
+          _tenant_id: string
+          _tenant_name: string
+        }
+        Returns: undefined
       }
       move_to_dlq: {
         Args: {
