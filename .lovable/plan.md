@@ -1,67 +1,62 @@
-# Client subscriptions, comped accounts and trials
+# Fix reconnect isolation and orphaned Xero connections
 
-Wire client-level billing to your existing Stripe account (no Lovable Stripe integration), and make dashboard entitlement a single, read-time decision in the database.
+## Scope
 
-## Secrets you need to add (Project Settings → Secrets)
+TypeScript and UI only. No tables, columns, migrations, RLS policies, grants, triggers, or database functions will be created or changed.
 
-- `STRIPE_SECRET_KEY` — server only (test key first)
-- `STRIPE_WEBHOOK_SECRET` — server only
-- `VITE_STRIPE_PUBLISHABLE_KEY` — the only Stripe value allowed in the browser
+## 1. Make reconnect strictly single-tenant
 
-Only `STRIPE_SANDBOX_API_KEY` currently exists in the environment; it will not be used. If a secret is missing, every server path fails closed with a plain message — no fallback keys, ever.
+- Keep recording the requested reconnect tenant in the existing `xero_oauth_states.pending_tenant_ids` field.
+- Update the callback state query/type to read that field.
+- Move reconnect handling ahead of the generic connection upsert, so reconnect never creates rows for every tenant Xero returns.
+- Require exactly one requested tenant from the state, find only that tenant in Xero’s returned list, confirm it is already linked to the intended organisation through `public.xero_tenant_already_linked`, and refresh every matching connection row used by that organisation.
+- Ignore every other returned tenant completely: no upsert, no plan check, no picker state, and no client link.
+- If the requested tenant is absent or no longer linked to the intended organisation, delete the OAuth state and return a clear retry error.
+- On success, invalidate the missing-scope cache, delete the state, and redirect directly to settings with `xero=reconnected`; update the confirmation copy to “Xero reconnected — permissions updated.”
 
-## Migration I intend to run (single migration, reviewed before it executes)
+## 2. Stamp new connect/onboard rows to the intended organisation
 
-1. `ALTER TABLE public.client_subscriptions` — add:
-   - `dashboard_tier public.dashboard_tier NOT NULL DEFAULT 'basic'` (the tier the subscription grants)
-   - `promotion_code text`, `coupon_id text` (so the 3-month offer can be reported on)
-   - `comp_reason text`, `comped_by uuid REFERENCES auth.users(id)`, `comped_at timestamptz`
-   - unique indexes on `stripe_subscription_id` and `stripe_customer_id` (partial, where not null) so webhooks can resolve a client without trusting the request body
-2. `ALTER TABLE public.billing_events ADD CONSTRAINT billing_events_stripe_event_id_key UNIQUE (stripe_event_id)` (if absent) for webhook idempotency; add nullable `client_id uuid REFERENCES public.clients(id)`.
-3. New function — the single entitlement rule:
+- For normal `connect` and `onboard` flows, resolve the intended internal `firm_id` from the OAuth state or initiating client.
+- Use `known_tenant_ids` to distinguish rows newly introduced by this authorisation from existing connection rows.
+- Stamp newly created connection rows with the intended organisation at upsert time, while preserving the organisation stamp on existing rows and never moving a row already belonging elsewhere.
+- Keep the existing picker/creation flow and database-enforced plan limits for genuinely new files.
 
-```sql
-create or replace function public.client_entitlement(_client_id uuid)
-returns table (
-  tier public.dashboard_tier,      -- effective tier, 'basic' when nothing applies
-  source text,                     -- paid | trial | free_forever | org_always_free | none
-  expires_at timestamptz,          -- trial_end or current_period_end, null when open-ended
-  in_grace boolean                 -- past_due but still inside current_period_end
-)
-language sql stable security definer set search_path = public, app_private
-```
-   Evaluated at read time, exactly like `firm_support_access_active`: a trial past `trial_end`, or a `past_due` subscription past `current_period_end`, stops granting the higher tier on the next request. Respects `tier_settings.enabled` as a global kill switch and `firms.is_always_free` at organisation level. Anything unknown resolves to `basic`. Granted to `authenticated`; revoked from `anon`.
-4. New RLS policies on `client_subscriptions` only (no existing policy, function or `app_private.*` helper is touched):
-   - read: `app_private.user_can_read_client(auth.uid(), client_id)`
-   - write: super admin only (comps), plus service role for webhooks
+## 3. Remove the zero-capacity picker state
 
-Nothing is added to `client_subscription_type`, no new subscription tables.
+- Change the client Xero options response to include the organisation plan tier plus `xero_org_limit` and `xero_files_used` from `public.firm_plan_limits(_firm_id)`.
+- Use that one response for both the “used of allowed” plan text and picker capacity.
+- When usage is at or above the limit, do not render checkboxes or “select up to 0”. Show the current plan, “N of N Xero files linked”, and an upgrade message instead.
+- Keep server-side linking protected by the existing database limit trigger; do not weaken limits or trust the UI count.
+- Apply the same zero-capacity presentation to the organisation onboarding picker so it cannot expose an unusable selection list.
 
-## Requirement mapping
+## 4. Add super-admin orphan management
 
-**Entitlement (R1).** `src/lib/entitlement.server.ts` calls the RPC; `getClientWidgets` and the upgrade prompts take the tier from it instead of `client_access.tier`. Organisation plan (`allowedTiersForClient`) stays as the ceiling — a client can never exceed what the organisation's plan includes. No `if (tier === 'advisory')` checks anywhere in components.
+- Add a dedicated super-admin section on the existing Admin page for Xero connections where `firm_id IS NULL` and no `client_xero_orgs` row exists.
+- Return metadata only (connection id, Xero organisation name, status, authorising user label/date) and the organisation list; never return encrypted tokens to the browser.
+- Provide two explicit actions:
+  - **Assign to organisation**: stamp `firm_id` only after rechecking that the row is still unstamped and unlinked. This does not create a client link.
+  - **Disconnect**: confirm first, revoke Xero access best-effort, then remove only that orphan row.
+- Restrict both functions to a server-verified `super_admin` role and write security audit events for assignment/disconnection.
+- Do not auto-assign or auto-delete the existing Hay Officesmart Newsagency row.
 
-**Comps (R2).** Super-admin-only action on the client settings page: place a client on free Standard with a required reason. Enforced by RLS as well as UI. Every grant, change and removal writes an `audit_log` row with actor, client, previous state, new state and reason.
+## Technical files
 
-**Trials (R3).** `subscription_type = 'trial'` with `trial_end`. On expiry the client silently drops to free Standard — higher-tier cards simply stop rendering and the existing upgrade prompt appears in their place. No error page, no lockout.
+- `src/routes/api/public/xero/callback.ts`
+- `src/lib/xero/connections.functions.ts`
+- `src/routes/_authenticated/clients.$clientId.settings.tsx`
+- `src/components/admin/XeroOnboardPickerDialog.tsx`
+- New thin server-function/server-helper modules for orphan connection administration
+- New focused admin component, mounted from `src/routes/_authenticated/admin.index.tsx`
 
-**3-month offer (R4).** A Stripe coupon (`duration: repeating`, `duration_in_months: 3`) applied at checkout in AUD. The client stays `paid` throughout with full entitlements; Stripe steps the price up itself. The promotion code and coupon are recorded on `client_subscriptions` for reporting. No custom expiry logic.
+## Verification
 
-**Webhooks (R5).** `src/routes/api/public/stripe/webhook.ts` — signature verified with `STRIPE_WEBHOOK_SECRET` (HMAC, no SDK), unverified requests rejected. Idempotent via `billing_events.stripe_event_id`. Handles `customer.subscription.created/updated/deleted`, `invoice.paid`, `invoice.payment_failed`. Uses the service role, resolves `client_id` only from the stored Stripe customer/subscription ID, and stores a trimmed payload (ids, status, period dates, price, discount) — never a full payload, never a key.
+- Reconnect a linked 1-of-1 Xero file while the Xero login has several authorised organisations: return directly to client settings, show the updated-permissions confirmation, create/link nothing else, and show no picker.
+- Simulate the requested tenant missing from Xero’s response: show the required authorisation error and do not update any connection.
+- Confirm a full plan shows plan name and “1 of 1 linked” without rendering a picker.
+- Confirm a genuinely new-file flow still uses the normal database-enforced limit.
+- Confirm the orphan row appears only to super admins and can be assigned or disconnected only after explicit action.
+- Run focused TypeScript/tests and browser checks on desktop and mobile.
 
-## Checkout
+## Access-control invariants
 
-`src/lib/stripe.server.ts` (secret key read inside handlers) plus `src/lib/billing.functions.ts`:
-- `createClientCheckout({ clientId, tier, promotionCode? })` — organisation owner or super admin only, prices in AUD, `metadata.clientId` on the subscription
-- `openBillingPortal({ clientId })` for changing or cancelling
-- `getClientEntitlement({ clientId })` for the UI
-
-## UI
-
-- Client settings gains a "Subscription" section: current plan, source (Paid / Trial / Comped / Included), renewal or expiry date, upgrade / manage buttons.
-- Super admin sees the comp controls behind the existing Super Admin View marker.
-- Copy uses "organisation", "Standard" for the `basic` tier, Australian English, AUD.
-
-## Invariants
-
-Section 0 items touched: (3) super admin still gets no data access from this — entitlement never widens who can see a client; (4) client and org ids from callers stay filters, never grants; (6) the service role key stays server-side, as does `STRIPE_SECRET_KEY`; (9) the access rule stays in the database, and entitlement gets its own single database function rather than TypeScript branching.
+This touches section 0 items 1, 3, 4, 5, 7, and 8. They remain intact because organisation/client access is not granted by caller IDs or super-admin status; reconnect target and plan decisions are confirmed by existing database RPCs; tokens stay server-side; unrelated tenants are ignored; and all failure paths close without linking data.
