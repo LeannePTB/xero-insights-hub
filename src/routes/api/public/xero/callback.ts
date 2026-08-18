@@ -318,6 +318,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
 
           const refreshedNames: string[] = [];
           const missedNames: string[] = [];
+          const unlinkedNames: string[] = [];
           const refreshedConnectionIds: string[] = [];
 
           for (const tenantId of requestedTenantIds) {
@@ -380,7 +381,9 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           if (refreshedNames.length === 0) {
             return await fail(
               requestedTenantIds.length === 1
-                ? "That Xero organisation wasn't authorised. Please try again and tick that organisation on Xero's consent screen."
+                ? unlinkedNames.length > 0
+                  ? "That Xero organisation is no longer linked here, so it can't be reconnected."
+                  : "That Xero organisation wasn't authorised. Please try again and tick that organisation on Xero's consent screen."
                 : "None of this organisation's Xero files were authorised. Run it again and tick every organisation you want reconnected.",
             );
           }
