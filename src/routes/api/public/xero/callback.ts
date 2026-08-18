@@ -303,8 +303,33 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // Reconnect flow: tokens and scopes are refreshed above. A file the
+        // organisation already has is never a new link, so nothing else to do.
+        // ─────────────────────────────────────────────────────────────────────
+        if (stateRow.flow === "reconnect") {
+          const backPath = stateRow.client_id
+            ? `/clients/${stateRow.client_id}/settings`
+            : stateRow.firm_id
+              ? `/firms/${stateRow.firm_id}`
+              : "/dashboard";
+          if (stateRow.firm_id) {
+            await supabaseAdmin
+              .from("xero_connections")
+              .update({ firm_id: stateRow.firm_id })
+              .in(
+                "tenant_id",
+                tenants.map((t) => t.tenantId),
+              )
+              .is("firm_id", null);
+          }
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+          return redirectTo(`${returnOrigin}${backPath}?xero=reconnected`);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         // Onboard flow: create a client subscription per authorised Xero file
         // ─────────────────────────────────────────────────────────────────────
+
         if (flow === "onboard" && stateRow.firm_id) {
           const firmPath = `/firms/${stateRow.firm_id}`;
           if (tenants.length === 0) {
