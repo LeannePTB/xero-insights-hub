@@ -8,23 +8,23 @@ export type FirmClientCapacity = {
   remaining: number;
 };
 
-/** Resolve how many more client subscriptions a firm may create. */
+/**
+ * Resolve how many more client subscriptions a firm may create.
+ *
+ * Limits and usage come from `public.firm_plan_limits` — the same source the
+ * database triggers enforce. Never recompute either in TypeScript.
+ */
 export async function getFirmClientCapacity(firmId: string): Promise<FirmClientCapacity> {
-  const { clientLimitFor, firmLimitCatalogue } = await import("@/lib/firmPlans");
-  const [{ data: firmRow }, { data: subRow }, { count: usedCount }, { data: planRows }] =
-    await Promise.all([
-      supabaseAdmin.from("firms").select("name, is_always_free").eq("id", firmId).maybeSingle(),
-      supabaseAdmin
-        .from("subscriptions")
-        .select("tier, status, client_limit_override")
-        .eq("firm_id", firmId)
-        .maybeSingle(),
-      supabaseAdmin
-        .from("clients")
-        .select("id", { count: "exact", head: true })
-        .eq("firm_id", firmId),
-      (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm"),
-    ]);
+  const { getFirmPlanLimits } = await import("@/lib/xero/client-orgs.server");
+  const [{ data: firmRow }, { data: subRow }, limits] = await Promise.all([
+    supabaseAdmin.from("firms").select("name, is_always_free").eq("id", firmId).maybeSingle(),
+    supabaseAdmin
+      .from("subscriptions")
+      .select("status")
+      .eq("firm_id", firmId)
+      .maybeSingle(),
+    getFirmPlanLimits(firmId),
+  ]);
 
   if (!firmRow) throw new Error("Organisation not found.");
 
@@ -37,11 +37,8 @@ export async function getFirmClientCapacity(firmId: string): Promise<FirmClientC
     throw new Error("This business has no active subscription. Please renew before adding clients.");
   }
 
-  const limit = clientLimitFor((subRow as any)?.tier, (firmRow as any)?.is_always_free, {
-    override: (subRow as any)?.client_limit_override ?? null,
-    catalogue: firmLimitCatalogue(planRows as any),
-  });
-  const used = usedCount ?? 0;
+  const limit = Math.max(1, limits.client_limit);
+  const used = limits.clients_used;
   return {
     firmId,
     firmName: (firmRow as any).name as string,
