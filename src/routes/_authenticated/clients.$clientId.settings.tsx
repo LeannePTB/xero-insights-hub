@@ -492,6 +492,9 @@ function ClientSettings() {
                 const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
                 const status: string = o.xero_connections?.status ?? "connected";
                 const isDisconnected = status === "disconnected";
+                const missingScopes = tenantId
+                  ? (missingScopesByTenant.get(tenantId) ?? [])
+                  : [];
                 return (
                   <li
                     key={o.id}
