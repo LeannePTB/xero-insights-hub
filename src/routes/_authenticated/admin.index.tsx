@@ -11,6 +11,7 @@ import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye } from "lucide-react";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { XeroApiErrorsSheet } from "@/components/admin/XeroApiErrorsSheet";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
+import { listXeroScopeStatus } from "@/lib/xero/scope-status.functions";
 
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -176,6 +177,25 @@ function OrganisationsSection({
   onCreated: () => void;
 }) {
   const ownFirmIds = new Set(myFirms.map((firm) => firm.id));
+  // One query for every connection the caller can see (RLS decides), grouped
+  // by organisation — not a query per row.
+  const fetchScopeStatus = useServerFn(listXeroScopeStatus);
+  const scopeQ = useQuery({
+    queryKey: ["xero-scope-status"],
+    queryFn: () => fetchScopeStatus(),
+  });
+  const scopeHealth = (() => {
+    const map = new Map<string, { missing: number; total: number }>();
+    for (const c of scopeQ.data?.connections ?? []) {
+      if (!c.firmId) continue;
+      const cur = map.get(c.firmId) ?? { missing: 0, total: 0 };
+      cur.total += 1;
+      if (c.missingScopes.length > 0) cur.missing += 1;
+      map.set(c.firmId, cur);
+    }
+    return map;
+  })();
+
 
   if (firmsLoading) {
     return (
@@ -247,6 +267,7 @@ function OrganisationsSection({
               <th className="px-4 py-3">Usage</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Next bill / trial</th>
+              <th className="px-4 py-3">Xero permissions</th>
               <th className="px-4 py-3">Xero API errors (7 days)</th>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
@@ -274,6 +295,12 @@ function OrganisationsSection({
                     {f.status === "trialing"
                       ? `trial ends ${fmtDate(f.trial_ends_at)}`
                       : fmtDate(f.current_period_end)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <XeroScopeHealthCell
+                      missing={scopeHealth?.get(f.firm_id)?.missing}
+                      total={scopeHealth?.get(f.firm_id)?.total}
+                    />
                   </td>
                   <td className="px-4 py-3 tabular-nums">
                     <XeroApiErrorsSheet
@@ -317,7 +344,7 @@ function OrganisationsSection({
             })}
             {(firms ?? []).length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                   <p>No organisations yet.</p>
                   <div className="mt-3 flex justify-center">
                     <AddOrganisationDialog onCreated={onCreated} variant="outline" />
@@ -329,6 +356,16 @@ function OrganisationsSection({
         </table>
       </div>
     </section>
+  );
+}
+
+function XeroScopeHealthCell({ missing, total }: { missing?: number; total?: number }) {
+  if (total === undefined) return <span className="text-muted-foreground">—</span>;
+  if (!missing) return <span className="text-muted-foreground">{total} OK</span>;
+  return (
+    <span className="font-medium text-amber-500">
+      {missing} of {total} need permissions
+    </span>
   );
 }
 
