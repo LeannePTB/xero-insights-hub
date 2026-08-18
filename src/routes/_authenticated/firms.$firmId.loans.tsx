@@ -37,6 +37,9 @@ function LoansLayout() {
   const { group } = Route.useSearch();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
+  const entitlement = useFirmWidgets(firmId);
+  const allowed = entitlement.can("loan_consolidation");
+
   const fetchGroups = useServerFn(listConsolidationGroups);
   const groupsQ = useQuery({
     queryKey: ["consolidation-groups", firmId],
