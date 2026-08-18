@@ -335,11 +335,18 @@ function ClientSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  async function handleConnect() {
+  async function handleConnect(opts?: { tenantId?: string }) {
     const authWindow = window.open("about:blank", "_blank");
     try {
       const { authorizeUrl } = await startConnect({
-        data: { origin: window.location.origin, clientId },
+        data: {
+          origin: window.location.origin,
+          clientId,
+          // Reauthorising an existing file is never a new file, so it must not
+          // be gated by the organisation's Xero file allowance.
+          mode: opts?.tenantId ? "reconnect" : "new",
+          tenantId: opts?.tenantId,
+        },
       });
       if (authWindow) {
         authWindow.opener = null;
@@ -351,6 +358,7 @@ function ClientSettings() {
     }
   }
 
+
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -360,8 +368,14 @@ function ClientSettings() {
       toast.success("Xero organisation linked");
       qc.invalidateQueries({ queryKey: ["client", clientId] });
       qc.invalidateQueries({ queryKey: ["xero-connections"] });
+    } else if (status === "reconnected") {
+      toast.success("Xero organisation reconnected");
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      qc.invalidateQueries({ queryKey: ["xero-connections"] });
+      qc.invalidateQueries({ queryKey: ["xero-scope-status"] });
     } else if (status === "choose") {
       toast.info("Choose which Xero files belong to this subscription.");
+
     } else if (err) {
       toast.error(err);
     }
@@ -445,7 +459,7 @@ function ClientSettings() {
             <ConnectWithXeroButton
               variant="connect"
               size="sm"
-              onClick={handleConnect}
+              onClick={() => handleConnect()}
               label="Connect a Xero file"
             />
           }
@@ -526,7 +540,7 @@ function ClientSettings() {
                       <ConnectWithXeroButton
                         variant={isDisconnected ? "reconnect" : "reconnect"}
                         size="sm"
-                        onClick={handleConnect}
+                        onClick={() => handleConnect({ tenantId })}
                         label={isDisconnected ? "Reconnect to Xero" : "Reconnect to Xero"}
                       />
                       <AlertDialog>
@@ -577,7 +591,7 @@ function ClientSettings() {
                           <ConnectWithXeroButton
                             variant="reconnect"
                             size="sm"
-                            onClick={handleConnect}
+                            onClick={() => handleConnect({ tenantId })}
                             label="Reconnect"
                           />
                         </div>

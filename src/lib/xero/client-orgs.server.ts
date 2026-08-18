@@ -83,9 +83,16 @@ export type ClientFirmConnectionAccess = {
   state: "ok" | "trial" | "locked";
   connectionCount: number;
   connectionLimit: number;
+  planTier: string | null;
 };
 
-/** Resolve connection limits from the target client's organisation, never the caller's first membership. */
+/**
+ * Resolve connection limits from the target client's organisation, never the caller's first membership.
+ *
+ * Limits and usage come from `public.firm_plan_limits`, the single source of
+ * truth the database triggers also enforce (it counts distinct tenants, and
+ * already honours `client_limit_override`). Never recompute either here.
+ */
 export async function getClientFirmConnectionAccess(
   clientId: string,
 ): Promise<ClientFirmConnectionAccess> {
@@ -98,28 +105,18 @@ export async function getClientFirmConnectionAccess(
   if (!client?.firm_id) throw new Error("This client is not attached to an organisation.");
 
   const firmId = client.firm_id;
-  const [{ data: firm }, { data: subscription }, { count }, { data: levels }] = await Promise.all([
+  const [{ data: firm }, { data: subscription }, limits] = await Promise.all([
     supabaseAdmin.from("firms").select("name, is_always_free").eq("id", firmId).maybeSingle(),
     supabaseAdmin
       .from("subscriptions")
-      .select("tier, status, trial_ends_at, client_limit_override")
+      .select("tier, status, trial_ends_at")
       .eq("firm_id", firmId)
       .maybeSingle(),
-    supabaseAdmin
-      .from("client_xero_orgs")
-      .select("id, clients!inner(firm_id)", { count: "exact", head: true })
-      .eq("clients.firm_id", firmId),
-    (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm"),
+    getFirmPlanLimits(firmId),
   ]);
   if (!firm) throw new Error("Organisation not found.");
 
-  const plan = (levels ?? []).find((row: any) => row.key === subscription?.tier);
-  // One client : one Xero file — the effective client allowance (override
-  // included) is also the organisation's Xero file allowance.
-  const connectionLimit = Math.max(
-    1,
-    Number((subscription as any)?.client_limit_override ?? plan?.client_limit ?? 1),
-  );
+  const connectionLimit = Math.max(1, limits.xero_org_limit);
   const status = subscription?.status ?? null;
   const trialExpired =
     status === "trialing" && subscription?.trial_ends_at
@@ -132,8 +129,51 @@ export async function getClientFirmConnectionAccess(
         ? "trial"
         : "locked";
 
-  return { firmId, firmName: firm.name, state, connectionCount: count ?? 0, connectionLimit };
+  return {
+    firmId,
+    firmName: firm.name,
+    state,
+    connectionCount: limits.xero_files_used,
+    connectionLimit,
+    planTier: (subscription?.tier as string | null) ?? null,
+  };
 }
+
+export type FirmPlanLimits = {
+  client_limit: number;
+  xero_org_limit: number;
+  clients_used: number;
+  xero_files_used: number;
+};
+
+/** Limits and usage straight from the database — never recomputed in TypeScript. */
+export async function getFirmPlanLimits(firmId: string): Promise<FirmPlanLimits> {
+  const { data, error } = await (supabaseAdmin as any).rpc("firm_plan_limits", {
+    _firm_id: firmId,
+  });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    client_limit: Number(row?.client_limit ?? 1),
+    xero_org_limit: Number(row?.xero_org_limit ?? 1),
+    clients_used: Number(row?.clients_used ?? 0),
+    xero_files_used: Number(row?.xero_files_used ?? 0),
+  };
+}
+
+/** True when this tenant is already linked to the organisation, i.e. a reconnect. */
+export async function isTenantAlreadyLinkedToFirm(
+  firmId: string,
+  tenantId: string,
+): Promise<boolean> {
+  const { data, error } = await (supabaseAdmin as any).rpc("xero_tenant_already_linked", {
+    _firm_id: firmId,
+    _tenant_id: tenantId,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
 
 export async function getClientFirmId(clientId: string): Promise<string | null> {
   const { data } = await supabaseAdmin
