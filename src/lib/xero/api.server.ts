@@ -239,16 +239,78 @@ export async function getConnectionByTenant(tenantId: string): Promise<Connectio
   return conn;
 }
 
+// Which scope a given Xero path depends on. Used only to decide whether a call
+// can succeed — the authoritative required-scope list lives in the database
+// (`public.xero_required_scopes()` / `public.xero_missing_scopes(uuid)`).
+const PATH_SCOPE: Record<string, string> = {
+  "Reports/TrialBalance": "accounting.reports.trialbalance.read",
+  "Reports/AgedReceivablesByContact": "accounting.reports.aged.read",
+  "Reports/AgedPayablesByContact": "accounting.reports.aged.read",
+  "Reports/BalanceSheet": "accounting.reports.balancesheet.read",
+  "Reports/ProfitAndLoss": "accounting.reports.profitandloss.read",
+  "Reports/BankSummary": "accounting.reports.banksummary.read",
+  BankTransactions: "accounting.banktransactions.read",
+  BankTransfers: "accounting.banktransactions.read",
+  Assets: "assets.read",
+};
+
+export class XeroScopeMissingError extends Error {
+  readonly scope: string;
+  readonly tenantId: string;
+  constructor(scope: string, tenantId: string, message: string) {
+    super(message);
+    this.name = "XeroScopeMissingError";
+    this.scope = scope;
+    this.tenantId = tenantId;
+  }
+}
+
+// Small in-process cache so a dashboard render doesn't hit the RPC per widget.
+const missingScopeCache = new Map<string, { at: number; scopes: string[] }>();
+const MISSING_SCOPE_TTL_MS = 60_000;
+
+export async function missingScopesForConnection(connectionId: string): Promise<string[]> {
+  const cached = missingScopeCache.get(connectionId);
+  if (cached && Date.now() - cached.at < MISSING_SCOPE_TTL_MS) return cached.scopes;
+  try {
+    const { data, error } = await (supabaseAdmin as any).rpc("xero_missing_scopes", {
+      _connection_id: connectionId,
+    });
+    if (error) return [];
+    const scopes = Array.isArray(data) ? (data as string[]) : [];
+    missingScopeCache.set(connectionId, { at: Date.now(), scopes });
+    return scopes;
+  } catch {
+    return [];
+  }
+}
+
 export async function xeroGet<T = unknown>(
   conn: Connection,
   path: string,
   params: Record<string, string | undefined> = {},
   retries = 1,
 ): Promise<T> {
+  // Don't fire a request we know Xero will reject for a missing scope — that
+  // produced hundreds of predictable 401s and junk telemetry rows.
+  const requiredScope = PATH_SCOPE[path];
+  if (requiredScope && conn.id) {
+    const missing = await missingScopesForConnection(conn.id);
+    if (missing.includes(requiredScope)) {
+      const { capabilityFor } = await import("@/lib/xero/scope-capabilities");
+      throw new XeroScopeMissingError(
+        requiredScope,
+        conn.tenant_id,
+        `Reconnect to enable this — ${conn.tenant_name} hasn't authorised ${capabilityFor(requiredScope)} yet.`,
+      );
+    }
+  }
+
   const clean: Record<string, string> = {};
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
   const q = new URLSearchParams(clean).toString();
   const url = `${API_BASE}/${path}${q ? "?" + q : ""}`;
+
 
   const res = await fetchWithTimeout(url, {
     headers: {
