@@ -12,6 +12,8 @@ import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { XeroApiErrorsSheet } from "@/components/admin/XeroApiErrorsSheet";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
 import { listXeroScopeStatus } from "@/lib/xero/scope-status.functions";
+import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
 
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -42,7 +44,19 @@ type FirmRow = {
   recent_error_count: number;
 };
 
-const TIER_LIMITS: Record<string, number> = { starter: 5, growth: 10, scale: 20, firm: 50, legacy: 9999 };
+/** used / limit, coloured amber at the limit and red over it. */
+function UsageCell({ used, limit }: { used: number | null; limit: number | null }) {
+  if (used == null) return <span className="text-muted-foreground">—</span>;
+  const limitLabel = limit == null ? "∞" : String(limit);
+  const tone =
+    limit == null ? "" : used > limit ? "text-destructive font-medium" : used === limit ? "text-amber-500 font-medium" : "";
+  return (
+    <span className={tone}>
+      {used} / {limitLabel}
+      {limit != null && used > limit ? " (over)" : ""}
+    </span>
+  );
+}
 
 function fmtDate(s: string | null) {
   if (!s) return "—";
@@ -196,6 +210,27 @@ function OrganisationsSection({
     return map;
   })();
 
+  // Plan labels come from the plan_levels catalogue, never a hardcoded map.
+  const { all: planLevels } = usePlanLevels();
+  const planLabel = (key: string | null) =>
+    key ? planLevels.find((l) => l.scope === "firm" && l.key === key)?.label ?? key : "—";
+  const dashboardLabel = (key: string) =>
+    planLevels.find((l) => l.scope === "dashboard" && l.key === key)?.label ?? key;
+
+  // Limits and dashboard tiers for every visible organisation in one call.
+  const firmIds = (firms ?? []).map((f) => f.firm_id);
+  const fetchUsage = useServerFn(listOrganisationUsage);
+  const usageQ = useQuery({
+    queryKey: ["admin-org-usage", firmIds.join(",")],
+    queryFn: () => fetchUsage({ data: { firmIds } }),
+    enabled: isSuper && firmIds.length > 0,
+  });
+  const usageByFirm = new Map<string, OrganisationUsage>(
+    (usageQ.data?.usage ?? []).map((u) => [u.firmId, u]),
+  );
+
+
+
 
   if (firmsLoading) {
     return (
@@ -262,9 +297,11 @@ function OrganisationsSection({
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-4 py-3">Organisation name</th>
-              <th className="px-4 py-3">Tier</th>
-              <th className="px-4 py-3">Usage</th>
+              <th className="px-4 py-3">Organisation</th>
+              <th className="px-4 py-3">Plan</th>
+              <th className="px-4 py-3">Clients</th>
+              <th className="px-4 py-3">Xero files</th>
+              <th className="px-4 py-3">Dashboards in use</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Next bill / trial</th>
               <th className="px-4 py-3">Xero permissions</th>
@@ -274,17 +311,24 @@ function OrganisationsSection({
           </thead>
           <tbody>
             {(firms ?? []).map((f) => {
-              const limit = f.tier ? TIER_LIMITS[f.tier] ?? null : null;
+              const usage = usageByFirm.get(f.firm_id);
               return (
                 <tr key={f.firm_id} className="border-t">
                   <td className="px-4 py-3">
                     <span className="font-medium">{f.firm_name}</span>
                     {f.is_always_free && <Badge variant="outline" className="mt-1 ml-2">always free</Badge>}
                   </td>
-                  <td className="px-4 py-3 capitalize">{f.tier ?? "—"}</td>
+                  <td className="px-4 py-3">{planLabel(f.tier)}</td>
                   <td className="px-4 py-3 tabular-nums">
-                    {f.connection_count}{limit && limit < 9999 ? ` / ${limit}` : ""}
+                    <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} />
                   </td>
+                  <td className="px-4 py-3 tabular-nums">
+                    <UsageCell used={usage?.xeroFilesUsed ?? null} limit={usage?.xeroOrgLimit ?? null} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <DashboardsInUseCell usage={usage} label={dashboardLabel} />
+                  </td>
+
                   <td className="px-4 py-3">
                     <Badge variant={f.status === "active" || f.status === "trialing" ? "default" : "secondary"} className="capitalize">
                       {f.status ?? "—"}
@@ -344,7 +388,7 @@ function OrganisationsSection({
             })}
             {(firms ?? []).length === 0 && (
               <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
                   <p>No organisations yet.</p>
                   <div className="mt-3 flex justify-center">
                     <AddOrganisationDialog onCreated={onCreated} variant="outline" />
@@ -356,6 +400,28 @@ function OrganisationsSection({
         </table>
       </div>
     </section>
+  );
+}
+
+/** Effective dashboard tiers across the organisation's clients, e.g. "8 × Standard, 4 × Advisory". */
+function DashboardsInUseCell({
+  usage,
+  label,
+}: {
+  usage: OrganisationUsage | undefined;
+  label: (key: string) => string;
+}) {
+  if (!usage) return <span className="text-muted-foreground">—</span>;
+  if (usage.clientsUsed === 0) return <span className="text-muted-foreground">no clients</span>;
+  const parts = Object.entries(usage.dashboards)
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, count]) => `${count} × ${label(key)}`);
+  if (parts.length === 0) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span>
+      {parts.join(", ")}
+      {usage.dashboardsPartial && <span className="text-muted-foreground"> (partial)</span>}
+    </span>
   );
 }
 
