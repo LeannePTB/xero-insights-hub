@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Loader2, UserPlus, Copy, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
@@ -33,16 +32,15 @@ export function AddOrganisationDialog({
   const { levels: firmLevels } = usePlanLevels("firm");
   const tierOptions: { key: string; label: string }[] =
     firmLevels.length > 0
-      ? firmLevels.map((l) => ({ key: l.key, label: l.label }))
-      : ["starter", "growth", "scale", "firm", "free", "legacy"].map((k) => ({ key: k, label: k }));
+      ? firmLevels.map((l) => ({ key: l.key, label: l.is_free ? `${l.label} (free)` : l.label }))
+      : ["ptb", "starter", "growth", "scale", "firm", "free", "legacy"].map((k) => ({ key: k, label: k }));
 
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [tier, setTier] = useState("starter");
-  const [status, setStatus] = useState("trialing");
+  const [tier, setTier] = useState("ptb");
+  const [status, setStatus] = useState("active");
   const [endDate, setEndDate] = useState(isoDate(new Date(Date.now() + 7 * 864e5)));
-  const [alwaysFree, setAlwaysFree] = useState(false);
   const [ownerMode, setOwnerMode] = useState<"password" | "invite" | "none">("none");
   const [email, setEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
@@ -60,7 +58,6 @@ export function AddOrganisationDialog({
           status,
           trialEndsAt: status === "trialing" ? endDate : null,
           currentPeriodEnd: status === "active" ? endDate : null,
-          isAlwaysFree: alwaysFree,
           ownerEmail: ownerMode === "none" ? null : email,
           ownerMode,
           ownerPassword: ownerMode === "password" ? password : null,
@@ -92,9 +89,9 @@ export function AddOrganisationDialog({
   });
 
   function reset() {
-    setName(""); setTier("starter"); setStatus("trialing");
+    setName(""); setTier("ptb"); setStatus("active");
     setEndDate(isoDate(new Date(Date.now() + 7 * 864e5)));
-    setAlwaysFree(false); setOwnerMode("none"); setEmail(""); setOwnerName("");
+    setOwnerMode("none"); setEmail(""); setOwnerName("");
     setPassword(""); setDone(null); setCopied(false); setErrorMsg(null);
   }
 
@@ -127,7 +124,7 @@ export function AddOrganisationDialog({
         <DialogHeader>
           <DialogTitle>Add an organisation</DialogTitle>
           <DialogDescription>
-            Creates the organisation, its plan and (optionally) its owner login in one step.
+            Creates the organisation, its plan and (optionally) its owner login in one step. You are added as the owner straight away, so the organisation is never left unusable.
           </DialogDescription>
         </DialogHeader>
 
@@ -174,10 +171,9 @@ export function AddOrganisationDialog({
                 <Label htmlFor="o-date">{status === "trialing" ? "Trial ends" : "Next bill date"}</Label>
                 <Input id="o-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="o-free" className="font-normal">Always free</Label>
-                <Switch id="o-free" checked={alwaysFree} onCheckedChange={setAlwaysFree} />
-              </div>
+              <p className="text-xs text-muted-foreground">
+                PTB is the free default for organisations we set up: one client, one Xero file and the Standard dashboard.
+              </p>
             </div>
 
             <div className="space-y-3 rounded-lg border border-border p-3">

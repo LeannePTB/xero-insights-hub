@@ -87,100 +87,142 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     if (!allowedTiers.has(data.tier)) throw new Error("Invalid plan tier.");
 
 
-
+    // `is_always_free` belongs to Traction Advisory's own organisation only —
+    // on a client organisation it would silently grant the highest enabled
+    // dashboard tier instead of Standard.
     const { data: firm, error: fErr } = await (supabaseAdmin as any)
       .from("firms")
-      .insert({ name, is_always_free: !!data.isAlwaysFree })
+      .insert({ name, is_always_free: false })
       .select("id, name")
       .single();
     if (fErr) throw new Error(fErr.message);
 
-    const { error: sErr } = await (supabaseAdmin as any).from("subscriptions").insert({
-      firm_id: firm.id,
-      tier: data.tier,
-      status: data.status,
-      trial_ends_at: data.status === "trialing" ? (data.trialEndsAt ?? null) : null,
-      current_period_end: data.status === "active" ? (data.currentPeriodEnd ?? null) : null,
-    });
-    if (sErr) throw new Error(sErr.message);
+    // Everything below must either all land or leave nothing behind: an
+    // organisation with no members and no owner cannot approve anything and has
+    // to be repaired by hand.
+    const rollback = async () => {
+      await (supabaseAdmin as any).from("access_invites").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("firm_members").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("subscriptions").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("firms").delete().eq("id", firm.id);
+    };
 
-    if (data.ownerMode === "none") {
-      await logAudit("organisation_created", "firm", firm.id, context.userId, {
-        firm_id: firm.id, tier: data.tier, status: data.status, owner_mode: "none",
-      });
-      return { ok: true, firmId: firm.id, email: null, mode: "none" as const, token: null, emailStatus: null };
-    }
-
-    if (data.ownerMode === "password") {
-
-      const { data: existing } = await (supabaseAdmin as any)
-        .from("profiles")
-        .select("id")
-        .eq("email", email)
-        .maybeSingle();
-      if (existing?.id) throw new Error("An account with this email already exists.");
-
-      const displayName = (data.ownerName ?? "").trim().slice(0, 120) || email;
-      const { data: created, error: cErr } = await (supabaseAdmin as any).auth.admin.createUser({
-        email,
-        password: data.ownerPassword,
-        email_confirm: true,
-        user_metadata: { display_name: displayName },
-      });
-      if (cErr) throw new Error(cErr.message);
-      const ownerId = created?.user?.id;
-      if (!ownerId) throw new Error("Could not create the owner account.");
-
-      await (supabaseAdmin as any).from("profiles").upsert({ id: ownerId, email, display_name: displayName });
-      await (supabaseAdmin as any)
-        .from("user_roles")
-        .upsert({ user_id: ownerId, role: "firm_owner" }, { onConflict: "user_id,role", ignoreDuplicates: true });
-      const { error: mErr } = await (supabaseAdmin as any)
-        .from("firm_members")
-        .insert({ firm_id: firm.id, user_id: ownerId, role: "owner" });
-      if (mErr && !/duplicate/i.test(mErr.message)) throw new Error(mErr.message);
-      await (supabaseAdmin as any).from("firms").update({ owner_user_id: ownerId }).eq("id", firm.id);
-
-      await logAudit("organisation_created", "firm", firm.id, context.userId, {
-        firm_id: firm.id, email, tier: data.tier, status: data.status, owner_mode: "password",
-      });
-
-      return { ok: true, firmId: firm.id, email, mode: "password" as const, token: null, emailStatus: null };
-    }
-
-    const token = randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-    const { error: iErr } = await (supabaseAdmin as any).from("access_invites").insert({
-      firm_id: firm.id,
-      email,
-      role: "owner",
-      token_hash: hashToken(token),
-      expires_at: expiresAt,
-      invited_by: context.userId,
-    });
-    if (iErr) throw new Error(iErr.message);
-
-    await logAudit("organisation_created", "firm", firm.id, context.userId, {
-      firm_id: firm.id, email, tier: data.tier, status: data.status, owner_mode: "invite",
-    });
-
-    const inviteUrl = `https://tractionadvisory.com.au/signup/${token}`;
-    let emailStatus: string = "skipped";
     try {
-      const { enqueueAppEmail } = await import("@/lib/email/send.server");
-      const res = await enqueueAppEmail({
-        templateName: "firm-invite",
-        recipientEmail: email,
-        idempotencyKey: `firm-invite-${firm.id}-${token.slice(0, 8)}`,
-        templateData: { inviteUrl, role: "owner", firmName: firm.name, inviterName: null },
+      const { error: sErr } = await (supabaseAdmin as any).from("subscriptions").insert({
+        firm_id: firm.id,
+        tier: data.tier,
+        status: data.status,
+        trial_ends_at: data.status === "trialing" ? (data.trialEndsAt ?? null) : null,
+        current_period_end: data.status === "active" ? (data.currentPeriodEnd ?? null) : null,
       });
-      emailStatus = res.status;
-    } catch (e) {
-      console.error("Failed to enqueue invite email", e);
-      emailStatus = "failed";
-    }
+      if (sErr) throw new Error(sErr.message);
 
-    return { ok: true, firmId: firm.id, email, mode: "invite" as const, token, emailStatus };
+      // The creator always becomes an active member so the organisation is
+      // never stranded. Where a client login is created in the same step, that
+      // person becomes the owner and the creator stays on as staff.
+      const creatorIsOwner = data.ownerMode !== "password";
+      const { error: cmErr } = await (supabaseAdmin as any).from("firm_members").insert({
+        firm_id: firm.id,
+        user_id: context.userId,
+        role: creatorIsOwner ? "owner" : "staff",
+        status: "active",
+      });
+      if (cmErr && !/duplicate/i.test(cmErr.message)) throw new Error(cmErr.message);
+      if (creatorIsOwner) {
+        const { error: oErr } = await (supabaseAdmin as any)
+          .from("firms")
+          .update({ owner_user_id: context.userId })
+          .eq("id", firm.id);
+        if (oErr) throw new Error(oErr.message);
+      }
+
+      if (data.ownerMode === "none") {
+        await logAudit("organisation_created", "firm", firm.id, context.userId, {
+          firm_id: firm.id, tier: data.tier, status: data.status, owner_mode: "none",
+          owner_user_id: context.userId,
+        });
+        return { ok: true, firmId: firm.id, email: null, mode: "none" as const, token: null, emailStatus: null };
+      }
+
+      if (data.ownerMode === "password") {
+        const { data: existing } = await (supabaseAdmin as any)
+          .from("profiles")
+          .select("id")
+          .eq("email", email)
+          .maybeSingle();
+        if (existing?.id) throw new Error("An account with this email already exists.");
+
+        const displayName = (data.ownerName ?? "").trim().slice(0, 120) || email;
+        const { data: created, error: cErr } = await (supabaseAdmin as any).auth.admin.createUser({
+          email,
+          password: data.ownerPassword,
+          email_confirm: true,
+          user_metadata: { display_name: displayName },
+        });
+        if (cErr) throw new Error(cErr.message);
+        const ownerId = created?.user?.id;
+        if (!ownerId) throw new Error("Could not create the owner account.");
+
+        await (supabaseAdmin as any).from("profiles").upsert({ id: ownerId, email, display_name: displayName });
+        await (supabaseAdmin as any)
+          .from("user_roles")
+          .upsert({ user_id: ownerId, role: "firm_owner" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+        const { error: mErr } = await (supabaseAdmin as any)
+          .from("firm_members")
+          .insert({ firm_id: firm.id, user_id: ownerId, role: "owner", status: "active" });
+        if (mErr && !/duplicate/i.test(mErr.message)) throw new Error(mErr.message);
+        const { error: fuErr } = await (supabaseAdmin as any)
+          .from("firms")
+          .update({ owner_user_id: ownerId })
+          .eq("id", firm.id);
+        if (fuErr) throw new Error(fuErr.message);
+
+        await logAudit("organisation_created", "firm", firm.id, context.userId, {
+          firm_id: firm.id, email, tier: data.tier, status: data.status, owner_mode: "password",
+          owner_user_id: ownerId,
+        });
+
+        return { ok: true, firmId: firm.id, email, mode: "password" as const, token: null, emailStatus: null };
+      }
+
+      const token = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      const { error: iErr } = await (supabaseAdmin as any).from("access_invites").insert({
+        firm_id: firm.id,
+        email,
+        role: "owner",
+        token_hash: hashToken(token),
+        expires_at: expiresAt,
+        invited_by: context.userId,
+      });
+      if (iErr) throw new Error(iErr.message);
+
+      await logAudit("organisation_created", "firm", firm.id, context.userId, {
+        firm_id: firm.id, email, tier: data.tier, status: data.status, owner_mode: "invite",
+        owner_user_id: context.userId,
+      });
+
+      const inviteUrl = `https://tractionadvisory.com.au/signup/${token}`;
+      let emailStatus: string = "skipped";
+      try {
+        const { enqueueAppEmail } = await import("@/lib/email/send.server");
+        const res = await enqueueAppEmail({
+          templateName: "firm-invite",
+          recipientEmail: email,
+          idempotencyKey: `firm-invite-${firm.id}-${token.slice(0, 8)}`,
+          templateData: { inviteUrl, role: "owner", firmName: firm.name, inviterName: null },
+        });
+        emailStatus = res.status;
+      } catch (e) {
+        console.error("Failed to enqueue invite email", e);
+        emailStatus = "failed";
+      }
+
+      return { ok: true, firmId: firm.id, email, mode: "invite" as const, token, emailStatus };
+    } catch (e) {
+      await rollback().catch(() => {});
+      throw e instanceof Error ? e : new Error("Could not create the organisation.");
+    }
   });
 
 /**

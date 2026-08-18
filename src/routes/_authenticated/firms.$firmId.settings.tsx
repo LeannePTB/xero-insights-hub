@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, Loader2, Plus, ShieldAlert } from "lucide-react";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
+import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { getFirmPlanSummary, saveFirmDefaultWidgets } from "@/lib/tier-config.functions";
 import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
 
@@ -360,6 +361,11 @@ function FirmSettingsPage() {
           </Button>
         </div>
       </section>
+
+      {/* Ownership handover */}
+      <div className="mt-6">
+        <TransferOwnershipCard firmId={firmId} />
+      </div>
 
       {/* Support access */}
       <div className="mt-6">

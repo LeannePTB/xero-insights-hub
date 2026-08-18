@@ -335,7 +335,10 @@ export const linkClientXeroOptions = createServerFn({ method: "POST" })
       .insert(
         uniqueIds.map((xero_connection_id) => ({ client_id: data.clientId, xero_connection_id })),
       );
-    if (error) throw new Error(error.message);
+    if (error) {
+      const { friendlyPlanError } = await import("@/lib/plan-errors");
+      throw new Error(friendlyPlanError(error));
+    }
     // Stamp the organisation onto the connections so they stay scoped to it.
     const firmId = await getClientFirmId(data.clientId);
     if (firmId) {

@@ -304,12 +304,15 @@ export const createClient = createServerFn({ method: "POST" })
     // Super admins manage organisations they don't belong to; RLS scopes inserts to firm owners.
     const writer: any = supabaseAdmin;
 
+    const { friendlyPlanError } = await import("@/lib/plan-errors");
+    const planLabel = ((subRow as any)?.tier as string | null) ?? null;
+
     const { data: client, error } = await writer
       .from("clients")
       .insert({ name, owner_user_id: context.userId, firm_id: firmId })
       .select("id")
       .single();
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(friendlyPlanError(error, { planLabel }));
 
     if (data.xeroConnectionIds.length) {
       const rows = data.xeroConnectionIds.map((xero_connection_id) => ({
@@ -317,7 +320,7 @@ export const createClient = createServerFn({ method: "POST" })
         xero_connection_id,
       }));
       const { error: e2 } = await writer.from("client_xero_orgs").insert(rows);
-      if (e2) throw new Error(e2.message);
+      if (e2) throw new Error(friendlyPlanError(e2, { planLabel }));
       await supabaseAdmin
         .from("xero_connections")
         .update({ firm_id: firmId })

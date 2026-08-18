@@ -2005,6 +2005,14 @@ export type Database = {
           read_ct: number
         }[]
       }
+      transfer_organisation_ownership: {
+        Args: {
+          _firm_id: string
+          _keep_previous_as_staff?: boolean
+          _new_owner_user_id: string
+        }
+        Returns: undefined
+      }
       user_can_access_client: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean
