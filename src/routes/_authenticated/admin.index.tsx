@@ -297,9 +297,11 @@ function OrganisationsSection({
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-4 py-3">Organisation name</th>
-              <th className="px-4 py-3">Tier</th>
-              <th className="px-4 py-3">Usage</th>
+              <th className="px-4 py-3">Organisation</th>
+              <th className="px-4 py-3">Plan</th>
+              <th className="px-4 py-3">Clients</th>
+              <th className="px-4 py-3">Xero files</th>
+              <th className="px-4 py-3">Dashboards in use</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Next bill / trial</th>
               <th className="px-4 py-3">Xero permissions</th>
@@ -309,17 +311,24 @@ function OrganisationsSection({
           </thead>
           <tbody>
             {(firms ?? []).map((f) => {
-              const limit = f.tier ? TIER_LIMITS[f.tier] ?? null : null;
+              const usage = usageByFirm.get(f.firm_id);
               return (
                 <tr key={f.firm_id} className="border-t">
                   <td className="px-4 py-3">
                     <span className="font-medium">{f.firm_name}</span>
                     {f.is_always_free && <Badge variant="outline" className="mt-1 ml-2">always free</Badge>}
                   </td>
-                  <td className="px-4 py-3 capitalize">{f.tier ?? "—"}</td>
+                  <td className="px-4 py-3">{planLabel(f.tier)}</td>
                   <td className="px-4 py-3 tabular-nums">
-                    {f.connection_count}{limit && limit < 9999 ? ` / ${limit}` : ""}
+                    <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} />
                   </td>
+                  <td className="px-4 py-3 tabular-nums">
+                    <UsageCell used={usage?.xeroFilesUsed ?? null} limit={usage?.xeroOrgLimit ?? null} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <DashboardsInUseCell usage={usage} label={dashboardLabel} />
+                  </td>
+
                   <td className="px-4 py-3">
                     <Badge variant={f.status === "active" || f.status === "trialing" ? "default" : "secondary"} className="capitalize">
                       {f.status ?? "—"}
