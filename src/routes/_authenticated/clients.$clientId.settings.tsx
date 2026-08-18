@@ -31,6 +31,8 @@ import {
   linkClientXeroOptions,
   moveXeroFileToClient,
 } from "@/lib/xero/connections.functions";
+import { listXeroScopeStatus, type XeroScopeStatus } from "@/lib/xero/scope-status.functions";
+import { capabilityList } from "@/lib/xero/scope-capabilities";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -151,6 +153,19 @@ function ClientSettings() {
   const fetchMyContext = useServerFn(getMyContext);
   const myCtxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
   const isSuperAdmin = !!myCtxQ.data?.isSuperAdmin;
+
+  const fetchScopeStatus = useServerFn(listXeroScopeStatus);
+  const scopeStatusQ = useQuery({
+    queryKey: ["xero-scope-status"],
+    queryFn: () => fetchScopeStatus(),
+  });
+  const missingScopesByTenant = new Map<string, string[]>(
+    ((scopeStatusQ.data?.connections ?? []) as XeroScopeStatus[])
+      .filter((c) => c.missingScopes.length > 0)
+      .map((c) => [c.tenantId, c.missingScopes] as [string, string[]]),
+  );
+
+
 
   // Only offer tiers the organisation's plan includes.
   const { levels: tierLevels } = usePlanLevels("dashboard");
@@ -477,6 +492,9 @@ function ClientSettings() {
                 const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
                 const status: string = o.xero_connections?.status ?? "connected";
                 const isDisconnected = status === "disconnected";
+                const missingScopes = tenantId
+                  ? (missingScopesByTenant.get(tenantId) ?? [])
+                  : [];
                 return (
                   <li
                     key={o.id}
@@ -545,7 +563,28 @@ function ClientSettings() {
                         </AlertDialogContent>
                       </AlertDialog>
                     </div>
+                    {missingScopes.length > 0 ? (
+                      <div className="w-full rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs">
+                        <p className="font-semibold text-amber-700 dark:text-amber-400">
+                          This connection needs reauthorising to enable additional reports.
+                        </p>
+                        <p className="mt-1 text-muted-foreground">
+                          Currently unavailable for this organisation: {capabilityList(missingScopes)}.
+                          Reconnecting grants read-only access only — nothing is lost, and
+                          everything working today keeps working.
+                        </p>
+                        <div className="mt-2">
+                          <ConnectWithXeroButton
+                            variant="reconnect"
+                            size="sm"
+                            onClick={handleConnect}
+                            label="Reconnect"
+                          />
+                        </div>
+                      </div>
+                    ) : null}
                   </li>
+
                 );
               })}
             </ul>

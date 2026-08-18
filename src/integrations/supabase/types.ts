@@ -2021,6 +2021,11 @@ export type Database = {
         Args: { _firm_id: string; _user_id: string }
         Returns: boolean
       }
+      xero_missing_scopes: {
+        Args: { _connection_id: string }
+        Returns: string[]
+      }
+      xero_required_scopes: { Args: never; Returns: string[] }
     }
     Enums: {
       app_role:

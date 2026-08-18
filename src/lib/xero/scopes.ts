@@ -1,13 +1,22 @@
+// The set of Xero scopes we request at authorisation time. Read-only only —
+// Traction Advisory never writes to a client's Xero file.
+// The database is the source of truth for what the product *requires*
+// (`public.xero_required_scopes()` / `public.xero_missing_scopes(uuid)`);
+// this list exists solely to build the authorise URL.
 const XERO_SCOPES = [
   "offline_access",
+  "accounting.settings.read",
+  "accounting.contacts.read",
+  "accounting.invoices.read",
+  "accounting.payments.read",
+  "accounting.banktransactions.read",
   "accounting.reports.balancesheet.read",
   "accounting.reports.banksummary.read",
   "accounting.reports.profitandloss.read",
+  "accounting.reports.trialbalance.read",
+  "accounting.reports.aged.read",
   "accounting.reports.taxreports.read",
-  "accounting.invoices.read",
-  "accounting.payments.read",
-  "accounting.settings.read",
-  "accounting.contacts.read",
+  "assets.read",
 ];
 
 // Scopes for "Sign In with Xero" — identity only, no organisation access.
