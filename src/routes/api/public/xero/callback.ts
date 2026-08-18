@@ -293,22 +293,28 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           const firmId =
             stateRow.firm_id ??
             (stateRow.client_id ? await getClientFirmId(stateRow.client_id) : null);
+          const requestedTenantIds = [...new Set(stateRow.pending_tenant_ids ?? [])];
+          // Single-file reconnects return exactly where they always did; the
+          // bulk path returns to the organisation's settings page, where the
+          // "Reconnect all Xero files" action lives.
           const backPath = stateRow.client_id
             ? `/clients/${stateRow.client_id}/settings`
             : firmId
-              ? `/firms/${firmId}/settings`
+              ? requestedTenantIds.length > 1
+                ? `/firms/${firmId}/settings`
+                : `/firms/${firmId}`
               : "/dashboard";
           const fail = async (message: string) => {
             await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(`${returnOrigin}${backPath}?xero_error=${encodeURIComponent(message)}`);
           };
 
-          const requestedTenantIds = [...new Set(stateRow.pending_tenant_ids ?? [])];
           if (requestedTenantIds.length < 1 || !firmId) {
             return await fail(
               "We couldn't tell which Xero organisation was being reconnected. Please start the reconnect again from that organisation's row.",
             );
           }
+
 
           const refreshedNames: string[] = [];
           const missedNames: string[] = [];
