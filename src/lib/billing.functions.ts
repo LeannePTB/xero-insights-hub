@@ -214,3 +214,68 @@ export const setClientTrial = createServerFn({ method: "POST" })
 
     return { ok: true, trialEnd };
   });
+
+/**
+ * Set a client's dashboard tier (Standard / Advisory / Multi company).
+ *
+ * Written through the caller's session so RLS decides who may change it —
+ * organisation staff for their own clients, plus super admins. Absence of a
+ * row correctly means Standard, so we never create one just to store `basic`.
+ */
+export const setClientDashboardTier = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; tier: DashboardTier; reason?: string }) => i)
+  .handler(async ({ data, context }) => {
+    if (!(ALL_TIERS as string[]).includes(data.tier)) throw new Error("Unknown dashboard tier.");
+    const reason = (data.reason ?? "").trim();
+
+    const supabase = context.supabase as any;
+    const { data: before } = await supabase
+      .from("client_subscriptions")
+      .select("id, subscription_type, status, dashboard_tier")
+      .eq("client_id", data.clientId)
+      .maybeSingle();
+
+    if (!before && data.tier === "basic") {
+      // Nothing to store: no row already resolves to Standard.
+      return { ok: true, tier: "basic" as const };
+    }
+
+    if (before) {
+      const { error } = await supabase
+        .from("client_subscriptions")
+        .update({ dashboard_tier: data.tier })
+        .eq("client_id", data.clientId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabase.from("client_subscriptions").insert({
+        client_id: data.clientId,
+        dashboard_tier: data.tier,
+        subscription_type: "paid",
+        status: "active",
+      });
+      if (error) throw new Error(error.message);
+    }
+
+    const { data: client } = await supabase
+      .from("clients")
+      .select("firm_id")
+      .eq("id", data.clientId)
+      .maybeSingle();
+
+    const { writeAudit } = await import("@/lib/audit.server");
+    await writeAudit({
+      actorUserId: context.userId,
+      firmId: (client?.firm_id as string | null) ?? null,
+      action: "client_dashboard_tier_changed",
+      targetType: "client",
+      targetId: data.clientId,
+      meta: {
+        reason: reason || null,
+        from: before?.dashboard_tier ?? null,
+        to: data.tier,
+      },
+    });
+
+    return { ok: true, tier: data.tier };
+  });
