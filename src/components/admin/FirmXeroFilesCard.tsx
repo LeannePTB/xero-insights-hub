@@ -21,7 +21,14 @@ import { listFirmXeroFiles, startXeroReconnectAll } from "@/lib/xero/reconnect-a
  * Reconnecting refreshes tokens and permissions for the files that are
  * already linked here — it never links anything new.
  */
-export function FirmXeroFilesCard({ firmId }: { firmId: string }) {
+export function FirmXeroFilesCard({
+  firmId,
+  variant = "card",
+}: {
+  firmId: string;
+  /** "plain" matches the bordered sections on the admin organisation page. */
+  variant?: "card" | "plain";
+}) {
   const fetchFiles = useServerFn(listFirmXeroFiles);
   const startAll = useServerFn(startXeroReconnectAll);
   const [confirmOpen, setConfirmOpen] = useState(false);
@@ -72,10 +79,18 @@ export function FirmXeroFilesCard({ firmId }: { firmId: string }) {
   const needsAttention = files.filter((f) => f.missingScopes.length > 0);
 
   return (
-    <section className="rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
+    <section
+      className={
+        variant === "plain"
+          ? "rounded-lg border p-6"
+          : "rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]"
+      }
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-medium">Xero organisations</h2>
+          <h2 className={variant === "plain" ? "text-lg font-semibold" : "text-sm font-medium"}>
+            Xero organisations
+          </h2>
           <p className="mt-1 text-xs text-muted-foreground">
             Files already linked to this organisation. Reconnecting refreshes their permissions —
             it never links anything new.
