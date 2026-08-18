@@ -269,6 +269,16 @@ export class XeroScopeMissingError extends Error {
 const missingScopeCache = new Map<string, { at: number; scopes: string[] }>();
 const MISSING_SCOPE_TTL_MS = 60_000;
 
+/** Drop cached missing-scope results (e.g. straight after a reconnect). */
+export function invalidateMissingScopes(connectionIds?: string[]) {
+  if (!connectionIds?.length) {
+    missingScopeCache.clear();
+    return;
+  }
+  for (const id of connectionIds) missingScopeCache.delete(id);
+}
+
+
 export async function missingScopesForConnection(connectionId: string): Promise<string[]> {
   const cached = missingScopeCache.get(connectionId);
   if (cached && Date.now() - cached.at < MISSING_SCOPE_TTL_MS) return cached.scopes;
