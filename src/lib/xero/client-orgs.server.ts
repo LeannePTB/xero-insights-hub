@@ -83,6 +83,7 @@ export type ClientFirmConnectionAccess = {
   state: "ok" | "trial" | "locked";
   connectionCount: number;
   connectionLimit: number;
+  planTier: string | null;
 };
 
 /**
