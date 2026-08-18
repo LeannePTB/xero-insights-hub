@@ -131,14 +131,25 @@ export async function createClientsFromTenants(params: {
       .insert({ name, owner_user_id: userId, firm_id: firmId })
       .select("id")
       .single();
-    if (clientError) throw new Error(clientError.message);
+    if (clientError) {
+      const { isPlanLimitError, friendlyPlanError } = await import("@/lib/plan-errors");
+      if (isPlanLimitError(clientError)) {
+        if (outcome.created.length) {
+          outcome.skippedLimit.push(name);
+          break;
+        }
+        throw new Error(friendlyPlanError(clientError));
+      }
+      throw new Error(clientError.message);
+    }
 
     const { error: linkError } = await supabaseAdmin
       .from("client_xero_orgs")
       .insert({ client_id: client.id, xero_connection_id: connection.id });
     if (linkError) {
       await supabaseAdmin.from("clients").delete().eq("id", client.id);
-      throw new Error(linkError.message);
+      const { friendlyPlanError } = await import("@/lib/plan-errors");
+      throw new Error(friendlyPlanError(linkError));
     }
 
     await supabaseAdmin
