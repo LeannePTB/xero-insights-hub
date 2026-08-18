@@ -165,9 +165,11 @@ function FirmPage() {
 
 
 
-        <div className="mt-8">
-          <CompanyConsolidationsCard firmId={firmId} />
-        </div>
+        {canConsolidate && (
+          <div className="mt-8">
+            <CompanyConsolidationsCard firmId={firmId} />
+          </div>
+        )}
 
         <div className="mt-8">
           <FirmClientsSection
