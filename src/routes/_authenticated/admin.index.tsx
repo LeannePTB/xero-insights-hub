@@ -53,24 +53,6 @@ function AdminPage() {
   const fetchCtx = useServerFn(getMyContext);
   const fetchFirms = useServerFn(listFirmsAdmin);
   const fetchMyFirms = useServerFn(listMyFirms);
-  // One query for every connection the caller can see (RLS decides), grouped
-  // by organisation — not a query per row.
-  const fetchScopeStatus = useServerFn(listXeroScopeStatus);
-  const scopeQ = useQuery({
-    queryKey: ["xero-scope-status"],
-    queryFn: () => fetchScopeStatus(),
-  });
-  const scopeHealth = (() => {
-    const map = new Map<string, { missing: number; total: number }>();
-    for (const c of scopeQ.data?.connections ?? []) {
-      if (!c.firmId) continue;
-      const cur = map.get(c.firmId) ?? { missing: 0, total: 0 };
-      cur.total += 1;
-      if (c.missingScopes.length > 0) cur.missing += 1;
-      map.set(c.firmId, cur);
-    }
-    return map;
-  })();
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isSuper = ctxQ.data?.isSuperAdmin ?? false;
   const hasAdminAreaAccess = ctxQ.data?.hasAdminAreaAccess ?? isSuper;
@@ -195,6 +177,25 @@ function OrganisationsSection({
   onCreated: () => void;
 }) {
   const ownFirmIds = new Set(myFirms.map((firm) => firm.id));
+  // One query for every connection the caller can see (RLS decides), grouped
+  // by organisation — not a query per row.
+  const fetchScopeStatus = useServerFn(listXeroScopeStatus);
+  const scopeQ = useQuery({
+    queryKey: ["xero-scope-status"],
+    queryFn: () => fetchScopeStatus(),
+  });
+  const scopeHealth = (() => {
+    const map = new Map<string, { missing: number; total: number }>();
+    for (const c of scopeQ.data?.connections ?? []) {
+      if (!c.firmId) continue;
+      const cur = map.get(c.firmId) ?? { missing: 0, total: 0 };
+      cur.total += 1;
+      if (c.missingScopes.length > 0) cur.missing += 1;
+      map.set(c.firmId, cur);
+    }
+    return map;
+  })();
+
 
   if (firmsLoading) {
     return (
