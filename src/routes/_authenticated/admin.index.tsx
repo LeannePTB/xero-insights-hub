@@ -210,6 +210,27 @@ function OrganisationsSection({
     return map;
   })();
 
+  // Plan labels come from the plan_levels catalogue, never a hardcoded map.
+  const { all: planLevels } = usePlanLevels();
+  const planLabel = (key: string | null) =>
+    key ? planLevels.find((l) => l.scope === "firm" && l.key === key)?.label ?? key : "—";
+  const dashboardLabel = (key: string) =>
+    planLevels.find((l) => l.scope === "dashboard" && l.key === key)?.label ?? key;
+
+  // Limits and dashboard tiers for every visible organisation in one call.
+  const firmIds = (firms ?? []).map((f) => f.firm_id);
+  const fetchUsage = useServerFn(listOrganisationUsage);
+  const usageQ = useQuery({
+    queryKey: ["admin-org-usage", firmIds.join(",")],
+    queryFn: () => fetchUsage({ data: { firmIds } }),
+    enabled: isSuper && firmIds.length > 0,
+  });
+  const usageByFirm = new Map<string, OrganisationUsage>(
+    (usageQ.data?.usage ?? []).map((u) => [u.firmId, u]),
+  );
+
+
+
 
   if (firmsLoading) {
     return (
