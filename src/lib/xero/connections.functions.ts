@@ -187,11 +187,17 @@ export const startXeroConnect = createServerFn({ method: "POST" })
         if (access.state === "locked")
           throw new Error(`${access.firmName}'s subscription is not active.`);
         if (access.connectionCount >= access.connectionLimit) {
-          const { TIER_LABEL } = await import("@/lib/firmPlans");
-          const planLabel =
-            (access.planTier && (TIER_LABEL as Record<string, string>)[access.planTier]) ??
-            access.planTier ??
-            null;
+          // Plan names come from the `plan_levels` catalogue, not a hardcoded map.
+          let planLabel: string | null = access.planTier ?? null;
+          if (access.planTier) {
+            const { data: level } = await (context.supabase as any)
+              .from("plan_levels")
+              .select("label")
+              .eq("scope", "firm")
+              .eq("key", access.planTier)
+              .maybeSingle();
+            planLabel = (level?.label as string | undefined) ?? access.planTier;
+          }
           throw new Error(
             `${access.firmName} is using ${access.connectionCount} of ${access.connectionLimit} Xero file${
               access.connectionLimit === 1 ? "" : "s"
