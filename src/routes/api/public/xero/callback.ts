@@ -13,7 +13,10 @@ type StateRow = {
   firm_id: string | null;
   flow: string | null;
   known_tenant_ids: string[];
+  /** For a reconnect: the single tenant the reconnect was started for. */
+  pending_tenant_ids: string[];
 };
+
 
 
 export const Route = createFileRoute("/api/public/xero/callback")({
@@ -35,8 +38,9 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           const { data, error: stateLookupErr } = await supabaseAdmin
             .from("xero_oauth_states")
             .select(
-              "user_id, code_verifier, return_origin, created_at, client_id, firm_id, flow, known_tenant_ids",
+              "user_id, code_verifier, return_origin, created_at, client_id, firm_id, flow, known_tenant_ids, pending_tenant_ids",
             )
+
             .eq("state", state)
             .maybeSingle();
           if (!stateLookupErr && data) {
@@ -271,44 +275,15 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           console.error("Xero token encryption failed", storageErr);
           return redirectTo(`${returnOrigin}/dashboard?xero_error=token_storage`);
         }
-        const rows = tenants.map((t) => ({
-          user_id: userId,
-          tenant_id: t.tenantId,
-          tenant_name: t.tenantName,
-          tenant_type: t.tenantType,
-          access_token_enc: accessEnc,
-          refresh_token_enc: refreshEnc,
-          expires_at: expiresAt,
-          scopes: tokens.scope,
-          status: "connected",
-          disconnected_at: null,
-        }));
-
-        if (rows.length > 0) {
-          const { error: upsertErr } = await supabaseAdmin
-            .from("xero_connections")
-            .upsert(rows, { onConflict: "user_id,tenant_id" });
-          if (upsertErr) {
-            console.error("xero_connections upsert failed", upsertErr);
-            return redirectTo(`${returnOrigin}/dashboard?xero_error=db`);
-          }
-
-          await supabaseAdmin.from("audit_log").insert(
-            tenants.map((t) => ({
-              actor_user_id: userId,
-              action: "xero_connected",
-              target_type: "xero_connection",
-              target_id: t.tenantId,
-              meta: { tenant_name: t.tenantName, scopes: tokens.scope },
-            })),
-          );
-        }
-
         // ─────────────────────────────────────────────────────────────────────
-        // Reconnect flow: refresh tokens AND scopes on the rows the organisation's
-        // links actually point at. Never creates a client_xero_orgs link, never
-        // applies the plan gate. A tenant that isn't already linked to this
-        // organisation is a new file and falls through to the normal gated path.
+        // Reconnect flow — handled BEFORE any connection row is written.
+        //
+        // Xero's consent screen returns every organisation the login can reach.
+        // A reconnect means "refresh this one Xero file": we touch only the
+        // tenant the reconnect was started for and ignore every other tenant
+        // entirely — no row is created for them, no plan gate runs, no picker
+        // is offered, nothing is linked. firm_id is never rewritten here; a
+        // reconnect refreshes tokens and scopes only.
         // ─────────────────────────────────────────────────────────────────────
         if (flow === "reconnect") {
           const { isTenantAlreadyLinkedToFirm, getClientFirmId } = await import(
@@ -322,73 +297,143 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             : firmId
               ? `/firms/${firmId}`
               : "/dashboard";
+          const fail = async (message: string) => {
+            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+            return redirectTo(`${returnOrigin}${backPath}?xero_error=${encodeURIComponent(message)}`);
+          };
 
-          const linkedTenantIds: string[] = [];
-          const unlinkedTenants: typeof tenants = [];
-          for (const t of tenants) {
-            const linked = firmId ? await isTenantAlreadyLinkedToFirm(firmId, t.tenantId) : false;
-            if (linked) linkedTenantIds.push(t.tenantId);
-            else unlinkedTenants.push(t);
+          const requestedTenantIds = stateRow.pending_tenant_ids ?? [];
+          if (requestedTenantIds.length !== 1 || !firmId) {
+            return await fail(
+              "We couldn't tell which Xero organisation was being reconnected. Please start the reconnect again from that organisation's row.",
+            );
           }
-
-          if (linkedTenantIds.length > 0) {
-            // A tenant can have a row per staff member; the client link may point
-            // at someone else's row. Refresh every row for this organisation's
-            // tenant so the linked row is never left stale.
-            const { data: refreshed, error: refreshErr } = await supabaseAdmin
-              .from("xero_connections")
-              .update({
-                access_token_enc: accessEnc,
-                refresh_token_enc: refreshEnc,
-                expires_at: expiresAt,
-                scopes: tokens.scope,
-                status: "connected",
-                disconnected_at: null,
-                ...(firmId ? { firm_id: firmId } : {}),
-              })
-              .in("tenant_id", linkedTenantIds)
-              .or(firmId ? `firm_id.eq.${firmId},firm_id.is.null` : "firm_id.is.null")
-              .select("id");
-            if (refreshErr) {
-              console.error("xero reconnect token refresh failed", refreshErr);
-              await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-              return redirectTo(
-                `${returnOrigin}${backPath}?xero_error=${encodeURIComponent("Could not save the refreshed Xero permissions. Please try reconnecting again.")}`,
-              );
-            }
-
-            // Missing-scope results are cached for 60s — drop the affected
-            // entries so widgets stop saying "Reconnect to enable this".
-            try {
-              const { invalidateMissingScopes } = await import("@/lib/xero/api.server");
-              invalidateMissingScopes((refreshed ?? []).map((r: any) => r.id as string));
-            } catch {
-              // cache invalidation is best-effort
-            }
-
-            await supabaseAdmin.from("audit_log").insert(
-              linkedTenantIds.map((tenantId) => ({
-                actor_user_id: userId,
-                action: "xero_reconnected",
-                target_type: "xero_connection",
-                target_id: tenantId,
-                meta: { firm_id: firmId, scopes: tokens.scope },
-              })),
+          const requestedTenantId = requestedTenantIds[0];
+          const tenant = tenants.find((t) => t.tenantId === requestedTenantId);
+          if (!tenant) {
+            return await fail(
+              "That Xero organisation wasn't authorised. Please try again and tick that organisation on Xero's consent screen.",
+            );
+          }
+          if (!(await isTenantAlreadyLinkedToFirm(firmId, requestedTenantId))) {
+            return await fail(
+              "That Xero organisation is no longer linked here, so it can't be reconnected.",
             );
           }
 
-          // Nothing new authorised — done.
-          if (unlinkedTenants.length === 0 || !stateRow.client_id) {
-            await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
-            const suffix =
-              unlinkedTenants.length > 0
-                ? `?xero=reconnected&xero_skipped=${encodeURIComponent(unlinkedTenants.map((t) => t.tenantName).join(", "))}`
-                : "?xero=reconnected";
-            return redirectTo(`${returnOrigin}${backPath}${suffix}`);
+          // A tenant can have a row per staff member; the client link may point
+          // at someone else's row. Refresh every row for this organisation's
+          // tenant so the linked row is never left stale.
+          const { data: refreshed, error: refreshErr } = await supabaseAdmin
+            .from("xero_connections")
+            .update({
+              access_token_enc: accessEnc,
+              refresh_token_enc: refreshEnc,
+              expires_at: expiresAt,
+              scopes: tokens.scope,
+              status: "connected",
+              disconnected_at: null,
+            })
+            .eq("tenant_id", requestedTenantId)
+            .or(`firm_id.eq.${firmId},firm_id.is.null`)
+            .select("id");
+          if (refreshErr) {
+            console.error("xero reconnect token refresh failed", refreshErr);
+            return await fail(
+              "Could not save the refreshed Xero permissions. Please try reconnecting again.",
+            );
           }
-          // New files came back with the reconnect — fall through to the normal
-          // client-link path below, which applies the plan limit gate.
+
+          // Missing-scope results are cached for 60s — drop the affected
+          // entries so widgets stop saying "Reconnect to enable this".
+          try {
+            const { invalidateMissingScopes } = await import("@/lib/xero/api.server");
+            invalidateMissingScopes((refreshed ?? []).map((r: any) => r.id as string));
+          } catch {
+            // cache invalidation is best-effort
+          }
+
+          await supabaseAdmin.from("audit_log").insert({
+            actor_user_id: userId,
+            action: "xero_reconnected",
+            target_type: "xero_connection",
+            target_id: requestedTenantId,
+            meta: { firm_id: firmId, scopes: tokens.scope },
+          });
+
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+          return redirectTo(`${returnOrigin}${backPath}?xero=reconnected`);
         }
+
+        // ─────────────────────────────────────────────────────────────────────
+        // Connect / onboard: store the authorised tenants. Rows introduced by
+        // this authorisation are stamped with the organisation the flow was
+        // started for, so unstamped connections stop appearing. Tenants already
+        // known keep whatever organisation they belong to.
+        // ─────────────────────────────────────────────────────────────────────
+        const { getClientFirmId: resolveClientFirmId } = await import(
+          "@/lib/xero/client-orgs.server"
+        );
+        const intendedFirmId =
+          stateRow.firm_id ??
+          (stateRow.client_id ? await resolveClientFirmId(stateRow.client_id) : null);
+        const knownTenantIds = new Set(stateRow.known_tenant_ids ?? []);
+
+        const baseRow = (t: (typeof tenants)[number]) => ({
+          user_id: userId,
+          tenant_id: t.tenantId,
+          tenant_name: t.tenantName,
+          tenant_type: t.tenantType,
+          access_token_enc: accessEnc,
+          refresh_token_enc: refreshEnc,
+          expires_at: expiresAt,
+          scopes: tokens.scope,
+          status: "connected",
+          disconnected_at: null,
+        });
+        const isNewTenant = (tenantId: string) =>
+          Boolean(intendedFirmId) && !knownTenantIds.has(tenantId);
+
+        // Stamped rows go in one at a time: the database enforces the Xero file
+        // limit on insert, and one refused tenant must not lose the others. A
+        // refused tenant is still stored (unstamped) so the authorisation isn't
+        // silently dropped — it then shows up for a super admin to place.
+        for (const t of tenants) {
+          const row = baseRow(t);
+          const stamped = isNewTenant(t.tenantId)
+            ? { ...row, firm_id: intendedFirmId }
+            : row;
+          const { error: upsertErr } = await supabaseAdmin
+            .from("xero_connections")
+            .upsert(stamped, { onConflict: "user_id,tenant_id" });
+          if (upsertErr) {
+            const { isPlanLimitError } = await import("@/lib/plan-errors");
+            if (stamped !== row && isPlanLimitError(upsertErr)) {
+              const { error: retryErr } = await supabaseAdmin
+                .from("xero_connections")
+                .upsert(row, { onConflict: "user_id,tenant_id" });
+              if (!retryErr) continue;
+              console.error("xero_connections upsert failed", retryErr);
+            } else {
+              console.error("xero_connections upsert failed", upsertErr);
+            }
+            return redirectTo(`${returnOrigin}/dashboard?xero_error=db`);
+          }
+        }
+
+
+        if (tenants.length > 0) {
+          await supabaseAdmin.from("audit_log").insert(
+            tenants.map((t) => ({
+              actor_user_id: userId,
+              action: "xero_connected",
+              target_type: "xero_connection",
+              target_id: t.tenantId,
+              meta: { tenant_name: t.tenantName, scopes: tokens.scope, firm_id: intendedFirmId },
+            })),
+          );
+        }
+
 
 
         // ─────────────────────────────────────────────────────────────────────

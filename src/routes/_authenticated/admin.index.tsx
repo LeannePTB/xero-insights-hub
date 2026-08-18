@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye } from "lucide-react";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { XeroApiErrorsSheet } from "@/components/admin/XeroApiErrorsSheet";
+import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
 
 
 export const Route = createFileRoute("/_authenticated/admin/")({
@@ -138,10 +139,21 @@ function AdminPage() {
         )}
 
         {isSuper && (
+          <OrphanXeroConnectionsCard
+            firms={((firmsQ.data?.firms as FirmRow[] | undefined) ?? []).map((f) => ({
+              id: f.firm_id,
+              name: f.firm_name,
+            }))}
+          />
+        )}
+
+        {isSuper && (
           <p className="text-sm text-muted-foreground">
-            Organisation name, tier, usage, billing and error counts only. No Xero org names, balances, or client data are visible from this page — enforced at the database level.
+            Organisation name, tier, usage, billing and error counts only. No balances or client
+            data are visible from this page — enforced at the database level.
           </p>
         )}
+
 
       </main>
     </div>

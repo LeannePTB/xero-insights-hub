@@ -244,6 +244,7 @@ function ClientDashboard() {
 
         {orgs.length > 0 && (
           <XeroConnectionBanner
+            clientId={clientId}
             orgs={orgs.map((o) => ({
               tenantId: o.xero_connections?.tenant_id as string | undefined,
               tenantName: o.xero_connections?.tenant_name as string | undefined,
@@ -372,7 +373,13 @@ function ErrorPage({ message }: { message: string }) {
   );
 }
 
-function XeroConnectionBanner({ orgs }: { orgs: { tenantId: string; tenantName: string | undefined }[] }) {
+function XeroConnectionBanner({
+  orgs,
+  clientId,
+}: {
+  orgs: { tenantId: string; tenantName: string | undefined }[];
+  clientId: string;
+}) {
   const check = useServerFn(checkXeroConnection);
   const startConnect = useServerFn(startXeroConnect);
   const checks = useQuery({
@@ -392,7 +399,7 @@ function XeroConnectionBanner({ orgs }: { orgs: { tenantId: string; tenantName: 
     try {
       const tenantId = checks.data?.[0]?.tenantId;
       const { authorizeUrl } = await startConnect({
-        data: { origin: window.location.origin, mode: "reconnect", tenantId },
+        data: { origin: window.location.origin, mode: "reconnect", tenantId, clientId },
       });
       if (authWindow) { authWindow.opener = null; authWindow.location.href = authorizeUrl; }
       else window.location.href = authorizeUrl;
