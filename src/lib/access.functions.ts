@@ -54,12 +54,14 @@ export async function computeFirmAccess(userId: string): Promise<FirmAccessState
     .eq("firm_id", firmId)
     .maybeSingle();
 
-  const { count } = await (supabaseAdmin as any)
-    .from("xero_connections").select("id", { count: "exact", head: true }).eq("firm_id", firmId);
+  // Limits and usage come from the database (distinct tenants, override-aware).
+  const { getFirmPlanLimits } = await import("@/lib/xero/client-orgs.server");
+  const limits = await getFirmPlanLimits(firmId);
 
   const tier = sub?.tier ?? null;
-  const limit = tier ? TIER_LIMITS[tier] ?? 5 : 5;
-  const connectionCount = count ?? 0;
+  const limit = Math.max(1, limits.xero_org_limit);
+  const connectionCount = limits.xero_files_used;
+
 
   const base = {
     firmId, firmName: firm.name as string,
