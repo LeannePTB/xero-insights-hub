@@ -403,6 +403,28 @@ function OrganisationsSection({
   );
 }
 
+/** Effective dashboard tiers across the organisation's clients, e.g. "8 × Standard, 4 × Advisory". */
+function DashboardsInUseCell({
+  usage,
+  label,
+}: {
+  usage: OrganisationUsage | undefined;
+  label: (key: string) => string;
+}) {
+  if (!usage) return <span className="text-muted-foreground">—</span>;
+  if (usage.clientsUsed === 0) return <span className="text-muted-foreground">no clients</span>;
+  const parts = Object.entries(usage.dashboards)
+    .sort((a, b) => b[1] - a[1])
+    .map(([key, count]) => `${count} × ${label(key)}`);
+  if (parts.length === 0) return <span className="text-muted-foreground">—</span>;
+  return (
+    <span>
+      {parts.join(", ")}
+      {usage.dashboardsPartial && <span className="text-muted-foreground"> (partial)</span>}
+    </span>
+  );
+}
+
 function XeroScopeHealthCell({ missing, total }: { missing?: number; total?: number }) {
   if (total === undefined) return <span className="text-muted-foreground">—</span>;
   if (!missing) return <span className="text-muted-foreground">{total} OK</span>;
