@@ -1940,6 +1940,14 @@ export type Database = {
         Args: { _key: string; _max: number; _window_seconds: number }
         Returns: boolean
       }
+      client_allowed_widgets: {
+        Args: { _client_id: string }
+        Returns: string[]
+      }
+      client_can_use_widget: {
+        Args: { _client_id: string; _widget: string }
+        Returns: boolean
+      }
       client_entitlement: {
         Args: { _client_id: string }
         Returns: {
@@ -1957,6 +1965,11 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      firm_allowed_widgets: { Args: { _firm_id: string }; Returns: string[] }
+      firm_can_use_widget: {
+        Args: { _firm_id: string; _widget: string }
+        Returns: boolean
       }
       firm_plan_limits: {
         Args: { _firm_id: string }
