@@ -152,6 +152,18 @@ function ClientSettings() {
   const myCtxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
   const isSuperAdmin = !!myCtxQ.data?.isSuperAdmin;
 
+  const fetchScopeStatus = useServerFn(listXeroScopeStatus);
+  const scopeStatusQ = useQuery({
+    queryKey: ["xero-scope-status"],
+    queryFn: () => fetchScopeStatus(),
+  });
+  const missingScopesByTenant = new Map<string, string[]>(
+    (scopeStatusQ.data?.connections ?? [])
+      .filter((c) => c.missingScopes.length > 0)
+      .map((c) => [c.tenantId, c.missingScopes]),
+  );
+
+
   // Only offer tiers the organisation's plan includes.
   const { levels: tierLevels } = usePlanLevels("dashboard");
   const catalogueKeys = (tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]) as DashboardTier[];
