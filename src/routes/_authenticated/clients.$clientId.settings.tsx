@@ -160,10 +160,11 @@ function ClientSettings() {
     queryFn: () => fetchScopeStatus(),
   });
   const missingScopesByTenant = new Map<string, string[]>(
-    (scopeStatusQ.data?.connections ?? [])
+    ((scopeStatusQ.data?.connections ?? []) as XeroScopeStatus[])
       .filter((c) => c.missingScopes.length > 0)
-      .map((c) => [c.tenantId, c.missingScopes]),
+      .map((c) => [c.tenantId, c.missingScopes] as [string, string[]]),
   );
+
 
 
   // Only offer tiers the organisation's plan includes.
