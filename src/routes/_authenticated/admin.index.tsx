@@ -44,7 +44,19 @@ type FirmRow = {
   recent_error_count: number;
 };
 
-const TIER_LIMITS: Record<string, number> = { starter: 5, growth: 10, scale: 20, firm: 50, legacy: 9999 };
+/** used / limit, coloured amber at the limit and red over it. */
+function UsageCell({ used, limit }: { used: number | null; limit: number | null }) {
+  if (used == null) return <span className="text-muted-foreground">—</span>;
+  const limitLabel = limit == null ? "∞" : String(limit);
+  const tone =
+    limit == null ? "" : used > limit ? "text-destructive font-medium" : used === limit ? "text-amber-500 font-medium" : "";
+  return (
+    <span className={tone}>
+      {used} / {limitLabel}
+      {limit != null && used > limit ? " (over)" : ""}
+    </span>
+  );
+}
 
 function fmtDate(s: string | null) {
   if (!s) return "—";
