@@ -31,6 +31,8 @@ import {
   linkClientXeroOptions,
   moveXeroFileToClient,
 } from "@/lib/xero/connections.functions";
+import { listXeroScopeStatus, type XeroScopeStatus } from "@/lib/xero/scope-status.functions";
+import { capabilityList } from "@/lib/xero/scope-capabilities";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
