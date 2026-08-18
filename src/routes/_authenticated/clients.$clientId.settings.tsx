@@ -453,7 +453,7 @@ function ClientSettings() {
             <ConnectWithXeroButton
               variant="connect"
               size="sm"
-              onClick={handleConnect}
+              onClick={() => handleConnect()}
               label="Connect a Xero file"
             />
           }
@@ -534,7 +534,7 @@ function ClientSettings() {
                       <ConnectWithXeroButton
                         variant={isDisconnected ? "reconnect" : "reconnect"}
                         size="sm"
-                        onClick={handleConnect}
+                        onClick={() => handleConnect({ tenantId })}
                         label={isDisconnected ? "Reconnect to Xero" : "Reconnect to Xero"}
                       />
                       <AlertDialog>
@@ -585,7 +585,7 @@ function ClientSettings() {
                           <ConnectWithXeroButton
                             variant="reconnect"
                             size="sm"
-                            onClick={handleConnect}
+                            onClick={() => handleConnect({ tenantId })}
                             label="Reconnect"
                           />
                         </div>
