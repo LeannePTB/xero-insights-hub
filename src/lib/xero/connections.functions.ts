@@ -170,16 +170,18 @@ export const startXeroConnect = createServerFn({ method: "POST" })
         throw new Error("You cannot manage this client subscription.");
 
       if (mode === "reconnect") {
+        // A reconnect targets exactly one Xero file. Without that target the
+        // callback can't tell which file to refresh, so refuse up front.
+        if (!data.tenantId)
+          throw new Error("Start the reconnect from the Xero organisation you want to refresh.");
         // Reauthorising a file the organisation already has is not a new file,
         // so the plan allowance never applies. Confirm against the database.
         const firmId = await getClientFirmId(data.clientId);
-        if (data.tenantId && firmId) {
-          const linked = await isTenantAlreadyLinkedToFirm(firmId, data.tenantId);
-          if (!linked)
-            throw new Error(
-              "That Xero organisation isn't linked here yet, so it can't be reconnected. Use \"Connect a Xero file\" instead.",
-            );
-        }
+        const linked = firmId ? await isTenantAlreadyLinkedToFirm(firmId, data.tenantId) : false;
+        if (!linked)
+          throw new Error(
+            "That Xero organisation isn't linked here yet, so it can't be reconnected. Use \"Connect a Xero file\" instead.",
+          );
       } else {
         const access = await getClientFirmConnectionAccess(data.clientId);
         if (access.state === "locked")
@@ -272,9 +274,12 @@ export const startXeroOnboardConnect = createServerFn({ method: "POST" })
     const mode = data.mode === "reconnect" ? "reconnect" : "new";
     if (mode === "reconnect") {
       // Reauthorising a file the organisation already has never consumes plan
-      // allowance; confirm it really is already linked.
+      // allowance; confirm it really is already linked. The target tenant is
+      // mandatory — a reconnect refreshes exactly one Xero file.
       const { isTenantAlreadyLinkedToFirm } = await import("@/lib/xero/client-orgs.server");
-      if (!data.tenantId || !(await isTenantAlreadyLinkedToFirm(data.firmId, data.tenantId)))
+      if (!data.tenantId)
+        throw new Error("Start the reconnect from the Xero organisation you want to refresh.");
+      if (!(await isTenantAlreadyLinkedToFirm(data.firmId, data.tenantId)))
         throw new Error(
           "That Xero organisation isn't linked to this organisation yet, so it can't be reconnected.",
         );

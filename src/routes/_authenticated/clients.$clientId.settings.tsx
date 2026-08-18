@@ -610,7 +610,14 @@ function ClientSettings() {
               organisation's subscription.
             </p>
           )}
-          {chooserState && availableConns.length > 0 && (
+          {chooserState && availableConns.length > 0 && (allowance?.remaining ?? 0) < 1 && (
+            <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+              This subscription is using {allowance?.used ?? 0} of {allowance?.allowance ?? 0} Xero
+              file{(allowance?.allowance ?? 0) === 1 ? "" : "s"} allowed on its plan, so no more can
+              be linked. Upgrade the organisation's plan to add another Xero file.
+            </p>
+          )}
+          {chooserState && availableConns.length > 0 && (allowance?.remaining ?? 0) >= 1 && (
             <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
               <p className="mb-2 text-sm font-semibold">Choose files for this subscription</p>
               <p className="mb-3 text-xs text-muted-foreground">
