@@ -7,6 +7,8 @@ import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, Loader2, Plus, ShieldA
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
+import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
+
 import { getFirmPlanSummary, saveFirmDefaultWidgets } from "@/lib/tier-config.functions";
 import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
 
@@ -361,6 +363,12 @@ function FirmSettingsPage() {
           </Button>
         </div>
       </section>
+
+      {/* Xero organisations */}
+      <div className="mt-6">
+        <FirmXeroFilesCard firmId={firmId} />
+      </div>
+
 
       {/* Ownership handover */}
       <div className="mt-6">
