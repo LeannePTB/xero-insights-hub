@@ -329,8 +329,10 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             if (!(await isTenantAlreadyLinkedToFirm(firmId, tenantId))) {
               // No longer linked here — never relink or recreate it.
               missedNames.push(tenant.tenantName ?? tenantId);
+              unlinkedNames.push(tenant.tenantName ?? tenantId);
               continue;
             }
+
             // A tenant can have a row per staff member; the client link may
             // point at someone else's row. Refresh every row for this
             // organisation's tenant so the linked row is never left stale.
