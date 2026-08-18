@@ -136,7 +136,22 @@ async function hasClientAccess(supabase: any, userId: string, clientId: string):
   return !!data;
 }
 
+/**
+ * Loan consolidation is an organisation-level feature that can also surface as
+ * a client dashboard card, so it is permitted when either the client's own
+ * entitlement or the organisation's plan includes it. The database resolves
+ * plan ∩ tier config; we never reimplement it. Fails closed.
+ */
+async function loanFeatureAllowed(supabase: any, clientId: string): Promise<boolean> {
+  const { clientCanUseWidget, firmCanUseWidget } = await import("@/lib/widget-access.server");
+  if (await clientCanUseWidget(supabase, clientId, "loan_consolidation")) return true;
+  const firmId = await clientFirmId(supabase, clientId);
+  if (!firmId) return false;
+  return firmCanUseWidget(supabase, firmId, "loan_consolidation");
+}
+
 async function canManageClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
+  if (!(await loanFeatureAllowed(supabase, clientId))) return false;
   const firmId = await clientFirmId(supabase, clientId);
   if (Boolean(await firmMemberRole(supabase, userId, firmId))) return true;
   if (await isSuperAdminUser(supabase, userId)) {
@@ -150,6 +165,7 @@ async function canManageClient(supabase: any, userId: string, clientId: string):
 
 async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
   if (await canManageClient(supabase, userId, clientId)) return true;
+  if (!(await loanFeatureAllowed(supabase, clientId))) return false;
   return hasClientAccess(supabase, userId, clientId);
 }
 
@@ -511,6 +527,10 @@ async function resolveLoanGroup(
     Boolean(await firmMemberRole(supabase, userId, (group as any).firm_id)) ||
     (await isSuperAdminUser(supabase, userId));
   if (!allowed) throw new Error("You don't have access to this organisation.");
+
+  // The organisation's plan must include loan consolidation (fails closed).
+  const { assertFirmWidget } = await import("@/lib/widget-access.server");
+  await assertFirmWidget(supabase, (group as any).firm_id, "loan_consolidation");
 
 
   const { data: members } = await supabaseAdmin

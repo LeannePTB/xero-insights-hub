@@ -69,6 +69,10 @@ async function resolveGroup(supabase: any, userId: string, groupId: string): Pro
   }
   if (!allowed) throw new Error("You don't have access to this organisation.");
 
+  // Consolidated views are an organisation-level feature gated by the plan.
+  const { assertFirmWidget } = await import("@/lib/widget-access.server");
+  await assertFirmWidget(supabase, group.firm_id, "loan_consolidation");
+
 
   const { data: members } = await supabaseAdmin
     .from("consolidation_group_members")

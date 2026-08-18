@@ -11,6 +11,7 @@ import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { CompanyConsolidationsCard } from "@/components/admin/CompanyConsolidationsCard";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 import { firmPlanView } from "@/lib/firmPlans";
+import { useFirmWidgets } from "@/hooks/useFirmWidget";
 import { toast } from "sonner";
 
 
@@ -58,6 +59,8 @@ function FirmPage() {
   const qc = useQueryClient();
   const fetchFirm = useServerFn(getMyFirm);
   const fetchCtx = useServerFn(getMyContext);
+  // Organisation-level features are gated by the plan (database-resolved).
+  const canConsolidate = useFirmWidgets(firmId).can("loan_consolidation");
 
 
   const firmQ = useQuery({
@@ -165,9 +168,11 @@ function FirmPage() {
 
 
 
-        <div className="mt-8">
-          <CompanyConsolidationsCard firmId={firmId} />
-        </div>
+        {canConsolidate && (
+          <div className="mt-8">
+            <CompanyConsolidationsCard firmId={firmId} />
+          </div>
+        )}
 
         <div className="mt-8">
           <FirmClientsSection

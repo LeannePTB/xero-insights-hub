@@ -329,6 +329,12 @@ export const getClientWidgets = createServerFn({ method: "POST" })
       }
     }
 
+    // Final ceiling: the database decides entitlement (plan ∩ tier config).
+    // Fail closed — an empty/errored result hides every widget.
+    const { clientAllowedWidgets } = await import("@/lib/widget-access.server");
+    const entitled = new Set<string>(await clientAllowedWidgets(context.supabase, data.clientId));
+    for (const w of Array.from(availableSet)) if (!entitled.has(w)) availableSet.delete(w);
+
     const availableWidgets = ALL_WIDGETS.filter((w) => availableSet.has(w));
 
     const top: any = usable[usable.length - 1];
