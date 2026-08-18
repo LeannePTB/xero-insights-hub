@@ -362,6 +362,12 @@ function FirmSettingsPage() {
         </div>
       </section>
 
+      {/* Xero organisations */}
+      <div className="mt-6">
+        <FirmXeroFilesCard firmId={firmId} />
+      </div>
+
+
       {/* Ownership handover */}
       <div className="mt-6">
         <TransferOwnershipCard firmId={firmId} />
