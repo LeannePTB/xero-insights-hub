@@ -134,7 +134,16 @@ export const checkXeroConnection = createServerFn({ method: "POST" })
 
 export const startXeroConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { origin: string; clientId?: string }) => input)
+  .inputValidator(
+    (input: {
+      origin: string;
+      clientId?: string;
+      /** Explicit intent — never inferred from counts. */
+      mode?: "new" | "reconnect";
+      /** Tenant being reauthorised, required for mode "reconnect". */
+      tenantId?: string;
+    }) => input,
+  )
   .handler(async ({ data, context }) => {
     const clientId = process.env.XERO_CLIENT_ID;
     if (!clientId) {
@@ -147,25 +156,53 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     const { enforceRateLimit } = await import("@/lib/rate-limit.server");
     await enforceRateLimit(`xero:connect:${context.userId}`, 10, 3600);
 
+    const mode = data.mode === "reconnect" ? "reconnect" : "new";
     let knownTenantIds: string[] = [];
     if (data.clientId) {
-      const { userCanManageClient, getClientOrgAllowance, getClientFirmConnectionAccess } =
-        await import("@/lib/xero/client-orgs.server");
+      const {
+        userCanManageClient,
+        getClientOrgAllowance,
+        getClientFirmConnectionAccess,
+        getClientFirmId,
+        isTenantAlreadyLinkedToFirm,
+      } = await import("@/lib/xero/client-orgs.server");
       if (!(await userCanManageClient(context.userId, data.clientId)))
         throw new Error("You cannot manage this client subscription.");
-      const access = await getClientFirmConnectionAccess(data.clientId);
-      if (access.state === "locked")
-        throw new Error(`${access.firmName}'s subscription is not active.`);
-      if (access.connectionCount >= access.connectionLimit) {
-        throw new Error(
-          `${access.firmName} has reached its plan limit of ${access.connectionLimit} Xero file${access.connectionLimit === 1 ? "" : "s"}.`,
-        );
+
+      if (mode === "reconnect") {
+        // Reauthorising a file the organisation already has is not a new file,
+        // so the plan allowance never applies. Confirm against the database.
+        const firmId = await getClientFirmId(data.clientId);
+        if (data.tenantId && firmId) {
+          const linked = await isTenantAlreadyLinkedToFirm(firmId, data.tenantId);
+          if (!linked)
+            throw new Error(
+              "That Xero organisation isn't linked here yet, so it can't be reconnected. Use \"Connect a Xero file\" instead.",
+            );
+        }
+      } else {
+        const access = await getClientFirmConnectionAccess(data.clientId);
+        if (access.state === "locked")
+          throw new Error(`${access.firmName}'s subscription is not active.`);
+        if (access.connectionCount >= access.connectionLimit) {
+          const { TIER_LABEL } = await import("@/lib/firmPlans");
+          const planLabel =
+            (access.planTier && (TIER_LABEL as Record<string, string>)[access.planTier]) ??
+            access.planTier ??
+            null;
+          throw new Error(
+            `${access.firmName} is using ${access.connectionCount} of ${access.connectionLimit} Xero file${
+              access.connectionLimit === 1 ? "" : "s"
+            } allowed${planLabel ? ` on the ${planLabel} plan` : ""}. Upgrade the organisation's plan to connect another Xero file. Reconnecting a file that's already linked is always allowed.`,
+          );
+        }
+        const allowance = await getClientOrgAllowance(data.clientId);
+        if (allowance.remaining < 1)
+          throw new Error(
+            `This subscription has reached its Xero file allowance of ${allowance.allowance}.`,
+          );
       }
-      const allowance = await getClientOrgAllowance(data.clientId);
-      if (allowance.remaining < 1)
-        throw new Error(
-          `This subscription has reached its Xero file allowance of ${allowance.allowance}.`,
-        );
+
       const { data: known, error: knownError } = await context.supabase
         .from("xero_connections")
         .select("tenant_id");
@@ -184,10 +221,12 @@ export const startXeroConnect = createServerFn({ method: "POST" })
       code_verifier: codeVerifier,
       return_origin: returnOrigin,
       client_id: data.clientId ?? null,
+      flow: mode === "reconnect" ? "reconnect" : "connect",
       known_tenant_ids: knownTenantIds,
-      pending_tenant_ids: [],
-    });
+      pending_tenant_ids: mode === "reconnect" && data.tenantId ? [data.tenantId] : [],
+    } as any);
     if (error) throw new Error(error.message);
+
 
     const url = new URL(XERO_AUTHORIZE_URL);
     url.searchParams.set("response_type", "code");
