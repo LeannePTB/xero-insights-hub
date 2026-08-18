@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Layers } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { listConsolidationGroups } from "@/lib/consolidation-groups.functions";
+import { useFirmWidgets } from "@/hooks/useFirmWidget";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/loans")({
   validateSearch: (search: Record<string, unknown>) => ({
