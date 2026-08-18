@@ -1,6 +1,7 @@
 // Firm subscription plan constants shared across server + client.
 // Client quotas per tier. `legacy` = no limit (pre-billing firms).
 export const CLIENT_LIMITS = {
+  ptb: 1,
   starter: 5,
   growth: 10,
   scale: 20,
@@ -12,6 +13,7 @@ export const CLIENT_LIMITS = {
 export type FirmTier = keyof typeof CLIENT_LIMITS;
 
 export const TIER_LABEL: Record<FirmTier, string> = {
+  ptb: "PTB (1 client, free)",
   starter: "Starter (5 clients)",
   growth: "Growth (10 clients)",
   scale: "Scale (20 clients)",
@@ -21,6 +23,7 @@ export const TIER_LABEL: Record<FirmTier, string> = {
 };
 
 export const TIER_SHORT: Record<FirmTier, string> = {
+  ptb: "PTB",
   starter: "Starter",
   growth: "Growth",
   scale: "Scale",
@@ -30,7 +33,7 @@ export const TIER_SHORT: Record<FirmTier, string> = {
 };
 
 // Stripe price lookup_keys — created via the payments--batch_create_product tool.
-export const TIER_PRICE_KEY: Record<Exclude<FirmTier, "free" | "legacy">, string> = {
+export const TIER_PRICE_KEY: Record<Exclude<FirmTier, "free" | "legacy" | "ptb">, string> = {
   starter: "traction_starter_monthly",
   growth: "traction_growth_monthly",
   scale: "traction_scale_monthly",
