@@ -390,7 +390,10 @@ function XeroConnectionBanner({ orgs }: { orgs: { tenantId: string; tenantName: 
   async function handleReconnect() {
     const authWindow = window.open("about:blank", "_blank");
     try {
-      const { authorizeUrl } = await startConnect({ data: { origin: window.location.origin } });
+      const tenantId = checks.data?.[0]?.tenantId;
+      const { authorizeUrl } = await startConnect({
+        data: { origin: window.location.origin, mode: "reconnect", tenantId },
+      });
       if (authWindow) { authWindow.opener = null; authWindow.location.href = authorizeUrl; }
       else window.location.href = authorizeUrl;
     } catch (e: any) {
@@ -398,6 +401,7 @@ function XeroConnectionBanner({ orgs }: { orgs: { tenantId: string; tenantName: 
       toast.error(e?.message ?? "Could not start Xero reconnection");
     }
   }
+
 
   if (!checks.data || checks.data.length === 0) return null;
   const names = checks.data.map((c) => c.tenantName ?? "Xero org").join(", ");
