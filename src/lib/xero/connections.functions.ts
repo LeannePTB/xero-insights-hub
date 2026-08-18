@@ -250,7 +250,14 @@ export const startXeroConnect = createServerFn({ method: "POST" })
  */
 export const startXeroOnboardConnect = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { origin: string; firmId: string }) => input)
+  .inputValidator(
+    (input: {
+      origin: string;
+      firmId: string;
+      mode?: "new" | "reconnect";
+      tenantId?: string;
+    }) => input,
+  )
   .handler(async ({ data, context }) => {
     const clientId = process.env.XERO_CLIENT_ID;
     if (!clientId) {
@@ -262,8 +269,19 @@ export const startXeroOnboardConnect = createServerFn({ method: "POST" })
     const { enforceRateLimit } = await import("@/lib/rate-limit.server");
     await enforceRateLimit(`xero:connect:${context.userId}`, 10, 3600);
 
-    const { assertFirmCanAddClient } = await import("@/lib/xero/onboard.server");
-    await assertFirmCanAddClient(data.firmId, context.userId);
+    const mode = data.mode === "reconnect" ? "reconnect" : "new";
+    if (mode === "reconnect") {
+      // Reauthorising a file the organisation already has never consumes plan
+      // allowance; confirm it really is already linked.
+      const { isTenantAlreadyLinkedToFirm } = await import("@/lib/xero/client-orgs.server");
+      if (!data.tenantId || !(await isTenantAlreadyLinkedToFirm(data.firmId, data.tenantId)))
+        throw new Error(
+          "That Xero organisation isn't linked to this organisation yet, so it can't be reconnected.",
+        );
+    } else {
+      const { assertFirmCanAddClient } = await import("@/lib/xero/onboard.server");
+      await assertFirmCanAddClient(data.firmId, context.userId);
+    }
 
     const { data: known, error: knownError } = await context.supabase
       .from("xero_connections")
@@ -282,11 +300,12 @@ export const startXeroOnboardConnect = createServerFn({ method: "POST" })
       return_origin: returnOrigin,
       client_id: null,
       firm_id: data.firmId,
-      flow: "onboard",
+      flow: mode === "reconnect" ? "reconnect" : "onboard",
       known_tenant_ids: knownTenantIds,
-      pending_tenant_ids: [],
+      pending_tenant_ids: mode === "reconnect" && data.tenantId ? [data.tenantId] : [],
     } as any);
     if (error) throw new Error(error.message);
+
 
     const url = new URL(XERO_AUTHORIZE_URL);
     url.searchParams.set("response_type", "code");
