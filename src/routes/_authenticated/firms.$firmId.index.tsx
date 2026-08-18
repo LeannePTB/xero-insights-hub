@@ -58,6 +58,8 @@ function FirmPage() {
   const qc = useQueryClient();
   const fetchFirm = useServerFn(getMyFirm);
   const fetchCtx = useServerFn(getMyContext);
+  // Organisation-level features are gated by the plan (database-resolved).
+  const canConsolidate = useFirmWidgets(firmId).can("loan_consolidation");
 
 
   const firmQ = useQuery({
