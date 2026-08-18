@@ -1,5 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
+import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -172,6 +173,8 @@ function FirmDetailPage() {
           members={members}
           onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
         />
+
+        <FirmXeroFilesCard firmId={firmId} variant="plain" />
 
         <section className="rounded-lg border p-6 space-y-4">
           <FirmClientsSection
