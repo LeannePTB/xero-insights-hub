@@ -45,12 +45,14 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           }
         }
 
-        const flow: "connect" | "signin" | "onboard" =
+        const flow: "connect" | "signin" | "onboard" | "reconnect" =
           stateRow?.flow === "signin"
             ? "signin"
             : stateRow?.flow === "onboard"
               ? "onboard"
-              : "connect";
+              : stateRow?.flow === "reconnect"
+                ? "reconnect"
+                : "connect";
         const onboardReturnPath = stateRow?.firm_id ? `/firms/${stateRow.firm_id}` : "/dashboard";
 
         if (error) {
