@@ -427,6 +427,11 @@ function ClientSettings() {
           </div>
         </Section>
 
+        {/* Dashboard tier — what this client sees */}
+        <Section title="Dashboard tier">
+          <ClientDashboardTierControl clientId={clientId} />
+        </Section>
+
         {/* Report basis */}
         <Section title="Report basis" collapsible defaultOpen={false}>
           <p className="mb-3 text-xs text-muted-foreground">
