@@ -429,7 +429,7 @@ function ClientSettings() {
         </Section>
 
         {/* Dashboard tier — what this client sees */}
-        <Section title="Dashboard tier">
+        <Section title="Dashboard tier" id="dashboard-tier">
           <ClientDashboardTierControl clientId={clientId} />
         </Section>
 
