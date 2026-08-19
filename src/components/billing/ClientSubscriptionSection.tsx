@@ -126,36 +126,9 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
         )}
       </div>
 
-      <div className="space-y-1.5">
-        <span className="text-sm font-medium">Dashboard tier</span>
-        <div className="flex flex-wrap items-center gap-2">
-          <Select
-            value={pendingTier}
-            onValueChange={(v) => setTierDraft(v as DashboardTier)}
-          >
-            <SelectTrigger className="h-9 w-56">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {TIER_CHOICES.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {tierLabel(t)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button
-            size="sm"
-            disabled={tierMut.isPending || pendingTier === storedTier}
-            onClick={() => tierMut.mutate(pendingTier)}
-          >
-            Save tier
-          </Button>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Sets which dashboard this client sees. The organisation's plan controls capacity only.
-        </p>
-      </div>
+      <p className="text-xs text-muted-foreground">
+        The dashboard tier is set higher up this page, under “Dashboard tier”.
+      </p>
 
       <p className="text-sm text-muted-foreground">
         {onTrial && expiry
