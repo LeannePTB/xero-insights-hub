@@ -377,15 +377,21 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
             deepLink: null,
           });
         }
-      }),
-    );
+      })();
+      // Gentle spacing between files in the same batch.
+      await new Promise((r) => setTimeout(r, 150));
+    }
 
     hits.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
     return {
       hits,
       page,
       hasMore: sawFullPage,
-      scope: organisationWide ? ("organisation" as const) : ("client" as const),
+      batch,
+      batchCount,
+      unavailable,
       searchedOrganisations: tenants.map((t) => t.tenant_name).filter(Boolean),
+      totalOrganisations: allTenants.length,
     };
   });
+
