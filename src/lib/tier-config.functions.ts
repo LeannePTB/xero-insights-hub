@@ -63,17 +63,75 @@ export const listTierConfig = createServerFn({ method: "POST" })
     return { global, client };
   });
 
-// Saves an allow-list by storing its complement as exclusions for that scope.
-export const saveTierWidgets = createServerFn({ method: "POST" })
+// Shared maths only: turn an allow-list into the exclusions for a tier.
+async function exclusionsFor(
+  supabase: Parameters<typeof assertAdvisor>[0],
+  tier: DashboardTier,
+  widgets: WidgetKey[],
+) {
+  const { tierCeilings, ceilingFor, sanitizeWidgets: keep } = await import(
+    "@/lib/widget-resolve.server"
+  );
+  const ceilings = await tierCeilings(supabase);
+  const ceiling = ceilingFor(ceilings, tier);
+  const on = new Set(keep(widgets));
+  return ceiling.filter((w) => !on.has(w));
+}
+
+/**
+ * Platform default row (client_id IS NULL AND firm_id IS NULL).
+ *
+ * The template for organisations with no row of their own. This is the ONLY
+ * code path that may write it, and it is reachable only from the platform
+ * tier-catalogue screen. Organisation-level changes go through
+ * public.set_org_widget_enabled (see setOrgWidget); the two never share a path.
+ */
+export const savePlatformTierWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { clientId: string | null; tier: DashboardTier; widgets: WidgetKey[] | null }) => i)
+  .inputValidator((i: { tier: DashboardTier; widgets: WidgetKey[] }) => i)
+  .handler(async ({ data, context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const excluded = await exclusionsFor(context.supabase, data.tier, data.widgets);
+
+    // Partial unique indexes rule out ON CONFLICT here, so select/update/insert.
+    const { data: existing, error: findErr } = await supabaseAdmin
+      .from("tier_widget_config")
+      .select("id")
+      .eq("tier", data.tier)
+      .is("client_id", null)
+      .is("firm_id", null)
+      .maybeSingle();
+    if (findErr) throw new Error(findErr.message);
+
+    if (existing) {
+      const { error } = await supabaseAdmin
+        .from("tier_widget_config")
+        .update({ excluded_widgets: excluded })
+        .eq("id", (existing as { id: string }).id);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabaseAdmin
+        .from("tier_widget_config")
+        .insert({ client_id: null, firm_id: null, tier: data.tier, excluded_widgets: excluded });
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true };
+  });
+
+/**
+ * One client's own exclusions (client_id set). Never touches the platform or
+ * organisation rows. Passing widgets: null removes the override so the client
+ * falls back to the organisation row, then the platform default.
+ */
+export const saveClientTierWidgets = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; tier: DashboardTier; widgets: WidgetKey[] | null }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // null widgets on a client override = remove override (fall back to the
-    // organisation row, then the platform default).
-    if (data.clientId && data.widgets === null) {
+    if (data.widgets === null) {
       const { error } = await supabaseAdmin
         .from("tier_widget_config")
         .delete()
@@ -84,47 +142,42 @@ export const saveTierWidgets = createServerFn({ method: "POST" })
     }
 
     // Client-level overrides may only target tiers the organisation's plan includes.
-    if (data.clientId) {
-      const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
-      const planTiers = await allowedTiersForClient(data.clientId);
-      if (planTiers && !planTiers.includes(data.tier)) {
-        throw new Error("This tier is not included in the organisation's plan.");
-      }
+    const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
+    const planTiers = await allowedTiersForClient(data.clientId);
+    if (planTiers && !planTiers.includes(data.tier)) {
+      throw new Error("This tier is not included in the organisation's plan.");
     }
 
-    const { tierCeilings, ceilingFor, sanitizeWidgets: keep } = await import("@/lib/widget-resolve.server");
-    const ceilings = await tierCeilings(context.supabase);
-    const ceiling = ceilingFor(ceilings, data.tier);
-    const on = new Set(keep(data.widgets ?? []));
-    const excluded = ceiling.filter((w) => !on.has(w));
+    const excluded = await exclusionsFor(context.supabase, data.tier, data.widgets);
 
-    // Unique indexes on this table are partial, so ON CONFLICT can't be used
-    // for every scope — do select/update/insert.
-    let query = supabaseAdmin
+    const { data: existing, error: findErr } = await supabaseAdmin
       .from("tier_widget_config")
       .select("id")
-      .eq("tier", data.tier);
-    query =
-      data.clientId === null
-        ? query.is("client_id", null).is("firm_id", null)
-        : query.eq("client_id", data.clientId);
-    const { data: existing, error: findErr } = await query.maybeSingle();
+      .eq("tier", data.tier)
+      .eq("client_id", data.clientId)
+      .maybeSingle();
     if (findErr) throw new Error(findErr.message);
 
     if (existing) {
       const { error } = await supabaseAdmin
         .from("tier_widget_config")
         .update({ excluded_widgets: excluded })
-        .eq("id", (existing as any).id);
+        .eq("id", (existing as { id: string }).id);
       if (error) throw new Error(error.message);
     } else {
       const { error } = await supabaseAdmin
         .from("tier_widget_config")
-        .insert({ client_id: data.clientId, firm_id: null, tier: data.tier, excluded_widgets: excluded });
+        .insert({
+          client_id: data.clientId,
+          firm_id: null,
+          tier: data.tier,
+          excluded_widgets: excluded,
+        });
       if (error) throw new Error(error.message);
     }
     return { ok: true };
   });
+
 
 
 // Resolves the cards a client sees on a tier (ceiling − organisation/client exclusions).
