@@ -389,6 +389,16 @@ function ClientSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash.replace("#", "") !== "dashboard-tier") return;
+    const el = document.getElementById("dashboard-tier");
+    if (!el) return;
+    // Give the layout a beat to settle before scrolling to the target.
+    const t = setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+    return () => clearTimeout(t);
+  }, [clientId]);
+
   if (clientQ.isLoading) {
     return (
       <div className="grid min-h-screen place-items-center text-muted-foreground">
