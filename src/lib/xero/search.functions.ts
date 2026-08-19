@@ -66,17 +66,59 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
     await assertClientWidget(context.supabase, data.clientId, "transaction_search");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: orgs, error } = await supabaseAdmin
-      .from("client_xero_orgs")
-      .select("xero_connections!inner(tenant_id, tenant_name)")
-      .eq("client_id", data.clientId);
-    if (error) throw new Error(error.message);
-    const tenants = (orgs ?? [])
-      .map((o: any) => o.xero_connections)
-      .filter((t: any) => t?.tenant_id) as { tenant_id: string; tenant_name: string }[];
+
+    // ---- Build the permitted tenant list, server-side, per request ----------
+    // Scope  = every Xero file belonging to the organisation this client is in.
+    // Filter = what THIS caller is entitled to, decided by the database:
+    //   * public.user_can_access_firm  -> organisation membership or an active
+    //     support grant. Those callers may search every file in the organisation.
+    //   * otherwise the caller reached this client through client access only
+    //     (an invited client viewer), so they get that client's files and
+    //     nothing else.
+    // No tenant id, client id or organisation id is ever trusted from the request.
+    const { data: clientRow, error: clientErr } = await supabaseAdmin
+      .from("clients")
+      .select("firm_id")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    if (clientErr) throw new Error(clientErr.message);
+    const firmId = (clientRow as any)?.firm_id as string | null | undefined;
+    if (!firmId) throw new Error("This client is not attached to an organisation.");
+
+    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+    const organisationWide = await platformStaffCanAccessFirm(context.userId, firmId);
+
+    let tenants: { tenant_id: string; tenant_name: string }[] = [];
+    if (organisationWide) {
+      const { data: conns, error } = await supabaseAdmin
+        .from("xero_connections")
+        .select("tenant_id, tenant_name, status")
+        .eq("firm_id", firmId);
+      if (error) throw new Error(error.message);
+      tenants = (conns ?? [])
+        .filter((c: any) => c?.tenant_id && c.status !== "disconnected")
+        .map((c: any) => ({ tenant_id: c.tenant_id, tenant_name: c.tenant_name }));
+    } else {
+      const { data: orgs, error } = await supabaseAdmin
+        .from("client_xero_orgs")
+        .select("xero_connections!inner(tenant_id, tenant_name, status, firm_id)")
+        .eq("client_id", data.clientId);
+      if (error) throw new Error(error.message);
+      tenants = (orgs ?? [])
+        .map((o: any) => o.xero_connections)
+        .filter((t: any) => t?.tenant_id && t.status !== "disconnected" && t.firm_id === firmId)
+        .map((t: any) => ({ tenant_id: t.tenant_id, tenant_name: t.tenant_name }));
+    }
+
+    const permitted = new Set(tenants.map((t) => t.tenant_id));
     if (tenants.length === 0) {
-      // Fail loudly: a silent empty result would hide a broken link.
-      throw new Error("This client has no Xero organisation linked, so there is nothing to search.");
+      // Fail loudly: a silent empty result would hide a broken link or a
+      // mis-scoped grant.
+      throw new Error(
+        organisationWide
+          ? "This organisation has no connected Xero organisation, so there is nothing to search."
+          : "This client has no Xero organisation linked, so there is nothing to search.",
+      );
     }
 
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
