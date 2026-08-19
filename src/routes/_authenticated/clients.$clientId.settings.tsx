@@ -82,7 +82,6 @@ import { ALL_TIERS, tierLabel, type DashboardTier, type WidgetKey } from "@/lib/
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
-import { ClientWidgetsPanel } from "@/components/dashboard/ClientWidgetsPanel";
 // import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -445,7 +444,21 @@ function ClientSettings() {
         </Section>
 
         {/* Dashboard tier — what this client sees */}
-        <Section title="Dashboard tier" id="dashboard-tier" collapsible>
+        <Section
+          title="Dashboard tier"
+          id="dashboard-tier"
+          collapsible
+          action={
+            isSuperAdmin ? (
+              <div className="flex items-center gap-2">
+                <SuperAdminChip />
+                <Button variant="ghost" size="sm" asChild>
+                  <Link to="/settings/tiers">Edit plan defaults</Link>
+                </Button>
+              </div>
+            ) : undefined
+          }
+        >
           <ClientDashboardTierControl clientId={clientId} />
         </Section>
 
@@ -914,24 +927,6 @@ function ClientSettings() {
           fetchClassifications={fetchClassifications}
           setClassEnabled={setClassEnabled}
         />
-
-        {/* Per-client widget control */}
-        <Section
-          title="What this client sees"
-          collapsible
-          action={
-            isSuperAdmin ? (
-              <div className="flex items-center gap-2">
-                <SuperAdminChip />
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/settings/tiers">Edit plan defaults</Link>
-                </Button>
-              </div>
-            ) : undefined
-          }
-        >
-          <ClientWidgetsPanel clientId={clientId} />
-        </Section>
 
         <Section title="Danger zone">
           <Button
