@@ -80,26 +80,22 @@ export async function getClientReportBasis(tenantId: string): Promise<"accrual" 
 
 async function effectiveWidgets(clientId: string | null, tier: DashboardTier): Promise<WidgetKey[]> {
   if (!clientId) return DEFAULT_TIER_WIDGETS[tier];
-  // get_tier_widgets: client-specific row, else default row, else DEFAULT_TIER_WIDGETS.
-  const { data: specific } = await (supabaseAdmin as any)
-    .from("tier_widget_config")
-    .select("widgets")
-    .eq("client_id", clientId)
-    .eq("tier", tier)
+  // Deny-list model: plan ceiling for the tier, minus the organisation's
+  // exclusions (which replace the platform default) and the client's own.
+  const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } = await import(
+    "@/lib/widget-resolve.server"
+  );
+  const { data: client } = await (supabaseAdmin as any)
+    .from("clients")
+    .select("firm_id")
+    .eq("id", clientId)
     .maybeSingle();
-  let arr: string[] = (specific?.widgets as string[] | undefined) ?? [];
-  if (arr.length === 0) {
-    const { data: fallback } = await (supabaseAdmin as any)
-      .from("tier_widget_config")
-      .select("widgets")
-      .is("client_id", null)
-      .eq("tier", tier)
-      .maybeSingle();
-    arr = (fallback?.widgets as string[] | undefined) ?? [];
-  }
-  if (arr.length === 0) return DEFAULT_TIER_WIDGETS[tier];
-  return arr as WidgetKey[];
+  const firmId = (client?.firm_id as string | null | undefined) ?? null;
+  const ceilings = await tierCeilings(supabaseAdmin);
+  const index = new ExclusionIndex(await fetchExclusions(supabaseAdmin, { firmId, clientIds: [clientId] }));
+  return visibleWidgets(ceilingFor(ceilings, tier), index.effective(tier, { firmId, clientId }));
 }
+
 
 export async function assertWidgetAccess(
   userId: string,

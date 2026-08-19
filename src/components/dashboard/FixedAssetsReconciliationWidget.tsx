@@ -109,12 +109,20 @@ export function FixedAssetsReconciliationWidget({
                 <CheckCircle2 className="h-3.5 w-3.5" /> The register agrees with the ledger
               </span>
             )}
-            {data?.registerEmpty && (
+            {data?.registerEmpty && (data.draftAssetCount ?? 0) === 0 && (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-medium text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="h-3.5 w-3.5" /> The Xero asset register is empty — every
                 ledger balance shows as a difference
               </span>
             )}
+            {data && (data.draftAssetCount ?? 0) > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-medium text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="h-3.5 w-3.5" /> {data.draftAssetCount} draft asset
+                {data.draftAssetCount === 1 ? " is" : "s are"} waiting to be registered — drafts do
+                not depreciate, so the difference stands until they are registered
+              </span>
+            )}
+
             {data && !data.complete && (
               <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-1 font-medium text-amber-600 dark:text-amber-400">
                 <AlertTriangle className="h-3.5 w-3.5" /> Incomplete — some data could not be loaded

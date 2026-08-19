@@ -8,9 +8,9 @@ import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroBut
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
+import { OrgDefaultCardsPanel } from "@/components/admin/OrgDefaultCardsPanel";
 
-import { getFirmPlanSummary, saveFirmDefaultWidgets } from "@/lib/tier-config.functions";
-import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
+import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,37 +79,6 @@ function FirmSettingsPage() {
     staleTime: 5 * 60_000,
   });
   const summary = summaryQ.data;
-  const isMulti = !!(summary?.allowsMultiOrg || summary?.supportsConsolidation);
-
-  // Optimistic copy while a default-card toggle is being written.
-  const [pendingWidgets, setPendingWidgets] = useState<WidgetKey[] | null>(null);
-  const [savingWidgets, setSavingWidgets] = useState(false);
-  const selectedWidgets = (pendingWidgets ?? summary?.widgets ?? []) as WidgetKey[];
-  const saveFirmDefaults = useServerFn(saveFirmDefaultWidgets);
-  const toggleWidget = async (w: WidgetKey) => {
-    if (savingWidgets) return;
-    const on = selectedWidgets.includes(w);
-    const next = on ? selectedWidgets.filter((x) => x !== w) : [...selectedWidgets, w];
-    setPendingWidgets(next);
-    setSavingWidgets(true);
-    try {
-      await saveFirmDefaults({ data: { firmId, widgets: next } });
-      await qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
-      qc.invalidateQueries({ queryKey: ["clients"] });
-      qc.invalidateQueries({ queryKey: ["client-widgets"] });
-      setPendingWidgets(null);
-      toast.success(
-        on
-          ? `${WIDGET_LABEL[w] ?? w} turned off for every client`
-          : `${WIDGET_LABEL[w] ?? w} turned on for new clients`,
-      );
-    } catch (e: any) {
-      setPendingWidgets(null);
-      toast.error(e?.message ?? "Could not save default cards");
-    } finally {
-      setSavingWidgets(false);
-    }
-  };
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["firm-subscription", firmId] });
@@ -285,52 +254,9 @@ function FirmSettingsPage() {
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Cards included by default
               </p>
-              {isMulti ? (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {(summary.availableWidgets ?? summary.widgets).map((w) => {
-                    const on = selectedWidgets.includes(w as WidgetKey);
-                    return (
-                      <button
-                        key={w}
-                        type="button"
-                        onClick={() => toggleWidget(w as WidgetKey)}
-                        disabled={savingWidgets}
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors disabled:opacity-60 ${
-                          on
-                            ? "bg-primary/10 text-primary"
-                            : "bg-muted text-muted-foreground line-through"
-                        }`}
-                      >
-                        {WIDGET_LABEL[w as WidgetKey] ?? w}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="mt-1.5 flex flex-wrap gap-1.5">
-                  {summary.widgets.map((w) => (
-                    <span
-                      key={w}
-                      className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
-                    >
-                      {WIDGET_LABEL[w as WidgetKey] ?? w}
-                    </span>
-                  ))}
-                </div>
-              )}
+              <OrgDefaultCardsPanel firmId={firmId} />
             </div>
 
-            {isMulti && savingWidgets && (
-              <p className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Saving…
-              </p>
-            )}
-
-            <p className="text-xs text-muted-foreground">
-              {isMulti
-                ? "Click a card to turn it off for every client in this organisation — changes save straight away. New clients start with the selected cards, and each client's own settings can still turn cards off individually."
-                : "New clients start with these cards. Open a client's settings to turn individual cards on or off for them."}
-            </p>
           </div>
         )}
       </section>

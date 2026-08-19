@@ -1551,6 +1551,8 @@ export type Database = {
         Row: {
           client_id: string | null
           created_at: string
+          excluded_widgets: string[]
+          firm_id: string | null
           id: string
           tier: string
           updated_at: string
@@ -1559,6 +1561,8 @@ export type Database = {
         Insert: {
           client_id?: string | null
           created_at?: string
+          excluded_widgets?: string[]
+          firm_id?: string | null
           id?: string
           tier: string
           updated_at?: string
@@ -1567,6 +1571,8 @@ export type Database = {
         Update: {
           client_id?: string | null
           created_at?: string
+          excluded_widgets?: string[]
+          firm_id?: string | null
           id?: string
           tier?: string
           updated_at?: string
@@ -1578,6 +1584,20 @@ export type Database = {
             columns: ["client_id"]
             isOneToOne: false
             referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tier_widget_config_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "tier_widget_config_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
             referencedColumns: ["id"]
           },
         ]
@@ -2087,6 +2107,17 @@ export type Database = {
           changed: number
           skipped_billed: number
           unchanged: number
+        }[]
+      }
+      set_org_widget_enabled: {
+        Args: {
+          _enabled: boolean
+          _firm_id: string
+          _tier: string
+          _widget: string
+        }
+        Returns: {
+          clients_affected: number
         }[]
       }
       transfer_organisation_ownership: {

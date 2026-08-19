@@ -56,26 +56,26 @@ export const listClients = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const clientIds = (rows ?? []).map((c: any) => c.id);
-    let configRows: any[] = [];
-    if (clientIds.length) {
-      const { data: cfgData } = await context.supabase
-        .from("tier_widget_config")
-        .select("client_id, tier, widgets")
-        .or(`client_id.is.null,client_id.in.(${clientIds.join(",")})`);
-      configRows = cfgData ?? [];
-    }
-    const byKey = new Map<string, WidgetKey[]>();
-    for (const r of configRows) {
-      byKey.set(`${r.client_id ?? "global"}:${r.tier}`, sanitizeWidgets(r.widgets));
-    }
+    // Cards per tier come from the deny-list model: plan ceiling minus the
+    // organisation's exclusions, plus each client's own exclusions.
+    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
+      await import("@/lib/widget-resolve.server");
+    const ceilings = await tierCeilings(context.supabase);
+    const exIndex = new ExclusionIndex(
+      clientIds.length
+        ? await fetchExclusions(context.supabase, { firmId, clientIds })
+        : await fetchExclusions(context.supabase, { firmId }),
+    );
+    const tierKeys: string[] = ceilings.size ? Array.from(ceilings.keys()) : [...ALL_TIERS];
     function resolveTierWidgets(clientId: string): Record<DashboardTier, WidgetKey[]> {
       return Object.fromEntries(
-        ALL_TIERS.map((t) => [
+        tierKeys.map((t) => [
           t,
-          byKey.get(`${clientId}:${t}`) ?? byKey.get(`global:${t}`) ?? DEFAULT_TIER_WIDGETS[t],
+          visibleWidgets(ceilingFor(ceilings, t), exIndex.effective(t, { firmId, clientId })),
         ]),
       ) as Record<DashboardTier, WidgetKey[]>;
     }
+
 
     // Effective dashboard tier per client comes from public.client_entitlement,
     // read through the caller's session. It is never recomputed here, and any
@@ -91,7 +91,7 @@ export const listClients = createServerFn({ method: "POST" })
         new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
       ) as DashboardTier[];
       const overrideTiers = Array.from(
-        new Set(configRows.filter((r) => r.client_id === c.id).map((r) => r.tier as DashboardTier)),
+        new Set(exIndex.clientTiers(c.id) as DashboardTier[]),
       ) as DashboardTier[];
       const clientTiers = Array.from(
         new Set<DashboardTier>([...overrideTiers, ...grantedTiers]),
