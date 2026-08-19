@@ -1,9 +1,8 @@
-import type React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Activity, AlertTriangle, RefreshCw } from "lucide-react";
-import { getBusinessHealth } from "@/lib/health.functions";
-import { useTenantCurrency, formatMoney } from "./useTenantCurrency";
+import { getBusinessHealthDetail } from "@/lib/health.functions";
+import { useTenantCurrency } from "./useTenantCurrency";
 import { HealthScoreDonut } from "./HealthScoreDonut";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateRangeControls, usePersistedDate, toISO } from "./DateRangeControls";
@@ -26,7 +25,9 @@ type Props = {
 };
 
 export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Props) {
-  const fetchHealth = useServerFn(getBusinessHealth);
+  // One server call powers the score, the drivers and the pillars, so the
+  // current-period P&L is fetched once instead of twice.
+  const fetchHealth = useServerFn(getBusinessHealthDetail);
   const currency = useTenantCurrency(tenantId);
   const [fromDate, setFromDate] = usePersistedDate(
     `health:from:${tenantId ?? "none"}`,
@@ -38,14 +39,20 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
   );
 
   const q = useQuery({
-    queryKey: ["business-health", tenantId, toISO(fromDate), toISO(toDate)],
+    queryKey: ["business-health", tenantId, clientId, toISO(fromDate), toISO(toDate)],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000,
     queryFn: () =>
       fetchHealth({
-        data: { tenantId: tenantId!, fromDate: toISO(fromDate), toDate: toISO(toDate) },
+        data: {
+          tenantId: tenantId!,
+          clientId,
+          fromDate: toISO(fromDate),
+          toDate: toISO(toDate),
+        },
       }),
   });
+
 
   if (!tenantId) {
     return <Placeholder tenantName={tenantName} />;
@@ -123,65 +130,61 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
           </div>
 
 
-          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            <Kpi label="Revenue (FY)" value={formatMoney(q.data.revenue, currency)} />
-            <Kpi label="Gross margin" value={`${q.data.grossMarginPct.toFixed(1)}%`} />
-            <Kpi
-              label="Net profit"
-              value={formatMoney(q.data.netProfit, currency)}
-              tone={q.data.netProfit < 0 ? "danger" : undefined}
-            />
-            <Kpi
-              label="Cash in bank"
-              value={formatMoney(q.data.cashInBank, currency)}
-              tone={q.data.cashInBank < 5000 ? "danger" : undefined}
-              detail={
-                q.data.bankAccounts && q.data.bankAccounts.length > 0 ? (
-                  <ul className="mt-2 space-y-0.5 text-[11px] text-muted-foreground">
-                    {q.data.bankAccounts.map((b) => (
-                      <li key={b.name} className="flex items-center justify-between gap-2">
-                        <span className="truncate">{b.name}</span>
-                        <span
-                          className={
-                            "tabular-nums " + (b.balance < 0 ? "text-destructive" : "")
-                          }
-                        >
-                          {formatMoney(b.balance, currency)}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : null
-              }
-            />
-            <Kpi label="Owed to you" value={formatMoney(q.data.owedToYou, currency)} />
+          <div className="mt-5">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              What the score is made of
+            </p>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <Driver
+                label="Net margin"
+                value={`${q.data.drivers.netMarginPct.toFixed(1)}%`}
+                tone={q.data.drivers.netMarginPct < 0 ? "danger" : undefined}
+              />
+              <Driver
+                label="Gross margin"
+                value={`${q.data.drivers.grossMarginPct.toFixed(1)}%`}
+              />
+              <Driver
+                label="Bad debts (% of revenue)"
+                value={`${q.data.drivers.badDebtsPctOfRevenue.toFixed(1)}%`}
+                tone={q.data.drivers.badDebtsPctOfRevenue >= 3 ? "danger" : undefined}
+              />
+              <Driver
+                label="Runway"
+                value={
+                  q.data.drivers.monthsRunway === null
+                    ? "Not available"
+                    : `${q.data.drivers.monthsRunway.toFixed(1)} months`
+                }
+                note={
+                  q.data.drivers.monthsRunway === null
+                    ? "Operating costs couldn't be derived, so the score uses a neutral stability of 50."
+                    : undefined
+                }
+              />
+            </div>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Dollar figures live in the Profit &amp; Loss card.
+            </p>
           </div>
 
-
-
-
-          <HealthPillars
-            tenantId={tenantId}
-            clientId={clientId}
-            fromDate={toISO(fromDate)}
-            toDate={toISO(toDate)}
-          />
+          <HealthPillars pillars={q.data.pillars} clientId={clientId} />
         </>
       )}
     </div>
   );
 }
 
-function Kpi({
+function Driver({
   label,
   value,
   tone,
-  detail,
+  note,
 }: {
   label: string;
   value: string;
   tone?: "danger";
-  detail?: React.ReactNode;
+  note?: string;
 }) {
   return (
     <div className="rounded-xl border border-border/60 bg-background/60 p-3">
@@ -194,10 +197,11 @@ function Kpi({
       >
         {value}
       </p>
-      {detail}
+      {note && <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>}
     </div>
   );
 }
+
 
 function LoadingState() {
   return (
@@ -209,8 +213,8 @@ function LoadingState() {
           <Skeleton className="h-4 w-64" />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="h-16 rounded-xl" />
         ))}
       </div>
