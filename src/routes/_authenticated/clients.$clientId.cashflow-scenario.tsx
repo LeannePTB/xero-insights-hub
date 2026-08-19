@@ -40,6 +40,7 @@ import {
   usePersistedCostBasis,
   type CostGroup,
 } from "@/lib/scenario-basis";
+import { UnclassifiedNotice } from "@/components/dashboard/UnclassifiedNotice";
 import { CostBasisControls } from "@/components/dashboard/CostBasisControls";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/cashflow-scenario")({
@@ -302,6 +303,7 @@ function CashflowScenarioPage() {
 
             {/* Scenario */}
             <section className="mt-8">
+              <UnclassifiedNotice clientId={clientId} count={data?.unclassifiedCount ?? 0} />
               <div className="mb-5 border-b border-border/60 pb-4">
                 <h2 className="font-display text-xl font-semibold">Scenario</h2>
                 <p className="text-sm text-muted-foreground">If this, then that</p>
