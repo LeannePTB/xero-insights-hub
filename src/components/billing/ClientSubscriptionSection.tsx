@@ -12,7 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getClientBilling, setClientComp, setClientTrial } from "@/lib/billing.functions";
+import {
+  getClientBilling,
+  setClientComp,
+  setClientTrial,
+  setClientDashboardTier,
+} from "@/lib/billing.functions";
 import { tierLabel, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -37,6 +42,7 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
   const fetchBilling = useServerFn(getClientBilling);
   const comp = useServerFn(setClientComp);
   const trial = useServerFn(setClientTrial);
+  const setTier = useServerFn(setClientDashboardTier);
 
   const [reason, setReason] = useState("");
   const [trialTier, setTrialTier] = useState<DashboardTier>("advisory");
@@ -62,6 +68,9 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not update the subscription"),
   });
+
+  // Standard / Advisory / Multi company — the client-facing dashboard tiers.
+  const TIER_CHOICES: DashboardTier[] = ["basic", "advisory", "multi_company"];
 
   const trialMut = useMutation({
     mutationFn: (start: boolean) =>
@@ -122,7 +131,7 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <Select
             value={pendingTier}
-            onValueChange={(v) => setPendingTier(v as DashboardTier)}
+            onValueChange={(v) => setTierDraft(v as DashboardTier)}
           >
             <SelectTrigger className="h-9 w-56">
               <SelectValue />
