@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { listClients, deleteClient } from "@/lib/clients.functions";
 import { listTierSettings, getFirmPlanSummary } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
