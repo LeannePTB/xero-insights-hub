@@ -21,6 +21,7 @@ export const Route = createFileRoute("/api/public/tmp-recon-probe")({
           if (url.searchParams.get("raw")) {
             const { xeroGet } = await import("@/lib/xero/api.server");
             const cn = await xeroGet<any>(conn, "CreditNotes", { where: 'Status!="DELETED"&&Status!="VOIDED"&&Status!="DRAFT"' });
+            if (url.searchParams.get("keys")) return Response.json({ cn: cn.CreditNotes, op: (await xeroGet<any>(conn, "Overpayments", {})).Overpayments });
             const op = await xeroGet<any>(conn, "Overpayments", {});
             const pp = await xeroGet<any>(conn, "Prepayments", {});
             const pay = await xeroGet<any>(conn, "Payments", { where: 'Status=="AUTHORISED"' });
