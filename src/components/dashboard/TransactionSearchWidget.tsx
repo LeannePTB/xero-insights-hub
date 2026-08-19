@@ -186,9 +186,10 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
           <Search className="h-4 w-4 text-primary" /> Transaction Search
         </h3>
         <p className="text-xs text-muted-foreground">
-          Invoices, bills, credit notes, prepayments and overpayments across the Xero
-          organisations you are entitled to see.
+          Invoices, bills, credit notes, prepayments and overpayments across every Xero
+          organisation in this organisation. Organisation staff only.
         </p>
+
       </div>
 
       <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
