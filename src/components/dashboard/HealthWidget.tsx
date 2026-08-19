@@ -1,9 +1,8 @@
-import type React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Activity, AlertTriangle, RefreshCw } from "lucide-react";
-import { getBusinessHealth } from "@/lib/health.functions";
-import { useTenantCurrency, formatMoney } from "./useTenantCurrency";
+import { getBusinessHealthDetail } from "@/lib/health.functions";
+import { useTenantCurrency } from "./useTenantCurrency";
 import { HealthScoreDonut } from "./HealthScoreDonut";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateRangeControls, usePersistedDate, toISO } from "./DateRangeControls";
@@ -26,7 +25,9 @@ type Props = {
 };
 
 export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Props) {
-  const fetchHealth = useServerFn(getBusinessHealth);
+  // One server call powers the score, the drivers and the pillars, so the
+  // current-period P&L is fetched once instead of twice.
+  const fetchHealth = useServerFn(getBusinessHealthDetail);
   const currency = useTenantCurrency(tenantId);
   const [fromDate, setFromDate] = usePersistedDate(
     `health:from:${tenantId ?? "none"}`,
@@ -38,14 +39,20 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
   );
 
   const q = useQuery({
-    queryKey: ["business-health", tenantId, toISO(fromDate), toISO(toDate)],
+    queryKey: ["business-health", tenantId, clientId, toISO(fromDate), toISO(toDate)],
     enabled: !!tenantId,
     staleTime: 5 * 60 * 1000,
     queryFn: () =>
       fetchHealth({
-        data: { tenantId: tenantId!, fromDate: toISO(fromDate), toDate: toISO(toDate) },
+        data: {
+          tenantId: tenantId!,
+          clientId,
+          fromDate: toISO(fromDate),
+          toDate: toISO(toDate),
+        },
       }),
   });
+
 
   if (!tenantId) {
     return <Placeholder tenantName={tenantName} />;
