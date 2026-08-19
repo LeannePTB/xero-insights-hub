@@ -68,6 +68,7 @@ export function PnlWidget({
       return { current, prior: priorReport };
     },
     enabled: shouldLoad,
+    staleTime: 5 * 60 * 1000,
     retry: false,
   });
 
