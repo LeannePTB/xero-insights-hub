@@ -146,6 +146,13 @@ export function FirmClientsSection({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-semibold">{heading}</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <SetAllClientTiersDialog
+            firmId={firmId}
+            clientCount={clients.length}
+            options={enabledTiers.map((t) => ({ key: t, label: labelFor(t) }))}
+          />
+        </div>
         {showAddActions && (
           <div className="flex items-center gap-3">
             {atLimit && (
