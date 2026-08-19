@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { usePersistedDisclosure, sectionStorageKey } from "@/hooks/usePersistedDisclosure";
 
 const STATUS_LABEL: Record<SupportGrant["status"], string> = {
   pending: "Awaiting approval",
@@ -60,7 +61,7 @@ export function SupportAccessCard({ firmId }: { firmId: string }) {
   });
 
   const s = q.data;
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = usePersistedDisclosure(sectionStorageKey("admin-organisation", "Support access"));
   const busy = requestMut.isPending || decideMut.isPending;
   const visible = (s?.grants ?? []).filter((g) => g.status === "pending" || g.status === "active");
 
