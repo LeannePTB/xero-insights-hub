@@ -71,3 +71,24 @@ export const setCostClassificationEnabled = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/**
+ * Remove stored tags. Used to clear stale rows whose account no longer exists
+ * in Xero — the panel surfaces them rather than orphaning them silently.
+ */
+export const removeCostClassifications = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (input: { clientId: string; tenantId: string; accountNames: string[] }) => input,
+  )
+  .handler(async ({ data, context }) => {
+    if (data.accountNames.length === 0) return { ok: true };
+    const { error } = await context.supabase
+      .from("client_cost_classifications" as any)
+      .delete()
+      .eq("client_id", data.clientId)
+      .eq("tenant_id", data.tenantId)
+      .in("account_name", data.accountNames);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
