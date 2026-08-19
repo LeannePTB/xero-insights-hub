@@ -51,15 +51,15 @@ type FirmRow = {
   recent_error_count: number;
 };
 
-/** used / limit, coloured amber at the limit and red over it. */
-function UsageCell({ used, limit }: { used: number | null; limit: number | null }) {
+/** "1 / 1 clients", coloured amber at the limit and red over it. Never wraps mid-number. */
+function UsageCell({ used, limit, unit }: { used: number | null; limit: number | null; unit: string }) {
   if (used == null) return <span className="text-muted-foreground">—</span>;
   const limitLabel = limit == null ? "∞" : String(limit);
   const tone =
     limit == null ? "" : used > limit ? "text-destructive font-medium" : used === limit ? "text-amber-500 font-medium" : "";
   return (
-    <span className={tone}>
-      {used} / {limitLabel}
+    <span className={`whitespace-nowrap tabular-nums ${tone}`}>
+      {used} / {limitLabel} {unit}
       {limit != null && used > limit ? " (over)" : ""}
     </span>
   );
