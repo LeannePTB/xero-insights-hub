@@ -28,12 +28,30 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+/** Explains a tier that isn't a plain paid subscription. */
+function sourceNote(ent: { source?: string; expiresAt?: string | null }): string | null {
+  const when = ent.expiresAt
+    ? new Date(ent.expiresAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit" })
+    : null;
+  switch (ent.source) {
+    case "trial":
+      return when ? `trial · ends ${when}` : "trial";
+    case "free_forever":
+      return "comped";
+    case "org_always_free":
+      return "included";
+    default:
+      return null;
+  }
+}
+
 /**
  * Clients for one organisation: list, add, open, settings, view-as and remove.
  * Shared by the organisation page and the admin "Plan & members" page so both
  * stay in sync. `showHealth` is off on admin surfaces that must not show
  * client financial data.
  */
+
 export function FirmClientsSection({
   firmId,
   firmName,
