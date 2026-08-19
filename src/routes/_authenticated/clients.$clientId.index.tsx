@@ -23,6 +23,8 @@ import { TrueBreakevenWidget } from "@/components/dashboard/TrueBreakevenWidget"
 import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
 import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 import { BalanceSheetReconciliationWidget } from "@/components/dashboard/BalanceSheetReconciliationWidget";
+import { FixedAssetsReconciliationWidget } from "@/components/dashboard/FixedAssetsReconciliationWidget";
+import { GstReconciliationWidget } from "@/components/dashboard/GstReconciliationWidget";
 
 
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
@@ -163,7 +165,11 @@ function ClientDashboard() {
       if (widgets.includes("cashflow_scenario"))
         advanced.push({ id: `${o.id}:cashflow_scenario`, node: <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("balance_sheet_reconciliation"))
-        advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+        advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} loanConsolidationHref={client?.firm_id ? `/firms/${client.firm_id}/loans` : undefined} /> });
+      if (widgets.includes("fixed_assets_reconciliation"))
+        advanced.push({ id: `${o.id}:fixed_assets_reconciliation`, node: <FixedAssetsReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+      if (widgets.includes("gst_reconciliation"))
+        advanced.push({ id: `${o.id}:gst_reconciliation`, node: <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
 

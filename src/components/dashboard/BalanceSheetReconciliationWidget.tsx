@@ -1,8 +1,18 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { Link } from "@tanstack/react-router";
 import { format } from "date-fns";
-import { AlertTriangle, CheckCircle2, Loader2, RefreshCw, Scale } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Loader2,
+  RefreshCw,
+  Scale,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -13,65 +23,87 @@ import {
 } from "@/components/ui/select";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { getBalanceSheetReconciliation } from "@/lib/xero/reconciliation.functions";
+import { money as fmt, periodOptions } from "@/components/dashboard/recon-periods";
 
-function fmt(n: number | null) {
-  if (n === null || n === undefined) return "—";
-  return new Intl.NumberFormat("en-AU", {
-    style: "currency",
-    currency: "AUD",
-    maximumFractionDigits: 2,
-  }).format(n);
+type Row = {
+  key: string;
+  label: string;
+  section: string;
+  kind: string;
+  treatment: "reconciled" | "indicative" | "review";
+  group?: "loans";
+  glBalance: number | null;
+  subledgerBalance: number | null;
+  variance: number | null;
+  status: "balanced" | "variance" | "indicative" | "review" | "unavailable";
+  reason?: string;
+};
+
+function TreatmentBadge({ row }: { row: Row }) {
+  const map: Record<string, { text: string; cls: string }> = {
+    variance: { text: "Out of balance", cls: "bg-destructive/10 text-destructive" },
+    balanced: { text: "Reconciled", cls: "bg-primary/10 text-primary" },
+    indicative: {
+      text: "Indicative",
+      cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    },
+    review: { text: "Review only", cls: "bg-muted text-muted-foreground" },
+    unavailable: {
+      text: "Unavailable",
+      cls: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+    },
+  };
+  const v = map[row.status] ?? map.review;
+  return (
+    <span className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-medium ${v.cls}`}>
+      {v.text}
+    </span>
+  );
 }
 
-function iso(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-/** Presets only — a free date picker invites a fetch per keystroke. */
-function periodOptions(): { value: string; label: string }[] {
-  const now = new Date();
-  const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-  const opts = [
-    { value: iso(thisMonthEnd), label: `This month end (${format(thisMonthEnd, "d MMM yyyy")})` },
-    { value: iso(lastMonthEnd), label: `Last month end (${format(lastMonthEnd, "d MMM yyyy")})` },
-  ];
-  // The four Australian BAS quarter ends, most recent first.
-  const quarters = [
-    { m: 8, d: 30 }, // 30 September
-    { m: 11, d: 31 }, // 31 December
-    { m: 2, d: 31 }, // 31 March
-    { m: 5, d: 30 }, // 30 June
-  ];
-  const ends: Date[] = [];
-  for (const y of [now.getFullYear(), now.getFullYear() - 1]) {
-    for (const q of quarters) {
-      const d = new Date(y, q.m, q.d);
-      if (d <= now) ends.push(d);
-    }
-  }
-  ends.sort((a, b) => b.getTime() - a.getTime());
-  for (const d of ends.slice(0, 4)) {
-    const v = iso(d);
-    if (!opts.some((o) => o.value === v)) {
-      opts.push({ value: v, label: `Quarter end ${format(d, "d MMM yyyy")}` });
-    }
-  }
-  return opts;
+function BodyRow({ row }: { row: Row }) {
+  return (
+    <tr className="border-b border-border/50 last:border-0">
+      <td className="py-2 pr-3">
+        <div className="font-medium">{row.label}</div>
+        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+          {row.section && <span>{row.section}</span>}
+          <TreatmentBadge row={row} />
+        </div>
+        {row.status === "unavailable" && row.reason && (
+          <div className="text-xs text-amber-600 dark:text-amber-400">Unavailable — {row.reason}</div>
+        )}
+      </td>
+      <td className="py-2 px-3 text-right tabular-nums">{fmt(row.glBalance)}</td>
+      <td className="py-2 px-3 text-right tabular-nums">
+        {row.treatment === "review" ? "—" : fmt(row.subledgerBalance)}
+      </td>
+      <td
+        className={`py-2 pl-3 text-right tabular-nums font-semibold ${
+          row.status === "variance" ? "text-destructive" : "text-muted-foreground"
+        }`}
+      >
+        {row.treatment === "review" || row.status === "unavailable" ? "—" : fmt(row.variance)}
+      </td>
+    </tr>
+  );
 }
 
 export function BalanceSheetReconciliationWidget({
   clientId,
   tenantId,
   tenantName,
+  loanConsolidationHref,
 }: {
   clientId: string;
   tenantId: string;
   tenantName: string;
+  loanConsolidationHref?: string;
 }) {
   const options = useMemo(periodOptions, []);
   const defaultAsAt = options[1]?.value ?? options[0]!.value; // last month end
   const [asAt, setAsAt] = useState(defaultAsAt);
+  const [loansOpen, setLoansOpen] = useState(false);
   const fetchRecon = useServerFn(getBalanceSheetReconciliation);
 
   const q = useQuery({
@@ -93,7 +125,10 @@ export function BalanceSheetReconciliationWidget({
   }
 
   const data = q.data;
-  const rows = data?.rows ?? [];
+  const rows: Row[] = (data?.rows ?? []) as Row[];
+  const mainRows = rows.filter((r) => r.group !== "loans");
+  const loanRows = rows.filter((r) => r.group === "loans");
+  const loanSubtotal = loanRows.reduce((s, r) => s + (r.glBalance ?? 0), 0);
   const variances = rows.filter((r) => r.status === "variance").length;
   const unavailable = rows.filter((r) => r.status === "unavailable").length;
 
@@ -109,7 +144,7 @@ export function BalanceSheetReconciliationWidget({
             Balance sheet reconciliation
           </h3>
           <p className="text-xs text-muted-foreground">
-            Control accounts against their subledgers as at{" "}
+            Every balance sheet account as at{" "}
             {format(new Date(`${asAt}T00:00:00`), "d MMMM yyyy")}
           </p>
         </div>
@@ -173,39 +208,78 @@ export function BalanceSheetReconciliationWidget({
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
-                  <tr key={r.key} className="border-b border-border/50 last:border-0">
-                    <td className="py-2 pr-3">
-                      <div className="font-medium">{r.label}</div>
-                      {r.status === "unavailable" && (
-                        <div className="text-xs text-amber-600 dark:text-amber-400">
-                          Unavailable — {r.reason}
-                        </div>
-                      )}
-                    </td>
-                    <td className="py-2 px-3 text-right tabular-nums">{fmt(r.glBalance)}</td>
-                    <td className="py-2 px-3 text-right tabular-nums">{fmt(r.subledgerBalance)}</td>
-                    <td
-                      className={`py-2 pl-3 text-right tabular-nums font-semibold ${
-                        r.status === "variance"
-                          ? "text-destructive"
-                          : r.status === "unavailable"
-                            ? "text-muted-foreground"
-                            : "text-muted-foreground"
-                      }`}
-                    >
-                      {r.status === "unavailable" ? "—" : fmt(r.variance)}
-                    </td>
-                  </tr>
+                {mainRows.map((r) => (
+                  <BodyRow key={r.key} row={r} />
                 ))}
+
+                {loanRows.length > 0 && (
+                  <>
+                    <tr className="border-b border-border/50 bg-muted/30">
+                      <td className="py-2 pr-3">
+                        <button
+                          type="button"
+                          onClick={() => setLoansOpen((v) => !v)}
+                          className="inline-flex items-center gap-1.5 font-medium"
+                        >
+                          {loansOpen ? (
+                            <ChevronDown className="h-4 w-4" />
+                          ) : (
+                            <ChevronRight className="h-4 w-4" />
+                          )}
+                          Loan accounts ({loanRows.length})
+                        </button>
+                        {loanConsolidationHref && (
+                          <Link
+                            to={loanConsolidationHref}
+                            className="ml-3 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+                          >
+                            Loan consolidation <ExternalLink className="h-3 w-3" />
+                          </Link>
+                        )}
+                      </td>
+                      <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                        {fmt(loanSubtotal)}
+                      </td>
+                      <td className="py-2 px-3 text-right text-muted-foreground">—</td>
+                      <td className="py-2 pl-3 text-right text-muted-foreground">—</td>
+                    </tr>
+                    {loansOpen && loanRows.map((r) => <BodyRow key={r.key} row={r} />)}
+                  </>
+                )}
+
                 {rows.length === 0 && (
                   <tr>
                     <td colSpan={4} className="py-4 text-sm text-muted-foreground">
-                      No control accounts found for this organisation.
+                      No balance sheet accounts found for this organisation.
                     </td>
                   </tr>
                 )}
               </tbody>
+              {data?.totals && (
+                <tfoot className="text-xs">
+                  <tr className="border-t border-border">
+                    <td className="py-2 pr-3 font-semibold">Total assets</td>
+                    <td className="py-2 px-3 text-right tabular-nums font-semibold">
+                      {fmt(data.totals.totalAssets)}
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                  <tr>
+                    <td className="py-1 pr-3 font-semibold">Total current liabilities</td>
+                    <td className="py-1 px-3 text-right tabular-nums font-semibold">
+                      {fmt(data.totals.totalCurrentLiabilities)}
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                  <tr>
+                    <td className="py-1 pr-3 font-semibold">Net assets</td>
+                    <td className="py-1 px-3 text-right tabular-nums font-semibold">
+                      {fmt(data.totals.netAssets)}
+                    </td>
+                    <td colSpan={2} />
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
 

@@ -1,12 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import type { ReconResult } from "./reconciliation.server";
+import type { GstResult } from "./gst.server";
 import type { SnapshotMeta } from "./recon-snapshot.server";
 
-export const RECON_REPORT_KEY = "balance_sheet_reconciliation";
+export const GST_REPORT_KEY = "gst_reconciliation";
 
-export type ReconciliationPayload = ReconResult;
-export type ReconciliationResponse = ReconResult & SnapshotMeta;
+export type GstResponse = GstResult & SnapshotMeta;
 
 type Input = { clientId: string; tenantId: string; asAt: string; recalculate?: boolean };
 
@@ -15,12 +14,12 @@ function validate(i: Input): Input {
   return i;
 }
 
-export const getBalanceSheetReconciliation = createServerFn({ method: "POST" })
+export const getGstReconciliation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(validate)
-  .handler(async ({ data, context }): Promise<ReconciliationResponse> => {
+  .handler(async ({ data, context }): Promise<GstResponse> => {
     const { runReconciliation } = await import("./recon-snapshot.server");
-    const { computeBalanceSheetReconciliation } = await import("./reconciliation.server");
+    const { computeGstReconciliation } = await import("./gst.server");
     return runReconciliation({
       supabase: context.supabase as any,
       userId: context.userId,
@@ -28,8 +27,8 @@ export const getBalanceSheetReconciliation = createServerFn({ method: "POST" })
       tenantId: data.tenantId,
       asAt: data.asAt,
       recalculate: data.recalculate,
-      reportKey: RECON_REPORT_KEY,
-      widget: "balance_sheet_reconciliation",
-      compute: (conn) => computeBalanceSheetReconciliation(conn, data.asAt),
+      reportKey: GST_REPORT_KEY,
+      widget: "gst_reconciliation",
+      compute: (conn) => computeGstReconciliation(conn, data.asAt),
     });
   });
