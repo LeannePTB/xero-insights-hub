@@ -12,6 +12,7 @@ export type SnapshotMeta = {
   fromSnapshot: boolean;
   tenantName: string;
   canRecalculate: boolean;
+  version: number;
 };
 
 export async function runReconciliation<T extends { complete: boolean }>(opts: {
@@ -54,6 +55,9 @@ export async function runReconciliation<T extends { complete: boolean }>(opts: {
   const recalculate = !!opts.recalculate && canRecalculate;
 
   // 4. A complete snapshot is authoritative — the figures must not drift.
+  const { reconVersion } = await import("./recon-versions");
+  const currentVersion = reconVersion(reportKey);
+
   const { data: existing } = await supabase
     .from("reconciliation_snapshots")
     .select("payload, complete, generated_at")
@@ -62,20 +66,30 @@ export async function runReconciliation<T extends { complete: boolean }>(opts: {
     .eq("as_at", asAt)
     .maybeSingle();
 
-  if (existing?.complete && !recalculate) {
+  const storedVersion = Number((existing?.payload as any)?.version ?? 0);
+  const superseded = !!existing && storedVersion < currentVersion;
+  if (superseded) {
+    console.info(
+      `[reconciliation] snapshot superseded (${reportKey} ${asAt}): stored v${storedVersion} < current v${currentVersion} — recomputing`,
+    );
+  }
+
+  if (existing?.complete && !recalculate && !superseded) {
     return {
       ...(existing.payload as T),
       generatedAt: existing.generated_at,
       fromSnapshot: true,
       tenantName,
       canRecalculate,
+      version: currentVersion,
     };
   }
 
   // 5. Compute.
   const { getConnectionByTenant } = await import("./api.server");
   const conn = await getConnectionByTenant(tenantId);
-  const result = await opts.compute(conn);
+  const computed = await opts.compute(conn);
+  const result = { ...computed, version: currentVersion } as T & { version: number };
 
   // 6. Persist. Writes need the service role (the table has no write policy);
   //    access was already established above. Never overwrite a complete
@@ -83,7 +97,7 @@ export async function runReconciliation<T extends { complete: boolean }>(opts: {
   const generatedAt = new Date().toISOString();
   try {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    if (!existing || recalculate || (!existing.complete && result.complete)) {
+    if (!existing || recalculate || superseded || (!existing.complete && result.complete)) {
       await (supabaseAdmin as any).from("reconciliation_snapshots").upsert(
         {
           client_id: clientId,
@@ -113,5 +127,5 @@ export async function runReconciliation<T extends { complete: boolean }>(opts: {
     });
   }
 
-  return { ...result, generatedAt, fromSnapshot: false, tenantName, canRecalculate };
+  return { ...result, generatedAt, fromSnapshot: false, tenantName, canRecalculate, version: currentVersion };
 }
