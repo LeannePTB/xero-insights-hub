@@ -55,22 +55,25 @@ export function OrgDefaultCardsPanel({ firmId }: { firmId: string }) {
       const res = await toggle({
         data: { firmId, tier: tier.key, widget: w, enabled: !currentlyOn },
       });
-      await qc.invalidateQueries({ queryKey: ["org-widget-matrix", firmId] });
-      qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
-      qc.invalidateQueries({ queryKey: ["clients"] });
-      qc.invalidateQueries({ queryKey: ["client-widgets"] });
-      qc.invalidateQueries({ queryKey: ["effective-widgets"] });
-      qc.invalidateQueries({ queryKey: ["firm-allowed-widgets", firmId] });
+      // These are the live readers of organisation/client exclusions. The
+      // dashboard key is prefixed with client-widgets, so this invalidates
+      // every client and preview-tier variant without knowing their ids.
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ["org-widget-matrix", firmId] }),
+        qc.invalidateQueries({ queryKey: ["tier-config"] }),
+        qc.invalidateQueries({ queryKey: ["client-widgets"] }),
+        qc.invalidateQueries({ queryKey: ["effective-widgets"] }),
+        qc.invalidateQueries({ queryKey: ["firm-allowed-widgets", firmId] }),
+      ]);
 
       const label = WIDGET_LABEL[w] ?? w;
-      const clients = res.clientCount ?? clientCount;
-      const plural = clients === 1 ? "client" : "clients";
+      const plural = clientCount === 1 ? "client" : "clients";
       if (currentlyOn) {
-        toast.success(`${label} turned off for all ${clients} ${plural}.`);
+        toast.success(`${label} turned off for all ${clientCount} ${plural}.`);
       } else {
-        const cleared = res.overridesCleared ?? 0;
+        const cleared = res.clientsAffected;
         toast.success(
-          `${label} turned on for all ${clients} ${plural}` +
+          `${label} turned on for all ${clientCount} ${plural}` +
             (cleared > 0
               ? ` — ${cleared} client override${cleared === 1 ? "" : "s"} cleared.`
               : "."),
