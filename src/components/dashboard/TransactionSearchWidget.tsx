@@ -93,6 +93,7 @@ function DateField({
 }
 
 type Submitted = { query: string; fromDate: string | null; toDate: string | null };
+type UnavailableOrg = { tenantId: string; tenantName: string; reason: string };
 
 export function TransactionSearchWidget({ clientId }: { clientId: string; orgCount?: number }) {
   const fetchSearch = useServerFn(searchClientTransactions);
@@ -102,6 +103,13 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
   const [to, setTo] = useState<Date | undefined>();
   const [submitted, setSubmitted] = useState<Submitted | null>(null);
   const [page, setPage] = useState(1);
+  // Partial results, surfaced as each batch of Xero organisations comes back.
+  const [live, setLive] = useState<{
+    hits: SearchHit[];
+    unavailable: UnavailableOrg[];
+    done: number;
+    total: number;
+  } | null>(null);
 
   const canSubmit = !!(debouncedQ.trim() || from || to);
 
@@ -112,27 +120,64 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
     // Xero's per-organisation daily limit is a real constraint: reuse results.
     staleTime: 5 * 60 * 1000,
     retry: false,
-    queryFn: () =>
-      fetchSearch({
-        data: {
-          clientId,
-          query: submitted!.query,
-          fromDate: submitted!.fromDate,
-          toDate: submitted!.toDate,
-          page,
-        },
-      }),
+    queryFn: async () => {
+      const hits: SearchHit[] = [];
+      const unavailable: UnavailableOrg[] = [];
+      let hasMore = false;
+      let batch = 0;
+      let batchCount = 1;
+      let totalOrganisations = 0;
+      setLive({ hits: [], unavailable: [], done: 0, total: 0 });
+      // Batches run one after another, with a short pause between them, so a
+      // twelve-file organisation never fires twelve searches at once.
+      while (batch < batchCount) {
+        const res = await fetchSearch({
+          data: {
+            clientId,
+            query: submitted!.query,
+            fromDate: submitted!.fromDate,
+            toDate: submitted!.toDate,
+            page,
+            batch,
+          },
+        });
+        batchCount = res.batchCount;
+        totalOrganisations = res.totalOrganisations;
+        hits.push(...res.hits);
+        unavailable.push(...res.unavailable);
+        hasMore = hasMore || res.hasMore;
+        batch += 1;
+        setLive({
+          hits: [...hits].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
+          unavailable: [...unavailable],
+          done: Math.min(batch * 3, totalOrganisations),
+          total: totalOrganisations,
+        });
+        if (batch < batchCount) await new Promise((r) => setTimeout(r, 400));
+      }
+      setLive(null);
+      return {
+        hits: hits.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
+        unavailable,
+        hasMore,
+        totalOrganisations,
+      };
+    },
   });
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
     setPage(1);
+    setLive(null);
     setSubmitted({ query: debouncedQ.trim(), fromDate: toIso(from), toDate: toIso(to) });
   }
 
-  const hits = search.data?.hits ?? [];
+  const hits = live?.hits ?? search.data?.hits ?? [];
+  const unavailable = live?.unavailable ?? search.data?.unavailable ?? [];
   const hasMore = search.data?.hasMore ?? false;
+  const orgTotal = live?.total ?? search.data?.totalOrganisations ?? 0;
+
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -141,9 +186,10 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
           <Search className="h-4 w-4 text-primary" /> Transaction Search
         </h3>
         <p className="text-xs text-muted-foreground">
-          Invoices, bills, credit notes, prepayments and overpayments across the Xero
-          organisations you are entitled to see.
+          Invoices, bills, credit notes, prepayments and overpayments across every Xero
+          organisation in this organisation. Organisation staff only.
         </p>
+
       </div>
 
       <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
@@ -176,18 +222,43 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
         </div>
       )}
 
-      {search.data && (
+      {live && (
+        <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Searching Xero organisation {Math.max(1, live.done)} of {live.total}…
+        </p>
+      )}
+
+      {unavailable.length > 0 && (
+        <div className="mt-3 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+          <p className="font-medium">
+            {unavailable.length} Xero organisation{unavailable.length === 1 ? " was" : "s were"} not
+            searched — results below are incomplete:
+          </p>
+          <ul className="mt-1 list-disc pl-4">
+            {unavailable.map((u) => (
+              <li key={u.tenantId}>
+                {u.tenantName} — {u.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(search.data || live) && (
         <div className="mt-4">
           {hits.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No matches found.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {live ? "Searching…" : "No matches found."}
+            </p>
           ) : (
             <>
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">
                   {hits.length} match{hits.length === 1 ? "" : "es"} on page {page} across{" "}
-                  {search.data.searchedOrganisations.length} Xero organisation
-                  {search.data.searchedOrganisations.length === 1 ? "" : "s"}
+                  {orgTotal} Xero organisation{orgTotal === 1 ? "" : "s"} in this organisation
                 </p>
+
                 <div className="flex items-center gap-1">
                   <Button
                     type="button"

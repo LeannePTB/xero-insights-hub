@@ -38,6 +38,8 @@ import { tierLabel as tierLabelFor, ALL_TIERS, type DashboardTier } from "@/lib/
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { TransactionSearchWidget } from "@/components/dashboard/TransactionSearchWidget";
+import { canSearchOrganisationTransactions } from "@/lib/xero/search.functions";
+
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
@@ -61,6 +63,16 @@ function ClientDashboard() {
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
   const fetchWidgets = useServerFn(getClientWidgets);
+  // Organisation-wide search is for organisation staff only; an invited client
+  // viewer must not even see the card. The server function enforces the same
+  // rule again — this is presentation, not access control.
+  const canSearchOrgFn = useServerFn(canSearchOrganisationTransactions);
+  const orgSearchQ = useQuery({
+    queryKey: ["can-search-organisation", clientId],
+    queryFn: () => canSearchOrgFn({ data: { clientId } }),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const fetchOrder = useServerFn(getCardOrder);
   const saveOrderFn = useServerFn(saveCardOrder);
 
@@ -261,11 +273,12 @@ function ClientDashboard() {
           />
         )}
 
-        {widgets.includes("transaction_search") && orgs.length > 0 && (
+        {widgets.includes("transaction_search") && (orgSearchQ.data?.allowed ?? false) && (
           <div className="mt-6">
-            <TransactionSearchWidget clientId={clientId} orgCount={orgs.length} />
+            <TransactionSearchWidget clientId={clientId} />
           </div>
         )}
+
 
 
         <div className="mt-3 space-y-6">

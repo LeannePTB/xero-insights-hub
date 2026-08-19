@@ -34,6 +34,80 @@ function esc(q: string) {
   return q.replace(/"/g, '\\"');
 }
 
+export type UnavailableOrg = { tenantId: string; tenantName: string; reason: string };
+
+/** Tenants searched per round trip. Twelve Xero files at once is a rate-limit problem. */
+const BATCH_SIZE = 3;
+
+/**
+ * Who may run an organisation-wide search?
+ *
+ * public.user_can_access_firm(_user_id, _firm_id) — the single database
+ * implementation of the rule. It is:
+ *     app_private.has_firm_access            (active firm_members row)
+ *  OR app_private.platform_staff_can_access_firm  (super admin WITH an
+ *                                            approved, unexpired support grant)
+ *
+ * An invited client viewer reaches a client through public.client_access only,
+ * which that function does not consider, so a viewer is refused here even
+ * though they can open the client dashboard. Being a super admin on its own
+ * grants nothing.
+ */
+async function assertOrganisationStaff(userId: string, firmId: string) {
+  const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+  if (!(await platformStaffCanAccessFirm(userId, firmId))) {
+    throw new Error(
+      "Transaction search covers the whole organisation, so it is available to organisation members and platform staff with an approved support grant only.",
+    );
+  }
+}
+
+/** Resolve the organisation for a client. The client id is a filter, never a grant. */
+async function firmIdForClient(clientId: string): Promise<string> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data, error } = await supabaseAdmin
+    .from("clients")
+    .select("firm_id")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const firmId = (data as any)?.firm_id as string | null | undefined;
+  if (!firmId) throw new Error("This client is not attached to an organisation.");
+  return firmId;
+}
+
+/**
+ * UI gate only — the server function below enforces the same rule again.
+ * Returns whether this caller may use organisation-wide transaction search.
+ */
+export const canSearchOrganisationTransactions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { clientId: string }) => input)
+  .handler(async ({ data, context }) => {
+    try {
+      const firmId = await firmIdForClient(data.clientId);
+      const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+      if (!(await platformStaffCanAccessFirm(context.userId, firmId))) {
+        return { allowed: false, organisationCount: 0 };
+      }
+      const { clientCanUseWidget } = await import("@/lib/widget-access.server");
+      if (!(await clientCanUseWidget(context.supabase, data.clientId, "transaction_search"))) {
+        return { allowed: false, organisationCount: 0 };
+      }
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: conns } = await supabaseAdmin
+        .from("xero_connections")
+        .select("tenant_id, status")
+        .eq("firm_id", firmId);
+      const count = (conns ?? []).filter(
+        (c: any) => c?.tenant_id && c.status !== "disconnected",
+      ).length;
+      return { allowed: count > 0, organisationCount: count };
+    } catch {
+      return { allowed: false, organisationCount: 0 };
+    }
+  });
+
 export const searchClientTransactions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -43,6 +117,7 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
       fromDate?: string | null;
       toDate?: string | null;
       page?: number;
+      batch?: number;
     }) => input,
   )
   .handler(async ({ data, context }) => {
@@ -55,73 +130,53 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
       throw new Error("Enter a search term or a date range before searching.");
     }
     const page = Math.max(1, Math.min(50, Math.floor(Number(data.page ?? 1)) || 1));
+    const batch = Math.max(0, Math.floor(Number(data.batch ?? 0)) || 0);
 
-    // Access control, in this order and never skipped:
-    //  1. can this caller reach this client at all (database decides)
-    //  2. is this widget in the client's plan (database decides)
-    // The client id from the request is a FILTER, never a GRANT.
+    // Access control, in this order and never skipped. Every identifier in the
+    // request is a FILTER; the grant always comes from the database.
+    //  1. can this caller reach this client at all
+    //  2. is this caller ORGANISATION STAFF (client viewers are refused, since
+    //     the search spans every client in the organisation)
+    //  3. is this widget in the client's plan
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
     await assertClientDataAccessForClient(context.userId, data.clientId);
+    const firmId = await firmIdForClient(data.clientId);
+    await assertOrganisationStaff(context.userId, firmId);
     const { assertClientWidget } = await import("@/lib/widget-access.server");
     await assertClientWidget(context.supabase, data.clientId, "transaction_search");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // ---- Build the permitted tenant list, server-side, per request ----------
-    // Scope  = every Xero file belonging to the organisation this client is in.
-    // Filter = what THIS caller is entitled to, decided by the database:
-    //   * public.user_can_access_firm  -> organisation membership or an active
-    //     support grant. Those callers may search every file in the organisation.
-    //   * otherwise the caller reached this client through client access only
-    //     (an invited client viewer), so they get that client's files and
-    //     nothing else.
-    // No tenant id, client id or organisation id is ever trusted from the request.
-    const { data: clientRow, error: clientErr } = await supabaseAdmin
-      .from("clients")
-      .select("firm_id")
-      .eq("id", data.clientId)
-      .maybeSingle();
-    if (clientErr) throw new Error(clientErr.message);
-    const firmId = (clientRow as any)?.firm_id as string | null | undefined;
-    if (!firmId) throw new Error("This client is not attached to an organisation.");
+    // ---- Permitted tenant list, built server-side, per request --------------
+    // Every connected Xero organisation belonging to THIS organisation. No
+    // tenant id, client id list or organisation id is accepted from the browser.
+    const { data: conns, error: connErr } = await supabaseAdmin
+      .from("xero_connections")
+      .select("tenant_id, tenant_name, status")
+      .eq("firm_id", firmId)
+      .order("tenant_name", { ascending: true });
+    if (connErr) throw new Error(connErr.message);
+    const allTenants = (conns ?? [])
+      .filter((c: any) => c?.tenant_id && c.status !== "disconnected")
+      .map((c: any) => ({
+        tenant_id: c.tenant_id as string,
+        tenant_name: (c.tenant_name as string) ?? "Unnamed organisation",
+      }));
 
-    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
-    const organisationWide = await platformStaffCanAccessFirm(context.userId, firmId);
-
-    let tenants: { tenant_id: string; tenant_name: string }[] = [];
-    if (organisationWide) {
-      const { data: conns, error } = await supabaseAdmin
-        .from("xero_connections")
-        .select("tenant_id, tenant_name, status")
-        .eq("firm_id", firmId);
-      if (error) throw new Error(error.message);
-      tenants = (conns ?? [])
-        .filter((c: any) => c?.tenant_id && c.status !== "disconnected")
-        .map((c: any) => ({ tenant_id: c.tenant_id, tenant_name: c.tenant_name }));
-    } else {
-      const { data: orgs, error } = await supabaseAdmin
-        .from("client_xero_orgs")
-        .select("xero_connections!inner(tenant_id, tenant_name, status, firm_id)")
-        .eq("client_id", data.clientId);
-      if (error) throw new Error(error.message);
-      tenants = (orgs ?? [])
-        .map((o: any) => o.xero_connections)
-        .filter((t: any) => t?.tenant_id && t.status !== "disconnected" && t.firm_id === firmId)
-        .map((t: any) => ({ tenant_id: t.tenant_id, tenant_name: t.tenant_name }));
-    }
-
-    const permitted = new Set(tenants.map((t) => t.tenant_id));
-    if (tenants.length === 0) {
-      // Fail loudly: a silent empty result would hide a broken link or a
-      // mis-scoped grant.
+    const permitted = new Set(allTenants.map((t) => t.tenant_id));
+    if (allTenants.length === 0) {
+      // Fail loudly: a silent empty result would hide a broken link.
       throw new Error(
-        organisationWide
-          ? "This organisation has no connected Xero organisation, so there is nothing to search."
-          : "This client has no Xero organisation linked, so there is nothing to search.",
+        "This organisation has no connected Xero organisation, so there is nothing to search.",
       );
     }
 
+    const batchCount = Math.ceil(allTenants.length / BATCH_SIZE);
+    if (batch >= batchCount) throw new Error("No more Xero organisations to search.");
+    const tenants = allTenants.slice(batch * BATCH_SIZE, batch * BATCH_SIZE + BATCH_SIZE);
+
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
+
 
     function dateClauses() {
       const parts: string[] = [];
@@ -167,12 +222,15 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
     }
 
     const hits: SearchHit[] = [];
+    const unavailable: UnavailableOrg[] = [];
     const pageParam = String(page);
     const PAGE_SIZE = 100;
     let sawFullPage = false;
 
-    await Promise.all(
-      tenants.map(async (t) => {
+    // Sequential within the batch: a rate-limited file must never take the
+    // others down with it, and twelve files at once is a rate-limit problem.
+    for (const t of tenants) {
+      await (async () => {
         // Belt and braces: never call Xero for a tenant outside the permitted set.
         if (!permitted.has(t.tenant_id)) {
           throw new Error("You are not entitled to search that Xero organisation.");
@@ -180,9 +238,17 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
         let conn;
         try {
           conn = await getConnectionByTenant(t.tenant_id);
-        } catch {
+        } catch (e) {
+          // Never silently omit a file: someone would go looking for a
+          // transaction that is really there.
+          unavailable.push({
+            tenantId: t.tenant_id,
+            tenantName: t.tenant_name,
+            reason: (e as Error)?.message?.slice(0, 160) || "Could not reach this Xero organisation.",
+          });
           return;
         }
+
 
         // Fetch organisation short code so deep links open the correct org.
         let shortCode: string | null = null;
@@ -202,12 +268,20 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
           return `https://go.xero.com${path}`;
         }
 
+        let failure: string | null = null;
+        const track = (e: unknown) => {
+          if (!failure) failure = (e as Error)?.message?.slice(0, 160) || "Xero request failed.";
+        };
         const [invRes, cnRes, ppRes, opRes] = await Promise.all([
-          xeroGet<{ Invoices?: any[] }>(conn, "Invoices", { where: invoicesWhere, page: pageParam, order: "Date DESC" }).catch(() => ({ Invoices: [] })),
-          xeroGet<{ CreditNotes?: any[] }>(conn, "CreditNotes", { where: creditNotesWhere, page: pageParam }).catch(() => ({ CreditNotes: [] })),
-          xeroGet<{ Prepayments?: any[] }>(conn, "Prepayments", { where: prepaymentsWhere, page: pageParam }).catch(() => ({ Prepayments: [] })),
-          xeroGet<{ Overpayments?: any[] }>(conn, "Overpayments", { where: overpaymentsWhere, page: pageParam }).catch(() => ({ Overpayments: [] })),
+          xeroGet<{ Invoices?: any[] }>(conn, "Invoices", { where: invoicesWhere, page: pageParam, order: "Date DESC" }).catch((e) => { track(e); return { Invoices: [] }; }),
+          xeroGet<{ CreditNotes?: any[] }>(conn, "CreditNotes", { where: creditNotesWhere, page: pageParam }).catch((e) => { track(e); return { CreditNotes: [] }; }),
+          xeroGet<{ Prepayments?: any[] }>(conn, "Prepayments", { where: prepaymentsWhere, page: pageParam }).catch((e) => { track(e); return { Prepayments: [] }; }),
+          xeroGet<{ Overpayments?: any[] }>(conn, "Overpayments", { where: overpaymentsWhere, page: pageParam }).catch((e) => { track(e); return { Overpayments: [] }; }),
         ]);
+        if (failure) {
+          unavailable.push({ tenantId: t.tenant_id, tenantName: t.tenant_name, reason: failure });
+        }
+
 
         // Xero pages at 100 rows per endpoint; a full page means there is more.
         if (
@@ -303,15 +377,21 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
             deepLink: null,
           });
         }
-      }),
-    );
+      })();
+      // Gentle spacing between files in the same batch.
+      await new Promise((r) => setTimeout(r, 150));
+    }
 
     hits.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
     return {
       hits,
       page,
       hasMore: sawFullPage,
-      scope: organisationWide ? ("organisation" as const) : ("client" as const),
+      batch,
+      batchCount,
+      unavailable,
       searchedOrganisations: tenants.map((t) => t.tenant_name).filter(Boolean),
+      totalOrganisations: allTenants.length,
     };
   });
+
