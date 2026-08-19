@@ -18,6 +18,7 @@ import { Route as SignupTokenRouteImport } from './routes/signup.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthMfaVerifyRouteImport } from './routes/auth_.mfa-verify'
 import { Route as AuthMfaEnrollRouteImport } from './routes/auth_.mfa-enroll'
+import { Route as ApiTmpXeroOrgProbeRouteImport } from './routes/api/tmp-xero-org-probe'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
@@ -97,6 +98,11 @@ const AuthMfaVerifyRoute = AuthMfaVerifyRouteImport.update({
 const AuthMfaEnrollRoute = AuthMfaEnrollRouteImport.update({
   id: '/auth_/mfa-enroll',
   path: '/auth/mfa-enroll',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTmpXeroOrgProbeRoute = ApiTmpXeroOrgProbeRouteImport.update({
+  id: '/api/tmp-xero-org-probe',
+  path: '/api/tmp-xero-org-probe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
@@ -313,6 +319,7 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/api/tmp-xero-org-probe': typeof ApiTmpXeroOrgProbeRoute
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -358,6 +365,7 @@ export interface FileRoutesByTo {
   '/set-password': typeof SetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/api/tmp-xero-org-probe': typeof ApiTmpXeroOrgProbeRoute
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -404,6 +412,7 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/api/tmp-xero-org-probe': typeof ApiTmpXeroOrgProbeRoute
   '/auth_/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -452,6 +461,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin'
     | '/dashboard'
+    | '/api/tmp-xero-org-probe'
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/unsubscribe'
     | '/dashboard'
+    | '/api/tmp-xero-org-probe'
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
@@ -542,6 +553,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/api/tmp-xero-org-probe'
     | '/auth_/mfa-enroll'
     | '/auth_/mfa-verify'
     | '/email/unsubscribe'
@@ -588,6 +600,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   SetPasswordRoute: typeof SetPasswordRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  ApiTmpXeroOrgProbeRoute: typeof ApiTmpXeroOrgProbeRoute
   AuthMfaEnrollRoute: typeof AuthMfaEnrollRoute
   AuthMfaVerifyRoute: typeof AuthMfaVerifyRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -665,6 +678,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/mfa-enroll'
       fullPath: '/auth/mfa-enroll'
       preLoaderRoute: typeof AuthMfaEnrollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tmp-xero-org-probe': {
+      id: '/api/tmp-xero-org-probe'
+      path: '/api/tmp-xero-org-probe'
+      fullPath: '/api/tmp-xero-org-probe'
+      preLoaderRoute: typeof ApiTmpXeroOrgProbeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/dashboard': {
@@ -1041,6 +1061,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   SetPasswordRoute: SetPasswordRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  ApiTmpXeroOrgProbeRoute: ApiTmpXeroOrgProbeRoute,
   AuthMfaEnrollRoute: AuthMfaEnrollRoute,
   AuthMfaVerifyRoute: AuthMfaVerifyRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
