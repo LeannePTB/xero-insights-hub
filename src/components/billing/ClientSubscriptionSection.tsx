@@ -16,7 +16,6 @@ import {
   getClientBilling,
   setClientComp,
   setClientTrial,
-  setClientDashboardTier,
 } from "@/lib/billing.functions";
 import { tierLabel, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 
@@ -42,7 +41,6 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
   const fetchBilling = useServerFn(getClientBilling);
   const comp = useServerFn(setClientComp);
   const trial = useServerFn(setClientTrial);
-  const setTier = useServerFn(setClientDashboardTier);
 
   const [reason, setReason] = useState("");
   const [trialTier, setTrialTier] = useState<DashboardTier>("advisory");
@@ -68,9 +66,6 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not update the subscription"),
   });
-
-  // Standard / Advisory / Multi company — the client-facing dashboard tiers.
-  const TIER_CHOICES: DashboardTier[] = ["basic", "advisory", "multi_company"];
 
   const trialMut = useMutation({
     mutationFn: (start: boolean) =>
