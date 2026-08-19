@@ -16,6 +16,7 @@ import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { Button } from "@/components/ui/button";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
+import { SetAllClientTiersDialog } from "@/components/admin/SetAllClientTiersDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
