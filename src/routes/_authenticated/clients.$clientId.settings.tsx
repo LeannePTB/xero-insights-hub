@@ -440,12 +440,12 @@ function ClientSettings() {
         </Section>
 
         {/* Dashboard tier — what this client sees */}
-        <Section title="Dashboard tier" id="dashboard-tier">
+        <Section title="Dashboard tier" id="dashboard-tier" collapsible>
           <ClientDashboardTierControl clientId={clientId} />
         </Section>
 
         {/* Report basis */}
-        <Section title="Report basis" collapsible defaultOpen={false}>
+        <Section title="Report basis" collapsible>
           <p className="mb-3 text-xs text-muted-foreground">
             Sets the client's accounting basis. Below, choose which dashboard cards should use it
             instead of always reporting on Accrual. Viewers don't see any of this.
@@ -960,7 +960,7 @@ function ClientSettings() {
             and can be reused.
           </p>
         </Section>
-        <Section title="Subscription" collapsible defaultOpen={false}>
+        <Section title="Subscription" collapsible>
           <ClientSubscriptionSection clientId={clientId} />
         </Section>
 
@@ -1054,8 +1054,17 @@ function CostClassificationSection({
     onError: (e: any) => toast.error(e.message),
   });
 
+  const [open, setOpen] = usePersistedDisclosure(
+    sectionStorageKey("client-settings", "Cost classification"),
+    {
+      forceOpen:
+        typeof window !== "undefined" &&
+        window.location.hash.replace("#", "") === "cost-classification",
+    },
+  );
+
   return (
-    <Collapsible defaultOpen={true}>
+    <Collapsible open={open} onOpenChange={setOpen}>
       <section
         id="cost-classification"
         className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] scroll-mt-6"
