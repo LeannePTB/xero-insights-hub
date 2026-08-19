@@ -307,5 +307,11 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
     );
 
     hits.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-    return { hits, page, hasMore: sawFullPage };
+    return {
+      hits,
+      page,
+      hasMore: sawFullPage,
+      scope: organisationWide ? ("organisation" as const) : ("client" as const),
+      searchedOrganisations: tenants.map((t) => t.tenant_name).filter(Boolean),
+    };
   });

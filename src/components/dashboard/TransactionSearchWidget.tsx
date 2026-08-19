@@ -94,13 +94,7 @@ function DateField({
 
 type Submitted = { query: string; fromDate: string | null; toDate: string | null };
 
-export function TransactionSearchWidget({
-  clientId,
-  orgCount,
-}: {
-  clientId: string;
-  orgCount?: number;
-}) {
+export function TransactionSearchWidget({ clientId }: { clientId: string; orgCount?: number }) {
   const fetchSearch = useServerFn(searchClientTransactions);
   const [q, setQ] = useState("");
   const debouncedQ = useDebounced(q);
@@ -147,8 +141,8 @@ export function TransactionSearchWidget({
           <Search className="h-4 w-4 text-primary" /> Transaction Search
         </h3>
         <p className="text-xs text-muted-foreground">
-          Invoices, bills, credit notes, prepayments and overpayments across this client's
-          {orgCount && orgCount > 1 ? ` ${orgCount} Xero organisations` : " Xero organisation"}.
+          Invoices, bills, credit notes, prepayments and overpayments across the Xero
+          organisations you are entitled to see.
         </p>
       </div>
 
@@ -190,7 +184,9 @@ export function TransactionSearchWidget({
             <>
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">
-                  {hits.length} match{hits.length === 1 ? "" : "es"} on page {page}
+                  {hits.length} match{hits.length === 1 ? "" : "es"} on page {page} across{" "}
+                  {search.data.searchedOrganisations.length} Xero organisation
+                  {search.data.searchedOrganisations.length === 1 ? "" : "s"}
                 </p>
                 <div className="flex items-center gap-1">
                   <Button
