@@ -38,6 +38,7 @@ export type FixedAssetsResult = {
     differenceClosing: number | null;
   };
   registerAssetCount: number;
+  draftAssetCount: number;
   registerEmpty: boolean;
   registerAvailable: boolean;
   registerAsAtToday: boolean;
@@ -50,6 +51,7 @@ type RegisterAccount = { cost: number; accumulated: number; priorAccumulated: nu
 export type RegisterSnapshot = {
   available: boolean;
   assetCount: number;
+  draftCount: number;
   byAccount: Map<string, RegisterAccount>;
   reason?: string;
 };
@@ -67,7 +69,10 @@ function bump(map: Map<string, RegisterAccount>, accountId: string | undefined, 
 
 /** Read the asset register and total it by the GL account each asset type
  *  posts to. Registered and disposed assets are both read so a disposal in the
- *  period is visible. */
+ *  period is visible. DRAFT assets are counted separately: a draft is not
+ *  registered and does not depreciate, so it never reconciles the GL — but
+ *  "no assets entered" and "assets entered but not registered" need different
+ *  actions, so they must not look the same. */
 export async function fetchAssetRegister(conn: Connection, asAt: string): Promise<RegisterSnapshot> {
   const { xeroGetAssets } = await import("./api.server");
   try {
@@ -76,7 +81,8 @@ export async function fetchAssetRegister(conn: Connection, asAt: string): Promis
     for (const t of types ?? []) if (t?.assetTypeId) typeById.set(String(t.assetTypeId).toLowerCase(), t);
 
     const items: any[] = [];
-    for (const status of ["REGISTERED", "DISPOSED"]) {
+    const draftItems: any[] = [];
+    for (const status of ["REGISTERED", "DISPOSED", "DRAFT"]) {
       for (let page = 1; page <= 40; page++) {
         const res = await xeroGetAssets<any>(conn, "Assets", {
           status,
@@ -84,7 +90,8 @@ export async function fetchAssetRegister(conn: Connection, asAt: string): Promis
           pageSize: "100",
         });
         const batch: any[] = res?.items ?? [];
-        items.push(...batch);
+        if (status === "DRAFT") draftItems.push(...batch);
+        else items.push(...batch);
         const pageCount = res?.pagination?.pageCount ?? 1;
         if (page >= pageCount || batch.length === 0) break;
       }
@@ -108,9 +115,16 @@ export async function fetchAssetRegister(conn: Connection, asAt: string): Promis
       bump(byAccount, costAccount, { cost });
       bump(byAccount, accumAccount, { accumulated: accum, priorAccumulated: prior });
     }
-    return { available: true, assetCount: counted, byAccount };
+    // Drafts entered on or before the period end are the ones awaiting
+    // registration at that date.
+    const draftCount = draftItems.filter((a) => {
+      const purchase = String(a?.purchaseDate ?? "").slice(0, 10);
+      return !purchase || purchase <= asAt;
+    }).length;
+
+    return { available: true, assetCount: counted, draftCount, byAccount };
   } catch (e) {
-    return { available: false, assetCount: 0, byAccount: new Map(), reason: errText(e) };
+    return { available: false, assetCount: 0, draftCount: 0, byAccount: new Map(), reason: errText(e) };
   }
 }
 
@@ -213,6 +227,9 @@ export async function computeFixedAssetsReconciliation(
       differenceClosing: sum((r) => r.difference.closing),
     },
     registerAssetCount: register.assetCount,
+    // Drafts do not depreciate and are not part of the register, so the
+    // variance stands either way — this only changes what the user is told.
+    draftAssetCount: register.draftCount,
     registerEmpty: register.available && register.assetCount === 0,
     registerAvailable: register.available,
     // Xero's register reports accumulated depreciation as at today, not as at
