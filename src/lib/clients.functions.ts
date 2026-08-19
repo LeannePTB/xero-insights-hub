@@ -91,7 +91,7 @@ export const listClients = createServerFn({ method: "POST" })
         new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
       ) as DashboardTier[];
       const overrideTiers = Array.from(
-        new Set(configRows.filter((r) => r.client_id === c.id).map((r) => r.tier as DashboardTier)),
+        new Set(exIndex.clientTiers(c.id) as DashboardTier[]),
       ) as DashboardTier[];
       const clientTiers = Array.from(
         new Set<DashboardTier>([...overrideTiers, ...grantedTiers]),

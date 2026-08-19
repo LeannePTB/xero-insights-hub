@@ -108,6 +108,13 @@ export class ExclusionIndex {
     return Array.from(set);
   }
 
+  /** Tiers for which this client has its own exclusion row. */
+  clientTiers(clientId: string): string[] {
+    return Array.from(this.client.keys())
+      .filter((k) => k.startsWith(`${clientId}:`))
+      .map((k) => k.slice(clientId.length + 1));
+  }
+
   hasOrgRow(tier: string, firmId: string): boolean {
     return this.org.has(`${firmId}:${tier}`);
   }
