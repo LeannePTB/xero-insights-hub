@@ -93,6 +93,7 @@ function DateField({
 }
 
 type Submitted = { query: string; fromDate: string | null; toDate: string | null };
+type UnavailableOrg = { tenantId: string; tenantName: string; reason: string };
 
 export function TransactionSearchWidget({ clientId }: { clientId: string; orgCount?: number }) {
   const fetchSearch = useServerFn(searchClientTransactions);
@@ -102,6 +103,13 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
   const [to, setTo] = useState<Date | undefined>();
   const [submitted, setSubmitted] = useState<Submitted | null>(null);
   const [page, setPage] = useState(1);
+  // Partial results, surfaced as each batch of Xero organisations comes back.
+  const [live, setLive] = useState<{
+    hits: SearchHit[];
+    unavailable: UnavailableOrg[];
+    done: number;
+    total: number;
+  } | null>(null);
 
   const canSubmit = !!(debouncedQ.trim() || from || to);
 
@@ -112,27 +120,64 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
     // Xero's per-organisation daily limit is a real constraint: reuse results.
     staleTime: 5 * 60 * 1000,
     retry: false,
-    queryFn: () =>
-      fetchSearch({
-        data: {
-          clientId,
-          query: submitted!.query,
-          fromDate: submitted!.fromDate,
-          toDate: submitted!.toDate,
-          page,
-        },
-      }),
+    queryFn: async () => {
+      const hits: SearchHit[] = [];
+      const unavailable: UnavailableOrg[] = [];
+      let hasMore = false;
+      let batch = 0;
+      let batchCount = 1;
+      let totalOrganisations = 0;
+      setLive({ hits: [], unavailable: [], done: 0, total: 0 });
+      // Batches run one after another, with a short pause between them, so a
+      // twelve-file organisation never fires twelve searches at once.
+      while (batch < batchCount) {
+        const res = await fetchSearch({
+          data: {
+            clientId,
+            query: submitted!.query,
+            fromDate: submitted!.fromDate,
+            toDate: submitted!.toDate,
+            page,
+            batch,
+          },
+        });
+        batchCount = res.batchCount;
+        totalOrganisations = res.totalOrganisations;
+        hits.push(...res.hits);
+        unavailable.push(...res.unavailable);
+        hasMore = hasMore || res.hasMore;
+        batch += 1;
+        setLive({
+          hits: [...hits].sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
+          unavailable: [...unavailable],
+          done: Math.min(batch * 3, totalOrganisations),
+          total: totalOrganisations,
+        });
+        if (batch < batchCount) await new Promise((r) => setTimeout(r, 400));
+      }
+      setLive(null);
+      return {
+        hits: hits.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? "")),
+        unavailable,
+        hasMore,
+        totalOrganisations,
+      };
+    },
   });
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
     setPage(1);
+    setLive(null);
     setSubmitted({ query: debouncedQ.trim(), fromDate: toIso(from), toDate: toIso(to) });
   }
 
-  const hits = search.data?.hits ?? [];
+  const hits = live?.hits ?? search.data?.hits ?? [];
+  const unavailable = live?.unavailable ?? search.data?.unavailable ?? [];
   const hasMore = search.data?.hasMore ?? false;
+  const orgTotal = live?.total ?? search.data?.totalOrganisations ?? 0;
+
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
