@@ -89,21 +89,6 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
     onError: (e: any) => toast.error(e?.message ?? "Could not update the trial"),
   });
 
-  // Absence of a subscription row means Standard — that's what the entitlement
-  // engine resolves, so mirror it here rather than assuming a stored value.
-  const storedTier = ((q.data?.subscription?.dashboard_tier ?? "basic") as DashboardTier);
-  const [tierDraft, setTierDraft] = useState<DashboardTier | null>(null);
-  const pendingTier = tierDraft ?? storedTier;
-
-  const tierMut = useMutation({
-    mutationFn: (tier: DashboardTier) => setTier({ data: { clientId, tier, reason } }),
-    onSuccess: () => {
-      toast.success("Dashboard tier updated");
-      setTierDraft(null);
-      refresh();
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Could not update the dashboard tier"),
-  });
 
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading subscription…</p>;
 
