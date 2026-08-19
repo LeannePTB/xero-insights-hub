@@ -8,6 +8,8 @@ import { listClients, deleteClient } from "@/lib/clients.functions";
 import { listTierSettings, getFirmPlanSummary } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
+import { getMyContext } from "@/lib/roles.functions";
+
 
 import { ALL_TIERS, tierLabel, type DashboardTier } from "@/lib/tiers";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
@@ -28,12 +30,30 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
+/** Explains a tier that isn't a plain paid subscription. */
+function sourceNote(ent: { source?: string; expiresAt?: string | null }): string | null {
+  const when = ent.expiresAt
+    ? new Date(ent.expiresAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit" })
+    : null;
+  switch (ent.source) {
+    case "trial":
+      return when ? `trial · ends ${when}` : "trial";
+    case "free_forever":
+      return "comped";
+    case "org_always_free":
+      return "included";
+    default:
+      return null;
+  }
+}
+
 /**
  * Clients for one organisation: list, add, open, settings, view-as and remove.
  * Shared by the organisation page and the admin "Plan & members" page so both
  * stay in sync. `showHealth` is off on admin surfaces that must not show
  * client financial data.
  */
+
 export function FirmClientsSection({
   firmId,
   firmName,
@@ -71,6 +91,11 @@ export function FirmClientsSection({
     enabled: !allowClientData,
   });
   const canOpenClientData = allowClientData || !!supportQ.data?.viewerHasClientData;
+
+  const fetchMyContext = useServerFn(getMyContext);
+  const meQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
+  const isSuperAdmin = !!meQ.data?.isSuperAdmin;
+
 
 
   const clientsQ = useQuery({
@@ -204,13 +229,20 @@ export function FirmClientsSection({
               <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-5 py-3">Client</th>
-                  <th className="px-5 py-3">Tiers</th>
+                  <th className="px-5 py-3">Tier</th>
                   <th className="px-5 py-3 text-right"></th>
                 </tr>
               </thead>
               <tbody>
                 {clients.map((c: any) => {
-                  const granted: DashboardTier[] = c.clientTiers?.length ? c.clientTiers : enabledTiers;
+                  const ent = c.entitlement ?? { tier: "basic", source: "none", expiresAt: null };
+                  const effectiveTier: string = ent.tier ?? "basic";
+                  // Only a super admin may preview a tier the client is not on,
+                  // and only within what the organisation's plan permits.
+                  const previewTiers = (isSuperAdmin ? enabledTiers : []).filter(
+                    (t) => t !== effectiveTier,
+                  );
+
                   const tenantIds = (c.client_xero_orgs ?? [])
                     .map((o: any) => o.xero_connections?.tenant_id)
                     .filter(Boolean);
@@ -255,32 +287,14 @@ export function FirmClientsSection({
 
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {enabledTiers
-                            .filter((t) => granted.includes(t))
-                            .map((t) => (
-                              <span
-                                key={t}
-                                className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary"
-                              >
-                                {labelFor(t)}
-                              </span>
-                            ))}
-                          {granted.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
-                          {planTiers &&
-                            granted
-                              .filter((t) => !planTiers.includes(t))
-                              .map((t) => (
-                                <span
-                                  key={`out-${t}`}
-                                  className="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400"
-                                  title={planLabel ? `Not included in the ${planLabel} plan` : "Not included in this plan"}
-                                >
-                                  {labelFor(t)} · not in plan
-                                </span>
-                              ))}
-                        </div>
+                        <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                          {labelFor(effectiveTier)}
+                        </span>
+                        {sourceNote(ent) && (
+                          <div className="mt-0.5 text-xs text-muted-foreground">{sourceNote(ent)}</div>
+                        )}
                       </td>
+
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {canOpenClientData && (
@@ -310,11 +324,14 @@ export function FirmClientsSection({
                                   </DropdownMenuItem>
                                 </>
                               )}
-                              {(granted.length ? granted : enabledTiers).map((t) =>
+                              {[effectiveTier, ...previewTiers].map((t) =>
                                 canOpenClientData ? (
                                   <DropdownMenuItem key={`view-as-${t}`} asChild>
                                     <Link to="/clients/$clientId" params={{ clientId: c.id }} search={{ viewAs: t }}>
                                       <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
+                                      {t !== effectiveTier && (
+                                        <span className="ml-1 text-xs text-muted-foreground">(preview)</span>
+                                      )}
                                     </Link>
                                   </DropdownMenuItem>
                                 ) : (
@@ -327,6 +344,7 @@ export function FirmClientsSection({
                                   </DropdownMenuItem>
                                 ),
                               )}
+
 
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"

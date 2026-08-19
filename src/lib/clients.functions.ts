@@ -77,7 +77,16 @@ export const listClients = createServerFn({ method: "POST" })
       ) as Record<DashboardTier, WidgetKey[]>;
     }
 
-    const clients = (rows ?? []).map((c: any) => {
+    // Effective dashboard tier per client comes from public.client_entitlement,
+    // read through the caller's session. It is never recomputed here, and any
+    // failure resolves to Standard (fail closed) inside the helper.
+    const { clientEntitlement } = await import("@/lib/entitlement.server");
+    const entitlements = await Promise.all(
+      (rows ?? []).map((c: any) => clientEntitlement(context.supabase, c.id)),
+    );
+
+    const clients = (rows ?? []).map((c: any, i: number) => {
+
       const grantedTiers = Array.from(
         new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
       ) as DashboardTier[];
@@ -90,8 +99,12 @@ export const listClients = createServerFn({ method: "POST" })
       return {
         ...c,
         grantedTiers,
+        // Per-viewer grants + per-client widget overrides. NOT the client's
+        // dashboard tier — use `entitlement` for that.
         clientTiers,
+        entitlement: entitlements[i],
         tierWidgets: resolveTierWidgets(c.id),
+
         // null = never configured (plan default applies); an array is an explicit
         // per-client override and must win over any tier default.
         clientWidgets: Array.isArray(c.dashboard_widgets)
