@@ -248,11 +248,16 @@ export const setClientDashboardTier = createServerFn({ method: "POST" })
         .eq("client_id", data.clientId);
       if (error) throw new Error(error.message);
     } else {
+      // No Stripe subscription exists behind an assigned tier, so record the
+      // truth: the client has this dashboard at no charge.
       const { error } = await supabase.from("client_subscriptions").insert({
         client_id: data.clientId,
         dashboard_tier: data.tier,
-        subscription_type: "paid",
+        subscription_type: "free_forever",
         status: "active",
+        comp_reason: reason || "Dashboard tier assigned by the organisation",
+        comped_by: context.userId,
+        comped_at: new Date().toISOString(),
       });
       if (error) throw new Error(error.message);
     }
