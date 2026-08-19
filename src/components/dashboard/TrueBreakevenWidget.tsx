@@ -5,6 +5,7 @@ import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import { DateRangeControls } from "@/components/dashboard/DateRangeControls";
 import { TrueBreakevenSection } from "@/components/dashboard/TrueBreakevenSection";
 import { useBreakevenData } from "@/components/dashboard/useBreakevenData";
+import { UnclassifiedNotice } from "@/components/dashboard/UnclassifiedNotice";
 
 export function TrueBreakevenWidget({
   tenantId,
@@ -65,6 +66,10 @@ export function TrueBreakevenWidget({
             <span>Not enough income or positive gross margin in this period to compute a true break-even.</span>
           </div>
         ) : clientId ? (
+          <>
+          {s.classificationEnabled && (
+            <UnclassifiedNotice clientId={clientId} count={s.unclassifiedCount} />
+          )}
           <TrueBreakevenSection
             clientId={clientId}
             tenantId={tenantId}
@@ -74,6 +79,7 @@ export function TrueBreakevenWidget({
             months={s.months}
             toDateISO={s.toStr}
           />
+          </>
         ) : (
           <p className="mt-6 text-sm text-muted-foreground">Client context required for True Break-Even inputs.</p>
         )

@@ -14,6 +14,7 @@ import {
   usePersistedMonth,
 } from "@/components/dashboard/MonthPicker";
 import { buildMatrix, computeTotals } from "@/lib/scenario-calc";
+import { UnclassifiedNotice } from "@/components/dashboard/UnclassifiedNotice";
 
 export function ScenarioWidget({
   clientId,
@@ -128,6 +129,8 @@ export function ScenarioWidget({
             <Stat label="Cost of sales" value={fmt(view.monthTotals.cogs)} />
             <Stat label="Operating expenses" value={fmt(view.monthTotals.operating)} />
           </div>
+
+          <UnclassifiedNotice clientId={clientId} count={data?.unclassifiedCount ?? 0} />
 
 
 

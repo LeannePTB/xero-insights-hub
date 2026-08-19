@@ -47,6 +47,8 @@ export type ScenarioData = {
   pnl: ScenarioPnlMonth[];
   /** Trailing 3-month averages for the expense groups (reference only). */
   avg3: ScenarioAverages | null;
+  /** Expense accounts with no decided classification — treated as Fixed. */
+  unclassifiedCount: number;
 };
 
 
@@ -263,9 +265,29 @@ export const getScenarioData = createServerFn({ method: "POST" })
     if (tagsRes.error) throw new Error(tagsRes.error.message);
     if (exclRes.error) throw new Error(exclRes.error.message);
 
-    const tags = new Map<string, string>(
-      ((tagsRes.data ?? []) as any[]).map((r) => [String(r.account_name).toLowerCase(), String(r.classification)]),
-    );
+    // Shared resolution, identical to break-even: stored tag wins, then Xero's
+    // account type seeds a default, and anything undecided is FIXED.
+    const { buildClassificationResolver } = await import("@/lib/cost-classification");
+    let xeroAccounts: { code?: string | null; name: string; type?: string | null }[] = [];
+    try {
+      const accRes = await xeroGet<{ Accounts?: any[] }>(conn, "Accounts", {
+        where: 'Class=="EXPENSE"',
+      });
+      xeroAccounts = (accRes.Accounts ?? []).map((a: any) => ({
+        code: a.Code ?? null,
+        name: a.Name as string,
+        type: a.Type ?? null,
+      }));
+    } catch {
+      xeroAccounts = [];
+    }
+    const resolver = buildClassificationResolver({
+      stored: ((tagsRes.data ?? []) as any[]).map((r) => ({
+        account_name: String(r.account_name),
+        classification: String(r.classification) as any,
+      })),
+      accounts: xeroAccounts,
+    });
     const excluded = new Set<string>(((exclRes.data ?? []) as any[]).map((r) => String(r.xero_invoice_id)));
 
     const customerNames = new Set<string>();
@@ -288,14 +310,16 @@ export const getScenarioData = createServerFn({ method: "POST" })
     invoices.sort((a, b) => b.issue_date.localeCompare(a.issue_date));
 
     const expenses: ScenarioExpense[] = [];
+    const unclassifiedNames = new Set<string>();
     for (const line of expenseLines) {
-      const tag = tags.get(line.name.toLowerCase());
-      if (tag === "excluded") continue;
+      const r = resolver.resolve(line.name);
+      if (r.effective === "excluded") continue;
+      if (r.unclassified) unclassifiedNames.add(line.name);
       expenses.push({
         id: `${line.month}:${line.name}`,
         name: line.name,
         amount: line.amount,
-        type: tag === "fixed" ? "Fixed" : "Variable",
+        type: r.effective === "variable" ? "Variable" : "Fixed",
         section: line.section === "cogs" ? "cogs" : "operating",
         category: line.name,
         date: `${line.month}-01`,
@@ -321,11 +345,11 @@ export const getScenarioData = createServerFn({ method: "POST" })
       let fixed = 0;
       let variable = 0;
       for (const l of avgLines) {
-        const tag = tags.get(l.name.toLowerCase());
-        if (tag === "excluded") continue;
+        const r = resolver.resolve(l.name);
+        if (r.effective === "excluded") continue;
         if (l.section === "cogs") cogs += l.amount;
-        else if (tag === "fixed") fixed += l.amount;
-        else variable += l.amount;
+        else if (r.effective === "variable") variable += l.amount;
+        else fixed += l.amount;
       }
       const n = avgMonths.length || 1;
       avg3 = { months: avgMonths, cogs: cogs / n, fixed: fixed / n, variable: variable / n };
@@ -340,6 +364,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
       expenses,
       pnl: summarisePnl(pnlLines, months),
       avg3,
+      unclassifiedCount: unclassifiedNames.size,
     };
 
   });
