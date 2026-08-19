@@ -13,7 +13,8 @@ export type WidgetKey =
   | "cashflow"
   | "cashflow_scenario"
   | "xero_audit"
-  | "loan_consolidation";
+  | "loan_consolidation"
+  | "balance_sheet_reconciliation";
 
 
 export const ALL_WIDGETS: WidgetKey[] = [
@@ -31,6 +32,7 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "cashflow_scenario",
   "xero_audit",
   "loan_consolidation",
+  "balance_sheet_reconciliation",
 ];
 
 // Fallback defaults (used only if the DB has no row for a tier).
@@ -49,6 +51,7 @@ const ADVANCED: WidgetKey[] = [
   "cashflow_scenario",
   "xero_audit",
   "loan_consolidation",
+  "balance_sheet_reconciliation",
 ];
 export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
   basic: ["health", "receivables", "payables", "pnl", "notes", "unreconciled"],

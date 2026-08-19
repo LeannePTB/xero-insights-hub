@@ -140,7 +140,7 @@ export function BalanceSheetReconciliationWidget({
         </div>
       ) : q.error ? (
         <div className="mt-4">
-          <XeroErrorNotice error={q.error} />
+          <XeroErrorNotice error={q.error} onRetry={() => q.refetch()} isRetrying={q.isFetching} />
         </div>
       ) : (
         <>
