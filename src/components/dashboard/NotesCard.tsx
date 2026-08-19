@@ -183,7 +183,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                     </div>
                   </div>
                 ) : (
-                  <p className="whitespace-pre-wrap text-sm text-foreground/90">{n.body}</p>
+                  <p className="whitespace-pre-wrap break-words text-sm text-foreground/90">{n.body}</p>
                 )}
               </li>
             );
