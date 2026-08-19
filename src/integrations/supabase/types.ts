@@ -1222,6 +1222,50 @@ export type Database = {
         }
         Relationships: []
       }
+      reconciliation_snapshots: {
+        Row: {
+          as_at: string
+          client_id: string
+          complete: boolean
+          generated_at: string
+          generated_by: string | null
+          id: string
+          payload: Json
+          report_key: string
+          tenant_id: string
+        }
+        Insert: {
+          as_at: string
+          client_id: string
+          complete?: boolean
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          payload: Json
+          report_key: string
+          tenant_id: string
+        }
+        Update: {
+          as_at?: string
+          client_id?: string
+          complete?: boolean
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          payload?: Json
+          report_key?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reconciliation_snapshots_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_cache: {
         Row: {
           fetched_at: string
