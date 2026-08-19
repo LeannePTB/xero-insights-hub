@@ -391,6 +391,9 @@ export type BusinessHealthDetail = {
   asOfDate: string;
   fyLabel: string;
   currency: string;
+  /** Xero `Organisation.SalesTaxBasis`, raw and normalised (null when unreadable). */
+  salesTaxBasisRaw: string | null;
+  salesTaxBasis: "accrual" | "cash" | null;
   // Headline (merged from the former getBusinessHealth summary call so the
   // current-period P&L is only fetched once per card).
   score: number;
