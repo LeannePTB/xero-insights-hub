@@ -221,18 +221,43 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
         </div>
       )}
 
-      {search.data && (
+      {live && (
+        <p className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          Searching Xero organisation {Math.max(1, live.done)} of {live.total}…
+        </p>
+      )}
+
+      {unavailable.length > 0 && (
+        <div className="mt-3 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+          <p className="font-medium">
+            {unavailable.length} Xero organisation{unavailable.length === 1 ? " was" : "s were"} not
+            searched — results below are incomplete:
+          </p>
+          <ul className="mt-1 list-disc pl-4">
+            {unavailable.map((u) => (
+              <li key={u.tenantId}>
+                {u.tenantName} — {u.reason}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {(search.data || live) && (
         <div className="mt-4">
           {hits.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">No matches found.</p>
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              {live ? "Searching…" : "No matches found."}
+            </p>
           ) : (
             <>
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs text-muted-foreground">
                   {hits.length} match{hits.length === 1 ? "" : "es"} on page {page} across{" "}
-                  {search.data.searchedOrganisations.length} Xero organisation
-                  {search.data.searchedOrganisations.length === 1 ? "" : "s"}
+                  {orgTotal} Xero organisation{orgTotal === 1 ? "" : "s"} in this organisation
                 </p>
+
                 <div className="flex items-center gap-1">
                   <Button
                     type="button"
