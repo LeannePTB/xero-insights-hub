@@ -65,6 +65,7 @@ function ClientDashboard() {
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
   const fetchWidgets = useServerFn(getClientWidgets);
+  const salesTaxBasisFn = useServerFn(getXeroSalesTaxBasis);
   // Organisation-wide search is for organisation staff only; an invited client
   // viewer must not even see the card. The server function enforces the same
   // rule again — this is presentation, not access control.
