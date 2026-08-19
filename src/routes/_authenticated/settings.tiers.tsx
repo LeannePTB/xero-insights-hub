@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyContext } from "@/lib/roles.functions";
-import { listTierConfig, saveTierWidgets, listTierSettings, setTierEnabled } from "@/lib/tier-config.functions";
+import { listTierConfig, savePlatformTierWidgets, listTierSettings, setTierEnabled } from "@/lib/tier-config.functions";
 import { savePlanLevel, deletePlanLevel, type PlanLevel } from "@/lib/plan-levels.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ALL_TIERS, ALL_WIDGETS, TIER_LABEL, TIER_DESCRIPTION, WIDGET_LABEL, tierLabel, tierDescription, type DashboardTier, type WidgetKey } from "@/lib/tiers";
@@ -41,7 +41,7 @@ function TierSettings() {
   const fetchCtx = useServerFn(getMyContext);
   const fetchCfg = useServerFn(listTierConfig);
   const fetchSettings = useServerFn(listTierSettings);
-  const saveFn = useServerFn(saveTierWidgets);
+  const saveFn = useServerFn(savePlatformTierWidgets);
   const toggleFn = useServerFn(setTierEnabled);
   const savePlanFn = useServerFn(savePlanLevel);
   const deletePlanFn = useServerFn(deletePlanLevel);
@@ -83,7 +83,7 @@ function TierSettings() {
 
   const saveMut = useMutation({
     mutationFn: ({ tier, widgets }: { tier: string; widgets: WidgetKey[] }) =>
-      saveFn({ data: { clientId: null, tier: tier as DashboardTier, widgets } }),
+      saveFn({ data: { tier: tier as DashboardTier, widgets } }),
     onSuccess: () => {
       toast.success("Saved");
       qc.invalidateQueries({ queryKey: ["tier-config"] });
