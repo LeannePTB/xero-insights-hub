@@ -16,46 +16,54 @@ async function assertAdvisor(supabase: any, userId: string) {
 }
 
 
-// Returns global defaults plus, optionally, the overrides for one client.
+// Returns the platform default card list plus, optionally, the list for one
+// client. Both are derived from the deny-list model: ceiling − exclusions.
 export const listTierConfig = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId?: string | null }) => i)
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
-      .from("tier_widget_config")
-      .select("id, client_id, tier, widgets")
-      .or(`client_id.is.null${data.clientId ? `,client_id.eq.${data.clientId}` : ""}`);
-    if (error) throw new Error(error.message);
+    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
+      await import("@/lib/widget-resolve.server");
 
-    const byKey = new Map<string, WidgetKey[]>();
-    for (const r of rows ?? []) {
-      byKey.set(`${r.client_id ?? "global"}:${r.tier}`, sanitizeWidgets(r.widgets ?? []));
+    let firmId: string | null = null;
+    if (data.clientId) {
+      const { data: c } = await context.supabase
+        .from("clients")
+        .select("firm_id")
+        .eq("id", data.clientId)
+        .maybeSingle();
+      firmId = ((c as any)?.firm_id as string | null) ?? null;
     }
 
-    // Tier keys are catalogue-driven (super admins can add/remove them).
-    const { data: catRows } = await context.supabase
-      .from("plan_levels")
-      .select("key")
-      .eq("scope", "dashboard");
-    const catKeys = ((catRows ?? []) as any[]).map((r) => r.key as string);
-    // Retired tiers must disappear everywhere, so stored rows never widen the list.
-    const tierKeys = Array.from(new Set<string>(catKeys.length ? catKeys : [...ALL_TIERS]));
+    const ceilings = await tierCeilings(context.supabase);
+    const rows = await fetchExclusions(context.supabase, {
+      firmId,
+      clientIds: data.clientId ? [data.clientId] : [],
+    });
+    const index = new ExclusionIndex(rows);
 
-    const build = (clientKey: string) =>
-      Object.fromEntries(
-        tierKeys.map((t) => [
-          t,
-          byKey.get(`${clientKey}:${t}`) ??
-            (clientKey === "global" ? defaultWidgetsFor(t) : null),
-        ]),
-      ) as Record<DashboardTier, WidgetKey[] | null>;
+    const tierKeys = Array.from(new Set<string>(ceilings.size ? Array.from(ceilings.keys()) : [...ALL_TIERS]));
 
-    return {
-      global: build("global") as Record<DashboardTier, WidgetKey[]>,
-      client: data.clientId ? build(data.clientId) : null,
-    };
+    const global = Object.fromEntries(
+      tierKeys.map((t) => [t, visibleWidgets(ceilingFor(ceilings, t), index.base(t, null))]),
+    ) as Record<DashboardTier, WidgetKey[]>;
+
+    const client = data.clientId
+      ? (Object.fromEntries(
+          tierKeys.map((t) => [
+            t,
+            visibleWidgets(
+              ceilingFor(ceilings, t),
+              index.effective(t, { firmId, clientId: data.clientId }),
+            ),
+          ]),
+        ) as Record<DashboardTier, WidgetKey[] | null>)
+      : null;
+
+    return { global, client };
   });
 
+// Saves an allow-list by storing its complement as exclusions for that scope.
 export const saveTierWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string | null; tier: DashboardTier; widgets: WidgetKey[] | null }) => i)
@@ -63,7 +71,8 @@ export const saveTierWidgets = createServerFn({ method: "POST" })
     await assertAdvisor(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // null widgets on a client override = remove override (fall back to global)
+    // null widgets on a client override = remove override (fall back to the
+    // organisation row, then the platform default).
     if (data.clientId && data.widgets === null) {
       const { error } = await supabaseAdmin
         .from("tier_widget_config")
@@ -74,8 +83,6 @@ export const saveTierWidgets = createServerFn({ method: "POST" })
       return { ok: true };
     }
 
-    const widgets = sanitizeWidgets(data.widgets ?? []);
-
     // Client-level overrides may only target tiers the organisation's plan includes.
     if (data.clientId) {
       const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
@@ -85,49 +92,155 @@ export const saveTierWidgets = createServerFn({ method: "POST" })
       }
     }
 
-    // Unique indexes on this table are partial (one for global rows, one for
-    // client rows), so ON CONFLICT can't be used — do select/update/insert.
+    const { tierCeilings, ceilingFor, sanitizeWidgets: keep } = await import("@/lib/widget-resolve.server");
+    const ceilings = await tierCeilings(context.supabase);
+    const ceiling = ceilingFor(ceilings, data.tier);
+    const on = new Set(keep(data.widgets ?? []));
+    const excluded = ceiling.filter((w) => !on.has(w));
+
+    // Unique indexes on this table are partial, so ON CONFLICT can't be used
+    // for every scope — do select/update/insert.
     let query = supabaseAdmin
       .from("tier_widget_config")
       .select("id")
       .eq("tier", data.tier);
-    query = data.clientId === null ? query.is("client_id", null) : query.eq("client_id", data.clientId);
+    query =
+      data.clientId === null
+        ? query.is("client_id", null).is("firm_id", null)
+        : query.eq("client_id", data.clientId);
     const { data: existing, error: findErr } = await query.maybeSingle();
     if (findErr) throw new Error(findErr.message);
 
     if (existing) {
       const { error } = await supabaseAdmin
         .from("tier_widget_config")
-        .update({ widgets })
-        .eq("id", existing.id);
+        .update({ excluded_widgets: excluded })
+        .eq("id", (existing as any).id);
       if (error) throw new Error(error.message);
     } else {
       const { error } = await supabaseAdmin
         .from("tier_widget_config")
-        .insert({ client_id: data.clientId, tier: data.tier, widgets });
+        .insert({ client_id: data.clientId, firm_id: null, tier: data.tier, excluded_widgets: excluded });
       if (error) throw new Error(error.message);
     }
     return { ok: true };
   });
 
 
-// Resolves effective widgets for a client + tier (client override → global → defaults).
+// Resolves the cards a client sees on a tier (ceiling − organisation/client exclusions).
 export const getEffectiveWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; tier: DashboardTier }) => i)
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
-      .from("tier_widget_config")
-      .select("client_id, widgets")
-      .eq("tier", data.tier)
-      .or(`client_id.is.null,client_id.eq.${data.clientId}`);
-    if (error) throw new Error(error.message);
+    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
+      await import("@/lib/widget-resolve.server");
+    const { data: c } = await context.supabase
+      .from("clients")
+      .select("firm_id")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    const firmId = ((c as any)?.firm_id as string | null) ?? null;
 
-    const override = rows?.find((r) => r.client_id === data.clientId)?.widgets;
-    const global = rows?.find((r) => r.client_id === null)?.widgets;
-    const widgets = sanitizeWidgets((override ?? global ?? DEFAULT_TIER_WIDGETS[data.tier]) as string[]);
+    const ceilings = await tierCeilings(context.supabase);
+    const index = new ExclusionIndex(
+      await fetchExclusions(context.supabase, { firmId, clientIds: [data.clientId] }),
+    );
+    const widgets = visibleWidgets(
+      ceilingFor(ceilings, data.tier),
+      index.effective(data.tier, { firmId, clientId: data.clientId }),
+    );
     return { widgets };
   });
+
+/**
+ * Organisation card matrix for the "Cards included by default" panel: one row
+ * per dashboard tier the organisation's plan includes, showing the tier's plan
+ * ceiling and which cards are currently excluded for this organisation.
+ */
+export const getOrgWidgetMatrix = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { firmId: string }) => i)
+  .handler(async ({ data, context }) => {
+    const { tierCeilings, fetchExclusions, ExclusionIndex, visibleWidgets } =
+      await import("@/lib/widget-resolve.server");
+
+    // Which dashboard tiers the organisation's plan includes.
+    const { data: sub } = await (context.supabase as any)
+      .from("subscriptions")
+      .select("tier")
+      .eq("firm_id", data.firmId)
+      .maybeSingle();
+    const { data: levels } = await (context.supabase as any)
+      .from("plan_levels")
+      .select("scope, key, label, widgets, allowed_tiers, enabled, sort_order")
+      .order("sort_order", { ascending: true });
+    const all = ((levels ?? []) as any[]).filter((l) => l.enabled !== false);
+    const firmPlan = sub?.tier ? all.find((l) => l.scope === "firm" && l.key === sub.tier) : null;
+    const allowed = ((firmPlan?.allowed_tiers ?? []) as string[]).filter(Boolean);
+    const catalogue = all.filter((l) => l.scope === "dashboard");
+    const { cumulativeDashboardLevels } = await import("@/lib/plan-tiers");
+    const included = cumulativeDashboardLevels(catalogue as any[], allowed.length ? allowed : null);
+    const usable = included.length ? included : catalogue.filter((l: any) => l.key === "basic");
+
+    const ceilings = await tierCeilings(context.supabase);
+    const index = new ExclusionIndex(await fetchExclusions(context.supabase, { firmId: data.firmId }));
+
+    const { count } = await (context.supabase as any)
+      .from("clients")
+      .select("id", { count: "exact", head: true })
+      .eq("firm_id", data.firmId);
+
+    return {
+      clientCount: count ?? 0,
+      tiers: usable.map((l: any) => {
+        const ceiling = ceilings.get(l.key as string) ?? [];
+        const excluded = index.base(l.key as string, data.firmId);
+        return {
+          key: l.key as string,
+          label: l.label as string,
+          ceiling,
+          excluded: ceiling.filter((w) => excluded.includes(w)),
+          visible: visibleWidgets(ceiling, excluded),
+          usesOrgRow: index.hasOrgRow(l.key as string, data.firmId),
+        };
+      }),
+    };
+  });
+
+/**
+ * Turns one card on or off for a whole organisation. The database RPC
+ * authorises the caller, seeds the organisation row from the platform default,
+ * clears the card from every client's own exclusions when enabling, and writes
+ * its own audit row. Never write the table directly.
+ */
+export const setOrgWidget = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { firmId: string; tier: string; widget: WidgetKey; enabled: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await (context.supabase as any).rpc("set_org_widget_enabled", {
+      _firm_id: data.firmId,
+      _tier: data.tier,
+      _widget: data.widget,
+      _enabled: data.enabled,
+    });
+    if (error) {
+      throw new Error(
+        error.message?.includes("NO_ACCESS")
+          ? "You don't have access to this organisation."
+          : error.message,
+      );
+    }
+    const first = Array.isArray(rows) ? rows[0] : rows;
+    const overridesCleared = Number((first as any)?.clients_affected ?? 0);
+
+    const { count } = await (context.supabase as any)
+      .from("clients")
+      .select("id", { count: "exact", head: true })
+      .eq("firm_id", data.firmId);
+
+    return { overridesCleared, clientCount: count ?? 0 };
+  });
+
 
 // Global on/off per tier.
 export const listTierSettings = createServerFn({ method: "GET" })
