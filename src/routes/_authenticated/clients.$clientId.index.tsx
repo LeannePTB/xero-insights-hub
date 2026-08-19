@@ -23,6 +23,8 @@ import { TrueBreakevenWidget } from "@/components/dashboard/TrueBreakevenWidget"
 import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
 import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 import { BalanceSheetReconciliationWidget } from "@/components/dashboard/BalanceSheetReconciliationWidget";
+import { FixedAssetsReconciliationWidget } from "@/components/dashboard/FixedAssetsReconciliationWidget";
+import { GstReconciliationWidget } from "@/components/dashboard/GstReconciliationWidget";
 
 
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
