@@ -217,7 +217,7 @@ export const setOrgWidget = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId: string; tier: string; widget: WidgetKey; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await (context.supabase as any).rpc("set_org_widget_enabled", {
+    const { data: rows, error } = await context.supabase.rpc("set_org_widget_enabled", {
       _firm_id: data.firmId,
       _tier: data.tier,
       _widget: data.widget,
@@ -231,14 +231,7 @@ export const setOrgWidget = createServerFn({ method: "POST" })
       );
     }
     const first = Array.isArray(rows) ? rows[0] : rows;
-    const overridesCleared = Number((first as any)?.clients_affected ?? 0);
-
-    const { count } = await (context.supabase as any)
-      .from("clients")
-      .select("id", { count: "exact", head: true })
-      .eq("firm_id", data.firmId);
-
-    return { overridesCleared, clientCount: count ?? 0 };
+    return { clientsAffected: Number(first?.clients_affected ?? 0) };
   });
 
 
