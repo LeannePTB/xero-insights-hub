@@ -8,9 +8,9 @@ import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroBut
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
+import { OrgDefaultCardsPanel } from "@/components/admin/OrgDefaultCardsPanel";
 
-import { getFirmPlanSummary, saveFirmDefaultWidgets } from "@/lib/tier-config.functions";
-import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
+import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -80,36 +80,6 @@ function FirmSettingsPage() {
   });
   const summary = summaryQ.data;
   const isMulti = !!(summary?.allowsMultiOrg || summary?.supportsConsolidation);
-
-  // Optimistic copy while a default-card toggle is being written.
-  const [pendingWidgets, setPendingWidgets] = useState<WidgetKey[] | null>(null);
-  const [savingWidgets, setSavingWidgets] = useState(false);
-  const selectedWidgets = (pendingWidgets ?? summary?.widgets ?? []) as WidgetKey[];
-  const saveFirmDefaults = useServerFn(saveFirmDefaultWidgets);
-  const toggleWidget = async (w: WidgetKey) => {
-    if (savingWidgets) return;
-    const on = selectedWidgets.includes(w);
-    const next = on ? selectedWidgets.filter((x) => x !== w) : [...selectedWidgets, w];
-    setPendingWidgets(next);
-    setSavingWidgets(true);
-    try {
-      await saveFirmDefaults({ data: { firmId, widgets: next } });
-      await qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
-      qc.invalidateQueries({ queryKey: ["clients"] });
-      qc.invalidateQueries({ queryKey: ["client-widgets"] });
-      setPendingWidgets(null);
-      toast.success(
-        on
-          ? `${WIDGET_LABEL[w] ?? w} turned off for every client`
-          : `${WIDGET_LABEL[w] ?? w} turned on for new clients`,
-      );
-    } catch (e: any) {
-      setPendingWidgets(null);
-      toast.error(e?.message ?? "Could not save default cards");
-    } finally {
-      setSavingWidgets(false);
-    }
-  };
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["firm-subscription", firmId] });
