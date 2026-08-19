@@ -364,6 +364,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
       expenses,
       pnl: summarisePnl(pnlLines, months),
       avg3,
+      unclassifiedCount: unclassifiedNames.size,
     };
 
   });
