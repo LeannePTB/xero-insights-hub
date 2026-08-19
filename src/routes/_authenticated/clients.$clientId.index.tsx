@@ -196,7 +196,6 @@ function ClientDashboard() {
   }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides), isAdvisor]);
 
   const showHealth = widgets.includes("health");
-  const showNotes = widgets.includes("notes");
   const showUnreconciled = widgets.includes("unreconciled");
   const savedOrder = orderQ.data?.order ?? [];
   const standardIds = new Set(standardCards.map((c) => c.id));
