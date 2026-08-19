@@ -96,8 +96,22 @@ export async function computeGstReconciliation(
   let creditNotes: any[] = [];
   let bankTx: any[] = [];
   let manualJournals: any[] = [];
+  // Manual journals need a scope Traction Advisory does not request, so they
+  // are best effort: their absence is disclosed, never silently ignored.
   try {
-    [invoices, creditNotes, bankTx, manualJournals] = await Promise.all([
+    manualJournals = await pageAll<any>(conn, "ManualJournals", "ManualJournals", {
+      where: `Date>=${dtFrom}&&Date<=${dtTo}&&Status=="POSTED"`,
+      order: "Date ASC",
+    });
+  } catch {
+    manualJournals = [];
+    issues.push(
+      "Manual journals could not be read for this organisation, so journals posted straight to the GST account are not included.",
+    );
+  }
+
+  try {
+    [invoices, creditNotes, bankTx] = await Promise.all([
       pageAll<any>(conn, "Invoices", "Invoices", {
         where: `Date>=${dtFrom}&&Date<=${dtTo}&&(Status=="AUTHORISED"||Status=="PAID")`,
         order: "Date ASC",
@@ -108,10 +122,6 @@ export async function computeGstReconciliation(
       }),
       pageAll<any>(conn, "BankTransactions", "BankTransactions", {
         where: `Date>=${dtFrom}&&Date<=${dtTo}&&Status!="DELETED"&&Status!="VOIDED"`,
-        order: "Date ASC",
-      }),
-      pageAll<any>(conn, "ManualJournals", "ManualJournals", {
-        where: `Date>=${dtFrom}&&Date<=${dtTo}&&Status=="POSTED"`,
         order: "Date ASC",
       }),
     ]);
