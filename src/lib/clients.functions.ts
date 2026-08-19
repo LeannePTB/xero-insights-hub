@@ -99,8 +99,12 @@ export const listClients = createServerFn({ method: "POST" })
       return {
         ...c,
         grantedTiers,
+        // Per-viewer grants + per-client widget overrides. NOT the client's
+        // dashboard tier — use `entitlement` for that.
         clientTiers,
+        entitlement: entitlements[i],
         tierWidgets: resolveTierWidgets(c.id),
+
         // null = never configured (plan default applies); an array is an explicit
         // per-client override and must win over any tier default.
         clientWidgets: Array.isArray(c.dashboard_widgets)
