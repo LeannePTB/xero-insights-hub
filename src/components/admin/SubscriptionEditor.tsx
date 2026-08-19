@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { adminUpdateSubscription } from "@/lib/admin.functions";
+import { adminUpdateSubscription, adminSetFirmConsolidation } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -75,6 +75,27 @@ export function SubscriptionEditor({
 
   useEffect(() => setAlwaysFree(!!isAlwaysFree), [isAlwaysFree]);
 
+  // Consolidation is an organisation add-on, saved on its own so the change is
+  // audited independently of the rest of the plan form.
+  const setConsolidationFn = useServerFn(adminSetFirmConsolidation);
+  const [consolidation, setConsolidation] = useState<boolean>(!!subscription?.consolidation_enabled);
+  useEffect(
+    () => setConsolidation(!!subscription?.consolidation_enabled),
+    [subscription?.consolidation_enabled],
+  );
+  const consolidationMut = useMutation({
+    mutationFn: (enabled: boolean) => setConsolidationFn({ data: { firmId, enabled } }),
+    onSuccess: (_r, enabled) => {
+      toast.success(enabled ? "Consolidation tools enabled" : "Consolidation tools disabled");
+      onChanged();
+    },
+    onError: (e: any, enabled) => {
+      // Fail closed: revert the control to the last known state.
+      setConsolidation(!enabled);
+      toast.error(e?.message ?? "Could not update the add-on");
+    },
+  });
+
   // Keep the current value selectable even if its level was retired.
   const options = levels.filter((l) => l.enabled || l.key === tier);
   const selectedLevel = levels.find((l) => l.key === tier);
@@ -141,9 +162,26 @@ export function SubscriptionEditor({
         <div className="flex items-center justify-between rounded-md border p-3">
           <div>
             <p className="text-sm font-medium">Always free</p>
-            <p className="text-xs text-muted-foreground">Never charge this organisation regardless of tier.</p>
+            <p className="text-xs text-muted-foreground">Never charge this organisation regardless of plan.</p>
           </div>
           <Switch checked={alwaysFree} onCheckedChange={setAlwaysFree} />
+        </div>
+        <div className="flex items-center justify-between rounded-md border p-3 md:col-span-2">
+          <div className="pr-4">
+            <p className="text-sm font-medium">Consolidation tools</p>
+            <p className="text-xs text-muted-foreground">
+              Unlocks cross-client consolidation for this organisation, independent of the plan and
+              of client tiers.
+            </p>
+          </div>
+          <Switch
+            checked={consolidation}
+            disabled={consolidationMut.isPending || !subscription}
+            onCheckedChange={(v) => {
+              setConsolidation(v);
+              consolidationMut.mutate(v);
+            }}
+          />
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <Label>Client limit override</Label>

@@ -1402,6 +1402,7 @@ export type Database = {
         Row: {
           cancel_at_period_end: boolean
           client_limit_override: number | null
+          consolidation_enabled: boolean
           created_at: string
           current_period_end: string | null
           firm_id: string
@@ -1416,6 +1417,7 @@ export type Database = {
         Insert: {
           cancel_at_period_end?: boolean
           client_limit_override?: number | null
+          consolidation_enabled?: boolean
           created_at?: string
           current_period_end?: string | null
           firm_id: string
@@ -1430,6 +1432,7 @@ export type Database = {
         Update: {
           cancel_at_period_end?: boolean
           client_limit_override?: number | null
+          consolidation_enabled?: boolean
           created_at?: string
           current_period_end?: string | null
           firm_id?: string
@@ -1971,6 +1974,7 @@ export type Database = {
         Args: { _firm_id: string; _widget: string }
         Returns: boolean
       }
+      firm_has_consolidation: { Args: { _firm_id: string }; Returns: boolean }
       firm_plan_limits: {
         Args: { _firm_id: string }
         Returns: {
@@ -2018,6 +2022,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      org_addon_widgets: { Args: never; Returns: string[] }
       purge_expired_security_logs: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }

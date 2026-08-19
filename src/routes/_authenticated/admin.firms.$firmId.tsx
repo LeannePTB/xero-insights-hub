@@ -41,9 +41,6 @@ export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
   component: FirmDetailPage,
 });
 
-import { TIER_LABEL as FIRM_TIER_LABEL } from "@/lib/firmPlans";
-const TIERS = ["starter", "growth", "scale", "firm", "free", "legacy"] as const;
-const STATUSES = ["trialing", "active", "past_due", "canceled", "paused"];
 
 
 function fmt(s: string | null | undefined) {

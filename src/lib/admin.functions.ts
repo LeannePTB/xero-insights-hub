@@ -312,3 +312,43 @@ export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
     );
     return { ok: true, member: data.join };
   });
+
+/**
+ * Toggle the organisation-level consolidation add-on.
+ *
+ * Independent of the plan (capacity) and of client dashboard tiers: it gates
+ * the cross-client consolidation tools. Super admin only, always audited.
+ */
+export const adminSetFirmConsolidation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { firmId: string; enabled: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: existing, error: readErr } = await (supabaseAdmin as any)
+      .from("subscriptions")
+      .select("id, consolidation_enabled")
+      .eq("firm_id", data.firmId)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    if (!existing)
+      throw new Error("This organisation has no plan yet — assign a plan before enabling add-ons.");
+
+    const from = !!existing.consolidation_enabled;
+    if (from !== data.enabled) {
+      const { error } = await (supabaseAdmin as any)
+        .from("subscriptions")
+        .update({ consolidation_enabled: data.enabled })
+        .eq("firm_id", data.firmId);
+      if (error) throw new Error(error.message);
+
+      await logAudit("firm_consolidation_addon_changed", "firm", data.firmId, context.userId, {
+        firm_id: data.firmId,
+        from,
+        to: data.enabled,
+      });
+    }
+
+    return { ok: true, enabled: data.enabled };
+  });

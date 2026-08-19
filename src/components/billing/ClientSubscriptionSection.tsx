@@ -12,7 +12,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { getClientBilling, setClientComp, setClientTrial } from "@/lib/billing.functions";
+import {
+  getClientBilling,
+  setClientComp,
+  setClientTrial,
+  setClientDashboardTier,
+} from "@/lib/billing.functions";
 import { tierLabel, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 
 const SOURCE_LABEL: Record<string, string> = {
@@ -37,6 +42,7 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
   const fetchBilling = useServerFn(getClientBilling);
   const comp = useServerFn(setClientComp);
   const trial = useServerFn(setClientTrial);
+  const setTier = useServerFn(setClientDashboardTier);
 
   const [reason, setReason] = useState("");
   const [trialTier, setTrialTier] = useState<DashboardTier>("advisory");
@@ -63,6 +69,9 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
     onError: (e: any) => toast.error(e?.message ?? "Could not update the subscription"),
   });
 
+  // Standard / Advisory / Multi company — the client-facing dashboard tiers.
+  const TIER_CHOICES: DashboardTier[] = ["basic", "advisory", "multi_company"];
+
   const trialMut = useMutation({
     mutationFn: (start: boolean) =>
       trial({
@@ -78,6 +87,22 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
       refresh();
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not update the trial"),
+  });
+
+  // Absence of a subscription row means Standard — that's what the entitlement
+  // engine resolves, so mirror it here rather than assuming a stored value.
+  const storedTier = ((q.data?.subscription?.dashboard_tier ?? "basic") as DashboardTier);
+  const [tierDraft, setTierDraft] = useState<DashboardTier | null>(null);
+  const pendingTier = tierDraft ?? storedTier;
+
+  const tierMut = useMutation({
+    mutationFn: (tier: DashboardTier) => setTier({ data: { clientId, tier, reason } }),
+    onSuccess: () => {
+      toast.success("Dashboard tier updated");
+      setTierDraft(null);
+      refresh();
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not update the dashboard tier"),
   });
 
   if (q.isLoading) return <p className="text-sm text-muted-foreground">Loading subscription…</p>;
@@ -99,6 +124,37 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
             Payment overdue
           </Badge>
         )}
+      </div>
+
+      <div className="space-y-1.5">
+        <span className="text-sm font-medium">Dashboard tier</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <Select
+            value={pendingTier}
+            onValueChange={(v) => setTierDraft(v as DashboardTier)}
+          >
+            <SelectTrigger className="h-9 w-56">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {TIER_CHOICES.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {tierLabel(t)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            disabled={tierMut.isPending || pendingTier === storedTier}
+            onClick={() => tierMut.mutate(pendingTier)}
+          >
+            Save tier
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Sets which dashboard this client sees. The organisation's plan controls capacity only.
+        </p>
       </div>
 
       <p className="text-sm text-muted-foreground">
