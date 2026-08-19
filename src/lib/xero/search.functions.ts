@@ -268,12 +268,20 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
           return `https://go.xero.com${path}`;
         }
 
+        let failure: string | null = null;
+        const track = (e: unknown) => {
+          if (!failure) failure = (e as Error)?.message?.slice(0, 160) || "Xero request failed.";
+        };
         const [invRes, cnRes, ppRes, opRes] = await Promise.all([
-          xeroGet<{ Invoices?: any[] }>(conn, "Invoices", { where: invoicesWhere, page: pageParam, order: "Date DESC" }).catch(() => ({ Invoices: [] })),
-          xeroGet<{ CreditNotes?: any[] }>(conn, "CreditNotes", { where: creditNotesWhere, page: pageParam }).catch(() => ({ CreditNotes: [] })),
-          xeroGet<{ Prepayments?: any[] }>(conn, "Prepayments", { where: prepaymentsWhere, page: pageParam }).catch(() => ({ Prepayments: [] })),
-          xeroGet<{ Overpayments?: any[] }>(conn, "Overpayments", { where: overpaymentsWhere, page: pageParam }).catch(() => ({ Overpayments: [] })),
+          xeroGet<{ Invoices?: any[] }>(conn, "Invoices", { where: invoicesWhere, page: pageParam, order: "Date DESC" }).catch((e) => { track(e); return { Invoices: [] }; }),
+          xeroGet<{ CreditNotes?: any[] }>(conn, "CreditNotes", { where: creditNotesWhere, page: pageParam }).catch((e) => { track(e); return { CreditNotes: [] }; }),
+          xeroGet<{ Prepayments?: any[] }>(conn, "Prepayments", { where: prepaymentsWhere, page: pageParam }).catch((e) => { track(e); return { Prepayments: [] }; }),
+          xeroGet<{ Overpayments?: any[] }>(conn, "Overpayments", { where: overpaymentsWhere, page: pageParam }).catch((e) => { track(e); return { Overpayments: [] }; }),
         ]);
+        if (failure) {
+          unavailable.push({ tenantId: t.tenant_id, tenantName: t.tenant_name, reason: failure });
+        }
+
 
         // Xero pages at 100 rows per endpoint; a full page means there is more.
         if (
