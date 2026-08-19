@@ -965,9 +965,6 @@ function ClientSettings() {
             and can be reused.
           </p>
         </Section>
-        <Section title="Subscription" collapsible>
-          <ClientSubscriptionSection clientId={clientId} />
-        </Section>
 
       </main>
     </div>
