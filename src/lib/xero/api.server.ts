@@ -395,3 +395,59 @@ async function logXeroApiError(
   }
 }
 
+
+// --- Fixed Assets API ------------------------------------------------------
+// The asset register lives on a different base URL (assets.xro/1.0) to the
+// Accounting API, so it needs its own request path. Same token, same tenant
+// header, same fail-loud behaviour.
+const ASSETS_BASE = "https://api.xero.com/assets.xro/1.0";
+
+export async function xeroGetAssets<T = unknown>(
+  conn: Connection,
+  path: string,
+  params: Record<string, string | undefined> = {},
+  retries = 1,
+): Promise<T> {
+  if (conn.id) {
+    const missing = await missingScopesForConnection(conn.id);
+    if (missing.includes("assets.read")) {
+      throw new XeroScopeMissingError(
+        "assets.read",
+        conn.tenant_id,
+        `Reconnect to enable this — ${conn.tenant_name} hasn't authorised the fixed asset register yet.`,
+      );
+    }
+  }
+  const clean: Record<string, string> = {};
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
+  const q = new URLSearchParams(clean).toString();
+  const res = await fetchWithTimeout(`${ASSETS_BASE}/${path}${q ? "?" + q : ""}`, {
+    headers: {
+      Authorization: `Bearer ${conn.access_token}`,
+      "Xero-tenant-id": conn.tenant_id,
+      Accept: "application/json",
+    },
+  });
+  if (res.status === 429 && retries > 0) {
+    const retryAfter = Math.min(parseInt(res.headers.get("retry-after") || "5", 10), 10);
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+    return xeroGetAssets<T>(conn, path, params, retries - 1);
+  }
+  if (res.status === 401 && retries > 0) {
+    const refreshed = await refreshAccessToken(conn);
+    return xeroGetAssets<T>(refreshed, path, params, retries - 1);
+  }
+  if (!res.ok) {
+    const body = await res.text();
+    await logXeroApiError(conn, `Assets/${path}`, res.status, body.slice(0, 500));
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(
+        "Xero needs the fixed assets read permission. Reconnect this organisation and approve the updated read-only permissions.",
+      );
+    }
+    throw new Error(`Xero Assets/${path}: ${res.status} ${body}`);
+  }
+  const { logXeroRead } = await import("@/lib/audit.server");
+  await logXeroRead(conn, `Assets/${path}`);
+  return (await res.json()) as T;
+}
