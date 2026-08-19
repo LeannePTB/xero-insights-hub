@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getClient } from "@/lib/clients.functions";
 import type { ReportBasis } from "@/components/dashboard/BasisSelect";
+import { resolveCardBasis } from "@/lib/report-basis";
+import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -202,7 +204,7 @@ function ClientDashboard() {
 
     return { standardCards: standard, advancedCards: advanced };
 
-  }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides), isAdvisor]);
+  }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor]);
 
   const showHealth = widgets.includes("health");
   const showUnreconciled = widgets.includes("unreconciled");
