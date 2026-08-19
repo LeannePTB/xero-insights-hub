@@ -821,6 +821,9 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       asOfDate,
       fyLabel: fy.label,
       currency,
+      // Reused from the Organisations response already fetched above.
+      salesTaxBasisRaw: salesTaxBasisRaw,
+      salesTaxBasis: normaliseSalesTaxBasis(salesTaxBasisRaw),
       score,
       band,
       label: bandLabel,
