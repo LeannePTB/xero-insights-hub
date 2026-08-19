@@ -42,6 +42,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { usePersistedDisclosure, sectionStorageKey } from "@/hooks/usePersistedDisclosure";
 import {
   Select,
   SelectContent,
