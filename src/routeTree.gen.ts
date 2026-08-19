@@ -51,7 +51,6 @@ import { Route as AuthenticatedFirmsFirmIdLoansIndexRouteImport } from './routes
 import { Route as AuthenticatedFirmsFirmIdLoansGroupsRouteImport } from './routes/_authenticated/firms.$firmId.loans.groups'
 import { Route as AuthenticatedFirmsFirmIdLoansAccountsRouteImport } from './routes/_authenticated/firms.$firmId.loans.accounts'
 import { Route as AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport } from './routes/_authenticated/firms.$firmId.consolidated.$groupId'
-import { Route as AuthenticatedClientsClientIdXeroLogTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.xero-log.$tenantId'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
 import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
 import { Route as AuthenticatedClientsClientIdAuditTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.audit.$tenantId'
@@ -288,12 +287,6 @@ const AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute =
     path: '/consolidated/$groupId',
     getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
   } as any)
-const AuthenticatedClientsClientIdXeroLogTenantIdRoute =
-  AuthenticatedClientsClientIdXeroLogTenantIdRouteImport.update({
-    id: '/clients/$clientId/xero-log/$tenantId',
-    path: '/clients/$clientId/xero-log/$tenantId',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedClientsClientIdReceivablesTenantIdRoute =
   AuthenticatedClientsClientIdReceivablesTenantIdRouteImport.update({
     id: '/clients/$clientId/receivables/$tenantId',
@@ -354,7 +347,6 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
-  '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
   '/firms/$firmId/loans/accounts': typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   '/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
@@ -398,7 +390,6 @@ export interface FileRoutesByTo {
   '/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
-  '/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
   '/firms/$firmId/loans/accounts': typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   '/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
@@ -447,7 +438,6 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/_authenticated/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
-  '/_authenticated/clients/$clientId/xero-log/$tenantId': typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
   '/_authenticated/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
   '/_authenticated/firms/$firmId/loans/accounts': typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   '/_authenticated/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
@@ -496,7 +486,6 @@ export interface FileRouteTypes {
     | '/clients/$clientId/audit/$tenantId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
-    | '/clients/$clientId/xero-log/$tenantId'
     | '/firms/$firmId/consolidated/$groupId'
     | '/firms/$firmId/loans/accounts'
     | '/firms/$firmId/loans/groups'
@@ -540,7 +529,6 @@ export interface FileRouteTypes {
     | '/clients/$clientId/audit/$tenantId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
-    | '/clients/$clientId/xero-log/$tenantId'
     | '/firms/$firmId/consolidated/$groupId'
     | '/firms/$firmId/loans/accounts'
     | '/firms/$firmId/loans/groups'
@@ -588,7 +576,6 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/audit/$tenantId'
     | '/_authenticated/clients/$clientId/payables/$tenantId'
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
-    | '/_authenticated/clients/$clientId/xero-log/$tenantId'
     | '/_authenticated/firms/$firmId/consolidated/$groupId'
     | '/_authenticated/firms/$firmId/loans/accounts'
     | '/_authenticated/firms/$firmId/loans/groups'
@@ -911,13 +898,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdRoute
     }
-    '/_authenticated/clients/$clientId/xero-log/$tenantId': {
-      id: '/_authenticated/clients/$clientId/xero-log/$tenantId'
-      path: '/clients/$clientId/xero-log/$tenantId'
-      fullPath: '/clients/$clientId/xero-log/$tenantId'
-      preLoaderRoute: typeof AuthenticatedClientsClientIdXeroLogTenantIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/clients/$clientId/receivables/$tenantId': {
       id: '/_authenticated/clients/$clientId/receivables/$tenantId'
       path: '/clients/$clientId/receivables/$tenantId'
@@ -1021,7 +1001,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsClientIdAuditTenantIdRoute: typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   AuthenticatedClientsClientIdPayablesTenantIdRoute: typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   AuthenticatedClientsClientIdReceivablesTenantIdRoute: typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
-  AuthenticatedClientsClientIdXeroLogTenantIdRoute: typeof AuthenticatedClientsClientIdXeroLogTenantIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -1051,8 +1030,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedClientsClientIdPayablesTenantIdRoute,
   AuthenticatedClientsClientIdReceivablesTenantIdRoute:
     AuthenticatedClientsClientIdReceivablesTenantIdRoute,
-  AuthenticatedClientsClientIdXeroLogTenantIdRoute:
-    AuthenticatedClientsClientIdXeroLogTenantIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
