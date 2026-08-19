@@ -222,12 +222,15 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
     }
 
     const hits: SearchHit[] = [];
+    const unavailable: UnavailableOrg[] = [];
     const pageParam = String(page);
     const PAGE_SIZE = 100;
     let sawFullPage = false;
 
-    await Promise.all(
-      tenants.map(async (t) => {
+    // Sequential within the batch: a rate-limited file must never take the
+    // others down with it, and twelve files at once is a rate-limit problem.
+    for (const t of tenants) {
+      await (async () => {
         // Belt and braces: never call Xero for a tenant outside the permitted set.
         if (!permitted.has(t.tenant_id)) {
           throw new Error("You are not entitled to search that Xero organisation.");
@@ -235,9 +238,17 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
         let conn;
         try {
           conn = await getConnectionByTenant(t.tenant_id);
-        } catch {
+        } catch (e) {
+          // Never silently omit a file: someone would go looking for a
+          // transaction that is really there.
+          unavailable.push({
+            tenantId: t.tenant_id,
+            tenantName: t.tenant_name,
+            reason: (e as Error)?.message?.slice(0, 160) || "Could not reach this Xero organisation.",
+          });
           return;
         }
+
 
         // Fetch organisation short code so deep links open the correct org.
         let shortCode: string | null = null;
