@@ -220,25 +220,21 @@ async function subledgerSide(
 
   // Unallocated credit notes / overpayments / prepayments still sit in the
   // control account in Xero, so they belong in the subledger balance — unless
-  // they were refunded in cash, which clears them out of the control account
-  // without any invoice allocation.
-  const refundByDoc = new Map<string, number>();
-  for (const p of payments) {
-    const docId =
-      p?.CreditNote?.CreditNoteID ?? p?.Overpayment?.OverpaymentID ?? p?.Prepayment?.PrepaymentID;
-    if (!docId) continue;
-    refundByDoc.set(docId, (refundByDoc.get(docId) ?? 0) + (Number(p?.Amount) || 0));
-  }
+  // they were refunded in cash on or before the period end, which clears them
+  // out of the control account without any invoice allocation. Refunds are
+  // carried on the document's own Payments array.
   let unallocated = 0;
   for (const doc of [...sideCredits, ...sideOver, ...sidePre]) {
     const total = Number(doc?.Total) || 0;
     const allocatedByAsAt = (doc?.Allocations ?? [])
       .filter((a: any) => onOrBefore(a?.Date ?? doc?.Date, asAt))
       .reduce((s: number, a: any) => s + (Number(a?.Amount) || 0), 0);
-    const docId = doc?.CreditNoteID ?? doc?.OverpaymentID ?? doc?.PrepaymentID ?? "";
-    const refunded = refundByDoc.get(docId) ?? 0;
-    unallocated += total - allocatedByAsAt - refunded;
+    const refundedByAsAt = (doc?.Payments ?? [])
+      .filter((p: any) => onOrBefore(p?.Date ?? doc?.Date, asAt))
+      .reduce((s: number, p: any) => s + (Number(p?.Amount) || 0), 0);
+    unallocated += total - allocatedByAsAt - refundedByAsAt;
   }
+
 
 
   const balance = round2(gross - paid - allocated - unallocated);
