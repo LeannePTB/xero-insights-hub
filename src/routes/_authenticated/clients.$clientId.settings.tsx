@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
+import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
 import {
   ArrowLeft,
   Trash2,
@@ -425,6 +426,11 @@ function ClientSettings() {
               {renameMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save
             </Button>
           </div>
+        </Section>
+
+        {/* Dashboard tier — what this client sees */}
+        <Section title="Dashboard tier">
+          <ClientDashboardTierControl clientId={clientId} />
         </Section>
 
         {/* Report basis */}

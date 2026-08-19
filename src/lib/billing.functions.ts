@@ -248,11 +248,16 @@ export const setClientDashboardTier = createServerFn({ method: "POST" })
         .eq("client_id", data.clientId);
       if (error) throw new Error(error.message);
     } else {
+      // No Stripe subscription exists behind an assigned tier, so record the
+      // truth: the client has this dashboard at no charge.
       const { error } = await supabase.from("client_subscriptions").insert({
         client_id: data.clientId,
         dashboard_tier: data.tier,
-        subscription_type: "paid",
+        subscription_type: "free_forever",
         status: "active",
+        comp_reason: reason || "Dashboard tier assigned by the organisation",
+        comped_by: context.userId,
+        comped_at: new Date().toISOString(),
       });
       if (error) throw new Error(error.message);
     }
@@ -278,4 +283,41 @@ export const setClientDashboardTier = createServerFn({ method: "POST" })
     });
 
     return { ok: true, tier: data.tier };
+  });
+
+/**
+ * Set the dashboard tier for every client in an organisation.
+ *
+ * All authorisation, plan-permission checks, billed-client skipping and audit
+ * writing live in `public.set_all_client_tiers` — this is a thin RPC wrapper
+ * running as the caller, never as service_role.
+ */
+export const setAllClientTiers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (i: { firmId: string; tier: DashboardTier; includeBilled?: boolean; reason: string }) => i,
+  )
+  .handler(async ({ data, context }) => {
+    const reason = (data.reason ?? "").trim();
+    if (reason.length < 3) throw new Error("A short reason is required.");
+
+    const { data: rows, error } = await (context.supabase as any).rpc("set_all_client_tiers", {
+      _firm_id: data.firmId,
+      _tier: data.tier,
+      _include_billed: !!data.includeBilled,
+      _reason: reason,
+    });
+    if (error) {
+      if (String(error.message).includes("PLAN_DOES_NOT_PERMIT_TIER"))
+        throw new Error("This organisation's plan does not include that dashboard.");
+      throw new Error(error.message);
+    }
+
+    const r = (Array.isArray(rows) ? rows[0] : rows) ?? {};
+    return {
+      changed: Number(r.changed ?? 0),
+      skippedBilled: Number(r.skipped_billed ?? 0),
+      unchanged: Number(r.unchanged ?? 0),
+      tier: data.tier,
+    };
   });
