@@ -2032,6 +2032,19 @@ export type Database = {
           read_ct: number
         }[]
       }
+      set_all_client_tiers: {
+        Args: {
+          _firm_id: string
+          _include_billed?: boolean
+          _reason?: string
+          _tier: Database["public"]["Enums"]["dashboard_tier"]
+        }
+        Returns: {
+          changed: number
+          skipped_billed: number
+          unchanged: number
+        }[]
+      }
       transfer_organisation_ownership: {
         Args: {
           _firm_id: string
