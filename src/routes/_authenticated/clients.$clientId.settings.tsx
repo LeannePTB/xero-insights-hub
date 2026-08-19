@@ -62,6 +62,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
+import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
 import {
   ArrowLeft,
   Trash2,
