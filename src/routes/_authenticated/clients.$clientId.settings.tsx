@@ -16,7 +16,6 @@ import {
   revokeClientAccess,
   updateClientReportBasis,
   setClientXeroAllowance,
-  type BasisOverrideWidget,
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { FIXED_CARD_BASIS, FIXED_CARD_BASIS_LABELS, basisLabel } from "@/lib/report-basis";
