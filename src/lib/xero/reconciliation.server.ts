@@ -216,6 +216,21 @@ async function bankClosingBalances(
 
 const isLoanAccount = (name: string) => /\bloan\b|loan account/i.test(name);
 
+// Xero emits some totals as ordinary rows. They are not accounts and must not
+// be listed as something to review.
+const SUMMARY_LABELS = ["net assets", "total equity", "total liabilities", "total assets"];
+const isSummaryLine = (name: string) => {
+  const n = name.trim().toLowerCase();
+  return n.startsWith("total ") || SUMMARY_LABELS.includes(n);
+};
+
+function totalFrom(bs: BalanceSheet, name: string): number | null {
+  const fromSummary = summaryValue(bs, name);
+  if (fromSummary !== null) return fromSummary;
+  const line = bs.lines.find((l) => l.name.trim().toLowerCase() === name.toLowerCase());
+  return line ? line.value : null;
+}
+
 export async function computeBalanceSheetReconciliation(
   conn: Connection,
   asAt: string,
@@ -380,6 +395,7 @@ export async function computeBalanceSheetReconciliation(
   // --- Assemble every balance sheet line -----------------------------------
   const rows: ReconRow[] = [];
   for (const line of bs.lines) {
+    if (isSummaryLine(line.name)) continue;
     const acc = accountForLine(line);
     const key = acc ? acc.AccountID.toLowerCase() : lineKey(line);
     const base = handled.get(key) ?? handled.get(line.name.trim().toLowerCase());
@@ -443,9 +459,9 @@ export async function computeBalanceSheetReconciliation(
     rows,
     unreconciled,
     totals: {
-      totalAssets: glAvailable ? summaryValue(bs, "Total Assets") : null,
-      totalCurrentLiabilities: glAvailable ? summaryValue(bs, "Total Current Liabilities") : null,
-      netAssets: glAvailable ? summaryValue(bs, "Net Assets") : null,
+      totalAssets: glAvailable ? totalFrom(bs, "Total Assets") : null,
+      totalCurrentLiabilities: glAvailable ? totalFrom(bs, "Total Current Liabilities") : null,
+      netAssets: glAvailable ? totalFrom(bs, "Net Assets") : null,
     },
     complete,
     issues,

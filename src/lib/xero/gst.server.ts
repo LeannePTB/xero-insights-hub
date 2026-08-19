@@ -214,6 +214,11 @@ export async function computeGstReconciliation(
     if (closingBalance !== null) difference = round2(closingBalance - expectedClosing);
   }
 
+  // A gap in the journals only matters if the movement fails to tie.
+  const journalsMissing = issues.some((i) => i.startsWith("Manual journals"));
+  const ties = difference !== null && Math.abs(difference) < NEAR_ZERO;
+  if (journalsMissing && !ties) complete = false;
+
   return {
     asAt,
     periodFrom: from,
@@ -227,7 +232,7 @@ export async function computeGstReconciliation(
     movementsTotal,
     expectedClosing,
     difference,
-    ties: difference !== null && Math.abs(difference) < NEAR_ZERO,
+    ties,
     complete,
     issues,
   };
