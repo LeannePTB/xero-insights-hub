@@ -439,6 +439,11 @@ function ClientSettings() {
           </div>
         </Section>
 
+        {/* Subscription */}
+        <Section title="Subscription" collapsible>
+          <ClientSubscriptionSection clientId={clientId} />
+        </Section>
+
         {/* Dashboard tier — what this client sees */}
         <Section title="Dashboard tier" id="dashboard-tier" collapsible>
           <ClientDashboardTierControl clientId={clientId} />
@@ -959,9 +964,6 @@ function ClientSettings() {
             This removes the client and all viewer access. Linked Xero organisations stay connected
             and can be reused.
           </p>
-        </Section>
-        <Section title="Subscription" collapsible>
-          <ClientSubscriptionSection clientId={clientId} />
         </Section>
 
       </main>
