@@ -90,6 +90,11 @@ export function FirmClientsSection({
   });
   const canOpenClientData = allowClientData || !!supportQ.data?.viewerHasClientData;
 
+  const fetchMyContext = useServerFn(getMyContext);
+  const meQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
+  const isSuperAdmin = !!meQ.data?.isSuperAdmin;
+
+
 
   const clientsQ = useQuery({
     queryKey: ["clients", firmId],
