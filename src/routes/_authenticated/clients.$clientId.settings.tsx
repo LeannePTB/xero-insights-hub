@@ -972,7 +972,8 @@ function Section({
   title,
   action,
   collapsible,
-  defaultOpen = true,
+  defaultOpen = false,
+  storageKey,
   id,
   children,
 }: {
@@ -980,9 +981,18 @@ function Section({
   action?: React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  storageKey?: string;
   id?: string;
   children: React.ReactNode;
 }) {
+  const key = storageKey ?? sectionStorageKey("client-settings", title);
+  // A deep link to this section (e.g. /clients/x/settings#dashboard-tier) opens it.
+  const hashTargeted =
+    typeof window !== "undefined" && !!id && window.location.hash.replace("#", "") === id;
+  const [open, setOpen] = usePersistedDisclosure(key, {
+    forceOpen: hashTargeted || defaultOpen,
+  });
+
   if (!collapsible) {
     return (
       <section id={id} className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -996,8 +1006,8 @@ function Section({
   }
 
   return (
-    <Collapsible defaultOpen={defaultOpen}>
-      <section id={id} className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+    <Collapsible open={open} onOpenChange={setOpen}>
+      <section id={id} className="scroll-mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
         <div className="mb-4 flex items-center justify-between">
           <CollapsibleTrigger asChild>
             <button className="group flex flex-1 items-center justify-between gap-2 text-left">
