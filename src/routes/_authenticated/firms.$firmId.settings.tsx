@@ -79,7 +79,6 @@ function FirmSettingsPage() {
     staleTime: 5 * 60_000,
   });
   const summary = summaryQ.data;
-  const isMulti = !!(summary?.allowsMultiOrg || summary?.supportsConsolidation);
 
   const refresh = async () => {
     await qc.invalidateQueries({ queryKey: ["firm-subscription", firmId] });
