@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { listClients, deleteClient } from "@/lib/clients.functions";
 import { listTierSettings, getFirmPlanSummary } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
@@ -96,6 +96,9 @@ export function FirmClientsSection({
   const fetchMyContext = useServerFn(getMyContext);
   const meQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
   const isSuperAdmin = !!meQ.data?.isSuperAdmin;
+  const isAdvisor = !!meQ.data?.isAdvisor;
+  const canManageTier = isAdvisor || isSuperAdmin;
+
 
 
 
@@ -295,9 +298,24 @@ export function FirmClientsSection({
 
                       </td>
                       <td className="px-5 py-4">
-                        <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                          {labelFor(effectiveTier)}
-                        </span>
+                        {canManageTier ? (
+                          <Link
+                            to="/clients/$clientId/settings"
+                            params={{ clientId: c.id }}
+                            hash="dashboard-tier"
+                            title="Change dashboard tier"
+                            aria-label={`Change dashboard tier for ${c.name}`}
+                            className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary hover:bg-primary/20 hover:text-primary transition-colors cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {labelFor(effectiveTier)}
+                            <Pencil className="h-3 w-3" />
+                          </Link>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                            {labelFor(effectiveTier)}
+                          </span>
+                        )}
                         {sourceNote(ent) && (
                           <div className="mt-0.5 text-xs text-muted-foreground">{sourceNote(ent)}</div>
                         )}

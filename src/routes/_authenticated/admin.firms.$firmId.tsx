@@ -219,6 +219,11 @@ function SubscriptionSection({
         isAlwaysFree={isAlwaysFree}
         onChanged={onChanged}
       />
+      <p className="text-xs text-muted-foreground">
+        The plan controls how many clients and Xero organisations this organisation can have, and
+        which dashboards are available. Each client's dashboard tier is set on that client's settings
+        page.
+      </p>
     </section>
   );
 }

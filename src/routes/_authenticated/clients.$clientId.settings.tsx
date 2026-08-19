@@ -389,6 +389,16 @@ function ClientSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hash.replace("#", "") !== "dashboard-tier") return;
+    const el = document.getElementById("dashboard-tier");
+    if (!el) return;
+    // Give the layout a beat to settle before scrolling to the target.
+    const t = setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
+    return () => clearTimeout(t);
+  }, [clientId]);
+
   if (clientQ.isLoading) {
     return (
       <div className="grid min-h-screen place-items-center text-muted-foreground">
@@ -429,7 +439,7 @@ function ClientSettings() {
         </Section>
 
         {/* Dashboard tier — what this client sees */}
-        <Section title="Dashboard tier">
+        <Section title="Dashboard tier" id="dashboard-tier">
           <ClientDashboardTierControl clientId={clientId} />
         </Section>
 
@@ -963,17 +973,19 @@ function Section({
   action,
   collapsible,
   defaultOpen = true,
+  id,
   children,
 }: {
   title: string;
   action?: React.ReactNode;
   collapsible?: boolean;
   defaultOpen?: boolean;
+  id?: string;
   children: React.ReactNode;
 }) {
   if (!collapsible) {
     return (
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+      <section id={id} className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold">{title}</h2>
           {action}
@@ -985,7 +997,7 @@ function Section({
 
   return (
     <Collapsible defaultOpen={defaultOpen}>
-      <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+      <section id={id} className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
         <div className="mb-4 flex items-center justify-between">
           <CollapsibleTrigger asChild>
             <button className="group flex flex-1 items-center justify-between gap-2 text-left">
