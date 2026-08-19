@@ -1,8 +1,12 @@
-// Server-only Balance Sheet reconciliation engine.
+// Server-only Balance Sheet reconciliation engine — the month-end checklist.
 //
-// Compares each balance sheet control account against its supporting
-// subledger, reconstructed AS AT the period end (never `AmountDue`, which is
-// only ever "today").
+// Every balance sheet account is listed, each with one of three treatments:
+//   reconciled  — a real subledger exists (AR, AP, bank accounts, fixed assets)
+//   indicative  — GST, compared against a reconstructed movement, not exact
+//   review      — no subledger exists (tax payable, loans, equity): eyeball it
+//
+// Subledgers are reconstructed AS AT the period end (never `AmountDue`, which
+// is only ever "today").
 //
 // Fail closed: if any component cannot be fetched the affected rows are marked
 // unavailable with a reason and the whole result is flagged incomplete. A
@@ -10,15 +14,32 @@
 // notes is worse than one that reports nothing.
 
 import type { Connection } from "./api.server";
+import {
+  bsValueFor,
+  errText,
+  extractBalanceSheet,
+  onOrBefore,
+  pageAll,
+  round2,
+  summaryValue,
+  xeroDateLiteral,
+  type BalanceSheet,
+  type XeroAccount,
+} from "./recon-shared.server";
+
+export type ReconRowStatus = "balanced" | "variance" | "indicative" | "review" | "unavailable";
 
 export type ReconRow = {
   key: string;
   label: string;
-  kind: "receivables" | "payables" | "bank";
+  section: string;
+  kind: "receivables" | "payables" | "bank" | "fixed_assets" | "gst" | "review";
+  treatment: "reconciled" | "indicative" | "review";
+  group?: "loans";
   glBalance: number | null;
   subledgerBalance: number | null;
   variance: number | null;
-  status: "balanced" | "variance" | "unavailable";
+  status: ReconRowStatus;
   reason?: string;
 };
 
@@ -26,90 +47,14 @@ export type ReconResult = {
   asAt: string;
   rows: ReconRow[];
   unreconciled: { label: string; detail: string; amount?: number }[];
+  totals: {
+    totalAssets: number | null;
+    totalCurrentLiabilities: number | null;
+    netAssets: number | null;
+  };
   complete: boolean;
   issues: string[];
 };
-
-const PAGE_SIZE = 100;
-const MAX_PAGES = 40;
-
-function xeroDateLiteral(iso: string) {
-  const [y, m, d] = iso.split("-").map(Number);
-  return `DateTime(${y},${m},${d})`;
-}
-
-function parseXeroDate(s?: string): Date | null {
-  if (!s) return null;
-  const m = s.match(/\/Date\((-?\d+)/);
-  if (m) return new Date(parseInt(m[1], 10));
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
-
-function onOrBefore(dateStr: string | undefined, asAt: string): boolean {
-  const d = parseXeroDate(dateStr);
-  if (!d) return false;
-  return d.toISOString().slice(0, 10) <= asAt;
-}
-
-function round2(n: number) {
-  return Math.round(n * 100) / 100;
-}
-
-/** Page an endpoint until exhausted. Throws if the page cap is hit, so a
- *  truncated dataset can never be presented as a complete one. */
-async function pageAll<T>(
-  conn: Connection,
-  path: string,
-  collection: string,
-  params: Record<string, string | undefined>,
-): Promise<T[]> {
-  const { xeroGet } = await import("./api.server");
-  const out: T[] = [];
-  for (let page = 1; page <= MAX_PAGES; page++) {
-    const res = await xeroGet<Record<string, T[] | undefined>>(conn, path, {
-      ...params,
-      page: String(page),
-    });
-    const batch = res[collection] ?? [];
-    out.push(...batch);
-    if (batch.length < PAGE_SIZE) return out;
-  }
-  throw new Error(`${path}: too many records to page safely (over ${MAX_PAGES * PAGE_SIZE}).`);
-}
-
-type XeroAccount = {
-  AccountID: string;
-  Code?: string;
-  Name: string;
-  Type?: string;
-  Class?: string;
-  SystemAccount?: string;
-  Status?: string;
-};
-
-type BsLine = { accountId: string | null; name: string; value: number };
-
-/** Flatten a Balance Sheet report into account rows, keeping the account id
- *  Xero attaches to the first cell. */
-function extractBalanceSheetLines(report: any): BsLine[] {
-  const out: BsLine[] = [];
-  function walk(rows: any[]) {
-    for (const row of rows ?? []) {
-      if (Array.isArray(row?.Rows) && row.Rows.length) walk(row.Rows);
-      if (row?.RowType !== "Row") continue;
-      const cells = row?.Cells ?? [];
-      if (cells.length < 2) continue;
-      const name = String(cells[0]?.Value ?? "").trim();
-      const value = Number(cells[1]?.Value ?? 0) || 0;
-      const attrs = cells[0]?.Attributes ?? cells[1]?.Attributes ?? [];
-      const idAttr = (attrs as any[]).find((a) => a?.Id === "account" || a?.Id === "accountID");
-      out.push({ accountId: idAttr?.Value ?? null, name, value });
-    }
-  }
-  walk(report?.Rows ?? []);
-  return out;
-}
 
 type Allocation = { invoiceId: string; amount: number; date?: string };
 
@@ -235,8 +180,6 @@ async function subledgerSide(
     unallocated += total - allocatedByAsAt - refundedByAsAt;
   }
 
-
-
   const balance = round2(gross - paid - allocated - unallocated);
   return { balance, unreconciled };
 }
@@ -271,23 +214,20 @@ async function bankClosingBalances(
   return map;
 }
 
-function errText(e: unknown) {
-  return e instanceof Error ? e.message : String(e ?? "Unknown error");
-}
+const isLoanAccount = (name: string) => /\bloan\b|loan account/i.test(name);
 
 export async function computeBalanceSheetReconciliation(
   conn: Connection,
   asAt: string,
 ): Promise<ReconResult> {
   const { xeroGet } = await import("./api.server");
-  const rows: ReconRow[] = [];
   const unreconciled: ReconResult["unreconciled"] = [];
   const issues: string[] = [];
   let complete = true;
 
   // --- Chart of accounts + balance sheet (GL side) -------------------------
   let accounts: XeroAccount[] = [];
-  let bsLines: BsLine[] = [];
+  let bs: BalanceSheet = { lines: [], summaries: [] };
   let glAvailable = true;
   let glReason = "";
   try {
@@ -298,7 +238,7 @@ export async function computeBalanceSheetReconciliation(
     accounts = accRes.Accounts ?? [];
     const report = bsRes.Reports?.[0];
     if (!report) throw new Error("Xero returned no Balance Sheet for this date.");
-    bsLines = extractBalanceSheetLines(report);
+    bs = extractBalanceSheet(report);
   } catch (e) {
     glAvailable = false;
     glReason = errText(e);
@@ -306,67 +246,52 @@ export async function computeBalanceSheetReconciliation(
     issues.push(`Balance Sheet unavailable: ${glReason}`);
   }
 
-  const byId = new Map(bsLines.filter((l) => l.accountId).map((l) => [l.accountId!.toLowerCase(), l]));
-  function glFor(acc: XeroAccount): number | null {
-    if (!glAvailable) return null;
-    const hit = byId.get(acc.AccountID.toLowerCase());
-    if (hit) return hit.value;
-    const byName = bsLines.find((l) => l.name.toLowerCase() === acc.Name.toLowerCase());
-    return byName ? byName.value : 0;
+  const accountsById = new Map(accounts.map((a) => [a.AccountID.toLowerCase(), a]));
+  const accountsByName = new Map(accounts.map((a) => [a.Name.trim().toLowerCase(), a]));
+  function accountForLine(line: { accountId: string | null; name: string }): XeroAccount | null {
+    if (line.accountId) {
+      const hit = accountsById.get(line.accountId.toLowerCase());
+      if (hit) return hit;
+    }
+    return accountsByName.get(line.name.trim().toLowerCase()) ?? null;
   }
+
+  // Rows keyed by the balance sheet line they explain. Anything not handled
+  // below falls through to "review only".
+  const handled = new Map<string, Omit<ReconRow, "section" | "glBalance">>();
+  const lineKey = (l: { accountId: string | null; name: string }) =>
+    (l.accountId ?? l.name).toLowerCase();
 
   const debtors = accounts.filter((a) => a.SystemAccount === "DEBTORS");
   const creditors = accounts.filter((a) => a.SystemAccount === "CREDITORS");
-  const banks = accounts.filter((a) => a.Type === "BANK");
 
   // --- Receivables / payables ---------------------------------------------
   for (const side of ["ACCREC", "ACCPAY"] as const) {
     const isAR = side === "ACCREC";
     const label = isAR ? "Accounts Receivable" : "Accounts Payable";
     const control = isAR ? debtors[0] : creditors[0];
-    let gl: number | null = null;
-    if (glAvailable) {
-      gl = control
-        ? glFor(control)
-        : bsLines.find((l) => l.name.toLowerCase() === label.toLowerCase())?.value ?? null;
-      // Payables sit as a liability (positive on the Balance Sheet).
-    }
+    const key = (control?.AccountID ?? label).toLowerCase();
     try {
       const sub = await subledgerSide(conn, asAt, side);
       unreconciled.push(...sub.unreconciled);
-      const subBalance = isAR ? sub.balance : sub.balance;
-      if (gl === null) {
-        rows.push({
-          key: side,
-          label,
-          kind: isAR ? "receivables" : "payables",
-          glBalance: null,
-          subledgerBalance: round2(subBalance),
-          variance: null,
-          status: "unavailable",
-          reason: glReason || "The Balance Sheet balance could not be loaded.",
-        });
-      } else {
-        const variance = round2(gl - subBalance);
-        rows.push({
-          key: side,
-          label,
-          kind: isAR ? "receivables" : "payables",
-          glBalance: round2(gl),
-          subledgerBalance: round2(subBalance),
-          variance,
-          status: Math.abs(variance) < 0.005 ? "balanced" : "variance",
-        });
-      }
+      handled.set(key, {
+        key,
+        label,
+        kind: isAR ? "receivables" : "payables",
+        treatment: "reconciled",
+        subledgerBalance: round2(sub.balance),
+        variance: null,
+        status: "balanced",
+      });
     } catch (e) {
       complete = false;
       const reason = errText(e);
       issues.push(`${label} subledger unavailable: ${reason}`);
-      rows.push({
-        key: side,
+      handled.set(key, {
+        key,
         label,
         kind: isAR ? "receivables" : "payables",
-        glBalance: gl === null ? null : round2(gl),
+        treatment: "reconciled",
         subledgerBalance: null,
         variance: null,
         status: "unavailable",
@@ -385,44 +310,144 @@ export async function computeBalanceSheetReconciliation(
     complete = false;
     issues.push(`Bank Summary unavailable: ${bankReason}`);
   }
-  for (const acc of banks) {
-    if (acc.Status && acc.Status !== "ACTIVE") continue;
-    const gl = glFor(acc);
+  for (const acc of accounts.filter((a) => a.Type === "BANK")) {
     const hit =
       bankMap?.get(acc.AccountID.toLowerCase()) ??
       [...(bankMap?.values() ?? [])].find((v) => v.name.toLowerCase() === acc.Name.toLowerCase());
-    if (!bankMap || !hit || gl === null) {
-      rows.push({
-        key: acc.AccountID,
-        label: acc.Name,
-        kind: "bank",
-        glBalance: gl === null ? null : round2(gl),
-        subledgerBalance: hit ? round2(hit.closing) : null,
-        variance: null,
-        status: "unavailable",
-        reason:
-          bankReason ||
-          glReason ||
-          "Xero's Bank Summary did not include this account for the period.",
-      });
-      complete = false;
-      continue;
-    }
-    const variance = round2(gl - hit.closing);
-    rows.push({
+    handled.set(acc.AccountID.toLowerCase(), {
       key: acc.AccountID,
       label: acc.Name,
       kind: "bank",
-      glBalance: round2(gl),
-      subledgerBalance: round2(hit.closing),
-      variance,
-      status: Math.abs(variance) < 0.005 ? "balanced" : "variance",
+      treatment: "reconciled",
+      subledgerBalance: hit ? round2(hit.closing) : null,
+      variance: null,
+      status: hit ? "balanced" : "unavailable",
+      reason: hit
+        ? undefined
+        : bankReason || "Xero's Bank Summary did not include this account for the period.",
+    });
+    if (!hit) complete = false;
+  }
+
+  // --- Fixed assets (asset register) ---------------------------------------
+  const { fetchAssetRegister } = await import("./fixed-assets.server");
+  const register = await fetchAssetRegister(conn, asAt);
+  if (!register.available) {
+    complete = false;
+    issues.push(`Asset register unavailable: ${register.reason}`);
+  }
+  for (const acc of accounts.filter((a) => a.Type === "FIXED")) {
+    const reg = register.byAccount.get(acc.AccountID.toLowerCase());
+    const isAccum = /accum/i.test(acc.Name);
+    const sub = register.available ? (isAccum ? -(reg?.accumulated ?? 0) : reg?.cost ?? 0) : null;
+    handled.set(acc.AccountID.toLowerCase(), {
+      key: acc.AccountID,
+      label: acc.Name,
+      kind: "fixed_assets",
+      treatment: "reconciled",
+      subledgerBalance: sub === null ? null : round2(sub),
+      variance: null,
+      status: sub === null ? "unavailable" : "balanced",
+      reason: sub === null ? register.reason : undefined,
     });
   }
 
-  // Variances first — this tool exists to surface what is broken.
-  const rank = (r: ReconRow) => (r.status === "unavailable" ? 0 : r.status === "variance" ? 1 : 2);
+  // --- GST (indicative) ----------------------------------------------------
+  try {
+    const { computeGstReconciliation } = await import("./gst.server");
+    const gst = await computeGstReconciliation(conn, asAt);
+    const control =
+      accounts.find((a) => a.SystemAccount === "GST") ??
+      accounts.find((a) => a.Name === gst.controlAccountName);
+    if (control) {
+      handled.set(control.AccountID.toLowerCase(), {
+        key: control.AccountID,
+        label: control.Name,
+        kind: "gst",
+        treatment: "indicative",
+        subledgerBalance: gst.expectedClosing,
+        variance: null,
+        status: "indicative",
+        reason:
+          "Reconstructed from transaction tax and GST account movements — indicative only, not a lodgement figure.",
+      });
+    }
+    if (!gst.complete) issues.push(...gst.issues);
+  } catch (e) {
+    issues.push(`GST comparison unavailable: ${errText(e)}`);
+  }
+
+  // --- Assemble every balance sheet line -----------------------------------
+  const rows: ReconRow[] = [];
+  for (const line of bs.lines) {
+    const acc = accountForLine(line);
+    const key = acc ? acc.AccountID.toLowerCase() : lineKey(line);
+    const base = handled.get(key) ?? handled.get(line.name.trim().toLowerCase());
+    const gl = round2(line.value);
+    if (base) {
+      const variance =
+        base.subledgerBalance === null ? null : round2(gl - base.subledgerBalance);
+      const status: ReconRowStatus =
+        base.status === "unavailable"
+          ? "unavailable"
+          : base.treatment === "indicative"
+            ? "indicative"
+            : variance === null
+              ? "unavailable"
+              : Math.abs(variance) < 0.005
+                ? "balanced"
+                : "variance";
+      rows.push({
+        ...base,
+        section: line.section,
+        glBalance: gl,
+        variance,
+        status,
+        group: isLoanAccount(line.name) ? "loans" : undefined,
+      });
+    } else {
+      rows.push({
+        key,
+        label: line.name,
+        section: line.section,
+        kind: "review",
+        treatment: "review",
+        group: isLoanAccount(line.name) ? "loans" : undefined,
+        glBalance: gl,
+        subledgerBalance: null,
+        variance: null,
+        status: "review",
+        reason: "No subledger exists for this account — check the balance looks right.",
+      });
+    }
+  }
+
+  // Variances first — this tool exists to surface what is broken. Loan
+  // accounts keep their own order; the widget groups them under one heading.
+  const rank = (r: ReconRow) =>
+    r.group === "loans"
+      ? 5
+      : r.status === "variance"
+        ? 0
+        : r.status === "unavailable"
+          ? 1
+          : r.status === "indicative"
+            ? 2
+            : r.treatment === "reconciled"
+              ? 3
+              : 4;
   rows.sort((a, b) => rank(a) - rank(b) || Math.abs(b.variance ?? 0) - Math.abs(a.variance ?? 0));
 
-  return { asAt, rows, unreconciled, complete, issues };
+  return {
+    asAt,
+    rows,
+    unreconciled,
+    totals: {
+      totalAssets: glAvailable ? summaryValue(bs, "Total Assets") : null,
+      totalCurrentLiabilities: glAvailable ? summaryValue(bs, "Total Current Liabilities") : null,
+      netAssets: glAvailable ? summaryValue(bs, "Net Assets") : null,
+    },
+    complete,
+    issues,
+  };
 }
