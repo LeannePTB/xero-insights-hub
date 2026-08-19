@@ -20,7 +20,7 @@ import {
   type BasisOverrideWidget,
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
-import { listTierConfig, saveTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
+import { listTierConfig, saveClientTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
 import { getMyContext } from "@/lib/roles.functions";
 
@@ -116,7 +116,7 @@ function ClientSettings() {
   const updateTier = useServerFn(updateClientAccessTier);
   const revoke = useServerFn(revokeClientAccess);
   const fetchTierCfg = useServerFn(listTierConfig);
-  const saveTier = useServerFn(saveTierWidgets);
+  const saveTier = useServerFn(saveClientTierWidgets);
   const fetchTierSettings = useServerFn(listTierSettings);
   const fetchClassifications = useServerFn(listCostClassifications);
   const setClassEnabled = useServerFn(setCostClassificationEnabled);
