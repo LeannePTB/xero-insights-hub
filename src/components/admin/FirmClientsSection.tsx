@@ -317,11 +317,14 @@ export function FirmClientsSection({
                                   </DropdownMenuItem>
                                 </>
                               )}
-                              {(granted.length ? granted : enabledTiers).map((t) =>
+                              {[effectiveTier, ...previewTiers].map((t) =>
                                 canOpenClientData ? (
                                   <DropdownMenuItem key={`view-as-${t}`} asChild>
                                     <Link to="/clients/$clientId" params={{ clientId: c.id }} search={{ viewAs: t }}>
                                       <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
+                                      {t !== effectiveTier && (
+                                        <span className="ml-1 text-xs text-muted-foreground">(preview)</span>
+                                      )}
                                     </Link>
                                   </DropdownMenuItem>
                                 ) : (
@@ -334,6 +337,7 @@ export function FirmClientsSection({
                                   </DropdownMenuItem>
                                 ),
                               )}
+
 
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
