@@ -89,6 +89,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   cashflow_scenario: "Cashflow Scenario",
   xero_audit: "Xero File Audit",
   loan_consolidation: "Loan Consolidation",
+  balance_sheet_reconciliation: "Balance Sheet Reconciliation",
 };
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
