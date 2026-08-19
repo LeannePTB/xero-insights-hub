@@ -621,8 +621,8 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const monthsRunway = monthlyOpex > 0 ? bs.cash / monthlyOpex : null;
     const revenueGrowthPct = priorPnl.income > 0 ? ((pnl.income - priorPnl.income) / priorPnl.income) * 100 : null;
 
-    const fmtMoney = (n: number) =>
-      new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
+    // Business Health never prints absolute dollar amounts — Profit & Loss owns the money.
+
 
     // ---------- MONEY ----------
     const moneyMetrics: PillarMetric[] = [
@@ -634,7 +634,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       {
         key: "cash_runway",
         label: "Cash in bank",
-        pill: monthsRunway === null ? fmtMoney(bs.cash) : monthsRunway >= 3 ? "Healthy" : monthsRunway >= 1 ? "Low" : "Very low",
+        pill: monthsRunway === null ? "Runway not available" : monthsRunway >= 3 ? "Healthy" : monthsRunway >= 1 ? "Low" : "Very low",
         status: monthsRunway === null ? "neutral" : statusFor(monthsRunway, { good: 3, watch: 1 }),
       },
       {
@@ -682,12 +682,17 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const quickRatio =
       bs.currentLiabilities > 0 ? (bs.cash + ar.total) / bs.currentLiabilities : null;
 
+    const cashMovementPctOfRevenue =
+      pnl.income > 0 ? (netCashMovement / pnl.income) * 100 : null;
     const cashMovementPill =
-      netCashMovement > 0
-        ? `+${fmtMoney(netCashMovement)}`
-        : netCashMovement < 0
-          ? `${fmtMoney(netCashMovement)}`
-          : "Flat";
+      cashMovementPctOfRevenue === null
+        ? "No revenue"
+        : Math.abs(cashMovementPctOfRevenue) < 0.5
+          ? "Flat"
+          : cashMovementPctOfRevenue > 0
+            ? `Up ${cashMovementPctOfRevenue.toFixed(1)}% of revenue`
+            : `Down ${Math.abs(cashMovementPctOfRevenue).toFixed(1)}% of revenue`;
+
     const cashMovementStatus: PillarStatus =
       monthlyOpex <= 0
         ? "neutral"
@@ -697,8 +702,14 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
             ? "bad"
             : "watch";
 
+    const workingCapitalMonths = monthlyOpex > 0 ? workingCapital / monthlyOpex : null;
     const workingCapitalPill =
-      workingCapital >= 0 ? `+${fmtMoney(workingCapital)}` : `${fmtMoney(workingCapital)}`;
+      workingCapital < 0
+        ? "Negative"
+        : workingCapitalMonths === null
+          ? "In surplus"
+          : `${workingCapitalMonths.toFixed(1)} months of costs`;
+
     const workingCapitalStatus: PillarStatus =
       workingCapital < 0
         ? "bad"
@@ -753,13 +764,27 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     ]);
 
     // ---------- STABILITY ----------
+    const dpo =
+      pnl.expenses + pnl.cogs > 0 ? (ap.total / (pnl.expenses + pnl.cogs)) * periodDays : null;
     const runwayPill =
-      monthsRunway === null ? "Unknown" : monthsRunway < 1 ? "<1 month" : monthsRunway < 3 ? `${monthsRunway.toFixed(1)} months` : `${monthsRunway.toFixed(1)}+ months`;
+      monthsRunway === null ? "Not available" : monthsRunway < 1 ? "<1 month" : monthsRunway < 3 ? `${monthsRunway.toFixed(1)} months` : `${monthsRunway.toFixed(1)}+ months`;
+
     const stabilityMetrics: PillarMetric[] = [
       { key: "runway", label: "Months of runway", pill: runwayPill, status: monthsRunway === null ? "neutral" : statusFor(monthsRunway, { good: 3, watch: 1 }) },
       { key: "revenue_concentration", label: "Revenue concentration", pill: topIncomeShare >= 80 ? "Single service" : topIncomeShare >= 50 ? "Top-heavy" : "Spread", status: statusFor(topIncomeShare, { good: 50, watch: 80 }, true) },
-      { key: "receivables", label: "Debts owed to business", pill: ar.total > 0 ? `${fmtMoney(ar.total)} outstanding` : "None", status: ar.total > monthlyRevenue * 2 ? "bad" : ar.total > monthlyRevenue ? "watch" : "good" },
-      { key: "payables", label: "Amount business owes", pill: ap.total > 0 ? `Only ${fmtMoney(ap.total)}` : "None", status: ap.total > monthlyRevenue * 2 ? "bad" : ap.total > monthlyRevenue ? "watch" : "good" },
+      {
+        key: "receivables",
+        label: "Debts owed to business",
+        pill: ar.total <= 0 ? "None owing" : dso === null ? "No revenue" : `${Math.round(dso)} days to collect`,
+        status: ar.total > monthlyRevenue * 2 ? "bad" : ar.total > monthlyRevenue ? "watch" : "good",
+      },
+      {
+        key: "payables",
+        label: "Amount business owes",
+        pill: ap.total <= 0 ? "None owing" : dpo === null ? "Not available" : `${Math.round(dpo)} days to pay`,
+        status: ap.total > monthlyRevenue * 2 ? "bad" : ap.total > monthlyRevenue ? "watch" : "good",
+      },
+
     ];
     const stabilityScore = scoreFromMetrics([
       { score: monthsRunway === null ? 50 : Math.min(100, monthsRunway * 25), weight: 0.4 },
@@ -768,11 +793,44 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       { score: monthlyRevenue > 0 ? Math.max(0, 100 - (ap.total / monthlyRevenue) * 20) : 50, weight: 0.2 },
     ]);
 
+    const { score, band, label: bandLabel } = computeScore({
+      netMarginPct,
+      grossMarginPct,
+      badDebtsPctOfRev: badDebtsPct,
+      monthsRunway,
+    });
+    const summary = buildSummary({
+      netMarginPct,
+      cashInBank: bs.cash,
+      badDebts: bs.badDebts,
+      revenue: pnl.income,
+      monthsRunway,
+    });
+    const alert = pickAlert({
+      badDebts: bs.badDebts,
+      revenue: pnl.income,
+      monthsRunway,
+      netMarginPct,
+      cashInBank: bs.cash,
+    });
+
     return {
       asOfDate,
       fyLabel: fy.label,
       currency,
+      score,
+      band,
+      label: bandLabel,
+      summary,
+      alert,
+      drivers: {
+        netMarginPct,
+        grossMarginPct,
+        badDebtsPctOfRevenue: badDebtsPct,
+        monthsRunway,
+      },
       pillars: [
+
         { key: "money", title: "Money", subtitle: "Are you profitable?", score: moneyScore, metrics: moneyMetrics, ctaLabel: "Why is cash so low?" },
         { key: "efficiency", title: "Efficiency", subtitle: "Is the team productive?", score: efficiencyScore, metrics: efficiencyMetrics, ctaLabel: "Improve efficiency" },
         { key: "cash_flow", title: "Cash Flow", subtitle: "Is cash actually moving the right way?", score: cashFlowScore, metrics: cashFlowMetrics, ctaLabel: "How to free up cash" },
