@@ -77,7 +77,16 @@ export const listClients = createServerFn({ method: "POST" })
       ) as Record<DashboardTier, WidgetKey[]>;
     }
 
-    const clients = (rows ?? []).map((c: any) => {
+    // Effective dashboard tier per client comes from public.client_entitlement,
+    // read through the caller's session. It is never recomputed here, and any
+    // failure resolves to Standard (fail closed) inside the helper.
+    const { clientEntitlement } = await import("@/lib/entitlement.server");
+    const entitlements = await Promise.all(
+      (rows ?? []).map((c: any) => clientEntitlement(context.supabase, c.id)),
+    );
+
+    const clients = (rows ?? []).map((c: any, i: number) => {
+
       const grantedTiers = Array.from(
         new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
       ) as DashboardTier[];
