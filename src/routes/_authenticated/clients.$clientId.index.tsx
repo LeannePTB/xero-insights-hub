@@ -138,12 +138,21 @@ function ClientDashboard() {
   const client = clientQ.data?.client;
   const orgs: any[] = client?.client_xero_orgs ?? [];
   const reportBasis: ReportBasis = (client?.report_basis as ReportBasis) ?? "accrual";
-  const overrides: Record<string, boolean> = (client?.basis_overrides as Record<string, boolean>) ?? {};
-  // Defaults: tax_liability ON (preserves current behaviour); everything else OFF.
-  const DEFAULT_ON: Record<string, boolean> = { tax_liability: true };
+  // Per-card overrides are retired. Profit & Loss follows the client's basis;
+  // every other card has a fixed basis it cannot be sent away from. Any values
+  // still stored in clients.basis_overrides are deliberately ignored.
+  const firstTenantId: string | undefined = (client?.client_xero_orgs ?? []).find(
+    (o: any) => o.xero_connections?.tenant_id,
+  )?.xero_connections?.tenant_id;
+  const gstBasisQ = useQuery({
+    queryKey: ["xero-sales-tax-basis", firstTenantId],
+    enabled: !!firstTenantId,
+    staleTime: 30 * 60 * 1000,
+    queryFn: () => salesTaxBasisFn({ data: { tenantId: firstTenantId! } }),
+  });
+  const gstBasis = gstBasisQ.data?.basis ?? null;
   function basisFor(widget: string): ReportBasis {
-    const enabled = overrides[widget] ?? DEFAULT_ON[widget] ?? false;
-    return enabled ? reportBasis : "accrual";
+    return resolveCardBasis(widget, reportBasis, gstBasis);
   }
 
   const { standardCards, advancedCards } = useMemo<{ standardCards: SortableCard[]; advancedCards: SortableCard[] }>(() => {
