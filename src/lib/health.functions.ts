@@ -391,6 +391,9 @@ export type BusinessHealthDetail = {
   asOfDate: string;
   fyLabel: string;
   currency: string;
+  /** Xero `Organisation.SalesTaxBasis`, raw and normalised (null when unreadable). */
+  salesTaxBasisRaw: string | null;
+  salesTaxBasis: "accrual" | "cash" | null;
   // Headline (merged from the former getBusinessHealth summary call so the
   // current-period P&L is only fetched once per card).
   score: number;
@@ -561,6 +564,8 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const ar = summariseOutstandingInvoices(arInvRes?.Invoices, asOfDate);
 
     const currency = (orgRes?.Organisations?.[0]?.BaseCurrency as string) ?? "AUD";
+    const salesTaxBasisRaw = (orgRes?.Organisations?.[0]?.SalesTaxBasis as string) ?? null;
+    const { normaliseSalesTaxBasis } = await import("@/lib/report-basis");
 
     // Income breakdown for "single source" detection (top revenue account share)
     const incomeRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) =>
@@ -818,6 +823,9 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       asOfDate,
       fyLabel: fy.label,
       currency,
+      // Reused from the Organisations response already fetched above.
+      salesTaxBasisRaw: salesTaxBasisRaw,
+      salesTaxBasis: normaliseSalesTaxBasis(salesTaxBasisRaw),
       score,
       band,
       label: bandLabel,

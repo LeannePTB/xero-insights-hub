@@ -4,6 +4,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getClient } from "@/lib/clients.functions";
 import type { ReportBasis } from "@/components/dashboard/BasisSelect";
+import { resolveCardBasis } from "@/lib/report-basis";
+import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -63,6 +65,7 @@ function ClientDashboard() {
   const fetchClient = useServerFn(getClient);
   const fetchCtx = useServerFn(getMyContext);
   const fetchWidgets = useServerFn(getClientWidgets);
+  const salesTaxBasisFn = useServerFn(getXeroSalesTaxBasis);
   // Organisation-wide search is for organisation staff only; an invited client
   // viewer must not even see the card. The server function enforces the same
   // rule again — this is presentation, not access control.
@@ -138,12 +141,21 @@ function ClientDashboard() {
   const client = clientQ.data?.client;
   const orgs: any[] = client?.client_xero_orgs ?? [];
   const reportBasis: ReportBasis = (client?.report_basis as ReportBasis) ?? "accrual";
-  const overrides: Record<string, boolean> = (client?.basis_overrides as Record<string, boolean>) ?? {};
-  // Defaults: tax_liability ON (preserves current behaviour); everything else OFF.
-  const DEFAULT_ON: Record<string, boolean> = { tax_liability: true };
+  // Per-card overrides are retired. Profit & Loss follows the client's basis;
+  // every other card has a fixed basis it cannot be sent away from. Any values
+  // still stored in clients.basis_overrides are deliberately ignored.
+  const firstTenantId: string | undefined = (client?.client_xero_orgs ?? []).find(
+    (o: any) => o.xero_connections?.tenant_id,
+  )?.xero_connections?.tenant_id;
+  const gstBasisQ = useQuery({
+    queryKey: ["xero-sales-tax-basis", firstTenantId],
+    enabled: !!firstTenantId,
+    staleTime: 30 * 60 * 1000,
+    queryFn: () => salesTaxBasisFn({ data: { tenantId: firstTenantId! } }),
+  });
+  const gstBasis = gstBasisQ.data?.basis ?? null;
   function basisFor(widget: string): ReportBasis {
-    const enabled = overrides[widget] ?? DEFAULT_ON[widget] ?? false;
-    return enabled ? reportBasis : "accrual";
+    return resolveCardBasis(widget, reportBasis, gstBasis);
   }
 
   const { standardCards, advancedCards } = useMemo<{ standardCards: SortableCard[]; advancedCards: SortableCard[] }>(() => {
@@ -193,7 +205,7 @@ function ClientDashboard() {
 
     return { standardCards: standard, advancedCards: advanced };
 
-  }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides), isAdvisor]);
+  }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor]);
 
   const showHealth = widgets.includes("health");
   const showUnreconciled = widgets.includes("unreconciled");

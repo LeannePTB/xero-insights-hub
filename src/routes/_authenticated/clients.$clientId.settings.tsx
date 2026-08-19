@@ -15,11 +15,11 @@ import {
   updateClientAccessTier,
   revokeClientAccess,
   updateClientReportBasis,
-  updateClientBasisOverride,
   setClientXeroAllowance,
-  type BasisOverrideWidget,
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
+import { FIXED_CARD_BASIS, FIXED_CARD_BASIS_LABELS, basisLabel } from "@/lib/report-basis";
+import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
 import { listTierConfig, saveClientTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
 import { getMyContext } from "@/lib/roles.functions";
@@ -451,27 +451,12 @@ function ClientSettings() {
 
         {/* Report basis */}
         <Section title="Report basis" collapsible>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Sets the client's accounting basis. Below, choose which dashboard cards should use it
-            instead of always reporting on Accrual. Viewers don't see any of this.
-          </p>
-          <BasisSelectRow
+          <ReportBasisSection
             clientId={clientId}
-            current={(client.report_basis as ReportBasis) ?? "accrual"}
+            clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
+            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+              ?.tenant_id}
           />
-          <div className="mt-5 border-t border-border pt-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Per-card override
-            </p>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Toggle ON to make that card follow the client's basis. OFF = always Accrual.
-            </p>
-            <BasisOverrideList
-              clientId={clientId}
-              clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
-              overrides={(client.basis_overrides as Record<string, boolean> | null) ?? {}}
-            />
-          </div>
         </Section>
 
         {/* Xero orgs */}
@@ -1142,65 +1127,83 @@ function BasisSelectRow({ clientId, current }: { clientId: string; current: Repo
   return <BasisSelect value={current} onChange={(v) => mut.mutate(v)} disabled={mut.isPending} />;
 }
 
-const BASIS_OVERRIDE_WIDGETS: { key: BasisOverrideWidget; label: string; defaultOn?: boolean }[] = [
-  { key: "pnl", label: "Profit & Loss" },
-  { key: "tax_liability", label: "Tax Liabilities", defaultOn: true },
-  { key: "superannuation", label: "Superannuation Liabilities" },
-  { key: "receivables", label: "Aged Receivables" },
-  { key: "payables", label: "Aged Payables" },
-  { key: "cashflow", label: "Cash Flow" },
-
-  { key: "accounting_breakeven", label: "Accounting Break-Even" },
-  { key: "true_breakeven", label: "True Break-Even (Cash)" },
-];
-
-function BasisOverrideList({
+/**
+ * Report basis card. The default comes from the Xero file's sales tax basis;
+ * the client's basis can override it because a file's GST basis is not
+ * necessarily its reporting basis. Only Profit & Loss keeps a per-card choice —
+ * every other card has one correct basis, stated here as a fact.
+ */
+function ReportBasisSection({
   clientId,
   clientBasis,
-  overrides,
+  tenantId,
 }: {
   clientId: string;
   clientBasis: ReportBasis;
-  overrides: Record<string, boolean>;
+  tenantId?: string;
 }) {
-  const qc = useQueryClient();
-  const updateFn = useServerFn(updateClientBasisOverride);
-  const mut = useMutation({
-    mutationFn: (v: { widget: BasisOverrideWidget; enabled: boolean }) =>
-      updateFn({ data: { clientId, widget: v.widget, enabled: v.enabled } }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["client", clientId] });
-      qc.invalidateQueries({ queryKey: ["xero-tax-buckets"] });
-      qc.invalidateQueries({ queryKey: ["xero-pnl"] });
-      qc.invalidateQueries({ queryKey: ["xero-super-balance"] });
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Failed to update override"),
+  const salesTaxBasisFn = useServerFn(getXeroSalesTaxBasis);
+  const xeroQ = useQuery({
+    queryKey: ["xero-sales-tax-basis", tenantId],
+    enabled: !!tenantId,
+    staleTime: 30 * 60 * 1000,
+    queryFn: () => salesTaxBasisFn({ data: { tenantId: tenantId! } }),
   });
+  const xeroBasis = xeroQ.data?.basis ?? null;
+  const xeroRaw = xeroQ.data?.raw ?? null;
 
   return (
-    <ul className="divide-y divide-border rounded-lg border border-border bg-background">
-      {BASIS_OVERRIDE_WIDGETS.map((w) => {
-        const enabled = overrides[w.key] ?? w.defaultOn ?? false;
-        const effective = enabled ? clientBasis : "accrual";
-        return (
-          <li key={w.key} className="flex items-center justify-between gap-3 px-3 py-2.5">
-            <div className="min-w-0">
-              <p className="text-sm font-medium">{w.label}</p>
-              <p className="text-xs text-muted-foreground">
-                {enabled
-                  ? `Uses client basis (${effective === "cash" ? "Cash" : "Accrual"})`
-                  : "Always Accrual"}
-              </p>
-            </div>
-            <Switch
-              checked={enabled}
-              onCheckedChange={(v) => mut.mutate({ widget: w.key, enabled: v })}
-              disabled={mut.isPending}
-              aria-label={`Use client basis for ${w.label}`}
-            />
+    <div className="space-y-5">
+      <div>
+        <p className="mb-3 text-xs text-muted-foreground">
+          The default comes from the Xero file. Override it if the client's reports are prepared on
+          a different basis — plenty of businesses report GST on cash and have their Profit &amp;
+          Loss prepared on accruals. Viewers don't see any of this.
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <BasisSelectRow clientId={clientId} current={clientBasis} />
+          <p className="text-xs text-muted-foreground">
+            {xeroQ.isLoading
+              ? "Reading the basis from Xero…"
+              : xeroBasis
+                ? `From Xero: ${basisLabel(xeroBasis)}`
+                : `Basis could not be read from Xero${xeroRaw ? ` (SalesTaxBasis: ${xeroRaw})` : ""} — defaulting to Accrual`}
+          </p>
+        </div>
+        <p className="mt-2 text-xs font-medium">
+          In force: {basisLabel(clientBasis)}
+          {xeroBasis && xeroBasis !== clientBasis ? " — overrides the Xero basis" : ""}
+        </p>
+      </div>
+
+      <div className="border-t border-border pt-4">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          How each card reports
+        </p>
+        <ul className="divide-y divide-border rounded-lg border border-border bg-background">
+          <li className="px-3 py-2.5">
+            <p className="text-sm font-medium">Profit &amp; Loss</p>
+            <p className="text-xs text-muted-foreground">
+              Follows the client's basis ({basisLabel(clientBasis)})
+            </p>
           </li>
-        );
-      })}
-    </ul>
+          <li className="px-3 py-2.5">
+            <p className="text-sm font-medium">GST Reconciliation</p>
+            <p className="text-xs text-muted-foreground">
+              Follows the GST basis in Xero
+              {xeroBasis ? ` (${basisLabel(xeroBasis)})` : " (not readable — using Accrual)"}
+            </p>
+          </li>
+          {FIXED_CARD_BASIS_LABELS.map((c) => (
+            <li key={c.key} className="px-3 py-2.5">
+              <p className="text-sm font-medium">
+                {c.label} · always {basisLabel(FIXED_CARD_BASIS[c.key])}
+              </p>
+              <p className="text-xs text-muted-foreground">{c.reason}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </div>
   );
 }
