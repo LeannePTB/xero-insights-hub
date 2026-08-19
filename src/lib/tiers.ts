@@ -16,7 +16,8 @@ export type WidgetKey =
   | "loan_consolidation"
   | "balance_sheet_reconciliation"
   | "fixed_assets_reconciliation"
-  | "gst_reconciliation";
+  | "gst_reconciliation"
+  | "transaction_search";
 
 
 export const ALL_WIDGETS: WidgetKey[] = [
@@ -37,6 +38,7 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "balance_sheet_reconciliation",
   "fixed_assets_reconciliation",
   "gst_reconciliation",
+  "transaction_search",
 ];
 
 // Fallback defaults (used only if the DB has no row for a tier).
@@ -58,6 +60,7 @@ const ADVANCED: WidgetKey[] = [
   "balance_sheet_reconciliation",
   "fixed_assets_reconciliation",
   "gst_reconciliation",
+  "transaction_search",
 ];
 export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
   basic: ["health", "receivables", "payables", "pnl", "notes", "unreconciled"],
@@ -98,6 +101,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   balance_sheet_reconciliation: "Balance Sheet Reconciliation",
   fixed_assets_reconciliation: "Fixed Assets Reconciliation",
   gst_reconciliation: "GST Reconciliation (indicative)",
+  transaction_search: "Transaction Search",
 };
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];

@@ -36,22 +36,34 @@ function esc(q: string) {
 
 export const searchClientTransactions = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { clientId: string; query: string; fromDate?: string | null; toDate?: string | null }) => input)
+  .inputValidator(
+    (input: {
+      clientId: string;
+      query: string;
+      fromDate?: string | null;
+      toDate?: string | null;
+      page?: number;
+    }) => input,
+  )
   .handler(async ({ data, context }) => {
     const query = data.query.trim();
     if (query.length > 200) throw new Error("Search query is too long.");
     const isoRe = /^\d{4}-\d{2}-\d{2}$/;
     const fromDate = data.fromDate && isoRe.test(data.fromDate) ? data.fromDate : null;
     const toDate = data.toDate && isoRe.test(data.toDate) ? data.toDate : null;
-    if (!query && !fromDate && !toDate) return { hits: [] as SearchHit[] };
+    if (!query && !fromDate && !toDate) {
+      throw new Error("Enter a search term or a date range before searching.");
+    }
+    const page = Math.max(1, Math.min(50, Math.floor(Number(data.page ?? 1)) || 1));
 
-    // Advisor-only
-    const { data: roles } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "advisor");
-    if (!roles || roles.length === 0) throw new Error("Only advisors can search transactions.");
+    // Access control, in this order and never skipped:
+    //  1. can this caller reach this client at all (database decides)
+    //  2. is this widget in the client's plan (database decides)
+    // The client id from the request is a FILTER, never a GRANT.
+    const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
+    await assertClientDataAccessForClient(context.userId, data.clientId);
+    const { assertClientWidget } = await import("@/lib/widget-access.server");
+    await assertClientWidget(context.supabase, data.clientId, "transaction_search");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: orgs, error } = await supabaseAdmin
@@ -62,7 +74,10 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
     const tenants = (orgs ?? [])
       .map((o: any) => o.xero_connections)
       .filter((t: any) => t?.tenant_id) as { tenant_id: string; tenant_name: string }[];
-    if (tenants.length === 0) return { hits: [] as SearchHit[] };
+    if (tenants.length === 0) {
+      // Fail loudly: a silent empty result would hide a broken link.
+      throw new Error("This client has no Xero organisation linked, so there is nothing to search.");
+    }
 
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
 
@@ -110,6 +125,9 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
     }
 
     const hits: SearchHit[] = [];
+    const pageParam = String(page);
+    const PAGE_SIZE = 100;
+    let sawFullPage = false;
 
     await Promise.all(
       tenants.map(async (t) => {
@@ -139,11 +157,21 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
         }
 
         const [invRes, cnRes, ppRes, opRes] = await Promise.all([
-          xeroGet<{ Invoices?: any[] }>(conn, "Invoices", { where: invoicesWhere, page: "1", order: "Date DESC" }).catch(() => ({ Invoices: [] })),
-          xeroGet<{ CreditNotes?: any[] }>(conn, "CreditNotes", { where: creditNotesWhere, page: "1" }).catch(() => ({ CreditNotes: [] })),
-          xeroGet<{ Prepayments?: any[] }>(conn, "Prepayments", { where: prepaymentsWhere, page: "1" }).catch(() => ({ Prepayments: [] })),
-          xeroGet<{ Overpayments?: any[] }>(conn, "Overpayments", { where: overpaymentsWhere, page: "1" }).catch(() => ({ Overpayments: [] })),
+          xeroGet<{ Invoices?: any[] }>(conn, "Invoices", { where: invoicesWhere, page: pageParam, order: "Date DESC" }).catch(() => ({ Invoices: [] })),
+          xeroGet<{ CreditNotes?: any[] }>(conn, "CreditNotes", { where: creditNotesWhere, page: pageParam }).catch(() => ({ CreditNotes: [] })),
+          xeroGet<{ Prepayments?: any[] }>(conn, "Prepayments", { where: prepaymentsWhere, page: pageParam }).catch(() => ({ Prepayments: [] })),
+          xeroGet<{ Overpayments?: any[] }>(conn, "Overpayments", { where: overpaymentsWhere, page: pageParam }).catch(() => ({ Overpayments: [] })),
         ]);
+
+        // Xero pages at 100 rows per endpoint; a full page means there is more.
+        if (
+          (invRes.Invoices?.length ?? 0) >= PAGE_SIZE ||
+          (cnRes.CreditNotes?.length ?? 0) >= PAGE_SIZE ||
+          (ppRes.Prepayments?.length ?? 0) >= PAGE_SIZE ||
+          (opRes.Overpayments?.length ?? 0) >= PAGE_SIZE
+        ) {
+          sawFullPage = true;
+        }
 
         for (const i of invRes.Invoices ?? []) {
           if (isExcludedStatus(i.Status)) continue;
@@ -233,5 +261,5 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
     );
 
     hits.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
-    return { hits: hits.slice(0, 200) };
+    return { hits, page, hasMore: sawFullPage };
   });
