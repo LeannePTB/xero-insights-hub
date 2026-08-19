@@ -7,13 +7,20 @@ import { getMyContext } from "@/lib/roles.functions";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye } from "lucide-react";
+import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye, MoreHorizontal, Users } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { XeroApiErrorsSheet } from "@/components/admin/XeroApiErrorsSheet";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
 import { listXeroScopeStatus } from "@/lib/xero/scope-status.functions";
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
+
 
 
 export const Route = createFileRoute("/_authenticated/admin/")({
