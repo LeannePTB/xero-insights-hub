@@ -1,4 +1,5 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import type { ReactNode } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listFirmsAdmin } from "@/lib/admin.functions";
@@ -197,6 +198,7 @@ function OrganisationsSection({
   myFirms: { id: string; name: string }[];
   onCreated: () => void;
 }) {
+  const navigate = useNavigate();
   const ownFirmIds = new Set(myFirms.map((firm) => firm.id));
   // One query for every connection the caller can see (RLS decides), grouped
   // by organisation — not a query per row.
@@ -408,7 +410,7 @@ function OrganisationsSection({
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
