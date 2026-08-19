@@ -173,6 +173,10 @@ export const searchClientTransactions = createServerFn({ method: "POST" })
 
     await Promise.all(
       tenants.map(async (t) => {
+        // Belt and braces: never call Xero for a tenant outside the permitted set.
+        if (!permitted.has(t.tenant_id)) {
+          throw new Error("You are not entitled to search that Xero organisation.");
+        }
         let conn;
         try {
           conn = await getConnectionByTenant(t.tenant_id);
