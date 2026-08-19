@@ -204,13 +204,20 @@ export function FirmClientsSection({
               <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-5 py-3">Client</th>
-                  <th className="px-5 py-3">Tiers</th>
+                  <th className="px-5 py-3">Tier</th>
                   <th className="px-5 py-3 text-right"></th>
                 </tr>
               </thead>
               <tbody>
                 {clients.map((c: any) => {
-                  const granted: DashboardTier[] = c.clientTiers?.length ? c.clientTiers : enabledTiers;
+                  const ent = c.entitlement ?? { tier: "basic", source: "none", expiresAt: null };
+                  const effectiveTier: string = ent.tier ?? "basic";
+                  // Only a super admin may preview a tier the client is not on,
+                  // and only within what the organisation's plan permits.
+                  const previewTiers = (isSuperAdmin ? enabledTiers : []).filter(
+                    (t) => t !== effectiveTier,
+                  );
+
                   const tenantIds = (c.client_xero_orgs ?? [])
                     .map((o: any) => o.xero_connections?.tenant_id)
                     .filter(Boolean);
