@@ -287,10 +287,9 @@ function ClientDashboard() {
           {orgs.length === 0 ? (
             <>
               {showHealth && <HealthWidget clientName={client.name} />}
-              {(showNotes || showUnreconciled) && (
+              {showUnreconciled && (
                 <div className="grid gap-6 md:grid-cols-2">
-                  {showNotes && <NotesCard clientId={clientId} canEdit={isAdvisor} />}
-                  {showUnreconciled && <UnreconciledCard clientId={clientId} />}
+                  <UnreconciledCard clientId={clientId} />
                 </div>
               )}
               <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />
