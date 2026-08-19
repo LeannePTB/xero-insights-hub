@@ -15,11 +15,12 @@ import {
   updateClientAccessTier,
   revokeClientAccess,
   updateClientReportBasis,
-  updateClientBasisOverride,
   setClientXeroAllowance,
   type BasisOverrideWidget,
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
+import { FIXED_CARD_BASIS, FIXED_CARD_BASIS_LABELS, basisLabel } from "@/lib/report-basis";
+import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
 import { listTierConfig, saveClientTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
 import { getMyContext } from "@/lib/roles.functions";
