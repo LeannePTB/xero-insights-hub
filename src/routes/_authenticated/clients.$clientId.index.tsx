@@ -151,9 +151,6 @@ function ClientDashboard() {
     const advanced: SortableCard[] = [];
     if (!client) return { standardCards: standard, advancedCards: advanced };
 
-
-
-
     for (const o of orgs) {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
@@ -186,14 +183,19 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
 
       // xero_audit rendered under Business Health, not in advanced grid
-
     }
+
+    // Notes is free text and can be long, so it spans every column in the
+    // sortable grid and stays reorderable like any other card.
+    if (widgets.includes("notes")) {
+      standard.push({ id: "notes", node: <NotesCard clientId={clientId} canEdit={isAdvisor} />, fullWidth: true });
+    }
+
     return { standardCards: standard, advancedCards: advanced };
 
-  }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides)]);
+  }, [client, clientId, orgs, widgets, reportBasis, JSON.stringify(overrides), isAdvisor]);
 
   const showHealth = widgets.includes("health");
-  const showNotes = widgets.includes("notes");
   const showUnreconciled = widgets.includes("unreconciled");
   const savedOrder = orderQ.data?.order ?? [];
   const standardIds = new Set(standardCards.map((c) => c.id));
@@ -285,10 +287,9 @@ function ClientDashboard() {
           {orgs.length === 0 ? (
             <>
               {showHealth && <HealthWidget clientName={client.name} />}
-              {(showNotes || showUnreconciled) && (
+              {showUnreconciled && (
                 <div className="grid gap-6 md:grid-cols-2">
-                  {showNotes && <NotesCard clientId={clientId} canEdit={isAdvisor} />}
-                  {showUnreconciled && <UnreconciledCard clientId={clientId} />}
+                  <UnreconciledCard clientId={clientId} />
                 </div>
               )}
               <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />
@@ -316,10 +317,9 @@ function ClientDashboard() {
                   ) : null,
                 )}
 
-              {(showNotes || showUnreconciled) && (
+              {showUnreconciled && (
                 <div className="grid gap-6 md:grid-cols-2">
-                  {showNotes && <NotesCard clientId={clientId} canEdit={isAdvisor} />}
-                  {showUnreconciled && <UnreconciledCard clientId={clientId} />}
+                  <UnreconciledCard clientId={clientId} />
                 </div>
               )}
 
