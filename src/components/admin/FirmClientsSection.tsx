@@ -96,6 +96,9 @@ export function FirmClientsSection({
   const fetchMyContext = useServerFn(getMyContext);
   const meQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
   const isSuperAdmin = !!meQ.data?.isSuperAdmin;
+  const isAdvisor = !!meQ.data?.isAdvisor;
+  const canManageTier = isAdvisor || isSuperAdmin;
+
 
 
 
