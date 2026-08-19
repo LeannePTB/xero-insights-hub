@@ -451,27 +451,12 @@ function ClientSettings() {
 
         {/* Report basis */}
         <Section title="Report basis" collapsible>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Sets the client's accounting basis. Below, choose which dashboard cards should use it
-            instead of always reporting on Accrual. Viewers don't see any of this.
-          </p>
-          <BasisSelectRow
+          <ReportBasisSection
             clientId={clientId}
-            current={(client.report_basis as ReportBasis) ?? "accrual"}
+            clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
+            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+              ?.tenant_id}
           />
-          <div className="mt-5 border-t border-border pt-4">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Per-card override
-            </p>
-            <p className="mb-3 text-xs text-muted-foreground">
-              Toggle ON to make that card follow the client's basis. OFF = always Accrual.
-            </p>
-            <BasisOverrideList
-              clientId={clientId}
-              clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
-              overrides={(client.basis_overrides as Record<string, boolean> | null) ?? {}}
-            />
-          </div>
         </Section>
 
         {/* Xero orgs */}
