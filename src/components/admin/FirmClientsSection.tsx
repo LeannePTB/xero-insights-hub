@@ -8,6 +8,8 @@ import { listClients, deleteClient } from "@/lib/clients.functions";
 import { listTierSettings, getFirmPlanSummary } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
+import { getMyContext } from "@/lib/roles.functions";
+
 
 import { ALL_TIERS, tierLabel, type DashboardTier } from "@/lib/tiers";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
