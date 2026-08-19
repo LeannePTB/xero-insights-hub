@@ -282,17 +282,25 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
     const enabledMap = Object.fromEntries(ALL_TIERS.map((t) => [t, true])) as Record<DashboardTier, boolean>;
     for (const r of settingsRows ?? []) enabledMap[(r as any).tier as DashboardTier] = !!(r as any).enabled;
 
-    // Resolved widgets per tier (client override → global → defaults).
-    const { data: cfgRows } = await context.supabase
-      .from("tier_widget_config")
-      .select("client_id, tier, widgets")
-      .or(`client_id.is.null,client_id.eq.${data.clientId}`);
-    const byKey = new Map<string, WidgetKey[]>();
-    for (const r of cfgRows ?? []) {
-      byKey.set(`${(r as any).client_id ?? "global"}:${(r as any).tier}`, sanitizeWidgets((r as any).widgets ?? []));
-    }
+    // Resolved cards per tier: plan ceiling − organisation/client exclusions.
+    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
+      await import("@/lib/widget-resolve.server");
+    const { data: clientRow } = await context.supabase
+      .from("clients")
+      .select("firm_id")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    const upgradeFirmId = ((clientRow as any)?.firm_id as string | null) ?? null;
+    const ceilings = await tierCeilings(context.supabase);
+    const exIndex = new ExclusionIndex(
+      await fetchExclusions(context.supabase, { firmId: upgradeFirmId, clientIds: [data.clientId] }),
+    );
     const resolve = (t: DashboardTier): WidgetKey[] =>
-      byKey.get(`${data.clientId}:${t}`) ?? byKey.get(`global:${t}`) ?? defaultWidgetsFor(t);
+      visibleWidgets(
+        ceilingFor(ceilings, t),
+        exIndex.effective(t, { firmId: upgradeFirmId, clientId: data.clientId }),
+      );
+
 
     const currentWidgets = new Set<WidgetKey>(resolve(data.currentTier));
 
