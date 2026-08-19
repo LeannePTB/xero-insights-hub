@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { listCostClassifications } from "@/lib/cost-classification.functions";
+import { getExpenseAccounts } from "@/lib/xero/accounts.functions";
+import { buildClassificationResolver } from "@/lib/cost-classification";
 import { usePersistedDate, toISO } from "@/components/dashboard/DateRangeControls";
 
 function startOfThisMonth() {
@@ -57,12 +59,25 @@ export function useBreakevenData({
     enabled: shouldLoad && !!clientId,
   });
 
+  const fetchAccounts = useServerFn(getExpenseAccounts);
+  const accountsQ = useQuery({
+    queryKey: ["xero-expense-accounts", clientId, tenantId],
+    queryFn: () => fetchAccounts({ data: { clientId: clientId!, tenantId } }),
+    enabled: shouldLoad && !!clientId,
+    staleTime: 30 * 60 * 1000,
+    retry: false,
+  });
+
   const classificationEnabled = classQ.data?.enabled ?? true;
-  const classMap = useMemo(() => {
-    const m = new Map<string, "fixed" | "variable" | "excluded">();
-    for (const r of classQ.data?.rows ?? []) m.set(r.account_name, r.classification);
-    return m;
-  }, [classQ.data]);
+  const resolver = useMemo(
+    () =>
+      buildClassificationResolver({
+        stored: classQ.data?.rows ?? [],
+        accounts: accountsQ.data?.accounts ?? [],
+        enabled: classificationEnabled,
+      }),
+    [classQ.data, accountsQ.data, classificationEnabled],
+  );
 
   const data = pnlQ.data;
   const income = data?.totalIncome ?? 0;
@@ -84,17 +99,19 @@ export function useBreakevenData({
     }
   } else {
     for (const line of expenseLines) {
-      const c = classMap.get(line.name);
-      if (c === "variable") {
+      // One shared resolution: a stored tag wins, then Xero's account type
+      // seeds a default, and anything still undecided is fixed.
+      const r = resolver.resolve(line.name);
+      if (r.effective === "variable") {
         variableOpex += line.amount;
         variableLines.push({ name: line.name, amount: line.amount });
-      } else if (c === "excluded") {
+      } else if (r.effective === "excluded") {
         excludedOpex += line.amount;
         excludedCount += 1;
       } else {
         fixedOpex += line.amount;
-        fixedLines.push({ name: line.name, amount: line.amount, unclassified: !c });
-        if (!c) unclassifiedCount += 1;
+        fixedLines.push({ name: line.name, amount: line.amount, unclassified: r.unclassified });
+        if (r.unclassified) unclassifiedCount += 1;
       }
     }
     const linesTotal = variableOpex + fixedOpex + excludedOpex;
@@ -134,6 +151,7 @@ export function useBreakevenData({
     fixedLines,
     variableLines,
     classificationEnabled,
+    orphanTags: resolver.orphans,
     months,
     totalVariable,
     grossMargin,
