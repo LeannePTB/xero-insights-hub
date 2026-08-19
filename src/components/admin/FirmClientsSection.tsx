@@ -262,32 +262,14 @@ export function FirmClientsSection({
 
                       </td>
                       <td className="px-5 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {enabledTiers
-                            .filter((t) => granted.includes(t))
-                            .map((t) => (
-                              <span
-                                key={t}
-                                className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary"
-                              >
-                                {labelFor(t)}
-                              </span>
-                            ))}
-                          {granted.length === 0 && <span className="text-xs text-muted-foreground">—</span>}
-                          {planTiers &&
-                            granted
-                              .filter((t) => !planTiers.includes(t))
-                              .map((t) => (
-                                <span
-                                  key={`out-${t}`}
-                                  className="inline-flex items-center rounded-md bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-400"
-                                  title={planLabel ? `Not included in the ${planLabel} plan` : "Not included in this plan"}
-                                >
-                                  {labelFor(t)} · not in plan
-                                </span>
-                              ))}
-                        </div>
+                        <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                          {labelFor(effectiveTier)}
+                        </span>
+                        {sourceNote(ent) && (
+                          <div className="mt-0.5 text-xs text-muted-foreground">{sourceNote(ent)}</div>
+                        )}
                       </td>
+
                       <td className="px-5 py-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           {canOpenClientData && (
