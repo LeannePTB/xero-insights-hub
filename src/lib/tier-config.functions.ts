@@ -383,103 +383,62 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
 
 // ---------------------------------------------------------------------------
 // Per-client widget control.
-// The organisation's plan sets the ceiling (which tiers it may use → which
-// widgets exist for it); each client then gets its own explicit widget list.
+// SINGLE SOURCE OF TRUTH: public.client_allowed_widgets(clientId). The database
+// already intersects the organisation's plan, the dashboard tier catalogue, the
+// client's entitlement and the tier_widget_config exclusions. Nothing here may
+// re-derive or further narrow that list — the previous plan/tier/firm-default
+// ceilings and the retired clients.dashboard_widgets allow-list silently held
+// clients back on the Standard cards after a tier upgrade.
+// Fail closed: an empty or errored lookup renders no cards.
 // ---------------------------------------------------------------------------
 
 export const getClientWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; tierOverride?: DashboardTier | null }) => i)
   .handler(async ({ data, context }) => {
-    const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
-    const planTiers = await allowedTiersForClient(data.clientId);
+    const { clientAllowedWidgets } = await import("@/lib/widget-access.server");
+    const allowedSet = new Set<string>(await clientAllowedWidgets(context.supabase, data.clientId));
+    const availableWidgets = ALL_WIDGETS.filter((w) => allowedSet.has(w));
 
-    // Dashboard tier catalogue (super-admin editable, may contain custom keys).
+    // Labels only — never a second source for the card list.
     const { data: levels } = await context.supabase
       .from("plan_levels")
       .select("key, label, widgets, sort_order, enabled")
       .eq("scope", "dashboard")
       .order("sort_order", { ascending: true });
     const catalogue = (levels ?? []).filter((l: any) => l.enabled !== false);
-    const { cumulativeDashboardLevels } = await import("@/lib/plan-tiers");
-    const included = cumulativeDashboardLevels(catalogue as any[], planTiers);
-    let usable = included.length ? included : catalogue.filter((l: any) => l.key === "basic");
 
-    // The client's own entitlement (paid / trial / comp / included) is a second
-    // ceiling on top of the organisation's plan. Expiry is evaluated at read
-    // time inside the database function, so a lapsed trial silently drops the
-    // client back to free Standard with no scheduled job involved.
     const { clientEntitlement } = await import("@/lib/entitlement.server");
     const entitlement = await clientEntitlement(context.supabase, data.clientId);
-    const entTier: any = catalogue.find((l: any) => l.key === entitlement.tier);
-    const entCeiling = (entTier?.sort_order ?? null) as number | null;
-    if (entCeiling !== null) {
-      const bounded = usable.filter((l: any) => (l.sort_order ?? 0) <= entCeiling);
-      usable = bounded.length ? bounded : usable.filter((l: any) => l.key === "basic");
-    }
+    const entLevel: any = catalogue.find((l: any) => l.key === entitlement.tier);
+    const planLabel = (entLevel?.label as string | undefined) ?? entitlement.tier;
 
-
-
-    const availableSet = new Set<WidgetKey>();
-    for (const l of usable) for (const w of sanitizeWidgets(((l as any).widgets ?? []) as string[])) availableSet.add(w);
-    // Fall back to the built-in defaults when the catalogue is empty.
-    if (availableSet.size === 0) for (const w of DEFAULT_TIER_WIDGETS.basic) availableSet.add(w);
-
-    const { data: client } = await context.supabase
-      .from("clients")
-      .select("dashboard_widgets, firm_id")
-      .eq("id", data.clientId)
-      .maybeSingle();
-    const saved = (client as any)?.dashboard_widgets as string[] | null | undefined;
-    const configured = Array.isArray(saved);
-
-    // Organisation-level defaults act as a ceiling: anything the firm has
-    // unticked in "cards included by default" is unavailable to its clients.
-    const firmId = (client as any)?.firm_id as string | null | undefined;
-    if (firmId) {
-      const { data: firmRow } = await (context.supabase as any)
-        .from("firms")
-        .select("default_widgets")
-        .eq("id", firmId)
-        .maybeSingle();
-      const firmDefaults = (firmRow?.default_widgets as string[] | null | undefined) ?? null;
-      if (Array.isArray(firmDefaults)) {
-        for (const w of Array.from(availableSet)) {
-          if (!firmDefaults.includes(w)) availableSet.delete(w);
-        }
-      }
-    }
-
-    // Final ceiling: the database decides entitlement (plan ∩ tier config).
-    // Fail closed — an empty/errored result hides every widget.
-    const { clientAllowedWidgets } = await import("@/lib/widget-access.server");
-    const entitled = new Set<string>(await clientAllowedWidgets(context.supabase, data.clientId));
-    for (const w of Array.from(availableSet)) if (!entitled.has(w)) availableSet.delete(w);
-
-    const availableWidgets = ALL_WIDGETS.filter((w) => availableSet.has(w));
-
-    const top: any = usable[usable.length - 1];
-    const planLabel = usable.map((l: any) => l.label as string).join(", ");
-
-    // "View as <tier>" preview renders that tier's catalogue list verbatim,
-    // still bounded by the organisation's default-card selection.
+    // "View as <tier>" preview renders that tier's catalogue list verbatim.
     if (data.tierOverride) {
       const lvl: any = catalogue.find((l: any) => l.key === data.tierOverride);
-      const preview = (lvl
+      const preview = lvl
         ? sanitizeWidgets((lvl.widgets ?? []) as string[])
-        : defaultWidgetsFor(data.tierOverride)
-      ).filter((w) => availableSet.has(w));
-      return { widgets: preview, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string, entitlement };
+        : defaultWidgetsFor(data.tierOverride);
+      return {
+        widgets: preview,
+        availableWidgets,
+        configured: false,
+        planLabel,
+        highestTier: String(entitlement.tier),
+        entitlement,
+      };
     }
 
-    const widgets = configured
-      ? sanitizeWidgets(saved!).filter((w) => availableSet.has(w))
-      : availableWidgets;
-
-
-    return { widgets, availableWidgets, configured, planLabel, highestTier: (top?.key ?? "basic") as string, entitlement };
-
+    return {
+      widgets: availableWidgets,
+      availableWidgets,
+      configured: false,
+      planLabel,
+      highestTier: String(entitlement.tier),
+      entitlement,
+    };
   });
+
 
 export const saveClientWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
