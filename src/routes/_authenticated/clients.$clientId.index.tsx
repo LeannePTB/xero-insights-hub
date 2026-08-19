@@ -273,11 +273,12 @@ function ClientDashboard() {
           />
         )}
 
-        {widgets.includes("transaction_search") && orgs.length > 0 && (
+        {widgets.includes("transaction_search") && (orgSearchQ.data?.allowed ?? false) && (
           <div className="mt-6">
-            <TransactionSearchWidget clientId={clientId} orgCount={orgs.length} />
+            <TransactionSearchWidget clientId={clientId} />
           </div>
         )}
+
 
 
         <div className="mt-3 space-y-6">
