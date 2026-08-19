@@ -297,105 +297,63 @@ function OrganisationsSection({
     );
   }
 
+  const empty = (firms ?? []).length === 0;
+
+  const rows = (firms ?? []).map((f) => ({
+    f,
+    usage: usageByFirm.get(f.firm_id),
+    scope: scopeHealth?.get(f.firm_id),
+  }));
+
   return (
     <section className="space-y-3">
       <SectionTitle />
-      <div className="rounded-lg border overflow-hidden">
+
+      {/* Table from 900px up */}
+      <div className="hidden min-[900px]:block rounded-lg border overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
             <tr>
-              <th className="px-4 py-3">Organisation</th>
-              <th className="px-4 py-3">Plan</th>
-              <th className="px-4 py-3">Clients</th>
-              <th className="px-4 py-3">Xero files</th>
-              <th className="px-4 py-3">Dashboards in use</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Next bill / trial</th>
-              <th className="px-4 py-3">Xero permissions</th>
-              <th className="px-4 py-3">Xero API errors (7 days)</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+              <th className="px-4 py-3 whitespace-nowrap">Organisation</th>
+              <th className="px-4 py-3 whitespace-nowrap">Plan</th>
+              <th className="px-4 py-3 whitespace-nowrap">Capacity</th>
+              <th className="px-4 py-3 whitespace-nowrap">Status</th>
+              <th className="px-4 py-3 whitespace-nowrap">Xero</th>
+              <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {(firms ?? []).map((f) => {
-              const usage = usageByFirm.get(f.firm_id);
-              return (
-                <tr key={f.firm_id} className="border-t">
-                  <td className="px-4 py-3">
-                    <span className="font-medium">{f.firm_name}</span>
-                    {f.is_always_free && <Badge variant="outline" className="mt-1 ml-2">always free</Badge>}
-                  </td>
-                  <td className="px-4 py-3">{planLabel(f.tier)}</td>
-                  <td className="px-4 py-3 tabular-nums">
-                    <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} />
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">
-                    <UsageCell used={usage?.xeroFilesUsed ?? null} limit={usage?.xeroOrgLimit ?? null} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <DashboardsInUseCell usage={usage} label={dashboardLabel} />
-                  </td>
-
-                  <td className="px-4 py-3">
-                    <Badge variant={f.status === "active" || f.status === "trialing" ? "default" : "secondary"} className="capitalize">
-                      {f.status ?? "—"}
-                    </Badge>
-                    {f.cancel_at_period_end && <Badge variant="outline" className="ml-1">cancelling</Badge>}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {f.status === "trialing"
-                      ? `trial ends ${fmtDate(f.trial_ends_at)}`
-                      : fmtDate(f.current_period_end)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <XeroScopeHealthCell
-                      missing={scopeHealth?.get(f.firm_id)?.missing}
-                      total={scopeHealth?.get(f.firm_id)?.total}
-                    />
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">
-                    <XeroApiErrorsSheet
-                      firmId={f.firm_id}
-                      organisationName={f.firm_name}
-                      trigger={
-                        <button
-                          type="button"
-                          className={
-                            f.recent_error_count > 0
-                              ? "text-destructive font-medium underline underline-offset-4"
-                              : "text-muted-foreground underline underline-offset-4"
-                          }
-                        >
-                          {f.recent_error_count}
-                        </button>
-                      }
-                    />
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex justify-end gap-2">
-                      {ownFirmIds.has(f.firm_id) && (
-                        <Button size="sm" variant="outline" asChild>
-                          <Link to="/firms/$firmId" params={{ firmId: f.firm_id }}>Clients</Link>
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to="/firms/$firmId" params={{ firmId: f.firm_id }} search={{ viewAs: "owner" }}>
-                          <Eye className="h-4 w-4 mr-1" /> View as
-                        </Link>
-                      </Button>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link to="/admin/firms/$firmId" params={{ firmId: f.firm_id }}>Plan &amp; members</Link>
-                      </Button>
-
-
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-            {(firms ?? []).length === 0 && (
+            {rows.map(({ f, usage, scope }) => (
+              <tr
+                key={f.firm_id}
+                className="border-t hover:bg-muted/30 cursor-pointer align-top"
+                onClick={() => navigate({ to: "/admin/firms/$firmId", params: { firmId: f.firm_id } })}
+              >
+                <td className="px-4 py-3">
+                  <OrganisationCell name={f.firm_name} alwaysFree={f.is_always_free} />
+                </td>
+                <td className="px-4 py-3">
+                  <PlanCell label={planLabel(f.tier)} usage={usage} dashboardLabel={dashboardLabel} />
+                </td>
+                <td className="px-4 py-3">
+                  <CapacityCell usage={usage} />
+                </td>
+                <td className="px-4 py-3">
+                  <StatusCell firm={f} />
+                </td>
+                <td className="px-4 py-3">
+                  <XeroCell firm={f} missing={scope?.missing} total={scope?.total} />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                    <RowActions firmId={f.firm_id} showClients={ownFirmIds.has(f.firm_id)} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {empty && (
               <tr>
-                <td colSpan={10} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
                   <p>No organisations yet.</p>
                   <div className="mt-3 flex justify-center">
                     <AddOrganisationDialog onCreated={onCreated} variant="outline" />
@@ -406,7 +364,188 @@ function OrganisationsSection({
           </tbody>
         </table>
       </div>
+
+      {/* Stacked cards below 900px */}
+      <div className="min-[900px]:hidden space-y-3">
+        {rows.map(({ f, usage, scope }) => (
+          <div
+            key={f.firm_id}
+            className="rounded-lg border bg-card p-4 space-y-3 cursor-pointer"
+            onClick={() => navigate({ to: "/admin/firms/$firmId", params: { firmId: f.firm_id } })}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <OrganisationCell name={f.firm_name} alwaysFree={f.is_always_free} />
+              <div onClick={(e) => e.stopPropagation()}>
+                <RowActions firmId={f.firm_id} showClients={ownFirmIds.has(f.firm_id)} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <Field label="Plan">
+                <PlanCell label={planLabel(f.tier)} usage={usage} dashboardLabel={dashboardLabel} />
+              </Field>
+              <Field label="Capacity">
+                <CapacityCell usage={usage} />
+              </Field>
+              <Field label="Status">
+                <StatusCell firm={f} />
+              </Field>
+              <Field label="Xero">
+                <XeroCell firm={f} missing={scope?.missing} total={scope?.total} />
+              </Field>
+            </div>
+          </div>
+        ))}
+        {empty && (
+          <div className="rounded-lg border p-6 text-center text-muted-foreground">
+            <p>No organisations yet.</p>
+            <div className="mt-3 flex justify-center">
+              <AddOrganisationDialog onCreated={onCreated} variant="outline" />
+            </div>
+          </div>
+        )}
+      </div>
     </section>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="mt-0.5">{children}</div>
+    </div>
+  );
+}
+
+function OrganisationCell({ name, alwaysFree }: { name: string; alwaysFree: boolean }) {
+  return (
+    <span className="font-medium">
+      {name}
+      {alwaysFree && (
+        <Badge variant="outline" className="ml-2 align-middle">
+          always free
+        </Badge>
+      )}
+    </span>
+  );
+}
+
+/** Plan label with the dashboards actually in use underneath. */
+function PlanCell({
+  label,
+  usage,
+  dashboardLabel,
+}: {
+  label: string;
+  usage: OrganisationUsage | undefined;
+  dashboardLabel: (key: string) => string;
+}) {
+  return (
+    <div className="leading-tight">
+      <div>{label}</div>
+      <div className="text-xs text-muted-foreground">
+        <DashboardsInUseCell usage={usage} label={dashboardLabel} />
+      </div>
+    </div>
+  );
+}
+
+function CapacityCell({ usage }: { usage: OrganisationUsage | undefined }) {
+  return (
+    <div className="leading-tight space-y-0.5">
+      <div>
+        <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} unit="clients" />
+      </div>
+      <div className="text-xs">
+        <UsageCell used={usage?.xeroFilesUsed ?? null} limit={usage?.xeroOrgLimit ?? null} unit="files" />
+      </div>
+    </div>
+  );
+}
+
+function StatusCell({ firm }: { firm: FirmRow }) {
+  return (
+    <div className="leading-tight">
+      <div className="whitespace-nowrap">
+        <Badge
+          variant={firm.status === "active" || firm.status === "trialing" ? "default" : "secondary"}
+          className="capitalize"
+        >
+          {firm.status ?? "—"}
+        </Badge>
+        {firm.cancel_at_period_end && (
+          <Badge variant="outline" className="ml-1">
+            cancelling
+          </Badge>
+        )}
+      </div>
+      <div className="mt-1 text-xs text-muted-foreground whitespace-nowrap">
+        {firm.status === "trialing"
+          ? `trial ends ${fmtDate(firm.trial_ends_at)}`
+          : firm.current_period_end
+            ? `next bill ${fmtDate(firm.current_period_end)}`
+            : "—"}
+      </div>
+    </div>
+  );
+}
+
+/** Connection health, with the 7-day error count only when there is one. */
+function XeroCell({ firm, missing, total }: { firm: FirmRow; missing?: number; total?: number }) {
+  return (
+    <div className="leading-tight">
+      <XeroScopeHealthCell missing={missing} total={total} />
+      {firm.recent_error_count > 0 && (
+        <div className="mt-1 text-xs" onClick={(e) => e.stopPropagation()}>
+          <XeroApiErrorsSheet
+            firmId={firm.firm_id}
+            organisationName={firm.firm_name}
+            trigger={
+              <button
+                type="button"
+                className="text-destructive font-medium underline underline-offset-4 tabular-nums whitespace-nowrap"
+                title="Xero API errors in the last 7 days"
+              >
+                {firm.recent_error_count} error{firm.recent_error_count === 1 ? "" : "s"} (7 days)
+              </button>
+            }
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RowActions({ firmId, showClients }: { firmId: string; showClients: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <Button size="sm" variant="outline" asChild>
+        <Link to="/admin/firms/$firmId" params={{ firmId }}>
+          Plan &amp; members
+        </Link>
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="ghost" aria-label="More actions">
+            <MoreHorizontal className="h-4 w-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {showClients && (
+            <DropdownMenuItem asChild>
+              <Link to="/firms/$firmId" params={{ firmId }}>
+                <Users className="h-4 w-4 mr-2" /> Clients
+              </Link>
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem asChild>
+            <Link to="/firms/$firmId" params={{ firmId }} search={{ viewAs: "owner" }}>
+              <Eye className="h-4 w-4 mr-2" /> View as
+            </Link>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
@@ -434,9 +573,9 @@ function DashboardsInUseCell({
 
 function XeroScopeHealthCell({ missing, total }: { missing?: number; total?: number }) {
   if (total === undefined) return <span className="text-muted-foreground">—</span>;
-  if (!missing) return <span className="text-muted-foreground">{total} OK</span>;
+  if (!missing) return <span className="text-muted-foreground whitespace-nowrap">{total} OK</span>;
   return (
-    <span className="font-medium text-amber-500">
+    <span className="font-medium text-amber-500 whitespace-nowrap">
       {missing} of {total} need permissions
     </span>
   );
