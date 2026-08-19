@@ -380,12 +380,28 @@ export type Pillar = {
   ctaLabel: string;
 };
 
+export type HealthDrivers = {
+  netMarginPct: number;
+  grossMarginPct: number;
+  badDebtsPctOfRevenue: number;
+  monthsRunway: number | null;
+};
+
 export type BusinessHealthDetail = {
   asOfDate: string;
   fyLabel: string;
   currency: string;
+  // Headline (merged from the former getBusinessHealth summary call so the
+  // current-period P&L is only fetched once per card).
+  score: number;
+  band: HealthBand;
+  label: string;
+  summary: string;
+  alert: BusinessHealth["alert"];
+  drivers: HealthDrivers;
   pillars: Pillar[];
 };
+
 
 function normaliseAccountName(name: string): string {
   return name.trim().toLowerCase();
