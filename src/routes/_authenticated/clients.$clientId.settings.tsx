@@ -82,6 +82,7 @@ import { ALL_TIERS, tierLabel, type DashboardTier, type WidgetKey } from "@/lib/
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
+import { getClientWidgets } from "@/lib/tier-config.functions";
 // import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -1019,6 +1020,20 @@ function CostClassificationSection({
 }) {
   const qc = useQueryClient();
   const firstTenantId: string | undefined = linkedOrgs[0]?.xero_connections?.tenant_id;
+  // Only show this where something actually consumes it. Break-even and the
+  // cash-flow scenario need Fixed/Variable/Excluded; Business Health only needs
+  // the Wages marker.
+  const fetchWidgets = useServerFn(getClientWidgets);
+  const widgetsQ = useQuery({
+    queryKey: ["client-widgets", clientId, "cost-classification"],
+    queryFn: () => fetchWidgets({ data: { clientId } }),
+  });
+  const allowed = new Set((widgetsQ.data?.widgets ?? []) as string[]);
+  const usesCostSplit =
+    allowed.has("accounting_breakeven") ||
+    allowed.has("true_breakeven") ||
+    allowed.has("cashflow_scenario");
+  const usesWages = allowed.has("health");
   const enabledQ = useQuery({
     queryKey: ["cost-classification-enabled", clientId],
     queryFn: () => fetchClassifications({ data: { clientId, tenantId: firstTenantId ?? "" } }),
@@ -1045,6 +1060,9 @@ function CostClassificationSection({
     },
   );
 
+  if (widgetsQ.isLoading) return null;
+  if (!usesCostSplit && !usesWages) return null;
+
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <section
@@ -1059,9 +1077,20 @@ function CostClassificationSection({
                 <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]:rotate-180" />
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
-                Tag each expense account as <strong>Fixed</strong>, <strong>Variable</strong>, or{" "}
-                <strong>Excluded</strong> for break-even. Use the separate <strong>Wages</strong>{" "}
-                marker for Business Health only; it does not change fixed-cost treatment.
+                {usesCostSplit ? (
+                  <>
+                    Tag each expense account as <strong>Fixed</strong>, <strong>Variable</strong>,
+                    or <strong>Excluded</strong> for break-even and the cash-flow scenario. Use the
+                    separate <strong>Wages</strong> marker for Business Health only; it does not
+                    change fixed-cost treatment.
+                  </>
+                ) : (
+                  <>
+                    Mark which accounts are <strong>Wages</strong> for Business Health. This
+                    client's dashboard has no break-even cards, so there is nothing to split into
+                    fixed and variable.
+                  </>
+                )}
               </p>
             </button>
           </CollapsibleTrigger>
@@ -1095,6 +1124,7 @@ function CostClassificationSection({
                     clientId={clientId}
                     tenantId={tenantId}
                     tenantName={tenantName}
+                    wagesOnly={!usesCostSplit}
                   />
                 );
               })}
