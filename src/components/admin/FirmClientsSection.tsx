@@ -298,9 +298,24 @@ export function FirmClientsSection({
 
                       </td>
                       <td className="px-5 py-4">
-                        <span className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                          {labelFor(effectiveTier)}
-                        </span>
+                        {canManageTier ? (
+                          <Link
+                            to="/clients/$clientId/settings"
+                            params={{ clientId: c.id }}
+                            hash="dashboard-tier"
+                            title="Change dashboard tier"
+                            aria-label={`Change dashboard tier for ${c.name}`}
+                            className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary hover:bg-primary/20 hover:text-primary transition-colors cursor-pointer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            {labelFor(effectiveTier)}
+                            <Pencil className="h-3 w-3" />
+                          </Link>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                            {labelFor(effectiveTier)}
+                          </span>
+                        )}
                         {sourceNote(ent) && (
                           <div className="mt-0.5 text-xs text-muted-foreground">{sourceNote(ent)}</div>
                         )}
