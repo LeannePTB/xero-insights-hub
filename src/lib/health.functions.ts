@@ -564,6 +564,8 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const ar = summariseOutstandingInvoices(arInvRes?.Invoices, asOfDate);
 
     const currency = (orgRes?.Organisations?.[0]?.BaseCurrency as string) ?? "AUD";
+    const salesTaxBasisRaw = (orgRes?.Organisations?.[0]?.SalesTaxBasis as string) ?? null;
+    const { normaliseSalesTaxBasis } = await import("@/lib/report-basis");
 
     // Income breakdown for "single source" detection (top revenue account share)
     const incomeRows = pnlSectionRows(pnlRes?.Reports?.[0] ?? {}, (t) =>
