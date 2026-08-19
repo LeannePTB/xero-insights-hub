@@ -37,7 +37,7 @@ import { SortableCardGrid, type SortableCard } from "@/components/dashboard/Sort
 import { tierLabel as tierLabelFor, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
-import { TransactionSearch } from "@/components/dashboard/TransactionSearch";
+import { TransactionSearchWidget } from "@/components/dashboard/TransactionSearchWidget";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
@@ -261,9 +261,9 @@ function ClientDashboard() {
           />
         )}
 
-        {isAdvisor && orgs.length > 0 && (
+        {widgets.includes("transaction_search") && orgs.length > 0 && (
           <div className="mt-6">
-            <TransactionSearch clientId={clientId} />
+            <TransactionSearchWidget clientId={clientId} orgCount={orgs.length} />
           </div>
         )}
 
