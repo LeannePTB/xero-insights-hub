@@ -407,6 +407,91 @@ export type Database = {
           },
         ]
       }
+      client_reports: {
+        Row: {
+          client_id: string
+          complete: boolean
+          finalised_at: string | null
+          firm_id: string
+          generated_at: string
+          generated_by: string | null
+          id: string
+          payload: Json
+          payload_version: number
+          pdf_path: string | null
+          period_end: string
+          report_key: string
+          sent_at: string | null
+          sent_to: string[] | null
+          status: string
+          tenant_id: string | null
+          title: string | null
+          version: number
+        }
+        Insert: {
+          client_id: string
+          complete?: boolean
+          finalised_at?: string | null
+          firm_id: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          payload: Json
+          payload_version?: number
+          pdf_path?: string | null
+          period_end: string
+          report_key?: string
+          sent_at?: string | null
+          sent_to?: string[] | null
+          status?: string
+          tenant_id?: string | null
+          title?: string | null
+          version?: number
+        }
+        Update: {
+          client_id?: string
+          complete?: boolean
+          finalised_at?: string | null
+          firm_id?: string
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          payload?: Json
+          payload_version?: number
+          pdf_path?: string | null
+          period_end?: string
+          report_key?: string
+          sent_at?: string | null
+          sent_to?: string[] | null
+          status?: string
+          tenant_id?: string | null
+          title?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_reports_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_reports_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "client_reports_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_subscriptions: {
         Row: {
           client_id: string
@@ -580,6 +665,7 @@ export type Database = {
           dashboard_widgets: string[] | null
           firm_id: string | null
           id: string
+          logo_path: string | null
           max_xero_orgs: number
           name: string
           notes: string
@@ -596,6 +682,7 @@ export type Database = {
           dashboard_widgets?: string[] | null
           firm_id?: string | null
           id?: string
+          logo_path?: string | null
           max_xero_orgs?: number
           name: string
           notes?: string
@@ -612,6 +699,7 @@ export type Database = {
           dashboard_widgets?: string[] | null
           firm_id?: string | null
           id?: string
+          logo_path?: string | null
           max_xero_orgs?: number
           name?: string
           notes?: string
@@ -971,6 +1059,7 @@ export type Database = {
           default_widgets: string[] | null
           id: string
           is_always_free: boolean
+          logo_path: string | null
           name: string
           owner_user_id: string | null
           updated_at: string
@@ -980,6 +1069,7 @@ export type Database = {
           default_widgets?: string[] | null
           id?: string
           is_always_free?: boolean
+          logo_path?: string | null
           name: string
           owner_user_id?: string | null
           updated_at?: string
@@ -989,6 +1079,7 @@ export type Database = {
           default_widgets?: string[] | null
           id?: string
           is_always_free?: boolean
+          logo_path?: string | null
           name?: string
           owner_user_id?: string | null
           updated_at?: string
