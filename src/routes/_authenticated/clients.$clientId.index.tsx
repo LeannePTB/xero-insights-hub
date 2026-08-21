@@ -10,7 +10,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle, FileText } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.functions";
 import { toast } from "sonner";
@@ -268,11 +268,18 @@ function ClientDashboard() {
             </p>
           </div>
           {isAdvisor && (
-            <Button variant="outline" asChild className="shrink-0">
-              <Link to="/clients/$clientId/settings" params={{ clientId }}>
-                <Settings className="mr-2 h-4 w-4" /> Settings
-              </Link>
-            </Button>
+            <div className="flex shrink-0 items-center gap-2">
+              <Button variant="outline" asChild>
+                <Link to="/clients/$clientId/reports" params={{ clientId }}>
+                  <FileText className="mr-2 h-4 w-4" /> Reports
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link to="/clients/$clientId/settings" params={{ clientId }}>
+                  <Settings className="mr-2 h-4 w-4" /> Settings
+                </Link>
+              </Button>
+            </div>
           )}
 
         </div>

@@ -43,6 +43,7 @@ import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_
 import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
+import { Route as AuthenticatedClientsClientIdReportsRouteImport } from './routes/_authenticated/clients.$clientId.reports'
 import { Route as AuthenticatedClientsClientIdLoansAccountsRouteImport } from './routes/_authenticated/clients.$clientId.loans-accounts'
 import { Route as AuthenticatedClientsClientIdLoansRouteImport } from './routes/_authenticated/clients.$clientId.loans'
 import { Route as AuthenticatedClientsClientIdCashflowScenarioRouteImport } from './routes/_authenticated/clients.$clientId.cashflow-scenario'
@@ -239,6 +240,12 @@ const AuthenticatedClientsClientIdSettingsRoute =
     path: '/clients/$clientId/settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedClientsClientIdReportsRoute =
+  AuthenticatedClientsClientIdReportsRouteImport.update({
+    id: '/clients/$clientId/reports',
+    path: '/clients/$clientId/reports',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedClientsClientIdLoansAccountsRoute =
   AuthenticatedClientsClientIdLoansAccountsRouteImport.update({
     id: '/clients/$clientId/loans-accounts',
@@ -331,6 +338,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/cashflow-scenario': typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
+  '/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
@@ -375,6 +383,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/cashflow-scenario': typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
+  '/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
@@ -422,6 +431,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/cashflow-scenario': typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   '/_authenticated/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
   '/_authenticated/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
+  '/_authenticated/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
@@ -470,6 +480,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/cashflow-scenario'
     | '/clients/$clientId/loans'
     | '/clients/$clientId/loans-accounts'
+    | '/clients/$clientId/reports'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
     | '/firms/$firmId/loans'
@@ -514,6 +525,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/cashflow-scenario'
     | '/clients/$clientId/loans'
     | '/clients/$clientId/loans-accounts'
+    | '/clients/$clientId/reports'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
     | '/firms/$firmId/settings'
@@ -560,6 +572,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/cashflow-scenario'
     | '/_authenticated/clients/$clientId/loans'
     | '/_authenticated/clients/$clientId/loans-accounts'
+    | '/_authenticated/clients/$clientId/reports'
     | '/_authenticated/clients/$clientId/settings'
     | '/_authenticated/clients/$clientId/unreconciled'
     | '/_authenticated/firms/$firmId/loans'
@@ -842,6 +855,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clients/$clientId/reports': {
+      id: '/_authenticated/clients/$clientId/reports'
+      path: '/clients/$clientId/reports'
+      fullPath: '/clients/$clientId/reports'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/clients/$clientId/loans-accounts': {
       id: '/_authenticated/clients/$clientId/loans-accounts'
       path: '/clients/$clientId/loans-accounts'
@@ -995,6 +1015,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsClientIdCashflowScenarioRoute: typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   AuthenticatedClientsClientIdLoansRoute: typeof AuthenticatedClientsClientIdLoansRoute
   AuthenticatedClientsClientIdLoansAccountsRoute: typeof AuthenticatedClientsClientIdLoansAccountsRoute
+  AuthenticatedClientsClientIdReportsRoute: typeof AuthenticatedClientsClientIdReportsRoute
   AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRoute
   AuthenticatedClientsClientIdUnreconciledRoute: typeof AuthenticatedClientsClientIdUnreconciledRoute
   AuthenticatedClientsClientIdIndexRoute: typeof AuthenticatedClientsClientIdIndexRoute
@@ -1018,6 +1039,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedClientsClientIdLoansRoute,
   AuthenticatedClientsClientIdLoansAccountsRoute:
     AuthenticatedClientsClientIdLoansAccountsRoute,
+  AuthenticatedClientsClientIdReportsRoute:
+    AuthenticatedClientsClientIdReportsRoute,
   AuthenticatedClientsClientIdSettingsRoute:
     AuthenticatedClientsClientIdSettingsRoute,
   AuthenticatedClientsClientIdUnreconciledRoute:
