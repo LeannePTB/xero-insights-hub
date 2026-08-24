@@ -391,37 +391,45 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     missing(failed.get("key_figures") ?? "Not computed.");
   } else {
     const f = (k: any, n: number) => (k.unit === "money" ? money(n) : pct(n));
-    const kfColours: Record<string, [number, number, number]> = {};
-    payload.keyFigures.forEach((k, i) => {
-      const pol = keyFigurePolarity(k.key);
-      const jm = judgeVariance({
-        variance: k.monthVariance,
-        prior: k.priorMonth,
-        polarity: pol,
-        variancePct: k.monthVariancePct,
-        unit: k.unit,
-      });
-      const jy = judgeVariance({
-        variance: k.ytdVariance,
-        prior: k.priorFyYtd,
-        polarity: pol,
-        variancePct: k.ytdVariancePct,
-        unit: k.unit,
-      });
-      if (jm.tone !== "neutral") kfColours[`${i}:3`] = toneRgb(jm.tone);
-      if (jy.tone !== "neutral") kfColours[`${i}:6`] = toneRgb(jy.tone);
-    });
-    table({
-      head: [
-        "Measure",
-        m.monthLabel,
-        "Prior month",
-        "Change",
-        `${m.fyLabel} YTD`,
-        `${m.priorFyLabel} YTD`,
-        "Change",
-      ],
-      body: payload.keyFigures.map((k) => {
+
+    // Tiles, four across — this is the page clients actually read. Same
+    // figures as before, presented rather than tabulated.
+    const cols = 4;
+    const gap = 10;
+    const tileW = (PAGE.w - M.left - M.right - gap * (cols - 1)) / cols;
+    const tileH = 72;
+    const figures = payload.keyFigures;
+    for (let row = 0; row < Math.ceil(figures.length / cols); row++) {
+      need(tileH + 8);
+      const top = y;
+      for (let c = 0; c < cols; c++) {
+        const k = figures[row * cols + c];
+        if (!k) break;
+        const x = M.left + c * (tileW + gap);
+        doc.setFillColor(BRAND.band[0], BRAND.band[1], BRAND.band[2]);
+        doc.setDrawColor(INK.line[0], INK.line[1], INK.line[2]);
+        doc.rect(x, top, tileW, tileH, "FD");
+        // Gold accent rule along the top edge of each tile.
+        doc.setDrawColor(BRAND.gold[0], BRAND.gold[1], BRAND.gold[2]);
+        doc.setLineWidth(1.2);
+        doc.line(x, top, x + tileW, top);
+        doc.setLineWidth(0.4);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(INK.muted[0], INK.muted[1], INK.muted[2]);
+        const labelLines = doc.splitTextToSize(k.label.toUpperCase(), tileW - 16).slice(0, 2);
+        let ly = top + 16;
+        for (const line of labelLines) {
+          doc.text(line, x + 8, ly);
+          ly += 8;
+        }
+
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(14);
+        doc.setTextColor(BRAND.purple[0], BRAND.purple[1], BRAND.purple[2]);
+        doc.text(f(k, k.month), x + 8, top + 44);
+
         const jm = judgeVariance({
           variance: k.monthVariance,
           prior: k.priorMonth,
@@ -429,6 +437,16 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
           variancePct: k.monthVariancePct,
           unit: k.unit,
         });
+        const tone = toneRgb(jm.tone);
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(6.5);
+        doc.setTextColor(tone[0], tone[1], tone[2]);
+        doc.text(
+          `${marker(jm.arrow)}${f(k, k.monthVariance)}${jm.showPct ? ` (${pctMagnitude(k.monthVariancePct)})` : ""} vs prior month`,
+          x + 8,
+          top + 56,
+        );
+        doc.setTextColor(INK.muted[0], INK.muted[1], INK.muted[2]);
         const jy = judgeVariance({
           variance: k.ytdVariance,
           prior: k.priorFyYtd,
@@ -436,18 +454,16 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
           variancePct: k.ytdVariancePct,
           unit: k.unit,
         });
-        return [
-          k.label,
-          f(k, k.month),
-          f(k, k.priorMonth),
-          `${marker(jm.arrow)}${f(k, k.monthVariance)}${jm.showPct ? ` (${pctMagnitude(k.monthVariancePct)})` : ""}`,
-          f(k, k.fyYtd),
-          f(k, k.priorFyYtd),
-          `${marker(jy.arrow)}${f(k, k.ytdVariance)}${jy.showPct ? ` (${pctMagnitude(k.ytdVariancePct)})` : ""}`,
-        ];
-      }),
-      cellColours: kfColours,
-    });
+        doc.text(
+          `${m.fyLabel} YTD ${f(k, k.fyYtd)} · ${marker(jy.arrow)}${f(k, k.ytdVariance)}`,
+          x + 8,
+          top + 66,
+        );
+      }
+      y = top + tileH + gap;
+    }
+    y += 4;
+
     for (const k of payload.keyFigures) {
       const j = judgeVariance({
         variance: k.monthVariance,
