@@ -141,7 +141,7 @@ export function parsePnl(report: any, fallbackMonthEnd: string): ParsedPnl {
         totals = values;
         sawSummary = true;
         totalLabel = name || (title ? `Total ${title}` : null);
-        if (!lines.length && name) lines.push({ name, values });
+
       }
     }
     if (!sawSummary) {
