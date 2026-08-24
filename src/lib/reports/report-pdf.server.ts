@@ -318,7 +318,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   );
   y += SPACING.titleInner;
   paragraph(
-    `Generated ${fmtDate(m.generatedAt)} · version ${version} · ${status} · payload v${payload.payloadVersion} · amounts in ${m.currency}${
+    `Generated ${fmtDate(m.generatedAt)} by Traction Advisory · Version ${version} · ${status} · payload v${payload.payloadVersion} · amounts in ${m.currency}${
       isDraft ? " · DRAFT — not for distribution" : ""
     }`,
     { size: 8 },
