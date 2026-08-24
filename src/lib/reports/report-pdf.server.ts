@@ -374,11 +374,13 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     const sorted = [...payload.notes].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
+    // Author and date are deliberately NOT printed — this document goes to the
+    // client. They stay in the stored payload. Spacing separates the notes.
     for (const n of sorted) {
       paragraph(n.body, { colour: INK.text, size: 8.5 });
-      paragraph(`${n.author} · ${fmtDate(n.createdAt)}`, { size: 7.5 });
-      y += 4;
+      y += 8;
     }
+
   }
 
   // 3. Key figures -----------------------------------------------------------
