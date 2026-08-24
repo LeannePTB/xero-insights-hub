@@ -230,18 +230,18 @@ export function MonthlyReportPreview({
         ) : payload.notes.length === 0 ? (
           <p className="text-sm text-muted-foreground">No notes recorded for this client.</p>
         ) : (
-          <ul className="space-y-3">
+          // Author and date are deliberately not shown — the report is
+          // client-facing. Both remain in the stored payload.
+          <ul className="space-y-4">
             {[...payload.notes]
               .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
               .map((n, i) => (
                 <li key={i} className="rounded-lg bg-background p-3 text-sm">
                   <p className="whitespace-pre-wrap break-words">{n.body}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {n.author} · {fmtDate(n.createdAt)}
-                  </p>
                 </li>
               ))}
           </ul>
+
         )}
       </SectionShell>
 
