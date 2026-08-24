@@ -6,6 +6,8 @@ import {
   pct,
   pctMagnitude,
   resolveDisclaimer,
+  namesEqual,
+  uniqueNames,
   type AgeingDetail,
   type MonthlyReportPayload,
 } from "@/lib/reports/monthly-report";
@@ -187,13 +189,15 @@ export function MonthlyReportPreview({
     <div className="space-y-6">
       {/* Header */}
       <header className="rounded-2xl border border-border bg-card p-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {m.organisationName}
-        </p>
+        {!namesEqual(m.organisationName, m.clientName) && (
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {m.organisationName}
+          </p>
+        )}
         <h2 className="font-display text-2xl font-semibold">{m.clientName}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Monthly Management Report · {m.monthLabel} (period ended {fmtDate(m.periodEnd)}) ·{" "}
-          {m.tenantName}
+          Monthly Management Report · {m.monthLabel} (period ended {fmtDate(m.periodEnd)})
+          {!namesEqual(m.clientName, m.tenantName) && ` · ${m.tenantName}`}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Generated {fmtDate(m.generatedAt)} by Traction Advisory
@@ -498,7 +502,8 @@ export function MonthlyReportPreview({
 
       {/* Footer */}
       <footer className="rounded-2xl border border-border bg-card px-6 py-4 text-xs text-muted-foreground">
-        {m.organisationName} · {m.clientName} · {m.monthLabel} · generated {fmtDate(m.generatedAt)} by Traction Advisory · Version {version}
+        {uniqueNames([m.organisationName, m.clientName]).join(" · ")} · {m.monthLabel} · generated{" "}
+        {fmtDate(m.generatedAt)} by Traction Advisory · Version {version}
       </footer>
     </div>
   );

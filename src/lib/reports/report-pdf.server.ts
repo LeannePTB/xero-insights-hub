@@ -22,6 +22,8 @@ import {
   pct,
   pctMagnitude,
   resolveDisclaimer,
+  namesEqual,
+  uniqueNames,
   type AgeingDetail,
   type MonthlyReportPayload,
 } from "./monthly-report";
@@ -154,7 +156,10 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(INK.muted[0], INK.muted[1], INK.muted[2]);
-    doc.text(`${m.clientName} · Monthly Management Report`, textLeft, 54);
+    const headerReportLine = namesEqual(m.organisationName, m.clientName)
+      ? "Monthly Management Report"
+      : `${m.clientName} · Monthly Management Report`;
+    doc.text(headerReportLine, textLeft, 54);
     doc.text(`${m.monthLabel} · period ended ${fmtDate(m.periodEnd)}`, textLeft, 66);
 
     if (input.clientLogo) {
@@ -313,8 +318,9 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   doc.setTextColor(INK.text[0], INK.text[1], INK.text[2]);
   doc.text("Monthly Management Report", M.left, y);
   y += 20 + SPACING.titleInner;
+  const titleNames = uniqueNames([m.clientName, m.tenantName]).join(" · ");
   paragraph(
-    `${m.clientName} · ${m.tenantName} · ${m.monthLabel} (period ended ${fmtDate(m.periodEnd)})`,
+    `${titleNames} · ${m.monthLabel} (period ended ${fmtDate(m.periodEnd)})`,
   );
   y += SPACING.titleInner;
   paragraph(
