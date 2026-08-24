@@ -161,8 +161,32 @@ export function MonthlyReportPreview({
         </div>
       )}
 
-      {/* 1. Key figures */}
+      {/* 1. Notes — the practice's commentary is read BEFORE the tables, so it
+          sits directly under the header. Do not move it back below Payables. */}
+      <SectionShell title="Notes">
+        {!payload.notes ? (
+          <Missing message={failed.get("notes") ?? "Not computed."} />
+        ) : payload.notes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No notes recorded for this client.</p>
+        ) : (
+          <ul className="space-y-3">
+            {[...payload.notes]
+              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+              .map((n, i) => (
+                <li key={i} className="rounded-lg bg-background p-3 text-sm">
+                  <p className="whitespace-pre-wrap break-words">{n.body}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {n.author} · {fmtDate(n.createdAt)}
+                  </p>
+                </li>
+              ))}
+          </ul>
+        )}
+      </SectionShell>
+
+      {/* 2. Key figures */}
       <SectionShell title="Key figures">
+
         {!payload.keyFigures ? (
           <Missing message={failed.get("key_figures") ?? "Not computed."} />
         ) : (
@@ -233,7 +257,7 @@ export function MonthlyReportPreview({
         )}
       </SectionShell>
 
-      {/* 2. Profit and Loss */}
+      {/* 3. Profit and Loss */}
       <SectionShell title="Profit and Loss">
         {!payload.profitAndLoss ? (
           <Missing message={failed.get("profit_and_loss") ?? "Not computed."} />
@@ -318,7 +342,7 @@ export function MonthlyReportPreview({
         )}
       </SectionShell>
 
-      {/* 3. Receivables */}
+      {/* 4. Receivables */}
       <SectionShell title="Receivables detail">
         {!payload.receivables ? (
           <Missing message={failed.get("receivables") ?? "Not computed."} />
@@ -336,29 +360,10 @@ export function MonthlyReportPreview({
         )}
       </SectionShell>
 
-      {/* 6. Notes */}
-      <SectionShell title="Notes">
-        {!payload.notes ? (
-          <Missing message={failed.get("notes") ?? "Not computed."} />
-        ) : payload.notes.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No notes recorded for this client.</p>
-        ) : (
-          <ul className="space-y-3">
-            {[...payload.notes]
-              .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-              .map((n, i) => (
-                <li key={i} className="rounded-lg bg-background p-3 text-sm">
-                  <p className="whitespace-pre-wrap break-words">{n.body}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {n.author} · {fmtDate(n.createdAt)}
-                  </p>
-                </li>
-              ))}
-          </ul>
-        )}
-      </SectionShell>
 
-      {/* 7. Disclaimer — fine print, always last, never collapsible */}
+
+
+      {/* 6. Disclaimer — fine print, always last, never collapsible */}
       <section className="px-6">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Disclaimer

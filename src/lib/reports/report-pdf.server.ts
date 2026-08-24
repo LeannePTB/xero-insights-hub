@@ -341,8 +341,26 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     y = y + boxH + 8;
   }
 
-  // 1. Key figures -----------------------------------------------------------
   const failed = new Map(renderableFailedSections(payload).map((f) => [f.section, f.message]));
+
+  // 2. Notes -----------------------------------------------------------------
+  heading("Notes");
+  if (!payload.notes) {
+    missing(failed.get("notes") ?? "Not computed.");
+  } else if (!payload.notes.length) {
+    paragraph("No notes recorded for this client.");
+  } else {
+    const sorted = [...payload.notes].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    );
+    for (const n of sorted) {
+      paragraph(n.body, { colour: INK.text, size: 8.5 });
+      paragraph(`${n.author} · ${fmtDate(n.createdAt)}`, { size: 7.5 });
+      y += 4;
+    }
+  }
+
+  // 3. Key figures -----------------------------------------------------------
   heading("Key figures");
   if (!payload.keyFigures) {
     missing(failed.get("key_figures") ?? "Not computed.");
@@ -418,7 +436,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     y += 10;
   }
 
-  // 2. Profit and Loss -------------------------------------------------------
+  // 4. Profit and Loss -------------------------------------------------------
   heading("Profit and Loss");
   if (!payload.profitAndLoss) {
     missing(failed.get("profit_and_loss") ?? "Not computed.");
@@ -501,24 +519,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   ageing(payload.receivables, "Receivables detail", "Customer", "receivables");
   ageing(payload.payables, "Payables detail", "Supplier", "payables");
 
-  // 6. Notes -----------------------------------------------------------------
-  heading("Notes");
-  if (!payload.notes) {
-    missing(failed.get("notes") ?? "Not computed.");
-  } else if (!payload.notes.length) {
-    paragraph("No notes recorded for this client.");
-  } else {
-    const sorted = [...payload.notes].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
-    for (const n of sorted) {
-      paragraph(n.body, { colour: INK.text, size: 8.5 });
-      paragraph(`${n.author} · ${fmtDate(n.createdAt)}`, { size: 7.5 });
-      y += 4;
-    }
-  }
-
-  // 7. Disclaimer — fine print, last, no forced page break -------------------
+  // 5. Disclaimer — fine print, last, no forced page break -------------------
   y += 8;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
