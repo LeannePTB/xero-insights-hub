@@ -66,7 +66,7 @@ const BRAND = {
   lavender: [111, 96, 170], // --lavender
   lavenderFill: [237, 234, 246], // light tint of --lavender, table header fill
   band: [246, 245, 250], // very light row banding
-  gold: [197, 171, 113], // --accent, thin rules only — never text
+  gold: [176, 141, 74], // --accent, thin rules only — never text
   watermark: [203, 200, 214],
 };
 
@@ -574,6 +574,8 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   const pageCount = (doc as any).getNumberOfPages();
   for (let i = 1; i <= pageCount; i++) {
     doc.setPage(i);
+    // Pages that autoTable created itself never got a watermark up front.
+    drawWatermark();
     drawHeaderBand();
     drawFooter(i, pageCount);
   }
