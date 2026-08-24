@@ -179,6 +179,26 @@ export function fyStartFor(periodEnd: string): string {
   return `${startYear}-07-01`;
 }
 
+/** Case- and whitespace-insensitive name comparison for de-duplication. */
+function normaliseName(s: string) {
+  return s.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+export function namesEqual(a: string, b: string) {
+  return normaliseName(a) === normaliseName(b);
+}
+
+/** Return the input names with later duplicates (case-insensitive) removed. */
+export function uniqueNames(names: string[]) {
+  const seen = new Set<string>();
+  return names.filter((n) => {
+    const key = normaliseName(n);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export function fyLabelFor(fyStart: string): string {
   const y = Number(fyStart.slice(0, 4));
   return `FY${String(y + 1).slice(2)}`;
