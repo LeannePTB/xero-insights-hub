@@ -317,7 +317,20 @@ export function bucketLabelsFor(periodEnd: string): string[] {
   ];
 }
 
-/** Buckets by due date RELATIVE TO THE PERIOD END, never relative to today. */
+/**
+ * Buckets by DOCUMENT DATE relative to the period end, never relative to today.
+ *
+ * Xero's own aged reports (and the practice's management pack) age a document
+ * from the date it was raised, not the date it falls due — an invoice dated in
+ * June with July terms sits in June. Verified against Autotek NSW at
+ * 31 July 2026: document date reproduces Xero's payables split exactly
+ * (current 55,316.80 · Jun 14,910.00 · May 5,571.14 · older 38,512.31), while
+ * due date collapsed 102,829.11 into Current.
+ *
+ * A document with no date at all cannot be aged, so it falls back to its due
+ * date and then, failing that, to the period end (i.e. Current) — the least
+ * alarming placement, and it is called out in the caveat.
+ */
 export function buildAgeing(entries: AsAtEntry[], periodEnd: string): AgeingDetail {
   const labels = bucketLabelsFor(periodEnd);
   const start = monthStartFor(periodEnd);
@@ -327,12 +340,13 @@ export function buildAgeing(entries: AsAtEntry[], periodEnd: string): AgeingDeta
   const byContact = new Map<string, number[]>();
   for (const e of entries) {
     if (e.amount === 0) continue;
-    const dueMonth = (e.dueDate ?? e.date ?? periodEnd).slice(0, 7);
+    const ageMonth = (e.date ?? e.dueDate ?? periodEnd).slice(0, 7);
     let bucket = 4; // Older
-    if (dueMonth >= monthKeys[0]) bucket = 0;
-    else if (dueMonth === monthKeys[1]) bucket = 1;
-    else if (dueMonth === monthKeys[2]) bucket = 2;
-    else if (dueMonth === monthKeys[3]) bucket = 3;
+    if (ageMonth >= monthKeys[0]) bucket = 0;
+    else if (ageMonth === monthKeys[1]) bucket = 1;
+    else if (ageMonth === monthKeys[2]) bucket = 2;
+    else if (ageMonth === monthKeys[3]) bucket = 3;
+
     const row = byContact.get(e.contact) ?? [0, 0, 0, 0, 0];
     row[bucket] += e.amount;
     byContact.set(e.contact, row);
