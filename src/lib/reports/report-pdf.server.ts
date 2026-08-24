@@ -318,8 +318,9 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   doc.setTextColor(INK.text[0], INK.text[1], INK.text[2]);
   doc.text("Monthly Management Report", M.left, y);
   y += 20 + SPACING.titleInner;
+  const titleNames = uniqueNames([m.clientName, m.tenantName]).join(" · ");
   paragraph(
-    `${m.clientName} · ${m.tenantName} · ${m.monthLabel} (period ended ${fmtDate(m.periodEnd)})`,
+    `${titleNames} · ${m.monthLabel} (period ended ${fmtDate(m.periodEnd)})`,
   );
   y += SPACING.titleInner;
   paragraph(
