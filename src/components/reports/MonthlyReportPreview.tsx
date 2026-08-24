@@ -502,7 +502,8 @@ export function MonthlyReportPreview({
 
       {/* Footer */}
       <footer className="rounded-2xl border border-border bg-card px-6 py-4 text-xs text-muted-foreground">
-        {m.organisationName} · {m.clientName} · {m.monthLabel} · generated {fmtDate(m.generatedAt)} by Traction Advisory · Version {version}
+        {uniqueNames([m.organisationName, m.clientName]).join(" · ")} · {m.monthLabel} · generated{" "}
+        {fmtDate(m.generatedAt)} by Traction Advisory · Version {version}
       </footer>
     </div>
   );
