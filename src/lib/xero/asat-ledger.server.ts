@@ -114,10 +114,6 @@ export async function fetchAsAtLedger(
     gross += Number(inv.Total) || 0;
   }
 
-  const payments = await pageAll<any>(conn, "Payments", "Payments", {
-    where: `Date<=${dt}&&Status=="AUTHORISED"`,
-    order: "Date ASC",
-  });
   const creditNotes = await asAtFetch(conn, "CreditNotes", "CreditNotes", openAtAsAt);
 
   const overpayments = await pageAll<any>(conn, "Overpayments", "Overpayments", {
@@ -132,28 +128,27 @@ export async function fetchAsAtLedger(
   const unreconciled: AsAtLedger["unreconciled"] = [];
   const settledByInvoice = new Map<string, number>();
 
-  // Payments allocated to invoices in scope.
+  // Payments settling the invoices in scope.
+  //
+  // The Payments endpoint is NOT used: it is the whole cash history of the
+  // file and runs to many thousands of records even for a small business, so
+  // it trips the paging cap. Only payments against the in-scope invoices can
+  // matter, and the Invoices response already carries each invoice's own
+  // Payments array — so the payments are read from there, filtered to those
+  // dated on or before the period end.
   let paid = 0;
-  let orphanPayments = 0;
-  for (const p of payments) {
-    const invId = p?.Invoice?.InvoiceID;
-    const invType = p?.Invoice?.Type;
-    const amount = Number(p?.Amount) || 0;
-    if (!invId) continue;
-    if (invType && invType !== side) continue;
-    if (inSet.has(invId)) {
+  for (const inv of inSet.values()) {
+    for (const p of inv?.Payments ?? []) {
+      if (!onOrBefore(p?.Date, asAt)) continue;
+      const amount = Number(p?.Amount) || 0;
       paid += amount;
-      settledByInvoice.set(invId, (settledByInvoice.get(invId) ?? 0) + amount);
-    } else if (invType === side) orphanPayments += amount;
+      settledByInvoice.set(
+        inv.InvoiceID,
+        (settledByInvoice.get(inv.InvoiceID) ?? 0) + amount,
+      );
+    }
   }
-  if (round2(orphanPayments) !== 0) {
-    unreconciled.push({
-      label: `${label}: payments against out-of-scope invoices`,
-      detail:
-        "Payments dated on or before the period end are allocated to invoices that are not authorised/paid, or are dated after the period end. They are excluded from the subledger total.",
-      amount: round2(orphanPayments),
-    });
-  }
+
 
   const sideCredits = creditNotes.filter((c) =>
     side === "ACCREC" ? c?.Type === "ACCRECCREDIT" : c?.Type === "ACCPAYCREDIT",
