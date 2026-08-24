@@ -65,10 +65,23 @@ export async function fetchAsAtLedger(
   const dt = xeroDateLiteral(asAt);
   const label = side === "ACCREC" ? "Accounts Receivable" : "Accounts Payable";
 
-  const invoices = await pageAll<any>(conn, "Invoices", "Invoices", {
-    where: `Type=="${side}"&&Date<=${dt}&&(Status=="AUTHORISED"||Status=="PAID")`,
-    order: "Date ASC",
-  });
+  // Only documents that were OPEN at the period end matter. Anything settled
+  // before it nets to nil, so it is filtered out in Xero rather than fetched
+  // and discarded in memory — a full file runs to thousands of invoices and
+  // trips the paging cap.
+  //
+  // Open at the period end means: dated on or before it, and either still
+  // AUTHORISED (includes part-paid, which carry no FullyPaidOnDate) or PAID
+  // with FullyPaidOnDate after it.
+  //
+  // VOIDED and DELETED documents are excluded. A document voided after the
+  // period end was arguably outstanding then, but in this file voids are
+  // corrections of documents that should never have existed, and Xero's own
+  // Balance Sheet excludes them too — including them would put the subledger
+  // permanently out of step with the GL it is reconciled against.
+  const openAtAsAt = `Date<=${dt}&&(Status=="AUTHORISED"||(Status=="PAID"&&FullyPaidOnDate>${dt}))`;
+
+  const invoices = await asAtFetch(conn, "Invoices", "Invoices", `Type=="${side}"&&${openAtAsAt}`);
   const inSet = new Map<string, any>();
   let gross = 0;
   for (const inv of invoices) {
@@ -80,10 +93,8 @@ export async function fetchAsAtLedger(
     where: `Date<=${dt}&&Status=="AUTHORISED"`,
     order: "Date ASC",
   });
-  const creditNotes = await pageAll<any>(conn, "CreditNotes", "CreditNotes", {
-    where: `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"&&Status!="DRAFT"`,
-    order: "Date ASC",
-  });
+  const creditNotes = await asAtFetch(conn, "CreditNotes", "CreditNotes", openAtAsAt);
+
   const overpayments = await pageAll<any>(conn, "Overpayments", "Overpayments", {
     where: `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"`,
     order: "Date ASC",
