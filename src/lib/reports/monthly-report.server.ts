@@ -707,7 +707,9 @@ export async function computeMonthlyReport(opts: {
     let priorFyTotals = sumTotals([]);
     try {
       const priorParsed = await fetchColumn(priorFyStart, priorFyPeriodEnd);
-      priorFyTotals = totalsForPeriod(priorParsed, 0);
+      // Regrouped the same way, so the comparative is like for like.
+      const priorRegrouped = regroupByAccountType(priorParsed, await fetchAccounts());
+      priorFyTotals = totalsForPeriod(priorRegrouped.parsed, 0);
     } catch (e: any) {
       failed.push({
         section: "key_figures",
