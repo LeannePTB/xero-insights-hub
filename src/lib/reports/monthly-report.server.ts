@@ -345,16 +345,12 @@ export function buildIncomeVsExpenses(parsed: ParsedPnl): IncomeVsExpenses {
 }
 
 // ---------------------------------------------------------------------------
-// Ageing detail (from invoices — never the aged-report endpoints)
+// Ageing detail — reconstructed AS AT the period end by the shared subledger
+// engine (src/lib/xero/asat-ledger.server.ts), the same one the Balance Sheet
+// Reconciliation uses. `AmountDue` is never used: it is the balance now.
 // ---------------------------------------------------------------------------
 
-function parseXeroDate(s?: string): Date | null {
-  if (!s) return null;
-  const m = s.match(/\/Date\((-?\d+)/);
-  if (m) return new Date(parseInt(m[1], 10));
-  const d = new Date(s);
-  return isNaN(d.getTime()) ? null : d;
-}
+import type { AsAtEntry } from "@/lib/xero/asat-ledger.server";
 
 export function bucketLabelsFor(periodEnd: string): string[] {
   const start = monthStartFor(periodEnd);
@@ -367,44 +363,40 @@ export function bucketLabelsFor(periodEnd: string): string[] {
   ];
 }
 
-export function buildAgeing(
-  invoices: any[],
-  periodEnd: string,
-): AgeingDetail {
+/** Buckets by due date RELATIVE TO THE PERIOD END, never relative to today. */
+export function buildAgeing(entries: AsAtEntry[], periodEnd: string): AgeingDetail {
   const labels = bucketLabelsFor(periodEnd);
   const start = monthStartFor(periodEnd);
-  const monthKeys = [start, addMonths(start, -1), addMonths(start, -2), addMonths(start, -3)].map((s) =>
-    s.slice(0, 7),
+  const monthKeys = [start, addMonths(start, -1), addMonths(start, -2), addMonths(start, -3)].map(
+    (s) => s.slice(0, 7),
   );
   const byContact = new Map<string, number[]>();
-  for (const inv of invoices) {
-    const amount = Number(inv.AmountDue) || 0;
-    if (amount === 0) continue;
-    const issued = parseXeroDate(inv.Date ?? inv.DateString);
-    if (issued && issued.toISOString().slice(0, 10) > periodEnd) continue;
-    const due = parseXeroDate(inv.DueDate ?? inv.DueDateString);
-    const dueMonth = due ? due.toISOString().slice(0, 7) : monthKeys[0];
+  for (const e of entries) {
+    if (e.amount === 0) continue;
+    const dueMonth = (e.dueDate ?? e.date ?? periodEnd).slice(0, 7);
     let bucket = 4; // Older
     if (dueMonth >= monthKeys[0]) bucket = 0;
     else if (dueMonth === monthKeys[1]) bucket = 1;
     else if (dueMonth === monthKeys[2]) bucket = 2;
     else if (dueMonth === monthKeys[3]) bucket = 3;
-    const name = inv.Contact?.Name ?? "Unknown";
-    const row = byContact.get(name) ?? [0, 0, 0, 0, 0];
-    row[bucket] += amount;
-    byContact.set(name, row);
+    const row = byContact.get(e.contact) ?? [0, 0, 0, 0, 0];
+    row[bucket] += e.amount;
+    byContact.set(e.contact, row);
   }
   const rows: AgeingRow[] = [...byContact.entries()]
     .map(([name, buckets]) => ({
       name,
-      buckets,
-      total: buckets.reduce((s, b) => s + b, 0),
+      buckets: buckets.map((b) => Math.round(b * 100) / 100),
+      total: Math.round(buckets.reduce((s, b) => s + b, 0) * 100) / 100,
       pctOfTotal: 0,
     }))
+    .filter((r) => r.total !== 0 || r.buckets.some((b) => b !== 0))
     .sort((a, b) => b.total - a.total);
-  const total = rows.reduce((s, r) => s + r.total, 0);
+  const total = Math.round(rows.reduce((s, r) => s + r.total, 0) * 100) / 100;
   for (const r of rows) r.pctOfTotal = total === 0 ? 0 : (r.total / total) * 100;
-  const totals = labels.map((_, i) => rows.reduce((s, r) => s + (r.buckets[i] ?? 0), 0));
+  const totals = labels.map(
+    (_, i) => Math.round(rows.reduce((s, r) => s + (r.buckets[i] ?? 0), 0) * 100) / 100,
+  );
   return {
     asAt: periodEnd,
     bucketLabels: labels,
@@ -412,33 +404,10 @@ export function buildAgeing(
     totals,
     total,
     caveat:
-      "Ageing is built from the invoices still outstanding when the report was generated, bucketed by due date. Payments made after the period end are already reflected.",
+      "Reconstructed as at the period end: invoices dated on or before it, less payments and credit allocations dated on or before it. Payments made after the period end are excluded, so this ties to the balance sheet at that date.",
   };
 }
 
-async function fetchOpenInvoices(
-  conn: any,
-  type: "ACCREC" | "ACCPAY",
-  periodEnd: string,
-): Promise<any[]> {
-  const { xeroGet } = await import("@/lib/xero/api.server");
-  const [y, m, d] = periodEnd.split("-").map(Number);
-  const where =
-    `Type=="${type}"&&Status!="PAID"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"` +
-    `&&Date<=DateTime(${y},${m},${d})`;
-  const out: any[] = [];
-  for (let page = 1; page <= 5; page++) {
-    const res = await xeroGet<{ Invoices?: any[] }>(conn, "Invoices", {
-      where,
-      page: String(page),
-      order: "DueDate ASC",
-    });
-    const batch = res.Invoices ?? [];
-    out.push(...batch);
-    if (batch.length < 100) break;
-  }
-  return out;
-}
 
 // ---------------------------------------------------------------------------
 // Orchestration
