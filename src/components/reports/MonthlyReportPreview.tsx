@@ -3,6 +3,7 @@ import {
   SECTION_LABELS,
   money,
   pct,
+  resolveDisclaimer,
   type AgeingDetail,
   type MonthlyReportPayload,
 } from "@/lib/reports/monthly-report";
