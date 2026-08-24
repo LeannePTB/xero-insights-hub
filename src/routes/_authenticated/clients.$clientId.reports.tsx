@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -69,8 +69,15 @@ function ReportsPage() {
   const [periodEnd, setPeriodEnd] = useState(periods[1]?.value ?? periods[0]?.value ?? "");
   const [tenantId, setTenantId] = useState<string>("");
   const [preview, setPreview] = useState<
-    { payload: MonthlyReportPayload; status: string; version: number; stored: boolean } | null
+    {
+      payload: MonthlyReportPayload;
+      status: string;
+      version: number;
+      /** How the preview got here — drives the label above it. */
+      source: "generated" | "opened" | "auto";
+    } | null
   >(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const clientQ = useQuery({
@@ -96,7 +103,8 @@ function ReportsPage() {
     mutationFn: () =>
       generateFn({ data: { clientId, periodEnd, tenantId: tenantId || null } }),
     onSuccess: (res: any) => {
-      setPreview({ payload: res.payload, status: res.status, version: res.version, stored: false });
+      setPreview({ payload: res.payload, status: res.status, version: res.version, source: "generated" });
+      setSelectedId(res.id ?? null);
       qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
       if (res.payload?.complete) toast.success(`Draft version ${res.version} generated`);
       else toast.warning("Generated, but some sections could not be computed");
@@ -105,17 +113,46 @@ function ReportsPage() {
   });
 
   const openMut = useMutation({
-    mutationFn: (reportId: string) => openFn({ data: { reportId } }),
-    onSuccess: (res: any) => {
+    mutationFn: (vars: { reportId: string; source: "opened" | "auto" }) =>
+      openFn({ data: { reportId: vars.reportId } }),
+    onSuccess: (res: any, vars) => {
       setPreview({
         payload: res.report.payload,
         status: res.report.status,
         version: res.report.version,
-        stored: true,
+        source: vars.source,
       });
+      setSelectedId(res.report.id);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any, vars) => {
+      // A failed auto-load must fall back to the empty state, never an error banner.
+      if (vars.source === "opened") toast.error(e.message);
+    },
   });
+
+  const reports: any[] = listQ.data?.reports ?? [];
+  // Auto-load the most recent stored report (period_end desc, version desc — the
+  // order the list already comes back in). Never recomputes; reads the snapshot only.
+  const autoLoadedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!listQ.data) return;
+    const stillListed = selectedId && reports.some((r) => r.id === selectedId);
+    if (stillListed) return;
+    if (selectedId && !stillListed) {
+      // The shown report was deleted — fall back to the next most recent.
+      setSelectedId(null);
+      setPreview(null);
+    }
+    const latest = reports[0];
+    if (!latest) {
+      autoLoadedFor.current = null;
+      return;
+    }
+    if (autoLoadedFor.current === latest.id) return;
+    autoLoadedFor.current = latest.id;
+    openMut.mutate({ reportId: latest.id, source: "auto" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listQ.data, selectedId]);
 
   const finaliseFn = useServerFn(finaliseMonthlyReport);
   const finaliseMut = useMutation({
@@ -160,6 +197,29 @@ function ReportsPage() {
         <p className="mt-1 text-sm text-muted-foreground">
           {client?.name ?? "Client"} · a report is a point-in-time snapshot; the dashboard stays live.
         </p>
+
+        {/* Preview — sits directly under the page title so the period, version and
+            status in its header are visible without scrolling. */}
+        {openMut.isPending && !preview ? (
+          <p className="mt-6 flex items-center text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the most recent report…
+          </p>
+        ) : preview ? (
+          <section className="mt-6">
+            <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
+              {preview.source === "generated"
+                ? "Preview of the draft just generated"
+                : preview.source === "auto"
+                  ? "Showing the most recent report"
+                  : "Stored report (as generated)"}
+            </p>
+            <MonthlyReportPreview
+              payload={preview.payload}
+              status={preview.status}
+              version={preview.version}
+            />
+          </section>
+        ) : null}
 
         {/* Generate */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-6">
@@ -219,19 +279,6 @@ function ReportsPage() {
           <NotesCard clientId={clientId} canEdit={isAdvisor} />
         </div>
 
-        {/* Preview */}
-        {preview && (
-          <section className="mt-8">
-            <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
-              {preview.stored ? "Stored report (as generated)" : "Preview of the draft just generated"}
-            </p>
-            <MonthlyReportPreview
-              payload={preview.payload}
-              status={preview.status}
-              version={preview.version}
-            />
-          </section>
-        )}
 
         {/* Past reports */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-6">
@@ -260,7 +307,15 @@ function ReportsPage() {
                 </thead>
                 <tbody>
                   {listQ.data.reports.map((r: any) => (
-                    <tr key={r.id} className="border-b border-border/40">
+                    <tr
+                      key={r.id}
+                      className={
+                        r.id === selectedId
+                          ? "border-b border-border/40 bg-primary/10"
+                          : "border-b border-border/40"
+                      }
+                      aria-selected={r.id === selectedId}
+                    >
                       <td className="py-2 pr-3">{fmtDate(r.period_end)}</td>
                       <td className="py-2 pr-3 tabular-nums">v{r.version}</td>
                       <td className="py-2 pr-3 capitalize">{r.status}</td>
@@ -272,7 +327,7 @@ function ReportsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => openMut.mutate(r.id)}
+                            onClick={() => openMut.mutate({ reportId: r.id, source: "opened" })}
                             disabled={openMut.isPending}
                           >
                             <FileText className="mr-1 h-3 w-3" /> Open
