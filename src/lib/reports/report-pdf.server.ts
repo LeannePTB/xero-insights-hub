@@ -173,8 +173,9 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   };
 
   /**
-   * Drawn as the FIRST thing on a page, before any content, so it genuinely
-   * sits behind the tables rather than obscuring them.
+   * Drawn once per page in the final decoration pass, at low opacity so the
+   * figures underneath stay readable. Table fills are opaque, so drawing it
+   * first would hide it on any page a table covers.
    */
   const watermarked = new Set<number>();
   const drawWatermark = () => {
@@ -184,7 +185,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     watermarked.add(pageNo);
     doc.saveGraphicsState();
     // @ts-expect-error GState is provided by jsPDF at runtime.
-    doc.setGState(new doc.GState({ opacity: 0.18 }));
+    doc.setGState(new doc.GState({ opacity: 0.1 }));
     doc.setFont("helvetica", "bold");
     doc.setFontSize(120);
     doc.setTextColor(BRAND.watermark[0], BRAND.watermark[1], BRAND.watermark[2]);
@@ -198,11 +199,9 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   // at the end, so it can never be drawn twice — the previous version called
   // drawFooter from newPage AND from every table's didDrawPage.
   let y = M.top;
-  drawWatermark();
 
   const newPage = () => {
     doc.addPage();
-    drawWatermark();
     y = M.top;
   };
 
@@ -304,11 +303,6 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
           doc.line(data.cell.x, data.cell.y, data.cell.x + data.cell.width, data.cell.y);
           doc.setLineWidth(0.4);
         }
-      },
-      willDrawPage: () => {
-        // autoTable may add a page itself; the watermark must go down before
-        // any content lands on it. Page chrome is applied later, once.
-        drawWatermark();
       },
     });
 
