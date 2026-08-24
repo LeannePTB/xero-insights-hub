@@ -251,15 +251,39 @@ function ReportsPage() {
                       <td className="py-2 pr-3">{r.complete ? "Yes" : "No"}</td>
                       <td className="py-2 pr-3">{r.generated_by_name}</td>
                       <td className="py-2 pr-3">{fmtDate(r.generated_at)}</td>
-                      <td className="py-2 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openMut.mutate(r.id)}
-                          disabled={openMut.isPending}
-                        >
-                          <FileText className="mr-1 h-3 w-3" /> Open
-                        </Button>
+                      <td className="py-2">
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openMut.mutate(r.id)}
+                            disabled={openMut.isPending}
+                          >
+                            <FileText className="mr-1 h-3 w-3" /> Open
+                          </Button>
+                          {r.status === "draft" ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => finaliseMut.mutate(r.id)}
+                              disabled={finaliseMut.isPending}
+                            >
+                              <CheckCircle2 className="mr-1 h-3 w-3" /> Finalise
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => setToSend(r)}>
+                              <Mail className="mr-1 h-3 w-3" /> Email
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setToDelete(r)}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" /> Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
