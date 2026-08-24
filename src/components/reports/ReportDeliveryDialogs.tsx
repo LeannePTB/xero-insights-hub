@@ -16,10 +16,13 @@ import {
 } from "@/components/ui/dialog";
 import {
   deleteMonthlyReport,
+  finaliseMonthlyReport,
   listMonthlyReportRecipients,
   revokeMonthlyReportRecipient,
   sendMonthlyReport,
 } from "@/lib/reports/report-delivery.functions";
+import { getStoredMonthlyReport } from "@/lib/reports/monthly-report.functions";
+import { MONTHLY_REPORT_PAYLOAD_VERSION } from "@/lib/reports/monthly-report";
 
 export type ReportRow = {
   id: string;
@@ -27,7 +30,147 @@ export type ReportRow = {
   version: number;
   period_end: string;
   title?: string | null;
+  complete?: boolean | null;
+  payload_version?: number | null;
 };
+
+/** A payload written by superseded logic — its figures have since been corrected. */
+export function isStalePayload(report: { payload_version?: number | null } | null | undefined) {
+  if (!report) return false;
+  return Number(report.payload_version ?? 0) < MONTHLY_REPORT_PAYLOAD_VERSION;
+}
+
+function money(n: number | null | undefined, currency: string) {
+  if (n == null || !Number.isFinite(n)) return "—";
+  const s = new Intl.NumberFormat("en-AU", {
+    style: "currency",
+    currency: currency || "AUD",
+    minimumFractionDigits: 2,
+  }).format(Math.abs(n));
+  return n < 0 ? `(${s})` : s;
+}
+
+/**
+ * Finalising freezes both the figures and the PDF permanently, so it is a
+ * deliberate act: the headline figures are shown one last time, and a stale or
+ * incomplete payload is refused here as well as in the server function.
+ */
+export function FinaliseReportDialog({
+  report,
+  clientId,
+  onClose,
+  onRegenerate,
+}: {
+  report: ReportRow | null;
+  clientId: string;
+  onClose: () => void;
+  onRegenerate?: (report: ReportRow) => void;
+}) {
+  const qc = useQueryClient();
+  const finaliseFn = useServerFn(finaliseMonthlyReport);
+  const openFn = useServerFn(getStoredMonthlyReport);
+  const storedQ = useQuery({
+    queryKey: ["stored-report", report?.id],
+    queryFn: () => openFn({ data: { reportId: report!.id } }),
+    enabled: !!report,
+  });
+  const payload: any = (storedQ.data as any)?.report?.payload ?? null;
+  const totals = payload?.profitAndLoss?.totals ?? null;
+  const currency = payload?.meta?.currency ?? "AUD";
+  const stale = isStalePayload(report);
+  const failed: any[] = Array.isArray(payload?.failedSections) ? payload.failedSections : [];
+  const incomplete = report?.complete === false || failed.length > 0;
+  const blocked = stale || incomplete;
+
+  const mut = useMutation({
+    mutationFn: () => finaliseFn({ data: { reportId: report!.id } }),
+    onSuccess: () => {
+      toast.success("Report finalised. It can now be emailed.");
+      qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
+      onClose();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Dialog open={!!report} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Finalise this report?</DialogTitle>
+          <DialogDescription>
+            {report ? `Version ${report.version} · period ending ${report.period_end}. ` : ""}
+            The figures and the PDF are frozen permanently and can never be regenerated. A
+            correction means generating a new version.
+          </DialogDescription>
+        </DialogHeader>
+
+        {stale && (
+          <p className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            This report was calculated with an older version of the report logic (v
+            {report?.payload_version ?? 0} versus v{MONTHLY_REPORT_PAYLOAD_VERSION}). Regenerate it
+            before finalising.
+          </p>
+        )}
+        {incomplete && (
+          <p className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm">
+            This report is incomplete
+            {failed.length ? ` — ${failed.map((f) => f.section).join(", ")} could not be calculated` : ""}
+            . A report with a failed section must not become the permanent record.
+          </p>
+        )}
+
+        <div className="rounded-lg border border-border p-3 text-sm">
+          <p className="mb-2 text-xs uppercase tracking-wider text-muted-foreground">
+            Check these figures once more
+          </p>
+          {storedQ.isLoading ? (
+            <p className="flex items-center text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the stored figures…
+            </p>
+          ) : totals ? (
+            <dl className="space-y-1">
+              <div className="flex justify-between">
+                <dt>Revenue</dt>
+                <dd className="tabular-nums">{money(totals.revenue, currency)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>Gross profit</dt>
+                <dd className="tabular-nums">{money(totals.grossProfit, currency)}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt>Net profit</dt>
+                <dd className="tabular-nums">{money(totals.netProfit, currency)}</dd>
+              </div>
+            </dl>
+          ) : (
+            <p className="text-muted-foreground">No Profit and Loss figures stored on this report.</p>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          {blocked && onRegenerate && report && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                onRegenerate(report);
+                onClose();
+              }}
+            >
+              Regenerate this period
+            </Button>
+          )}
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending || blocked}>
+            {mut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+            Finalise permanently
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function fmt(iso: string | null) {
   if (!iso) return "—";
