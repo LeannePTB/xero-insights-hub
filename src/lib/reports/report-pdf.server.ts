@@ -58,11 +58,26 @@ function marker(arrow: string) {
 
 const INK = { text: [17, 24, 39], muted: [107, 114, 128], line: [226, 232, 240], bad: [185, 28, 28] };
 
+// Fixed Traction Advisory palette. These are the app's own theme tokens
+// converted to sRGB — --primary (#53318D), --lavender (#6F60AA) and
+// --accent (#C5AB71). Branding is never read from the organisation record.
+const BRAND = {
+  purple: [83, 49, 141], // --primary
+  lavender: [111, 96, 170], // --lavender
+  lavenderFill: [237, 234, 246], // light tint of --lavender, table header fill
+  band: [246, 245, 250], // very light row banding
+  gold: [197, 171, 113], // --accent, thin rules only — never text
+  watermark: [203, 200, 214],
+};
+
 const SPACING = {
   titleInner: 5, // extra breathing room between the title-block lines
-  beforeSection: 18, // generous gap before every section heading
-  afterSectionHeading: 8, // smaller gap between a heading and its content
+  // Headings now carry their own hierarchy (colour, size, gold rule), so the
+  // pre-heading gap no longer has to do that work on its own.
+  beforeSection: 14,
+  afterSectionHeading: 9, // heading rule to first row of content
 };
+
 
 type LogoImage = { data: Uint8Array; format: "PNG" | "JPEG"; w: number; h: number };
 
