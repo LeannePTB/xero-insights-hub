@@ -638,19 +638,52 @@ export async function computeMonthlyReport(opts: {
     return p;
   };
 
+  // The chart of accounts, read once per generation. Xero's P&L sections come
+  // from each account's Report Code, but Xero's own layout groups by the
+  // account's Type — so we need the Types to reproduce the client's report.
+  let accountsPromise: Promise<pnlGrouping.XeroAccountRef[]> | null = null;
+  const fetchAccounts = () => {
+    if (!accountsPromise) {
+      accountsPromise = (async () => {
+        const res = await xeroGet<{ Accounts?: any[] }>(conn, "Accounts", {
+          where: 'Class=="REVENUE"||Class=="EXPENSE"',
+        });
+        return (res.Accounts ?? []).map((a: any) => ({
+          accountId: a.AccountID ?? null,
+          code: a.Code ?? null,
+          name: a.Name ?? "",
+          type: a.Type ?? null,
+        }));
+      })();
+    }
+    return accountsPromise;
+  };
+
+  let unmatchedAccounts: string[] = [];
+
   try {
     // SEQUENTIAL, deliberately. Xero allows only a handful of concurrent
     // requests per tenant; firing these together tripped the limit and failed
     // the whole report. A few extra seconds here costs nothing.
+    const accounts = await fetchAccounts();
     const monthParsed = await fetchColumn(monthStart, periodEnd);
     const priorParsedCol = await fetchColumn(priorMonthStart, priorMonthEnd);
     const fyParsed = await fetchColumn(fyStart, periodEnd);
 
-    parsed = mergeParsedPnl([
+    const merged = mergeParsedPnl([
       { label: monthLabel(periodEnd), monthEnd: periodEnd, parsed: monthParsed },
       { label: monthLabel(priorMonthEnd), monthEnd: priorMonthEnd, parsed: priorParsedCol },
       { label: `${fyLabelFor(fyStart)} to date`, monthEnd: periodEnd, parsed: fyParsed },
     ]);
+    const regrouped = regroupByAccountType(merged, accounts);
+    parsed = regrouped.parsed;
+    unmatchedAccounts = regrouped.unmatched;
+    if (unmatchedAccounts.length) {
+      failed.push({
+        section: "profit_and_loss",
+        message: `These Profit and Loss lines could not be matched to a Xero account, so they stayed in the section Xero returned: ${Array.from(new Set(unmatchedAccounts)).join(", ")}.`,
+      });
+    }
   } catch (e: any) {
     const message = e?.message ?? "Profit and Loss could not be read from Xero.";
     failed.push({ section: "profit_and_loss", message });
