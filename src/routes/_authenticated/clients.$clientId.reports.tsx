@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { getClient } from "@/lib/clients.functions";
+import { getMyContext } from "@/lib/roles.functions";
 import { periodOptions } from "@/components/dashboard/recon-periods";
 import {
   generateMonthlyReport,
@@ -14,6 +15,7 @@ import {
   listMonthlyReports,
 } from "@/lib/reports/monthly-report.functions";
 import { MonthlyReportPreview } from "@/components/reports/MonthlyReportPreview";
+import { NotesCard } from "@/components/dashboard/NotesCard";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION } from "@/lib/reports/monthly-report";
 
@@ -51,6 +53,7 @@ function ReportsPage() {
   const { clientId } = Route.useParams();
   const qc = useQueryClient();
   const fetchClient = useServerFn(getClient);
+  const fetchCtx = useServerFn(getMyContext);
   const listFn = useServerFn(listMonthlyReports);
   const generateFn = useServerFn(generateMonthlyReport);
   const openFn = useServerFn(getStoredMonthlyReport);
@@ -62,6 +65,7 @@ function ReportsPage() {
     { payload: MonthlyReportPayload; status: string; version: number; stored: boolean } | null
   >(null);
 
+  const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const clientQ = useQuery({
     queryKey: ["client", clientId],
     queryFn: () => fetchClient({ data: { clientId } }),
@@ -70,6 +74,8 @@ function ReportsPage() {
     queryKey: ["monthly-reports", clientId],
     queryFn: () => listFn({ data: { clientId } }),
   });
+
+  const isAdvisor = ctxQ.data?.isAdvisor ?? false;
 
   const client = clientQ.data?.client as any;
   const orgs: { tenantId: string; tenantName: string }[] = (client?.client_xero_orgs ?? [])
@@ -171,6 +177,25 @@ function ReportsPage() {
           </p>
         </section>
 
+        {/* Notes */}
+        <div className="mt-6">
+          <NotesCard clientId={clientId} canEdit={isAdvisor} />
+        </div>
+
+        {/* Preview */}
+        {preview && (
+          <section className="mt-8">
+            <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
+              {preview.stored ? "Stored report (as generated)" : "Preview of the draft just generated"}
+            </p>
+            <MonthlyReportPreview
+              payload={preview.payload}
+              status={preview.status}
+              version={preview.version}
+            />
+          </section>
+        )}
+
         {/* Past reports */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-6">
           <h2 className="font-display text-lg font-semibold">Past reports</h2>
@@ -222,20 +247,6 @@ function ReportsPage() {
             </div>
           )}
         </section>
-
-        {/* Preview */}
-        {preview && (
-          <section className="mt-8">
-            <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
-              {preview.stored ? "Stored report (as generated)" : "Preview of the draft just generated"}
-            </p>
-            <MonthlyReportPreview
-              payload={preview.payload}
-              status={preview.status}
-              version={preview.version}
-            />
-          </section>
-        )}
       </main>
     </div>
   );
