@@ -95,58 +95,10 @@ function fmtDate(iso: string | null | undefined) {
   }
 }
 
-/** Intrinsic size of a PNG/JPEG so the logo keeps its aspect ratio. */
-function imageSize(bytes: Uint8Array): { format: "PNG" | "JPEG"; w: number; h: number } | null {
-  if (bytes.length > 8 && bytes[0] === 0x89 && bytes[1] === 0x50) {
-    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    return { format: "PNG", w: dv.getUint32(16), h: dv.getUint32(20) };
-  }
-  if (bytes.length > 4 && bytes[0] === 0xff && bytes[1] === 0xd8) {
-    let i = 2;
-    const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    while (i + 9 < bytes.length) {
-      if (bytes[i] !== 0xff) {
-        i++;
-        continue;
-      }
-      const marker = bytes[i + 1];
-      const len = dv.getUint16(i + 2);
-      if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8 && marker !== 0xcc) {
-        return { format: "JPEG", h: dv.getUint16(i + 5), w: dv.getUint16(i + 7) };
-      }
-      i += 2 + len;
-    }
-    return { format: "JPEG", w: 200, h: 60 };
-  }
-  return null;
-}
+// Branding is fixed: the Traction Advisory wordmark, in Positive Traction's
+// colours, on every report. Organisation and client logos are deliberately not
+// drawn — this is a single-brand document, not a white-labelled one.
 
-async function loadLogo(path: string | null | undefined): Promise<LogoImage | null> {
-  if (!path) return null;
-  try {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await (supabaseAdmin as any).storage.from(BUCKET).download(path);
-    if (error || !data) return null;
-    const bytes = new Uint8Array(await data.arrayBuffer());
-    const size = imageSize(bytes);
-    if (!size) return null;
-    return { data: bytes, format: size.format, w: size.w, h: size.h };
-  } catch {
-    return null;
-  }
-}
-
-function drawLogo(doc: jsPDF, logo: LogoImage, x: number, y: number, maxW: number, maxH: number) {
-  const scale = Math.min(maxW / logo.w, maxH / logo.h);
-  const w = logo.w * scale;
-  const h = logo.h * scale;
-  try {
-    doc.addImage(logo.data, logo.format, x, y, w, h);
-  } catch {
-    /* a broken logo must never block the report */
-  }
-  return { w, h };
-}
 
 export type RenderInput = {
   payload: MonthlyReportPayload;
