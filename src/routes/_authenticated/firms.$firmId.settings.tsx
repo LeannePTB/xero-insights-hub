@@ -9,6 +9,7 @@ import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { OrgDefaultCardsPanel } from "@/components/admin/OrgDefaultCardsPanel";
+import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
 
 import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 
@@ -292,6 +293,15 @@ function FirmSettingsPage() {
 
       {/* Xero organisations */}
       <div className="mt-6">
+        <section className="rounded-2xl border border-border bg-card p-6">
+          <LogoUploadCard
+            scope="organisation"
+            id={firmId}
+            title="Report branding"
+            description="Organisation logo used in the header of every monthly management report PDF. PNG or JPEG, up to 2 MB. Reports still generate without a logo."
+          />
+        </section>
+
         <FirmXeroFilesCard firmId={firmId} />
       </div>
 

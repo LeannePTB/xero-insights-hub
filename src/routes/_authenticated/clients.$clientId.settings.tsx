@@ -63,6 +63,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
+import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
 import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
 import {
   ArrowLeft,
@@ -461,6 +462,15 @@ function ClientSettings() {
           }
         >
           <ClientDashboardTierControl clientId={clientId} />
+        </Section>
+
+        {/* Report branding */}
+        <Section title="Report branding" collapsible>
+          <LogoUploadCard
+            scope="client"
+            id={clientId}
+            description="Client logo shown alongside the organisation logo in the monthly management report PDF. PNG or JPEG, up to 2 MB. Reports still generate without a logo."
+          />
         </Section>
 
         {/* Report basis */}
