@@ -307,7 +307,15 @@ function ReportsPage() {
                 </thead>
                 <tbody>
                   {listQ.data.reports.map((r: any) => (
-                    <tr key={r.id} className="border-b border-border/40">
+                    <tr
+                      key={r.id}
+                      className={
+                        r.id === selectedId
+                          ? "border-b border-border/40 bg-primary/10"
+                          : "border-b border-border/40"
+                      }
+                      aria-selected={r.id === selectedId}
+                    >
                       <td className="py-2 pr-3">{fmtDate(r.period_end)}</td>
                       <td className="py-2 pr-3 tabular-nums">v{r.version}</td>
                       <td className="py-2 pr-3 capitalize">{r.status}</td>
