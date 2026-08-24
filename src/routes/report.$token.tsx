@@ -124,9 +124,9 @@ function ReportLinkPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-8">
-        <h1 className="font-display text-xl font-semibold">{linkQ.data.reportTitle}</h1>
+        <h1 className="font-display text-xl font-semibold">{link.reportTitle}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          This link is personal. Confirm the email address it was sent to ({linkQ.data.emailHint})
+          This link is personal. Confirm the email address it was sent to ({link.emailHint})
           to open the report.
         </p>
         <form
