@@ -260,10 +260,14 @@ export function buildPnlSection(
   labels: { month: string; priorMonth: string; fy: string },
 ): PnlSectionPayload {
   const lines: PnlLine[] = [];
+  const fySum = (values: number[]) => fyIdxs.reduce((sum, i) => sum + (values[i] ?? 0), 0);
   for (const s of parsed.sections) {
     for (const r of s.rows) {
       const m = r.values[monthIdx] ?? 0;
       const p = priorIdx >= 0 ? (r.values[priorIdx] ?? 0) : 0;
+      const fy = fySum(r.values);
+      // Xero omits an account that is nil in every column; so do we.
+      if (m === 0 && p === 0 && fy === 0) continue;
       lines.push({
         name: r.name,
         section: s.title,
@@ -272,22 +276,27 @@ export function buildPnlSection(
         priorMonth: p,
         variance: m - p,
         variancePct: variancePct(m, p),
-        fyYtd: fyIdxs.reduce((sum, i) => sum + (r.values[i] ?? 0), 0),
+        fyYtd: fy,
       });
     }
+    // Only sections Xero actually subtotals get a subtotal row, and it carries
+    // Xero's own wording ("Total Cost of Sales"). An unlabelled section — the
+    // one holding Gross Profit / Net Profit — never produced "Total Unnamed".
+    if (!s.totalLabel) continue;
     const tm = s.totals[monthIdx] ?? 0;
     const tp = priorIdx >= 0 ? (s.totals[priorIdx] ?? 0) : 0;
     lines.push({
-      name: `Total ${s.title}`,
+      name: s.totalLabel,
       section: s.title,
       isTotal: true,
       month: tm,
       priorMonth: tp,
       variance: tm - tp,
       variancePct: variancePct(tm, tp),
-      fyYtd: fyIdxs.reduce((sum, i) => sum + (s.totals[i] ?? 0), 0),
+      fyYtd: fySum(s.totals),
     });
   }
+
   const totals = totalsForPeriod(parsed, monthIdx);
   return {
     monthLabel: labels.month,
