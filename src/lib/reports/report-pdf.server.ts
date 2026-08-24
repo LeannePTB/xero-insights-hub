@@ -519,7 +519,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   ageing(payload.receivables, "Receivables detail", "Customer", "receivables");
   ageing(payload.payables, "Payables detail", "Supplier", "payables");
 
-  // 7. Disclaimer — fine print, last, no forced page break -------------------
+  // 5. Disclaimer — fine print, last, no forced page break -------------------
   y += 8;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
