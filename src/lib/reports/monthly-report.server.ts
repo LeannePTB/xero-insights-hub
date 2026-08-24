@@ -387,7 +387,8 @@ export function buildAgeing(entries: AsAtEntry[], periodEnd: string): AgeingDeta
     totals,
     total,
     caveat:
-      "Reconstructed as at the period end: invoices dated on or before it, less payments and credit allocations dated on or before it. Payments made after the period end are excluded, so this ties to the balance sheet at that date.",
+      "Reconstructed as at the period end: invoices dated on or before it, less payments and credit allocations dated on or before it. Payments made after the period end are excluded, so this ties to the balance sheet at that date. Documents are aged on the date they were raised, matching Xero's aged reports; a document with no date is shown as current.",
+
   };
 }
 
