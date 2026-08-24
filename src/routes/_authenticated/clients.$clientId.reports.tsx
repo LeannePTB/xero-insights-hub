@@ -69,8 +69,15 @@ function ReportsPage() {
   const [periodEnd, setPeriodEnd] = useState(periods[1]?.value ?? periods[0]?.value ?? "");
   const [tenantId, setTenantId] = useState<string>("");
   const [preview, setPreview] = useState<
-    { payload: MonthlyReportPayload; status: string; version: number; stored: boolean } | null
+    {
+      payload: MonthlyReportPayload;
+      status: string;
+      version: number;
+      /** How the preview got here — drives the label above it. */
+      source: "generated" | "opened" | "auto";
+    } | null
   >(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const clientQ = useQuery({
