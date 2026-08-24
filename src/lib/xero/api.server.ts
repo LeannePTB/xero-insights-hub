@@ -295,11 +295,31 @@ export async function missingScopesForConnection(connectionId: string): Promise<
   }
 }
 
+/** Shared wording so callers (and the UI) can recognise a rate-limit failure. */
+export const XERO_RATE_LIMIT_MESSAGE =
+  "Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.";
+
+export function isXeroRateLimitMessage(message: string | null | undefined): boolean {
+  return !!message && message.includes("Xero has paused requests for this organisation");
+}
+
+/**
+ * Wait for a 429. Honours Xero's `Retry-After` header when present; otherwise
+ * backs off exponentially (2s, 4s, 8s). Capped so a report generation cannot
+ * hang indefinitely.
+ */
+async function waitForRateLimit(res: Response, attempt: number) {
+  const header = parseInt(res.headers.get("retry-after") || "", 10);
+  const seconds = Number.isFinite(header) && header > 0 ? header : Math.pow(2, attempt);
+  await new Promise((r) => setTimeout(r, Math.min(seconds, 60) * 1000));
+}
+
 export async function xeroGet<T = unknown>(
   conn: Connection,
   path: string,
   params: Record<string, string | undefined> = {},
   retries = 1,
+  rateRetries = 3,
 ): Promise<T> {
   // Don't fire a request we know Xero will reject for a missing scope — that
   // produced hundreds of predictable 401s and junk telemetry rows.
@@ -329,20 +349,20 @@ export async function xeroGet<T = unknown>(
       Accept: "application/json",
     },
   });
-  if (res.status === 429 && retries > 0) {
-    const retryAfter = Math.min(parseInt(res.headers.get("retry-after") || "5", 10), 10);
-    await new Promise((r) => setTimeout(r, retryAfter * 1000));
-    return xeroGet<T>(conn, path, params, retries - 1);
+  // Rate limiting is transient — retry it on its own budget, so it never eats
+  // the single token-refresh retry (and vice versa).
+  if (res.status === 429 && rateRetries > 0) {
+    await waitForRateLimit(res, 4 - rateRetries);
+    return xeroGet<T>(conn, path, params, retries, rateRetries - 1);
   }
   if (res.status === 429) {
-    throw new Error(
-      "Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.",
-    );
+    throw new Error(XERO_RATE_LIMIT_MESSAGE);
   }
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
-    return xeroGet<T>(refreshed, path, params, retries - 1);
+    return xeroGet<T>(refreshed, path, params, retries - 1, rateRetries);
   }
+
   if (!res.ok) {
     const body = await res.text();
     if (res.status === 401 || res.status === 403) {

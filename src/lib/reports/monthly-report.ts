@@ -124,6 +124,18 @@ export function renderableFailedSections(payload: { failedSections: FailedSectio
   return payload.failedSections.filter((f) => f.section in SECTION_LABELS);
 }
 
+/**
+ * True when a generation failed because Xero throttled us, rather than because
+ * of missing data or permissions. Worth telling apart: the remedy is simply to
+ * wait a moment and generate again.
+ */
+export function wasRateLimited(payload: { failedSections: FailedSection[] } | null | undefined) {
+  return (payload?.failedSections ?? []).some((f) =>
+    /Xero has paused requests for this organisation/i.test(f.message ?? ""),
+  );
+}
+
+
 export const SECTION_LABELS: Record<string, string> = {
   key_figures: "Key figures",
   profit_and_loss: "Profit and Loss",
