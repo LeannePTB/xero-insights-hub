@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
 import { getClient } from "@/lib/clients.functions";
+import { getMyContext } from "@/lib/roles.functions";
 import { periodOptions } from "@/components/dashboard/recon-periods";
 import {
   generateMonthlyReport,
@@ -14,6 +15,7 @@ import {
   listMonthlyReports,
 } from "@/lib/reports/monthly-report.functions";
 import { MonthlyReportPreview } from "@/components/reports/MonthlyReportPreview";
+import { NotesCard } from "@/components/dashboard/NotesCard";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION } from "@/lib/reports/monthly-report";
 
