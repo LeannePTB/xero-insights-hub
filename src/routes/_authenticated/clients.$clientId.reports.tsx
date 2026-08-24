@@ -103,7 +103,8 @@ function ReportsPage() {
     mutationFn: () =>
       generateFn({ data: { clientId, periodEnd, tenantId: tenantId || null } }),
     onSuccess: (res: any) => {
-      setPreview({ payload: res.payload, status: res.status, version: res.version, stored: false });
+      setPreview({ payload: res.payload, status: res.status, version: res.version, source: "generated" });
+      setSelectedId(res.id ?? null);
       qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
       if (res.payload?.complete) toast.success(`Draft version ${res.version} generated`);
       else toast.warning("Generated, but some sections could not be computed");
@@ -112,17 +113,46 @@ function ReportsPage() {
   });
 
   const openMut = useMutation({
-    mutationFn: (reportId: string) => openFn({ data: { reportId } }),
-    onSuccess: (res: any) => {
+    mutationFn: (vars: { reportId: string; source: "opened" | "auto" }) =>
+      openFn({ data: { reportId: vars.reportId } }),
+    onSuccess: (res: any, vars) => {
       setPreview({
         payload: res.report.payload,
         status: res.report.status,
         version: res.report.version,
-        stored: true,
+        source: vars.source,
       });
+      setSelectedId(res.report.id);
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: any, vars) => {
+      // A failed auto-load must fall back to the empty state, never an error banner.
+      if (vars.source === "opened") toast.error(e.message);
+    },
   });
+
+  const reports: any[] = listQ.data?.reports ?? [];
+  // Auto-load the most recent stored report (period_end desc, version desc — the
+  // order the list already comes back in). Never recomputes; reads the snapshot only.
+  const autoLoadedFor = useRef<string | null>(null);
+  useEffect(() => {
+    if (!listQ.data) return;
+    const stillListed = selectedId && reports.some((r) => r.id === selectedId);
+    if (stillListed) return;
+    if (selectedId && !stillListed) {
+      // The shown report was deleted — fall back to the next most recent.
+      setSelectedId(null);
+      setPreview(null);
+    }
+    const latest = reports[0];
+    if (!latest) {
+      autoLoadedFor.current = null;
+      return;
+    }
+    if (autoLoadedFor.current === latest.id) return;
+    autoLoadedFor.current = latest.id;
+    openMut.mutate({ reportId: latest.id, source: "auto" });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listQ.data, selectedId]);
 
   const finaliseFn = useServerFn(finaliseMonthlyReport);
   const finaliseMut = useMutation({
