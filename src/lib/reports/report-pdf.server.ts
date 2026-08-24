@@ -173,7 +173,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     doc.setFontSize(7.5);
     doc.setTextColor(INK.muted[0], INK.muted[1], INK.muted[2]);
     doc.text(
-      `${m.clientName} · ${m.monthLabel} · generated ${fmtDate(m.generatedAt)} · version ${version}`,
+      `${m.clientName} · ${m.monthLabel} · generated ${fmtDate(m.generatedAt)} by Traction Advisory · Version ${version}`,
       M.left,
       PAGE.h - 28,
     );
