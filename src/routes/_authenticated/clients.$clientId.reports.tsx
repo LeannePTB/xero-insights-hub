@@ -25,7 +25,7 @@ import {
 } from "@/components/reports/ReportDeliveryDialogs";
 import { getMonthlyReportPdfUrl } from "@/lib/reports/report-pdf.functions";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
-import { MONTHLY_REPORT_PAYLOAD_VERSION } from "@/lib/reports/monthly-report";
+import { MONTHLY_REPORT_PAYLOAD_VERSION, wasRateLimited } from "@/lib/reports/monthly-report";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/reports")({
   head: () => ({
