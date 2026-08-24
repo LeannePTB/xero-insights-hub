@@ -5,10 +5,9 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, Layers, Loader2, Settings } from "lucide-react";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
-import { CompanyConsolidationsCard } from "@/components/admin/CompanyConsolidationsCard";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 import { firmPlanView } from "@/lib/firmPlans";
 import { useFirmWidgets } from "@/hooks/useFirmWidget";
@@ -136,11 +135,20 @@ function FirmPage() {
               Clients for this organisation. Add or remove them here.
             </p>
           </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link to="/firms/$firmId/settings" params={{ firmId }}>
-              <Settings className="mr-1 h-4 w-4" /> Settings
-            </Link>
-          </Button>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {canConsolidate && (
+              <Button variant="outline" size="sm" asChild>
+                <Link to="/firms/$firmId/consolidations" params={{ firmId }}>
+                  <Layers className="mr-1 h-4 w-4" /> Company Consolidations
+                </Link>
+              </Button>
+            )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/firms/$firmId/settings" params={{ firmId }}>
+                <Settings className="mr-1 h-4 w-4" /> Settings
+              </Link>
+            </Button>
+          </div>
         </div>
 
 
@@ -167,12 +175,6 @@ function FirmPage() {
 
 
 
-
-        {canConsolidate && (
-          <div className="mt-8">
-            <CompanyConsolidationsCard firmId={firmId} />
-          </div>
-        )}
 
         <div className="mt-8">
           <FirmClientsSection

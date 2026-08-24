@@ -42,6 +42,7 @@ import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/x
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
 import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
 import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
+import { Route as AuthenticatedFirmsFirmIdConsolidationsRouteImport } from './routes/_authenticated/firms.$firmId.consolidations'
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
 import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
 import { Route as AuthenticatedClientsClientIdReportsRouteImport } from './routes/_authenticated/clients.$clientId.reports'
@@ -234,6 +235,12 @@ const AuthenticatedFirmsFirmIdLoansRoute =
     path: '/loans',
     getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
   } as any)
+const AuthenticatedFirmsFirmIdConsolidationsRoute =
+  AuthenticatedFirmsFirmIdConsolidationsRouteImport.update({
+    id: '/consolidations',
+    path: '/consolidations',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
 const AuthenticatedClientsClientIdUnreconciledRoute =
   AuthenticatedClientsClientIdUnreconciledRouteImport.update({
     id: '/clients/$clientId/unreconciled',
@@ -348,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -394,6 +402,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -443,6 +452,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
+  '/_authenticated/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/_authenticated/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -493,6 +503,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/reports'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
+    | '/firms/$firmId/consolidations'
     | '/firms/$firmId/loans'
     | '/firms/$firmId/settings'
     | '/api/public/stripe/webhook'
@@ -539,6 +550,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/reports'
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
+    | '/firms/$firmId/consolidations'
     | '/firms/$firmId/settings'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
@@ -587,6 +599,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/reports'
     | '/_authenticated/clients/$clientId/settings'
     | '/_authenticated/clients/$clientId/unreconciled'
+    | '/_authenticated/firms/$firmId/consolidations'
     | '/_authenticated/firms/$firmId/loans'
     | '/_authenticated/firms/$firmId/settings'
     | '/api/public/stripe/webhook'
@@ -861,6 +874,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdRoute
     }
+    '/_authenticated/firms/$firmId/consolidations': {
+      id: '/_authenticated/firms/$firmId/consolidations'
+      path: '/consolidations'
+      fullPath: '/firms/$firmId/consolidations'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdConsolidationsRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
     '/_authenticated/clients/$clientId/unreconciled': {
       id: '/_authenticated/clients/$clientId/unreconciled'
       path: '/clients/$clientId/unreconciled'
@@ -1001,6 +1021,7 @@ const AuthenticatedFirmsFirmIdLoansRouteWithChildren =
   )
 
 interface AuthenticatedFirmsFirmIdRouteChildren {
+  AuthenticatedFirmsFirmIdConsolidationsRoute: typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   AuthenticatedFirmsFirmIdLoansRoute: typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   AuthenticatedFirmsFirmIdSettingsRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
   AuthenticatedFirmsFirmIdIndexRoute: typeof AuthenticatedFirmsFirmIdIndexRoute
@@ -1009,6 +1030,8 @@ interface AuthenticatedFirmsFirmIdRouteChildren {
 
 const AuthenticatedFirmsFirmIdRouteChildren: AuthenticatedFirmsFirmIdRouteChildren =
   {
+    AuthenticatedFirmsFirmIdConsolidationsRoute:
+      AuthenticatedFirmsFirmIdConsolidationsRoute,
     AuthenticatedFirmsFirmIdLoansRoute:
       AuthenticatedFirmsFirmIdLoansRouteWithChildren,
     AuthenticatedFirmsFirmIdSettingsRoute:
