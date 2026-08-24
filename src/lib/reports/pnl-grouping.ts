@@ -36,7 +36,7 @@ export function sectionForAccountType(
     case "OTHERINCOME":
       return { title: SECTION_OTHER_INCOME, kind: "other-income" };
     case "DIRECTCOSTS":
-಼      return { title: SECTION_COST_OF_SALES, kind: "cost-of-sales" };
+return { title: SECTION_COST_OF_SALES, kind: "cost-of-sales" };
     case "EXPENSE":
     case "OVERHEADS":
     case "DEPRECIATION":
