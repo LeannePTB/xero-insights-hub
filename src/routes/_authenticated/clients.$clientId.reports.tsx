@@ -292,6 +292,9 @@ function ReportsPage() {
             </div>
           )}
         </section>
+
+        <DeleteReportDialog report={toDelete} clientId={clientId} onClose={() => setToDelete(null)} />
+        <SendReportDialog report={toSend} clientId={clientId} onClose={() => setToSend(null)} />
       </main>
     </div>
   );
