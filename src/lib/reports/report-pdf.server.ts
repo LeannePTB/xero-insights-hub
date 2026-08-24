@@ -568,8 +568,14 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   y += 11 + SPACING.afterSectionHeading;
   paragraph(resolveDisclaimer(payload), { size: 7.5 });
 
-  drawFooter((doc as any).getCurrentPageInfo().pageNumber);
-  drawWatermark();
+  // Page chrome, applied exactly once per page now that the total is known.
+  const pageCount = (doc as any).getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    drawHeaderBand();
+    drawFooter(i, pageCount);
+  }
+
 
   return new Uint8Array(doc.output("arraybuffer") as ArrayBuffer);
 }
