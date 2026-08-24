@@ -35,6 +35,7 @@ import {
   type PnlSectionPayload,
   type ReportNote,
 } from "./monthly-report";
+import * as pnlGrouping from "./pnl-grouping";
 
 // ---------------------------------------------------------------------------
 // Xero report parsing (multi-period aware)
