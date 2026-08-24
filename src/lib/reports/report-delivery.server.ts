@@ -37,7 +37,9 @@ function isEmail(email: string): boolean {
 async function authoriseStaffForReport(supabase: any, userId: string, reportId: string) {
   const { data: report, error } = await supabase
     .from("client_reports")
-    .select("id, client_id, firm_id, period_end, version, status, title, sent_at, pdf_path")
+    .select(
+      "id, client_id, firm_id, period_end, version, status, title, sent_at, pdf_path, complete, payload_version, payload",
+    )
     .eq("id", reportId)
     .maybeSingle();
   if (error) throw new Error(error.message);
@@ -60,6 +62,9 @@ async function authoriseStaffForReport(supabase: any, userId: string, reportId: 
     title: string | null;
     sent_at: string | null;
     pdf_path: string | null;
+    complete: boolean | null;
+    payload_version: number | null;
+    payload: any;
   };
 }
 
@@ -81,6 +86,29 @@ export async function finaliseReport(supabase: any, userId: string, reportId: st
   const report = await authoriseStaffForReport(supabase, userId, reportId);
   if (report.status !== "draft") {
     throw new Error("Only a draft can be finalised.");
+  }
+
+  // Guard 1 — a payload computed by superseded logic is, by definition, figures
+  // we have since corrected. Finalising freezes them permanently, so refuse.
+  const { MONTHLY_REPORT_PAYLOAD_VERSION, SECTION_LABELS } = await import("./monthly-report");
+  const stored = Number(report.payload_version ?? report.payload?.payloadVersion ?? 0);
+  if (stored < MONTHLY_REPORT_PAYLOAD_VERSION) {
+    throw new Error(
+      `This report was calculated with an older version of the report logic (v${stored} versus v${MONTHLY_REPORT_PAYLOAD_VERSION}). Generate a new draft for this period before finalising, so the frozen figures reflect the current calculation.`,
+    );
+  }
+
+  // Guard 2 — a report with a failed section must never become the permanent record.
+  const failed: { section: string; message?: string }[] = Array.isArray(report.payload?.failedSections)
+    ? report.payload.failedSections
+    : [];
+  if (report.complete === false || failed.length > 0) {
+    const names = failed.map((f) => SECTION_LABELS[f.section] ?? f.section);
+    throw new Error(
+      names.length
+        ? `This report is incomplete — ${names.join(", ")} could not be calculated. Generate a new draft before finalising.`
+        : "This report is incomplete, so it cannot be finalised. Generate a new draft before finalising.",
+    );
   }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await (supabaseAdmin as any)
