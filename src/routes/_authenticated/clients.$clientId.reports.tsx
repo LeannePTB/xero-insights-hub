@@ -177,6 +177,25 @@ function ReportsPage() {
           </p>
         </section>
 
+        {/* Notes */}
+        <div className="mt-6">
+          <NotesCard clientId={clientId} canEdit={isAdvisor} />
+        </div>
+
+        {/* Preview */}
+        {preview && (
+          <section className="mt-8">
+            <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
+              {preview.stored ? "Stored report (as generated)" : "Preview of the draft just generated"}
+            </p>
+            <MonthlyReportPreview
+              payload={preview.payload}
+              status={preview.status}
+              version={preview.version}
+            />
+          </section>
+        )}
+
         {/* Past reports */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-6">
           <h2 className="font-display text-lg font-semibold">Past reports</h2>
@@ -228,20 +247,6 @@ function ReportsPage() {
             </div>
           )}
         </section>
-
-        {/* Preview */}
-        {preview && (
-          <section className="mt-8">
-            <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
-              {preview.stored ? "Stored report (as generated)" : "Preview of the draft just generated"}
-            </p>
-            <MonthlyReportPreview
-              payload={preview.payload}
-              status={preview.status}
-              version={preview.version}
-            />
-          </section>
-        )}
       </main>
     </div>
   );
