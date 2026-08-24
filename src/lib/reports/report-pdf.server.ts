@@ -40,6 +40,13 @@ import {
 // The PDF prints and may be photocopied, so a variance never relies on colour:
 // an ASCII direction marker ("^" / "v") sits alongside the figure. Triangles
 // are not in the standard PDF font encoding, hence the ASCII markers.
+/** ASCII stand-in for the on-screen arrow, so direction survives greyscale. */
+function marker(arrow: string) {
+  if (arrow === "\u25B2") return "^ ";
+  if (arrow === "\u25BC") return "v ";
+  return "";
+}
+
 const INK = { text: [17, 24, 39], muted: [107, 114, 128], line: [226, 232, 240], bad: [185, 28, 28] };
 
 type LogoImage = { data: Uint8Array; format: "PNG" | "JPEG"; w: number; h: number };
