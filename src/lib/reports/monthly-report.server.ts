@@ -49,10 +49,11 @@ type XeroRow = {
 };
 
 export type ParsedPeriod = { label: string; monthEnd: string; index: number };
+export type ParsedRow = { name: string; values: number[]; accountId?: string | null };
 export type ParsedSection = {
   title: string;
   kind: "revenue" | "other-income" | "cost-of-sales" | "expenses" | "summary" | "other";
-  rows: { name: string; values: number[] }[];
+  rows: ParsedRow[];
   totals: number[];
   /** Xero's own wording for the subtotal row, e.g. "Total Cost of Sales". Null when Xero gave none. */
   totalLabel: string | null;
