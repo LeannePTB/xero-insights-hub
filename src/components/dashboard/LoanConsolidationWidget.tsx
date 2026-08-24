@@ -6,7 +6,7 @@ import { Building2, Loader2, RefreshCw, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getLoanReconciliation, type ReconRow } from "@/lib/loan-consolidation.functions";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
-import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
+import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
 
 function todayISO() {
   const d = new Date();
@@ -27,7 +27,7 @@ export function LoanConsolidationWidget({
 }) {
   const fetchRecon = useServerFn(getLoanReconciliation);
   const currency = useTenantCurrency(tenantId);
-  const fmt = (n: number) => formatMoney(n, currency);
+  const fmt = (n: number) => formatMoneyExact(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const asAt = todayISO();
 
