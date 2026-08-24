@@ -105,8 +105,6 @@ export type RenderInput = {
   status: string;
   version: number;
   title: string;
-  orgLogo: LogoImage | null;
-  clientLogo: LogoImage | null;
 };
 
 /** Deterministic render of the stored payload. No network, no Xero. */
@@ -116,36 +114,52 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   const isDraft = status !== "final" && status !== "sent";
   const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
 
-  const drawHeader = () => {
-    let textLeft = M.left;
-    if (input.orgLogo) {
-      const { w } = drawLogo(doc, input.orgLogo, M.left, 28, 110, 34);
-      textLeft = M.left + w + 12;
-    }
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(INK.text[0], INK.text[1], INK.text[2]);
-    doc.text(m.organisationName, textLeft, 40);
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(INK.muted[0], INK.muted[1], INK.muted[2]);
-    const headerReportLine = namesEqual(m.organisationName, m.clientName)
-      ? "Monthly Management Report"
-      : `${m.clientName} · Monthly Management Report`;
-    doc.text(headerReportLine, textLeft, 54);
-    doc.text(`${m.monthLabel} · period ended ${fmtDate(m.periodEnd)}`, textLeft, 66);
+  const BAND_H = 62;
 
-    if (input.clientLogo) {
-      const scale = Math.min(90 / input.clientLogo.w, 30 / input.clientLogo.h);
-      const w = input.clientLogo.w * scale;
-      drawLogo(doc, input.clientLogo, PAGE.w - M.right - w, 30, 90, 30);
+  /**
+   * Deep purple band across the top of every page: Traction Advisory wordmark
+   * on the left, the document's identity on the right in white. Drawn in a
+   * single decoration pass once the content is laid out.
+   */
+  const drawHeaderBand = () => {
+    doc.setFillColor(BRAND.purple[0], BRAND.purple[1], BRAND.purple[2]);
+    doc.rect(0, 0, PAGE.w, BAND_H, "F");
+    // Thin gold rule closes the band off.
+    doc.setDrawColor(BRAND.gold[0], BRAND.gold[1], BRAND.gold[2]);
+    doc.setLineWidth(1.2);
+    doc.line(0, BAND_H, PAGE.w, BAND_H);
+    doc.setLineWidth(0.4);
+
+    const logoW = 132;
+    const logoH = (LOGO_WHITE.h / LOGO_WHITE.w) * logoW;
+    let drewLogo = false;
+    try {
+      doc.addImage(logoWhiteUrl, "PNG", M.left, (BAND_H - logoH) / 2, logoW, logoH);
+      drewLogo = true;
+    } catch {
+      /* fall back to a typographic wordmark below */
     }
-    doc.setDrawColor(INK.line[0], INK.line[1], INK.line[2]);
-    doc.line(M.left, 76, PAGE.w - M.right, 76);
+    if (!drewLogo) {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      doc.setTextColor(255, 255, 255);
+      doc.text("Traction Advisory", M.left, BAND_H / 2 + 5);
+    }
+
+    const right = PAGE.w - M.right;
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9.5);
+    doc.text(m.clientName, right, 24, { align: "right" });
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(7.5);
+    doc.text("Monthly Management Report", right, 36, { align: "right" });
+    doc.text(`${m.monthLabel} · period ended ${fmtDate(m.periodEnd)}`, right, 47, { align: "right" });
   };
 
-  const drawFooter = (pageNo: number) => {
+  const drawFooter = (pageNo: number, pageCount: number) => {
     doc.setDrawColor(INK.line[0], INK.line[1], INK.line[2]);
+    doc.setLineWidth(0.4);
     doc.line(M.left, PAGE.h - 40, PAGE.w - M.right, PAGE.h - 40);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
@@ -155,32 +169,35 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       M.left,
       PAGE.h - 28,
     );
-    doc.text(`Page ${pageNo}`, PAGE.w - M.right, PAGE.h - 28, { align: "right" });
+    doc.text(`Page ${pageNo} of ${pageCount}`, PAGE.w - M.right, PAGE.h - 28, { align: "right" });
   };
 
+  /**
+   * Drawn as the FIRST thing on a page, before any content, so it genuinely
+   * sits behind the tables rather than obscuring them.
+   */
   const drawWatermark = () => {
     if (!isDraft) return;
     doc.saveGraphicsState();
     // @ts-expect-error GState is provided by jsPDF at runtime.
-    doc.setGState(new doc.GState({ opacity: 0.12 }));
+    doc.setGState(new doc.GState({ opacity: 0.18 }));
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(96);
-    doc.setTextColor(185, 28, 28);
-    doc.text("DRAFT", PAGE.w / 2, PAGE.h / 2, { align: "center", angle: 32 });
+    doc.setFontSize(120);
+    doc.setTextColor(BRAND.watermark[0], BRAND.watermark[1], BRAND.watermark[2]);
+    doc.text("DRAFT", PAGE.w / 2, PAGE.h / 2 + 40, { align: "center", angle: 34 });
     doc.restoreGraphicsState();
   };
 
   // Cursor helpers -----------------------------------------------------------
+  // Page chrome (band + footer) is applied ONCE per page in a decoration pass
+  // at the end, so it can never be drawn twice — the previous version called
+  // drawFooter from newPage AND from every table's didDrawPage.
   let y = M.top;
-  let page = 1;
-  drawHeader();
+  drawWatermark();
 
   const newPage = () => {
-    drawFooter(page);
-    drawWatermark();
     doc.addPage();
-    page += 1;
-    drawHeader();
+    drawWatermark();
     y = M.top;
   };
 
@@ -189,16 +206,22 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   };
 
   const heading = (text: string) => {
-    // Reserve space for the pre-heading gap, the heading itself, the post-heading
-    // gap and at least the first row of content so the heading is never orphaned.
-    need(SPACING.beforeSection + 14 + SPACING.afterSectionHeading + 14);
+    // Reserve space for the pre-heading gap, the heading, its gold rule, the
+    // post-heading gap and at least the first row of content.
+    need(SPACING.beforeSection + 16 + SPACING.afterSectionHeading + 14);
     y += SPACING.beforeSection;
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(13);
-    doc.setTextColor(INK.text[0], INK.text[1], INK.text[2]);
+    doc.setFontSize(13.5);
+    doc.setTextColor(BRAND.purple[0], BRAND.purple[1], BRAND.purple[2]);
     doc.text(text, M.left, y);
-    y += 14 + SPACING.afterSectionHeading;
+    y += 5;
+    doc.setDrawColor(BRAND.gold[0], BRAND.gold[1], BRAND.gold[2]);
+    doc.setLineWidth(1);
+    doc.line(M.left, y, PAGE.w - M.right, y);
+    doc.setLineWidth(0.4);
+    y += SPACING.afterSectionHeading + 6;
   };
+
 
   const paragraph = (text: string, opts: { colour?: number[]; size?: number } = {}) => {
     const size = opts.size ?? 8.5;
