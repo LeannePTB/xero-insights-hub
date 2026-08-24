@@ -79,43 +79,48 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
 
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
-      <div className="mb-4 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent/15 text-accent-foreground">
-            <StickyNote className="h-4 w-4" />
-          </div>
-          <h2 className="font-display text-lg font-semibold">Notes</h2>
+      <div className="mb-4 flex items-center gap-2">
+        <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent/15 text-accent-foreground">
+          <StickyNote className="h-4 w-4" />
         </div>
-        {canEdit && !adding && (
-          <Button variant="ghost" size="sm" onClick={() => setAdding(true)}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" /> Add note
-          </Button>
-        )}
+        <h2 className="font-display text-lg font-semibold">Notes</h2>
       </div>
 
-      {adding && (
-        <div className="mb-4 space-y-2 rounded-lg border border-border bg-background/50 p-3">
-          <Textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={4}
-            placeholder="Write a note…"
-            autoFocus
-          />
-          <div className="flex justify-end gap-2">
+      {canEdit && (
+        <div className="mb-4">
+          {!adding ? (
             <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => { setAdding(false); setDraft(""); }}
-              disabled={addMut.isPending}
+              variant="outline"
+              className="h-auto w-full justify-start py-2.5 text-muted-foreground"
+              onClick={() => setAdding(true)}
             >
-              <X className="mr-1.5 h-3.5 w-3.5" /> Cancel
+              <Plus className="mr-2 h-4 w-4" /> Add note
             </Button>
-            <Button size="sm" onClick={() => addMut.mutate()} disabled={addMut.isPending || !draft.trim()}>
-              {addMut.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
-              Save
-            </Button>
-          </div>
+          ) : (
+            <div className="space-y-2 rounded-lg border border-border bg-background/50 p-3">
+              <Textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                rows={4}
+                placeholder="Write a note…"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setAdding(false); setDraft(""); }}
+                  disabled={addMut.isPending}
+                >
+                  <X className="mr-1.5 h-3.5 w-3.5" /> Cancel
+                </Button>
+                <Button size="sm" onClick={() => addMut.mutate()} disabled={addMut.isPending || !draft.trim()}>
+                  {addMut.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+                  Save
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -124,9 +129,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
           <Loader2 className="h-4 w-4 animate-spin" /> Loading notes…
         </div>
       ) : notes.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {canEdit ? "No notes yet. Click Add note to write one." : "No notes."}
-        </p>
+        <p className="text-sm text-muted-foreground">No notes recorded for this client.</p>
       ) : (
         <ul className="space-y-3">
           {notes.map((n) => {
