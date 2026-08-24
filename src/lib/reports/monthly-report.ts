@@ -6,7 +6,9 @@
 // recomputed; a `final` or `sent` report is never recomputed or overwritten.
 
 export const MONTHLY_REPORT_KEY = "monthly_management";
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 1;
+// v2: P&L date parameters fixed; ageing reconstructed as at the period end via
+// the shared as-at subledger engine instead of the live AmountDue.
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 2;
 
 export type ReportStatus = "draft" | "final" | "sent";
 
