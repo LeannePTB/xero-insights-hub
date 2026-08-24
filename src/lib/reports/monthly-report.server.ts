@@ -153,6 +153,51 @@ export function parsePnl(report: any, fallbackMonthEnd: string): ParsedPnl {
   return { periods, sections };
 }
 
+/** Merge several single-period P&L reports into one multi-column ParsedPnl.
+ *  Xero only honours the organisation's own report layout on single-period
+ *  requests: as soon as periods/timeframe are supplied it falls back to the
+ *  standard layout ("Less Cost of Sales", one merged expense section). We
+ *  therefore request each column separately and stitch them together here. */
+export function mergeParsedPnl(
+  parts: { label: string; monthEnd: string; parsed: ParsedPnl }[],
+): ParsedPnl {
+  const periods: ParsedPeriod[] = parts.map((p, i) => ({
+    label: p.label,
+    monthEnd: p.monthEnd,
+    index: i + 1,
+  }));
+  const n = parts.length;
+  const order: string[] = [];
+  const byTitle = new Map<string, ParsedSection>();
+  parts.forEach((part, col) => {
+    for (const s of part.parsed.sections) {
+      let target = byTitle.get(s.title);
+      if (!target) {
+        target = {
+          title: s.title,
+          kind: s.kind,
+          rows: [],
+          totals: new Array(n).fill(0),
+          totalLabel: s.totalLabel,
+        };
+        byTitle.set(s.title, target);
+        order.push(s.title);
+      }
+      if (!target.totalLabel && s.totalLabel) target.totalLabel = s.totalLabel;
+      target.totals[col] = s.totals[0] ?? 0;
+      for (const r of s.rows) {
+        let row = target.rows.find((x) => x.name === r.name);
+        if (!row) {
+          row = { name: r.name, values: new Array(n).fill(0) };
+          target.rows.push(row);
+        }
+        row.values[col] = r.values[0] ?? 0;
+      }
+    }
+  });
+  return { periods, sections: order.map((t) => byTitle.get(t)!) };
+}
+
 export type PeriodTotals = {
   revenue: number;
   otherIncome: number;
@@ -428,18 +473,35 @@ export async function computeMonthlyReport(opts: {
   // toDate, Xero defaults fromDate to the start of the CURRENT month, which is
   // after the period end for any past period (400 ValidationException).
   // periods=11&timeframe=MONTH then extends backwards from this month.
+  const priorMonthEnd = endOfMonth(addMonths(monthStart, -1));
+  const priorMonthStart = monthStartFor(priorMonthEnd);
   let parsed: ParsedPnl | null = null;
   try {
-    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
-      fromDate: monthStart,
-      toDate: periodEnd,
-      periods: "11",
-      timeframe: "MONTH",
-    });
+    // One request per column. standardLayout=false asks Xero for the
+    // organisation's own report layout; a multi-period request (periods /
+    // timeframe) silently ignores that and returns the standard layout.
+    const fetchColumn = async (fromDate: string, toDate: string) => {
+      const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
+        fromDate,
+        toDate,
+        standardLayout: "false",
+      });
+      const report = res.Reports?.[0];
+      if (!report) throw new Error("Xero returned no Profit and Loss report.");
+      return parsePnl(report, toDate);
+    };
 
-    const report = res.Reports?.[0];
-    if (!report) throw new Error("Xero returned no Profit and Loss report.");
-    parsed = parsePnl(report, periodEnd);
+    const [monthParsed, priorParsedCol, fyParsed] = await Promise.all([
+      fetchColumn(monthStart, periodEnd),
+      fetchColumn(priorMonthStart, priorMonthEnd),
+      fetchColumn(fyStart, periodEnd),
+    ]);
+
+    parsed = mergeParsedPnl([
+      { label: monthLabel(periodEnd), monthEnd: periodEnd, parsed: monthParsed },
+      { label: monthLabel(priorMonthEnd), monthEnd: priorMonthEnd, parsed: priorParsedCol },
+      { label: `${fyLabelFor(fyStart)} to date`, monthEnd: periodEnd, parsed: fyParsed },
+    ]);
   } catch (e: any) {
     const message = e?.message ?? "Profit and Loss could not be read from Xero.";
     failed.push({ section: "profit_and_loss", message });
@@ -447,14 +509,11 @@ export async function computeMonthlyReport(opts: {
   }
 
   if (parsed) {
-    const monthIdx = parsed.periods.findIndex((p) => p.monthEnd === periodEnd);
-    const idx = monthIdx >= 0 ? monthIdx : 0;
-    const priorEnd = endOfMonth(addMonths(monthStart, -1));
-    const priorIdx = parsed.periods.findIndex((p) => p.monthEnd === priorEnd);
-    const fyIdxs = parsed.periods
-      .map((p, i) => ({ p, i }))
-      .filter(({ p }) => p.monthEnd >= fyStart && p.monthEnd <= periodEnd)
-      .map(({ i }) => i);
+    // Columns are built in a fixed order: month, prior month, FY to date.
+    const idx = 0;
+    const priorEnd = priorMonthEnd;
+    const priorIdx = 1;
+    const fyIdxs = [2];
 
     const monthTotals = totalsForPeriod(parsed, idx);
     const priorTotals = priorIdx >= 0 ? totalsForPeriod(parsed, priorIdx) : sumTotals([]);
@@ -466,6 +525,7 @@ export async function computeMonthlyReport(opts: {
       const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
         fromDate: priorFyStart,
         toDate: priorFyPeriodEnd,
+        standardLayout: "false",
       });
       const report = res.Reports?.[0];
       if (!report) throw new Error("Xero returned no prior year Profit and Loss report.");
