@@ -54,7 +54,10 @@ export type ParsedSection = {
   kind: "revenue" | "other-income" | "cost-of-sales" | "expenses" | "summary" | "other";
   rows: { name: string; values: number[] }[];
   totals: number[];
+  /** Xero's own wording for the subtotal row, e.g. "Total Cost of Sales". Null when Xero gave none. */
+  totalLabel: string | null;
 };
+
 export type ParsedPnl = { periods: ParsedPeriod[]; sections: ParsedSection[] };
 
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
