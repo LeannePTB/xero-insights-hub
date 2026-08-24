@@ -29,7 +29,6 @@ import {
   type AgeingDetail,
   type AgeingRow,
   type FailedSection,
-  type IncomeVsExpenses,
   type KeyFigure,
   type MonthlyReportPayload,
   type PnlLine,
@@ -300,52 +299,6 @@ export function buildPnlSection(
 }
 
 // ---------------------------------------------------------------------------
-// Income vs Expenses (12 months)
-// ---------------------------------------------------------------------------
-
-export function buildIncomeVsExpenses(parsed: ParsedPnl): IncomeVsExpenses {
-  const ordered = [...parsed.periods].sort((a, b) => a.monthEnd.localeCompare(b.monthEnd));
-  const months = ordered.map((p) => {
-    const idx = parsed.periods.indexOf(p);
-    const t = totalsForPeriod(parsed, idx);
-    return {
-      label: monthLabel(p.monthEnd),
-      monthEnd: p.monthEnd,
-      income: t.revenue + t.otherIncome,
-      expenses: t.costOfSales + t.expenses,
-    };
-  });
-  const totalIncome = months.reduce((s, m) => s + m.income, 0);
-  const totalExpenses = months.reduce((s, m) => s + m.expenses, 0);
-  const n = months.length || 1;
-  const best = months.reduce<null | { label: string; income: number }>(
-    (b, m) => (!b || m.income > b.income ? { label: m.label, income: m.income } : b),
-    null,
-  );
-  const worst = months.reduce<null | { label: string; income: number }>(
-    (b, m) => (!b || m.income < b.income ? { label: m.label, income: m.income } : b),
-    null,
-  );
-  const sentence =
-    `Over the last ${n} month${n === 1 ? "" : "s"}, income totalled ${money(totalIncome)} ` +
-    `against ${money(totalExpenses)} of income and expenses, an average of ${money(totalIncome / n)} ` +
-    `income and ${money(totalExpenses / n)} costs a month.` +
-    (best && worst ? ` The strongest month was ${best.label} (${money(best.income)}) and the weakest was ${worst.label} (${money(worst.income)}).` : "");
-  return {
-    months,
-    narrative: {
-      totalIncome,
-      totalExpenses,
-      averageIncome: totalIncome / n,
-      averageExpenses: totalExpenses / n,
-      bestMonth: best,
-      worstMonth: worst,
-      sentence,
-    },
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Ageing detail — reconstructed AS AT the period end by the shared subledger
 // engine (src/lib/xero/asat-ledger.server.ts), the same one the Balance Sheet
 // Reconciliation uses. `AmountDue` is never used: it is the balance now.
@@ -436,7 +389,6 @@ export async function computeMonthlyReport(opts: {
   const failed: FailedSection[] = [];
   let keyFigures: KeyFigure[] | null = null;
   let profitAndLoss: PnlSectionPayload | null = null;
-  let incomeVsExpenses: IncomeVsExpenses | null = null;
   let receivables: AgeingDetail | null = null;
   let payables: AgeingDetail | null = null;
   let notes: ReportNote[] | null = null;
@@ -462,7 +414,6 @@ export async function computeMonthlyReport(opts: {
     const message = e?.message ?? "Profit and Loss could not be read from Xero.";
     failed.push({ section: "profit_and_loss", message });
     failed.push({ section: "key_figures", message });
-    failed.push({ section: "income_vs_expenses", message });
   }
 
   if (parsed) {
@@ -503,7 +454,6 @@ export async function computeMonthlyReport(opts: {
       priorMonth: monthLabel(priorEnd),
       fy: `${fyLabelFor(fyStart)} to date`,
     });
-    incomeVsExpenses = buildIncomeVsExpenses(parsed);
   }
 
   // --- Receivables / payables detail, reconstructed as at the period end.
@@ -552,7 +502,7 @@ export async function computeMonthlyReport(opts: {
     failed.push({ section: "notes", message: e?.message ?? "Notes could not be read." });
   }
 
-  // De-duplicate failures per section (the P&L feeds three sections).
+  // De-duplicate failures per section (the P&L feeds two sections).
   const seen = new Set<string>();
   const failedSections = failed.filter((f) => {
     const k = `${f.section}`;
@@ -581,7 +531,6 @@ export async function computeMonthlyReport(opts: {
     },
     keyFigures,
     profitAndLoss,
-    incomeVsExpenses,
     receivables,
     payables,
     notes,
