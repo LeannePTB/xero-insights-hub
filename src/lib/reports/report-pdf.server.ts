@@ -679,23 +679,14 @@ export async function getReportPdfUrl(opts: {
 export async function buildAndStoreReportPdf(report: ReportRow): Promise<{ path: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  const [{ data: firm }, { data: client }] = await Promise.all([
-    (supabaseAdmin as any).from("firms").select("logo_path").eq("id", report.firm_id).maybeSingle(),
-    (supabaseAdmin as any).from("clients").select("logo_path").eq("id", report.client_id).maybeSingle(),
-  ]);
-  const [orgLogo, clientLogo] = await Promise.all([
-    loadLogo((firm as any)?.logo_path ?? null),
-    loadLogo((client as any)?.logo_path ?? null),
-  ]);
-
+  // Single brand: no organisation or client logo is read or drawn.
   const bytes = renderMonthlyReportPdf({
     payload: report.payload,
     status: report.status,
     version: report.version,
     title: report.title ?? "Monthly Management Report",
-    orgLogo,
-    clientLogo,
   });
+
 
   const path = pdfObjectPath(report);
   const { error: upErr } = await (supabaseAdmin as any).storage
