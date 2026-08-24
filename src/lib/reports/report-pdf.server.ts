@@ -176,8 +176,12 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
    * Drawn as the FIRST thing on a page, before any content, so it genuinely
    * sits behind the tables rather than obscuring them.
    */
+  const watermarked = new Set<number>();
   const drawWatermark = () => {
     if (!isDraft) return;
+    const pageNo = (doc as any).getCurrentPageInfo().pageNumber;
+    if (watermarked.has(pageNo)) return; // exactly one watermark per page
+    watermarked.add(pageNo);
     doc.saveGraphicsState();
     // @ts-expect-error GState is provided by jsPDF at runtime.
     doc.setGState(new doc.GState({ opacity: 0.18 }));
@@ -187,6 +191,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     doc.text("DRAFT", PAGE.w / 2, PAGE.h / 2 + 40, { align: "center", angle: 34 });
     doc.restoreGraphicsState();
   };
+
 
   // Cursor helpers -----------------------------------------------------------
   // Page chrome (band + footer) is applied ONCE per page in a decoration pass
