@@ -30,6 +30,16 @@ const SIGNED_URL_SECONDS = 300;
 
 const PAGE = { w: 595.28, h: 841.89 };
 const M = { left: 40, right: 40, top: 92, bottom: 52 };
+import {
+  judgeVariance,
+  keyFigurePolarity,
+  sectionPolarity,
+  toneRgb,
+} from "./variance-polarity";
+
+// The PDF prints and may be photocopied, so a variance never relies on colour:
+// an ASCII direction marker ("^" / "v") sits alongside the figure. Triangles
+// are not in the standard PDF font encoding, hence the ASCII markers.
 const INK = { text: [17, 24, 39], muted: [107, 114, 128], line: [226, 232, 240], bad: [185, 28, 28] };
 
 type LogoImage = { data: Uint8Array; format: "PNG" | "JPEG"; w: number; h: number };
@@ -216,6 +226,8 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     align?: Record<number, "left" | "right">;
     boldRows?: Set<number>;
     colWidths?: Record<number, number>;
+    /** Per-cell text colour, keyed `row:col`. Used for variance judgement. */
+    cellColours?: Record<string, [number, number, number]>;
   }) => {
     const columnStyles: Record<number, any> = {};
     opts.head.forEach((_, i) => {
@@ -252,6 +264,10 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       didParseCell: (data: any) => {
         if (data.section === "body" && opts.boldRows?.has(data.row.index)) {
           data.cell.styles.fontStyle = "bold";
+        }
+        if (data.section === "body") {
+          const c = opts.cellColours?.[`${data.row.index}:${data.column.index}`];
+          if (c) data.cell.styles.textColor = c as any;
         }
       },
       willDrawPage: () => {
@@ -324,6 +340,26 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     missing(failed.get("key_figures") ?? "Not computed.");
   } else {
     const f = (k: any, n: number) => (k.unit === "money" ? money(n) : pct(n));
+    const kfColours: Record<string, [number, number, number]> = {};
+    payload.keyFigures.forEach((k, i) => {
+      const pol = keyFigurePolarity(k.key);
+      const jm = judgeVariance({
+        variance: k.monthVariance,
+        prior: k.priorMonth,
+        polarity: pol,
+        variancePct: k.monthVariancePct,
+        unit: k.unit,
+      });
+      const jy = judgeVariance({
+        variance: k.ytdVariance,
+        prior: k.priorFyYtd,
+        polarity: pol,
+        variancePct: k.ytdVariancePct,
+        unit: k.unit,
+      });
+      if (jm.tone !== "neutral") kfColours[`${i}:3`] = toneRgb(jm.tone);
+      if (jy.tone !== "neutral") kfColours[`${i}:6`] = toneRgb(jy.tone);
+    });
     table({
       head: [
         "Measure",
@@ -334,17 +370,43 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
         `${m.priorFyLabel} YTD`,
         "Change",
       ],
-      body: payload.keyFigures.map((k) => [
-        k.label,
-        f(k, k.month),
-        f(k, k.priorMonth),
-        `${f(k, k.monthVariance)}${k.monthVariancePct !== null ? ` (${pct(k.monthVariancePct)})` : ""}`,
-        f(k, k.fyYtd),
-        f(k, k.priorFyYtd),
-        `${f(k, k.ytdVariance)}${k.ytdVariancePct !== null ? ` (${pct(k.ytdVariancePct)})` : ""}`,
-      ]),
+      body: payload.keyFigures.map((k) => {
+        const jm = judgeVariance({
+          variance: k.monthVariance,
+          prior: k.priorMonth,
+          polarity: keyFigurePolarity(k.key),
+          variancePct: k.monthVariancePct,
+          unit: k.unit,
+        });
+        const jy = judgeVariance({
+          variance: k.ytdVariance,
+          prior: k.priorFyYtd,
+          polarity: keyFigurePolarity(k.key),
+          variancePct: k.ytdVariancePct,
+          unit: k.unit,
+        });
+        return [
+          k.label,
+          f(k, k.month),
+          f(k, k.priorMonth),
+          `${marker(jm.arrow)}${f(k, k.monthVariance)}${jm.showPct ? ` (${pct(k.monthVariancePct)})` : ""}`,
+          f(k, k.fyYtd),
+          f(k, k.priorFyYtd),
+          `${marker(jy.arrow)}${f(k, k.ytdVariance)}${jy.showPct ? ` (${pct(k.ytdVariancePct)})` : ""}`,
+        ];
+      }),
+      cellColours: kfColours,
     });
-    for (const k of payload.keyFigures) paragraph(k.sentence);
+    for (const k of payload.keyFigures) {
+      const j = judgeVariance({
+        variance: k.monthVariance,
+        prior: k.priorMonth,
+        polarity: keyFigurePolarity(k.key),
+        variancePct: k.monthVariancePct,
+        unit: k.unit,
+      });
+      paragraph(`${marker(j.arrow)}${k.sentence}`, { colour: toneRgb(j.tone) });
+    }
     y += 10;
   }
 
@@ -356,18 +418,33 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     const p = payload.profitAndLoss;
     const bold = new Set<number>();
     p.lines.forEach((l, i) => l.isTotal && bold.add(i));
+    const judged = p.lines.map((l) =>
+      judgeVariance({
+        variance: l.variance,
+        prior: l.priorMonth,
+        polarity: sectionPolarity(l.section),
+        variancePct: l.variancePct,
+      }),
+    );
+    const pnlColours: Record<string, [number, number, number]> = {};
+    judged.forEach((j, i) => {
+      if (j.tone === "neutral") return;
+      pnlColours[`${i}:3`] = toneRgb(j.tone);
+      if (j.showPct) pnlColours[`${i}:4`] = toneRgb(j.tone);
+    });
     table({
       head: ["Account", p.monthLabel, p.priorMonthLabel, "Variance", "Variance %", p.fyLabel],
-      body: p.lines.map((l) => [
+      body: p.lines.map((l, i) => [
         l.name,
         money(l.month, { cents: true }),
         money(l.priorMonth, { cents: true }),
-        money(l.variance, { cents: true }),
-        pct(l.variancePct),
+        `${marker(judged[i].arrow)}${money(l.variance, { cents: true })}`,
+        judged[i].showPct ? pct(l.variancePct) : "—",
         money(l.fyYtd, { cents: true }),
       ]),
       boldRows: bold,
       colWidths: { 0: 150 },
+      cellColours: pnlColours,
     });
     table({
       head: ["Summary", "Amount"],
