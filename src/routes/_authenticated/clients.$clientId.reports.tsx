@@ -108,7 +108,12 @@ function ReportsPage() {
       setSelectedId(res.id ?? null);
       qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
       if (res.payload?.complete) toast.success(`Draft version ${res.version} generated`);
+      else if (wasRateLimited(res.payload))
+        toast.warning(
+          "Xero has paused requests for this organisation because too many were sent. Wait about a minute, then generate again.",
+        );
       else toast.warning("Generated, but some sections could not be computed");
+
     },
     onError: (e: any) => toast.error(e.message),
   });
