@@ -476,11 +476,21 @@ export async function computeMonthlyReport(opts: {
   const priorMonthEnd = endOfMonth(addMonths(monthStart, -1));
   const priorMonthStart = monthStartFor(priorMonthEnd);
   let parsed: ParsedPnl | null = null;
-  try {
-    // One request per column. standardLayout=false asks Xero for the
-    // organisation's own report layout; a multi-period request (periods /
-    // timeframe) silently ignores that and returns the standard layout.
-    const fetchColumn = async (fromDate: string, toDate: string) => {
+
+  // One request per column. standardLayout=false asks Xero for the
+  // organisation's own report layout; a multi-period request (periods /
+  // timeframe) silently ignores that and returns the standard layout.
+  //
+  // Requests are memoised on (fromDate, toDate) for the life of one
+  // generation: when the period end IS the first month of the financial year,
+  // the month column and the FY-to-date column ask Xero for exactly the same
+  // window, and there is no reason to pay for it twice.
+  const pnlCache = new Map<string, Promise<ParsedPnl>>();
+  const fetchColumn = (fromDate: string, toDate: string): Promise<ParsedPnl> => {
+    const key = `${fromDate}|${toDate}`;
+    const hit = pnlCache.get(key);
+    if (hit) return hit;
+    const p = (async () => {
       const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
         fromDate,
         toDate,
@@ -489,13 +499,18 @@ export async function computeMonthlyReport(opts: {
       const report = res.Reports?.[0];
       if (!report) throw new Error("Xero returned no Profit and Loss report.");
       return parsePnl(report, toDate);
-    };
+    })();
+    pnlCache.set(key, p);
+    return p;
+  };
 
-    const [monthParsed, priorParsedCol, fyParsed] = await Promise.all([
-      fetchColumn(monthStart, periodEnd),
-      fetchColumn(priorMonthStart, priorMonthEnd),
-      fetchColumn(fyStart, periodEnd),
-    ]);
+  try {
+    // SEQUENTIAL, deliberately. Xero allows only a handful of concurrent
+    // requests per tenant; firing these together tripped the limit and failed
+    // the whole report. A few extra seconds here costs nothing.
+    const monthParsed = await fetchColumn(monthStart, periodEnd);
+    const priorParsedCol = await fetchColumn(priorMonthStart, priorMonthEnd);
+    const fyParsed = await fetchColumn(fyStart, periodEnd);
 
     parsed = mergeParsedPnl([
       { label: monthLabel(periodEnd), monthEnd: periodEnd, parsed: monthParsed },
@@ -507,6 +522,7 @@ export async function computeMonthlyReport(opts: {
     failed.push({ section: "profit_and_loss", message });
     failed.push({ section: "key_figures", message });
   }
+
 
   if (parsed) {
     // Columns are built in a fixed order: month, prior month, FY to date.
