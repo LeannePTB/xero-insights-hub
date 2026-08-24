@@ -79,7 +79,7 @@ const SPACING = {
 };
 
 
-type LogoImage = { data: Uint8Array; format: "PNG" | "JPEG"; w: number; h: number };
+
 
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
