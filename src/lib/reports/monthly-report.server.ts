@@ -441,13 +441,19 @@ export async function computeMonthlyReport(opts: {
   let notes: ReportNote[] | null = null;
 
   // --- Profit and Loss (one call covers month, prior month, FY YTD, 12 months)
+  // Both dates must be supplied and fromDate must precede toDate: with only
+  // toDate, Xero defaults fromDate to the start of the CURRENT month, which is
+  // after the period end for any past period (400 ValidationException).
+  // periods=11&timeframe=MONTH then extends backwards from this month.
   let parsed: ParsedPnl | null = null;
   try {
     const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
+      fromDate: monthStart,
       toDate: periodEnd,
       periods: "11",
       timeframe: "MONTH",
     });
+
     const report = res.Reports?.[0];
     if (!report) throw new Error("Xero returned no Profit and Loss report.");
     parsed = parsePnl(report, periodEnd);
