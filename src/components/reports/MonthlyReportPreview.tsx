@@ -8,6 +8,13 @@ import {
   type AgeingDetail,
   type MonthlyReportPayload,
 } from "@/lib/reports/monthly-report";
+import {
+  judgeVariance,
+  keyFigurePolarity,
+  sectionPolarity,
+  toneClass,
+  type Polarity,
+} from "@/lib/reports/variance-polarity";
 
 function fmtDate(iso: string) {
   try {
@@ -23,6 +30,37 @@ function SectionShell({ title, children }: { title: string; children: React.Reac
       <h3 className="font-display text-lg font-semibold">{title}</h3>
       <div className="mt-4">{children}</div>
     </section>
+  );
+}
+
+/**
+ * A variance cell. The arrow carries direction, the colour carries judgement,
+ * and the title carries both in words so neither colour blindness nor a
+ * black-and-white printout loses the meaning.
+ */
+function Variance({
+  variance,
+  prior,
+  polarity,
+  variancePct,
+  unit = "money",
+  cents = false,
+}: {
+  variance: number;
+  prior: number;
+  polarity: Polarity;
+  variancePct?: number | null;
+  unit?: "money" | "percent";
+  cents?: boolean;
+}) {
+  const j = judgeVariance({ variance, prior, polarity, variancePct, unit });
+  const amount = unit === "money" ? money(variance, { cents }) : pct(variance);
+  return (
+    <span className={toneClass(j.tone)} title={j.label} aria-label={j.label}>
+      {j.arrow ? <span aria-hidden="true">{j.arrow} </span> : null}
+      {amount}
+      {j.showPct ? ` (${pct(variancePct as number)})` : ""}
+    </span>
   );
 }
 
@@ -149,14 +187,24 @@ export function MonthlyReportPreview({
                       <td className="py-2 text-right tabular-nums">{f(k.month)}</td>
                       <td className="py-2 text-right tabular-nums">{f(k.priorMonth)}</td>
                       <td className="py-2 text-right tabular-nums">
-                        {f(k.monthVariance)}
-                        {k.monthVariancePct !== null ? ` (${pct(k.monthVariancePct)})` : ""}
+                        <Variance
+                          variance={k.monthVariance}
+                          prior={k.priorMonth}
+                          polarity={keyFigurePolarity(k.key)}
+                          variancePct={k.monthVariancePct}
+                          unit={k.unit}
+                        />
                       </td>
                       <td className="py-2 text-right tabular-nums">{f(k.fyYtd)}</td>
                       <td className="py-2 text-right tabular-nums">{f(k.priorFyYtd)}</td>
                       <td className="py-2 text-right tabular-nums">
-                        {f(k.ytdVariance)}
-                        {k.ytdVariancePct !== null ? ` (${pct(k.ytdVariancePct)})` : ""}
+                        <Variance
+                          variance={k.ytdVariance}
+                          prior={k.priorFyYtd}
+                          polarity={keyFigurePolarity(k.key)}
+                          variancePct={k.ytdVariancePct}
+                          unit={k.unit}
+                        />
                       </td>
                     </tr>
                   );
@@ -164,9 +212,21 @@ export function MonthlyReportPreview({
               </tbody>
             </table>
             <ul className="mt-4 space-y-1 text-sm text-muted-foreground">
-              {payload.keyFigures.map((k) => (
-                <li key={`${k.key}-sentence`}>{k.sentence}</li>
-              ))}
+              {payload.keyFigures.map((k) => {
+                const j = judgeVariance({
+                  variance: k.monthVariance,
+                  prior: k.priorMonth,
+                  polarity: keyFigurePolarity(k.key),
+                  variancePct: k.monthVariancePct,
+                  unit: k.unit,
+                });
+                return (
+                  <li key={`${k.key}-sentence`} className={toneClass(j.tone)} title={j.label}>
+                    {j.arrow ? <span aria-hidden="true">{j.arrow} </span> : null}
+                    {k.sentence}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -204,9 +264,30 @@ export function MonthlyReportPreview({
                     </td>
                     <td className="py-1.5 text-right tabular-nums">{money(l.month, { cents: true })}</td>
                     <td className="py-1.5 text-right tabular-nums">{money(l.priorMonth, { cents: true })}</td>
-                    <td className="py-1.5 text-right tabular-nums">{money(l.variance, { cents: true })}</td>
-                    <td className="py-1.5 text-right tabular-nums text-muted-foreground">
-                      {pct(l.variancePct)}
+                    <td className="py-1.5 text-right tabular-nums">
+                      <Variance
+                        variance={l.variance}
+                        prior={l.priorMonth}
+                        polarity={sectionPolarity(l.section)}
+                        variancePct={l.variancePct}
+                        cents
+                      />
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums">
+                      {(() => {
+                        const j = judgeVariance({
+                          variance: l.variance,
+                          prior: l.priorMonth,
+                          polarity: sectionPolarity(l.section),
+                          variancePct: l.variancePct,
+                        });
+                        if (!j.showPct) return <span className="text-muted-foreground">—</span>;
+                        return (
+                          <span className={toneClass(j.tone)} title={j.label} aria-label={j.label}>
+                            {pct(l.variancePct)}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="py-1.5 text-right tabular-nums">{money(l.fyYtd, { cents: true })}</td>
                   </tr>
