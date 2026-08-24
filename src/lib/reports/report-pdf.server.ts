@@ -323,7 +323,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   // Title block --------------------------------------------------------------
   doc.setFont("helvetica", "bold");
   doc.setFontSize(18);
-  doc.setTextColor(INK.text[0], INK.text[1], INK.text[2]);
+  doc.setTextColor(BRAND.purple[0], BRAND.purple[1], BRAND.purple[2]);
   doc.text("Monthly Management Report", M.left, y);
   y += 20 + SPACING.titleInner;
   const titleNames = uniqueNames([m.clientName, m.tenantName]).join(" · ");
@@ -331,6 +331,8 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     `${titleNames} · ${m.monthLabel} (period ended ${fmtDate(m.periodEnd)})`,
   );
   y += SPACING.titleInner;
+  paragraph(`Prepared by ${m.organisationName}`, { size: 8 });
+
   paragraph(
     `Generated ${fmtDate(m.generatedAt)} by Traction Advisory · Version ${version} · ${status} · payload v${payload.payloadVersion} · amounts in ${m.currency}${
       isDraft ? " · DRAFT — not for distribution" : ""
