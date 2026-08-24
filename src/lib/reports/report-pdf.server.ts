@@ -449,6 +449,16 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     }
   }
 
+  // 7. Disclaimer — fine print, last, no forced page break -------------------
+  y += 8;
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(INK.muted[0], INK.muted[1], INK.muted[2]);
+  need(12);
+  doc.text("Disclaimer", M.left, y);
+  y += 11;
+  paragraph(resolveDisclaimer(payload), { size: 7.5 });
+
   drawFooter((doc as any).getCurrentPageInfo().pageNumber);
   drawWatermark();
 
