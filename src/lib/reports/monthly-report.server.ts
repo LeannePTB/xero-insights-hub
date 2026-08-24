@@ -16,6 +16,7 @@
 
 import {
   MONTHLY_REPORT_PAYLOAD_VERSION,
+  disclaimerText,
   addMonths,
   endOfMonth,
   fyLabelFor,
