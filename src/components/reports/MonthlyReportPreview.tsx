@@ -196,8 +196,8 @@ export function MonthlyReportPreview({
           {m.tenantName}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Generated {fmtDate(m.generatedAt)}
-          {version ? ` · version ${version}` : ""}
+          Generated {fmtDate(m.generatedAt)} by Traction Advisory
+          {version ? ` · Version ${version}` : ""}
           {status ? ` · ${status}` : ""} · payload v{payload.payloadVersion} · amounts in {m.currency}
         </p>
       </header>
