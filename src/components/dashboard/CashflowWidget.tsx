@@ -12,7 +12,7 @@ import {
   toISO,
   usePersistedDate,
 } from "@/components/dashboard/DateRangeControls";
-import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
+import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
 
 function startOfFiscalYear() {
   const now = new Date();
@@ -34,7 +34,7 @@ export function CashflowWidget({
 }) {
   const fetchCashflow = useServerFn(getCashflow);
   const currency = useTenantCurrency(tenantId);
-  const fmt = (n: number) => formatMoney(n, currency);
+  const fmt = (n: number) => formatMoneyExact(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `cashflow-range:${tenantId}`;
   const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfFiscalYear);
@@ -290,7 +290,7 @@ function Tile({
       </p>
       <p className={`mt-1 flex items-center gap-1 text-lg font-semibold tracking-tight tabular-nums ${tone}`}>
         {icon}
-        {formatMoney(value, currency)}
+        {formatMoneyExact(value, currency)}
       </p>
     </div>
   );

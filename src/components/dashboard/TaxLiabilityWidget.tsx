@@ -12,7 +12,8 @@ function fmt(n: number) {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: "AUD",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(n);
 }
 

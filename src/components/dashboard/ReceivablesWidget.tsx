@@ -9,7 +9,8 @@ function fmt(n: number, ccy = "AUD") {
   return new Intl.NumberFormat(undefined, {
     style: "currency",
     currency: ccy,
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(n);
 }
 
