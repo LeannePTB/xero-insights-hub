@@ -244,8 +244,9 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
         fontSize: 7,
       },
       columnStyles,
-      // Headers repeat on every page break.
+      // Headers repeat on every page break, and a row is never split.
       showHead: "everyPage",
+      rowPageBreak: "avoid",
       didParseCell: (data: any) => {
         if (data.section === "body" && opts.boldRows?.has(data.row.index)) {
           data.cell.styles.fontStyle = "bold";
@@ -266,7 +267,10 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     y = ((doc as any).lastAutoTable?.finalY ?? y) + 16;
   };
 
-  const missing = (message: string) => paragraph(message, { colour: INK.bad });
+  const missing = (message: string) => {
+    paragraph(message, { colour: INK.bad });
+    y += 10;
+  };
 
   // Title block --------------------------------------------------------------
   doc.setFont("helvetica", "bold");
@@ -338,7 +342,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       ]),
     });
     for (const k of payload.keyFigures) paragraph(k.sentence);
-    y += 6;
+    y += 10;
   }
 
   // 2. Profit and Loss -------------------------------------------------------
@@ -391,6 +395,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       ]),
     });
     paragraph(payload.incomeVsExpenses.narrative.sentence);
+    y += 6;
   }
 
   // 4 & 5. Ageing ------------------------------------------------------------
@@ -421,6 +426,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       colWidths: { 0: 130 },
     });
     paragraph(detail.caveat, { size: 7.5 });
+    y += 6;
   };
   ageing(payload.receivables, "Receivables detail", "Customer", "receivables");
   ageing(payload.payables, "Payables detail", "Supplier", "payables");
@@ -438,6 +444,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     for (const n of sorted) {
       paragraph(n.body, { colour: INK.text, size: 8.5 });
       paragraph(`${n.author} · ${fmtDate(n.createdAt)}`, { size: 7.5 });
+      y += 4;
     }
   }
 
