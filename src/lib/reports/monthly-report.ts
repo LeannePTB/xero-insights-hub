@@ -13,7 +13,10 @@ export const MONTHLY_REPORT_KEY = "monthly_management";
 // cap on large files and reported the ageing sections as failed.
 // v4: the rendered disclaimer text is frozen into the payload at generation
 // time, so an old report always shows the wording that was actually sent.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 5;
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 6;
+
+// v6: ageing buckets on the document date (matching Xero's aged reports);
+// P&L subtotals carry Xero's own wording; nil accounts suppressed.
 
 export type ReportStatus = "draft" | "final" | "sent";
 
@@ -161,6 +164,12 @@ export function pct(n: number | null | undefined, digits = 1) {
   if (n === null || n === undefined || !Number.isFinite(n)) return "—";
   const s = `${Math.abs(n).toFixed(digits)}%`;
   return n < 0 ? `(${s})` : s;
+}
+
+/** Magnitude only — for a percentage already inside brackets. */
+export function pctMagnitude(n: number | null | undefined, digits = 1) {
+  if (n === null || n === undefined || !Number.isFinite(n)) return "\u2014";
+  return `${Math.abs(n).toFixed(digits)}%`;
 }
 
 /** Australian financial year: 1 July – 30 June. */

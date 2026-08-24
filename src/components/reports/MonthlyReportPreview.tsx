@@ -4,6 +4,7 @@ import {
   renderableFailedSections,
   money,
   pct,
+  pctMagnitude,
   resolveDisclaimer,
   type AgeingDetail,
   type MonthlyReportPayload,
@@ -59,7 +60,7 @@ function Variance({
     <span className={toneClass(j.tone)} title={j.label} aria-label={j.label}>
       {j.arrow ? <span aria-hidden="true">{j.arrow} </span> : null}
       {amount}
-      {j.showPct ? ` (${pct(variancePct as number)})` : ""}
+      {j.showPct ? ` (${pctMagnitude(variancePct as number)})` : ""}
     </span>
   );
 }
