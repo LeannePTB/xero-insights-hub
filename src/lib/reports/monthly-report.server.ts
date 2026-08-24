@@ -130,6 +130,7 @@ export function parsePnl(report: any, fallbackMonthEnd: string): ParsedPnl {
     const lines: { name: string; values: number[] }[] = [];
     let totals: number[] = periods.map(() => 0);
     let sawSummary = false;
+    let totalLabel: string | null = null;
     for (const r of section.Rows ?? []) {
       if (!r.Cells || r.Cells.length < 2) continue;
       const name = (r.Cells[0]?.Value ?? "").trim();
@@ -139,13 +140,15 @@ export function parsePnl(report: any, fallbackMonthEnd: string): ParsedPnl {
       } else if (r.RowType === "SummaryRow") {
         totals = values;
         sawSummary = true;
+        totalLabel = name || (title ? `Total ${title}` : null);
         if (!lines.length && name) lines.push({ name, values });
       }
     }
     if (!sawSummary) {
       totals = periods.map((_, i) => lines.reduce((s, l) => s + (l.values[i] ?? 0), 0));
     }
-    sections.push({ title: title || "Unnamed", kind, rows: lines, totals });
+    sections.push({ title: title || "Unnamed", kind, rows: lines, totals, totalLabel });
+
   }
   return { periods, sections };
 }
