@@ -28,11 +28,17 @@ import {
   type MonthlyReportPayload,
 } from "./monthly-report";
 
+import logoWhiteUrl from "@/assets/traction-advisory-logo-white.png?inline";
+
+/** Intrinsic pixel size of the white wordmark, so it keeps its aspect ratio. */
+const LOGO_WHITE = { w: 600, h: 69 };
+
 const BUCKET = "client-reports";
 const SIGNED_URL_SECONDS = 300;
 
 const PAGE = { w: 595.28, h: 841.89 };
-const M = { left: 40, right: 40, top: 92, bottom: 52 };
+const M = { left: 40, right: 40, top: 96, bottom: 56 };
+
 import {
   judgeVariance,
   keyFigurePolarity,
