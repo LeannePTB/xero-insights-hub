@@ -89,6 +89,12 @@ export type MonthlyReportPayload = {
   payloadVersion: number;
   complete: boolean;
   failedSections: FailedSection[];
+  /**
+   * Non-blocking notes about the generation (for example Profit and Loss lines
+   * that could not be matched to a Xero account). These never make a report
+   * incomplete — the figures still tie — so they must not block finalising.
+   */
+  warnings?: string[];
   meta: {
     organisationName: string;
     clientName: string;
