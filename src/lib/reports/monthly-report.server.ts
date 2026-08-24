@@ -128,7 +128,7 @@ export function parsePnl(report: any, fallbackMonthEnd: string): ParsedPnl {
     if (section.RowType !== "Section") continue;
     const title = (section.Title || "").trim();
     const kind = classifySection(title);
-    const lines: { name: string; values: number[] }[] = [];
+    const lines: ParsedRow[] = [];
     let totals: number[] = periods.map(() => 0);
     let sawSummary = false;
     let totalLabel: string | null = null;
@@ -137,7 +137,16 @@ export function parsePnl(report: any, fallbackMonthEnd: string): ParsedPnl {
       const name = (r.Cells[0]?.Value ?? "").trim();
       const values = periods.map((p) => num(r.Cells?.[p.index]?.Value));
       if (r.RowType === "Row") {
-        if (name) lines.push({ name, values });
+        // Xero tags the row's cells with the AccountID it came from; that is
+        // how we later look the account's Type up.
+        let accountId: string | null = null;
+        for (const cell of r.Cells) {
+          for (const a of cell.Attributes ?? []) {
+            if (a?.Id === "account" && typeof a.Value === "string") accountId = a.Value;
+          }
+          if (accountId) break;
+        }
+        if (name) lines.push({ name, values, accountId });
       } else if (r.RowType === "SummaryRow") {
         totals = values;
         sawSummary = true;
