@@ -271,7 +271,7 @@ function ClientDashboard() {
             <div className="flex shrink-0 items-center gap-2">
               <Button variant="outline" asChild>
                 <Link to="/clients/$clientId/reports" params={{ clientId }}>
-                  <FileText className="mr-2 h-4 w-4" /> Reports
+                  <FileText className="mr-2 h-4 w-4" /> Monthly Management Reports
                 </Link>
               </Button>
               <Button variant="outline" asChild>
