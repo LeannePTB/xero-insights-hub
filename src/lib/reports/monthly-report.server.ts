@@ -535,17 +535,11 @@ export async function computeMonthlyReport(opts: {
     const priorTotals = priorIdx >= 0 ? totalsForPeriod(parsed, priorIdx) : sumTotals([]);
     const fyTotals = sumTotals(fyIdxs.map((i) => totalsForPeriod(parsed!, i)));
 
-    // --- Prior financial year to date (the one extra call)
+    // --- Prior financial year to date (the one extra call). Goes through the
+    // same memoised fetcher, so an overlapping window is never requested twice.
     let priorFyTotals = sumTotals([]);
     try {
-      const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
-        fromDate: priorFyStart,
-        toDate: priorFyPeriodEnd,
-        standardLayout: "false",
-      });
-      const report = res.Reports?.[0];
-      if (!report) throw new Error("Xero returned no prior year Profit and Loss report.");
-      const priorParsed = parsePnl(report, priorFyPeriodEnd);
+      const priorParsed = await fetchColumn(priorFyStart, priorFyPeriodEnd);
       priorFyTotals = totalsForPeriod(priorParsed, 0);
     } catch (e: any) {
       failed.push({
@@ -553,6 +547,7 @@ export async function computeMonthlyReport(opts: {
         message: e?.message ?? "Prior financial year to date could not be read from Xero.",
       });
     }
+
 
     keyFigures = buildKeyFigures(monthTotals, priorTotals, fyTotals, priorFyTotals);
     profitAndLoss = buildPnlSection(parsed, idx, priorIdx, fyIdxs, {
