@@ -1,6 +1,7 @@
 import { AlertTriangle } from "lucide-react";
 import {
   SECTION_LABELS,
+  renderableFailedSections,
   money,
   pct,
   resolveDisclaimer,
@@ -83,7 +84,8 @@ export function MonthlyReportPreview({
   version?: number;
 }) {
   const m = payload.meta;
-  const failed = new Map(payload.failedSections.map((f) => [f.section, f.message]));
+  const shownFailures = renderableFailedSections(payload);
+  const failed = new Map(shownFailures.map((f) => [f.section, f.message]));
 
   return (
     <div className="space-y-6">
@@ -104,11 +106,11 @@ export function MonthlyReportPreview({
         </p>
       </header>
 
-      {!payload.complete && (
+      {!payload.complete && shownFailures.length > 0 && (
         <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
           <p className="font-medium text-destructive">This report is incomplete.</p>
           <ul className="mt-2 space-y-1">
-            {payload.failedSections.map((f) => (
+            {shownFailures.map((f) => (
               <li key={f.section} className="text-muted-foreground">
                 <span className="font-medium text-foreground">
                   {SECTION_LABELS[f.section] ?? f.section}:
@@ -234,40 +236,7 @@ export function MonthlyReportPreview({
         )}
       </SectionShell>
 
-      {/* 3. Income vs Expenses */}
-      <SectionShell title="Income vs Expenses">
-        {!payload.incomeVsExpenses ? (
-          <Missing message={failed.get("income_vs_expenses") ?? "Not computed."} />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="py-2 text-left">Month</th>
-                  <th className="py-2 text-right">Income</th>
-                  <th className="py-2 text-right">Expenses</th>
-                  <th className="py-2 text-right">Net</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payload.incomeVsExpenses.months.map((mo) => (
-                  <tr key={mo.monthEnd} className="border-b border-border/40">
-                    <td className="py-1.5 pr-3">{mo.label}</td>
-                    <td className="py-1.5 text-right tabular-nums">{money(mo.income)}</td>
-                    <td className="py-1.5 text-right tabular-nums">{money(mo.expenses)}</td>
-                    <td className="py-1.5 text-right tabular-nums">{money(mo.income - mo.expenses)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            <p className="mt-3 text-sm text-muted-foreground">
-              {payload.incomeVsExpenses.narrative.sentence}
-            </p>
-          </div>
-        )}
-      </SectionShell>
-
-      {/* 4. Receivables */}
+      {/* 3. Receivables */}
       <SectionShell title="Receivables detail">
         {!payload.receivables ? (
           <Missing message={failed.get("receivables") ?? "Not computed."} />

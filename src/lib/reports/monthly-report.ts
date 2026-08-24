@@ -13,7 +13,7 @@ export const MONTHLY_REPORT_KEY = "monthly_management";
 // cap on large files and reported the ageing sections as failed.
 // v4: the rendered disclaimer text is frozen into the payload at generation
 // time, so an old report always shows the wording that was actually sent.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 4;
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 5;
 
 export type ReportStatus = "draft" | "final" | "sent";
 
@@ -63,21 +63,6 @@ export type PnlSectionPayload = {
   };
 };
 
-export type MonthPoint = { label: string; monthEnd: string; income: number; expenses: number };
-
-export type IncomeVsExpenses = {
-  months: MonthPoint[];
-  narrative: {
-    totalIncome: number;
-    totalExpenses: number;
-    averageIncome: number;
-    averageExpenses: number;
-    bestMonth: { label: string; income: number } | null;
-    worstMonth: { label: string; income: number } | null;
-    sentence: string;
-  };
-};
-
 export type AgeingRow = {
   name: string;
   buckets: number[];
@@ -117,7 +102,6 @@ export type MonthlyReportPayload = {
   };
   keyFigures: KeyFigure[] | null;
   profitAndLoss: PnlSectionPayload | null;
-  incomeVsExpenses: IncomeVsExpenses | null;
   receivables: AgeingDetail | null;
   payables: AgeingDetail | null;
   notes: ReportNote[] | null;
@@ -129,10 +113,17 @@ export type MonthlyReportPayload = {
   disclaimer?: string;
 };
 
+/**
+ * Filters out failures naming sections that no longer exist (payloads written
+ * before v5 can still name `income_vs_expenses`).
+ */
+export function renderableFailedSections(payload: { failedSections: FailedSection[] }) {
+  return payload.failedSections.filter((f) => f.section in SECTION_LABELS);
+}
+
 export const SECTION_LABELS: Record<string, string> = {
   key_figures: "Key figures",
   profit_and_loss: "Profit and Loss",
-  income_vs_expenses: "Income vs Expenses",
   receivables: "Receivables detail",
   payables: "Payables detail",
   notes: "Notes",
