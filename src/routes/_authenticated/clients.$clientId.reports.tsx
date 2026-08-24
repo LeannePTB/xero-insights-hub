@@ -327,7 +327,7 @@ function ReportsPage() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => openMut.mutate(r.id)}
+                            onClick={() => openMut.mutate({ reportId: r.id, source: "opened" })}
                             disabled={openMut.isPending}
                           >
                             <FileText className="mr-1 h-3 w-3" /> Open
