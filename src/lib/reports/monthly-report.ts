@@ -11,7 +11,9 @@ export const MONTHLY_REPORT_KEY = "monthly_management";
 // v3: the as-at subledger is narrowed in Xero with a `where` clause so only
 // documents open at the period end are fetched — v2 payloads tripped the paging
 // cap on large files and reported the ageing sections as failed.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 3;
+// v4: the rendered disclaimer text is frozen into the payload at generation
+// time, so an old report always shows the wording that was actually sent.
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 4;
 
 export type ReportStatus = "draft" | "final" | "sent";
 
