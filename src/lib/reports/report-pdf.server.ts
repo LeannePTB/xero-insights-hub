@@ -156,7 +156,10 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(INK.muted[0], INK.muted[1], INK.muted[2]);
-    doc.text(`${m.clientName} · Monthly Management Report`, textLeft, 54);
+    const headerReportLine = namesEqual(m.organisationName, m.clientName)
+      ? "Monthly Management Report"
+      : `${m.clientName} · Monthly Management Report`;
+    doc.text(headerReportLine, textLeft, 54);
     doc.text(`${m.monthLabel} · period ended ${fmtDate(m.periodEnd)}`, textLeft, 66);
 
     if (input.clientLogo) {
