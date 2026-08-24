@@ -270,11 +270,12 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
         lineWidth: 0.4,
       },
       headStyles: {
-        fillColor: [241, 245, 249],
-        textColor: INK.muted as any,
+        fillColor: BRAND.lavenderFill as any,
+        textColor: BRAND.purple as any,
         fontStyle: "bold",
         fontSize: 7,
       },
+      alternateRowStyles: { fillColor: BRAND.band as any },
       columnStyles,
       // Headers repeat on every page break, and a row is never split.
       showHead: "everyPage",
@@ -282,24 +283,30 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       didParseCell: (data: any) => {
         if (data.section === "body" && opts.boldRows?.has(data.row.index)) {
           data.cell.styles.fontStyle = "bold";
+          data.cell.styles.fillColor = [255, 255, 255];
         }
         if (data.section === "body") {
           const c = opts.cellColours?.[`${data.row.index}:${data.column.index}`];
           if (c) data.cell.styles.textColor = c as any;
         }
       },
-      willDrawPage: () => {
-        // autoTable added the page itself; keep header/footer consistent.
-        if ((doc as any).getCurrentPageInfo().pageNumber > page) {
-          page = (doc as any).getCurrentPageInfo().pageNumber;
-          drawHeader();
+      didDrawCell: (data: any) => {
+        // A totals row gets a rule above it, so it reads as a total in
+        // greyscale as well as in bold.
+        if (data.section === "body" && opts.boldRows?.has(data.row.index)) {
+          doc.setDrawColor(BRAND.purple[0], BRAND.purple[1], BRAND.purple[2]);
+          doc.setLineWidth(0.8);
+          doc.line(data.cell.x, data.cell.y, data.cell.x + data.cell.width, data.cell.y);
+          doc.setLineWidth(0.4);
         }
       },
-      didDrawPage: () => {
-        drawFooter((doc as any).getCurrentPageInfo().pageNumber);
+      willDrawPage: () => {
+        // autoTable may add a page itself; the watermark must go down before
+        // any content lands on it. Page chrome is applied later, once.
         drawWatermark();
       },
     });
+
     y = ((doc as any).lastAutoTable?.finalY ?? y) + 16;
   };
 
