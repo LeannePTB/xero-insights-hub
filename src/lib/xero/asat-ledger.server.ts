@@ -114,7 +114,17 @@ export async function fetchAsAtLedger(
     gross += Number(inv.Total) || 0;
   }
 
-  const creditNotes = await asAtFetch(conn, "CreditNotes", "CreditNotes", openAtAsAt);
+  // Credit notes are NOT narrowed to those still open at the period end. A
+  // credit note fully allocated before the period end no longer has a balance
+  // of its own, but its allocation still reduces an invoice that is in scope,
+  // so it has to be read. Credit notes are a small population, so there is no
+  // paging risk in taking them all.
+  const creditNotes = await asAtFetch(
+    conn,
+    "CreditNotes",
+    "CreditNotes",
+    `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"`,
+  );
 
   const overpayments = await pageAll<any>(conn, "Overpayments", "Overpayments", {
     where: `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"`,
