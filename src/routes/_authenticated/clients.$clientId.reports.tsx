@@ -116,6 +116,21 @@ function ReportsPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const finaliseFn = useServerFn(finaliseMonthlyReport);
+  const finaliseMut = useMutation({
+    mutationFn: (reportId: string) => finaliseFn({ data: { reportId } }),
+    onSuccess: () => {
+      toast.success("Report finalised. It can now be emailed.");
+      qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const [toDelete, setToDelete] = useState<ReportRow | null>(null);
+  const [toSend, setToSend] = useState<ReportRow | null>(null);
+
+
+
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
