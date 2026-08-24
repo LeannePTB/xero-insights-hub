@@ -35,6 +35,7 @@ import {
   type PnlSectionPayload,
   type ReportNote,
 } from "./monthly-report";
+import * as pnlGrouping from "./pnl-grouping";
 
 // ---------------------------------------------------------------------------
 // Xero report parsing (multi-period aware)
@@ -49,10 +50,11 @@ type XeroRow = {
 };
 
 export type ParsedPeriod = { label: string; monthEnd: string; index: number };
+export type ParsedRow = { name: string; values: number[]; accountId?: string | null };
 export type ParsedSection = {
   title: string;
   kind: "revenue" | "other-income" | "cost-of-sales" | "expenses" | "summary" | "other";
-  rows: { name: string; values: number[] }[];
+  rows: ParsedRow[];
   totals: number[];
   /** Xero's own wording for the subtotal row, e.g. "Total Cost of Sales". Null when Xero gave none. */
   totalLabel: string | null;
@@ -127,7 +129,7 @@ export function parsePnl(report: any, fallbackMonthEnd: string): ParsedPnl {
     if (section.RowType !== "Section") continue;
     const title = (section.Title || "").trim();
     const kind = classifySection(title);
-    const lines: { name: string; values: number[] }[] = [];
+    const lines: ParsedRow[] = [];
     let totals: number[] = periods.map(() => 0);
     let sawSummary = false;
     let totalLabel: string | null = null;
@@ -136,7 +138,16 @@ export function parsePnl(report: any, fallbackMonthEnd: string): ParsedPnl {
       const name = (r.Cells[0]?.Value ?? "").trim();
       const values = periods.map((p) => num(r.Cells?.[p.index]?.Value));
       if (r.RowType === "Row") {
-        if (name) lines.push({ name, values });
+        // Xero tags the row's cells with the AccountID it came from; that is
+        // how we later look the account's Type up.
+        let accountId: string | null = null;
+        for (const cell of r.Cells) {
+          for (const a of cell.Attributes ?? []) {
+            if (a?.Id === "account" && typeof a.Value === "string") accountId = a.Value;
+          }
+          if (accountId) break;
+        }
+        if (name) lines.push({ name, values, accountId });
       } else if (r.RowType === "SummaryRow") {
         totals = values;
         sawSummary = true;
@@ -188,14 +199,137 @@ export function mergeParsedPnl(
       for (const r of s.rows) {
         let row = target.rows.find((x) => x.name === r.name);
         if (!row) {
-          row = { name: r.name, values: new Array(n).fill(0) };
+          row = { name: r.name, values: new Array(n).fill(0), accountId: r.accountId ?? null };
           target.rows.push(row);
         }
+        if (!row.accountId && r.accountId) row.accountId = r.accountId;
         row.values[col] = r.values[0] ?? 0;
       }
     }
   });
-  return { periods, sections: order.map((t) => byTitle.get(t)!) };
+  // Ordering must not depend on which column happened to mention a section or
+  // an account first — the columns come back in different orders.
+  const sections = order
+    .map((t) => byTitle.get(t)!)
+    .sort((a, b) => sectionRank(a) - sectionRank(b) || a.title.localeCompare(b.title));
+  for (const s of sections) s.rows.sort((a, b) => a.name.localeCompare(b.name));
+  return { periods, sections };
+}
+
+const KIND_RANK: Record<ParsedSection["kind"], number> = {
+  revenue: 0,
+  "cost-of-sales": 1,
+  "other-income": 2,
+  expenses: 3,
+  other: 4,
+  summary: 5,
+};
+
+function sectionRank(s: ParsedSection): number {
+  return KIND_RANK[s.kind] ?? 4;
+}
+
+// ---------------------------------------------------------------------------
+// Regrouping by account Type
+// ---------------------------------------------------------------------------
+
+/**
+ * Rebuild the P&L sections from each account's Xero `Type`, because the API
+ * sections come from the Report Code and can disagree with the organisation's
+ * own report. Gross Profit, Net Profit and every subtotal are then derived
+ * from the regrouped lines, not from Xero's section totals.
+ *
+ * Rows that cannot be matched to an account are NOT reassigned: they stay in a
+ * clearly-labelled "Unmatched — <original section>" section so they remain
+ * visible and still count towards the totals of the section Xero put them in.
+ */
+export function regroupByAccountType(
+  parsed: ParsedPnl,
+  accounts: import("./pnl-grouping").XeroAccountRef[],
+): { parsed: ParsedPnl; unmatched: string[] } {
+  const {
+    indexAccounts,
+    matchAccount,
+    sectionForAccountType,
+    SECTION_INCOME,
+    SECTION_COST_OF_SALES,
+    SECTION_OTHER_INCOME,
+    SECTION_OPERATING_EXPENSES,
+  } = pnlGrouping;
+  const index = indexAccounts(accounts);
+  const n = parsed.periods.length;
+  const unmatched: string[] = [];
+  const buckets = new Map<string, ParsedSection>();
+
+  const bucket = (title: string, kind: ParsedSection["kind"]) => {
+    let b = buckets.get(title);
+    if (!b) {
+      b = { title, kind, rows: [], totals: new Array(n).fill(0), totalLabel: `Total ${title}` };
+      buckets.set(title, b);
+    }
+    return b;
+  };
+
+  for (const s of parsed.sections) {
+    // Xero's own Gross Profit / Net Profit rows are discarded; they are
+    // recomputed below from the regrouped lines.
+    if (s.kind === "summary") continue;
+    for (const r of s.rows) {
+      const account = matchAccount(index, r);
+      const target = account ? sectionForAccountType(account.type) : null;
+      if (target) {
+        bucket(target.title, target.kind as ParsedSection["kind"]).rows.push(r);
+      } else {
+        unmatched.push(r.name);
+        bucket(`Unmatched — ${s.title}`, s.kind).rows.push(r);
+      }
+    }
+  }
+
+  for (const b of buckets.values()) {
+    b.rows.sort((a, c) => a.name.localeCompare(c.name));
+    b.totals = Array.from({ length: n }, (_, i) => b.rows.reduce((sum, r) => sum + (r.values[i] ?? 0), 0));
+  }
+
+  const pick = (title: string) => buckets.get(title) ?? null;
+  const income = pick(SECTION_INCOME);
+  const cos = pick(SECTION_COST_OF_SALES);
+  const otherIncome = pick(SECTION_OTHER_INCOME);
+  const opex = pick(SECTION_OPERATING_EXPENSES);
+  const unmatchedSections = [...buckets.values()].filter((b) => b.title.startsWith("Unmatched — "));
+
+  const zero = new Array(n).fill(0);
+  const sum = (a: number[] | undefined, b: number[] | undefined, sign = 1) =>
+    Array.from({ length: n }, (_, i) => (a?.[i] ?? 0) + sign * (b?.[i] ?? 0));
+
+  const kindTotals = (kind: ParsedSection["kind"]) =>
+    Array.from({ length: n }, (_, i) =>
+      [...buckets.values()].filter((b) => b.kind === kind).reduce((s2, b) => s2 + (b.totals[i] ?? 0), 0),
+    );
+
+  const grossProfit = sum(kindTotals("revenue"), kindTotals("cost-of-sales"), -1);
+  const netProfit = Array.from({ length: n }, (_, i) =>
+    (grossProfit[i] ?? 0) + (kindTotals("other-income")[i] ?? 0) - (kindTotals("expenses")[i] ?? 0),
+  );
+
+  const summary = (title: string, totals: number[]): ParsedSection => ({
+    title,
+    kind: "summary",
+    rows: [],
+    totals,
+    totalLabel: title,
+  });
+
+  const ordered: ParsedSection[] = [];
+  if (income) ordered.push(income);
+  if (cos) ordered.push(cos);
+  ordered.push(summary("Gross Profit", grossProfit.length ? grossProfit : zero));
+  if (otherIncome) ordered.push(otherIncome);
+  if (opex) ordered.push(opex);
+  ordered.push(...unmatchedSections.sort((a, b) => a.title.localeCompare(b.title)));
+  ordered.push(summary("Net Profit", netProfit.length ? netProfit : zero));
+
+  return { parsed: { periods: parsed.periods, sections: ordered }, unmatched };
 }
 
 export type PeriodTotals = {
@@ -504,19 +638,52 @@ export async function computeMonthlyReport(opts: {
     return p;
   };
 
+  // The chart of accounts, read once per generation. Xero's P&L sections come
+  // from each account's Report Code, but Xero's own layout groups by the
+  // account's Type — so we need the Types to reproduce the client's report.
+  let accountsPromise: Promise<pnlGrouping.XeroAccountRef[]> | null = null;
+  const fetchAccounts = () => {
+    if (!accountsPromise) {
+      accountsPromise = (async () => {
+        const res = await xeroGet<{ Accounts?: any[] }>(conn, "Accounts", {
+          where: 'Class=="REVENUE"||Class=="EXPENSE"',
+        });
+        return (res.Accounts ?? []).map((a: any) => ({
+          accountId: a.AccountID ?? null,
+          code: a.Code ?? null,
+          name: a.Name ?? "",
+          type: a.Type ?? null,
+        }));
+      })();
+    }
+    return accountsPromise;
+  };
+
+  let unmatchedAccounts: string[] = [];
+
   try {
     // SEQUENTIAL, deliberately. Xero allows only a handful of concurrent
     // requests per tenant; firing these together tripped the limit and failed
     // the whole report. A few extra seconds here costs nothing.
+    const accounts = await fetchAccounts();
     const monthParsed = await fetchColumn(monthStart, periodEnd);
     const priorParsedCol = await fetchColumn(priorMonthStart, priorMonthEnd);
     const fyParsed = await fetchColumn(fyStart, periodEnd);
 
-    parsed = mergeParsedPnl([
+    const merged = mergeParsedPnl([
       { label: monthLabel(periodEnd), monthEnd: periodEnd, parsed: monthParsed },
       { label: monthLabel(priorMonthEnd), monthEnd: priorMonthEnd, parsed: priorParsedCol },
       { label: `${fyLabelFor(fyStart)} to date`, monthEnd: periodEnd, parsed: fyParsed },
     ]);
+    const regrouped = regroupByAccountType(merged, accounts);
+    parsed = regrouped.parsed;
+    unmatchedAccounts = regrouped.unmatched;
+    if (unmatchedAccounts.length) {
+      failed.push({
+        section: "profit_and_loss",
+        message: `These Profit and Loss lines could not be matched to a Xero account, so they stayed in the section Xero returned: ${Array.from(new Set(unmatchedAccounts)).join(", ")}.`,
+      });
+    }
   } catch (e: any) {
     const message = e?.message ?? "Profit and Loss could not be read from Xero.";
     failed.push({ section: "profit_and_loss", message });
@@ -540,7 +707,9 @@ export async function computeMonthlyReport(opts: {
     let priorFyTotals = sumTotals([]);
     try {
       const priorParsed = await fetchColumn(priorFyStart, priorFyPeriodEnd);
-      priorFyTotals = totalsForPeriod(priorParsed, 0);
+      // Regrouped the same way, so the comparative is like for like.
+      const priorRegrouped = regroupByAccountType(priorParsed, await fetchAccounts());
+      priorFyTotals = totalsForPeriod(priorRegrouped.parsed, 0);
     } catch (e: any) {
       failed.push({
         section: "key_figures",
