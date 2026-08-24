@@ -324,16 +324,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   paragraph(
     `${titleNames} · ${m.monthLabel} (period ended ${fmtDate(m.periodEnd)})`,
   );
-  y += SPACING.titleInner;
-  paragraph(`Prepared by ${m.organisationName}`, { size: 8 });
-
-  paragraph(
-    `Generated ${fmtDate(m.generatedAt)} by Traction Advisory · Version ${version} · ${status} · payload v${payload.payloadVersion} · amounts in ${m.currency}${
-      isDraft ? " · DRAFT — not for distribution" : ""
-    }`,
-    { size: 8 },
-  );
-  // The first section heading supplies the generous gap after the title block.
+  // The first section heading supplies the gap after the title block.
 
   // Incomplete banner, prominently on page one --------------------------------
   const shownFailures = renderableFailedSections(payload);
