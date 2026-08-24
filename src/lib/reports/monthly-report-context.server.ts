@@ -133,7 +133,14 @@ export async function saveDraftReport(opts: {
 
   const rows = (existing ?? []) as any[];
   const latest = rows[0];
-  const reusableDraft = latest && latest.status === "draft" ? latest : null;
+  // A draft may only be refreshed in place when it was produced by the SAME
+  // calculation. A draft from an older payload_version is left untouched as an
+  // audit trail and regenerating creates the next version.
+  const reusableDraft =
+    latest && latest.status === "draft" && Number(latest.payload_version ?? 0) === opts.payloadVersion
+      ? latest
+      : null;
+
 
   const row = {
     client_id: opts.ctx.clientId,
