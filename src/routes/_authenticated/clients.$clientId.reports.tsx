@@ -198,6 +198,29 @@ function ReportsPage() {
           {client?.name ?? "Client"} · a report is a point-in-time snapshot; the dashboard stays live.
         </p>
 
+        {/* Preview — sits directly under the page title so the period, version and
+            status in its header are visible without scrolling. */}
+        {openMut.isPending && !preview ? (
+          <p className="mt-6 flex items-center text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading the most recent report…
+          </p>
+        ) : preview ? (
+          <section className="mt-6">
+            <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
+              {preview.source === "generated"
+                ? "Preview of the draft just generated"
+                : preview.source === "auto"
+                  ? "Showing the most recent report"
+                  : "Stored report (as generated)"}
+            </p>
+            <MonthlyReportPreview
+              payload={preview.payload}
+              status={preview.status}
+              version={preview.version}
+            />
+          </section>
+        ) : null}
+
         {/* Generate */}
         <section className="mt-6 rounded-2xl border border-border bg-card p-6">
           <h2 className="font-display text-lg font-semibold">Generate</h2>
