@@ -8,7 +8,10 @@
 export const MONTHLY_REPORT_KEY = "monthly_management";
 // v2: P&L date parameters fixed; ageing reconstructed as at the period end via
 // the shared as-at subledger engine instead of the live AmountDue.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 2;
+// v3: the as-at subledger is narrowed in Xero with a `where` clause so only
+// documents open at the period end are fetched — v2 payloads tripped the paging
+// cap on large files and reported the ageing sections as failed.
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 3;
 
 export type ReportStatus = "draft" | "final" | "sent";
 

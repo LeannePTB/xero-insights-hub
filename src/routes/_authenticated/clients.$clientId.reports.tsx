@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, FileText, Loader2, RefreshCw } from "lucide-react";
+import { ArrowLeft, CheckCircle2, FileText, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,12 @@ import {
 } from "@/lib/reports/monthly-report.functions";
 import { MonthlyReportPreview } from "@/components/reports/MonthlyReportPreview";
 import { NotesCard } from "@/components/dashboard/NotesCard";
+import {
+  DeleteReportDialog,
+  SendReportDialog,
+  type ReportRow,
+} from "@/components/reports/ReportDeliveryDialogs";
+import { finaliseMonthlyReport } from "@/lib/reports/report-delivery.functions";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION } from "@/lib/reports/monthly-report";
 
@@ -109,6 +115,21 @@ function ReportsPage() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const finaliseFn = useServerFn(finaliseMonthlyReport);
+  const finaliseMut = useMutation({
+    mutationFn: (reportId: string) => finaliseFn({ data: { reportId } }),
+    onSuccess: () => {
+      toast.success("Report finalised. It can now be emailed.");
+      qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const [toDelete, setToDelete] = useState<ReportRow | null>(null);
+  const [toSend, setToSend] = useState<ReportRow | null>(null);
+
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -230,15 +251,39 @@ function ReportsPage() {
                       <td className="py-2 pr-3">{r.complete ? "Yes" : "No"}</td>
                       <td className="py-2 pr-3">{r.generated_by_name}</td>
                       <td className="py-2 pr-3">{fmtDate(r.generated_at)}</td>
-                      <td className="py-2 text-right">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => openMut.mutate(r.id)}
-                          disabled={openMut.isPending}
-                        >
-                          <FileText className="mr-1 h-3 w-3" /> Open
-                        </Button>
+                      <td className="py-2">
+                        <div className="flex flex-wrap justify-end gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openMut.mutate(r.id)}
+                            disabled={openMut.isPending}
+                          >
+                            <FileText className="mr-1 h-3 w-3" /> Open
+                          </Button>
+                          {r.status === "draft" ? (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => finaliseMut.mutate(r.id)}
+                              disabled={finaliseMut.isPending}
+                            >
+                              <CheckCircle2 className="mr-1 h-3 w-3" /> Finalise
+                            </Button>
+                          ) : (
+                            <Button size="sm" variant="outline" onClick={() => setToSend(r)}>
+                              <Mail className="mr-1 h-3 w-3" /> Email
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setToDelete(r)}
+                          >
+                            <Trash2 className="mr-1 h-3 w-3" /> Delete
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -247,6 +292,9 @@ function ReportsPage() {
             </div>
           )}
         </section>
+
+        <DeleteReportDialog report={toDelete} clientId={clientId} onClose={() => setToDelete(null)} />
+        <SendReportDialog report={toSend} clientId={clientId} onClose={() => setToSend(null)} />
       </main>
     </div>
   );

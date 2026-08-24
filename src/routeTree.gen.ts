@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SignupTokenRouteImport } from './routes/signup.$token'
+import { Route as ReportTokenRouteImport } from './routes/report.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthMfaVerifyRouteImport } from './routes/auth_.mfa-verify'
 import { Route as AuthMfaEnrollRouteImport } from './routes/auth_.mfa-enroll'
@@ -83,6 +84,11 @@ const IndexRoute = IndexRouteImport.update({
 const SignupTokenRoute = SignupTokenRouteImport.update({
   id: '/signup/$token',
   path: '/signup/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportTokenRoute = ReportTokenRouteImport.update({
+  id: '/report/$token',
+  path: '/report/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
@@ -323,6 +329,7 @@ export interface FileRoutesByFullPath {
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/report/$token': typeof ReportTokenRoute
   '/signup/$token': typeof SignupTokenRoute
   '/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
@@ -369,6 +376,7 @@ export interface FileRoutesByTo {
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/report/$token': typeof ReportTokenRoute
   '/signup/$token': typeof SignupTokenRoute
   '/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
@@ -416,6 +424,7 @@ export interface FileRoutesById {
   '/auth_/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
+  '/report/$token': typeof ReportTokenRoute
   '/signup/$token': typeof SignupTokenRoute
   '/_authenticated/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRoute
@@ -465,6 +474,7 @@ export interface FileRouteTypes {
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
+    | '/report/$token'
     | '/signup/$token'
     | '/admin/plans'
     | '/admin/security'
@@ -511,6 +521,7 @@ export interface FileRouteTypes {
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
+    | '/report/$token'
     | '/signup/$token'
     | '/admin/plans'
     | '/admin/security'
@@ -557,6 +568,7 @@ export interface FileRouteTypes {
     | '/auth_/mfa-enroll'
     | '/auth_/mfa-verify'
     | '/email/unsubscribe'
+    | '/report/$token'
     | '/signup/$token'
     | '/_authenticated/admin/plans'
     | '/_authenticated/admin/security'
@@ -604,6 +616,7 @@ export interface RootRouteChildren {
   AuthMfaEnrollRoute: typeof AuthMfaEnrollRoute
   AuthMfaVerifyRoute: typeof AuthMfaVerifyRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
+  ReportTokenRoute: typeof ReportTokenRoute
   SignupTokenRoute: typeof SignupTokenRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
@@ -657,6 +670,13 @@ declare module '@tanstack/react-router' {
       path: '/signup/$token'
       fullPath: '/signup/$token'
       preLoaderRoute: typeof SignupTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/report/$token': {
+      id: '/report/$token'
+      path: '/report/$token'
+      fullPath: '/report/$token'
+      preLoaderRoute: typeof ReportTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/email/unsubscribe': {
@@ -1067,6 +1087,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthMfaEnrollRoute: AuthMfaEnrollRoute,
   AuthMfaVerifyRoute: AuthMfaVerifyRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
+  ReportTokenRoute: ReportTokenRoute,
   SignupTokenRoute: SignupTokenRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
