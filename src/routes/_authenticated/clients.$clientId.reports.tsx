@@ -53,6 +53,7 @@ function ReportsPage() {
   const { clientId } = Route.useParams();
   const qc = useQueryClient();
   const fetchClient = useServerFn(getClient);
+  const fetchCtx = useServerFn(getMyContext);
   const listFn = useServerFn(listMonthlyReports);
   const generateFn = useServerFn(generateMonthlyReport);
   const openFn = useServerFn(getStoredMonthlyReport);
@@ -64,6 +65,7 @@ function ReportsPage() {
     { payload: MonthlyReportPayload; status: string; version: number; stored: boolean } | null
   >(null);
 
+  const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const clientQ = useQuery({
     queryKey: ["client", clientId],
     queryFn: () => fetchClient({ data: { clientId } }),
@@ -72,6 +74,8 @@ function ReportsPage() {
     queryKey: ["monthly-reports", clientId],
     queryFn: () => listFn({ data: { clientId } }),
   });
+
+  const isAdvisor = ctxQ.data?.isAdvisor ?? false;
 
   const client = clientQ.data?.client as any;
   const orgs: { tenantId: string; tenantName: string }[] = (client?.client_xero_orgs ?? [])
