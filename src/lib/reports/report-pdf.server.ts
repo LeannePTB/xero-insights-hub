@@ -19,6 +19,7 @@ import {
   SECTION_LABELS,
   money,
   pct,
+  resolveDisclaimer,
   type AgeingDetail,
   type MonthlyReportPayload,
 } from "./monthly-report";
