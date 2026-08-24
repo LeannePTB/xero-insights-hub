@@ -101,7 +101,7 @@ function ReportsPage() {
     .filter((o: any) => !!o.tenantId);
 
   const genMut = useMutation({
-    mutationFn: (override?: string) =>
+    mutationFn: (override: string | undefined) =>
       generateFn({ data: { clientId, periodEnd: override ?? periodEnd, tenantId: tenantId || null } }),
     onSuccess: (res: any) => {
       setPreview({ payload: res.payload, status: res.status, version: res.version, source: "generated" });
@@ -246,7 +246,7 @@ function ReportsPage() {
                 </select>
               </label>
             )}
-            <Button onClick={() => genMut.mutate()} disabled={genMut.isPending || !periodEnd}>
+            <Button onClick={() => genMut.mutate(undefined)} disabled={genMut.isPending || !periodEnd}>
               {genMut.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…
