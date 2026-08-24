@@ -1,0 +1,192 @@
+// Server-only AS-AT subledger reconstruction for receivables and payables.
+//
+// This is the single implementation of "what was outstanding at a past date".
+// It was extracted from the Balance Sheet Reconciliation engine (which now
+// calls it) so the reconciliation, the monthly report and anything else can
+// never disagree.
+//
+// The rule: invoices dated on or before the period end, less payments dated on
+// or before it, less credit note / overpayment / prepayment allocations dated
+// on or before it. Unallocated credit documents still sit in the control
+// account unless refunded in cash by the period end (refunds are carried in
+// the document's own Payments array).
+//
+// `AmountDue` is the balance NOW and is never used.
+
+import type { Connection } from "./api.server";
+import { onOrBefore, pageAll, round2, xeroDateIso, xeroDateLiteral } from "./recon-shared.server";
+
+export type AsAtEntry = {
+  /** Contact the amount belongs to. */
+  contact: string;
+  /** Outstanding at the period end. Negative for unallocated credits. */
+  amount: number;
+  /** Date the ageing bucket is taken from (invoice due date, else its date). */
+  dueDate: string | null;
+  /** Document date. */
+  date: string | null;
+  kind: "invoice" | "credit";
+  documentNumber: string | null;
+};
+
+export type AsAtLedger = {
+  /** Control account balance at the period end — ties to the balance sheet. */
+  balance: number;
+  entries: AsAtEntry[];
+  unreconciled: { label: string; detail: string; amount?: number }[];
+};
+
+type Allocation = { invoiceId: string; amount: number; date?: string };
+
+function collectAllocations(docs: any[], asAt: string): Allocation[] {
+  const out: Allocation[] = [];
+  for (const doc of docs) {
+    for (const a of doc?.Allocations ?? []) {
+      const date = a?.Date ?? doc?.Date;
+      if (!onOrBefore(date, asAt)) continue;
+      const invoiceId = a?.Invoice?.InvoiceID;
+      if (!invoiceId) continue;
+      out.push({ invoiceId, amount: Number(a?.Amount) || 0, date });
+    }
+  }
+  return out;
+}
+
+/**
+ * Reconstruct the receivables (ACCREC) or payables (ACCPAY) subledger as at
+ * `asAt`, per document as well as in total. Pages until exhausted; `pageAll`
+ * throws rather than silently truncating.
+ */
+export async function fetchAsAtLedger(
+  conn: Connection,
+  asAt: string,
+  side: "ACCREC" | "ACCPAY",
+): Promise<AsAtLedger> {
+  const dt = xeroDateLiteral(asAt);
+  const label = side === "ACCREC" ? "Accounts Receivable" : "Accounts Payable";
+
+  const invoices = await pageAll<any>(conn, "Invoices", "Invoices", {
+    where: `Type=="${side}"&&Date<=${dt}&&(Status=="AUTHORISED"||Status=="PAID")`,
+    order: "Date ASC",
+  });
+  const inSet = new Map<string, any>();
+  let gross = 0;
+  for (const inv of invoices) {
+    inSet.set(inv.InvoiceID, inv);
+    gross += Number(inv.Total) || 0;
+  }
+
+  const payments = await pageAll<any>(conn, "Payments", "Payments", {
+    where: `Date<=${dt}&&Status=="AUTHORISED"`,
+    order: "Date ASC",
+  });
+  const creditNotes = await pageAll<any>(conn, "CreditNotes", "CreditNotes", {
+    where: `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"&&Status!="DRAFT"`,
+    order: "Date ASC",
+  });
+  const overpayments = await pageAll<any>(conn, "Overpayments", "Overpayments", {
+    where: `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"`,
+    order: "Date ASC",
+  });
+  const prepayments = await pageAll<any>(conn, "Prepayments", "Prepayments", {
+    where: `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"`,
+    order: "Date ASC",
+  });
+
+  const unreconciled: AsAtLedger["unreconciled"] = [];
+  const settledByInvoice = new Map<string, number>();
+
+  // Payments allocated to invoices in scope.
+  let paid = 0;
+  let orphanPayments = 0;
+  for (const p of payments) {
+    const invId = p?.Invoice?.InvoiceID;
+    const invType = p?.Invoice?.Type;
+    const amount = Number(p?.Amount) || 0;
+    if (!invId) continue;
+    if (invType && invType !== side) continue;
+    if (inSet.has(invId)) {
+      paid += amount;
+      settledByInvoice.set(invId, (settledByInvoice.get(invId) ?? 0) + amount);
+    } else if (invType === side) orphanPayments += amount;
+  }
+  if (round2(orphanPayments) !== 0) {
+    unreconciled.push({
+      label: `${label}: payments against out-of-scope invoices`,
+      detail:
+        "Payments dated on or before the period end are allocated to invoices that are not authorised/paid, or are dated after the period end. They are excluded from the subledger total.",
+      amount: round2(orphanPayments),
+    });
+  }
+
+  const sideCredits = creditNotes.filter((c) =>
+    side === "ACCREC" ? c?.Type === "ACCRECCREDIT" : c?.Type === "ACCPAYCREDIT",
+  );
+  const sideOver = overpayments.filter((o) =>
+    side === "ACCREC" ? o?.Type === "RECEIVE-OVERPAYMENT" : o?.Type === "SPEND-OVERPAYMENT",
+  );
+  const sidePre = prepayments.filter((o) =>
+    side === "ACCREC" ? o?.Type === "RECEIVE-PREPAYMENT" : o?.Type === "SPEND-PREPAYMENT",
+  );
+
+  const creditDocs = [...sideCredits, ...sideOver, ...sidePre];
+
+  let allocated = 0;
+  let orphanAllocations = 0;
+  for (const a of collectAllocations(creditDocs, asAt)) {
+    if (inSet.has(a.invoiceId)) {
+      allocated += a.amount;
+      settledByInvoice.set(a.invoiceId, (settledByInvoice.get(a.invoiceId) ?? 0) + a.amount);
+    } else orphanAllocations += a.amount;
+  }
+  if (round2(orphanAllocations) !== 0) {
+    unreconciled.push({
+      label: `${label}: allocations against out-of-scope invoices`,
+      detail:
+        "Credit note, overpayment or prepayment allocations point at invoices outside the period-end set. They are excluded from the subledger total.",
+      amount: round2(orphanAllocations),
+    });
+  }
+
+  // Unallocated credit documents still sit in the control account unless they
+  // were refunded in cash on or before the period end.
+  let unallocated = 0;
+  const entries: AsAtEntry[] = [];
+  for (const doc of creditDocs) {
+    const total = Number(doc?.Total) || 0;
+    const allocatedByAsAt = (doc?.Allocations ?? [])
+      .filter((a: any) => onOrBefore(a?.Date ?? doc?.Date, asAt))
+      .reduce((s: number, a: any) => s + (Number(a?.Amount) || 0), 0);
+    const refundedByAsAt = (doc?.Payments ?? [])
+      .filter((p: any) => onOrBefore(p?.Date ?? doc?.Date, asAt))
+      .reduce((s: number, p: any) => s + (Number(p?.Amount) || 0), 0);
+    const open = total - allocatedByAsAt - refundedByAsAt;
+    unallocated += open;
+    if (round2(open) !== 0) {
+      entries.push({
+        contact: doc?.Contact?.Name ?? "Unknown",
+        // Unallocated credits reduce the control account balance.
+        amount: round2(-open),
+        dueDate: xeroDateIso(doc?.DueDate ?? doc?.DueDateString ?? doc?.Date ?? doc?.DateString),
+        date: xeroDateIso(doc?.Date ?? doc?.DateString),
+        kind: "credit",
+        documentNumber: doc?.CreditNoteNumber ?? doc?.CreditNoteID ?? null,
+      });
+    }
+  }
+
+  for (const inv of inSet.values()) {
+    const outstanding = (Number(inv.Total) || 0) - (settledByInvoice.get(inv.InvoiceID) ?? 0);
+    if (round2(outstanding) === 0) continue;
+    entries.push({
+      contact: inv?.Contact?.Name ?? "Unknown",
+      amount: round2(outstanding),
+      dueDate: xeroDateIso(inv?.DueDate ?? inv?.DueDateString ?? inv?.Date ?? inv?.DateString),
+      date: xeroDateIso(inv?.Date ?? inv?.DateString),
+      kind: "invoice",
+      documentNumber: inv?.InvoiceNumber ?? null,
+    });
+  }
+
+  return { balance: round2(gross - paid - allocated - unallocated), entries, unreconciled };
+}

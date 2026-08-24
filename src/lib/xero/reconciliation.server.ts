@@ -15,14 +15,10 @@
 
 import type { Connection } from "./api.server";
 import {
-  bsValueFor,
   errText,
   extractBalanceSheet,
-  onOrBefore,
-  pageAll,
   round2,
   summaryValue,
-  xeroDateLiteral,
   type BalanceSheet,
   type XeroAccount,
 } from "./recon-shared.server";
@@ -56,133 +52,22 @@ export type ReconResult = {
   issues: string[];
 };
 
-type Allocation = { invoiceId: string; amount: number; date?: string };
-
-function collectAllocations(docs: any[], asAt: string): Allocation[] {
-  const out: Allocation[] = [];
-  for (const doc of docs) {
-    for (const a of doc?.Allocations ?? []) {
-      const date = a?.Date ?? doc?.Date;
-      if (!onOrBefore(date, asAt)) continue;
-      const invoiceId = a?.Invoice?.InvoiceID;
-      if (!invoiceId) continue;
-      out.push({ invoiceId, amount: Number(a?.Amount) || 0, date });
-    }
-  }
-  return out;
-}
-
 type SideResult = {
   balance: number;
   unreconciled: { label: string; detail: string; amount?: number }[];
 };
 
+/** Delegates to the shared as-at reconstruction — the single implementation. */
 async function subledgerSide(
   conn: Connection,
   asAt: string,
   side: "ACCREC" | "ACCPAY",
 ): Promise<SideResult> {
-  const dt = xeroDateLiteral(asAt);
-  const label = side === "ACCREC" ? "Accounts Receivable" : "Accounts Payable";
-
-  const invoices = await pageAll<any>(conn, "Invoices", "Invoices", {
-    where: `Type=="${side}"&&Date<=${dt}&&(Status=="AUTHORISED"||Status=="PAID")`,
-    order: "Date ASC",
-  });
-  const inSet = new Map<string, number>();
-  let gross = 0;
-  for (const inv of invoices) {
-    const total = Number(inv.Total) || 0;
-    inSet.set(inv.InvoiceID, total);
-    gross += total;
-  }
-
-  const payments = await pageAll<any>(conn, "Payments", "Payments", {
-    where: `Date<=${dt}&&Status=="AUTHORISED"`,
-    order: "Date ASC",
-  });
-  const creditNotes = await pageAll<any>(conn, "CreditNotes", "CreditNotes", {
-    where: `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"&&Status!="DRAFT"`,
-    order: "Date ASC",
-  });
-  const overpayments = await pageAll<any>(conn, "Overpayments", "Overpayments", {
-    where: `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"`,
-    order: "Date ASC",
-  });
-  const prepayments = await pageAll<any>(conn, "Prepayments", "Prepayments", {
-    where: `Date<=${dt}&&Status!="DELETED"&&Status!="VOIDED"`,
-    order: "Date ASC",
-  });
-
-  const unreconciled: SideResult["unreconciled"] = [];
-
-  // Payments allocated to invoices in scope.
-  let paid = 0;
-  let orphanPayments = 0;
-  for (const p of payments) {
-    const invId = p?.Invoice?.InvoiceID;
-    const invType = p?.Invoice?.Type;
-    const amount = Number(p?.Amount) || 0;
-    if (!invId) continue;
-    if (invType && invType !== side) continue;
-    if (inSet.has(invId)) paid += amount;
-    else if (invType === side) orphanPayments += amount;
-  }
-  if (round2(orphanPayments) !== 0) {
-    unreconciled.push({
-      label: `${label}: payments against out-of-scope invoices`,
-      detail:
-        "Payments dated on or before the period end are allocated to invoices that are not authorised/paid, or are dated after the period end. They are excluded from the subledger total.",
-      amount: round2(orphanPayments),
-    });
-  }
-
-  // Credit note, overpayment and prepayment allocations.
-  const sideCredits = creditNotes.filter((c) =>
-    side === "ACCREC" ? c?.Type === "ACCRECCREDIT" : c?.Type === "ACCPAYCREDIT",
-  );
-  const sideOver = overpayments.filter((o) =>
-    side === "ACCREC" ? o?.Type === "RECEIVE-OVERPAYMENT" : o?.Type === "SPEND-OVERPAYMENT",
-  );
-  const sidePre = prepayments.filter((o) =>
-    side === "ACCREC" ? o?.Type === "RECEIVE-PREPAYMENT" : o?.Type === "SPEND-PREPAYMENT",
-  );
-
-  let allocated = 0;
-  let orphanAllocations = 0;
-  for (const a of collectAllocations([...sideCredits, ...sideOver, ...sidePre], asAt)) {
-    if (inSet.has(a.invoiceId)) allocated += a.amount;
-    else orphanAllocations += a.amount;
-  }
-  if (round2(orphanAllocations) !== 0) {
-    unreconciled.push({
-      label: `${label}: allocations against out-of-scope invoices`,
-      detail:
-        "Credit note, overpayment or prepayment allocations point at invoices outside the period-end set. They are excluded from the subledger total.",
-      amount: round2(orphanAllocations),
-    });
-  }
-
-  // Unallocated credit notes / overpayments / prepayments still sit in the
-  // control account in Xero, so they belong in the subledger balance — unless
-  // they were refunded in cash on or before the period end, which clears them
-  // out of the control account without any invoice allocation. Refunds are
-  // carried on the document's own Payments array.
-  let unallocated = 0;
-  for (const doc of [...sideCredits, ...sideOver, ...sidePre]) {
-    const total = Number(doc?.Total) || 0;
-    const allocatedByAsAt = (doc?.Allocations ?? [])
-      .filter((a: any) => onOrBefore(a?.Date ?? doc?.Date, asAt))
-      .reduce((s: number, a: any) => s + (Number(a?.Amount) || 0), 0);
-    const refundedByAsAt = (doc?.Payments ?? [])
-      .filter((p: any) => onOrBefore(p?.Date ?? doc?.Date, asAt))
-      .reduce((s: number, p: any) => s + (Number(p?.Amount) || 0), 0);
-    unallocated += total - allocatedByAsAt - refundedByAsAt;
-  }
-
-  const balance = round2(gross - paid - allocated - unallocated);
-  return { balance, unreconciled };
+  const { fetchAsAtLedger } = await import("./asat-ledger.server");
+  const ledger = await fetchAsAtLedger(conn, asAt, side);
+  return { balance: ledger.balance, unreconciled: ledger.unreconciled };
 }
+
 
 async function bankClosingBalances(
   conn: Connection,
