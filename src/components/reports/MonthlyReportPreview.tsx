@@ -196,9 +196,8 @@ export function MonthlyReportPreview({
         )}
         <h2 className="font-display text-2xl font-semibold">{m.clientName}</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Monthly Management Report ·{" "}
-          {uniqueNames([m.clientName, m.tenantName]).join(" · ")} · {m.monthLabel} (period ended{" "}
-          {fmtDate(m.periodEnd)})
+          Monthly Management Report · {m.monthLabel} (period ended {fmtDate(m.periodEnd)})
+          {!namesEqual(m.clientName, m.tenantName) && ` · ${m.tenantName}`}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Generated {fmtDate(m.generatedAt)} by Traction Advisory
