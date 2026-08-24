@@ -17,6 +17,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import {
   SECTION_LABELS,
+  renderableFailedSections,
   money,
   pct,
   resolveDisclaimer,
@@ -294,7 +295,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     need(60);
     doc.setFillColor(254, 242, 242);
     doc.setDrawColor(INK.bad[0], INK.bad[1], INK.bad[2]);
-    const lines = payload.failedSections.map(
+    const lines = renderableFailedSections(payload).map(
       (f) => `${SECTION_LABELS[f.section] ?? f.section}: ${f.message}`,
     );
     const wrapped = lines.flatMap((l) => doc.splitTextToSize(l, PAGE.w - M.left - M.right - 24));
@@ -316,7 +317,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   }
 
   // 1. Key figures -----------------------------------------------------------
-  const failed = new Map(payload.failedSections.map((f) => [f.section, f.message]));
+  const failed = new Map(renderableFailedSections(payload).map((f) => [f.section, f.message]));
   heading("Key figures");
   if (!payload.keyFigures) {
     missing(failed.get("key_figures") ?? "Not computed.");
@@ -381,25 +382,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     });
   }
 
-  // 3. Income vs Expenses ----------------------------------------------------
-  heading("Income vs Expenses");
-  if (!payload.incomeVsExpenses) {
-    missing(failed.get("income_vs_expenses") ?? "Not computed.");
-  } else {
-    table({
-      head: ["Month", "Income", "Expenses", "Net"],
-      body: payload.incomeVsExpenses.months.map((mo) => [
-        mo.label,
-        money(mo.income),
-        money(mo.expenses),
-        money(mo.income - mo.expenses),
-      ]),
-    });
-    paragraph(payload.incomeVsExpenses.narrative.sentence);
-    y += 6;
-  }
-
-  // 4 & 5. Ageing ------------------------------------------------------------
+  // 3 & 4. Ageing ------------------------------------------------------------
   const ageing = (detail: AgeingDetail | null, title: string, label: string, section: string) => {
     heading(title);
     if (!detail) {
