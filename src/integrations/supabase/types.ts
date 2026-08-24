@@ -1387,6 +1387,66 @@ export type Database = {
         }
         Relationships: []
       }
+      report_recipients: {
+        Row: {
+          client_id: string
+          email: string
+          expires_at: string
+          first_opened_at: string | null
+          id: string
+          last_opened_at: string | null
+          open_count: number
+          report_id: string
+          revoked_at: string | null
+          sent_at: string
+          sent_by: string | null
+          token_hash: string
+        }
+        Insert: {
+          client_id: string
+          email: string
+          expires_at: string
+          first_opened_at?: string | null
+          id?: string
+          last_opened_at?: string | null
+          open_count?: number
+          report_id: string
+          revoked_at?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          token_hash: string
+        }
+        Update: {
+          client_id?: string
+          email?: string
+          expires_at?: string
+          first_opened_at?: string | null
+          id?: string
+          last_opened_at?: string | null
+          open_count?: number
+          report_id?: string
+          revoked_at?: string | null
+          sent_at?: string
+          sent_by?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_recipients_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_recipients_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "client_reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scenario_exclusions: {
         Row: {
           client_id: string
@@ -2113,6 +2173,13 @@ export type Database = {
           in_grace: boolean
           source: string
           tier: Database["public"]["Enums"]["dashboard_tier"]
+        }[]
+      }
+      delete_client_report: {
+        Args: { _reason?: string; _report_id: string }
+        Returns: {
+          deleted: boolean
+          recipients_revoked: number
         }[]
       }
       delete_email: {
