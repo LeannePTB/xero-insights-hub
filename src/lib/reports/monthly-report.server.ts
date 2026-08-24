@@ -502,7 +502,7 @@ export async function computeMonthlyReport(opts: {
   // --- Receivables / payables detail, reconstructed as at the period end.
   const { fetchAsAtLedger } = await import("@/lib/xero/asat-ledger.server");
   try {
-    const ledger = await fetchAsAtLedger(conn, "ACCREC" === "ACCREC" ? periodEnd : periodEnd, "ACCREC");
+    const ledger = await fetchAsAtLedger(conn, periodEnd, "ACCREC");
     receivables = buildAgeing(ledger.entries, periodEnd);
   } catch (e: any) {
     failed.push({ section: "receivables", message: e?.message ?? "Receivables could not be read." });
