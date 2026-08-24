@@ -196,8 +196,8 @@ export function MonthlyReportPreview({
           {m.tenantName}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Generated {fmtDate(m.generatedAt)}
-          {version ? ` · version ${version}` : ""}
+          Generated {fmtDate(m.generatedAt)} by Traction Advisory
+          {version ? ` · Version ${version}` : ""}
           {status ? ` · ${status}` : ""} · payload v{payload.payloadVersion} · amounts in {m.currency}
         </p>
       </header>
@@ -498,7 +498,7 @@ export function MonthlyReportPreview({
 
       {/* Footer */}
       <footer className="rounded-2xl border border-border bg-card px-6 py-4 text-xs text-muted-foreground">
-        {m.organisationName} · {m.clientName} · {m.monthLabel} · generated {fmtDate(m.generatedAt)}
+        {m.organisationName} · {m.clientName} · {m.monthLabel} · generated {fmtDate(m.generatedAt)} by Traction Advisory · Version {version}
       </footer>
     </div>
   );
