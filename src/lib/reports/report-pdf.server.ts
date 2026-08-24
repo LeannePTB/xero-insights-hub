@@ -50,6 +50,12 @@ function marker(arrow: string) {
 
 const INK = { text: [17, 24, 39], muted: [107, 114, 128], line: [226, 232, 240], bad: [185, 28, 28] };
 
+const SPACING = {
+  titleInner: 5, // extra breathing room between the title-block lines
+  beforeSection: 18, // generous gap before every section heading
+  afterSectionHeading: 8, // smaller gap between a heading and its content
+};
+
 type LogoImage = { data: Uint8Array; format: "PNG" | "JPEG"; w: number; h: number };
 
 function fmtDate(iso: string | null | undefined) {
@@ -205,12 +211,15 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   };
 
   const heading = (text: string) => {
-    need(40);
+    // Reserve space for the pre-heading gap, the heading itself, the post-heading
+    // gap and at least the first row of content so the heading is never orphaned.
+    need(SPACING.beforeSection + 14 + SPACING.afterSectionHeading + 14);
+    y += SPACING.beforeSection;
     doc.setFont("helvetica", "bold");
     doc.setFontSize(13);
     doc.setTextColor(INK.text[0], INK.text[1], INK.text[2]);
     doc.text(text, M.left, y);
-    y += 14;
+    y += 14 + SPACING.afterSectionHeading;
   };
 
   const paragraph = (text: string, opts: { colour?: number[]; size?: number } = {}) => {
@@ -303,16 +312,18 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   doc.setFontSize(18);
   doc.setTextColor(INK.text[0], INK.text[1], INK.text[2]);
   doc.text("Monthly Management Report", M.left, y);
-  y += 20;
+  y += 20 + SPACING.titleInner;
   paragraph(
     `${m.clientName} · ${m.tenantName} · ${m.monthLabel} (period ended ${fmtDate(m.periodEnd)})`,
   );
+  y += SPACING.titleInner;
   paragraph(
     `Generated ${fmtDate(m.generatedAt)} · version ${version} · ${status} · payload v${payload.payloadVersion} · amounts in ${m.currency}${
       isDraft ? " · DRAFT — not for distribution" : ""
     }`,
     { size: 8 },
   );
+  // The first section heading supplies the generous gap after the title block.
 
   // Incomplete banner, prominently on page one --------------------------------
   const shownFailures = renderableFailedSections(payload);
@@ -433,7 +444,6 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       });
       paragraph(`${marker(j.arrow)}${k.sentence}`, { colour: toneRgb(j.tone) });
     }
-    y += 10;
   }
 
   // 4. Profit and Loss -------------------------------------------------------
@@ -514,19 +524,18 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       colWidths: { 0: 130 },
     });
     paragraph(detail.caveat, { size: 7.5 });
-    y += 6;
   };
   ageing(payload.receivables, "Receivables detail", "Customer", "receivables");
   ageing(payload.payables, "Payables detail", "Supplier", "payables");
 
   // 5. Disclaimer — fine print, last, no forced page break -------------------
-  y += 8;
+  need(SPACING.beforeSection + 11 + SPACING.afterSectionHeading + 12);
+  y += SPACING.beforeSection;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(INK.muted[0], INK.muted[1], INK.muted[2]);
-  need(12);
   doc.text("Disclaimer", M.left, y);
-  y += 11;
+  y += 11 + SPACING.afterSectionHeading;
   paragraph(resolveDisclaimer(payload), { size: 7.5 });
 
   drawFooter((doc as any).getCurrentPageInfo().pageNumber);
