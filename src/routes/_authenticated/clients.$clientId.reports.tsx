@@ -18,10 +18,11 @@ import { MonthlyReportPreview } from "@/components/reports/MonthlyReportPreview"
 import { NotesCard } from "@/components/dashboard/NotesCard";
 import {
   DeleteReportDialog,
+  FinaliseReportDialog,
   SendReportDialog,
+  isStalePayload,
   type ReportRow,
 } from "@/components/reports/ReportDeliveryDialogs";
-import { finaliseMonthlyReport } from "@/lib/reports/report-delivery.functions";
 import { getMonthlyReportPdfUrl } from "@/lib/reports/report-pdf.functions";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION } from "@/lib/reports/monthly-report";
@@ -100,8 +101,8 @@ function ReportsPage() {
     .filter((o: any) => !!o.tenantId);
 
   const genMut = useMutation({
-    mutationFn: () =>
-      generateFn({ data: { clientId, periodEnd, tenantId: tenantId || null } }),
+    mutationFn: (override?: string) =>
+      generateFn({ data: { clientId, periodEnd: override ?? periodEnd, tenantId: tenantId || null } }),
     onSuccess: (res: any) => {
       setPreview({ payload: res.payload, status: res.status, version: res.version, source: "generated" });
       setSelectedId(res.id ?? null);
@@ -154,16 +155,6 @@ function ReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listQ.data, selectedId]);
 
-  const finaliseFn = useServerFn(finaliseMonthlyReport);
-  const finaliseMut = useMutation({
-    mutationFn: (reportId: string) => finaliseFn({ data: { reportId } }),
-    onSuccess: () => {
-      toast.success("Report finalised. It can now be emailed.");
-      qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const pdfFn = useServerFn(getMonthlyReportPdfUrl);
   const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
   const pdfMut = useMutation({
@@ -178,6 +169,7 @@ function ReportsPage() {
   });
 
   const [toDelete, setToDelete] = useState<ReportRow | null>(null);
+  const [toFinalise, setToFinalise] = useState<ReportRow | null>(null);
   const [toSend, setToSend] = useState<ReportRow | null>(null);
 
 
@@ -317,7 +309,17 @@ function ReportsPage() {
                       aria-selected={r.id === selectedId}
                     >
                       <td className="py-2 pr-3">{fmtDate(r.period_end)}</td>
-                      <td className="py-2 pr-3 tabular-nums">v{r.version}</td>
+                      <td className="py-2 pr-3 tabular-nums">
+                        v{r.version}
+                        {isStalePayload(r) && (
+                          <span
+                            className="ml-2 rounded-full border border-destructive/40 bg-destructive/5 px-2 py-0.5 text-[10px] font-medium text-destructive"
+                            title={`Calculated with payload v${r.payload_version ?? 0}; current is v${MONTHLY_REPORT_PAYLOAD_VERSION}.`}
+                          >
+                            calculated with an older version — regenerate
+                          </span>
+                        )}
+                      </td>
                       <td className="py-2 pr-3 capitalize">{r.status}</td>
                       <td className="py-2 pr-3">{r.complete ? "Yes" : "No"}</td>
                       <td className="py-2 pr-3">{r.generated_by_name}</td>
@@ -352,8 +354,7 @@ function ReportsPage() {
                             <Button
                               size="sm"
                               variant="outline"
-                              onClick={() => finaliseMut.mutate(r.id)}
-                              disabled={finaliseMut.isPending}
+                              onClick={() => setToFinalise(r)}
                             >
                               <CheckCircle2 className="mr-1 h-3 w-3" /> Finalise
                             </Button>
@@ -380,6 +381,15 @@ function ReportsPage() {
           )}
         </section>
 
+        <FinaliseReportDialog
+          report={toFinalise}
+          clientId={clientId}
+          onClose={() => setToFinalise(null)}
+          onRegenerate={(r) => {
+            setPeriodEnd(r.period_end);
+            genMut.mutate(r.period_end);
+          }}
+        />
         <DeleteReportDialog report={toDelete} clientId={clientId} onClose={() => setToDelete(null)} />
         <SendReportDialog report={toSend} clientId={clientId} onClose={() => setToSend(null)} />
       </main>
