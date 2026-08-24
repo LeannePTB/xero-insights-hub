@@ -499,19 +499,22 @@ export async function computeMonthlyReport(opts: {
     incomeVsExpenses = buildIncomeVsExpenses(parsed);
   }
 
-  // --- Receivables detail
+  // --- Receivables / payables detail, reconstructed as at the period end.
+  const { fetchAsAtLedger } = await import("@/lib/xero/asat-ledger.server");
   try {
-    receivables = buildAgeing(await fetchOpenInvoices(conn, "ACCREC", periodEnd), periodEnd);
+    const ledger = await fetchAsAtLedger(conn, "ACCREC" === "ACCREC" ? periodEnd : periodEnd, "ACCREC");
+    receivables = buildAgeing(ledger.entries, periodEnd);
   } catch (e: any) {
     failed.push({ section: "receivables", message: e?.message ?? "Receivables could not be read." });
   }
 
-  // --- Payables detail
   try {
-    payables = buildAgeing(await fetchOpenInvoices(conn, "ACCPAY", periodEnd), periodEnd);
+    const ledger = await fetchAsAtLedger(conn, periodEnd, "ACCPAY");
+    payables = buildAgeing(ledger.entries, periodEnd);
   } catch (e: any) {
     failed.push({ section: "payables", message: e?.message ?? "Payables could not be read." });
   }
+
 
   // --- Notes (the client's existing notes, read under the caller's RLS)
   try {
