@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, CheckCircle2, FileText, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, FileText, Loader2, Mail, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/AppHeader";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ import {
   type ReportRow,
 } from "@/components/reports/ReportDeliveryDialogs";
 import { finaliseMonthlyReport } from "@/lib/reports/report-delivery.functions";
+import { getMonthlyReportPdfUrl } from "@/lib/reports/report-pdf.functions";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION } from "@/lib/reports/monthly-report";
 
@@ -126,6 +127,19 @@ function ReportsPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const pdfFn = useServerFn(getMonthlyReportPdfUrl);
+  const [pdfBusyId, setPdfBusyId] = useState<string | null>(null);
+  const pdfMut = useMutation({
+    mutationFn: (report: any) =>
+      pdfFn({ data: { reportId: report.id, regenerate: report.status === "draft" } }),
+    onSuccess: (res: any) => {
+      // Short-lived signed URL — opened immediately and never stored.
+      window.open(res.url, "_blank", "noopener,noreferrer");
+    },
+    onError: (e: any) => toast.error(e.message),
+    onSettled: () => setPdfBusyId(null),
+  });
+
   const [toDelete, setToDelete] = useState<ReportRow | null>(null);
   const [toSend, setToSend] = useState<ReportRow | null>(null);
 
@@ -194,7 +208,9 @@ function ReportsPage() {
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
             Generating writes a draft. A finalised or sent report is never overwritten — regenerating
-            creates a new version. Current calculation: payload v{MONTHLY_REPORT_PAYLOAD_VERSION}.
+            creates a new version. Current calculation: payload v{MONTHLY_REPORT_PAYLOAD_VERSION}. A
+            draft PDF is watermarked DRAFT; finalising renders the PDF once and it is never
+            regenerated.
           </p>
         </section>
 
@@ -260,6 +276,22 @@ function ReportsPage() {
                             disabled={openMut.isPending}
                           >
                             <FileText className="mr-1 h-3 w-3" /> Open
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setPdfBusyId(r.id);
+                              pdfMut.mutate(r);
+                            }}
+                            disabled={pdfBusyId === r.id}
+                          >
+                            {pdfBusyId === r.id ? (
+                              <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            ) : (
+                              <Download className="mr-1 h-3 w-3" />
+                            )}
+                            PDF
                           </Button>
                           {r.status === "draft" ? (
                             <Button
