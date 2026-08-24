@@ -6,6 +6,8 @@ import {
   pct,
   pctMagnitude,
   resolveDisclaimer,
+  namesEqual,
+  uniqueNames,
   type AgeingDetail,
   type MonthlyReportPayload,
 } from "@/lib/reports/monthly-report";
