@@ -13,7 +13,7 @@ export const MONTHLY_REPORT_KEY = "monthly_management";
 // cap on large files and reported the ageing sections as failed.
 // v4: the rendered disclaimer text is frozen into the payload at generation
 // time, so an old report always shows the wording that was actually sent.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 6;
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 7;
 
 // v6: ageing buckets on the document date (matching Xero's aged reports);
 // P&L subtotals carry Xero's own wording; nil accounts suppressed.

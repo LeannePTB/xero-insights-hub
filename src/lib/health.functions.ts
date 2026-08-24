@@ -294,6 +294,7 @@ export const getBusinessHealth = createServerFn({ method: "POST" })
       xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
         fromDate,
         toDate,
+        standardLayout: "false",
       }),
       xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: asOfDate }),
     ]);
@@ -546,8 +547,8 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       `Type=="${type}"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"&&AmountDue>0`;
 
     const [pnlRes, priorPnlRes, bsRes, bsStartRes, arInvRes, apInvRes, orgRes] = await Promise.all([
-      safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: fy.from, toDate: fy.to }),
-      safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: priorFrom, toDate: priorToStr }),
+      safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: fy.from, toDate: fy.to, standardLayout: "false" }),
+      safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: priorFrom, toDate: priorToStr, standardLayout: "false" }),
       safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: asOfDate }),
       safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: bsStartDate }),
       safeGet<{ Invoices: any[] }>("Invoices", { where: outstandingWhere("ACCREC") }),

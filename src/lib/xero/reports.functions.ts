@@ -106,6 +106,7 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
       fromDate: data.fromDate,
       toDate: data.toDate,
+      standardLayout: "false",
       ...(basis === "cash" ? { paymentsOnly: "true" } : {}),
     });
     const report = res.Reports?.[0];
