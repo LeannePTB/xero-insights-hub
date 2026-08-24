@@ -585,5 +585,7 @@ export async function computeMonthlyReport(opts: {
     receivables,
     payables,
     notes,
+    // Frozen at generation time: an old report keeps the wording that was sent.
+    disclaimer: disclaimerText(opts.clientName),
   };
 }
