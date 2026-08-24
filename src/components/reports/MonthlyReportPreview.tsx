@@ -106,7 +106,7 @@ export function MonthlyReportPreview({
         </p>
       </header>
 
-      {!payload.complete && (
+      {!payload.complete && shownFailures.length > 0 && (
         <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm">
           <p className="font-medium text-destructive">This report is incomplete.</p>
           <ul className="mt-2 space-y-1">

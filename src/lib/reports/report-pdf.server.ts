@@ -291,11 +291,12 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   );
 
   // Incomplete banner, prominently on page one --------------------------------
-  if (!payload.complete) {
+  const shownFailures = renderableFailedSections(payload);
+  if (!payload.complete && shownFailures.length > 0) {
     need(60);
     doc.setFillColor(254, 242, 242);
     doc.setDrawColor(INK.bad[0], INK.bad[1], INK.bad[2]);
-    const lines = renderableFailedSections(payload).map(
+    const lines = shownFailures.map(
       (f) => `${SECTION_LABELS[f.section] ?? f.section}: ${f.message}`,
     );
     const wrapped = lines.flatMap((l) => doc.splitTextToSize(l, PAGE.w - M.left - M.right - 24));
