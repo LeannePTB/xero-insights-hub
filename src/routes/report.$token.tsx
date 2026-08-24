@@ -84,13 +84,14 @@ function ReportLinkPage() {
     );
   }
 
-  if (linkQ.error) {
+  if (linkQ.error || !linkQ.data) {
     return (
       <Shell>
-        <Invalid message={(linkQ.error as Error).message} />
+        <Invalid message={(linkQ.error as Error)?.message ?? "This link is no longer valid."} />
       </Shell>
     );
   }
+  const link = linkQ.data;
 
   const opened = openMut.data;
   if (opened) {
