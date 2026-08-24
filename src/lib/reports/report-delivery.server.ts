@@ -90,6 +90,11 @@ export async function finaliseReport(supabase: any, userId: string, reportId: st
     .eq("status", "draft");
   if (error) throw new Error(error.message);
 
+  // A finalised PDF is rendered exactly once, here, from the stored payload.
+  // Any earlier draft render carried a DRAFT watermark and is superseded.
+  const { ensureFinalReportPdf } = await import("./report-pdf.server");
+  await ensureFinalReportPdf(reportId);
+
   const { writeAudit } = await import("@/lib/audit.server");
   await writeAudit({
     actorUserId: userId,
@@ -401,6 +406,26 @@ export async function openLink(token: string, email: string, ip: string | null, 
       .from("client-reports")
       .createSignedUrl(report.pdf_path, 300);
     pdfUrl = signed?.signedUrl ?? null;
+    if (pdfUrl) {
+      await writeAudit({
+        actorUserId: null,
+        firmId: report.firm_id,
+        action: "client_report_pdf_downloaded",
+        targetType: "client_reports",
+        targetId: report.id,
+        ip,
+        userAgent: ua,
+        meta: {
+          client_id: report.client_id,
+          period_end: report.period_end,
+          version: report.version,
+          status: report.status,
+          pdf_path: report.pdf_path,
+          email: recipient.email,
+          via: "recipient_link",
+        },
+      });
+    }
   }
 
   return {
