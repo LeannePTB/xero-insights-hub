@@ -53,10 +53,35 @@ function collectAllocations(docs: any[], asAt: string): Allocation[] {
 }
 
 /**
+ * Page a document endpoint with an as-at `where` clause. `FullyPaidOnDate` is
+ * a documented filterable field; if Xero ever rejects it the error is raised
+ * as-is rather than falling back to fetching the whole file.
+ */
+async function asAtFetch(
+  conn: Connection,
+  path: string,
+  collection: string,
+  where: string,
+): Promise<any[]> {
+  try {
+    return await pageAll<any>(conn, path, collection, { where, order: "Date ASC" });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    if (/FullyPaidOnDate/i.test(msg)) {
+      throw new Error(
+        `${path}: Xero rejected the as-at filter on FullyPaidOnDate (${msg}). Refusing to fall back to fetching every document.`,
+      );
+    }
+    throw e;
+  }
+}
+
+/**
  * Reconstruct the receivables (ACCREC) or payables (ACCPAY) subledger as at
  * `asAt`, per document as well as in total. Pages until exhausted; `pageAll`
  * throws rather than silently truncating.
  */
+
 export async function fetchAsAtLedger(
   conn: Connection,
   asAt: string,
