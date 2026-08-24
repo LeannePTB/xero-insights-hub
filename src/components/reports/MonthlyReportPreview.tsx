@@ -257,7 +257,7 @@ export function MonthlyReportPreview({
         )}
       </SectionShell>
 
-      {/* 2. Profit and Loss */}
+      {/* 3. Profit and Loss */}
       <SectionShell title="Profit and Loss">
         {!payload.profitAndLoss ? (
           <Missing message={failed.get("profit_and_loss") ?? "Not computed."} />
@@ -342,7 +342,7 @@ export function MonthlyReportPreview({
         )}
       </SectionShell>
 
-      {/* 3. Receivables */}
+      {/* 4. Receivables */}
       <SectionShell title="Receivables detail">
         {!payload.receivables ? (
           <Missing message={failed.get("receivables") ?? "Not computed."} />
@@ -363,7 +363,7 @@ export function MonthlyReportPreview({
 
 
 
-      {/* 7. Disclaimer — fine print, always last, never collapsible */}
+      {/* 6. Disclaimer — fine print, always last, never collapsible */}
       <section className="px-6">
         <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Disclaimer
