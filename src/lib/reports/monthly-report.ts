@@ -11,7 +11,9 @@ export const MONTHLY_REPORT_KEY = "monthly_management";
 // v3: the as-at subledger is narrowed in Xero with a `where` clause so only
 // documents open at the period end are fetched — v2 payloads tripped the paging
 // cap on large files and reported the ageing sections as failed.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 3;
+// v4: the rendered disclaimer text is frozen into the payload at generation
+// time, so an old report always shows the wording that was actually sent.
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 4;
 
 export type ReportStatus = "draft" | "final" | "sent";
 
@@ -119,6 +121,12 @@ export type MonthlyReportPayload = {
   receivables: AgeingDetail | null;
   payables: AgeingDetail | null;
   notes: ReportNote[] | null;
+  /**
+   * Verbatim legal wording, rendered with the client name at generation time
+   * and frozen here. Absent on payloads written before v4 — callers fall back
+   * to `disclaimerText(clientName)`.
+   */
+  disclaimer?: string;
 };
 
 export const SECTION_LABELS: Record<string, string> = {
@@ -129,6 +137,21 @@ export const SECTION_LABELS: Record<string, string> = {
   payables: "Payables detail",
   notes: "Notes",
 };
+
+/**
+ * Verbatim legal wording — do not reword, shorten or reformat. Only the client
+ * name (the entity the report is about) is substituted.
+ */
+export function disclaimerText(clientName: string) {
+  return `This report is prepared solely for the confidential use of ${clientName}. In the preparation of this report we have relied upon the unaudited financial and non-financial information available for the entity. We have not audited the information contained in this report and therefore do not express an opinion or any other form of assurance on the accuracy of the information presented. No party shall be liable for any loss, damage or expense which may be caused to another party by relying on this report.`;
+}
+
+/** Stored wording when present, otherwise the current wording. */
+export function resolveDisclaimer(payload: MonthlyReportPayload) {
+  const stored = payload.disclaimer?.trim();
+  return stored && stored.length > 0 ? stored : disclaimerText(payload.meta.clientName);
+}
+
 
 /** AUD, brackets for negatives, no cents by default. */
 export function money(n: number | null | undefined, opts: { cents?: boolean; currency?: string } = {}) {

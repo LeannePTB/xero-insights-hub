@@ -3,6 +3,7 @@ import {
   SECTION_LABELS,
   money,
   pct,
+  resolveDisclaimer,
   type AgeingDetail,
   type MonthlyReportPayload,
 } from "@/lib/reports/monthly-report";
@@ -305,6 +306,16 @@ export function MonthlyReportPreview({
           </ul>
         )}
       </SectionShell>
+
+      {/* 7. Disclaimer — fine print, always last, never collapsible */}
+      <section className="px-6">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          Disclaimer
+        </h4>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          {resolveDisclaimer(payload)}
+        </p>
+      </section>
 
       {/* Footer */}
       <footer className="rounded-2xl border border-border bg-card px-6 py-4 text-xs text-muted-foreground">
