@@ -356,61 +356,33 @@ function ClientDashboard() {
 
 
         <div className="mt-3 space-y-6">
-          {orgs.length === 0 ? (
-            <>
-              {showHealth && <HealthWidget clientName={client.name} />}
-              {showUnreconciled && (
-                <div className="grid gap-6 md:grid-cols-2">
-                  <UnreconciledCard clientId={clientId} />
-                </div>
-              )}
-              <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />
-            </>
-          ) : (
-            <>
-              {showHealth && (
-                <HealthWidget
-                  clientName={client.name}
-                  clientId={clientId}
-                  tenantId={orgs[0]?.xero_connections?.tenant_id}
-                  tenantName={orgs[0]?.xero_connections?.tenant_name}
-                />
-              )}
-
-              {showUnreconciled && (
-                <div className="grid gap-6 md:grid-cols-2">
-                  <UnreconciledCard clientId={clientId} />
-                </div>
-              )}
-
-
-              {standardCards.length > 0 && (
-                <section>
-                  <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    Standard dashboard
-                  </h2>
-                  <SortableCardGrid
-                    cards={standardCards}
-                    savedOrder={standardSaved}
-                    onOrderChange={(next) => handleOrderChangeSection("standard", next)}
-                  />
-                </section>
-              )}
-
-              {advancedCards.length > 0 && (
-                <section>
-                  <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    Advisory
-                  </h2>
-                  <SortableCardGrid
-                    cards={advancedCards}
-                    savedOrder={advancedSaved}
-                    onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
-                  />
-                </section>
-              )}
-            </>
+          {standardCards.length > 0 && (
+            <section>
+              <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Standard dashboard
+              </h2>
+              <SortableCardGrid
+                cards={standardCards}
+                savedOrder={standardSaved}
+                onOrderChange={(next) => handleOrderChangeSection("standard", next)}
+              />
+            </section>
           )}
+
+          {advancedCards.length > 0 && (
+            <section>
+              <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Advisory
+              </h2>
+              <SortableCardGrid
+                cards={advancedCards}
+                savedOrder={advancedSaved}
+                onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
+              />
+            </section>
+          )}
+
+          {orgs.length === 0 && <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />}
         </div>
 
 
