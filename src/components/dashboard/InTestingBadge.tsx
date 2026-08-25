@@ -25,9 +25,13 @@ export function InTestingBadge({ className }: { className?: string }) {
 /** Wraps a dashboard card so the "In testing" state is impossible to miss. */
 export function InTestingCard({ children }: { children: ReactNode }) {
   return (
-    <div className="relative rounded-2xl ring-2 ring-admin-accent">
-      <InTestingBadge className="absolute -top-2.5 left-4 z-10" />
-      {children}
+    <div className="overflow-hidden rounded-2xl ring-2 ring-admin-accent">
+      <div className="flex items-center gap-1 bg-admin-accent px-4 py-1 pr-12 text-[11px] font-bold uppercase tracking-wide text-admin-accent-foreground">
+        <FlaskConical className="h-3 w-3" />
+        In testing
+      </div>
+      <div className="[&>*]:rounded-t-none [&>*]:border-t-0">{children}</div>
     </div>
   );
 }
+
