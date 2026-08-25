@@ -648,3 +648,79 @@ export const saveFirmDefaultWidgets = createServerFn({ method: "POST" })
     return { ok: true, clientsUpdated: (clients ?? []).length };
   });
 
+
+// ---------------------------------------------------------------------------
+// Per-client card toggles.
+// Reads: public.client_allowed_widgets (what the client actually sees) plus
+// the tier ceiling and the organisation/client exclusion rows, purely so the
+// UI can explain WHY a card is off. Writes go through
+// public.set_client_widget_enabled — never tier_widget_config directly, and
+// never the retired clients.dashboard_widgets.
+// Resolution is platform -> organisation -> client, each only ADDING
+// exclusions, so a client-level switch can never grant a card back that the
+// organisation has switched off.
+// ---------------------------------------------------------------------------
+
+export const getClientWidgetMatrix = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string }) => i)
+  .handler(async ({ data, context }) => {
+    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex } =
+      await import("@/lib/widget-resolve.server");
+    const { clientEntitlement } = await import("@/lib/entitlement.server");
+    const { clientAllowedWidgets } = await import("@/lib/widget-access.server");
+
+    const { data: c } = await context.supabase
+      .from("clients")
+      .select("firm_id")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    const firmId = ((c as any)?.firm_id as string | null) ?? null;
+
+    const entitlement = await clientEntitlement(context.supabase, data.clientId);
+    const tier = String(entitlement.tier);
+
+    const ceilings = await tierCeilings(context.supabase);
+    const ceiling = ceilingFor(ceilings, tier);
+
+    const index = new ExclusionIndex(
+      await fetchExclusions(context.supabase, { firmId, clientIds: [data.clientId] }),
+    );
+    const orgExcluded = new Set(index.base(tier, firmId));
+    const allowed = new Set<string>(await clientAllowedWidgets(context.supabase, data.clientId));
+
+    const rows = ceiling.map((w) => {
+      const on = allowed.has(w);
+      const orgOff = orgExcluded.has(w);
+      return {
+        widget: w,
+        on,
+        // organisation exclusions win; the client switch cannot override them.
+        reason: on ? "on" : orgOff ? "organisation" : "client",
+      };
+    });
+
+    return { tier, rows };
+  });
+
+export const setClientWidget = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string; widget: WidgetKey; enabled: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase.rpc("set_client_widget_enabled", {
+      _client_id: data.clientId,
+      _widget: data.widget,
+      _enabled: data.enabled,
+    });
+    if (error) {
+      const msg = error.message ?? "";
+      if (msg.includes("NOT_IN_TIER")) throw new Error("NOT_IN_TIER");
+      if (msg.includes("NO_ACCESS")) throw new Error("You don't have access to this client.");
+      throw new Error(msg || "Could not change this card.");
+    }
+    const first = Array.isArray(rows) ? rows[0] : rows;
+    return {
+      tier: String((first as any)?.effective_tier ?? ""),
+      isEnabled: (first as any)?.is_enabled === true,
+    };
+  });
