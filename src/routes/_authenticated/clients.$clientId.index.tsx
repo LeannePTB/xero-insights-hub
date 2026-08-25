@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -168,7 +168,7 @@ function ClientDashboard() {
     const standard: SortableCard[] = [];
     const advanced: SortableCard[] = [];
     const wipSet = new Set(wipWidgets);
-    const mark = (widget: string, node: React.ReactNode) =>
+    const mark = (widget: string, node: ReactNode) =>
       wipSet.has(widget) ? <InTestingCard>{node}</InTestingCard> : node;
     if (!client) return { standardCards: standard, advancedCards: advanced };
 
