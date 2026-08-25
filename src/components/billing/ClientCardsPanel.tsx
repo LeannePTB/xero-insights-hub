@@ -7,6 +7,7 @@ import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { getClientWidgetMatrix, setClientWidget } from "@/lib/tier-config.functions";
 import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
+import { InTestingBadge } from "@/components/dashboard/InTestingBadge";
 
 /**
  * Per-client card toggles.
@@ -94,7 +95,10 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
           return (
             <li key={w} className="flex items-center justify-between gap-4 px-4 py-3">
               <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{WIDGET_LABEL[w] ?? w}</p>
+                <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                  <span className="truncate">{WIDGET_LABEL[w] ?? w}</span>
+                  {(r as any).wip && <InTestingBadge />}
+                </p>
                 <p className="text-xs text-muted-foreground">
                   {r.on
                     ? "On"
