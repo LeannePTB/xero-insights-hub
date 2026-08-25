@@ -546,15 +546,31 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const outstandingWhere = (type: "ACCREC" | "ACCPAY") =>
       `Type=="${type}"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"&&AmountDue>0`;
 
-    const [pnlRes, priorPnlRes, bsRes, bsStartRes, arInvRes, apInvRes, orgRes] = await Promise.all([
-      safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: fy.from, toDate: fy.to, standardLayout: "false" }),
-      safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", { fromDate: priorFrom, toDate: priorToStr, standardLayout: "false" }),
-      safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: asOfDate }),
-      safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: bsStartDate }),
-      safeGet<{ Invoices: any[] }>("Invoices", { where: outstandingWhere("ACCREC") }),
-      safeGet<{ Invoices: any[] }>("Invoices", { where: outstandingWhere("ACCPAY") }),
-      safeGet<{ Organisations: any[] }>("Organisations"),
-    ]);
+    // Sequential, not parallel: firing all seven at once trips Xero's per-organisation
+    // rate limit. The three calls the score genuinely depends on are NOT swallowed —
+    // if Xero throttles or refuses them the whole card must show an error rather than
+    // present zeroes as if they were real figures.
+    const pnlRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
+      fromDate: fy.from,
+      toDate: fy.to,
+      standardLayout: "false",
+    });
+    const bsRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: asOfDate });
+    const arInvRes = await xeroGet<{ Invoices: any[] }>(conn, "Invoices", {
+      where: outstandingWhere("ACCREC"),
+    });
+    // Comparatives and context: a gap here degrades the card, it does not falsify it.
+    const priorPnlRes = await safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", {
+      fromDate: priorFrom,
+      toDate: priorToStr,
+      standardLayout: "false",
+    });
+    const bsStartRes = await safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: bsStartDate });
+    const apInvRes = await safeGet<{ Invoices: any[] }>("Invoices", {
+      where: outstandingWhere("ACCPAY"),
+    });
+    const orgRes = await safeGet<{ Organisations: any[] }>("Organisations");
+
 
     const pnl = summarisePnl(pnlRes?.Reports?.[0] ?? {});
     const priorPnl = summarisePnl(priorPnlRes?.Reports?.[0] ?? {});

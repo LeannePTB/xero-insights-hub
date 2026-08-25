@@ -222,6 +222,17 @@ export function MonthlyReportPreview({
         </div>
       )}
 
+      {(payload.warnings ?? []).length > 0 && (
+        <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm">
+          <p className="font-medium">Worth knowing about this report</p>
+          <ul className="mt-2 space-y-1 text-muted-foreground">
+            {(payload.warnings ?? []).map((w, i) => (
+              <li key={i}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* 1. Notes — the practice's commentary is read BEFORE the tables, so it
           sits directly under the header. Do not move it back below Payables. */}
       <SectionShell title="Notes">

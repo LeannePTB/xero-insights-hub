@@ -660,6 +660,7 @@ export async function computeMonthlyReport(opts: {
   };
 
   let unmatchedAccounts: string[] = [];
+  const warnings: string[] = [];
 
   try {
     // SEQUENTIAL, deliberately. Xero allows only a handful of concurrent
@@ -679,10 +680,11 @@ export async function computeMonthlyReport(opts: {
     parsed = regrouped.parsed;
     unmatchedAccounts = regrouped.unmatched;
     if (unmatchedAccounts.length) {
-      failed.push({
-        section: "profit_and_loss",
-        message: `These Profit and Loss lines could not be matched to a Xero account, so they stayed in the section Xero returned: ${Array.from(new Set(unmatchedAccounts)).join(", ")}.`,
-      });
+      // A note, not a failure. The lines are still presented (in the section Xero
+      // returned) and the totals still tie, so the report must remain finalisable.
+      warnings.push(
+        `These Profit and Loss lines could not be matched to a Xero account, so they stayed in the section Xero returned: ${Array.from(new Set(unmatchedAccounts)).join(", ")}.`,
+      );
     }
   } catch (e: any) {
     const message = e?.message ?? "Profit and Loss could not be read from Xero.";
@@ -785,6 +787,7 @@ export async function computeMonthlyReport(opts: {
     payloadVersion: MONTHLY_REPORT_PAYLOAD_VERSION,
     complete: failedSections.length === 0,
     failedSections,
+    warnings,
     meta: {
       organisationName: opts.organisationName,
       clientName: opts.clientName,
