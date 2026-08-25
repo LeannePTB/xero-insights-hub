@@ -425,7 +425,7 @@ function ClientSettings() {
           </Link>
         </Button>
         <div>
-          <h1 className="font-display text-3xl font-semibold">{client.name} · Settings</h1>
+          <h1 className="font-display text-3xl font-semibold">{client.name} · Client settings</h1>
         </div>
 
         {/* Name */}

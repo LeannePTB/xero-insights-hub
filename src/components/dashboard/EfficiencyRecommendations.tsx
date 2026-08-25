@@ -23,7 +23,7 @@ export function EfficiencyRecommendations({
           className="flex items-center gap-2 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-2 text-xs font-medium text-foreground hover:bg-muted"
         >
           <Settings className="h-3.5 w-3.5" />
-          Tag wage accounts in Settings →
+          Tag wage accounts in Client settings →
         </Link>
       )}
       {recs.map((r, i) => {
