@@ -48,7 +48,7 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
     );
   }
 
-  async function onToggle(w: WidgetKey, next: boolean) {
+  async function onToggle(w: WidgetKey, next: boolean, isWip = false) {
     if (busy) return;
     setBusy(w);
     try {
@@ -66,7 +66,9 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
     } catch (e: any) {
       if (e?.message === "NOT_IN_TIER") {
         toast.error(
-          `${WIDGET_LABEL[w] ?? w} is not part of this client's dashboard tier. Change the tier above to include it.`,
+          isWip
+            ? `${WIDGET_LABEL[w] ?? w} is in testing, so it can only be switched back on for the whole organisation.`
+            : `${WIDGET_LABEL[w] ?? w} is not part of this client's dashboard tier. Change the tier above to include it.`,
         );
         qc.invalidateQueries({ queryKey: ["client-widget-matrix", clientId] });
       } else {
@@ -117,7 +119,7 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
                   <Switch
                     checked={r.on}
                     disabled={busy !== null}
-                    onCheckedChange={(v) => onToggle(w, v)}
+                    onCheckedChange={(v) => onToggle(w, v, (r as any).wip === true)}
                     aria-label={`${WIDGET_LABEL[w] ?? w} for this client`}
                   />
                 </div>
