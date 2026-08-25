@@ -275,7 +275,7 @@ export function FirmClientsSection({
                         </div>
                         {canOpenClientData && showHealth && healthAllowedByFirm &&
                           (c.clientWidgets === null || c.clientWidgets?.includes("health")) && (
-                            <ClientHealthBadge tenantId={tenantIds[0] ?? null} />
+                            <ClientHealthBadge tenantId={tenantIds[0] ?? null} clientId={c.id} />
                           )}
                       </div>
                     </>
