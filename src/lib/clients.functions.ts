@@ -86,11 +86,11 @@ export const listClients = createServerFn({ method: "POST" })
     // resolving every listed client's Business Health entitlement in one read.
     const healthByClient = new Map<string, boolean>();
     if (clientIds.length) {
-      const url = `${process.env['SUPABASE_URL']}/rest/v1/rpc/client_can_use_widget`;
+      const baseUrl = process.env['SUPABASE_URL'];
       const key = process.env['SUPABASE_PUBLISHABLE_KEY'];
       const token = getRequestHeader("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
-      if (!key || !token) throw new Error("Could not check Business Health access.");
-      const response = await fetch(url, {
+      if (!baseUrl || !key || !token) throw new Error("Could not check Business Health access.");
+      const response = await fetch(`${baseUrl}/rest/v1/rpc/client_can_use_widget`, {
         method: "POST",
         headers: {
           apikey: key,
