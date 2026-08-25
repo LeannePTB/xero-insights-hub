@@ -464,6 +464,12 @@ function ClientSettings() {
           <ClientDashboardTierControl clientId={clientId} />
         </Section>
 
+        {/* Cards — per-client switches within the tier */}
+        <Section title="Cards" id="cards" collapsible>
+          <ClientCardsPanel clientId={clientId} />
+        </Section>
+
+
         {/* Report branding */}
         <Section title="Report branding" collapsible>
           <LogoUploadCard
