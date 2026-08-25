@@ -9,6 +9,7 @@ import {
 } from "@/lib/clients.functions";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Save, StickyNote, Pencil, Plus, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +21,7 @@ type Note = {
   created_at: string;
   updated_at: string;
   is_mine: boolean;
+  include_in_report: boolean;
 };
 
 function fmt(ts: string) {
@@ -39,19 +41,23 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
     queryFn: () => listFn({ data: { clientId } }),
   });
   const notes: Note[] = (data?.notes ?? []) as Note[];
+  const canFlagForReport = data?.canFlagForReport === true;
 
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [draftInReport, setDraftInReport] = useState(false);
+  const [editInReport, setEditInReport] = useState(false);
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ["client-notes", clientId] });
 
   const addMut = useMutation({
-    mutationFn: () => addFn({ data: { clientId, body: draft } }),
+    mutationFn: () => addFn({ data: { clientId, body: draft, includeInReport: draftInReport } }),
     onSuccess: () => {
       toast.success("Note added");
       setDraft("");
+      setDraftInReport(false);
       setAdding(false);
       invalidate();
     },
@@ -59,7 +65,8 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
   });
 
   const updateMut = useMutation({
-    mutationFn: (vars: { noteId: string; body: string }) => updateFn({ data: vars }),
+    mutationFn: (vars: { noteId: string; body: string; includeInReport: boolean }) =>
+      updateFn({ data: vars }),
     onSuccess: () => {
       toast.success("Note updated");
       setEditingId(null);
@@ -105,11 +112,23 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                 placeholder="Write a note…"
                 autoFocus
               />
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {canFlagForReport ? (
+                  <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                    <Checkbox
+                      checked={draftInReport}
+                      onCheckedChange={(v) => setDraftInReport(v === true)}
+                    />
+                    Include in management report
+                  </label>
+                ) : (
+                  <span className="text-xs text-muted-foreground">Internal note</span>
+                )}
+                <div className="flex gap-2">
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => { setAdding(false); setDraft(""); }}
+                  onClick={() => { setAdding(false); setDraft(""); setDraftInReport(false); }}
                   disabled={addMut.isPending}
                 >
                   <X className="mr-1.5 h-3.5 w-3.5" /> Cancel
@@ -118,6 +137,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                   {addMut.isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
                   Save
                 </Button>
+                </div>
               </div>
             </div>
           )}
@@ -137,9 +157,16 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
             return (
               <li key={n.id} className="rounded-lg border border-border bg-background/30 p-3">
                 <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>
-                    {n.author_name} · {fmt(n.created_at)}
-                    {n.updated_at !== n.created_at && " (edited)"}
+                  <span className="flex flex-wrap items-center gap-2">
+                    <span>
+                      {n.author_name} · {fmt(n.created_at)}
+                      {n.updated_at !== n.created_at && " (edited)"}
+                    </span>
+                    {n.include_in_report && (
+                      <span className="rounded-full border border-accent/40 bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
+                        In report
+                      </span>
+                    )}
                   </span>
                   {(canEdit || n.is_mine) && !isEditing && (
                     <div className="flex items-center gap-1">
@@ -147,7 +174,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2"
-                        onClick={() => { setEditingId(n.id); setEditValue(n.body); }}
+                        onClick={() => { setEditingId(n.id); setEditValue(n.body); setEditInReport(n.include_in_report); }}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </Button>
@@ -167,14 +194,32 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                 {isEditing ? (
                   <div className="space-y-2">
                     <Textarea value={editValue} onChange={(e) => setEditValue(e.target.value)} rows={4} />
-                    <div className="flex justify-end gap-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      {canFlagForReport ? (
+                        <label className="flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+                          <Checkbox
+                            checked={editInReport}
+                            onCheckedChange={(v) => setEditInReport(v === true)}
+                          />
+                          Include in management report
+                        </label>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Internal note</span>
+                      )}
+                      <div className="flex gap-2">
                       <Button variant="ghost" size="sm" onClick={() => setEditingId(null)} disabled={updateMut.isPending}>
                         <X className="mr-1.5 h-3.5 w-3.5" /> Cancel
                       </Button>
                       <Button
                         size="sm"
-                        onClick={() => updateMut.mutate({ noteId: n.id, body: editValue })}
-                        disabled={updateMut.isPending || !editValue.trim() || editValue === n.body}
+                        onClick={() =>
+                          updateMut.mutate({ noteId: n.id, body: editValue, includeInReport: editInReport })
+                        }
+                        disabled={
+                          updateMut.isPending ||
+                          !editValue.trim() ||
+                          (editValue === n.body && editInReport === n.include_in_report)
+                        }
                       >
                         {updateMut.isPending ? (
                           <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
@@ -183,6 +228,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                         )}
                         Save
                       </Button>
+                      </div>
                     </div>
                   </div>
                 ) : (
