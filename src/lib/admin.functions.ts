@@ -379,12 +379,15 @@ export const adminSetFirmWip = createServerFn({ method: "POST" })
     if (!existing)
       throw new Error("This organisation has no plan yet — assign a plan before enabling add-ons.");
 
+    console.log("[wip-debug] read", { firmId: data.firmId, existing, want: data.enabled });
     const from = !!existing.wip_enabled;
     if (from !== data.enabled) {
-      const { error } = await (supabaseAdmin as any)
+      const { data: updated, error } = await (supabaseAdmin as any)
         .from("subscriptions")
         .update({ wip_enabled: data.enabled })
-        .eq("firm_id", data.firmId);
+        .eq("firm_id", data.firmId)
+        .select("id, wip_enabled");
+      console.log("[wip-debug] update", { rows: updated, error });
       if (error) throw new Error(error.message);
 
       await logAudit("firm_wip_access_changed", "firm", data.firmId, context.userId, {
