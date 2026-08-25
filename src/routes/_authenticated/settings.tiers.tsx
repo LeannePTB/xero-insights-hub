@@ -25,6 +25,7 @@ import { ArrowLeft, Loader2, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
+import { WipOverviewCard } from "@/components/admin/WipOverviewCard";
 
 export const Route = createFileRoute("/_authenticated/settings/tiers")({
   head: () => ({
@@ -182,6 +183,8 @@ function TierSettings() {
               </Button>
             )}
           </div>
+
+          {isSuperAdmin && <WipOverviewCard />}
 
           {tiers.map((tier) => {
             const enabled = (settingsQ.data?.enabled as Record<string, boolean> | undefined)?.[tier] ?? true;
