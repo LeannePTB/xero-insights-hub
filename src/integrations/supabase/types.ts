@@ -2206,6 +2206,20 @@ export type Database = {
           xero_org_limit: number
         }[]
       }
+      firm_subscription_state: {
+        Args: { _firm_id: string }
+        Returns: {
+          always_free: boolean
+          consolidation: boolean
+          days_remaining: number
+          ending_soon: boolean
+          ends_at: string
+          lapsed: boolean
+          plan_key: string
+          plan_label: string
+          status: string
+        }[]
+      }
       get_mfa_posture_counts: {
         Args: never
         Returns: {

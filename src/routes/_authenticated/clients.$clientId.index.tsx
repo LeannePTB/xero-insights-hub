@@ -45,6 +45,7 @@ import { canSearchOrganisationTransactions } from "@/lib/xero/search.functions";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
+import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLapsedNotice";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
@@ -280,6 +281,8 @@ function ClientDashboard() {
           )}
 
         </div>
+
+        {isAdvisor && <OrganisationLapsedNotice clientId={clientId} />}
 
         {widgets.includes("notes") && (
           <div className="mt-6 w-full">

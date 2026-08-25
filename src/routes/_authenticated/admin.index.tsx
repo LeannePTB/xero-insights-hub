@@ -21,6 +21,9 @@ import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnecti
 import { listXeroScopeStatus } from "@/lib/xero/scope-status.functions";
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
+import { ExpiringOrganisationsNotice } from "@/components/admin/ExpiringOrganisationsNotice";
+import { listSubscriptionStates } from "@/lib/subscription-state.functions";
+import { countdownLabel, formatEndDate, type SubscriptionState } from "@/lib/subscription-state";
 
 
 
@@ -146,6 +149,7 @@ function AdminPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        <ExpiringOrganisationsNotice />
         <OrganisationsSection
           isSuper={isSuper}
           firms={firmsQ.data?.firms as FirmRow[] | undefined}
@@ -238,6 +242,18 @@ function OrganisationsSection({
     (usageQ.data?.usage ?? []).map((u) => [u.firmId, u]),
   );
 
+  // Expiry, day counts and the consolidation add-on come from the database
+  // (public.firm_subscription_state) — never recomputed here.
+  const fetchStates = useServerFn(listSubscriptionStates);
+  const statesQ = useQuery({
+    queryKey: ["subscription-states", firmIds.join(",")],
+    queryFn: () => fetchStates({ data: { firmIds } }),
+    enabled: firmIds.length > 0,
+  });
+  const stateByFirm = new Map<string, SubscriptionState>(
+    (statesQ.data?.states ?? []).map((st) => [st.firmId, st]),
+  );
+
 
 
 
@@ -305,6 +321,7 @@ function OrganisationsSection({
     f,
     usage: usageByFirm.get(f.firm_id),
     scope: scopeHealth?.get(f.firm_id),
+    state: stateByFirm.get(f.firm_id),
   }));
 
   return (
@@ -325,7 +342,7 @@ function OrganisationsSection({
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ f, usage, scope }) => (
+            {rows.map(({ f, usage, scope, state }) => (
               <tr
                 key={f.firm_id}
                 className="border-t hover:bg-muted/30 cursor-pointer align-top"
@@ -341,7 +358,7 @@ function OrganisationsSection({
                   <CapacityCell usage={usage} />
                 </td>
                 <td className="px-4 py-3">
-                  <StatusCell firm={f} />
+                  <StatusCell firm={f} state={state} />
                 </td>
                 <td className="px-4 py-3">
                   <XeroCell firm={f} missing={scope?.missing} total={scope?.total} />
@@ -369,7 +386,7 @@ function OrganisationsSection({
 
       {/* Stacked cards below 900px */}
       <div className="min-[900px]:hidden space-y-3">
-        {rows.map(({ f, usage, scope }) => (
+        {rows.map(({ f, usage, scope, state }) => (
           <div
             key={f.firm_id}
             className="rounded-lg border bg-card p-4 space-y-3 cursor-pointer"
@@ -389,7 +406,7 @@ function OrganisationsSection({
                 <CapacityCell usage={usage} />
               </Field>
               <Field label="Status">
-                <StatusCell firm={f} />
+                <StatusCell firm={f} state={state} />
               </Field>
               <Field label="Xero">
                 <XeroCell firm={f} missing={scope?.missing} total={scope?.total} />
@@ -465,15 +482,55 @@ function CapacityCell({ usage }: { usage: OrganisationUsage | undefined }) {
   );
 }
 
-function StatusCell({ firm }: { firm: FirmRow }) {
+function StatusCell({ firm, state }: { firm: FirmRow; state?: SubscriptionState }) {
+  const lapsed = !!state?.lapsed;
+  const endingSoon = !!state?.endingSoon;
+  const alwaysFree = state?.alwaysFree ?? firm.is_always_free;
+  // A free plan (or an always-free organisation) never shows a bill date.
+  const noDates = alwaysFree || !!state?.isFree;
+
+  const countdown = state ? countdownLabel(state) : null;
+  const endDate = state ? formatEndDate(state.endsAt) : null;
+
+  let detail: string;
+  if (noDates) {
+    detail = "no billing dates";
+  } else if (lapsed) {
+    detail = "Lapsed — clients on Standard";
+  } else if (countdown) {
+    detail = countdown;
+  } else if (firm.status === "trialing") {
+    detail = `trial ends ${fmtDate(firm.trial_ends_at)}`;
+  } else if (endDate) {
+    detail = `next bill ${endDate}`;
+  } else if (firm.current_period_end) {
+    detail = `next bill ${fmtDate(firm.current_period_end)}`;
+  } else {
+    detail = "—";
+  }
+
+  const detailTone = lapsed
+    ? "text-destructive font-medium"
+    : endingSoon
+      ? "text-amber-600 dark:text-amber-400 font-medium"
+      : "text-muted-foreground";
+
+  const label = lapsed ? "lapsed" : (firm.status ?? "—");
+
   return (
     <div className="leading-tight">
       <div className="whitespace-nowrap">
         <Badge
-          variant={firm.status === "active" || firm.status === "trialing" ? "default" : "secondary"}
+          variant={
+            lapsed
+              ? "destructive"
+              : firm.status === "active" || firm.status === "trialing"
+                ? "default"
+                : "secondary"
+          }
           className="capitalize"
         >
-          {firm.status ?? "—"}
+          {label}
         </Badge>
         {firm.cancel_at_period_end && (
           <Badge variant="outline" className="ml-1">
@@ -481,13 +538,7 @@ function StatusCell({ firm }: { firm: FirmRow }) {
           </Badge>
         )}
       </div>
-      <div className="mt-1 text-xs text-muted-foreground whitespace-nowrap">
-        {firm.status === "trialing"
-          ? `trial ends ${fmtDate(firm.trial_ends_at)}`
-          : firm.current_period_end
-            ? `next bill ${fmtDate(firm.current_period_end)}`
-            : "—"}
-      </div>
+      <div className={`mt-1 text-xs whitespace-nowrap ${detailTone}`}>{detail}</div>
     </div>
   );
 }
