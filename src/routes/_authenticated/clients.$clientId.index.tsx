@@ -168,7 +168,7 @@ function ClientDashboard() {
     const standard: SortableCard[] = [];
     const advanced: SortableCard[] = [];
     const wipSet = new Set(wipWidgets);
-    const mark = (widget: string, node: JSX.Element) =>
+    const mark = (widget: string, node: React.ReactNode) =>
       wipSet.has(widget) ? <InTestingCard>{node}</InTestingCard> : node;
     if (!client) return { standardCards: standard, advancedCards: advanced };
 
