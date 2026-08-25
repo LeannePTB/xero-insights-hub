@@ -281,6 +281,13 @@ function ClientDashboard() {
 
         </div>
 
+        {widgets.includes("notes") && (
+          <div className="mt-6 w-full">
+            <NotesCard clientId={clientId} canEdit={isAdvisor} />
+          </div>
+        )}
+
+
         {orgs.length > 0 && (
           <XeroConnectionBanner
             clientId={clientId}
