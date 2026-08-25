@@ -1,80 +1,39 @@
-# Access-control sweep — findings (read-only audit, nothing changed)
+# Why a disconnected Xero file doesn't disappear
 
-Scope: every `createServerFn` in `src/lib/**` and every route under `src/routes/api/**`, plus the RLS policies behind them (checked directly against the database).
+## What's actually happening
 
-Role facts that set urgency: `handle_new_user` grants `advisor` only to the very first user and `client_viewer` to everyone after. Current role counts: 3 `super_admin`, 3 `advisor`, 2 `firm_owner`, 1 `client_viewer`. So a "bare advisor check" is reachable only by the 3 advisor accounts (all Positive Traction today), while a "no check, RLS only" path is reachable by any signed-in user — but only leaks if the RLS policy is weak. Every RLS policy I inspected on the tables involved is scoped through `app_private.has_firm_access` / `has_client_access` / `user_can_manage_client`, so RLS-only paths are, as far as the database goes, sound.
+There are two different "Disconnect" buttons, and they do different things.
 
-## Rank 1 — exploitable today, cross-organisation data
+1. **Disconnect on a client / organisation** (`disconnectXero`): tells Xero to drop the connection, revokes the refresh token, writes an audit row, then **deletes** the row. The file genuinely goes away.
 
-### 1. `src/lib/xero/audit.functions.ts` — `runXeroAudit`, `getLatestAudit`, `snoozeFinding`, `resolveFinding`, `unsnoozeFinding`
-- Check performed: `assertAdvisor` (lines 8-16) — a bare `user_roles` read for `advisor` or `super_admin`. Nothing else.
-- Should perform: resolve `tenantId` → client → organisation server-side and call `user_can_access_firm` / `assertWidgetAccess`, as `access.server.ts` does.
-- Identifier from request: yes, `tenantId`, used directly by `getConnectionByTenant` and by every `supabaseAdmin` read/write of `audit_runs`, `audit_findings`, `audit_finding_snoozes`.
-- Exploitable: yes, by any of the 3 advisor/super_admin accounts, against any Xero file in the platform. This is the same class as the `TransactionSearch` bug, and being super_admin alone grants access here — a direct breach of invariant 3.
+2. **Disconnect on the "Unassigned Xero connections" card** (the one in your screenshot, `disconnectOrphanXeroConnection`): only **marks the row** `status = 'disconnected'` and clears the stored tokens. It:
+   - keeps the row in the database,
+   - never calls Xero, so Xero still lists Traction Advisory as a connected app for that organisation,
+   - and the card's own list has **no status filter**, so the same row is still returned and rendered — just with a different badge.
 
-### 2. `src/lib/xero/connections.functions.ts` — `getTenantCurrency` (77-113)
-- Check performed: authentication only. The first read is RLS-scoped, so a non-entitled caller gets `null` — but the fallback at 91-110 then calls `getConnectionByTenant` via `supabaseAdmin`, hits the live Xero `Organisation` endpoint and writes `base_currency` back.
-- Should perform: `assertWidgetAccess` or a tenant→firm ownership check before the fallback.
-- Identifier from request: yes, `tenantId`, unverified.
-- Exploitable: yes, by **any signed-in user** (a `client_viewer` included) for any tenant whose cached currency is empty. Leaks only base currency plus confirmation the tenant exists, and burns a Xero API call, but it is an unauthenticated-for-that-tenant admin-client read.
+That's why *Hay Officesmart Newsagency* stays on screen after you disconnect it.
 
-### 3. `src/lib/xero/scenario.functions.ts` — `getScenarioData` (204-345)
-- Check performed: `assertWidgetAccess(userId, data.tenantId, "cashflow_scenario")` — correct for the tenant.
-- Missing: `data.clientId` is a separate request field, never cross-checked against `tenantId`, then used to filter two `supabaseAdmin` reads (`client_cost_classifications` 255-260, `scenario_exclusions` 261).
-- Exploitable: yes, for anyone entitled to any one tenant — swap in another client's id and read their cost-classification tags and excluded invoice ids. Not ledger data, but cross-client.
+## The fix
 
-### 4. `src/lib/tier-config.functions.ts` — `saveTierWidgets` (67), `setTierEnabled` (258), `saveClientWidgets` (484)
-- Check performed: `assertAdvisor` (9-16), a bare role read, with no scoping to the `clientId`/`firmId` being written, then the write goes through `supabaseAdmin`, bypassing the (correct) `tier_widget_config` RLS policy.
-- Exploitable: yes, by any advisor, against any organisation's widget configuration. Write-side, not a read leak, but it changes another organisation's entitlement surface. Note `saveFirmDefaultWidgets` (595-616) in the same file does it properly — re-checks `firm_members` — so the fix pattern is already in the file.
+Make the unassigned-connections Disconnect behave exactly like the organisation one:
 
-### 5. `src/lib/unreconciled.functions.ts` — `assertClientAccess` (121-134), `uploadStatementLines` (139), `deleteUpload` (236)
-- `assertClientAccess` grants a full bypass to anyone holding an `advisor` row anywhere; only non-advisors are checked against `client_access`. The uploads/deletes then run through `supabaseAdmin`.
-- Exploitable: yes, by any advisor, against any client. RLS on `unreconciled_uploads` / `unreconciled_lines` is correct, but `supabaseAdmin` skips it.
+- Revoke at Xero first (best effort, never blocks): `DELETE /connections/{id}` and the identity-server token revocation, so the file stops showing our app as connected on Xero's side.
+- Write the audit row (as it does now) **before** removal.
+- Then delete the `xero_connections` row instead of flagging it, so the card empties immediately.
+- As a belt-and-braces measure, filter out `status = 'disconnected'` rows from the unassigned list, so any pre-existing flagged rows from earlier disconnects also stop appearing.
 
-### 6. `src/lib/login-log.functions.ts` — `listLoginEvents` (28-58)
-- Check: bare `advisor` role. The query has no firm filter, and display names are resolved via `supabaseAdmin`.
-- The `login_events` RLS policy is correctly scoped (`is_advisor AND shares_firm_with`), so the app-level query is *wider than the database intends* — but it runs on `context.supabase` for the events themselves, so RLS still bites. The `supabaseAdmin` profile lookup is the leak: display names/emails for users outside the caller's organisation.
-- Exploitable: partially, by an advisor. Low value, but it is a bare-role check standing in for an access check.
+Existing rows already sitting at `status = 'disconnected'` will disappear from the card as soon as the filter lands; nothing else references them.
 
-## Rank 2 — no app-level check, currently held up by RLS alone
+## Technical notes
 
-These take an identifier from the request and query with it before verifying anything, relying entirely on RLS. I verified each backing policy in the database and each one is scoped correctly, so none is exploitable today — but they violate invariant 4's spirit and would become live bugs the moment a policy is loosened or the code switches to `supabaseAdmin`.
+- `src/lib/xero/orphan-connections.functions.ts`
+  - `disconnectOrphanXeroConnection`: reuse the revoke sequence from `disconnectXero` (`getConnectionByTenant`, `DELETE https://api.xero.com/connections/{id}`, `POST https://identity.xero.com/connect/revocation`), keep the `firm_id IS NULL` guard and super-admin check, then `.delete().eq('id', connectionId).is('firm_id', null)`.
+  - `listOrphanXeroConnections`: add `.neq('status', 'disconnected')`.
+- No shared helper exists for the revoke sequence today; it will be extracted into a small server-only helper so both paths use one implementation rather than a second copy.
+- No schema change: no tables, columns, migrations, RLS policies, triggers or database functions.
 
-- `src/lib/admin-plan-usage.functions.ts` — `listOrganisationUsage` takes `firmIds[]`, no `assertSuperAdmin` unlike every sibling in `admin.functions.ts`. Runs on `context.supabase`.
-- `src/lib/true-breakeven.functions.ts` — `getTrueBreakevenInputs`, `upsertTrueBreakevenInputs`: no check at all. RLS on `client_true_breakeven_inputs` is `user_can_manage_client` / `has_client_access`. Safe today.
-- `src/lib/cost-classification.functions.ts` — all three functions, same shape. RLS on `client_cost_classifications` is correct.
-- `src/lib/clients.functions.ts` — `listClientNotes`, `addClientNote`, `updateClientNote`, `deleteClientNote`, `renameClient`, `updateClientReportBasis`, `updateClientBasisOverride`, `listClientAccess`, `revokeClientAccess`: RLS-only. Policies on `client_notes` / `client_access` are correct.
-- `src/lib/xero-errors.functions.ts` — `listXeroApiErrors` filters on a caller-supplied `firmId`; `xero_api_errors` RLS is correct (`has_firm_access OR platform_staff_can_access_firm OR is_super_admin`).
-- `src/lib/widget-access.functions.ts` / `src/lib/plan-tiers.functions.ts` — take `clientId`/`firmId` and forward to RPCs through `context.supabase`; the RPCs are the gate.
-- `src/lib/billing.functions.ts` — `getClientBilling` and `setClientDashboardTier` are documented RLS-trust; `client_subscriptions` policies are correct.
-- `src/lib/tier-config.functions.ts` — `getFirmPlanSummary`, `getUpgradeOptions`, `getOrgWidgetMatrix`, `listTierConfig`, `getEffectiveWidgets`: reads via `context.supabase`, no explicit check.
-- `src/lib/dashboard-layout.functions.ts` — `clientId` unverified but every query is also keyed to `context.userId`; blast radius is the caller's own preference row.
+## Invariants touched (section 0)
 
-## Rank 3 — silent empty instead of explicit refusal
-
-- `clients.functions.ts` `renameClient` / `updateClientReportBasis` / `updateClientBasisOverride`: an unauthorised call returns `{ ok: true }` with zero rows updated.
-- `clients.functions.ts` `listClientAccess` returns `{ access: [] }`.
-- `consolidation-groups.functions.ts` `getConsolidationGroup` (207-258): computes `canSeeFigures = false` for a super admin with no active support grant, then returns the full `clients` array with `tenantId`/`tenantName` anyway — the server trusts the UI to hide it. This is a Path B violation (invariant 3) and arguably belongs in Rank 1.
-- `health.functions.ts` `getBusinessHealthDetail` (576-582): `clientId` is optional; when omitted the `supabaseAdmin` read of `client_cost_classifications` is filtered by `tenant_id` only, returning tags for every client on that tenant.
-
-## Clean — checked and found correct
-
-- `src/lib/xero/search.functions.ts` — the reference implementation: `assertClientDataAccessForClient` + `assertClientWidget`, permitted tenant set derived server-side, defensive re-check before each Xero call, explicit throw rather than empty result.
-- `src/lib/xero/recon-snapshot.server.ts` (behind `fixed-assets`, `gst`, `reconciliation`) — cross-validates `clientId` and `tenantId` against `client_xero_orgs` under the caller's RLS before any Xero call.
-- `src/lib/loan-consolidation.functions.ts` — every handler resolves `clientId`/`groupId` → `firmId` and checks membership plus a widget gate before `supabaseAdmin`; id-scoped mutations re-derive ownership first.
-- `src/lib/xero/reports.functions.ts`, `payables`, `receivables`, `cashflow` — `assertWidgetAccess` before `getConnectionByTenant`, consistently.
-- `src/lib/xero/consolidated.functions.ts`, `scope-status.functions.ts`, `orphan-connections.functions.ts` (super-admin metadata only), `reconnect-all.server.ts` (`platformStaffCanAccessFirm` at line 85).
-- `src/lib/admin.functions.ts` (all handlers `assertSuperAdmin` first), `security.functions.ts`, `firms.functions.ts`, `firm-subscription.functions.ts`, `ownership.functions.ts`, `support-access.functions.ts`, `invites.functions.ts`, `billing-checkout.functions.ts` (calls `user_can_access_client` — the model), `roles.functions.ts`, `access.functions.ts`, `xero-assessment.functions.ts`.
-- `src/routes/api/public/stripe/webhook.ts` (signature verified before any write, idempotent) and `src/routes/api/public/xero/callback.ts` (state row validated, tenant/firm link checked before any connection write).
-- `src/lib/xero/connections.functions.ts` `moveXeroFileToClient`, `startXeroConnect`, `linkClientXeroOptions`, `listClientXeroOptions`, `disconnectXero` — all properly gated. `checkXeroConnection` (115-133) is the one loose end: no check, confirms tenant existence to any signed-in user.
-
-## Suggested fix order (for a separate task, on your say-so)
-
-1. `xero/audit.functions.ts` — replace `assertAdvisor` with tenant-resolved `assertWidgetAccess`.
-2. `getTenantCurrency` + `checkXeroConnection` — gate before the admin-client fallback.
-3. `scenario.functions.ts` — cross-check `clientId` against `tenantId`.
-4. `tier-config.functions.ts` writes + `unreconciled.functions.ts` — scope the advisor check to the organisation, following `saveFirmDefaultWidgets`.
-5. `consolidation-groups.getConsolidationGroup` — withhold the data server-side when `canSeeFigures` is false.
-6. Rank 2: add explicit `user_can_access_client` / `user_can_access_firm` calls as defence in depth, and turn Rank 3's silent successes into refusals.
-
-Nothing was changed and no database object was touched; the only database access was read-only policy and role inspection.
+- **5 — tokens never leave the server**: revoke happens server-side only; nothing new is returned to the browser.
+- **7 — one implementation per rule**: the revoke sequence becomes a single shared helper instead of duplicated logic.
+- Access rules unchanged: still super-admin only, still restricted to connections with no organisation.
