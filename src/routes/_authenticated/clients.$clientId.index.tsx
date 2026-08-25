@@ -252,13 +252,18 @@ function ClientDashboard() {
   const standardSaved = defaultTopStandardIds.some((id) => standardSavedRaw.includes(id))
     ? standardSavedRaw
     : [...defaultTopStandardIds, ...standardSavedRaw];
-  // Xero File Audit defaults to the top of the Advisory section when it has not
-  // been explicitly reordered; existing saved order for other cards is preserved.
+  // Xero File Audit and Transaction Search default to the top of the Advisory
+  // section when they have not been explicitly reordered; existing saved order
+  // for other cards is preserved.
   const savedAdvanced = savedOrder.filter((id) => advancedIds.has(id));
   const xeroAuditIds = advancedCards.filter((c) => c.id.endsWith(":xero_audit")).map((c) => c.id);
-  const advancedSaved = xeroAuditIds.some((id) => savedAdvanced.includes(id))
+  const advancedDefaultTop = [
+    ...xeroAuditIds,
+    ...(advancedIds.has("transaction_search") ? ["transaction_search"] : []),
+  ];
+  const advancedSaved = advancedDefaultTop.some((id) => savedAdvanced.includes(id))
     ? savedAdvanced
-    : [...xeroAuditIds, ...savedAdvanced];
+    : [...advancedDefaultTop, ...savedAdvanced];
 
   function handleOrderChangeSection(section: "standard" | "advanced", next: string[]) {
     const other = section === "standard" ? savedOrder.filter((id) => !standardIds.has(id)) : savedOrder.filter((id) => !advancedIds.has(id));
