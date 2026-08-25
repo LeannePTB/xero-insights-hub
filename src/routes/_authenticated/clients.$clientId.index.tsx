@@ -357,15 +357,6 @@ function ClientDashboard() {
           />
         )}
 
-        {widgets.includes("transaction_search") && (orgSearchQ.data?.allowed ?? false) && (
-          <div className="mt-6">
-            {isWip("transaction_search") ? (
-              <InTestingCard><TransactionSearchWidget clientId={clientId} /></InTestingCard>
-            ) : (
-              <TransactionSearchWidget clientId={clientId} />
-            )}
-          </div>
-        )}
 
 
 
