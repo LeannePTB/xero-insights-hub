@@ -4,7 +4,7 @@
 // instead of one. No new flow value and no new column: `pending_tenant_ids`
 // already holds the targets and the single-file case is an array of one.
 import { randomBytes, createHash } from "crypto";
-import { xeroScopeString } from "@/lib/xero/scopes";
+import { xeroRequiredScopeString } from "@/lib/xero/scopes.server";
 import { MAX_BULK_RECONNECT_TENANTS, type FirmXeroFile } from "@/lib/xero/reconnect-all.shared";
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
@@ -123,7 +123,7 @@ export async function startFirmReconnectAll(
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", clientId);
   url.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
-  url.searchParams.set("scope", xeroScopeString());
+  url.searchParams.set("scope", await xeroRequiredScopeString());
   url.searchParams.set("state", state);
   url.searchParams.set("code_challenge", codeChallenge);
   url.searchParams.set("code_challenge_method", "S256");
