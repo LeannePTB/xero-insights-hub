@@ -388,6 +388,19 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             );
           }
 
+          // A token exchange succeeding does not mean Xero granted everything
+          // we asked for. Compare against public.xero_missing_scopes() and
+          // report any shortfall — a partial grant must never look clean.
+          const stillMissing = new Set<string>();
+          try {
+            const { missingScopesForConnection } = await import("@/lib/xero/api.server");
+            for (const id of refreshedConnectionIds) {
+              for (const scope of await missingScopesForConnection(id)) stillMissing.add(scope);
+            }
+          } catch {
+            // scope verification is best-effort; never block the redirect
+          }
+
           const params = new URLSearchParams({
             xero: "reconnected",
             refreshed: String(refreshedNames.length),
@@ -396,6 +409,10 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           if (missedNames.length > 0) {
             params.set("missed", missedNames.slice(0, 25).join("|"));
           }
+          if (stillMissing.size > 0) {
+            params.set("ungranted", [...stillMissing].join("|"));
+          }
+
           return redirectTo(`${returnOrigin}${backPath}?${params.toString()}`);
         }
 
