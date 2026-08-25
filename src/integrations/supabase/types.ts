@@ -2267,6 +2267,13 @@ export type Database = {
           unchanged: number
         }[]
       }
+      set_client_widget_enabled: {
+        Args: { _client_id: string; _enabled: boolean; _widget: string }
+        Returns: {
+          effective_tier: string
+          is_enabled: boolean
+        }[]
+      }
       set_org_widget_enabled: {
         Args: {
           _enabled: boolean
