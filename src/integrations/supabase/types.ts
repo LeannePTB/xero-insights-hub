@@ -379,6 +379,7 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          include_in_report: boolean
           updated_at: string
         }
         Insert: {
@@ -387,6 +388,7 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          include_in_report?: boolean
           updated_at?: string
         }
         Update: {
@@ -395,6 +397,7 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          include_in_report?: boolean
           updated_at?: string
         }
         Relationships: [

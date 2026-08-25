@@ -751,6 +751,8 @@ export async function computeMonthlyReport(opts: {
       .from("client_notes")
       .select("body, author_id, created_at")
       .eq("client_id", opts.clientId)
+      // Notes are internal unless staff deliberately marked them for the report.
+      .eq("include_in_report", true)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const ids = Array.from(new Set((rows ?? []).map((r: any) => r.author_id).filter(Boolean)));

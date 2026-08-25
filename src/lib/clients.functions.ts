@@ -176,7 +176,7 @@ export const listClientNotes = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
       .from("client_notes")
-      .select("id, body, author_id, created_at, updated_at")
+      .select("id, body, author_id, created_at, updated_at, include_in_report")
       .eq("client_id", data.clientId)
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
@@ -192,7 +192,10 @@ export const listClientNotes = createServerFn({ method: "POST" })
         (profiles ?? []).map((p: any) => [p.id, { display_name: p.display_name, email: p.email }]),
       );
     }
+    const { canManageClientNotes } = await import("@/lib/notes-access.server");
+    const canFlag = await canManageClientNotes(context.userId, data.clientId);
     return {
+      canFlagForReport: canFlag,
       notes: (rows ?? []).map((r: any) => ({
         ...r,
         author_name:
@@ -206,28 +209,55 @@ export const listClientNotes = createServerFn({ method: "POST" })
 
 export const addClientNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { clientId: string; body: string }) => i)
+  .inputValidator((i: { clientId: string; body: string; includeInReport?: boolean }) => i)
   .handler(async ({ data, context }) => {
     const body = data.body.trim();
     if (!body) throw new Error("Note can't be empty.");
     if (body.length > 20000) throw new Error("Note is too long (20,000 char max).");
+    // Internal by default; promoting a note into the client-facing report is
+    // staff-only and enforced here, not by hiding the control.
+    const include = data.includeInReport === true;
+    if (include) {
+      const { assertCanManageClientNotes } = await import("@/lib/notes-access.server");
+      await assertCanManageClientNotes(context.userId, data.clientId);
+    }
     const { error } = await context.supabase
       .from("client_notes")
-      .insert({ client_id: data.clientId, body, author_id: context.userId });
+      .insert({
+        client_id: data.clientId,
+        body,
+        author_id: context.userId,
+        include_in_report: include,
+      });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 export const updateClientNote = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { noteId: string; body: string }) => i)
+  .inputValidator((i: { noteId: string; body: string; includeInReport?: boolean }) => i)
   .handler(async ({ data, context }) => {
     const body = data.body.trim();
     if (!body) throw new Error("Note can't be empty.");
     if (body.length > 20000) throw new Error("Note is too long (20,000 char max).");
+    const patch: { body: string; include_in_report?: boolean } = { body };
+    if (data.includeInReport !== undefined) {
+      const { data: row, error: readErr } = await context.supabase
+        .from("client_notes")
+        .select("client_id, include_in_report")
+        .eq("id", data.noteId)
+        .maybeSingle();
+      if (readErr) throw new Error(readErr.message);
+      if (!row) throw new Error("Note not found.");
+      if (row.include_in_report !== data.includeInReport) {
+        const { assertCanManageClientNotes } = await import("@/lib/notes-access.server");
+        await assertCanManageClientNotes(context.userId, row.client_id);
+        patch.include_in_report = data.includeInReport;
+      }
+    }
     const { error } = await context.supabase
       .from("client_notes")
-      .update({ body })
+      .update(patch)
       .eq("id", data.noteId);
     if (error) throw new Error(error.message);
     return { ok: true };
