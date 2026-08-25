@@ -251,7 +251,9 @@ const PATH_SCOPE: Record<string, string> = {
   "Reports/BankSummary": "accounting.reports.banksummary.read",
   BankTransactions: "accounting.banktransactions.read",
   BankTransfers: "accounting.banktransactions.read",
+  ManualJournals: "accounting.manualjournals.read",
   Assets: "assets.read",
+
 };
 
 export class XeroScopeMissingError extends Error {

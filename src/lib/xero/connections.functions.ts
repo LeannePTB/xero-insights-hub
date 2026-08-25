@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { randomBytes, createHash } from "crypto";
-import { xeroScopeString, xeroIdentityScopeString } from "@/lib/xero/scopes";
+import { xeroIdentityScopeString } from "@/lib/xero/scopes";
 
 function base64url(buf: Buffer) {
   return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
@@ -10,7 +10,6 @@ function base64url(buf: Buffer) {
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const CANONICAL_XERO_APP_ORIGIN = "https://tractionadvisory.com.au";
 const XERO_CALLBACK_URL = `${CANONICAL_XERO_APP_ORIGIN}/api/public/xero/callback`;
-const SCOPES = xeroScopeString();
 const IDENTITY_SCOPES = xeroIdentityScopeString();
 
 /**
@@ -236,17 +235,19 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
 
+    const { xeroRequiredScopeString } = await import("@/lib/xero/scopes.server");
+    const scopeString = await xeroRequiredScopeString();
     const url = new URL(XERO_AUTHORIZE_URL);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
-    url.searchParams.set("scope", SCOPES);
+    url.searchParams.set("scope", scopeString);
     url.searchParams.set("state", state);
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
     console.info("Starting Xero OAuth", {
       redirectUri: XERO_CALLBACK_URL,
-      scopes: SCOPES,
+      scopes: scopeString,
       returnOrigin,
     });
     return { authorizeUrl: url.toString() };
@@ -318,11 +319,13 @@ export const startXeroOnboardConnect = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
 
+    const { xeroRequiredScopeString } = await import("@/lib/xero/scopes.server");
+    const scopeString = await xeroRequiredScopeString();
     const url = new URL(XERO_AUTHORIZE_URL);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
     url.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
-    url.searchParams.set("scope", SCOPES);
+    url.searchParams.set("scope", scopeString);
     url.searchParams.set("state", state);
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
