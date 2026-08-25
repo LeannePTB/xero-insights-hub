@@ -152,6 +152,26 @@ export async function runLoanReconciliation(input: {
   for (const c of cptyRows) neededTenantIds.add(c.tenant_id);
   const allTenantIds = Array.from(neededTenantIds);
 
+  // A counterparty can sit in a Xero file linked to a different client in the
+  // group, so its name isn't in the map built above. Look those names up so the
+  // counterparty column never reads "(unknown)". Names only — nothing else.
+  const missingNameIds = allTenantIds.filter((id) => !tenantById.has(id));
+  if (missingNameIds.length > 0) {
+    const { data: extraTenants } = await supabase
+      .from("xero_connections")
+      .select("tenant_id, tenant_name")
+      .in("tenant_id", missingNameIds);
+    for (const t of (extraTenants ?? []) as any[]) {
+      if (t?.tenant_id && !tenantById.has(t.tenant_id)) {
+        tenantById.set(t.tenant_id, {
+          tenantId: t.tenant_id,
+          tenantName: t.tenant_name ?? "(unnamed)",
+        });
+      }
+    }
+  }
+
+
   const { fetchBalanceSheetBalances, listAllAccounts, getShortCode } = await import(
     "./xero/loan-xero.server"
   );
