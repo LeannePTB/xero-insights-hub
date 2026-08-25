@@ -240,7 +240,7 @@ export const updateClientNote = createServerFn({ method: "POST" })
     const body = data.body.trim();
     if (!body) throw new Error("Note can't be empty.");
     if (body.length > 20000) throw new Error("Note is too long (20,000 char max).");
-    const patch: Record<string, unknown> = { body };
+    const patch: { body: string; include_in_report?: boolean } = { body };
     if (data.includeInReport !== undefined) {
       const { data: row, error: readErr } = await context.supabase
         .from("client_notes")
@@ -252,7 +252,7 @@ export const updateClientNote = createServerFn({ method: "POST" })
       if (row.include_in_report !== data.includeInReport) {
         const { assertCanManageClientNotes } = await import("@/lib/notes-access.server");
         await assertCanManageClientNotes(context.userId, row.client_id);
-        patch['include_in_report'] = data.includeInReport;
+        patch.include_in_report = data.includeInReport;
       }
     }
     const { error } = await context.supabase
