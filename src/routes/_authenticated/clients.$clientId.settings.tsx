@@ -373,7 +373,15 @@ function ClientSettings() {
       qc.invalidateQueries({ queryKey: ["client", clientId] });
       qc.invalidateQueries({ queryKey: ["xero-connections"] });
     } else if (status === "reconnected") {
-      toast.success("Xero organisation reconnected");
+      const ungranted = (params.get("ungranted") ?? "").split("|").filter(Boolean);
+      if (ungranted.length > 0) {
+        toast.warning("Reconnected, but Xero did not grant every permission", {
+          description: `Still missing: ${ungranted.join(", ")}. Reconnect again and approve all permissions on Xero's consent screen.`,
+          duration: 14000,
+        });
+      } else {
+        toast.success("Xero organisation reconnected");
+      }
       qc.invalidateQueries({ queryKey: ["client", clientId] });
       qc.invalidateQueries({ queryKey: ["xero-connections"] });
       qc.invalidateQueries({ queryKey: ["xero-scope-status"] });
@@ -386,6 +394,7 @@ function ClientSettings() {
     if ((status && status !== "choose") || err) {
       params.delete("xero");
       params.delete("xero_error");
+      params.delete("ungranted");
       const qs = params.toString();
       window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
     }

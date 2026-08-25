@@ -49,7 +49,15 @@ export function FirmXeroFilesCard({
     const refreshed = Number(params.get("refreshed") ?? "0");
     const requested = Number(params.get("requested") ?? "0");
     const missed = (params.get("missed") ?? "").split("|").filter(Boolean);
-    if (missed.length > 0) {
+    const ungranted = (params.get("ungranted") ?? "").split("|").filter(Boolean);
+    if (ungranted.length > 0) {
+      // A successful token exchange is not a full grant. Say what is missing.
+      toast.warning(`Reconnected, but Xero did not grant: ${ungranted.join(", ")}`, {
+        description:
+          "Run the reconnect again and approve every permission on Xero's consent screen, otherwise the cards that need them will keep failing.",
+        duration: 14000,
+      });
+    } else if (missed.length > 0) {
       toast.warning(`${refreshed} of ${requested} Xero files reconnected`, {
         description: `Not authorised on the Xero screen: ${missed.join(", ")}. Run it again and tick those.`,
         duration: 12000,
@@ -61,6 +69,7 @@ export function FirmXeroFilesCard({
     params.delete("refreshed");
     params.delete("requested");
     params.delete("missed");
+    params.delete("ungranted");
     const qs = params.toString();
     window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
   }, []);
