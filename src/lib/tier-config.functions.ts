@@ -446,6 +446,17 @@ export const getClientWidgets = createServerFn({ method: "POST" })
     const allowedSet = new Set<string>(await clientAllowedWidgets(context.supabase, data.clientId));
     const availableWidgets = ALL_WIDGETS.filter((w) => allowedSet.has(w));
 
+    // Cards still in testing, so the dashboard can badge them.
+    const { data: clientRow } = await context.supabase
+      .from("clients")
+      .select("firm_id")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    const wipWidgets = await wipWidgetsForFirm(
+      context.supabase,
+      ((clientRow as any)?.firm_id as string | null) ?? null,
+    );
+
     // Labels only — never a second source for the card list.
     const { data: levels } = await context.supabase
       .from("plan_levels")
@@ -468,6 +479,7 @@ export const getClientWidgets = createServerFn({ method: "POST" })
       return {
         widgets: preview,
         availableWidgets,
+        wipWidgets,
         configured: false,
         planLabel,
         highestTier: String(entitlement.tier),
@@ -478,6 +490,7 @@ export const getClientWidgets = createServerFn({ method: "POST" })
     return {
       widgets: availableWidgets,
       availableWidgets,
+      wipWidgets,
       configured: false,
       planLabel,
       highestTier: String(entitlement.tier),
@@ -689,12 +702,19 @@ export const getClientWidgetMatrix = createServerFn({ method: "POST" })
     const orgExcluded = new Set(index.base(tier, firmId));
     const allowed = new Set<string>(await clientAllowedWidgets(context.supabase, data.clientId));
 
-    const rows = ceiling.map((w) => {
+    // Cards in testing sit outside the tier ceiling but are visible to the
+    // client, so they must be listed here too — otherwise there is no way to
+    // switch one off for a single client.
+    const wip = await wipWidgetsForFirm(context.supabase, firmId);
+    const listed = [...ceiling, ...wip.filter((w) => !ceiling.includes(w as any))] as typeof ceiling;
+
+    const rows = listed.map((w) => {
       const on = allowed.has(w);
       const orgOff = orgExcluded.has(w);
       return {
         widget: w,
         on,
+        wip: wip.includes(w as string),
         // organisation exclusions win; the client switch cannot override them.
         reason: on ? "on" : orgOff ? "organisation" : "client",
       };
@@ -724,3 +744,30 @@ export const setClientWidget = createServerFn({ method: "POST" })
       isEnabled: (first as any)?.is_enabled === true,
     };
   });
+
+
+/**
+ * The widget keys currently in testing for one client's organisation.
+ *
+ * Presentation support only: the entitlement itself is decided by
+ * public.client_allowed_widgets / public.firm_has_wip, which already add the
+ * WIP set on top of the client's tier. This just names which of the cards a
+ * client can see are experimental, so the dashboard can badge them.
+ */
+async function wipWidgetsForFirm(supabase: any, firmId: string | null): Promise<string[]> {
+  if (!firmId) return [];
+  try {
+    const { data: on, error } = await supabase.rpc("firm_has_wip", { _firm_id: firmId });
+    if (error || on !== true) return [];
+    const { data: level } = await supabase
+      .from("plan_levels")
+      .select("widgets, enabled")
+      .eq("scope", "dashboard")
+      .eq("key", "wip")
+      .maybeSingle();
+    if (!level || (level as any).enabled === false) return [];
+    return (((level as any).widgets ?? []) as string[]).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
