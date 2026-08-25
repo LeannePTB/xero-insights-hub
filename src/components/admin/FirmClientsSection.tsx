@@ -337,7 +337,7 @@ export function FirmClientsSection({
                                     <Link to="/clients/$clientId" params={{ clientId: c.id }}>Open</Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem asChild>
-                                    <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Settings</Link>
+                                    <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Client settings</Link>
                                   </DropdownMenuItem>
                                 </>
                               )}

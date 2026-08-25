@@ -273,7 +273,7 @@ function ClientDashboard() {
               </Button>
               <Button variant="outline" asChild>
                 <Link to="/clients/$clientId/settings" params={{ clientId }}>
-                  <Settings className="mr-2 h-4 w-4" /> Settings
+                  <Settings className="mr-2 h-4 w-4" /> Client Settings
                 </Link>
               </Button>
             </div>
@@ -398,7 +398,7 @@ function EmptyOrgs({ isAdvisor, clientId }: { isAdvisor: boolean; clientId: stri
       </p>
       {isAdvisor && (
         <Button className="mt-6" asChild>
-          <Link to="/clients/$clientId/settings" params={{ clientId }}><Settings className="mr-2 h-4 w-4" /> Open settings</Link>
+          <Link to="/clients/$clientId/settings" params={{ clientId }}><Settings className="mr-2 h-4 w-4" /> Open client settings</Link>
         </Button>
       )}
     </div>
