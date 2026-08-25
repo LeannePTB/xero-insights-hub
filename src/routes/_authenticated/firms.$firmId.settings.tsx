@@ -9,7 +9,7 @@ import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { OrgDefaultCardsPanel } from "@/components/admin/OrgDefaultCardsPanel";
-import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
+
 
 import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 
