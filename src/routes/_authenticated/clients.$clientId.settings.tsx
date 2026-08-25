@@ -65,6 +65,7 @@ import { toast } from "sonner";
 import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
 import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
 import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
+import { ClientCardsPanel } from "@/components/billing/ClientCardsPanel";
 import {
   ArrowLeft,
   Trash2,
@@ -463,6 +464,12 @@ function ClientSettings() {
         >
           <ClientDashboardTierControl clientId={clientId} />
         </Section>
+
+        {/* Cards — per-client switches within the tier */}
+        <Section title="Cards" id="cards" collapsible>
+          <ClientCardsPanel clientId={clientId} />
+        </Section>
+
 
         {/* Report branding */}
         <Section title="Report branding" collapsible>
