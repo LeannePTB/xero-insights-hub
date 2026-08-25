@@ -176,6 +176,12 @@ function ClientDashboard() {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
+      if (widgets.includes("xero_audit"))
+        advanced.push({
+          id: `${o.id}:xero_audit`,
+          fullWidth: true,
+          node: mark("xero_audit", <AuditSummaryCard tenantId={tenantId} tenantName={tenantName} clientId={clientId} />),
+        });
       if (widgets.includes("receivables"))
         standard.push({ id: `${o.id}:receivables`, node: mark("receivables", <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("receivables")} />) });
       if (widgets.includes("payables"))
@@ -202,8 +208,6 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:gst_reconciliation`, node: mark("gst_reconciliation", <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: mark("loan_consolidation", <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
-
-      // xero_audit rendered under Business Health, not in advanced grid
     }
 
     // Notes is pinned to the top of the dashboard, outside the sortable grid.
@@ -219,7 +223,13 @@ function ClientDashboard() {
   const standardIds = new Set(standardCards.map((c) => c.id));
   const advancedIds = new Set(advancedCards.map((c) => c.id));
   const standardSaved = savedOrder.filter((id) => standardIds.has(id));
-  const advancedSaved = savedOrder.filter((id) => advancedIds.has(id));
+  // Xero File Audit defaults to the top of the Advisory section when it has not
+  // been explicitly reordered; existing saved order for other cards is preserved.
+  const savedAdvanced = savedOrder.filter((id) => advancedIds.has(id));
+  const xeroAuditIds = advancedCards.filter((c) => c.id.endsWith(":xero_audit")).map((c) => c.id);
+  const advancedSaved = xeroAuditIds.some((id) => savedAdvanced.includes(id))
+    ? savedAdvanced
+    : [...xeroAuditIds, ...savedAdvanced];
 
   function handleOrderChangeSection(section: "standard" | "advanced", next: string[]) {
     const other = section === "standard" ? savedOrder.filter((id) => !standardIds.has(id)) : savedOrder.filter((id) => !advancedIds.has(id));
