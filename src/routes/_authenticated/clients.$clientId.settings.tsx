@@ -65,6 +65,7 @@ import { toast } from "sonner";
 import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
 import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
 import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
+import { ClientCardsPanel } from "@/components/billing/ClientCardsPanel";
 import {
   ArrowLeft,
   Trash2,
