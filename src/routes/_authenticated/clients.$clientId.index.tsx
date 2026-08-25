@@ -226,12 +226,21 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:loan_consolidation`, node: mark("loan_consolidation", <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
     }
 
+    // Transaction Search is organisation-wide, not per-org, so it lives in the
+    // Advisory sortable grid once the server confirms the viewer may use it.
+    if (widgets.includes("transaction_search") && orgSearchQ.data?.allowed) {
+      advanced.push({
+        id: "transaction_search",
+        fullWidth: true,
+        node: mark("transaction_search", <TransactionSearchWidget clientId={clientId} />),
+      });
+    }
+
     // Notes is pinned to the top of the dashboard, outside the sortable grid.
-    // Transaction Search is rendered as its own widget above the sections.
 
     return { standardCards: standard, advancedCards: advanced };
 
-  }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor]);
+  }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed]);
 
   const savedOrder = orderQ.data?.order ?? [];
   const standardIds = new Set(standardCards.map((c) => c.id));
@@ -243,13 +252,18 @@ function ClientDashboard() {
   const standardSaved = defaultTopStandardIds.some((id) => standardSavedRaw.includes(id))
     ? standardSavedRaw
     : [...defaultTopStandardIds, ...standardSavedRaw];
-  // Xero File Audit defaults to the top of the Advisory section when it has not
-  // been explicitly reordered; existing saved order for other cards is preserved.
+  // Xero File Audit and Transaction Search default to the top of the Advisory
+  // section when they have not been explicitly reordered; existing saved order
+  // for other cards is preserved.
   const savedAdvanced = savedOrder.filter((id) => advancedIds.has(id));
   const xeroAuditIds = advancedCards.filter((c) => c.id.endsWith(":xero_audit")).map((c) => c.id);
-  const advancedSaved = xeroAuditIds.some((id) => savedAdvanced.includes(id))
+  const advancedDefaultTop = [
+    ...xeroAuditIds,
+    ...(advancedIds.has("transaction_search") ? ["transaction_search"] : []),
+  ];
+  const advancedSaved = advancedDefaultTop.some((id) => savedAdvanced.includes(id))
     ? savedAdvanced
-    : [...xeroAuditIds, ...savedAdvanced];
+    : [...advancedDefaultTop, ...savedAdvanced];
 
   function handleOrderChangeSection(section: "standard" | "advanced", next: string[]) {
     const other = section === "standard" ? savedOrder.filter((id) => !standardIds.has(id)) : savedOrder.filter((id) => !advancedIds.has(id));
@@ -343,15 +357,6 @@ function ClientDashboard() {
           />
         )}
 
-        {widgets.includes("transaction_search") && (orgSearchQ.data?.allowed ?? false) && (
-          <div className="mt-6">
-            {isWip("transaction_search") ? (
-              <InTestingCard><TransactionSearchWidget clientId={clientId} /></InTestingCard>
-            ) : (
-              <TransactionSearchWidget clientId={clientId} />
-            )}
-          </div>
-        )}
 
 
 
