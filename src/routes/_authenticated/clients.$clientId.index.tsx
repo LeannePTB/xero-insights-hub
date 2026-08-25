@@ -233,12 +233,16 @@ function ClientDashboard() {
 
   }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor]);
 
-  const showHealth = widgets.includes("health");
-  const showUnreconciled = widgets.includes("unreconciled");
   const savedOrder = orderQ.data?.order ?? [];
   const standardIds = new Set(standardCards.map((c) => c.id));
   const advancedIds = new Set(advancedCards.map((c) => c.id));
-  const standardSaved = savedOrder.filter((id) => standardIds.has(id));
+  const standardSavedRaw = savedOrder.filter((id) => standardIds.has(id));
+  const defaultTopStandardIds = ["health", "unreconciled"].filter((id) => standardIds.has(id));
+  // Business Health and Uncoded Bankfeed Questions default to the top of the
+  // Standard section when they have not been explicitly reordered.
+  const standardSaved = defaultTopStandardIds.some((id) => standardSavedRaw.includes(id))
+    ? standardSavedRaw
+    : [...defaultTopStandardIds, ...standardSavedRaw];
   // Xero File Audit defaults to the top of the Advisory section when it has not
   // been explicitly reordered; existing saved order for other cards is preserved.
   const savedAdvanced = savedOrder.filter((id) => advancedIds.has(id));
