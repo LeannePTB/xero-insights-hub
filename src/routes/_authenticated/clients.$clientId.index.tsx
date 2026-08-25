@@ -226,12 +226,21 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:loan_consolidation`, node: mark("loan_consolidation", <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
     }
 
+    // Transaction Search is organisation-wide, not per-org, so it lives in the
+    // Advisory sortable grid once the server confirms the viewer may use it.
+    if (widgets.includes("transaction_search") && orgSearchQ.data?.allowed) {
+      advanced.push({
+        id: "transaction_search",
+        fullWidth: true,
+        node: mark("transaction_search", <TransactionSearchWidget clientId={clientId} />),
+      });
+    }
+
     // Notes is pinned to the top of the dashboard, outside the sortable grid.
-    // Transaction Search is rendered as its own widget above the sections.
 
     return { standardCards: standard, advancedCards: advanced };
 
-  }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor]);
+  }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed]);
 
   const savedOrder = orderQ.data?.order ?? [];
   const standardIds = new Set(standardCards.map((c) => c.id));
