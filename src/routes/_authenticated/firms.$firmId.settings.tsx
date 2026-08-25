@@ -293,17 +293,9 @@ function FirmSettingsPage() {
 
       {/* Xero organisations */}
       <div className="mt-6">
-        <section className="rounded-2xl border border-border bg-card p-6">
-          <LogoUploadCard
-            scope="organisation"
-            id={firmId}
-            title="Report branding"
-            description="Organisation logo used in the header of every monthly management report PDF. PNG or JPEG, up to 2 MB. Reports still generate without a logo."
-          />
-        </section>
-
         <FirmXeroFilesCard firmId={firmId} />
       </div>
+
 
 
       {/* Ownership handover */}
