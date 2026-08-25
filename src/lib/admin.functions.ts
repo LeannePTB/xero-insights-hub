@@ -319,38 +319,78 @@ export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
  * Independent of the plan (capacity) and of client dashboard tiers: it gates
  * the cross-client consolidation tools. Super admin only, always audited.
  */
+/**
+ * Set one boolean add-on flag on an organisation's subscription and PROVE it landed.
+ *
+ * The write is never skipped on the strength of a prior read: it always runs,
+ * returns the affected row via .select(), and the caller only sees success when
+ * exactly one row came back carrying the requested value. Zero rows affected is
+ * an error, not a success — a toggle that says "saved" without saving is worse
+ * than one that errors.
+ */
+async function setSubscriptionFlag(
+  firmId: string,
+  column: "consolidation_enabled" | "wip_enabled",
+  enabled: boolean,
+) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const { data: existing, error: readErr } = await (supabaseAdmin as any)
+    .from("subscriptions")
+    .select(`id, ${column}`)
+    .eq("firm_id", firmId)
+    .maybeSingle();
+  if (readErr) throw new Error(readErr.message);
+  if (!existing)
+    throw new Error("This organisation has no plan yet — assign a plan before enabling add-ons.");
+
+  const from = !!existing[column];
+
+  const { data: rows, error } = await (supabaseAdmin as any)
+    .from("subscriptions")
+    .update({ [column]: enabled })
+    .eq("id", existing.id)
+    .select(`id, ${column}`);
+  if (error) throw new Error(error.message);
+
+  const updated = (rows ?? []) as any[];
+  if (updated.length !== 1 || !!updated[0]?.[column] !== enabled) {
+    console.error("[subscription-flag] write not confirmed", {
+      firmId,
+      column,
+      enabled,
+      rowsAffected: updated.length,
+    });
+    throw new Error(
+      "The change was not saved — the database did not confirm the update. Nothing has changed.",
+    );
+  }
+
+  return { from, changed: from !== enabled };
+}
+
 export const adminSetFirmConsolidation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId: string; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const enabled = data.enabled === true;
 
-    const { data: existing, error: readErr } = await (supabaseAdmin as any)
-      .from("subscriptions")
-      .select("id, consolidation_enabled")
-      .eq("firm_id", data.firmId)
-      .maybeSingle();
-    if (readErr) throw new Error(readErr.message);
-    if (!existing)
-      throw new Error("This organisation has no plan yet — assign a plan before enabling add-ons.");
+    const { from, changed } = await setSubscriptionFlag(
+      data.firmId,
+      "consolidation_enabled",
+      enabled,
+    );
 
-    const from = !!existing.consolidation_enabled;
-    if (from !== data.enabled) {
-      const { error } = await (supabaseAdmin as any)
-        .from("subscriptions")
-        .update({ consolidation_enabled: data.enabled })
-        .eq("firm_id", data.firmId);
-      if (error) throw new Error(error.message);
-
+    if (changed) {
       await logAudit("firm_consolidation_addon_changed", "firm", data.firmId, context.userId, {
         firm_id: data.firmId,
         from,
-        to: data.enabled,
+        to: enabled,
       });
     }
 
-    return { ok: true, enabled: data.enabled };
+    return { ok: true, enabled };
   });
 
 /**
@@ -368,34 +408,21 @@ export const adminSetFirmWip = createServerFn({ method: "POST" })
   .inputValidator((i: { firmId: string; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const enabled = data.enabled === true;
 
-    const { data: existing, error: readErr } = await (supabaseAdmin as any)
-      .from("subscriptions")
-      .select("id, wip_enabled")
-      .eq("firm_id", data.firmId)
-      .maybeSingle();
-    if (readErr) throw new Error(readErr.message);
-    if (!existing)
-      throw new Error("This organisation has no plan yet — assign a plan before enabling add-ons.");
+    const { from, changed } = await setSubscriptionFlag(data.firmId, "wip_enabled", enabled);
 
-    const from = !!existing.wip_enabled;
-    if (from !== data.enabled) {
-      const { error } = await (supabaseAdmin as any)
-        .from("subscriptions")
-        .update({ wip_enabled: data.enabled })
-        .eq("firm_id", data.firmId);
-      if (error) throw new Error(error.message);
-
+    if (changed) {
       await logAudit("firm_wip_access_changed", "firm", data.firmId, context.userId, {
         firm_id: data.firmId,
         from,
-        to: data.enabled,
+        to: enabled,
       });
     }
 
-    return { ok: true, enabled: data.enabled };
+    return { ok: true, enabled };
   });
+
 
 /**
  * Read-only view of what is in testing: the WIP widget list and which

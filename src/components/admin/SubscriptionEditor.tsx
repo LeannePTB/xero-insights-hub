@@ -87,7 +87,9 @@ export function SubscriptionEditor({
   );
   const consolidationMut = useMutation({
     mutationFn: (enabled: boolean) => setConsolidationFn({ data: { firmId, enabled } }),
-    onSuccess: (_r, enabled) => {
+    onSuccess: (r: any, enabled) => {
+      // Trust the confirmed server state, not the switch we just moved.
+      setConsolidation(!!r?.enabled);
       toast.success(enabled ? "Consolidation tools enabled" : "Consolidation tools disabled");
       onChanged();
     },
@@ -108,7 +110,8 @@ export function SubscriptionEditor({
   useEffect(() => setWip(!!subscription?.wip_enabled), [subscription?.wip_enabled]);
   const wipMut = useMutation({
     mutationFn: (enabled: boolean) => setWipFn({ data: { firmId, enabled } }),
-    onSuccess: (_r, enabled) => {
+    onSuccess: (r: any, enabled) => {
+      setWip(!!r?.enabled);
       toast.success(enabled ? "Widgets in testing enabled" : "Widgets in testing disabled");
       onChanged();
     },
