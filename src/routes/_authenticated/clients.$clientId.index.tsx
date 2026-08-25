@@ -172,6 +172,22 @@ function ClientDashboard() {
       wipSet.has(widget) ? <InTestingCard>{node}</InTestingCard> : node;
     if (!client) return { standardCards: standard, advancedCards: advanced };
 
+    if (widgets.includes("health")) {
+      const healthNode = orgs.length > 0 ? (
+        <HealthWidget
+          clientName={client.name}
+          clientId={clientId}
+          tenantId={orgs[0]?.xero_connections?.tenant_id}
+          tenantName={orgs[0]?.xero_connections?.tenant_name}
+        />
+      ) : (
+        <HealthWidget clientName={client.name} />
+      );
+      standard.push({ id: "health", fullWidth: true, node: mark("health", healthNode) });
+    }
+    if (widgets.includes("unreconciled"))
+      standard.push({ id: "unreconciled", node: mark("unreconciled", <UnreconciledCard clientId={clientId} />) });
+
     for (const o of orgs) {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
@@ -211,18 +227,22 @@ function ClientDashboard() {
     }
 
     // Notes is pinned to the top of the dashboard, outside the sortable grid.
-
+    // Transaction Search is rendered as its own widget above the sections.
 
     return { standardCards: standard, advancedCards: advanced };
 
   }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor]);
 
-  const showHealth = widgets.includes("health");
-  const showUnreconciled = widgets.includes("unreconciled");
   const savedOrder = orderQ.data?.order ?? [];
   const standardIds = new Set(standardCards.map((c) => c.id));
   const advancedIds = new Set(advancedCards.map((c) => c.id));
-  const standardSaved = savedOrder.filter((id) => standardIds.has(id));
+  const standardSavedRaw = savedOrder.filter((id) => standardIds.has(id));
+  const defaultTopStandardIds = ["health", "unreconciled"].filter((id) => standardIds.has(id));
+  // Business Health and Uncoded Bankfeed Questions default to the top of the
+  // Standard section when they have not been explicitly reordered.
+  const standardSaved = defaultTopStandardIds.some((id) => standardSavedRaw.includes(id))
+    ? standardSavedRaw
+    : [...defaultTopStandardIds, ...standardSavedRaw];
   // Xero File Audit defaults to the top of the Advisory section when it has not
   // been explicitly reordered; existing saved order for other cards is preserved.
   const savedAdvanced = savedOrder.filter((id) => advancedIds.has(id));
@@ -336,61 +356,33 @@ function ClientDashboard() {
 
 
         <div className="mt-3 space-y-6">
-          {orgs.length === 0 ? (
-            <>
-              {showHealth && <HealthWidget clientName={client.name} />}
-              {showUnreconciled && (
-                <div className="grid gap-6 md:grid-cols-2">
-                  <UnreconciledCard clientId={clientId} />
-                </div>
-              )}
-              <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />
-            </>
-          ) : (
-            <>
-              {showHealth && (
-                <HealthWidget
-                  clientName={client.name}
-                  clientId={clientId}
-                  tenantId={orgs[0]?.xero_connections?.tenant_id}
-                  tenantName={orgs[0]?.xero_connections?.tenant_name}
-                />
-              )}
-
-              {showUnreconciled && (
-                <div className="grid gap-6 md:grid-cols-2">
-                  <UnreconciledCard clientId={clientId} />
-                </div>
-              )}
-
-
-              {standardCards.length > 0 && (
-                <section>
-                  <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    Standard dashboard
-                  </h2>
-                  <SortableCardGrid
-                    cards={standardCards}
-                    savedOrder={standardSaved}
-                    onOrderChange={(next) => handleOrderChangeSection("standard", next)}
-                  />
-                </section>
-              )}
-
-              {advancedCards.length > 0 && (
-                <section>
-                  <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-                    Advisory
-                  </h2>
-                  <SortableCardGrid
-                    cards={advancedCards}
-                    savedOrder={advancedSaved}
-                    onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
-                  />
-                </section>
-              )}
-            </>
+          {standardCards.length > 0 && (
+            <section>
+              <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Standard dashboard
+              </h2>
+              <SortableCardGrid
+                cards={standardCards}
+                savedOrder={standardSaved}
+                onOrderChange={(next) => handleOrderChangeSection("standard", next)}
+              />
+            </section>
           )}
+
+          {advancedCards.length > 0 && (
+            <section>
+              <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Advisory
+              </h2>
+              <SortableCardGrid
+                cards={advancedCards}
+                savedOrder={advancedSaved}
+                onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
+              />
+            </section>
+          )}
+
+          {orgs.length === 0 && <EmptyOrgs isAdvisor={isAdvisor} clientId={clientId} />}
         </div>
 
 
