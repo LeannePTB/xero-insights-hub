@@ -108,8 +108,21 @@ export function SubscriptionEditor({
   const setWipFn = useServerFn(adminSetFirmWip);
   const [wip, setWip] = useState<boolean>(!!subscription?.wip_enabled);
   useEffect(() => setWip(!!subscription?.wip_enabled), [subscription?.wip_enabled]);
+  useEffect(() => {
+    console.info("[admin-set-firm-wip] editor-mounted", {
+      firmId,
+      origin: window.location.origin,
+    });
+  }, [firmId]);
   const wipMut = useMutation({
-    mutationFn: (enabled: boolean) => setWipFn({ data: { firmId, enabled } }),
+    mutationFn: (enabled: boolean) => {
+      console.info("[admin-set-firm-wip] client-dispatch", {
+        firmId,
+        enabled,
+        origin: window.location.origin,
+      });
+      return setWipFn({ data: { firmId, enabled } });
+    },
     onSuccess: (r: any, enabled) => {
       setWip(!!r?.enabled);
       toast.success(enabled ? "Widgets in testing enabled" : "Widgets in testing disabled");

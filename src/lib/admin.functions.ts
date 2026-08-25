@@ -332,6 +332,7 @@ async function setSubscriptionFlag(
   firmId: string,
   column: "consolidation_enabled" | "wip_enabled",
   enabled: boolean,
+  traceId?: string,
 ) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -351,6 +352,15 @@ async function setSubscriptionFlag(
     .update({ [column]: enabled })
     .eq("id", existing.id)
     .select(`id, ${column}`);
+  console.info("[admin-subscription-flag] update-result", {
+    traceId,
+    firmId,
+    subscriptionId: existing.id,
+    column,
+    enabled,
+    rows,
+    error: error ? { message: error.message, code: error.code } : null,
+  });
   if (error) throw new Error(error.message);
 
   const updated = (rows ?? []) as any[];
@@ -407,10 +417,26 @@ export const adminSetFirmWip = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId: string; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
+    const traceId = crypto.randomUUID();
+    console.info("[admin-set-firm-wip] entered", {
+      traceId,
+      data,
+      userId: context.userId,
+    });
     await assertSuperAdmin(context.supabase, context.userId);
+    console.info("[admin-set-firm-wip] authorised", {
+      traceId,
+      firmId: data.firmId,
+      userId: context.userId,
+    });
     const enabled = data.enabled === true;
 
-    const { from, changed } = await setSubscriptionFlag(data.firmId, "wip_enabled", enabled);
+    const { from, changed } = await setSubscriptionFlag(
+      data.firmId,
+      "wip_enabled",
+      enabled,
+      traceId,
+    );
 
     if (changed) {
       await logAudit("firm_wip_access_changed", "firm", data.firmId, context.userId, {
