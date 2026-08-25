@@ -1611,6 +1611,7 @@ export type Database = {
           tier: string
           trial_ends_at: string | null
           updated_at: string
+          wip_enabled: boolean
         }
         Insert: {
           cancel_at_period_end?: boolean
@@ -1626,6 +1627,7 @@ export type Database = {
           tier?: string
           trial_ends_at?: string | null
           updated_at?: string
+          wip_enabled?: boolean
         }
         Update: {
           cancel_at_period_end?: boolean
@@ -1641,6 +1643,7 @@ export type Database = {
           tier?: string
           trial_ends_at?: string | null
           updated_at?: string
+          wip_enabled?: boolean
         }
         Relationships: [
           {
@@ -2200,6 +2203,7 @@ export type Database = {
         Returns: boolean
       }
       firm_has_consolidation: { Args: { _firm_id: string }; Returns: boolean }
+      firm_has_wip: { Args: { _firm_id: string }; Returns: boolean }
       firm_plan_limits: {
         Args: { _firm_id: string }
         Returns: {

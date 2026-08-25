@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { adminUpdateSubscription, adminSetFirmConsolidation } from "@/lib/admin.functions";
+import { adminUpdateSubscription, adminSetFirmConsolidation, adminSetFirmWip } from "@/lib/admin.functions";
+import { getMyContext } from "@/lib/roles.functions";
+import { SuperAdminChip } from "@/components/admin/SuperAdminOnly";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -96,6 +98,26 @@ export function SubscriptionEditor({
     },
   });
 
+  // Widgets in testing: super admin only. The switch is hidden for everyone
+  // else, but the refusal that matters is in adminSetFirmWip on the server.
+  const ctxFn = useServerFn(getMyContext);
+  const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => ctxFn() });
+  const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
+  const setWipFn = useServerFn(adminSetFirmWip);
+  const [wip, setWip] = useState<boolean>(!!subscription?.wip_enabled);
+  useEffect(() => setWip(!!subscription?.wip_enabled), [subscription?.wip_enabled]);
+  const wipMut = useMutation({
+    mutationFn: (enabled: boolean) => setWipFn({ data: { firmId, enabled } }),
+    onSuccess: (_r, enabled) => {
+      toast.success(enabled ? "Widgets in testing enabled" : "Widgets in testing disabled");
+      onChanged();
+    },
+    onError: (e: any, enabled) => {
+      setWip(!enabled);
+      toast.error(e?.message ?? "Could not update early access");
+    },
+  });
+
   // Keep the current value selectable even if its level was retired.
   const options = levels.filter((l) => l.enabled || l.key === tier);
   const selectedLevel = levels.find((l) => l.key === tier);
@@ -183,6 +205,30 @@ export function SubscriptionEditor({
             }}
           />
         </div>
+        {isSuperAdmin && (
+          <div className="flex items-center justify-between rounded-md border border-admin-accent/40 bg-admin-accent/5 p-3 md:col-span-2">
+            <div className="pr-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="text-sm font-medium">Widgets in testing</p>
+                <SuperAdminChip />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Gives this organisation early access to widgets still being built, on top of each
+                client&apos;s normal cards. They may change or be withdrawn at any time, and every
+                client in the organisation will see them.
+              </p>
+            </div>
+            <Switch
+              checked={wip}
+              disabled={wipMut.isPending || !subscription}
+              onCheckedChange={(v) => {
+                setWip(v);
+                wipMut.mutate(v);
+              }}
+              aria-label="Widgets in testing for this organisation"
+            />
+          </div>
+        )}
         <div className="space-y-1.5 md:col-span-2">
           <Label>Client limit override</Label>
           <Input

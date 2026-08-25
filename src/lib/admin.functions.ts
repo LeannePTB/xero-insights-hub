@@ -352,3 +352,88 @@ export const adminSetFirmConsolidation = createServerFn({ method: "POST" })
 
     return { ok: true, enabled: data.enabled };
   });
+
+/**
+ * Toggle "Widgets in testing" (WIP) for one organisation.
+ *
+ * WIP is additive: public.client_allowed_widgets adds the plan_levels row
+ * scope='dashboard', key='wip' on top of each client's normal tier when
+ * public.firm_has_wip is true. Nothing here re-derives that.
+ *
+ * Super admin only — it exposes unfinished features to real financial data,
+ * so an organisation owner must not be able to switch it on. Always audited.
+ */
+export const adminSetFirmWip = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { firmId: string; enabled: boolean }) => i)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: existing, error: readErr } = await (supabaseAdmin as any)
+      .from("subscriptions")
+      .select("id, wip_enabled")
+      .eq("firm_id", data.firmId)
+      .maybeSingle();
+    if (readErr) throw new Error(readErr.message);
+    if (!existing)
+      throw new Error("This organisation has no plan yet — assign a plan before enabling add-ons.");
+
+    const from = !!existing.wip_enabled;
+    if (from !== data.enabled) {
+      const { error } = await (supabaseAdmin as any)
+        .from("subscriptions")
+        .update({ wip_enabled: data.enabled })
+        .eq("firm_id", data.firmId);
+      if (error) throw new Error(error.message);
+
+      await logAudit("firm_wip_access_changed", "firm", data.firmId, context.userId, {
+        firm_id: data.firmId,
+        from,
+        to: data.enabled,
+      });
+    }
+
+    return { ok: true, enabled: data.enabled };
+  });
+
+/**
+ * Read-only view of what is in testing: the WIP widget list and which
+ * organisations currently have early access. Super admin only.
+ */
+export const getWipOverview = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertSuperAdmin(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: level } = await (supabaseAdmin as any)
+      .from("plan_levels")
+      .select("key, label, widgets, enabled")
+      .eq("scope", "dashboard")
+      .eq("key", "wip")
+      .maybeSingle();
+
+    const { data: subs } = await (supabaseAdmin as any)
+      .from("subscriptions")
+      .select("firm_id, wip_enabled")
+      .eq("wip_enabled", true);
+
+    const firmIds = ((subs ?? []) as any[]).map((s) => s.firm_id).filter(Boolean);
+    let organisations: { id: string; name: string }[] = [];
+    if (firmIds.length) {
+      const { data: firms } = await (supabaseAdmin as any)
+        .from("firms")
+        .select("id, name")
+        .in("id", firmIds);
+      organisations = ((firms ?? []) as any[]).map((f) => ({ id: f.id, name: f.name }));
+      organisations.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    return {
+      enabled: (level as any)?.enabled !== false,
+      label: ((level as any)?.label as string | undefined) ?? "In testing",
+      widgets: (((level as any)?.widgets ?? []) as string[]),
+      organisations,
+    };
+  });
