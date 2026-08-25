@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   ALL_TIERS,
@@ -87,9 +88,7 @@ export const listClients = createServerFn({ method: "POST" })
     if (clientIds.length) {
       const url = `${process.env['SUPABASE_URL']}/rest/v1/rpc/client_can_use_widget`;
       const key = process.env['SUPABASE_PUBLISHABLE_KEY'];
-      const token = typeof context.claims?.sub === "string"
-        ? (await context.supabase.auth.getSession()).data.session?.access_token
-        : null;
+      const token = getRequestHeader("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
       if (!key || !token) throw new Error("Could not check Business Health access.");
       const response = await fetch(url, {
         method: "POST",
