@@ -111,6 +111,7 @@ function ClientDashboard() {
   // Cards still in testing, badged wherever they render.
   const wipWidgets: string[] = (widgetsQ.data as any)?.wipWidgets ?? [];
   const wipKey = wipWidgets.join(",");
+  const isWip = (widget: string) => wipWidgets.includes(widget);
   const tier: DashboardTier = effectivePreviewTier ?? tierLabelSource ?? "basic";
 
   const { levels: tierLevels } = usePlanLevels("dashboard");
@@ -293,7 +294,11 @@ function ClientDashboard() {
 
         {widgets.includes("notes") && (
           <div className="mt-6 w-full">
-            <NotesCard clientId={clientId} canEdit={isAdvisor} />
+            {isWip("notes") ? (
+              <InTestingCard><NotesCard clientId={clientId} canEdit={isAdvisor} /></InTestingCard>
+            ) : (
+              <NotesCard clientId={clientId} canEdit={isAdvisor} />
+            )}
           </div>
         )}
 
@@ -310,7 +315,11 @@ function ClientDashboard() {
 
         {widgets.includes("transaction_search") && (orgSearchQ.data?.allowed ?? false) && (
           <div className="mt-6">
-            <TransactionSearchWidget clientId={clientId} />
+            {isWip("transaction_search") ? (
+              <InTestingCard><TransactionSearchWidget clientId={clientId} /></InTestingCard>
+            ) : (
+              <TransactionSearchWidget clientId={clientId} />
+            )}
           </div>
         )}
 
