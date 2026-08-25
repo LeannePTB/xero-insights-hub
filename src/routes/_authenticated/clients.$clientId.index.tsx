@@ -197,11 +197,8 @@ function ClientDashboard() {
       // xero_audit rendered under Business Health, not in advanced grid
     }
 
-    // Notes is free text and can be long, so it spans every column in the
-    // sortable grid and stays reorderable like any other card.
-    if (widgets.includes("notes")) {
-      standard.push({ id: "notes", node: <NotesCard clientId={clientId} canEdit={isAdvisor} />, fullWidth: true });
-    }
+    // Notes is pinned to the top of the dashboard, outside the sortable grid.
+
 
     return { standardCards: standard, advancedCards: advanced };
 
