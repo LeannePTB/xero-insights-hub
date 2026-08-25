@@ -94,6 +94,36 @@ function TierSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const saveWipMut = useMutation({
+    mutationFn: ({ widgets, enabled }: { widgets?: WidgetKey[]; enabled?: boolean }) => {
+      const level = levelByKey.get("wip");
+      if (!level) throw new Error("The In testing tier could not be found.");
+      return savePlanFn({
+        data: {
+          id: level.id,
+          scope: "dashboard",
+          key: level.key,
+          label: level.label,
+          description: level.description ?? "",
+          xero_org_limit: level.xero_org_limit ?? 1,
+          allows_multi_org: !!level.allows_multi_org,
+          widgets: widgets ?? level.widgets,
+          sort_order: level.sort_order ?? 100,
+          enabled: enabled ?? level.enabled,
+        },
+      });
+    },
+    onSuccess: (_result, change) => {
+      toast.success(change.enabled === undefined ? "Saved" : change.enabled ? "Tier enabled" : "Tier disabled");
+      qc.invalidateQueries({ queryKey: ["plan-levels"] });
+      qc.invalidateQueries({ queryKey: ["tier-config"] });
+      qc.invalidateQueries({ queryKey: ["wip-overview"] });
+      qc.invalidateQueries({ queryKey: ["effective-widgets"] });
+      qc.invalidateQueries({ queryKey: ["client-widgets"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not save In testing"),
+  });
+
   const toggleMut = useMutation({
     mutationFn: (v: { tier: string; enabled: boolean }) =>
       toggleFn({ data: { tier: v.tier as DashboardTier, enabled: v.enabled } }),
@@ -187,8 +217,11 @@ function TierSettings() {
           {isSuperAdmin && <WipOverviewCard />}
 
           {tiers.map((tier) => {
-            const enabled = (settingsQ.data?.enabled as Record<string, boolean> | undefined)?.[tier] ?? true;
             const level = levelByKey.get(tier);
+            const isWip = tier === "wip";
+            const enabled = isWip
+              ? level?.enabled !== false
+              : (settingsQ.data?.enabled as Record<string, boolean> | undefined)?.[tier] ?? true;
             return (
               <TierEditor
                 key={tier}
@@ -196,11 +229,15 @@ function TierSettings() {
                 title={tierLabel(tier, level?.label)}
                 description={tierDescription(tier, level?.description)}
                 initial={((cfgQ.data?.global as Record<string, WidgetKey[]>)?.[tier]) ?? []}
-                saving={saveMut.isPending}
-                onSave={(widgets) => saveMut.mutate({ tier, widgets })}
+                saving={isWip ? saveWipMut.isPending : saveMut.isPending}
+                onSave={(widgets) =>
+                  isWip ? saveWipMut.mutate({ widgets }) : saveMut.mutate({ tier, widgets })
+                }
                 enabled={enabled}
-                onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
-                toggleDisabled={toggleMut.isPending}
+                onToggleEnabled={(v) =>
+                  isWip ? saveWipMut.mutate({ enabled: v }) : toggleMut.mutate({ tier, enabled: v })
+                }
+                toggleDisabled={isWip ? saveWipMut.isPending : toggleMut.isPending}
                 onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
                 onEdit={
                   isSuperAdmin && level
