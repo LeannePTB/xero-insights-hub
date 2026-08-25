@@ -172,6 +172,22 @@ function ClientDashboard() {
       wipSet.has(widget) ? <InTestingCard>{node}</InTestingCard> : node;
     if (!client) return { standardCards: standard, advancedCards: advanced };
 
+    if (widgets.includes("health")) {
+      const healthNode = orgs.length > 0 ? (
+        <HealthWidget
+          clientName={client.name}
+          clientId={clientId}
+          tenantId={orgs[0]?.xero_connections?.tenant_id}
+          tenantName={orgs[0]?.xero_connections?.tenant_name}
+        />
+      ) : (
+        <HealthWidget clientName={client.name} />
+      );
+      standard.push({ id: "health", fullWidth: true, node: mark("health", healthNode) });
+    }
+    if (widgets.includes("unreconciled"))
+      standard.push({ id: "unreconciled", node: mark("unreconciled", <UnreconciledCard clientId={clientId} />) });
+
     for (const o of orgs) {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
@@ -211,7 +227,7 @@ function ClientDashboard() {
     }
 
     // Notes is pinned to the top of the dashboard, outside the sortable grid.
-
+    // Transaction Search is rendered as its own widget above the sections.
 
     return { standardCards: standard, advancedCards: advanced };
 
