@@ -21,6 +21,9 @@ import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnecti
 import { listXeroScopeStatus } from "@/lib/xero/scope-status.functions";
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
+import { ExpiringOrganisationsNotice } from "@/components/admin/ExpiringOrganisationsNotice";
+import { listSubscriptionStates } from "@/lib/subscription-state.functions";
+import { countdownLabel, formatEndDate, hidesDates, type SubscriptionState } from "@/lib/subscription-state";
 
 
 
@@ -146,6 +149,7 @@ function AdminPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        <ExpiringOrganisationsNotice />
         <OrganisationsSection
           isSuper={isSuper}
           firms={firmsQ.data?.firms as FirmRow[] | undefined}

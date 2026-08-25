@@ -12,6 +12,7 @@ import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDia
 import { firmPlanView } from "@/lib/firmPlans";
 import { useFirmWidgets } from "@/hooks/useFirmWidget";
 import { toast } from "sonner";
+import { SubscriptionExpiryBanner } from "@/components/admin/SubscriptionExpiryBanner";
 
 
 
@@ -122,6 +123,7 @@ function FirmPage() {
         />
       )}
       <main className="mx-auto max-w-6xl px-6 py-10">
+        <SubscriptionExpiryBanner firmId={firmId} />
         {!previewing && (
           <Button variant="ghost" size="sm" asChild className="mb-4">
             <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All organisations</Link>
