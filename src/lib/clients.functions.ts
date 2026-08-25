@@ -2,15 +2,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   ALL_TIERS,
-  ALL_WIDGETS,
   DEFAULT_TIER_WIDGETS,
   type DashboardTier,
   type WidgetKey,
 } from "@/lib/tiers";
-
-function sanitizeWidgets(widgets: string[] | null | undefined): WidgetKey[] {
-  return (widgets ?? []).filter((w): w is WidgetKey => (ALL_WIDGETS as string[]).includes(w));
-}
 
 export const listClients = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -48,7 +43,7 @@ export const listClients = createServerFn({ method: "POST" })
     let q = db
       .from("clients")
       .select(
-        "id, name, firm_id, created_at, dashboard_widgets, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
+        "id, name, firm_id, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
       )
       .order("name");
     if (firmId) q = q.eq("firm_id", firmId);
@@ -85,6 +80,37 @@ export const listClients = createServerFn({ method: "POST" })
       (rows ?? []).map((c: any) => clientEntitlement(context.supabase, c.id)),
     );
 
+    // PostgREST can apply one RPC invocation to an array of argument objects.
+    // This keeps the database function as the single source of truth while
+    // resolving every listed client's Business Health entitlement in one read.
+    const healthByClient = new Map<string, boolean>();
+    if (clientIds.length) {
+      const url = `${process.env['SUPABASE_URL']}/rest/v1/rpc/client_can_use_widget`;
+      const key = process.env['SUPABASE_PUBLISHABLE_KEY'];
+      const token = typeof context.claims?.sub === "string"
+        ? (await context.supabase.auth.getSession()).data.session?.access_token
+        : null;
+      if (!key || !token) throw new Error("Could not check Business Health access.");
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+          Prefer: "params=multiple-objects",
+        },
+        body: JSON.stringify(clientIds.map((clientId: string) => ({
+          _client_id: clientId,
+          _widget: "health",
+        }))),
+      });
+      if (!response.ok) throw new Error("Could not check Business Health access.");
+      const decisions = await response.json() as boolean[];
+      clientIds.forEach((clientId: string, index: number) => {
+        healthByClient.set(clientId, decisions[index] === true);
+      });
+    }
+
     const clients = (rows ?? []).map((c: any, i: number) => {
 
       const grantedTiers = Array.from(
@@ -104,12 +130,7 @@ export const listClients = createServerFn({ method: "POST" })
         clientTiers,
         entitlement: entitlements[i],
         tierWidgets: resolveTierWidgets(c.id),
-
-        // null = never configured (plan default applies); an array is an explicit
-        // per-client override and must win over any tier default.
-        clientWidgets: Array.isArray(c.dashboard_widgets)
-          ? sanitizeWidgets(c.dashboard_widgets as string[])
-          : null,
+        healthAllowed: healthByClient.get(c.id) === true,
       };
     });
     return { clients };
