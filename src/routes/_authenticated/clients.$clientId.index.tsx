@@ -11,6 +11,7 @@ import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle, FileText } from "lucide-react";
+import { InTestingCard } from "@/components/dashboard/InTestingBadge";
 import { AppHeader } from "@/components/AppHeader";
 import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.functions";
 import { toast } from "sonner";
@@ -107,6 +108,9 @@ function ClientDashboard() {
     refetchOnMount: "always",
   });
   const widgets = widgetsQ.data?.widgets ?? [];
+  // Cards still in testing, badged wherever they render.
+  const wipWidgets: string[] = (widgetsQ.data as any)?.wipWidgets ?? [];
+  const wipKey = wipWidgets.join(",");
   const tier: DashboardTier = effectivePreviewTier ?? tierLabelSource ?? "basic";
 
   const { levels: tierLevels } = usePlanLevels("dashboard");
@@ -162,6 +166,9 @@ function ClientDashboard() {
   const { standardCards, advancedCards } = useMemo<{ standardCards: SortableCard[]; advancedCards: SortableCard[] }>(() => {
     const standard: SortableCard[] = [];
     const advanced: SortableCard[] = [];
+    const wipSet = new Set(wipWidgets);
+    const mark = (widget: string, node: JSX.Element) =>
+      wipSet.has(widget) ? <InTestingCard>{node}</InTestingCard> : node;
     if (!client) return { standardCards: standard, advancedCards: advanced };
 
     for (const o of orgs) {
@@ -169,31 +176,31 @@ function ClientDashboard() {
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
       if (widgets.includes("receivables"))
-        standard.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("receivables")} /> });
+        standard.push({ id: `${o.id}:receivables`, node: mark("receivables", <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("receivables")} />) });
       if (widgets.includes("payables"))
-        standard.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} /> });
+        standard.push({ id: `${o.id}:payables`, node: mark("payables", <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} />) });
       if (widgets.includes("pnl"))
-        standard.push({ id: `${o.id}:pnl`, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} /> });
+        standard.push({ id: `${o.id}:pnl`, node: mark("pnl", <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} />) });
       if (widgets.includes("tax_liability"))
-        advanced.push({ id: `${o.id}:tax_liability`, node: <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("tax_liability")} /> });
+        advanced.push({ id: `${o.id}:tax_liability`, node: mark("tax_liability", <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("tax_liability")} />) });
       if (widgets.includes("superannuation"))
-        advanced.push({ id: `${o.id}:super_liability`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} /> });
+        advanced.push({ id: `${o.id}:super_liability`, node: mark("superannuation", <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} />) });
       if (widgets.includes("accounting_breakeven"))
-        advanced.push({ id: `${o.id}:accounting_breakeven`, node: <AccountingBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} /> });
+        advanced.push({ id: `${o.id}:accounting_breakeven`, node: mark("accounting_breakeven", <AccountingBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} />) });
       if (widgets.includes("true_breakeven"))
-        advanced.push({ id: `${o.id}:true_breakeven`, node: <TrueBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("true_breakeven")} /> });
+        advanced.push({ id: `${o.id}:true_breakeven`, node: mark("true_breakeven", <TrueBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("true_breakeven")} />) });
       if (widgets.includes("cashflow"))
-        advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
+        advanced.push({ id: `${o.id}:cashflow`, node: mark("cashflow", <CashflowWidget tenantId={tenantId} tenantName={tenantName} />) });
       if (widgets.includes("cashflow_scenario"))
-        advanced.push({ id: `${o.id}:cashflow_scenario`, node: <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+        advanced.push({ id: `${o.id}:cashflow_scenario`, node: mark("cashflow_scenario", <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
       if (widgets.includes("balance_sheet_reconciliation"))
-        advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} loanConsolidationHref={client?.firm_id ? `/firms/${client.firm_id}/loans` : undefined} /> });
+        advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: mark("balance_sheet_reconciliation", <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} loanConsolidationHref={client?.firm_id ? `/firms/${client.firm_id}/loans` : undefined} />) });
       if (widgets.includes("fixed_assets_reconciliation"))
-        advanced.push({ id: `${o.id}:fixed_assets_reconciliation`, node: <FixedAssetsReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+        advanced.push({ id: `${o.id}:fixed_assets_reconciliation`, node: mark("fixed_assets_reconciliation", <FixedAssetsReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
       if (widgets.includes("gst_reconciliation"))
-        advanced.push({ id: `${o.id}:gst_reconciliation`, node: <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+        advanced.push({ id: `${o.id}:gst_reconciliation`, node: mark("gst_reconciliation", <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
       if (widgets.includes("loan_consolidation"))
-        advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+        advanced.push({ id: `${o.id}:loan_consolidation`, node: mark("loan_consolidation", <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
 
       // xero_audit rendered under Business Health, not in advanced grid
     }
@@ -203,7 +210,7 @@ function ClientDashboard() {
 
     return { standardCards: standard, advancedCards: advanced };
 
-  }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor]);
+  }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor]);
 
   const showHealth = widgets.includes("health");
   const showUnreconciled = widgets.includes("unreconciled");
