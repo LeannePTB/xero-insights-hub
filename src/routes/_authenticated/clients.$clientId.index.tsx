@@ -357,18 +357,6 @@ function ClientDashboard() {
                 />
               )}
 
-              {widgets.includes("xero_audit") &&
-                orgs.map((o) =>
-                  o.xero_connections?.tenant_id ? (
-                    <AuditSummaryCard
-                      key={`${o.id}:xero_audit`}
-                      tenantId={o.xero_connections.tenant_id}
-                      tenantName={o.xero_connections.tenant_name ?? "Unknown"}
-                      clientId={clientId}
-                    />
-                  ) : null,
-                )}
-
               {showUnreconciled && (
                 <div className="grid gap-6 md:grid-cols-2">
                   <UnreconciledCard clientId={clientId} />
