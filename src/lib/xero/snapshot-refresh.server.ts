@@ -130,19 +130,30 @@ async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+const XERO_PAGE_SIZE = 100;
+
+/**
+ * `truncated` means the pull hit INVOICE_PAGE_LIMIT while the last page was
+ * still full, so there are open invoices we did not fetch. It is NOT a
+ * failure — the call succeeded — but the payload is not the whole picture, and
+ * a client with more open invoices than the cap is exactly the client this
+ * product exists to catch. It must never be stored as complete.
+ */
 async function fetchReport(
   conn: any,
   report: SnapshotReport,
   budget: CallBudget,
-): Promise<unknown> {
+): Promise<{ payload: unknown; truncated: boolean }> {
   const { xeroGet } = await import("./api.server");
 
   if (!report.paginated) {
     budget.spend();
-    return await withSlot(() => xeroGet<unknown>(conn, report.path, report.params));
+    const payload = await withSlot(() => xeroGet<unknown>(conn, report.path, report.params));
+    return { payload, truncated: false };
   }
 
   const items: any[] = [];
+  let truncated = false;
   for (let page = 1; page <= INVOICE_PAGE_LIMIT; page++) {
     budget.spend();
     const res = await withSlot(() =>
@@ -150,9 +161,11 @@ async function fetchReport(
     );
     const batch = res?.Invoices ?? [];
     items.push(...batch);
-    if (batch.length < 100) break;
+    if (batch.length < XERO_PAGE_SIZE) break;
+    // Last allowed page came back full: there is more we are not fetching.
+    if (page === INVOICE_PAGE_LIMIT) truncated = true;
   }
-  return { Invoices: items };
+  return { payload: { Invoices: items }, truncated };
 }
 
 async function writeSnapshot(opts: {
