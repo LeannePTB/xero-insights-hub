@@ -1,139 +1,191 @@
-# Xero snapshot caching — measured plan
+# Stage 2 — Snapshot tables (schema only, inert)
 
-Goal: stop fetching every figure live from Xero at render time, before ~20 client organisations onboard. No figure on screen changes.
+Stage 2 creates the two tables that a shared Xero snapshot cache will later use, plus their grants, RLS and indexes. Nothing writes to them, nothing reads from them, no widget changes, no cron. The point of shipping them inert is that the access model can be reviewed and tested before any data exists.
 
-## 1. Measured inventory
+Requires your approval before anything is created: both tables, their indexes, their grants and their policies.
 
-Every Xero call goes through `xeroGet` / `xeroGetAssets` in `src/lib/xero/api.server.ts`. Counts below are calls per fresh render (React Query `staleTime` 5 min hides repeats within a session only).
+## 1. Exact DDL
 
-| Widget (key) | Server function | Xero endpoints | Calls | Tier |
-|---|---|---|---|---|
-| Business Health (`health`) | `getBusinessHealth` — `src/lib/health.functions.ts:278` | ProfitAndLoss, BalanceSheet | 2 | basic |
-| Business Health detail (same card, on expand) | `getBusinessHealthDetail` — `health.functions.ts:502` | ProfitAndLoss ×2 (current + prior year), BalanceSheet ×2 (as-at + day-before-start), Invoices ACCREC, Invoices ACCPAY, Organisations | 7 | basic |
-| Profit & Loss (`pnl`) | `getProfitAndLoss` — `src/lib/xero/reports.functions.ts:101` | ProfitAndLoss ×2 (current + prior range, `PnlWidget` fetches both) | 2 | basic |
-| Receivables (`receivables`) | `getReceivables` / export — `receivables.functions.ts:44,123` | Invoices ACCREC (+ Organisations on export) | 1–2 | basic |
-| Payables (`payables`) | `getPayables` / export — `payables.functions.ts:49,132` | Invoices ACCPAY (+ Organisations on export) | 1–2 | basic |
-| Uncoded Bankfeed (`unreconciled`) | DB only (`unreconciled_lines`) | — | 0 | basic |
-| Report basis probe (page-level) | `getOrgSalesTaxBasis` — `org-basis.functions.ts:18` | Organisation | 1 | all |
-| Tax Liability (`tax_liability`) | `getCurrentTaxBalance` / buckets — `reports.functions.ts:181,245,276` | BalanceSheet (×2 when opening date needed) | 1–2 | advisory |
-| Superannuation (`superannuation`) | `getCurrentTaxBalance` | BalanceSheet | 1 | advisory |
-| Accounting breakeven (`accounting_breakeven`) | `reports.functions.ts:333` | BalanceSheet, ProfitAndLoss | 2 | advisory |
-| True breakeven (`true_breakeven`) | `reports.functions.ts:528` + inputs | BalanceSheet | 1 | advisory |
-| Cashflow (`cashflow`) | `cashflow.functions.ts:169,208` | Reports/BankSummary ×2 | 2 | advisory |
-| Cashflow scenario (`cashflow_scenario`) | `scenario.functions.ts:210+` | Invoices, ProfitAndLoss ×2, Accounts | 4 | advisory |
-| Xero File Audit (`xero_audit`) | `audit.functions.ts:47-52` | Organisations, Accounts, Invoices, CreditNotes, Payments | 5 | advisory |
-| Balance sheet recon (`balance_sheet_reconciliation`) | `recon-shared.server.ts:66,137` | BalanceSheet + paged detail sets | 3+ | advisory |
-| Fixed assets recon | `fixed-assets.server.ts:79,87` | AssetTypes, Assets (paged) | 2+ | advisory |
-| GST recon (`gst_reconciliation`) | `gst.server.ts:66` | Accounts, BalanceSheet | 2 | advisory |
-| Loan consolidation | `loan-xero.server.ts` | ManualJournals / Accounts | 2+ | add-on |
-| Transaction Search (`transaction_search`) | `search.functions.ts:256-279` | Organisations, Invoices, CreditNotes, Prepayments, Overpayments — per tenant, per page | 5 × tenants | advisory |
-| Client list badge | `getBusinessHealth` via `ClientHealthBadge.tsx` | ProfitAndLoss, BalanceSheet | 2 per client row | — |
+```sql
+-- ---------------------------------------------------------------------------
+-- xero_snapshot_runs: one row per refresh attempt for one Xero tenant.
+-- ---------------------------------------------------------------------------
+CREATE TABLE public.xero_snapshot_runs (
+  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id          uuid NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  firm_id            uuid NOT NULL REFERENCES public.firms(id)   ON DELETE CASCADE,
+  tenant_id          text NOT NULL,
+  trigger            text NOT NULL,               -- 'scheduled' | 'manual' | 'backfill'
+  status             text NOT NULL DEFAULT 'running', -- 'running' | 'complete' | 'partial' | 'failed'
+  reports_requested  integer NOT NULL DEFAULT 0,
+  reports_succeeded  integer NOT NULL DEFAULT 0,
+  reports_failed     integer NOT NULL DEFAULT 0,
+  error              text,
+  started_at         timestamptz NOT NULL DEFAULT now(),
+  finished_at        timestamptz,
+  duration_ms        integer,
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  updated_at         timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT xero_snapshot_runs_trigger_chk CHECK (trigger IN ('scheduled','manual','backfill')),
+  CONSTRAINT xero_snapshot_runs_status_chk  CHECK (status  IN ('running','complete','partial','failed'))
+);
 
-### Duplicate fetches on one page render (single client, one Xero file)
+CREATE INDEX xero_snapshot_runs_tenant_started_idx
+  ON public.xero_snapshot_runs (tenant_id, started_at DESC);
+CREATE INDEX xero_snapshot_runs_client_started_idx
+  ON public.xero_snapshot_runs (client_id, started_at DESC);
+CREATE INDEX xero_snapshot_runs_firm_idx
+  ON public.xero_snapshot_runs (firm_id);
 
-- **BalanceSheet**: Health (1) + Tax Liability (1–2) + Superannuation (1) + Accounting breakeven (1) + True breakeven (1) + GST recon (1) + BS recon (1) — 7–8 fetches of the same report, mostly the same `date`.
-- **ProfitAndLoss**: Health (1) + P&L widget (2) + Accounting breakeven (1) + Scenario (2) — 6.
-- **Invoices ACCREC**: Health detail + Receivables + Scenario — 3.
-- **Organisations**: basis probe + Health detail + Audit + Search — 4.
-- **Accounts**: Audit + GST recon + Scenario — 3.
+-- ---------------------------------------------------------------------------
+-- xero_snapshots: one row per (client, tenant, report_key, params_hash).
+-- Latest value only; history lives in the runs table, not here.
+-- ---------------------------------------------------------------------------
+CREATE TABLE public.xero_snapshots (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id        uuid NOT NULL REFERENCES public.clients(id) ON DELETE CASCADE,
+  firm_id          uuid NOT NULL REFERENCES public.firms(id)   ON DELETE CASCADE,
+  tenant_id        text NOT NULL,
+  report_key       text NOT NULL,                 -- 'balance_sheet', 'profit_and_loss', ...
+  params_hash      text NOT NULL,                 -- sha256 hex of the canonical param string
+  params           jsonb NOT NULL DEFAULT '{}'::jsonb, -- the canonical params, readable
+  source_endpoint  text NOT NULL,                 -- e.g. 'Reports/BalanceSheet'
+  payload          jsonb NOT NULL,
+  payload_version  integer NOT NULL,
+  as_at            timestamptz NOT NULL,          -- the "as at" the figures describe
+  fetched_at       timestamptz NOT NULL DEFAULT now(),
+  complete         boolean NOT NULL DEFAULT true,
+  run_id           uuid REFERENCES public.xero_snapshot_runs(id) ON DELETE SET NULL,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT xero_snapshots_unique_key
+    UNIQUE (client_id, tenant_id, report_key, params_hash)
+);
 
-**Totals (fresh render, no cache):**
-- (a) One client dashboard, Advisory tier, one Xero file, Health collapsed: **≈27 calls**; Health expanded: **≈32**. Snapshot-loaded cards (`reconciliation_snapshots`) can be 0 when a complete snapshot exists, so worst case ≈32, typical warm ≈22.
-- (b) Organisation client list, 20 clients: **40 calls** (2 per `ClientHealthBadge`), spread across 20 tenants, serialised 3-at-a-time. Each staff page view = 40. Ten views in a morning = 400.
+CREATE INDEX xero_snapshots_tenant_report_idx
+  ON public.xero_snapshots (tenant_id, report_key, fetched_at DESC);
+CREATE INDEX xero_snapshots_client_report_idx
+  ON public.xero_snapshots (client_id, report_key, fetched_at DESC);
+CREATE INDEX xero_snapshots_firm_idx
+  ON public.xero_snapshots (firm_id);
 
-## 2. Rate limit headroom
+CREATE TRIGGER xero_snapshots_set_updated_at
+  BEFORE UPDATE ON public.xero_snapshots
+  FOR EACH ROW EXECUTE FUNCTION public.tg_set_updated_at();
+CREATE TRIGGER xero_snapshot_runs_set_updated_at
+  BEFORE UPDATE ON public.xero_snapshot_runs
+  FOR EACH ROW EXECUTE FUNCTION public.tg_set_updated_at();
+```
 
-Xero limits: **60 calls/min per tenant**, **5,000/day per tenant**, **10,000/day per app**, **5 concurrent calls per app**.
+Both tables carry `client_id`, `firm_id` and `tenant_id`. `tenant_id` alone is not an access key — `client_id` is what entitlement is actually expressed against, and `firm_id` is denormalised so a policy never has to widen to "any client on this tenant".
 
-- **Per tenant/min**: a single Advisory dashboard render is ~27–32 calls against one tenant in a few seconds. Two people opening the same client's dashboard inside a minute breaches 60/min. This already bites today; `xeroGet` retries with backoff, which the user sees as a slow card.
-- **Per tenant/day**: 5,000 is not the binding constraint for a single client.
-- **App-wide 10,000/day is the real constraint.** 20 organisations × ~15 dashboard views/day × ~27 calls ≈ **8,100/day** from dashboards alone, before client-list badges (40/view), monthly report generation (dozens of P&L calls per report) and Transaction Search. Realistically we exceed 10,000/day at roughly **8–12 active organisations**, not 20.
-- **5 concurrent app-wide** is the other hard wall: the badge semaphore of 3 in `ClientHealthBadge.tsx` is per browser tab, not per app. Three staff on client lists = 9 concurrent, and Xero starts rejecting.
+Note on `tg_set_updated_at`: it already exists; the two `CREATE TRIGGER` statements above are new objects and are part of what needs approval.
 
-Conclusion: the app-level daily and concurrency limits break first. Any fix must reduce *total app calls*, not just per-tenant bursts — so caching must be shared across users, not per-user.
+## 2. Exact RLS policies
 
-## 3. Proposed snapshot storage (requires your approval — new database objects)
+```sql
+GRANT SELECT ON public.xero_snapshots     TO authenticated;
+GRANT SELECT ON public.xero_snapshot_runs TO authenticated;
+GRANT ALL    ON public.xero_snapshots     TO service_role;
+GRANT ALL    ON public.xero_snapshot_runs TO service_role;
+-- no anon grant: every policy scopes to auth.uid().
 
-Precedent already in the project: `public.reconciliation_snapshots` (client + report_key + as_at + JSON payload + `complete` flag) and `public.report_cache`. The plan extends that shape rather than inventing a new one.
+ALTER TABLE public.xero_snapshots     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.xero_snapshots     FORCE  ROW LEVEL SECURITY;
+ALTER TABLE public.xero_snapshot_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.xero_snapshot_runs FORCE  ROW LEVEL SECURITY;
 
-**New table `public.xero_snapshots`** — one row per (tenant, report, parameter set):
+CREATE POLICY "entitled users read client snapshots"
+  ON public.xero_snapshots
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.user_can_access_client(auth.uid(), client_id)
+    AND app_private.user_can_access_tenant(auth.uid(), tenant_id)
+  );
 
-Structured columns: `id`, `firm_id`, `client_id`, `tenant_id`, `report_key` (e.g. `pnl`, `balance_sheet`, `bank_summary`, `invoices_accrec`, `invoices_accpay`, `accounts`, `organisation`), `params_hash` (stable hash of the date/basis parameters), `params` (jsonb, for debugging), `as_at` (the Xero report date the payload represents), `fetched_at`, `payload_version` (int), `status` (`complete` | `partial` | `failed`), `error` (text, nullable), `source` (`scheduled` | `on_demand`), `payload` (jsonb).
+CREATE POLICY "entitled users read snapshot runs"
+  ON public.xero_snapshot_runs
+  FOR SELECT
+  TO authenticated
+  USING (
+    public.user_can_access_client(auth.uid(), client_id)
+    AND app_private.user_can_access_tenant(auth.uid(), tenant_id)
+  );
+```
 
-Unique on `(tenant_id, report_key, params_hash)`. Index on `(client_id, report_key)` for the badge query.
+No INSERT, UPDATE or DELETE policy exists for `authenticated`, so those are denied by default: writes are service_role only, from the refresh path in Stage 3.
 
-**New table `public.xero_snapshot_runs`** — one row per refresh attempt per tenant: `tenant_id`, `started_at`, `finished_at`, `requested_by`, `reports_attempted`, `reports_succeeded`, `reports_failed` (jsonb), `xero_calls`, `outcome`.
+- Role for both policies: `authenticated` only.
+- Helpers: `public.user_can_access_client` (organisation membership, direct `client_access`, or an active support grant) and `app_private.user_can_access_tenant` (tenant → organisations → `has_firm_access` / `platform_staff_can_access_firm`).
+- `FORCE ROW LEVEL SECURITY` is deliberate here and matches the direction of section 12 item 2 in the spec — the table owner is not exempt.
 
-Structured vs JSON: anything used for *selection, freshness or gating* is a column (`tenant_id`, `report_key`, `as_at`, `fetched_at`, `status`, `payload_version`). Everything shaped by the widget stays in `payload`, exactly as `reconciliation_snapshots` does today.
+Both checks are required, not either. `user_can_access_client` answers "may this person see this client", `user_can_access_tenant` answers "is this Xero organisation one they are entitled to". A row that satisfies only one of them is a row whose ownership has drifted and is not served.
 
-**Payload shape changes without a migration**: `payload_version` is a code constant per `report_key` (same pattern as `src/lib/xero/recon-versions.ts` and `MONTHLY_REPORT_PAYLOAD_VERSION`). Bump the constant; any stored row with a lower version is treated as stale and recomputed on next refresh. No SQL, no backfill.
+## 3. The leak argument, attempt by attempt
 
-## 4. Tenancy and access
+**A member of organisation B calls a server function passing organisation A's `tenant_id`.** It never gets as far as the table. Per spec section 10, `tenant_id` is resolved server-side from the client the caller is authorised for; a caller-supplied tenant is a filter, never a grant. If a future server function did pass it through, the query runs as the user through `context.supabase`, so the policy still evaluates `user_can_access_tenant(auth.uid(), 'A')` — false for a member of B — and zero rows come back. The only client that bypasses RLS is `supabaseAdmin`, and Stage 2 ships no code that touches these tables at all.
 
-Follows the existing model (Access Control Spec §0, §6):
+**A member of B queries `xero_snapshots` directly through PostgREST filtered on A's `client_id`.** PostgREST connects as `authenticated`. The grant permits SELECT; the policy then evaluates per row. `user_can_access_client(uid, A_client)` is false, so the row is filtered out before the caller's `client_id=eq.` filter is even meaningful. A filter narrows a result set; it cannot widen one.
 
-- Deny by default, RLS enabled, explicit policies, `to authenticated`, no `USING (true)`.
-- **Read** policy: `app_private.user_can_access_tenant(auth.uid(), tenant_id)` — the same helper the other tenant-keyed tables use. `client_id` on the row is denormalised for query convenience; access is still decided by the tenant helper plus `app_private.has_client_access` / `user_can_manage_client`, never by the column being present.
-- **No write policy at all.** Snapshots are written only by the refresh job with the service role, after access has been established — identical to `reconciliation_snapshots` (`src/lib/xero/recon-snapshot.server.ts`).
-- `tenant_id` and `client_id` are never accepted from the client as a grant. Server functions keep resolving the tenant from the client the caller is authorised for, exactly as `assertWidgetAccess` (`src/lib/xero/access.server.ts`) does now. A caller passing another organisation's `tenant_id` fails the same check it fails today, before any snapshot row is touched.
-- **Cross-organisation leak argument**: a snapshot row is reachable only if RLS says the caller can access that tenant. Because writes are service-role-only and reads are tenant-gated, there is no path where a row from organisation A satisfies a policy evaluated for a member of organisation B.
-- **Consolidation / multi-company**: the consolidated view already loops the group's clients and reads each tenant separately (`src/lib/xero/consolidated.functions.ts`, `firms.$firmId.consolidated.$groupId.tsx`). It reads snapshots the same way — per tenant, each row gated individually. No group-level bypass policy, and no "if you can see the group you can see the tenants" shortcut. If a member of the group is not readable by the caller, that company is omitted and the consolidated total is flagged incomplete rather than silently short.
-- Entitlement stays separate from access: `client_can_use_widget` still gates *which* snapshots a widget may read, and never widens *who* can read them.
+**A user whose client access was revoked yesterday reads a snapshot written while they had access.** The policy is evaluated at read time against current membership, not against who wrote the row. `firm_members.status` moves to `removed`, or the `client_access` row goes, and the next read returns nothing. There is no denormalised "readers" list on the row, and the JWT carries no cached grant (spec section 0 item 6), so revocation is immediate.
 
-## 5. Refresh strategy
+**A client is moved between organisations, or a connection is re-pointed to a different tenant.** This is the case the dual check exists for. Rows carry a `firm_id` snapshot of the old ownership, but the policy does not consult it — it re-derives access from the live `clients` row and the live `xero_connections`/`client_xero_orgs` mapping every read. After a move, a member of the old organisation fails `user_can_access_client`; a member of the new organisation passes it but, until the connection follows, may fail `user_can_access_tenant` and simply sees nothing. Stale rows are unreadable rather than mis-readable. Stage 3 will additionally delete snapshot rows on move and on disconnect, but the correctness does not depend on that housekeeping running. `ON DELETE CASCADE` on `client_id` removes rows when a client is deleted.
 
-**Scheduling mechanism.** `pg_cron` is already installed and in use for the email queue (`supabase/migrations/*_email_infra.sql`, `public.email_queue_dispatch()` calling a public route via `net.http_post`). Same mechanism, same stable URL pattern: a new route `src/routes/api/public/xero/refresh-snapshots.ts` (bearer-checked, signature-verified in-handler) invoked by a cron job. This works on current hosting — it is the pattern already running in production. No new infrastructure.
+**Consolidation: a group member the caller cannot access.** Consolidation groups are lists of `client_id`s. Every snapshot row is per client, so a consolidated read is a multi-row read and each row is filtered independently. A caller entitled to two of three group members receives two rows. That means a consolidated total must be assembled from what RLS returned and must be flagged as partial when the row count is short of the group size — never silently summed. Stage 3 owns that; Stage 2 records it as a requirement so the consolidation reader is not written assuming it always gets the full set.
 
-**Staggering.** The cron job runs every 5 minutes and claims a small batch (e.g. 2 tenants) from a due-queue ordered by `fetched_at` ascending, rather than refreshing all tenants on a single tick. 20 tenants × ~8 reports = ~160 calls spread over a couple of hours, and never more than one tenant's burst in flight — which also keeps us under the 5-concurrent app limit. Batch size and interval are constants in one file so they can be tuned without a migration.
+## 4. Cache poisoning and staleness
 
-**Tokens.** The job reuses `getConnectionByTenant` in `src/lib/xero/api.server.ts`, which already decrypts tokens, refreshes when within 60s of expiry, handles rotation and re-reads the row when a concurrent refresh has already rotated the token. No new token handling. On `invalid_grant` / revoked refresh token the existing path sets `status='disconnected'`; the job then skips that tenant, records a `failed` run, and the dashboard shows the disconnected state (§6) instead of stale numbers presented as current.
+A wrong row here is served to everyone entitled to that tenant, so `params_hash` is the same class of risk as the Stage 1 memo key.
 
-**On-demand "Refresh now".** The existing per-card refresh button calls a server function that (a) checks widget access, (b) enforces a per-tenant throttle via the existing `public.check_rate_limit` helper (`src/lib/rate-limit.server.ts`) — e.g. one manual refresh per tenant per 2 minutes — and (c) recomputes only the reports that card needs, not the whole tenant. Over-throttle returns the existing "Too many requests" message.
+- `params_hash` is built by exactly one exported function, sharing the canonicalisation already proven in `xeroMemoKey`: keys sorted, empty and undefined values dropped, key and value percent-encoded so a value containing `=` or `&` cannot forge a different parameter set, joined with `&`, then sha256 hex. Reporting basis, as-at date and period range are parameters like any other, so two reports that differ only in basis have different hashes.
+- The hash never spans tenants: `tenant_id` and `client_id` are columns in the unique constraint, not inputs to the hash. A hash collision across tenants cannot select the wrong row because the lookup is always keyed by all four columns.
+- `params` is stored alongside the hash in readable form so a suspect row can be explained rather than guessed at.
+- `payload_version` is stored per row. A payload shape change bumps the constant; rows below the current version are treated as absent and refetched. That is how a payload schema change happens with no migration.
+- Racing refreshes: writes are `INSERT ... ON CONFLICT (client_id, tenant_id, report_key, params_hash) DO UPDATE ... WHERE excluded.fetched_at > xero_snapshots.fetched_at`. Last-fetched wins, the older result cannot overwrite the newer one, and the unique constraint means the race produces one row rather than two. Only complete results are written; a failed report writes nothing and leaves the previous row in place, with the failure recorded on the run.
 
-**First-ever load.** A widget with no snapshot row shows the existing `XeroLoadPrompt` / loading state (`src/components/dashboard/XeroLoadState.tsx`) with copy along the lines of "Building the first snapshot — this takes a moment", and triggers a one-off on-demand refresh for that tenant. It never shows zeros.
+## 5. Interaction with the Stage 1 memo
 
-## 6. Failure and disconnection states
+They compose in one direction only, and only one of them ever calls Xero.
 
-- **Stale**: every card gains a small "as at <date> · updated <relative time>" line (the reconciliation widgets already display `generatedAt`). Past a per-report staleness threshold the line turns amber with a Refresh action.
-- **Disconnected**: `xero_connections.status = 'disconnected'` → the card shows the existing reconnect prompt and the last snapshot is labelled explicitly as historical, not current.
-- **Partial failure**: `status='partial'` with the failed report keys recorded in `xero_snapshot_runs.reports_failed`. Any card whose inputs are incomplete renders a visible incomplete notice naming the missing report and suppresses derived composites — the same rule already enforced for the monthly report's `complete` flag and for Business Health throwing rather than scoring on throttled data. A partial snapshot is never presented as a complete picture, and never feeds a finalised report.
+The read order in Stage 3 is: snapshot lookup → if usable, return it → otherwise live fetch through `xeroGet`, which is where the request memo lives. The memo sits strictly beneath the network call and is keyed per inbound request; the snapshot is keyed per tenant and shared. They cannot disagree within one request because within one request a given report is resolved once: either it came from a snapshot, or it came from a live fetch that the memo then replays to later callers in the same request. Nothing writes a snapshot into the memo or a memo entry into a snapshot. Snapshot reads are not themselves memoised in Stage 2 or 3 — a Postgres read is cheap and the duplication problem was Xero calls, not queries.
 
-## 7. Migration path
+## 6. What Stage 2 does not do
 
-**Snapshot-with-live-fallback, then snapshot-first.** Each `*.functions.ts` handler keeps its current signature and return type. Inside, before hitting Xero, it reads the snapshot for its `report_key` + `params_hash`; on hit and fresh enough it returns the payload; on miss, wrong version or `failed` it falls through to today's live path and writes the result as a snapshot. Because the payload is the same object the function already returns, no widget component changes and no figure changes. Cut-over per report key, one at a time, so a regression is isolated to one card.
+- No application code changes at all: no server function reads or writes these tables, no widget behaviour changes, no query keys change.
+- No cron job, no `pg_cron` schedule, no public refresh route.
+- No backfill, no seed rows. Both tables ship empty.
+- No change to the monthly management report, which stays live per your instruction, and no change to Transaction Search.
+- The Supabase types file will regenerate and gain two table types. Nothing imports them.
 
-Once a report key has full snapshot coverage across all live tenants, its live fallback is demoted to on-demand only (button press), not render.
+## 7. Rollback
 
-Verification for "no figure changed": for each converted key, hit the function live and from snapshot for the same parameters and diff the returned payloads.
+```sql
+DROP TABLE IF EXISTS public.xero_snapshots     CASCADE;
+DROP TABLE IF EXISTS public.xero_snapshot_runs CASCADE;
+```
 
-## 8. `ClientHealthBadge` N+1
+Dropping the tables removes their indexes, constraints, policies, grants and the two `set_updated_at` triggers with them. `tg_set_updated_at` itself is shared and stays. Because no application code references either table, the drop returns the app to exactly today's behaviour; the only follow-up is regenerating the types file. There are no inbound foreign keys from other tables, so `CASCADE` has nothing beyond these two tables to remove.
 
-Today `src/components/admin/FirmClientsSection.tsx:269` renders one badge per client row and each calls `getBusinessHealth` → 2 Xero calls, semaphored at 3 (`ClientHealthBadge.tsx`).
+## 8. Tests to write (named, not written yet)
 
-Fix: a new server function `getClientHealthBadges({ firmId })` that does **one** query over `xero_snapshots` for the organisation's clients (`report_key='health'`), returns `{ clientId, score, band, label, asAt, status }[]`, and makes **zero Xero calls**. `FirmClientsSection` fetches it once; `ClientHealthBadge` becomes presentational, taking the row it was given. Clients with no snapshot show the existing "Business Health unavailable" state with a reason of "no snapshot yet". The module-level semaphore and per-badge `useQuery` are deleted.
+`src/lib/xero/snapshot-key.test.ts` — `params_hash` construction:
+1. same params in different argument order produce the same hash
+2. empty string and undefined values are dropped identically to the request builder
+3. reporting basis difference produces a different hash
+4. as-at date difference produces a different hash
+5. a value containing `=` or `&` cannot forge another parameter set (the forged-separator case, mirroring the memo test)
+6. the hash is stable across runs — a fixed input has a pinned expected digest
 
-Result: 40 Xero calls → 0, and 20 requests → 1.
+`src/lib/xero/snapshot-rls.test.ts` — RLS, run against seeded fixtures with real user sessions:
+1. a member of organisation A reads A's snapshot rows
+2. a member of organisation B reads zero rows for A's client, both unfiltered and with an explicit `client_id` filter
+3. a revoked member reads zero rows for a snapshot written while they had access
+4. a `client_access`-only viewer reads their client's rows and no sibling client's rows
+5. an active support grantee reads; the same super admin with no active grant reads zero
+6. `authenticated` cannot insert, update or delete a snapshot row
+7. a consolidation caller entitled to a subset of group members receives only the subset
 
-## 9. Phasing
+## Approval needed
 
-**Stage 0 — measurement, no risk.** Add call counting to `xeroGet` (per tenant, per path, per day) written via the existing `public.log_xero_api_error` pattern or a counter, so headroom is observed rather than modelled. Ships alone.
-
-**Stage 1 — kill the duplicate BalanceSheet and ProfitAndLoss fetches within one render.** A per-request memo keyed by (tenant, report, params), same idea as the `pnlCache` already in `src/lib/reports/monthly-report.server.ts`. No new tables, no schema. Cuts a single Advisory render from ~27 to roughly 15 calls. **Highest value per unit of risk — do this first.**
-
-**Stage 2 — `xero_snapshots` + `xero_snapshot_runs` tables, RLS, no reader yet.** ⚠️ **Requires your approval: new database objects.** Ships inert.
-
-**Stage 3 — refresh job**: public cron route, `pg_cron` schedule, staggered batches, run logging. Writes snapshots; nothing reads them. ⚠️ cron schedule is a database object — approval needed.
-
-**Stage 4 — `ClientHealthBadge` cut-over.** Biggest call reduction, smallest surface, one card, easy to revert.
-
-**Stage 5 — snapshot-first reads per report key**, one key per change, verified payload-identical: `balance_sheet` → `pnl` → `invoices_*` → `bank_summary` → `accounts` / `organisation`.
-
-**Stage 6 — freshness, partial and disconnected UI**, plus per-tenant throttle on manual refresh.
-
-Nothing in stages 0, 1, 4, 5 or 6 creates a database object. Stages 2 and 3 do, and I will not build them without your explicit go-ahead.
-
-## Open questions
-
-1. Acceptable staleness per report — I have assumed overnight refresh plus manual "Refresh now" is fine for balance-sheet-derived cards, and that Receivables/Payables want something tighter (hourly). Confirm.
-2. Should the monthly management report keep reading live Xero (defensible: a finalised report should pin its own figures) or read snapshots? I have assumed **live, unchanged**.
-3. Transaction Search is inherently interactive and cannot be snapshotted. Keep it live with a per-tenant throttle?
+Everything in sections 1 and 2: two tables, six indexes, two triggers, four grants, four `ALTER TABLE` RLS statements and two policies. Say the word and I will submit exactly that SQL as a single migration.
