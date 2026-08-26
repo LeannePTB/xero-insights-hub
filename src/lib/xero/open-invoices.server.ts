@@ -12,7 +12,9 @@
 
 import { INVOICE_PAGE_LIMIT } from "./snapshot-keys";
 import { readSnapshot } from "./snapshot-read.server";
-import { liveSource, type SnapshotSource } from "./snapshot-source";
+import { isSnapshotDisabled } from "./snapshot-flags";
+import { connectionStatus } from "./snapshot-read.server";
+import { liveSource, pendingSource, type SnapshotSource } from "./snapshot-source";
 
 export type InvoiceSide = "ACCREC" | "ACCPAY";
 
@@ -31,15 +33,28 @@ export async function resolveOpenInvoices(opts: {
 }): Promise<{ invoices: any[]; source: SnapshotSource }> {
   const reportKey = REPORT_KEY[opts.side];
 
-  const hit = await readSnapshot({
-    supabase: opts.supabase,
-    tenantId: opts.tenantId,
-    clientId: opts.clientId ?? null,
-    reportKey,
-  });
+  const rolledBack = isSnapshotDisabled(reportKey);
+
+  const hit = rolledBack
+    ? null
+    : await readSnapshot({
+        supabase: opts.supabase,
+        tenantId: opts.tenantId,
+        clientId: opts.clientId ?? null,
+        reportKey,
+      });
   if (hit) {
     const invoices = (hit.payload?.Invoices ?? []) as any[];
     return { invoices, source: hit.source };
+  }
+
+  if (!rolledBack) {
+    // No stored figures yet (new connection, or refreshed after the last run).
+    // Render "being prepared" rather than spending a render-time Xero call.
+    return {
+      invoices: [],
+      source: pendingSource(await connectionStatus(opts.supabase, opts.tenantId)),
+    };
   }
 
   // Live branch — unchanged behaviour, kept forever so a rollback costs an env
@@ -60,7 +75,7 @@ export async function resolveOpenInvoices(opts: {
     if (page === INVOICE_PAGE_LIMIT) truncated = true;
   }
 
-  const source = liveSource("missing");
+  const source = liveSource("disabled");
   source.complete = !truncated;
   return { invoices, source };
 }
@@ -75,7 +90,11 @@ export async function resolveShortCode(
   mode: SnapshotSource["mode"],
 ): Promise<string | null> {
   if (mode === "snapshot") {
-    const hit = await readSnapshot({ supabase, tenantId, reportKey: "organisation" });
+    const rolledBack = isSnapshotDisabled(reportKey);
+
+  const hit = rolledBack
+    ? null
+    : await readSnapshot({ supabase, tenantId, reportKey: "organisation" });
     const orgs = hit?.payload?.Organisations ?? [];
     return orgs[0]?.ShortCode ?? null;
   }

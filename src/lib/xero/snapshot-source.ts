@@ -5,7 +5,13 @@
 // with no provenance is a bug — the user must always be able to see which
 // period the numbers describe and when they were retrieved.
 
-export type SnapshotSourceMode = "snapshot" | "live";
+/**
+ * `pending` means the daily refresh has not stored this report for this tenant
+ * yet. It is NOT an error and NOT zero: the widget renders "Figures are being
+ * prepared" and offers the refresh control. Opening a dashboard must never
+ * trigger a Xero run implicitly, so a pending read costs zero Xero calls.
+ */
+export type SnapshotSourceMode = "snapshot" | "live" | "pending";
 
 export type SnapshotSourceReason =
   /** The selected range is not the stored one — live, by design. */
@@ -47,5 +53,18 @@ export function liveSource(
     complete: true,
     connection,
     reason,
+  };
+}
+
+/** No stored figures yet for this tenant and report key. */
+export function pendingSource(connection: SnapshotSource["connection"] = "unknown"): SnapshotSource {
+  return {
+    mode: "pending",
+    asAt: null,
+    fetchedAt: null,
+    stale: false,
+    complete: true,
+    connection,
+    reason: "missing",
   };
 }
