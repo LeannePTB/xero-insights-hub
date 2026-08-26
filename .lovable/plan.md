@@ -1,163 +1,165 @@
-# Stage 4 — Rules engine over snapshots, and a ranked verdict badge
+# Stage 5 — Dashboard reads the snapshot
 
-Build a small rules engine that reads only stored snapshots, then replace the composite
-health score on the **client list badge** with a ranked verdict. Staff-only. No Xero calls.
-No new database objects.
+Cut-over of the client dashboard from live Xero fetches to `public.xero_snapshots`, with live fetch retained as the fallback for any parameter set the cache does not hold. No database objects, no entitlement or RLS change.
 
-## 1. What the badge can say from what we store
+## 0. New code (nothing else changes shape)
 
-The catalogue in `src/lib/xero/snapshot-keys.ts` stores raw Xero payloads only — there is no
-`health` key and nothing pre-computed. Assessment of the four rules:
+- `src/lib/xero/snapshot-read.server.ts` (new) — one helper, `readSnapshot({ supabase, clientId, tenantId, reportKey, paramsHash })`, returning `{ payload, asAt, fetchedAt, complete, stale, ageSeconds } | null`. Staleness from `STALENESS_SECONDS` in `src/lib/xero/snapshot-keys.ts`; a row whose `payload_version !== SNAPSHOT_PAYLOAD_VERSION` is treated as absent. Reads go through `context.supabase` so RLS applies as the caller — never `supabaseAdmin`.
+- `src/lib/xero/snapshot-source.ts` (new, client-safe) — the shared `Source` type every converted server function returns alongside its figures: `{ mode: "snapshot" | "live"; asAt: string | null; fetchedAt: string | null; stale: boolean; complete: boolean; reason?: "range" | "missing" | "version" | "disconnected" }`.
+- `src/components/dashboard/DataSourceLine.tsx` (new) — the single component that renders the "as at" line, amber stale state, disconnected state and incomplete state. Every converted widget renders exactly this; no widget invents its own copy.
+- `src/components/dashboard/RefreshSnapshotsButton.tsx` (new) — wires the existing `refreshXeroSnapshots` in `src/lib/xero/snapshot-refresh.functions.ts`.
 
-- **R01 protected money vs cash — SOLID.** `balance_sheet` gives both sides. The Balance Sheet
-  rows feed the existing `extractTaxLines` walker in `src/lib/xero/reports.functions.ts`, and
-  `buildProtectedMoney(asAtDate, lines)` already turns those into GST / PAYG / super with an
-  explicit `unresolved` state. Cash at bank comes from the same Balance Sheet. Zero new Xero
-  calls. The only work is exporting `extractTaxLines` (currently module-private) so the rules
-  engine can call it on a stored payload instead of a live fetch.
-- **R05 statutory lodgement / overdue — APPROXIMATION, ship as "balance owing", not "overdue".**
-  The Balance Sheet tells us what is *accrued*; it does not tell us what has been *lodged* or
-  when a lodgement is due. `Reports/ActivityStatement` does not exist in the Xero API (project
-  knowledge §10), so BAS status is not obtainable. Ship it as a magnitude rule ("GST + PAYG owing
-  is large relative to cash") and never use the word "overdue". A true lodgement rule needs a
-  lodgement calendar we do not have; out of scope.
-- **R06 debtor concentration and overdue — SOLID for ageing, SOLID for concentration, with one
-  caveat.** `invoices_accrec_open` carries `DueDate`, `AmountDue` and `Contact` per invoice, so
-  buckets and top-debtor share are derivable without an Aged Receivables report. Caveat: the pull
-  is capped at `INVOICE_PAGE_LIMIT` (5 pages), and a truncated pull is already written with
-  `complete = false`. The rule must not fire on a truncated payload — it falls to the coverage
-  gate in §4.
-- **R02 runway — WAIT.** `bank_summary` gives per-account cash in and cash out over the stored
-  window, which is bank movement, not net burn: owner drawings, transfers between accounts and
-  loan draws all read as "cash out". A runway figure built on it would be wrong in exactly the
-  direction that matters. Defer R02 to a later stage and derive burn from `profit_and_loss_ytd`
-  plus `profit_and_loss_prior` when we do.
+Each converted server function keeps its existing signature and its existing live path. The snapshot is an early return, not a rewrite.
 
-**Stage 4 ships R01 and R06. R05 ships reworded as a magnitude rule. R02 does not ship.**
+## 1. Widget-by-widget
 
-## 2. Severity, ranking and badge shape
+Stored catalogue (Stage 3, `snapshotReports()` in `src/lib/xero/snapshot-keys.ts`): `balance_sheet`, `balance_sheet_prior`, `profit_and_loss_mtd`, `profit_and_loss_prior`, `profit_and_loss_ytd`, `trial_balance`, `bank_summary`, `accounts`, `organisation`, `invoices_accrec_open`, `invoices_accpay_open`.
 
-Each rule returns, or returns nothing:
+| Widget | File | Report key(s) needed | Verdict |
+|---|---|---|---|
+| Business Health | `HealthWidget.tsx` / `src/lib/health.functions.ts` | `profit_and_loss_mtd`, `profit_and_loss_prior`, `balance_sheet`, `balance_sheet_prior`, `invoices_accrec_open`, `invoices_accpay_open` | Converts cleanly. Fixed period (this month vs prior), no picker. Highest-value conversion: 6 live calls today. |
+| Accounts Receivable Ageing | `ReceivablesWidget.tsx` / `receivables.functions.ts` | `invoices_accrec_open` | Converts cleanly. No picker; ageing buckets are recomputed from invoice dates at read time against *now*, not against `as_at`, so buckets stay honest. |
+| Accounts Payable Ageing | `PayablesWidget.tsx` / `payables.functions.ts` | `invoices_accpay_open` | Converts cleanly. |
+| Tax liabilities | `TaxLiabilityWidget.tsx` / `reports.functions.ts` (`getTaxLiabilities`, `getCurrentTaxBalance`, `getProtectedMoney`) | `balance_sheet` | Converts with a caveat — has an **as-at picker**. Snapshot only when the selected date equals the snapshot's `as_at`; any other date goes live. `getTaxLiabilityBuckets` pulls several historical balance sheets and stays live. |
+| Superannuation | `SuperannuationWidget.tsx` / `getSuperPayable` | `balance_sheet` | Converts cleanly (today's balance sheet only). |
+| Profit & Loss | `PnlWidget.tsx` / `getProfitAndLoss` | `profit_and_loss_mtd`, `profit_and_loss_prior`, `profit_and_loss_ytd` | Converts with a caveat — **FROM/TO picker**. Snapshot only on an exact `params_hash` match against one of the three stored ranges (which covers the three default presets); every other range is live. Basis matters: stored snapshots are the organisation's default basis, so a P&L whose resolved basis differs from the snapshot's basis must go live. |
+| Cash Flow | `CashflowWidget.tsx` / `cashflow.functions.ts` | `bank_summary`, `accounts`, `invoices_*` | Converts with a caveat — date picker, and today's implementation issues a `BankSummary` call **per month** in the window. Snapshot answers only the stored rolling-365-day window; anything else stays live. Lowest confidence of the convertible set; convert last. |
+| Accounting break-even | `AccountingBreakevenWidget.tsx` (`useBreakevenData.ts`) | `profit_and_loss_*` | Converts with a caveat — date picker; same exact-match rule. |
+| True break-even | `TrueBreakevenWidget.tsx` (`useBreakevenData.ts`) | `profit_and_loss_*` plus client-entered inputs from `client_true_breakeven_inputs` | Converts with a caveat — same as above. The user-entered inputs are database rows and always current; only the Xero side is cached. Label must make clear the *Xero* figures are as-at. |
+| Balance sheet reconciliation | `BalanceSheetReconciliationWidget.tsx` / `reconciliation.functions.ts` | `balance_sheet`, `accounts`, `bank_summary` | Converts with a caveat — **month-end selector**. Only the current stored `as_at` and `balance_sheet_prior`'s month-end can be answered; all other months live. Note this widget also writes `reconciliation_snapshots`; that behaviour is unchanged and must keep recording which source it used. |
+| GST reconciliation | `GstReconciliationWidget.tsx` / `gst.server.ts` | period-specific reports not in the catalogue | **Cannot convert.** BAS-period figures depend on a chosen period; the catalogue has no matching key. Stays live. |
+| Fixed assets reconciliation | `FixedAssetsReconciliationWidget.tsx` | `accounts` + period movement queries not stored | **Cannot convert.** Stays live. |
+| Xero File Audit | `AuditSummaryCard.tsx` / `audit.functions.ts` | writes `audit_runs` / `audit_findings`; uses paged `Invoices` with different filters | **Cannot convert.** It already has its own persistence layer and its own run cadence. Stays live and unchanged. |
+| Cashflow Scenario | `ScenarioWidget.tsx` | invoices + expenses for an arbitrary chosen month | **Cannot convert.** Arbitrary month picker plus per-invoice exclusion; no stored key answers it. |
+| Loan consolidation | `LoanConsolidationWidget.tsx` | per-account balance-sheet drill-down across tenants | **Cannot convert** in Stage 5. Multi-tenant, account-level; revisit only if a dedicated key is added in a later stage. |
+| Transaction Search | `TransactionSearchWidget.tsx` | — | Stays live, agreed. |
+| Monthly management report | `src/lib/reports/*` | — | Stays live, agreed. It is a formal deliverable and must never be built from a cached figure. |
+| Notes, Unreconciled, Upgrade options | `NotesCard.tsx`, `UnreconciledCard.tsx`, `UpgradeOptions.tsx` | — | No Xero calls today. Untouched. |
 
-```text
-{ ruleId, title, detail, severity: "critical"|"warning"|"watch",
-  consequenceScore: 0-100, daysToConsequence: number|null, deepLink }
-```
+So beyond the two already agreed: **GST reconciliation, fixed assets reconciliation, Xero File Audit, Cashflow Scenario and Loan consolidation also cannot convert.**
 
-Severity is a band on `consequenceScore`, set by the rule from its own inputs (e.g. R01:
-protected money exceeds cash → critical; within 25% of cash → warning). Ranking is
-`consequenceScore` descending, then `daysToConsequence` ascending, then `ruleId` for a stable
-order. Rules that cannot evaluate return `null` and never rank.
+## 2. The parameter problem
 
-The badge shows the **top rule only**: a severity dot, its `title`, and — when more fired — a
-`+2 more` suffix. Full ordered list goes in the tooltip. Nothing fires and coverage is good →
-"No issues found". Coverage is not good → see §4.
+Agreed with your preference, implemented literally.
 
-## 3. Rules as data
+Every converted server function computes the `params_hash` for the parameters it is *actually about to send to Xero*, using `snapshotParamsHash()` — the same function Stage 3 used to write the row. Then:
 
-**v1 uses a constants file, not a table:** `src/lib/health/rule-thresholds.ts`. Justification —
-we have three rules and no tuning history, so a table would be a schema, an RLS policy, an
-editor UI and a cache-invalidation story bought before we know which numbers actually move.
-The file keeps every threshold in one place with one exported object per rule, so lifting it
-into a table later is a read swap, not a rewrite. **A thresholds table would be a new database
-object and is therefore out of scope for this stage — flag it for approval when we want it.**
+- **Hash matches a stored row, row is current-version, row is `complete`** → serve the snapshot. Return `source.mode = "snapshot"` with `asAt` / `fetchedAt`.
+- **Hash matches but the row is missing, an older `payload_version`, or `complete = false`** → live fetch. `source.reason = "missing"` / `"version"`.
+- **Hash does not match** (any user-selected range other than the stored one) → live fetch, no lookup, no approximation. `source.mode = "live"`, `source.reason = "range"`.
 
-## 4. Staleness and coverage gate
+Three rules that follow from this and are non-negotiable in review:
 
-Evaluated before any rule runs, using `STALENESS_SECONDS` per `report_key`:
+1. **Never substitute periods.** There is no "nearest snapshot" fallback, no widening, no snapping the picker to the stored range. If the user asked for 1–15 Aug, they get 1–15 Aug or they get an error — never July's figures with an August heading.
+2. **The hash is computed from the same parameter object the live call would use**, in the same code path, so the two can never drift. A widget that builds its params twice is a bug.
+3. **Basis is part of identity.** `resolveCardBasis` can produce a basis that differs from the snapshot's; when it does, treat it as a non-match and go live. (Stage 3 stores one basis per tenant; the params hash does not currently encode basis, so the converted function must compare the resolved basis to the organisation's default explicitly.)
 
-- **Stale** (newest required snapshot older than its threshold): badge reads
-  "Data from {date} — refresh pending", amber, no verdict.
-- **Disconnected** Xero connection (`xero_connections.status <> 'connected'`): badge reads
-  "Xero disconnected — reconnect", with the reconnect link. No verdict.
-- **Missing `report_key`, wrong `payload_version`, or `complete = false`**: the rules needing it
-  are skipped and the badge reads "Partial data — {n} check(s) unavailable". Rules not needing
-  it still run and can still show a red verdict.
+I do not disagree with your preference. The one thing I would add: the "live" path on a non-default range should still be visibly labelled as live, so a user who moves the picker understands why the widget suddenly takes four seconds.
 
-**A stale or partial client can never render green.** "No issues found" is emitted only when
-every required key is present, current and `complete = true`.
+## 3. Staleness on screen
 
-## 5. Retiring the score
+One component, `DataSourceLine.tsx`, rendered immediately under the widget heading in the same slot `BasisBadge` occupies today. Copy, exact:
 
-Deleted or unrendered:
+- **Fresh snapshot** (age < `STALENESS_SECONDS[reportKey]`, currently 30h for every key):
+  `As at 26 Aug 2026 · updated 3:04am today` — muted, small.
+- **Stale snapshot** (age ≥ threshold): amber pill plus line —
+  `Figures may be out of date` / `As at 25 Aug 2026 · last updated 2 days ago. Refresh to update.` The refresh control sits inline at the end of this line.
+- **Live** (non-default range, or snapshot missing):
+  `Live from Xero · fetched just now` — muted. No amber.
+- **Disconnected** (`xero_connections.status = 'disconnected'`): amber, and the figures are shown with the date they were last true —
+  `Xero is disconnected. Figures are as at 25 Aug 2026 and will not update until you reconnect.` with the existing reconnect action.
+- **Incomplete** (`complete = false`, e.g. invoice pagination truncated at `INVOICE_PAGE_LIMIT`):
+  `Partial data — some records were not retrieved. Totals may be understated.` Amber. Never rendered as a clean figure with no caveat, because an understated payables total is worse than no total.
 
-- `ClientHealthBadge` (`src/components/dashboard/ClientHealthBadge.tsx`) is rewritten: score,
-  `/100`, band colours and the `BAND_STYLES` map go; the module-level concurrency semaphore goes
-  with them, because there is one query for the whole list. The `Unavailable` tooltip pattern is
-  kept for the §4 states.
-- Its call to `getBusinessHealth` goes. `FirmClientsSection.tsx` passes a per-client verdict from
-  the new list query instead of `tenantId`.
+Rules: the line is always present on a converted widget — there is no state in which a figure appears with no provenance. Dates are Australian format via the existing Sydney helpers. Nothing here says "cache" or "snapshot" to the user.
 
-**Untouched in this stage:** the `health` widget on the client dashboard. `getBusinessHealth`,
-`getBusinessHealthDetail`, `computeScore`, `scoreFromMetrics`, `statusFor`, the three pillars,
-`HealthScoreDonut.tsx`, `PillarCard.tsx`, `StatusPill.tsx` and `health.recommendations.ts` all
-stay exactly as they are — the dashboard widget is their only remaining caller. Nothing is
-deleted from `src/lib/health.functions.ts`. Retiring the score there is a separate decision.
+**Business Health prints no dollar figures — that convention survives Stage 5 unchanged.** Health converting to snapshot reads changes where its inputs come from, not what it displays; the pillar strip stays qualitative. This is also the reason Health is the safest widget to convert first: a wrong input cannot produce a wrong dollar figure on screen.
 
-## 6. The query
+## 4. The refresh button
 
-New file `src/lib/health/verdicts.functions.ts`:
+**Once per dashboard, not per widget.** Per-widget buttons would let one render fire eleven refreshes of the same tenant, and the throttle is per tenant, so ten of them would just show errors.
 
-```text
-listClientVerdicts({ data: { firmId, clientIds } })
-  -> { verdicts: Record<clientId, Verdict> }
-```
+Placement: in the dashboard header row of `src/routes/_authenticated/clients.$clientId.index.tsx`, beside the existing settings pills — a `Refresh figures` button with the shared "as at" summary next to it (the oldest `fetchedAt` across visible converted widgets). Widgets keep their own `RefreshCw` control only where it already exists for live data; those stay as react-query refetches.
 
-`createServerFn({ method: "POST" }).middleware([requireSupabaseAuth])`. One query against
-`public.xero_snapshots` through `context.supabase`:
+Behaviour:
 
-`select client_id, tenant_id, report_key, payload, payload_version, as_at, fetched_at, complete
- where firm_id = $1 and report_key in (…required keys…) and client_id in (…)`
+- While running: button disabled, spinner, label `Refreshing from Xero…`. A refresh takes tens of seconds for a tenant (11 reports, sequential); the widgets keep showing the previous figures with their existing "as at" line rather than blanking to skeletons.
+- On success: invalidate the converted widgets' query keys; each re-reads its snapshot row and the "as at" line updates. Toast: `Figures updated.`
+- On throttle rejection: `enforceRateLimit` throws `Too many requests. Please wait a moment and try again.` The button catches it and shows a non-alarming toast: `Just refreshed — you can refresh again in a couple of minutes.` It must not surface as a red error, and it must not clear the figures.
+- A client-viewer sees the button only if `assertWidgetAccess` would pass; simplest is to show it whenever any converted widget rendered, since the server re-checks anyway.
+- Multi-tenant clients: one button, refreshing each linked tenant in sequence, stopping at the first throttle rejection and reporting how many succeeded.
 
-which uses `xero_snapshots_firm_report_idx` on `(firm_id, report_key)`. Rows are grouped by
-client in memory and each group is run through the rules. **Zero Xero calls — the module never
-imports `api.server`.** A client with no snapshot rows returns
-`{ state: "no_data", label: "No snapshot yet" }`, distinct from "no issues".
+## 5. Cut-over order and verification
 
-Evaluation itself lives in `src/lib/health/rules.server.ts` (pure functions over payloads) so it
-is unit-testable without a database. `extractTaxLines` is exported from
-`src/lib/xero/reports.functions.ts` for R01 to reuse; `getProtectedMoney`/`buildProtectedMoney`
-stop being dead code.
+One `report_key` at a time, in this order — safest first:
 
-## 7. Access
+1. `invoices_accrec_open` → Receivables
+2. `invoices_accpay_open` → Payables
+3. `balance_sheet` → Superannuation, then Tax liabilities (default as-at only)
+4. `profit_and_loss_mtd` / `_prior` / `_ytd` → Health, then P&L, then the two break-evens
+5. `bank_summary` + `accounts` → Balance sheet reconciliation, then Cash Flow
 
-Reads go through `context.supabase`, never `supabaseAdmin`, so the dual-check RLS on
-`xero_snapshots` applies as the caller: a staff member gets rows only for clients they are
-entitled to. Because the badge is driven by the list the caller already sees, a client present
-in the list but absent from the verdict result is rendered **"Unavailable"**, never blank and
-never green — a permission gap and a missing snapshot must both be visible.
+**Proof method — dual-run diff, not assertion.** For each key, before flipping the default:
 
-## 8. Call reduction
+- Add a temporary, staff-only `?source=compare` search param on the client dashboard route. When present, the converted server function executes **both** paths — snapshot and live — for the same resolved parameters, returns both result objects, and the widget renders the snapshot figures plus a diff strip listing every field whose values differ by more than one cent.
+- Run it across all 12 clients of `cb63e0c4-4242-458a-ab7b-1e0d1853b814` plus at least one single-tenant client, immediately after a 3am refresh (so drift from real-world transactions is minimal) and record the diffs.
+- Acceptance: zero differences beyond one cent on every field the widget displays, for every client. Any non-zero diff blocks that key until explained — the two most likely honest causes are pagination truncation (`complete = false`, which the diff must show) and basis mismatch.
+- Keep the compare mode in the codebase behind the search param after cut-over; it is the fastest way to answer "is this figure wrong?" later.
 
-Today `ClientHealthBadge` calls `getBusinessHealth` per row: 2 Xero calls each (P&L + Balance
-Sheet), throttled to 3 concurrent.
+No key is flipped for all clients at once with no diff evidence.
 
-- 14 clients: **28 Xero calls → 0**
-- 20 clients: **40 Xero calls → 0**
+## 6. Call reduction, measured
 
-Replaced by one Postgres query for the whole list. The daily refresh already pays for the
-underlying data.
+Current per-render Xero calls for one Advisory-tier client dashboard, one tenant (counting what each widget's server function issues on first load; widgets behind a "load this report" prompt counted only when opened):
 
-## 9. Rollback
+| Surface | Now | After Stage 5 |
+|---|---|---|
+| Dashboard, Health collapsed (Receivables, Payables, Tax, Super, P&L default, Cash Flow default) | ~12–16 | 0 |
+| Health expanded (P&L ×2, BS ×2, AR invoices, AP invoices) | +6 | 0 |
+| Widgets that stay live (GST, fixed assets, audit, scenario, loan, search) | only when opened | unchanged |
+| **Total for a default render with Health open** | **~18–22** | **0** |
 
-The old path is not deleted, only unwired: `getBusinessHealth` and `computeScore` stay live for
-the dashboard widget. Reverting is restoring the previous `ClientHealthBadge.tsx` and the
-`tenantId` prop in `FirmClientsSection.tsx` — two files, no database change, no data migration.
-The rules engine can stay in the tree unused while we decide.
+App-wide daily total: the scheduled refresh is a fixed cost of roughly 11–15 calls per tenant per day (11 report keys, invoice keys paginating up to `INVOICE_PAGE_LIMIT`), bounded by `MAX_XERO_CALLS_PER_RUN = 400` per run.
 
-## 10. What Stage 4 does NOT do
+- **14 organisations** (the current 14 tenants Stage 3 refreshes): ~154–200 calls/day fixed, plus live-path calls only from non-default ranges and the six non-convertible widgets. Today the same estimate is dominated by dashboard renders: 20 renders/day across those tenants is already ~400 calls.
+- **20 organisations** (assume ~1.5 tenants each, ~30 tenants): ~330–450 calls/day fixed. Still comfortably inside Xero's 5,000/day per-app limit, and — the point — **independent of how many times anyone opens a dashboard**, which is what makes it safe to grow.
 
-No change to the client dashboard, the `health` widget, the monthly management report,
-Transaction Search, or any figure a client sees. No new tables, columns, policies, triggers or
-functions. No cron or refresh changes. No R02 runway rule. Staff-only; the badge is not rendered
-on any client-facing surface.
+## 7. First render, no snapshot
 
-## Files
+A client with no snapshot row (new Xero connection, or connected after the last 3am run) sees, per widget:
 
-- new `src/lib/health/verdicts.functions.ts` — the single list query
-- new `src/lib/health/rules.server.ts` — R01, R05 (reworded), R06, ranking
-- new `src/lib/health/rule-thresholds.ts` — tunable numbers
-- new `src/lib/health/rules.test.ts` — fixtures per rule, plus gate cases
-- edit `src/lib/xero/reports.functions.ts` — export `extractTaxLines`
-- edit `src/components/dashboard/ClientHealthBadge.tsx` — verdict rendering
-- edit `src/components/admin/FirmClientsSection.tsx` — one query, pass verdicts down
+`Figures are being prepared. Refresh to load them now.` with the same refresh control from section 4.
+
+- **No automatic on-demand refresh on page load.** An auto-refresh means a page open can cost 11 Xero calls, which is precisely the failure mode Stages 1–4 removed. A user opening a dashboard must never be able to trigger a Xero run implicitly.
+- The button is the on-demand path, still governed by `MANUAL_REFRESH_MAX` / `TENANT_RUN_MAX`.
+- Exception worth considering (flag for your decision, not assumed): fire one automatic refresh when a Xero connection is *first linked*, inside the existing onboarding path in `src/lib/xero/onboard.server.ts`, so a newly connected client is not blank until 3am. That is a connection-time event, not a render-time one, so it does not reintroduce the failure mode.
+- Never show `$0`, never show an empty state that reads as "you have no invoices". Absent data and zero must be visually distinct.
+
+## 8. What Stage 5 does not do
+
+Confirmed, all of it:
+
+- No new tables, columns, migrations, RLS policies, triggers or database functions. `xero_snapshots` and `xero_snapshot_runs` already exist from Stage 2.
+- No change to any entitlement, plan, tier, widget key, `plan_levels`, `tier_widget_config`, `client_allowed_widgets` or `client_can_use_widget`. Which widgets a client sees is exactly what it is today; Stage 5 only changes where a visible widget gets its numbers.
+- No change to the monthly management report or Transaction Search.
+- No change to the cron schedule, the Stage 3 worker, or `snapshotReports()`.
+- No change to access control: every converted read goes through `context.supabase` with the same `assertWidgetAccess` guard the live path uses, and `tenantId` from the request stays a filter, never a grant.
+
+Invariants touched (section 0 of the spec): 4 and 8. `tenantId` remains a filter — the converted functions call `assertWidgetAccess` before any snapshot lookup, exactly as before, and RLS on `xero_snapshots` applies as the caller on top. Invariant 8 (fail closed) is why an unreadable or absent snapshot renders "being prepared", never a zero and never another tenant's row: the lookup is keyed by `(client_id, tenant_id, report_key, params_hash)` together.
+
+## 9. Rollback, no deploy
+
+Per report key, via a runtime switch rather than a code change:
+
+- A single module `src/lib/xero/snapshot-flags.ts` reads a comma-separated env var, `XERO_SNAPSHOT_LIVE_KEYS`, listing report keys forced back to live. `readSnapshot()` returns `null` for any key in that list, so every converted function falls through to the live path it never lost.
+- Reverting one key is therefore an env var change in Project Settings → Secrets and a restart — no code edit, no rebuild, no migration. Setting it to `*` reverts the whole of Stage 5.
+- Because no converted function deletes its live branch, the live path cannot rot: the compare mode from section 5 exercises both on every run.
+- Rollback is per key, not per widget, deliberately — a figure being wrong is a property of the stored payload, and every widget reading that payload is equally suspect.
+
+## Files touched (implementation, when approved)
+
+New: `src/lib/xero/snapshot-read.server.ts`, `src/lib/xero/snapshot-source.ts`, `src/lib/xero/snapshot-flags.ts`, `src/components/dashboard/DataSourceLine.tsx`, `src/components/dashboard/RefreshSnapshotsButton.tsx`.
+
+Modified, one per cut-over step: `src/lib/xero/receivables.functions.ts`, `src/lib/xero/payables.functions.ts`, `src/lib/xero/reports.functions.ts`, `src/lib/health.functions.ts`, `src/lib/xero/cashflow.functions.ts`, `src/lib/xero/reconciliation.functions.ts`, and their widgets in `src/components/dashboard/`, plus `src/routes/_authenticated/clients.$clientId.index.tsx` for the header refresh control.
+
+Unchanged: everything under `src/lib/reports/`, `src/lib/xero/search.functions.ts`, `src/lib/xero/audit.functions.ts`, `src/lib/xero/gst.server.ts`, `src/lib/xero/fixed-assets.server.ts`, `src/lib/xero/scenario.functions.ts`, `src/lib/loan-consolidation.functions.ts`.
