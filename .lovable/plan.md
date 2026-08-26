@@ -64,11 +64,20 @@ Promote `getProtectedMoney` (`src/lib/xero/reports.functions.ts:425`) to the sin
 
 ### 7. Accounting Break-Even + True Break-Even → one card
 
-They render identical numbers for all 12 clients today, because True Break-Even's cash commitments are empty for all of them. Merge into one card keyed `accounting_breakeven` (label "Break-Even"), with cash commitments as an expandable section fed by `true_breakeven`'s existing inputs. `true_breakeven` becomes a deprecated alias in the same way as `superannuation`.
+Revised after verifying against the stored snapshots.
 
-With no cost classifications — currently every client — the merged card shows the honest state: the revenue and gross-margin figures it does have, the sentence explaining that fixed/variable split is not set up yet, and a direct link to the cost classification screen. It does not show a fabricated break-even point and it does not show "not enough data" with no route forward.
+They render identical numbers for all 12 clients today because `client_true_breakeven_inputs` has **zero rows** — every client's cash commitments are empty. Merge into one card keyed `accounting_breakeven` (label "Break-Even"), with cash commitments as an expandable section fed by the existing inputs. `true_breakeven` becomes a deprecated alias in the same way as `superannuation`.
+
+Correction to the earlier assumption: missing cost classifications do **not** force a 100% gross margin. `getProfitAndLoss` (`src/lib/xero/reports.functions.ts:68`) already parses Total Cost of Sales, so the widget's margin is Xero's own Gross Profit margin — verified identical across all 14 tenants. The 100% figures on 12 files are Xero's answer, because those files have no Cost of Sales section at all. Classifications only split operating expenses into fixed/variable, and are therefore an override, never a prerequisite. No empty state is added for missing classifications.
+
+Account types are not used as a second margin source: zero tenants have any `OVERHEADS` accounts, and DIRECTCOSTS accounts already sit inside the Cost of Sales section. They stay where they are — seeding the fixed/variable split inside `buildClassificationResolver`.
+
+Where no break-even is possible — the five files with no income (A.C.N. 657 659 026, X14, X11, X8, X10) — the card states that no income is recorded for the period, keeps the date range control live, and offers no setup prompt, because setup is not what is missing.
+
+`is_wages` in `client_cost_classifications` is read by `src/lib/health.functions.ts:600` and must survive unchanged. `src/lib/xero/scenario.functions.ts:259` also reads the table; Cashflow Scenario is untouched.
 
 Files: `src/components/dashboard/AccountingBreakevenWidget.tsx`, `TrueBreakevenWidget.tsx`, `TrueBreakevenSection.tsx`, `useBreakevenData.ts`, `src/lib/tiers.ts`.
+
 
 ### 8. Business Health on snapshots
 
