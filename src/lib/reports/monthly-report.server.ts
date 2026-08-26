@@ -730,9 +730,12 @@ export async function computeMonthlyReport(opts: {
 
   // --- Receivables / payables detail, reconstructed as at the period end.
   const { fetchAsAtLedger } = await import("@/lib/xero/asat-ledger.server");
+  // Kept for the verdict on page one, so the debtor rules cost no extra call.
+  let debtorEntries: import("@/lib/xero/asat-ledger.server").AsAtEntry[] | null = null;
   try {
     const ledger = await fetchAsAtLedger(conn, periodEnd, "ACCREC");
     receivables = buildAgeing(ledger.entries, periodEnd);
+    debtorEntries = ledger.entries;
   } catch (e: any) {
     failed.push({ section: "receivables", message: e?.message ?? "Receivables could not be read." });
   }
@@ -776,6 +779,25 @@ export async function computeMonthlyReport(opts: {
     failed.push({ section: "notes", message: e?.message ?? "Notes could not be read." });
   }
 
+  // --- Page one: the verdict, from LIVE data. Never reads `xero_snapshots`.
+  let verdict: import("./monthly-report").ReportVerdict | null = null;
+  try {
+    const { buildReportVerdict } = await import("./report-verdict.server");
+    verdict = await buildReportVerdict({
+      conn,
+      supabase: opts.supabase,
+      clientId: opts.clientId,
+      tenantId: opts.tenantId,
+      connectionStatus: (conn as any)?.status ?? "connected",
+      periodEnd,
+      debtorEntries,
+      debtorsComplete: debtorEntries !== null,
+    });
+  } catch {
+    // Page one is never a failable section: it must not block finalising.
+    verdict = null;
+  }
+
   // De-duplicate failures per section (the P&L feeds two sections).
   const seen = new Set<string>();
   const failedSections = failed.filter((f) => {
@@ -809,6 +831,7 @@ export async function computeMonthlyReport(opts: {
     receivables,
     payables,
     notes,
+    verdict,
     // Frozen at generation time: an old report keeps the wording that was sent.
     disclaimer: disclaimerText(opts.clientName),
   };

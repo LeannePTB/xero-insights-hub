@@ -52,12 +52,15 @@ export type Verdict =
       topRuleId: string;
       more: number;
       findings: Finding[];
+      /** Checks that could not be completed. Drives the report's coverage sentence. */
+      gaps?: string[];
     }
   | {
       state: "stale" | "partial" | "disconnected" | "no_data" | "unavailable";
       label: string;
       detail: string;
       findings: [];
+      gaps?: string[];
     };
 
 // ---------------------------------------------------------------------------
@@ -66,12 +69,25 @@ export type Verdict =
 
 type KeyState = "usable" | "missing" | "stale" | "partial" | "wrong_version";
 
-function keyState(row: SnapshotRow | undefined, key: string, now: Date): KeyState {
+/**
+ * `skipFreshness` is for rows that were fetched live for this very evaluation
+ * (the monthly management report). Such rows are fresh by construction and
+ * carry no snapshot payload version, so the staleness and version gates would
+ * be meaningless — they are skipped rather than faked with a `fetched_at`.
+ */
+function keyState(
+  row: SnapshotRow | undefined,
+  key: string,
+  now: Date,
+  skipFreshness: boolean,
+): KeyState {
   if (!row) return "missing";
-  if (row.payload_version !== SNAPSHOT_PAYLOAD_VERSION) return "wrong_version";
-  const maxAge = (STALENESS_SECONDS[key] ?? 30 * 3600) * 1000;
-  const fetched = new Date(row.fetched_at).getTime();
-  if (!Number.isFinite(fetched) || now.getTime() - fetched > maxAge) return "stale";
+  if (!skipFreshness) {
+    if (row.payload_version !== SNAPSHOT_PAYLOAD_VERSION) return "wrong_version";
+    const maxAge = (STALENESS_SECONDS[key] ?? 30 * 3600) * 1000;
+    const fetched = new Date(row.fetched_at).getTime();
+    if (!Number.isFinite(fetched) || now.getTime() - fetched > maxAge) return "stale";
+  }
   if (!row.complete) return "partial";
   return "usable";
 }
@@ -269,7 +285,9 @@ export function ruleDebtors(row: SnapshotRow): { finding: Finding | null; unavai
     return {
       finding: {
         ruleId: "R06",
-        title: "Debtor book is badly aged",
+        // Canonical document wording: descriptive, no judgement. The staff
+        // badge abbreviates this in badge-wording.ts.
+        title: "Most of the debtor book is more than 90 days past due",
         detail: `${money(over90)} of ${money(total)} owing is more than ${t.over90Days} days past its due date (${Math.round(over90Share * 100)}% of the book).`,
         severity: "critical",
         consequenceScore: t.consequence.critical,
@@ -318,7 +336,25 @@ export function rankFindings(findings: Finding[]): Finding[] {
   });
 }
 
+export type EvaluateOptions = {
+  /** See `keyState`: for rows fetched live rather than read from a snapshot. */
+  skipFreshness?: boolean;
+};
+
+/** Evaluate against stored snapshot rows (the staff badge). */
 export function evaluateClient(input: ClientVerdictInput): Verdict {
+  return evaluateFromRows(input, {});
+}
+
+/**
+ * Evaluate against any correctly shaped rows, from a snapshot or from a live
+ * fetch. The monthly management report uses this with `skipFreshness: true`.
+ */
+export function evaluateFromRows(
+  input: ClientVerdictInput,
+  options: EvaluateOptions = {},
+): Verdict {
+  const skipFreshness = options.skipFreshness === true;
   const now = input.now ?? new Date();
 
   if (!input.connections.length) {
@@ -333,8 +369,7 @@ export function evaluateClient(input: ClientVerdictInput): Verdict {
     return {
       state: "disconnected",
       label: "Xero disconnected",
-      detail:
-        "This client's Xero connection is disconnected. Reconnect it before relying on any figure.",
+      detail: "The Xero connection was not available when this report was prepared.",
       findings: [],
     };
   }
@@ -347,7 +382,8 @@ export function evaluateClient(input: ClientVerdictInput): Verdict {
   }
 
   const states = new Map<string, KeyState>();
-  for (const key of REQUIRED_REPORT_KEYS) states.set(key, keyState(byKey.get(key), key, now));
+  for (const key of REQUIRED_REPORT_KEYS)
+    states.set(key, keyState(byKey.get(key), key, now, skipFreshness));
 
   const allStates = [...states.values()];
   if (allStates.every((s) => s === "missing")) {
@@ -411,6 +447,7 @@ export function evaluateClient(input: ClientVerdictInput): Verdict {
       topRuleId: top.ruleId,
       more: ranked.length - 1,
       findings: ranked,
+      gaps,
     };
   }
 
@@ -420,13 +457,15 @@ export function evaluateClient(input: ClientVerdictInput): Verdict {
       label: `Partial data — ${gaps.length} check${gaps.length === 1 ? "" : "s"} unavailable`,
       detail: gaps.join(" "),
       findings: [],
+      gaps,
     };
   }
 
   return {
     state: "ok",
-    label: "No issues found",
-    detail: "Every check passed against the most recent snapshot.",
+    label: "Nothing required attention this month",
+    detail:
+      "We reviewed protected money held against cash at bank, the statutory balances carried on the Balance Sheet, and the ageing and concentration of the debtor book. Nothing in those checks required attention.",
     findings: [],
   };
 }
