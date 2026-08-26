@@ -355,6 +355,50 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
 
   const failed = new Map(renderableFailedSections(payload).map((f) => [f.section, f.message]));
 
+  // 1. Page one: the verdict ------------------------------------------------
+  // Before Notes and before every number. Only strings frozen at generation
+  // time are printed — nothing is re-worded or re-computed here, and no score
+  // or pillar score appears. Absent on payloads written before v11.
+  const v = payload.verdict;
+  if (v) {
+    heading("This month");
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.setTextColor(INK.text[0], INK.text[1], INK.text[2]);
+    const headLines = doc.splitTextToSize(v.headline, PAGE.w - M.left - M.right);
+    need(headLines.length * 14 + 10);
+    for (const line of headLines) {
+      doc.text(line, M.left, y);
+      y += 14;
+    }
+    doc.setFont("helvetica", "normal");
+    y += 2;
+    if (v.detail) paragraph(v.detail, { size: 9 });
+
+    for (const f of v.findings.slice(1)) {
+      y += 4;
+      paragraph(
+        `${f.title}. ${f.detail}${f.repetition ? ` ${f.repetition}` : ""}`,
+        { size: 8.5, colour: INK.muted },
+      );
+    }
+
+    if (v.comment) {
+      y += 6;
+      paragraph(v.comment.body, { size: 9 });
+      paragraph(`${v.comment.author}, Positive Traction`, { size: 7.5, colour: INK.muted });
+    }
+
+    y += 6;
+    paragraph(v.coverage, { size: 8.5, colour: INK.muted });
+    paragraph(v.nonAdvice, { size: 7.5, colour: INK.muted });
+    if (v.nextStep) {
+      y += 2;
+      paragraph(v.nextStep, { size: 9 });
+    }
+    y += 6;
+  }
+
   // 2. Notes -----------------------------------------------------------------
   heading("Notes");
   if (!payload.notes) {
