@@ -174,8 +174,9 @@ async function writeSnapshot(opts: {
   payload: unknown;
   runId: string;
   fetchedAt: string;
+  complete: boolean;
 }) {
-  const { target, report, payload, runId, fetchedAt } = opts;
+  const { target, report, payload, runId, fetchedAt, complete } = opts;
   const paramsHash = snapshotParamsHash(report.params);
 
   // The `fetched_at` guard stops a slow response from an earlier tick
@@ -191,9 +192,11 @@ async function writeSnapshot(opts: {
     _source_endpoint: report.path,
     _payload: payload as any,
     _payload_version: SNAPSHOT_PAYLOAD_VERSION,
-    _as_at: `${report.asAt}T00:00:00+10:00`,
+    // Sydney start-of-day, offset resolved per date — never hardcoded.
+    _as_at: sydneyStartOfDayISO(report.asAt),
     _fetched_at: fetchedAt,
     _run_id: runId,
+    _complete: complete,
   });
   if (error) throw new Error(`snapshot write failed (${report.reportKey}): ${error.message}`);
 }
