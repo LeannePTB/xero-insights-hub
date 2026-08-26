@@ -89,3 +89,7 @@ Transaction search's "organisation staff only" claim **is** enforced server-side
 4. **Add `assertClientWidget`** to `getTrueBreakevenInputs`/`upsertTrueBreakevenInputs`, the unreconciled functions and the notes reads, so RLS is not the only gate on a card that is switched off.
 5. **Collapse the duplicate resolution.** `widget-resolve.server.ts` should call the database function rather than re-derive the ceiling−exclusions maths, per spec section 0.7.
 6. **Autotek NSW specifically** — no code fix needed. If the audit card should be off, add `xero_audit` to the client-level exclusion row for tier `advisory`; there is currently no client row at all.
+
+## Unrelated build blocker spotted
+
+`src/routes/_authenticated/clients.$clientId.index.tsx:23` imports `BreakevenWidget` from `@/components/dashboard/BreakevenWidget`, but that file only exports `AccountingBreakevenWidget`. The build fails on it. One-line fix (rename the import or add the export alias), but it is a code change, so it is listed here rather than made — say the word and I will apply it.
