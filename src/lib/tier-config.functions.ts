@@ -248,17 +248,102 @@ export const getOrgWidgetMatrix = createServerFn({ method: "POST" })
       tiers: usable.map((l: any) => {
         const ceiling = ceilings.get(l.key as string) ?? [];
         const excluded = index.base(l.key as string, data.firmId);
+        // What this tier would look like with no organisation row at all, so
+        // the UI can name exactly what "follow the platform default" changes.
+        const platformExcluded = index.base(l.key as string, null);
         return {
           key: l.key as string,
           label: l.label as string,
           ceiling,
           excluded: ceiling.filter((w) => excluded.includes(w)),
+          platformExcluded: ceiling.filter((w) => platformExcluded.includes(w)),
           visible: visibleWidgets(ceiling, excluded),
           usesOrgRow: index.hasOrgRow(l.key as string, data.firmId),
         };
       }),
     };
   });
+
+/**
+ * Read-only: which organisations have their own card list for each tier.
+ *
+ * Organisation rows REPLACE the platform row, so a platform edit never reaches
+ * them. The platform tier screen shows this so the detachment is visible at the
+ * moment an edit is made. No write, no entitlement change.
+ */
+export const listOrgTierOverrides = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertAdvisor(context.supabase, context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: rows, error } = await (supabaseAdmin as any)
+      .from("tier_widget_config")
+      .select("firm_id, tier")
+      .is("client_id", null)
+      .not("firm_id", "is", null);
+    if (error) throw new Error(error.message);
+
+    const firmIds = Array.from(new Set(((rows ?? []) as any[]).map((r) => r.firm_id as string)));
+    const names = new Map<string, string>();
+    if (firmIds.length) {
+      const { data: firms } = await (supabaseAdmin as any)
+        .from("firms")
+        .select("id, name")
+        .in("id", firmIds);
+      for (const f of (firms ?? []) as any[]) names.set(f.id as string, f.name as string);
+    }
+
+    const byTier: Record<string, { firmId: string; name: string }[]> = {};
+    for (const r of (rows ?? []) as any[]) {
+      const tier = r.tier as string;
+      (byTier[tier] ??= []).push({
+        firmId: r.firm_id as string,
+        name: names.get(r.firm_id as string) ?? "Unknown organisation",
+      });
+    }
+    for (const list of Object.values(byTier)) list.sort((a, b) => a.name.localeCompare(b.name));
+    return { byTier };
+  });
+
+/**
+ * Deletes ONE organisation's row for ONE tier, so the organisation follows the
+ * platform default again. The only write added by this change, and only on an
+ * explicit click. Nothing else is touched: no client rows, no plan, no
+ * entitlement, no policy.
+ */
+export const resetOrgTierToPlatformDefault = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { firmId: string; tier: string }) => i)
+  .handler(async ({ data, context }) => {
+    // Authorisation is the database's, not ours.
+    const { data: canAccess, error: accessErr } = await (context.supabase as any).rpc(
+      "user_can_access_firm",
+      { _user_id: context.userId, _firm_id: data.firmId },
+    );
+    if (accessErr) throw new Error(accessErr.message);
+    if (canAccess !== true) throw new Error("You don't have access to this organisation.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as any)
+      .from("tier_widget_config")
+      .delete()
+      .eq("firm_id", data.firmId)
+      .eq("tier", data.tier)
+      .is("client_id", null);
+    if (error) throw new Error(error.message);
+
+    await (supabaseAdmin as any).from("audit_log").insert({
+      actor_user_id: context.userId,
+      firm_id: data.firmId,
+      action: "org_widget_row_reset",
+      target_type: "tier_widget_config",
+      meta: { tier: data.tier },
+    });
+
+    return { ok: true };
+  });
+
 
 /**
  * Turns one card on or off for a whole organisation. The database RPC
