@@ -84,6 +84,7 @@ export function FirmClientsSection({
   const fetchPlanTiers = useServerFn(getAllowedTiersForFirm);
   const removeClient = useServerFn(deleteClient);
   const fetchSupportAccess = useServerFn(getSupportAccess);
+  const fetchVerdicts = useServerFn(listClientVerdicts);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   const supportQ = useQuery({
