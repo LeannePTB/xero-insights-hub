@@ -116,9 +116,10 @@ export function sydneyOffsetMinutes(instant: Date): number {
     timeZone: APP_TIME_ZONE,
     timeZoneName: "longOffset",
   }).formatToParts(instant);
-  const name = formatted.find((p) => p.type === "timeZoneName")?.value ?? "GMT+10:00";
+  const name = formatted.find((p) => p.type === "timeZoneName")?.value ?? "";
   const match = /GMT([+-])(\d{2}):(\d{2})/.exec(name);
-  if (!match) return 600;
+  // No silent fallback offset: guessing +10 is exactly the bug this replaces.
+  if (!match) throw new Error(`Could not resolve the ${APP_TIME_ZONE} offset (got "${name}").`);
   const sign = match[1] === "-" ? -1 : 1;
   return sign * (Number(match[2]) * 60 + Number(match[3]));
 }
