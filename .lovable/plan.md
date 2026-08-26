@@ -1,129 +1,164 @@
-# Verdict page one for the Monthly Management Report
+# Read-only diagnosis: Bangkok on King statutory account matching
 
-Plan only. Nothing below is implemented.
+No code, data, schema, policy, entitlement, or Xero state was changed. No Xero call was made.
 
-## 1. What exists now
+## Conclusion
 
-Files: `src/lib/reports/monthly-report.ts` (types, payload version, formatting), `monthly-report.functions.ts` (server-function wrappers), `monthly-report-context.server.ts` (access + persistence), `monthly-report.server.ts` (the calculation, 815 lines), `report-pdf.server.ts` (jsPDF render + private bucket), `report-delivery.server.ts` (finalise, delete, email, token access), `report-link.functions.ts`, `report-pdf.functions.ts`, `pnl-grouping.ts`, `variance-polarity.ts`. UI: `src/components/reports/MonthlyReportPreview.tsx`, `ReportDeliveryDialogs.tsx`, route `src/routes/_authenticated/clients.$clientId.reports.tsx`, recipient route `src/routes/report.$token.tsx`.
+This is **not a failure of `classifyTaxLine` to recognise Bangkok on King’s account names**, and the accounts were **not absent** from the 31 July 2026 Balance Sheet.
 
-- **Trigger.** Manual only. Staff pick a period end and press generate (`generateMonthlyReport`). There is no cron, no scheduled generation.
-- **Scope.** Per **client**, pinned to **one Xero tenant**. `resolveReportContext` resolves the tenant server-side from `client_xero_orgs`; a client with several Xero organisations reports on one of them (`preferTenantId`, validated against the client). Never per Xero file independently of a client.
-- **Generation.** `computeMonthlyReport` fetches live from Xero: three sequential `Reports/ProfitAndLoss` calls (month, prior month, FY to date, `standardLayout=false`, memoised on the date pair), `Accounts` once for regrouping, and the as-at subledger for ageing. Notes come from `client_notes` where `include_in_report = true`.
-- **Format.** A JSONB payload (`client_reports.payload`, `payload_version` currently **10**) rendered two ways: on screen by `MonthlyReportPreview`, and to PDF by `report-pdf.server.ts` into the private `client-reports` bucket. The PDF is rendered from the stored payload only — no Xero fetch at render time.
-- **Sections, in current order:** Notes; Key figures (revenue, expenses, profit after tax, net margin — month, prior month, variance, FY YTD vs prior FY YTD, one sentence each); Profit and Loss (organisation's own layout, month / prior month / variance / FY YTD); Receivables ageing detail; Payables ageing detail; frozen disclaimer. Incomplete generations carry `failedSections` and a banner.
-- **Lifecycle.** `draft` → `final` → `sent`. Finalising refuses an older `payload_version` and refuses any failed section, then renders the final PDF once. Drafts of the same version are refreshed in place; otherwise a new version row.
-- **Delivery.** Both. Staff download the PDF, and `sendReport` emails per-recipient links: one random token each, only the SHA-256 hash stored in `report_recipients`, expiry default 30 days (max 180), opens counted. A token reaches exactly one report and no other data.
+The failure is one layer earlier: `src/lib/health/rules.server.ts:114` and `:184` pass the whole Xero API envelope (`{ Reports: [...] }`) to `extractTaxLines`, while `src/lib/xero/tax-lines.ts:51-71` expects the inner report object whose `Rows` property is at the top level. The live report path creates that envelope in `src/lib/reports/report-verdict.server.ts:205-206` and passes it unchanged into the rules engine at `:223-230`.
 
-## 2. Page one — structure
+Consequently, `extractTaxLines(balanceSheet.payload)` sees no `payload.Rows` and returns `[]`. The same contract mismatch also makes `extractCashAtBank(balanceSheet.payload)` return zero. The July draft’s “no account could be matched” statement is therefore false.
 
-Page one sits before Notes and before every number, on screen and in the PDF.
+The stored 31 July Balance Sheet contains all of these, verbatim:
 
-```text
-  [ month + client + "Management summary" ]
+- `ATO Superannuation Guarantee` → `super`
+- `GST` → `gst`
+- `Income Tax Payable` → `other_tax` (the code’s type is `other-tax`)
+- `PAYG Withholdings Payable` → `payg`
+- `Superannuation Payable` → `super`
 
-  1  THE FINDING          one heading + one paragraph, from the ranked verdict
-  2  HOW LONG             "This has been the case for N months running."
-  3  BOOKKEEPER'S LINE    short comment from Positive Traction staff (optional)
-  4  WHAT WE COULD ASSESS one or two sentences, prose, never a badge
-  5  NEXT STEP            "We will cover this at your next catch-up."
-```
+It also contains `GST and others Pty Ltd` → `gst`, although that is a bank account and demonstrates why name-only matching is unsafe.
 
-1. **The finding.** The top-ranked `Finding` from `rankFindings` — `title` as the heading, `detail` as the paragraph. Ranking is already consequence-then-days, so the highest-consequence item leads. Below it, remaining findings as a short list (title + detail), no severity colours or chips in the document.
-2. **How long.** Per rule id: "Raised in each of the last N reports" / "First raised this month" / "Raised again after not appearing last month". See section 3 for where N comes from.
-3. **Bookkeeper's line.** Section 5.
-4. **Coverage as a sentence.** The engine already returns `gaps[]` in plain prose ("No GST, PAYG withholding or superannuation account could be matched on the Balance Sheet, so protected money is unknown."). Joined into: "This month we assessed protected money, statutory balances and debtor ageing. Debtor ageing could not be assessed because the open invoice list was incomplete." Diligence phrasing, no apology, no badge.
-5. **Nothing fires (`state: "ok"`).** "Nothing in this month's checks required attention. We reviewed protected money against cash at bank, statutory balances and the debtor book." Plus the coverage sentence and the bookkeeper's line if present. Never "you are fine", never a score.
-6. **Nothing can be assessed (`no_data` / `disconnected` / `stale` / all gaps).** Page one states what is missing and what will restore it, and the report should not be finalised in that state — the existing finalise guard already blocks incomplete payloads; the verdict section joins that guard as a failed section.
+## 1–2. Balance Sheet lines and `classifyTaxLine` results
 
-## 3. Month-on-month comparison
+Stored snapshot dates:
 
-`xero_snapshots` is keyed one row per `(client, tenant, report_key, params_hash)` and upserted — latest only, no history. It cannot answer "fourth month running".
+- `balance_sheet`: requested for 26 August 2026; fetched 26 August 2026 08:06 UTC.
+- `balance_sheet_prior`: requested for 31 July 2026; fetched 26 August 2026 08:06 UTC.
+- July report draft: period end 31 July 2026; generated 26 August 2026 08:08 UTC. Its payload does not retain the raw Balance Sheet, but the live request used the same date as `balance_sheet_prior`. The two stored Balance Sheets differ only by `Loan - Ausvance/Capify`, which appears in July and not in the current snapshot.
 
-`client_reports` **is** the history: one row per client per `period_end` per version, with a frozen JSONB payload. So the answer is: **no new database object is required.** Store the evaluated verdict inside the report payload (new `verdict` block, payload version bump to 11), then compute repetition by reading the prior finalised reports for the same client:
+The complete July leaf-line list, in Xero order:
 
-```text
-select payload->'verdict' from client_reports
- where client_id = ? and report_key = 'monthly_management'
-   and status in ('final','sent') and period_end < ?
- order by period_end desc limit 11
-```
+| Balance Sheet line (verbatim) | Classification |
+|---|---|
+| Bangkok on Darby  Saving - no access to bank | unmatched |
+| Bangkok on Darby Pty Ltd 8671  | unmatched |
+| GST and others Pty Ltd | gst |
+| Rent Business Account Pty Ltd  | unmatched |
+| Accounts Receivable | unmatched |
+| Cash on Hand | unmatched |
+| Prepayments - Colliers (Rent) | unmatched |
+| Security Bond | unmatched |
+| Furniture & Fittings | unmatched |
+| Less Accumulated Depreciation on Furniture & Fittings | unmatched |
+| Motor Vehicles | unmatched |
+| Less Accumulated Depreciation on Motor Vehicles | unmatched |
+| Office & Computer Equipment | unmatched |
+| Less Accumulated Depreciation on Office & Computer Equipment | unmatched |
+| Less Accumulated Depreciation on Plant & Equipment | unmatched |
+| Plant and Equipment at Cost | unmatched |
+| Borrowing Costs | unmatched |
+| Accounts Payable | unmatched |
+| American Express Platinum Busi | unmatched |
+| ATO Superannuation Guarantee | super |
+| GST | gst |
+| Income Tax Payable | other_tax |
+| Loan - Fee Synergy | unmatched |
+| Loan - New Ongoing Square Loan | unmatched |
+| Loan - Payright | unmatched |
+| Loan Afterpay and Pay in 4 | unmatched |
+| PAYG Withholdings Payable | payg |
+| Superannuation Payable | super |
+| Suspense | unmatched |
+| Wages Payable - Payroll | unmatched |
+| Director's Loan - 2024 | unmatched |
+| Director's Loan - FY2024-25 | unmatched |
+| Director's Loan - FY2025-26 | unmatched |
+| Loan - Ausvance/Capify | unmatched |
+| Loan - Lotus Commercial | unmatched |
+| Loan - Lumi Finance | unmatched |
+| Loan - Square 3 | unmatched |
+| Net Assets | unmatched |
+| Current Year Earnings | unmatched |
+| Issued Share Capital | unmatched |
+| Retained Earnings | unmatched |
 
-Streak = count of consecutive prior months whose verdict lists the same `ruleId`, walking back until a month is missing or does not carry the rule. Gaps in months are gaps in the streak and are worded as such ("raised in 4 of the last 6 reports"), never silently bridged.
+The current stored Balance Sheet has the same lines and classifications except that `Loan - Ausvance/Capify` is absent. Section titles and Xero-generated total rows were also traversed during diagnosis; none adds a statutory classification.
 
-Consequences of this choice, stated plainly:
-- Repetition only starts accruing from the first report generated after this ships. Earlier months have no verdict block, so wording for them is "not previously assessed" — not "did not fire".
-- Drafts are excluded, so regenerating a draft cannot change history.
-- A verdict frozen in a finalised report is the record of what was said, which is the correct legal position for a delivered document.
+## 3. Which cause
 
-If you later want repetition on the **dashboard** as well (outside report months), that would need stored evaluations — a `client_verdict_evaluations` table — and I would bring that to you for approval separately. Not in this plan.
+**Neither of the two proposed causes precisely describes the defect.** The statutory accounts are on the July Balance Sheet and their names are recognised when `classifyTaxLine` is called directly. The rules engine never reaches those names because it gives the extractor the wrong object level.
 
-## 4. Business Health in the report — decision confirmed
+This is a **report payload-contract failure**. It manifests as a matcher failure, but the name matcher itself accepts the relevant Bangkok on King lines.
 
-Removing the composite score and pillar scores from the report works. Checked:
+## 4. `accounts` snapshot cross-check
 
-- `src/lib/health.functions.ts` and the dashboard widget (`HealthWidget.tsx`) are read by the dashboard only. `monthly-report.server.ts` does not import them today — the report never contained the score, so there is nothing to remove and nothing to break. The dashboard widget is untouched by definition.
-- The underlying metrics you want kept as evidence (margin, runway, debtor days, working capital) are **not all** in the report payload today. Net margin is (`keyFigures`). Runway, debtor days and working capital are not. Keeping them as "supporting evidence" therefore means adding a small `supporting` block to the payload computed from data the report already fetches plus the Balance Sheet, presented as figures with no score and no rating.
-- The one thing to watch: the report and the dashboard would then show the same metrics computed by two code paths. The metric maths should be lifted into one shared pure module both call, so a figure can never disagree between the screen and the delivered document.
+Every account whose name, type, or system field suggests GST, PAYG, superannuation, or tax:
 
-## 5. The bookkeeper's sentence
+| Name (verbatim) | Type | Class | SystemAccount | Status |
+|---|---|---|---|---|
+| ATO Superannuation Guarantee | CURRLIAB | LIABILITY | — | ACTIVE |
+| GST | CURRLIAB | LIABILITY | GST | ACTIVE |
+| GST and others Pty Ltd | BANK | ASSET | — | ACTIVE |
+| Income Tax Expense | EXPENSE | EXPENSE | — | ACTIVE |
+| Income Tax Payable | CURRLIAB | LIABILITY | — | ACTIVE |
+| Loan - The Early Bird & Sweet Basil Pty Ltd | TERMLIAB | LIABILITY | — | ACTIVE |
+| Old GST Account | BANK | ASSET | — | ACTIVE |
+| PAYG Installments | CURRLIAB | LIABILITY | — | ARCHIVED |
+| PAYG Withholdings Payable | CURRLIAB | LIABILITY | — | ACTIVE |
+| Purchases - GST | DIRECTCOSTS | EXPENSE | — | ACTIVE |
+| Purchases - GST Free | DIRECTCOSTS | EXPENSE | — | ACTIVE |
+| Square Discounts (Tax Free) | REVENUE | REVENUE | — | ARCHIVED |
+| Square Discounts (Taxable) | REVENUE | REVENUE | — | ARCHIVED |
+| Square Sales (Tax Free) | REVENUE | REVENUE | — | ARCHIVED |
+| Square Sales (Taxable) | REVENUE | REVENUE | — | ARCHIVED |
+| Square Surcharges (Tax Free) | REVENUE | REVENUE | — | ARCHIVED |
+| Square Surcharges (Taxable) | REVENUE | REVENUE | — | ARCHIVED |
+| Superannuation | EXPENSE | EXPENSE | — | ACTIVE |
+| Superannuation Payable | CURRLIAB | LIABILITY | — | ACTIVE |
 
-Smallest mechanism, no new table: reuse `client_notes`. It already has `body`, `author_id`, `created_at` and `include_in_report`. Page one takes **the most recent report-marked note authored in the report's own month** and prints it under the generated verdict, attributed to the author and dated. Remaining report-marked notes continue to appear in the existing Notes section, unchanged.
+`GST` has Xero’s authoritative `SystemAccount = 'GST'` flag. `classifyTaxLine` does **not** use it: its signature is only `classifyTaxLine(name: string)` (`src/lib/xero/tax-lines.ts:32`) and it uses substring tests on the name. That is a separate defect. The Balance Sheet rows carry an account ID, so the report line can be cross-referenced to the `accounts` response.
 
-- Nothing new is stored, nothing is migrated, no column added.
-- The note is frozen into the payload at generation, like every other figure, so editing it later does not alter a sent report.
-- **The report can be generated, finalised and sent without it.** It is never a finalise guard.
-- **When absent,** page one simply omits the block — no placeholder, no "no comment provided" line. The generated verdict and the coverage sentence stand alone.
-- Trade-off to accept: staff must remember to tick "Include in management report" on that note. The report screen should show, before finalising, whether a comment for this month was found — a quiet line, not a blocker.
+The current substring logic also creates false positives: `Loan - The Early Bird & Sweet Basil Pty Ltd` contains the letters `bas` inside “Basil”, so the name-only matcher would call it `other_tax` if that line appeared on the Balance Sheet.
 
-## 6. Data source
+## 5. Blast radius
 
-Confirmed workable, with one change.
+The database currently has snapshot sets for **15 tenants, not 14**. This is one more than the stated cohort. Results are therefore reported both ways:
 
-`rules.server.ts` is pure over `SnapshotRow[]` — `{ report_key, payload, payload_version, as_at, fetched_at, complete }` — where `payload` is the raw Xero response. Nothing in the rules reads the snapshot table. So the report can build the same shaped rows from its **own live fetch** and pass them straight in.
+- **All 15 snapshot-backed tenants are exposed to the envelope defect** in the verdict rules because every Balance Sheet snapshot stores the Xero envelope.
+- **11 of 15** currently have one or more directly matchable statutory names on their Balance Sheet, yet the runtime extractor returns no tax lines. These are demonstrable false “no account could be matched” outcomes.
+- **4 of 15** have relevant active accounts in `accounts` but no matchable statutory line on the current Balance Sheet: X1, X3, X4 and X5 Enterprises Pty Ltd. For these, absence/nil balance is plausible from stored data, though the current wording still overstates what is known.
+- If Positive Traction’s own tenant is excluded to reproduce the requested **14-client cohort**, the count is **10 of 14 false outcomes**, with the same four true Balance Sheet absences.
+- Directly applying `classifyTaxLine` to the Balance Sheet names produces **zero name-recognition failures** among the 11 files that contain matchable lines. The failure is extraction, not classification.
 
-What changes:
-- The report must additionally fetch `Reports/BalanceSheet` as at the period end and the open `ACCREC` invoices as at the period end (the as-at subledger engine already reconstructs this for the receivables section — reuse it rather than adding a Xero call).
-- `evaluateClient` currently applies freshness rules — `keyState` returns `stale` when `fetched_at` is older than `STALENESS_SECONDS`, and `payload_version !== SNAPSHOT_PAYLOAD_VERSION` yields `wrong_version`. Live-fetched rows are fresh by construction, but they must not be labelled with the snapshot payload version. The clean fix is a small `evaluateFromRows(rows, { skipFreshness: true })` entry point, or passing `fetched_at = now` and the current version. Do **not** let the report read `xero_snapshots` — a finalised report must pin its own figures.
-- Historic periods: the rules evaluate "as at the period end" only if the inputs are as at the period end. The Balance Sheet call takes a date, and the subledger engine already reconstructs open invoices at the period end, so this holds. R05's wording already carries the as-at date.
+Files with matchable Balance Sheet lines but runtime extraction failure: A.C.N. 657 659 026 Pty. Ltd.; Autotek New South Wales Pty Ltd; Bangkok on King; DRTABT Projects Pty Ltd; Positive Traction; TracyFinlay; X10; X11; X12 & X13; X14; and X8 Enterprises Pty Ltd.
 
-## 7. Wording constraints
+## 6. Wording that distinguishes the facts
 
-Audited the current strings in `rules.server.ts`. Compliant already:
+**Account absent from the Balance Sheet:**
 
-- No occurrence of "insolvent", "trading while insolvent", "you should", "we recommend", or "advice" anywhere in the rules engine or thresholds.
-- R05 carries an explicit carve-out in both code comment and output text: "This is the balance owing only — it says nothing about what has been lodged." Correct, and must survive into the document verbatim.
-- Findings are descriptive: "X of GST, PAYG withholding and superannuation is held against Y cash at bank."
+> “No GST, PAYG withholding or superannuation balances appeared on the Balance Sheet for this period, so protected money could not be assessed from that report.”
 
-Needs rewording for a document rather than a badge:
+This says the balances did not appear; it does not claim the file has no such accounts.
 
-1. **"Protected money exceeds cash at bank"** (R01 critical) — factual, keep, but the document must not sit it next to any word implying inability to pay. No adjacent framing beyond the figures.
-2. **"Debtor book is badly aged"** (R06) — "badly" is a judgement in a badge and reads as criticism in a delivered document. Use "Most of the debtor book is more than 90 days past due" and let the figure do the work.
-3. **"Reconnect it before relying on any figure"** (disconnected) — imperative. In a document: "The Xero connection was not available when this report was prepared." Then the standard next-step line.
-4. **"No issues found" / "Every check passed"** — "passed" implies an assessment standard the engagement does not offer. Reword as in 2.5 above: what was reviewed, and that nothing required attention.
-5. **Next-step line** must point at a conversation, never a decision: "We will cover this at your next catch-up." Never "you should", never a deadline.
-6. **Engagement carve-out.** The report must not imply that raising an item transfers responsibility. Add one sentence to page one, adjacent to the coverage sentence: "These observations come from the accounting records and do not constitute a compliance review, or tax, legal or solvency advice." This sits alongside — not replacing — the frozen disclaimer in `disclaimerText()`, which is unchanged.
+**Lines present but not recognised reliably:**
 
-All wording lives in the rules engine, which currently serves a staff badge. Two consumers with different tolerances means the strings should be split: neutral document wording as the canonical text, with the badge free to abbreviate it.
+> “The Balance Sheet included statutory balance lines that this report could not identify reliably, so protected money could not be assessed.”
 
-## 8. Retiring the Standard (`basic`) tier — later, not in this build
+**The system cannot distinguish absence from a parsing or matching failure:**
 
-Actual data, read now from `client_subscriptions`:
+> “The available accounting records were not sufficient to determine the GST, PAYG withholding and superannuation balances for this period, so protected money was not assessed.”
 
-- **No client is on `basic` today.** Tiers in use: `advisory` (1 — Autotek New South Wales Pty Ltd), `multi_company` (12 — all DRTABT Projects), and **2 clients with no subscription row at all**: "Bangkok on King" (Bangkok On Darby) and "Positive Traction" (Positive Traction).
-- Those two matter, because `src/lib/entitlement.server.ts` **defaults to `basic`** when no row exists (lines 21 and 44), and `tier-config.functions.ts` falls back to the `basic` catalogue entry twice (lines 236, 648). So `basic` is not just a tier — it is the fallback for absent data.
+The report should use the neutral third sentence whenever it cannot prove the cause. It must never convert an internal extraction failure into a claim that the client’s accounts were absent.
 
-What they would lose: the `basic` widget set in `src/lib/tiers.ts` — health, receivables, payables, P&L, notes, unreconciled.
+For Bangkok on King, after correcting the payload contract, none of these gap sentences should appear: the July Balance Sheet contains recognised GST, PAYG withholding and superannuation lines, so R01 and R05 should evaluate normally.
 
-To retire it cleanly:
-1. Give every client an explicit subscription row so nothing relies on the default.
-2. Replace the `basic` default in `entitlement.server.ts` and both fallbacks in `tier-config.functions.ts` with the new free-tier key — the fallback must stay a real tier, never "no tier", or access fails open into an empty dashboard.
-3. `tier_settings` has rows only for `advisory` and `basic`; the new free tier needs a row or it has no kill switch.
-4. `DashboardTier` is a TypeScript union **and** a database enum (`clients.report_basis` style `USER-DEFINED` types are in use). Removing the enum value is a migration and would need your approval; leaving the value in place and disabling it in `plan_levels` is the safer retirement.
-5. `plan_levels.ptb` has `allowed_tiers = {basic}` — that must change before `basic` is disabled, or the default client organisation plan points at a disabled tier.
+## Recommended fix (not implemented)
 
-Note: knowledge item §12.6 still stands — plan `free` has `is_free = false` and `allowed_tiers = {pt}` where `pt` is not a valid `dashboard_tier`, so any cast will throw. That has to be sorted before the free tier becomes the product.
+1. Define one Balance Sheet input contract and normalise the API envelope at the boundary: pass `response.Reports?.[0]` to `extractTaxLines` and `extractCashAtBank`, rather than making downstream rules guess the shape.
+2. Add regression tests using a real `{ Reports: [{ Rows: ... }] }` response envelope and the inner report object, covering both the live report path and snapshot path.
+3. Cross-reference each Balance Sheet row’s account ID against the Accounts response; treat `SystemAccount = 'GST'` as authoritative and use constrained account type/class/status evidence for PAYG and superannuation.
+4. Replace the unbounded `includes('bas')` test with a token/word-boundary rule to prevent “Basil” being classified as BAS.
+5. Return structured extraction outcomes (`assessed`, `absent`, `unrecognised`, `input_invalid`) so document wording is based on the known cause rather than an empty array.
+6. Regenerate Bangkok on King’s existing July draft after the fix. Its payload version 11 has frozen the incorrect verdict wording and figures; merely fixing runtime code will not rewrite that stored draft.
 
-## Approval needed
+## Relevant file paths
 
-- No new database objects, no migrations, no RLS changes in this plan.
-- `client_reports.payload_version` bumps 10 → 11 (a value change, not a schema change).
+- `src/lib/xero/tax-lines.ts` — name classifier and extractors; expects an inner report object.
+- `src/lib/health/rules.server.ts` — passes the full stored/live payload envelope to those extractors.
+- `src/lib/reports/report-verdict.server.ts` — fetches the live Balance Sheet and wraps the full response for rules evaluation.
+- `src/lib/xero/snapshot-refresh.server.ts` — stores the full Xero response payload.
+- `src/lib/xero/snapshot-keys.ts` — defines current and prior Balance Sheet snapshot dates.
+- `src/lib/xero/file-capability.server.ts` — correctly descends through `bsPayload.Reports[0].Rows`, confirming the intended envelope shape elsewhere.
+- `src/lib/reports/coverage-gaps.ts` — currently turns the empty extraction result into the client-facing “could be matched” sentence.
