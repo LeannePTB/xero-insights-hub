@@ -77,16 +77,25 @@ export function firmPlanView(input: {
   is_always_free?: boolean | null;
   trial_ends_at?: string | null;
   current_period_end?: string | null;
+  /**
+   * `plan_levels.label` for this tier, when a row exists. Always preferred over
+   * the hardcoded fallback so the stored name is what the user sees.
+   */
+  planName?: string | null;
 }): FirmPlanView {
   const isAlwaysFree = !!input.is_always_free;
   const tier = (input.tier ?? null) as FirmTier | null;
   const clientLimit = clientLimitFor(tier, isAlwaysFree);
   const status = input.status ?? null;
-  const planLabel = isAlwaysFree
+  const stored = input.planName?.trim() || null;
+  const planLabel = stored
+    ? stored
+    : isAlwaysFree
     ? "Free forever"
     : tier
-    ? TIER_LABEL[tier] ?? "Legacy"
+    ? TIER_NAME[tier] ?? "Legacy"
     : "No plan";
+
 
   let statusLabel = "No plan";
   let statusTone: FirmPlanView["statusTone"] = "slate";
