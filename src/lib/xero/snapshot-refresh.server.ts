@@ -241,6 +241,7 @@ export async function refreshTenant(
   let fatal: string | null = null;
   let ceiling: SnapshotCallCeilingError | null = null;
   const errors: string[] = [];
+  const truncatedReports: string[] = [];
 
   try {
     const { getConnectionByTenant } = await import("./api.server");
@@ -248,14 +249,17 @@ export async function refreshTenant(
 
     for (const report of reports) {
       try {
-        const payload = await fetchReport(conn, report, budget);
+        const { payload, truncated } = await fetchReport(conn, report, budget);
         await writeSnapshot({
           target,
           report,
           payload,
           runId,
           fetchedAt: new Date().toISOString(),
+          // Truncated pulls are stored as incomplete, never as whole.
+          complete: !truncated,
         });
+        if (truncated) truncatedReports.push(report.reportKey);
         succeeded += 1;
       } catch (e) {
         if (e instanceof SnapshotCallCeilingError) throw e;
@@ -268,6 +272,16 @@ export async function refreshTenant(
   } catch (e) {
     if (e instanceof SnapshotCallCeilingError) ceiling = e;
     fatal = e instanceof Error ? e.message : String(e);
+  }
+
+  // Truncation is not a failure, so it does not affect the run status: the
+  // report succeeded, it is just incomplete. It is recorded in the summary
+  // text and on the snapshot row's `complete` flag.
+  const notes: string[] = [...errors];
+  if (truncatedReports.length) {
+    notes.push(
+      `truncated (page cap reached, more records exist): ${truncatedReports.join(", ")}`,
+    );
   }
 
   const status: TenantRefreshResult["status"] = fatal
@@ -285,7 +299,7 @@ export async function refreshTenant(
       reports_requested: reports.length,
       reports_succeeded: succeeded,
       reports_failed: failed,
-      error: fatal ?? (errors.length ? errors.join(" | ").slice(0, 1000) : null),
+      error: fatal ?? (notes.length ? notes.join(" | ").slice(0, 1000) : null),
       finished_at: new Date().toISOString(),
       duration_ms: Date.now() - startedAt,
     })
