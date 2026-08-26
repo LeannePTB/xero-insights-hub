@@ -431,11 +431,18 @@ export function TierEditor({
     return a !== b;
   }, [selected, initial]);
 
+  // Merged cards are one checkbox that writes BOTH stored keys, so a pair can
+  // never end up half-selected. The group comes from DEPRECATED_WIDGET_ALIASES.
+  const cards = toggleableWidgets(ALL_WIDGETS as string[]) as WidgetKey[];
+
   function toggle(w: WidgetKey) {
     const next = new Set(selected);
-    if (next.has(w)) next.delete(w); else next.add(w);
+    const group = widgetKeyGroup(w) as WidgetKey[];
+    if (next.has(w)) for (const k of group) next.delete(k);
+    else for (const k of group) next.add(k);
     setSelected(next);
   }
+
 
   const isOff = onToggleEnabled !== undefined && enabled === false;
 
