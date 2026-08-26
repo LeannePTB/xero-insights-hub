@@ -375,14 +375,14 @@ async function xeroGetUncached<T = unknown>(
   // the single token-refresh retry (and vice versa).
   if (res.status === 429 && rateRetries > 0) {
     await waitForRateLimit(res, 4 - rateRetries);
-    return xeroGet<T>(conn, path, params, retries, rateRetries - 1);
+    return xeroGetUncached<T>(conn, path, params, retries, rateRetries - 1);
   }
   if (res.status === 429) {
     throw new Error(XERO_RATE_LIMIT_MESSAGE);
   }
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
-    return xeroGet<T>(refreshed, path, params, retries - 1, rateRetries);
+    return xeroGetUncached<T>(refreshed, path, params, retries - 1, rateRetries);
   }
 
   if (!res.ok) {
