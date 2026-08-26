@@ -1,95 +1,86 @@
-# Diagnosis — is "off" actually off?
+# Where Autotek's organisation-level tier row came from
 
-Read-only investigation. Nothing was changed.
+Read-only investigation. No code or data changed.
 
-## 1. Autotek NSW — the card is not turned off
+## 1. When and by whom
 
-- Client id: `55959877-2802-4d17-8853-719814972fbc` ("Autotek New South Wales Pty Ltd"), organisation `78abaf83-0129-48b1-bdf9-77c18aa2b2a3`.
-- Tier: `advisory` (from `client_subscriptions`: `subscription_type = free_forever`, `status = active`, `dashboard_tier = advisory`, comp reason "Dashboard tier assigned by the organisation").
-- `client_access`: no viewer rows at all — no client user has been invited yet.
-- `tier_widget_config` rows touching this client:
-  - organisation row, tier `advisory`: `widgets = {}`, `excluded_widgets = {cashflow, transaction_search, true_breakeven, accounting_breakeven}`
-  - organisation row, tier `multi_company`: `excluded_widgets = {unreconciled}`
-  - **no client-level row exists for this client**
-  - platform default rows for `basic`/`advisory`/`multi_company`/`wip` all have `excluded_widgets = {}`
-- Ceiling for `advisory` (`plan_levels.widgets`) includes `xero_audit`.
+`tier_widget_config` has no created-by/updated-by column. Columns are: `id, client_id, tier, widgets, created_at, updated_at, excluded_widgets, firm_id`. Attribution therefore has to come from `audit_log`.
 
-`client_allowed_widgets` and `client_can_use_widget` could not be executed directly (the read role is denied EXECUTE on them — expected), so the answer is derived from the function's own SQL, read from the catalogue: ceiling (advisory) − organisation exclusions − client exclusions. `xero_audit` is in the ceiling and appears in no exclusion list.
+Every organisation-level row in the table (`client_id IS NULL AND firm_id IS NOT NULL`):
 
-**Plainly: `xero_audit` is currently PERMITTED for Autotek NSW.** The card is rendering because it is switched on. Whoever turned it "off" either toggled it on a different tier row (the `multi_company` row is the only other one, and it only excludes `unreconciled`), or the toggle did not persist. The four things that *are* off for this client are cashflow, transaction search, true break-even and accounting break-even.
+| id | firm_id | tier | widgets | excluded_widgets | created_at | updated_at |
+|---|---|---|---|---|---|---|
+| 02623fa5-… | 78abaf83-… (Autotek NSW) | advisory | {} | {cashflow, transaction_search, true_breakeven, accounting_breakeven} | 2026-08-19 07:07:52.630976+00 | 2026-08-19 07:07:52.630976+00 |
+| 33881770-… | 78abaf83-… (Autotek NSW) | multi_company | {} | {unreconciled} | 2026-08-19 07:56:35.924702+00 | 2026-08-19 07:57:06.825132+00 |
+| af5492f9-… | cb63e0c4-… | multi_company | {} | {unreconciled} | 2026-08-24 08:54:58.848248+00 | 2026-08-26 01:17:21.027452+00 |
 
-Worth noting: `true_breakeven` and `accounting_breakeven` are both excluded, and `cashflow` too — so the Advisory section for this client is thin, which may be why an unexpected audit card stands out.
+Matching `audit_log` rows (`action = 'org_widget_toggled'`):
 
-## 2. Is the card gated at all?
+- The Autotek **advisory** row's only audit entry is at exactly its `created_at`, with `actor_user_id = NULL` and meta `{"note": "Applied directly: the settings panel is still writing the retired widgets column.", "tier": "advisory", "widget": "transaction_search", "enabled": false}`. A null actor means it was not written by a signed-in user through the app — it was applied as a direct database statement during earlier remediation work. That single statement is also why the row carries four exclusions while only one toggle was logged.
+- The two `multi_company` rows have normal audit trails: actor `57d544ad-…`, one row per click, produced by the "Cards included by default" panel.
 
-`src/routes/_authenticated/clients.$clientId.index.tsx`:
+So: Autotek's advisory row was **not** created by routine navigation. It was created by a one-off direct write on 19 August.
 
-- `AuditSummaryCard` — line 230, inside `if (widgets.includes("xero_audit"))`. Gated in the UI.
-- `TransactionSearchWidget` — line 270, `widgets.includes("transaction_search") && orgSearchQ.data?.allowed`. Gated twice.
-- `LoanConsolidationWidget` — line 264, `widgets.includes("loan_consolidation")`. Gated in the UI.
+## 2. How many organisations have overridden each tier
 
-`widgets` comes from `getClientWidgets` (`src/lib/tier-config.functions.ts:441`), which calls `client_allowed_widgets` through the caller's own session. So the UI list is honest and single-sourced. The audit card is not the exception; it is simply enabled.
+```
+firms | orgs_with_rows
+    4 |              2
 
-## 3. Per-widget gate audit
+tier          | org-level rows
+multi_company | 2
+advisory      | 1
+```
 
-"Enforced on server" means the server function refuses when the widget is excluded for that client. "Reachable anyway" means data still comes back to a caller who invokes the server function directly while the card is hidden.
+Two of four organisations have at least one organisation-level row, and each of those rows exists because someone clicked a card toggle (or, in the advisory case, a manual fix was applied). No organisation has a row for a tier nobody touched.
 
-| Widget key | Hidden in UI | Enforced on server | Reachable anyway |
-|---|---|---|---|
-| health | yes | `assertWidgetAccess` (`health.functions.ts:425`) | yes for any organisation member — see note A |
-| receivables | yes | `assertWidgetAccess` (`receivables.functions.ts:45,115`) | yes, note A |
-| payables | yes | `assertWidgetAccess` (`payables.functions.ts:50,123`) | yes, note A |
-| pnl | yes | `assertWidgetAccess(data.widget ?? "pnl")` (`reports.functions.ts:103`) | yes — **widget key is taken from the request body**, note B |
-| tax_liability (Protected Money) | yes | `assertWidgetAccess("tax_liability")` (`reports.functions.ts:154,218,249,306,431`) | yes, note A |
-| accounting_breakeven (merged) | yes | P&L half only, via the request-supplied widget key; `getTrueBreakevenInputs` (`true-breakeven.functions.ts:26`) has **no widget check** — RLS only | yes |
-| cashflow | yes | `assertWidgetAccess("cashflow")` (`cashflow.functions.ts:138`) | yes, note A |
-| cashflow_scenario | yes | `assertWidgetAccess("cashflow_scenario")` (`scenario.functions.ts:212`) | yes, note A |
-| balance_sheet_reconciliation | yes | `assertClientWidget` via `recon-snapshot.server.ts:33` | no for viewers; yes for staff, note A |
-| fixed_assets_reconciliation | yes (+ capability) | same path | as above |
-| gst_reconciliation | yes (+ capability) | same path | as above |
-| **xero_audit** | yes | **no widget check at all** — `audit.functions.ts` only calls `assertAdvisor` (global `advisor`/`super_admin` role) then `getConnectionByTenant(tenantId)` | **yes — see note C, the worst one** |
-| transaction_search | yes | full: client access, organisation staff, `assertClientWidget` (`search.functions.ts:139-146`) | no |
-| loan_consolidation | yes | `clientCanUseWidget` / `firmCanUseWidget` (`loan-consolidation.functions.ts:146`, `consolidations.functions.ts:36`, `consolidation-groups.functions.ts:49`, `consolidated.functions.ts:74`) | no |
-| unreconciled | yes | no widget check — RLS on `unreconciled_lines` only | yes |
-| notes | yes | no widget check — RLS on `client_notes` only | yes |
-| file capability profile | n/a | `getEffectiveTier` access check only (`file-capability.functions.ts`) | reads snapshots the caller can already read |
+## 3. What creates an organisation-level row
 
-**Note A — the structural one.** `assertWidgetAccess` (`src/lib/xero/access.server.ts:100`) returns early for anyone `getEffectiveTier` calls an advisor, and *every active member of the organisation* is an advisor there (`isAdvisor: true, tier: "investigate"`), as is a super admin with an approved support grant. So for staff, widget exclusions are a UI preference, not a control. For an invited client viewer they are enforced. That is a defensible design, but it is not what "turned off" sounds like.
+Exactly **one** code path writes `firm_id IS NOT NULL` rows:
 
-**Note B — client-chosen widget key.** `getProfitAndLoss` authorises against `data.widget`, supplied by the caller. A viewer who has `accounting_breakeven` but not `pnl` can pass `widget: "accounting_breakeven"` and receive the full profit and loss. The check is real but the caller picks which lock to test.
+- `public.set_org_widget_enabled(_firm_id, _tier, _widget, _enabled)` — an `INSERT … ON CONFLICT (firm_id, tier) DO UPDATE`, seeding from the platform row's exclusions.
+- Called from `src/lib/tier-config.functions.ts` → `setOrgWidget` (line 269), whose only caller is `src/components/admin/OrgDefaultCardsPanel.tsx` (`onToggle`, line 51) on the organisation settings screen.
 
-**Note C — the audit card.** `getLatestAudit` / `runXeroAudit` / `snoozeFinding` / `resolveFinding` / `unsnoozeFinding` check only that the caller holds a platform-wide `advisor` or `super_admin` role, then resolve the tenant with `getConnectionByTenant` (`api.server.ts:223`), which looks up `xero_connections` by `tenant_id` through `supabaseAdmin` with **no organisation scoping**. There is no `assertWidgetAccess`, no `platformStaffCanAccessFirm`, no membership check. Any holder of the `advisor` role can read — and re-run, writing rows and burning Xero calls — the audit of any tenant in the platform by tenant id. This breaches invariants 3 and 4 in section 0 of the Access Control Spec: a bare role is being treated as a grant, and a `tenantId` from the request body is acting as one.
+Answers to the specific questions:
 
-## 4. Does "off" mean one thing?
+- **Opening the tier settings screen** — no. `getOrgWidgetMatrix` only reads (`src/lib/widget-resolve.server.ts` `fetchExclusions`). No write on mount.
+- **Clicking Save with nothing changed** — not applicable: the panel has no Save button, only per-card pill toggles that each fire one RPC. There is no idempotent save that could write a no-op row.
+- **"Set tier for all clients"** — no. `public.set_all_client_tiers` writes `client_subscriptions` and `audit_log` only; it never touches `tier_widget_config`.
+- **Creating an organisation or adding a client** — no. No trigger and no insert in any migration or server function seeds a row.
+- **Changing a client's tier** — no. `setClientDashboardTier` writes `client_subscriptions`. Separately, `public.set_client_widget_enabled` writes a **client-level** row (`client_id` set), never an organisation-level one.
 
-Four ways a card can be off, and they do **not** converge:
+Other writers, for completeness: `savePlatformTierWidgets` (platform row only, `src/lib/tier-config.functions.ts:89`), `saveClientTierWidgets` (client rows only, line ~140), and `deletePlanLevel` (`src/lib/plan-levels.functions.ts:154`) which deletes all rows for a removed tier.
 
-1. **Not in the tier's plan ceiling** (`plan_levels.widgets`) — enforced in the database function, so it reaches every consumer that calls it.
-2. **In `excluded_widgets`** at organisation or client level — same function, same reach. Organisation row *replaces* the platform row (precedence, not union); client row is added on top. `src/lib/widget-resolve.server.ts` reimplements this in TypeScript for the admin screens; it currently matches the SQL, but it is a second copy of a rule the spec says must have one implementation.
-3. **Per-client disable** — this is just (2) with a client-level row. No separate mechanism.
-4. **Capability profile** — `src/lib/xero/file-capability.server.ts`, presentation only, applied in the route at lines 259 and 261.
+## 4. Does Autotek's advisory row match the platform default?
 
-The divergence is not in how "off" is computed — it is in **who honours it**. `client_allowed_widgets` is honoured by the UI list, by `assertClientWidget` (search, reconciliations, loan consolidation), and by `assertWidgetAccess` **for viewers only**. It is honoured by nothing at all for `xero_audit`, `unreconciled`, `notes` and the true-break-even inputs.
+No.
 
-**Capability gating cannot make a card appear.** `hiddenWidgets` only ever populates `gst_reconciliation` and `fixed_assets_reconciliation`, and it is only ever consumed as `widgets.includes(x) && !structurallyHidden(...)`. It subtracts; it can never add. An `unknown` profile yields an empty `hiddenWidgets`, so it shows. It is not why the audit card is on.
+- Platform `advisory` (id 965b0265-…): `excluded_widgets = {}`
+- Autotek `advisory`: `excluded_widgets = {cashflow, transaction_search, true_breakeven, accounting_breakeven}`
 
-## 5. Client-facing vs staff
+The row is a deliberate (if manually applied) edit, not an accidental duplicate. Note that `xero_audit` is **not** in it — which is why the Xero File Audit card is still visible for that client, and why changing the platform Advisory row has no effect on Autotek.
 
-- **Client viewer** (`client_access` row): sees only widgets in `client_allowed_widgets`, and `assertWidgetAccess` enforces that server-side. Cannot use transaction search (organisation-staff check rejects them). Cannot reach the audit functions (`assertAdvisor` rejects them). Two real gaps for viewers: the P&L widget-key substitution (note B), and `getTrueBreakevenInputs` / notes / unreconciled, which are RLS-scoped but not widget-scoped — a viewer with a row-level path to a client can read those regardless of the card being off. Autotek has no viewers today, so nothing is exposed there right now.
-- **Organisation staff (e.g. DRTABT)**: full `investigate` tier over their own organisation's clients regardless of any exclusion. Correct on access; misleading on "off".
-- **Traction Advisory staff**: reach a client organisation via membership (Path A) or an approved support grant (Path B) for the Xero-data functions. **Except the audit functions**, which need neither — a platform role alone is enough for any tenant. That is the one place where Path C metadata privilege leaks into Xero financial data.
+## 5. The consequence
 
-Transaction search's "organisation staff only" claim **is** enforced server-side, in this order: `assertClientDataAccessForClient` → `firmIdForClient` → `assertOrganisationStaff` → `assertClientWidget`. It is the model the rest should follow.
+Confirmed. `public.set_org_widget_enabled` and `public.client_allowed_widgets` both use `coalesce(org row, platform row)` — the organisation row **replaces** the platform row for that tier; it does not merge. Client-level exclusions are then unioned on top.
 
-## Recommended fixes, in order (nothing implemented)
+Practical effect: for `(organisation, tier)` pairs that have their own row, later changes to the platform row for that tier are invisible forever.
 
-1. **`src/lib/xero/audit.functions.ts`** — replace `assertAdvisor` with the search pattern: resolve the client and organisation from the tenant server-side, `assertClientDataAccessForClient` / `platformStaffCanAccessFirm`, then `assertClientWidget(..., "xero_audit")`. Apply to all five exported functions.
-2. **`src/lib/xero/reports.functions.ts:103`** — stop authorising against a caller-supplied widget key. Check `pnl`, or check that the caller holds *all* of the keys the P&L can serve.
-3. **Decide and document what "off" means for staff.** Either `assertWidgetAccess` stops exempting advisors, or the settings copy says plainly that switching a card off hides it from the client dashboard and does not restrict organisation staff. The current wording implies the former; the code does the latter.
-4. **Add `assertClientWidget`** to `getTrueBreakevenInputs`/`upsertTrueBreakevenInputs`, the unreconciled functions and the notes reads, so RLS is not the only gate on a card that is switched off.
-5. **Collapse the duplicate resolution.** `widget-resolve.server.ts` should call the database function rather than re-derive the ceiling−exclusions maths, per spec section 0.7.
-6. **Autotek NSW specifically** — no code fix needed. If the audit card should be off, add `xero_audit` to the client-level exclusion row for tier `advisory`; there is currently no client row at all.
+Currently in that state:
+- Autotek NSW — `advisory` and `multi_company` detached
+- Organisation cb63e0c4-… — `multi_company` detached
 
-## Unrelated build blocker spotted
+That is 2 of 4 organisations, 3 `(organisation, tier)` pairs. Every other pair still follows the platform default.
 
-`src/routes/_authenticated/clients.$clientId.index.tsx:23` imports `BreakevenWidget` from `@/components/dashboard/BreakevenWidget`, but that file only exports `AccountingBreakevenWidget`. The build fails on it. One-line fix (rename the import or add the export alias), but it is a code change, so it is listed here rather than made — say the word and I will apply it.
+## Risk for the twenty incoming clients
+
+Low as the code stands: a new organisation starts with no row and follows the platform default, and a row only appears when someone deliberately toggles a card on that organisation's settings screen. Navigation alone detaches nothing. The real hazard is that the detachment is **silent and permanent** — one toggle in August means a card added to the platform Advisory tier in October never reaches that organisation, with nothing on screen saying so.
+
+## Recommended fix (not implemented)
+
+1. **Make the state visible.** `getOrgWidgetMatrix` already returns `usesOrgRow` per tier but `OrgDefaultCardsPanel` ignores it. Show a line when it is true: "This organisation has its own card list for the Advisory dashboard and no longer follows the platform default," with a "Follow platform default again" action that deletes the organisation row for that tier.
+2. **Flag drift.** On the platform tier screen (`src/routes/_authenticated/settings.tiers.tsx`), show how many organisations have detached from each tier, so a platform edit that will not reach everyone is obvious at the time it is made.
+3. **Consider changing the model** (larger, needs its own decision): store organisation deltas as `{turned_off, turned_on}` relative to the platform row rather than an absolute exclusion list, so new platform cards flow through. This changes `client_allowed_widgets` and both toggle RPCs and is not a UI-only change.
+4. **Tidy Autotek's advisory row** if the four exclusions are no longer wanted — either re-enable the cards through the organisation panel or delete the row so it follows the platform default again.
+
+Nothing above has been applied.
