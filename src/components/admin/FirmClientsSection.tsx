@@ -266,7 +266,7 @@ export function FirmClientsSection({
                           {tenantNames || "No Xero org linked"}
                         </div>
                         {canOpenClientData && showHealth && c.healthAllowed && (
-                            <ClientHealthBadge tenantId={tenantIds[0] ?? null} clientId={c.id} />
+                            <ClientHealthBadge verdict={verdictsQ.data?.verdicts?.[c.id]} />
                           )}
                       </div>
                     </>
