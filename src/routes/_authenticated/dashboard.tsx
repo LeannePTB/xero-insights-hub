@@ -7,6 +7,8 @@ import { firmPlanView, toneClasses } from "@/lib/firmPlans";
 const planView = (f: FirmOverviewCard, planName?: string | null) => firmPlanView({ tier: f.tier, status: f.status, is_always_free: f.isAlwaysFree, trial_ends_at: f.trialEndsAt, current_period_end: f.currentPeriodEnd, planName });
 
 import { getMyContext } from "@/lib/roles.functions";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
+
 import { getMyFirmAccess } from "@/lib/access.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
