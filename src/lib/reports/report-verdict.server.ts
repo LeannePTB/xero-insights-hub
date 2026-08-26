@@ -15,6 +15,7 @@ import type { AsAtEntry } from "@/lib/xero/asat-ledger.server";
 import type { ReportVerdict, ReportVerdictFinding } from "./monthly-report";
 import { NON_ADVICE_LINE } from "./monthly-report";
 import { evaluateFromRows, type SnapshotRow, type Verdict } from "@/lib/health/rules.server";
+import { dedupeGapSentences } from "./coverage-gaps";
 
 type Conn = Parameters<typeof import("@/lib/xero/api.server").xeroGet>[0];
 
