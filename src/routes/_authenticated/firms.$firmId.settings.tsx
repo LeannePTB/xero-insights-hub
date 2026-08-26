@@ -117,7 +117,10 @@ function FirmSettingsPage() {
     is_always_free: view.firm.isAlwaysFree,
     trial_ends_at: view.subscription.trialEndsAt,
     current_period_end: view.subscription.currentPeriodEnd,
+    // Stored catalogue name; the badge never carries a limit.
+    planName: view.plans.find((p) => p.key === view.subscription.tier)?.label ?? null,
   });
+
   const endLabel = fmtDate(view.subscription.currentPeriodEnd);
   const pendingCancel = view.subscription.cancelAtPeriodEnd;
   const canManage = view.canManage;
