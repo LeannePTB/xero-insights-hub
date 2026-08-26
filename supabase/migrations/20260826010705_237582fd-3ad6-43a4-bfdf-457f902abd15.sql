@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.prune_xero_snapshot_runs(integer, integer) FROM anon, authenticated, PUBLIC;
+GRANT EXECUTE ON FUNCTION public.prune_xero_snapshot_runs(integer, integer) TO service_role;
