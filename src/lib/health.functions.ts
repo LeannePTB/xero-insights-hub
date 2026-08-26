@@ -271,95 +271,12 @@ function buildSummary(h: {
   return bits.join(" but ").replace(/ but ([a-z])/, " and $1") + ".";
 }
 
-export const getBusinessHealth = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; fromDate?: string; toDate?: string }) => input)
-  .handler(async ({ data, context }): Promise<BusinessHealth> => {
-    const { getConnectionByTenant, xeroGet } = await import("./xero/api.server");
-    const { assertWidgetAccess } = await import("./xero/access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "health");
-    const conn = await getConnectionByTenant(data.tenantId);
+// The former `getBusinessHealth` summary server function lived here. It was
+// unreachable: the card merged its headline into `getBusinessHealthDetail`
+// so the current-period P&L is fetched once. The `BusinessHealth` type is
+// retained because the detail payload reuses its `alert` shape.
 
-    const today = new Date();
-    const fyDefault = fyToDateRange(today);
-    const fromDate = data.fromDate || fyDefault.from;
-    const toDate = data.toDate || fyDefault.to;
-    const isFy = !data.fromDate && !data.toDate;
-    const rangeLabel = isFy
-      ? fyDefault.label
-      : `${fromDate} → ${toDate}`;
-    const asOfDate = toDate;
 
-    const [pnlRes, bsRes] = await Promise.all([
-      xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
-        fromDate,
-        toDate,
-        standardLayout: "false",
-      }),
-      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: asOfDate }),
-    ]);
-
-    const pnl = summarisePnl(pnlRes.Reports?.[0] ?? {});
-    const bs = summariseBs(bsRes.Reports?.[0] ?? {});
-
-    const grossMarginPct = pnl.income > 0 ? (pnl.gross / pnl.income) * 100 : 0;
-    const netMarginPct = pnl.income > 0 ? (pnl.net / pnl.income) * 100 : 0;
-
-    const startD = new Date(`${fromDate}T00:00:00Z`);
-    const endD = new Date(`${toDate}T00:00:00Z`);
-    const monthsElapsed = Math.max(
-      1,
-      (endD.getUTCFullYear() - startD.getUTCFullYear()) * 12 +
-        (endD.getUTCMonth() - startD.getUTCMonth()) +
-        1,
-    );
-    const monthlyOpex = pnl.expenses / monthsElapsed;
-    const monthsRunway = monthlyOpex > 0 ? bs.cash / monthlyOpex : null;
-
-    const badDebtsPctOfRev = pnl.income > 0 ? (bs.badDebts / pnl.income) * 100 : 0;
-    const { score, band, label: bandLabel } = computeScore({
-      netMarginPct,
-      grossMarginPct,
-      badDebtsPctOfRev,
-      monthsRunway,
-    });
-
-    const summary = buildSummary({
-      netMarginPct,
-      cashInBank: bs.cash,
-      badDebts: bs.badDebts,
-      revenue: pnl.income,
-      monthsRunway,
-    });
-    const alert = pickAlert({
-      badDebts: bs.badDebts,
-      revenue: pnl.income,
-      monthsRunway,
-      netMarginPct,
-      cashInBank: bs.cash,
-    });
-
-    return {
-      asOfDate,
-      fyFromDate: fromDate,
-      fyToDate: toDate,
-      fyLabel: rangeLabel,
-      revenue: pnl.income,
-      grossProfit: pnl.gross,
-      grossMarginPct,
-      netProfit: pnl.net,
-      netMarginPct,
-      cashInBank: bs.cash,
-      bankAccounts: bs.bankAccounts,
-      owedToYou: bs.receivables,
-      badDebts: bs.badDebts,
-      score,
-      band,
-      label: bandLabel,
-      summary,
-      alert,
-    };
-  });
 
 // ============================================================
 // Business Health — detail (pillar breakdown)
@@ -546,30 +463,72 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const outstandingWhere = (type: "ACCREC" | "ACCPAY") =>
       `Type=="${type}"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"&&AmountDue>0`;
 
+    // Stage 5: read the stored snapshot first. `paramsMatchCatalogue` is what
+    // makes this safe — a snapshot is only used when the caller's parameters
+    // are byte-for-byte the ones the daily writer used, so a user-chosen range
+    // never silently gets a different period's figures. Anything else falls
+    // through to the live branch below, which is unchanged.
+    //
+    // This also means Business Health and Receivables now read the SAME stored
+    // `invoices_accrec_open` payload and cannot disagree about what is owed.
+    const { readSnapshot, paramsMatchCatalogue } = await import("./xero/snapshot-read.server");
+    const { sydneyDate } = await import("@/lib/sydney-time");
+    const todaySyd = sydneyDate();
+    const snap = async <T,>(reportKey: string, params: Record<string, string | undefined>): Promise<T | null> => {
+      try {
+        if (!paramsMatchCatalogue(reportKey, params, todaySyd)) return null;
+        const hit = await readSnapshot({
+          supabase: context.supabase,
+          tenantId: data.tenantId,
+          clientId: data.clientId ?? null,
+          reportKey,
+        });
+        return (hit?.payload as T) ?? null;
+      } catch (e) {
+        console.warn(`[health-detail] snapshot ${reportKey} unusable:`, (e as Error).message);
+        return null;
+      }
+    };
+
     // Sequential, not parallel: firing all seven at once trips Xero's per-organisation
     // rate limit. The three calls the score genuinely depends on are NOT swallowed —
     // if Xero throttles or refuses them the whole card must show an error rather than
     // present zeroes as if they were real figures.
-    const pnlRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
-      fromDate: fy.from,
-      toDate: fy.to,
-      standardLayout: "false",
-    });
-    const bsRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: asOfDate });
-    const arInvRes = await xeroGet<{ Invoices: any[] }>(conn, "Invoices", {
-      where: outstandingWhere("ACCREC"),
-    });
+    const pnlParams = { fromDate: fy.from, toDate: fy.to, standardLayout: "false" };
+    const pnlRes =
+      (await snap<{ Reports: any[] }>("profit_and_loss_ytd", pnlParams)) ??
+      (await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", pnlParams));
+    const bsRes =
+      (await snap<{ Reports: any[] }>("balance_sheet", { date: asOfDate })) ??
+      (await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: asOfDate }));
+    const arInvRes =
+      (await snap<{ Invoices: any[] }>("invoices_accrec_open", {
+        where: 'Type=="ACCREC"&&Status!="PAID"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"',
+        order: "DueDate ASC",
+      })) ??
+      (await xeroGet<{ Invoices: any[] }>(conn, "Invoices", {
+        where: outstandingWhere("ACCREC"),
+      }));
     // Comparatives and context: a gap here degrades the card, it does not falsify it.
-    const priorPnlRes = await safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", {
-      fromDate: priorFrom,
-      toDate: priorToStr,
-      standardLayout: "false",
-    });
-    const bsStartRes = await safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: bsStartDate });
-    const apInvRes = await safeGet<{ Invoices: any[] }>("Invoices", {
-      where: outstandingWhere("ACCPAY"),
-    });
-    const orgRes = await safeGet<{ Organisations: any[] }>("Organisations");
+    const priorPnlParams = { fromDate: priorFrom, toDate: priorToStr, standardLayout: "false" };
+    const priorPnlRes =
+      (await snap<{ Reports: any[] }>("profit_and_loss_prior", priorPnlParams)) ??
+      (await safeGet<{ Reports: any[] }>("Reports/ProfitAndLoss", priorPnlParams));
+    const bsStartRes =
+      (await snap<{ Reports: any[] }>("balance_sheet_prior", { date: bsStartDate })) ??
+      (await safeGet<{ Reports: any[] }>("Reports/BalanceSheet", { date: bsStartDate }));
+    const apInvRes =
+      (await snap<{ Invoices: any[] }>("invoices_accpay_open", {
+        where: 'Type=="ACCPAY"&&Status!="PAID"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"',
+        order: "DueDate ASC",
+      })) ??
+      (await safeGet<{ Invoices: any[] }>("Invoices", {
+        where: outstandingWhere("ACCPAY"),
+      }));
+    const orgRes =
+      (await snap<{ Organisations: any[] }>("organisation", {})) ??
+      (await safeGet<{ Organisations: any[] }>("Organisations"));
+
 
 
     const pnl = summarisePnl(pnlRes?.Reports?.[0] ?? {});

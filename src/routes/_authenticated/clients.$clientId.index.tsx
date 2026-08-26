@@ -17,12 +17,10 @@ import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.fu
 import { toast } from "sonner";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 
-import { TaxLiabilityWidget } from "@/components/dashboard/TaxLiabilityWidget";
-import { SuperannuationWidget } from "@/components/dashboard/SuperannuationWidget";
+import { ProtectedMoneyWidget } from "@/components/dashboard/ProtectedMoneyWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
 
-import { AccountingBreakevenWidget } from "@/components/dashboard/AccountingBreakevenWidget";
-import { TrueBreakevenWidget } from "@/components/dashboard/TrueBreakevenWidget";
+import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
 import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 import { BalanceSheetReconciliationWidget } from "@/components/dashboard/BalanceSheetReconciliationWidget";
@@ -37,7 +35,8 @@ import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
-import { tierLabel as tierLabelFor, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
+import { tierLabel as tierLabelFor, renderableWidgets, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
+import { getFileCapability } from "@/lib/xero/file-capability.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { TransactionSearchWidget } from "@/components/dashboard/TransactionSearchWidget";
@@ -108,11 +107,14 @@ function ClientDashboard() {
     gcTime: 0,
     refetchOnMount: "always",
   });
-  const widgets = widgetsQ.data?.widgets ?? [];
+  // Entitlement is unchanged; merged cards are collapsed onto the card that
+  // now renders them, so an entitlement naming both halves draws one card.
+  const widgets = renderableWidgets(widgetsQ.data?.widgets ?? []);
   // Cards still in testing, badged wherever they render.
-  const wipWidgets: string[] = (widgetsQ.data as any)?.wipWidgets ?? [];
+  const wipWidgets: string[] = renderableWidgets((widgetsQ.data as any)?.wipWidgets ?? []);
   const wipKey = wipWidgets.join(",");
   const isWip = (widget: string) => wipWidgets.includes(widget);
+
   const tier: DashboardTier = effectivePreviewTier ?? tierLabelSource ?? "basic";
 
   const { levels: tierLevels } = usePlanLevels("dashboard");
@@ -165,6 +167,38 @@ function ClientDashboard() {
     return resolveCardBasis(widget, reportBasis, gstBasis);
   }
 
+  // What each Xero file can meaningfully support, derived at read time from
+  // stored snapshots. FAIL OPEN: while this is loading, or if it fails, no
+  // card is hidden. Hiding something a user is entitled to is worse than
+  // showing an honest empty state.
+  const capabilityFn = useServerFn(getFileCapability);
+  const tenantIds = orgs.map((o: any) => o.xero_connections?.tenant_id).filter(Boolean) as string[];
+  const tenantKey = tenantIds.join(",");
+  const capabilityQ = useQuery({
+    queryKey: ["file-capability", clientId, tenantKey],
+    enabled: tenantIds.length > 0,
+    staleTime: 30 * 60 * 1000,
+    queryFn: async () => {
+      const entries = await Promise.all(
+        tenantIds.map(async (t) => {
+          try {
+            return [t, await capabilityFn({ data: { tenantId: t, clientId } })] as const;
+          } catch {
+            return [t, null] as const; // fail open for this file only
+          }
+        }),
+      );
+      return Object.fromEntries(entries) as Record<string, { hiddenWidgets: string[] } | null>;
+    },
+  });
+  const capabilityKey = JSON.stringify(
+    Object.entries(capabilityQ.data ?? {}).map(([t, c]) => [t, c?.hiddenWidgets ?? []]),
+  );
+  function structurallyHidden(tenantId: string, widget: string) {
+    return (capabilityQ.data?.[tenantId]?.hiddenWidgets ?? []).includes(widget);
+  }
+
+
   const { standardCards, advancedCards } = useMemo<{ standardCards: SortableCard[]; advancedCards: SortableCard[] }>(() => {
     const standard: SortableCard[] = [];
     const advanced: SortableCard[] = [];
@@ -205,24 +239,28 @@ function ClientDashboard() {
         standard.push({ id: `${o.id}:payables`, node: mark("payables", <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} />) });
       if (widgets.includes("pnl"))
         standard.push({ id: `${o.id}:pnl`, node: mark("pnl", <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} />) });
+      // Tax liabilities and Superannuation are one card: both read the same
+      // balance sheet, and two cards could show different as-at dates.
       if (widgets.includes("tax_liability"))
-        advanced.push({ id: `${o.id}:tax_liability`, node: mark("tax_liability", <TaxLiabilityWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("tax_liability")} />) });
-      if (widgets.includes("superannuation"))
-        advanced.push({ id: `${o.id}:super_liability`, node: mark("superannuation", <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("superannuation")} />) });
+        advanced.push({ id: `${o.id}:tax_liability`, node: mark("tax_liability", <ProtectedMoneyWidget tenantId={tenantId} tenantName={tenantName} />) });
+      // Accounting and True break-even are one card; cash commitments are an
+      // expandable section inside it.
       if (widgets.includes("accounting_breakeven"))
-        advanced.push({ id: `${o.id}:accounting_breakeven`, node: mark("accounting_breakeven", <AccountingBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} />) });
-      if (widgets.includes("true_breakeven"))
-        advanced.push({ id: `${o.id}:true_breakeven`, node: mark("true_breakeven", <TrueBreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("true_breakeven")} />) });
+        advanced.push({ id: `${o.id}:accounting_breakeven`, node: mark("accounting_breakeven", <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} />) });
+
       if (widgets.includes("cashflow"))
         advanced.push({ id: `${o.id}:cashflow`, node: mark("cashflow", <CashflowWidget tenantId={tenantId} tenantName={tenantName} />) });
       if (widgets.includes("cashflow_scenario"))
         advanced.push({ id: `${o.id}:cashflow_scenario`, node: mark("cashflow_scenario", <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
       if (widgets.includes("balance_sheet_reconciliation"))
         advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: mark("balance_sheet_reconciliation", <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} loanConsolidationHref={client?.firm_id ? `/firms/${client.firm_id}/loans` : undefined} />) });
-      if (widgets.includes("fixed_assets_reconciliation"))
+      // The only two structural hides: a chart with no FIXED-type account has
+      // nowhere to hold a fixed asset, and a non-GST cashbook has no GST ledger.
+      if (widgets.includes("fixed_assets_reconciliation") && !structurallyHidden(tenantId, "fixed_assets_reconciliation"))
         advanced.push({ id: `${o.id}:fixed_assets_reconciliation`, node: mark("fixed_assets_reconciliation", <FixedAssetsReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
-      if (widgets.includes("gst_reconciliation"))
+      if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
         advanced.push({ id: `${o.id}:gst_reconciliation`, node: mark("gst_reconciliation", <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
+
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: mark("loan_consolidation", <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
     }
@@ -241,7 +279,7 @@ function ClientDashboard() {
 
     return { standardCards: standard, advancedCards: advanced };
 
-  }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed]);
+  }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
 
   const savedOrder = orderQ.data?.order ?? [];
   const standardIds = new Set(standardCards.map((c) => c.id));
