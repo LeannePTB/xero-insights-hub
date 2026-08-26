@@ -8,7 +8,7 @@ import { DateRangeControls } from "@/components/dashboard/DateRangeControls";
 import { cn } from "@/lib/utils";
 import { useBreakevenData, fmtAUD, fmtPct } from "@/components/dashboard/useBreakevenData";
 
-export function AccountingBreakevenWidget({
+export function BreakevenWidget({
   tenantId,
   tenantName,
   clientId,
