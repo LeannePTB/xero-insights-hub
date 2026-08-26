@@ -2326,6 +2326,16 @@ export type Database = {
         Args: { _key: string; _max: number; _window_seconds: number }
         Returns: boolean
       }
+      claim_xero_snapshot_run: {
+        Args: {
+          _abandoned_minutes?: number
+          _client_id: string
+          _firm_id: string
+          _tenant_id: string
+          _trigger?: string
+        }
+        Returns: string
+      }
       client_allowed_widgets: {
         Args: { _client_id: string }
         Returns: string[]
@@ -2479,6 +2489,24 @@ export type Database = {
           _new_owner_user_id: string
         }
         Returns: undefined
+      }
+      upsert_xero_snapshot: {
+        Args: {
+          _as_at: string
+          _client_id: string
+          _complete?: boolean
+          _fetched_at: string
+          _firm_id: string
+          _params: Json
+          _params_hash: string
+          _payload: Json
+          _payload_version: number
+          _report_key: string
+          _run_id?: string
+          _source_endpoint: string
+          _tenant_id: string
+        }
+        Returns: string
       }
       user_can_access_client: {
         Args: { _client_id: string; _user_id: string }
