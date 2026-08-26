@@ -9,7 +9,7 @@
 // a caller (4); entitlement is untouched because nothing reads the rows (3, 8).
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sydneyDate } from "@/lib/sydney-time";
+import { sydneyDate, sydneyStartOfDayISO } from "@/lib/sydney-time";
 import {
   INVOICE_PAGE_LIMIT,
   MAX_XERO_CALLS_PER_RUN,
@@ -130,19 +130,30 @@ async function withSlot<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+const XERO_PAGE_SIZE = 100;
+
+/**
+ * `truncated` means the pull hit INVOICE_PAGE_LIMIT while the last page was
+ * still full, so there are open invoices we did not fetch. It is NOT a
+ * failure — the call succeeded — but the payload is not the whole picture, and
+ * a client with more open invoices than the cap is exactly the client this
+ * product exists to catch. It must never be stored as complete.
+ */
 async function fetchReport(
   conn: any,
   report: SnapshotReport,
   budget: CallBudget,
-): Promise<unknown> {
+): Promise<{ payload: unknown; truncated: boolean }> {
   const { xeroGet } = await import("./api.server");
 
   if (!report.paginated) {
     budget.spend();
-    return await withSlot(() => xeroGet<unknown>(conn, report.path, report.params));
+    const payload = await withSlot(() => xeroGet<unknown>(conn, report.path, report.params));
+    return { payload, truncated: false };
   }
 
   const items: any[] = [];
+  let truncated = false;
   for (let page = 1; page <= INVOICE_PAGE_LIMIT; page++) {
     budget.spend();
     const res = await withSlot(() =>
@@ -150,9 +161,11 @@ async function fetchReport(
     );
     const batch = res?.Invoices ?? [];
     items.push(...batch);
-    if (batch.length < 100) break;
+    if (batch.length < XERO_PAGE_SIZE) break;
+    // Last allowed page came back full: there is more we are not fetching.
+    if (page === INVOICE_PAGE_LIMIT) truncated = true;
   }
-  return { Invoices: items };
+  return { payload: { Invoices: items }, truncated };
 }
 
 async function writeSnapshot(opts: {
@@ -161,8 +174,9 @@ async function writeSnapshot(opts: {
   payload: unknown;
   runId: string;
   fetchedAt: string;
+  complete: boolean;
 }) {
-  const { target, report, payload, runId, fetchedAt } = opts;
+  const { target, report, payload, runId, fetchedAt, complete } = opts;
   const paramsHash = snapshotParamsHash(report.params);
 
   // The `fetched_at` guard stops a slow response from an earlier tick
@@ -178,9 +192,11 @@ async function writeSnapshot(opts: {
     _source_endpoint: report.path,
     _payload: payload as any,
     _payload_version: SNAPSHOT_PAYLOAD_VERSION,
-    _as_at: `${report.asAt}T00:00:00+10:00`,
+    // Sydney start-of-day, offset resolved per date — never hardcoded.
+    _as_at: sydneyStartOfDayISO(report.asAt),
     _fetched_at: fetchedAt,
     _run_id: runId,
+    _complete: complete,
   });
   if (error) throw new Error(`snapshot write failed (${report.reportKey}): ${error.message}`);
 }
@@ -225,6 +241,7 @@ export async function refreshTenant(
   let fatal: string | null = null;
   let ceiling: SnapshotCallCeilingError | null = null;
   const errors: string[] = [];
+  const truncatedReports: string[] = [];
 
   try {
     const { getConnectionByTenant } = await import("./api.server");
@@ -232,14 +249,17 @@ export async function refreshTenant(
 
     for (const report of reports) {
       try {
-        const payload = await fetchReport(conn, report, budget);
+        const { payload, truncated } = await fetchReport(conn, report, budget);
         await writeSnapshot({
           target,
           report,
           payload,
           runId,
           fetchedAt: new Date().toISOString(),
+          // Truncated pulls are stored as incomplete, never as whole.
+          complete: !truncated,
         });
+        if (truncated) truncatedReports.push(report.reportKey);
         succeeded += 1;
       } catch (e) {
         if (e instanceof SnapshotCallCeilingError) throw e;
@@ -252,6 +272,16 @@ export async function refreshTenant(
   } catch (e) {
     if (e instanceof SnapshotCallCeilingError) ceiling = e;
     fatal = e instanceof Error ? e.message : String(e);
+  }
+
+  // Truncation is not a failure, so it does not affect the run status: the
+  // report succeeded, it is just incomplete. It is recorded in the summary
+  // text and on the snapshot row's `complete` flag.
+  const notes: string[] = [...errors];
+  if (truncatedReports.length) {
+    notes.push(
+      `truncated (page cap reached, more records exist): ${truncatedReports.join(", ")}`,
+    );
   }
 
   const status: TenantRefreshResult["status"] = fatal
@@ -269,7 +299,7 @@ export async function refreshTenant(
       reports_requested: reports.length,
       reports_succeeded: succeeded,
       reports_failed: failed,
-      error: fatal ?? (errors.length ? errors.join(" | ").slice(0, 1000) : null),
+      error: fatal ?? (notes.length ? notes.join(" | ").slice(0, 1000) : null),
       finished_at: new Date().toISOString(),
       duration_ms: Date.now() - startedAt,
     })
