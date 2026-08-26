@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import * as metrics from "@/lib/metrics/core";
 
 export type HealthBand = "strong" | "watch" | "urgent";
 
@@ -584,7 +585,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const wagesIsTagged = taggedWageNames.size > 0;
 
     const grossMarginPct = pnl.income > 0 ? (pnl.gross / pnl.income) * 100 : 0;
-    const netMarginPct = pnl.income > 0 ? (pnl.net / pnl.income) * 100 : 0;
+    const netMarginPct = metrics.netMarginPct(pnl.net, pnl.income) ?? 0;
     const opMarginPct = netMarginPct; // approximation when no tax/interest separation
     const wagesPct = pnl.income > 0 ? (wages / pnl.income) * 100 : 0;
     const badDebtsPct = pnl.income > 0 ? (bs.badDebts / pnl.income) * 100 : 0;
@@ -599,7 +600,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     );
     const monthlyOpex = pnl.expenses / monthsElapsed;
     const monthlyRevenue = pnl.income / monthsElapsed;
-    const monthsRunway = monthlyOpex > 0 ? bs.cash / monthlyOpex : null;
+    const monthsRunway = metrics.monthsRunway(bs.cash, monthlyOpex);
     const revenueGrowthPct = priorPnl.income > 0 ? ((pnl.income - priorPnl.income) / priorPnl.income) * 100 : null;
 
     // Business Health never prints absolute dollar amounts — Profit & Loss owns the money.
@@ -658,8 +659,8 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       1,
       Math.round((periodEnd.getTime() - fyStart.getTime()) / (1000 * 60 * 60 * 24)) + 1,
     );
-    const dso = pnl.income > 0 ? (ar.total / pnl.income) * periodDays : null;
-    const workingCapital = bs.currentAssets - bs.currentLiabilities;
+    const dso = metrics.debtorDays(ar.total, pnl.income, periodDays);
+    const workingCapital = metrics.workingCapital(bs.currentAssets, bs.currentLiabilities);
     const quickRatio =
       bs.currentLiabilities > 0 ? (bs.cash + ar.total) / bs.currentLiabilities : null;
 
@@ -683,7 +684,11 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
             ? "bad"
             : "watch";
 
-    const workingCapitalMonths = monthlyOpex > 0 ? workingCapital / monthlyOpex : null;
+    const workingCapitalMonths = metrics.workingCapitalMonths(
+      bs.currentAssets,
+      bs.currentLiabilities,
+      monthlyOpex,
+    );
     const workingCapitalPill =
       workingCapital < 0
         ? "Negative"

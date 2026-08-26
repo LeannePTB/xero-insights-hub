@@ -1,5 +1,6 @@
 import { AlertCircle, AlertTriangle, CheckCircle2, CircleSlash, Info } from "lucide-react";
 import type { Verdict } from "@/lib/health/verdicts.functions";
+import { badgeFindingTitle, badgeLabel } from "@/lib/health/badge-wording";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 /**
@@ -44,7 +45,7 @@ export function ClientHealthBadge({ verdict }: { verdict: Verdict | undefined })
       <Badge
         style={OK_STYLE}
         icon={<CheckCircle2 className="h-3 w-3" />}
-        label={verdict.label}
+        label={badgeLabel(verdict)}
         tip={verdict.detail}
       />
     );
@@ -62,7 +63,9 @@ export function ClientHealthBadge({ verdict }: { verdict: Verdict | undefined })
       <ol className="space-y-1.5">
         {verdict.findings.map((f) => (
           <li key={f.ruleId}>
-            <span className="font-medium">{f.title}</span>
+            <span className="font-medium">
+              {badgeFindingTitle(f.ruleId, f.severity, f.title)}
+            </span>
             <span className="block opacity-80">{f.detail}</span>
           </li>
         ))}
@@ -72,7 +75,7 @@ export function ClientHealthBadge({ verdict }: { verdict: Verdict | undefined })
       <Badge
         style={style}
         icon={icon}
-        label={verdict.label}
+        label={badgeLabel(verdict)}
         suffix={verdict.more > 0 ? `+${verdict.more} more` : undefined}
         tip={tip}
       />

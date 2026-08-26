@@ -13,8 +13,11 @@ export const MONTHLY_REPORT_KEY = "monthly_management";
 // cap on large files and reported the ageing sections as failed.
 // v4: the rendered disclaimer text is frozen into the payload at generation
 // time, so an old report always shows the wording that was actually sent.
-export const MONTHLY_REPORT_PAYLOAD_VERSION = 10;
+export const MONTHLY_REPORT_PAYLOAD_VERSION = 11;
 // v10: only notes marked "Include in management report" are carried into the payload.
+// v11: page one carries the verdict — the ranked finding, how often it has been
+// raised in prior finalised reports, the coverage sentence and the optional
+// bookkeeper's line. No composite score and no pillar scores appear anywhere.
 
 // v6: ageing buckets on the document date (matching Xero's aged reports);
 // P&L subtotals carry Xero's own wording; nil accounts suppressed.
@@ -86,6 +89,53 @@ export type AgeingDetail = {
 
 export type ReportNote = { body: string; author: string; createdAt: string };
 
+/**
+ * Page one. Every string here is composed at generation time and FROZEN into
+ * the payload, exactly like the disclaimer — a report that has left the
+ * building must always read the way it read when it was sent.
+ *
+ * Deliberately absent: any composite score, pillar score, grade or band. The
+ * verdict replaces them. The metrics behind it appear later in the report as
+ * supporting evidence only.
+ */
+export type ReportVerdictFinding = {
+  ruleId: string;
+  severity: string;
+  /** Canonical document wording from the rules engine. Never badge wording. */
+  title: string;
+  detail: string;
+  /**
+   * "Raised in each of the last 4 reports", or null when there is no prior
+   * finalised report carrying a verdict to compare against.
+   */
+  repetition: string | null;
+};
+
+export type ReportVerdict = {
+  state: "issues" | "ok" | "partial" | "no_data" | "disconnected";
+  /** The single sentence that opens the report. */
+  headline: string;
+  /** The paragraph under the headline. Empty string when there is nothing to say. */
+  detail: string;
+  /** Ranked, most serious first. Empty unless `state` is "issues". */
+  findings: ReportVerdictFinding[];
+  /** Coverage as prose, never a badge. Always present. */
+  coverage: string;
+  /** Points to a conversation. Null when there is nothing to discuss. */
+  nextStep: string | null;
+  /** Positive Traction's line for this client this month. Omitted when absent. */
+  comment: { body: string; author: string; createdAt: string } | null;
+  /** Frozen non-advice wording that sits beside the coverage sentence. */
+  nonAdvice: string;
+};
+
+/**
+ * Verbatim — sits alongside the frozen disclaimer, which is unchanged. Do not
+ * reword: it is what keeps page one consistent with the engagement terms.
+ */
+export const NON_ADVICE_LINE =
+  "These observations come from the accounting records and do not constitute a compliance review, or tax, legal or solvency advice.";
+
 export type MonthlyReportPayload = {
   payloadVersion: number;
   complete: boolean;
@@ -115,6 +165,11 @@ export type MonthlyReportPayload = {
   receivables: AgeingDetail | null;
   payables: AgeingDetail | null;
   notes: ReportNote[] | null;
+  /**
+   * Page one. Absent on payloads written before v11 — page one is simply not
+   * rendered for those, never reconstructed.
+   */
+  verdict?: ReportVerdict | null;
   /**
    * Verbatim legal wording, rendered with the client name at generation time
    * and frozen here. Absent on payloads written before v4 — callers fall back
