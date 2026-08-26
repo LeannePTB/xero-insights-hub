@@ -42,6 +42,7 @@ function TierSettings() {
   const fetchCtx = useServerFn(getMyContext);
   const fetchCfg = useServerFn(listTierConfig);
   const fetchSettings = useServerFn(listTierSettings);
+  const fetchOverrides = useServerFn(listOrgTierOverrides);
   const saveFn = useServerFn(savePlatformTierWidgets);
   const toggleFn = useServerFn(setTierEnabled);
   const savePlanFn = useServerFn(savePlanLevel);
