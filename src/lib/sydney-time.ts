@@ -85,3 +85,40 @@ export function startOfFinancialYear(date: string): string {
   const { y, m } = parts(date);
   return m >= 7 ? `${y}-07-01` : `${y - 1}-07-01`;
 }
+
+/**
+ * Convert a Sydney calendar date (`YYYY-MM-DD`) to the instant at which that
+ * day starts in Sydney.
+ *
+ * The offset is resolved per date by asking `Intl` what Sydney's wall clock
+ * reads at a candidate instant, so it is +10:00 in winter and +11:00 during
+ * daylight saving without anything hardcoded.
+ */
+export function sydneyStartOfDay(date: string): Date {
+  const { y, m, d } = parts(date);
+  // First guess: treat the wall time as UTC, then correct by the offset that
+  // actually applies at that instant. One correction is enough because the
+  // offset only changes at 2-3am on two days a year and midnight is outside
+  // the ambiguous window in Sydney.
+  const guess = Date.UTC(y, m - 1, d, 0, 0, 0);
+  const offsetMinutes = sydneyOffsetMinutes(new Date(guess));
+  return new Date(guess - offsetMinutes * 60_000);
+}
+
+/** The same instant as an ISO string, for writing to `timestamptz` columns. */
+export function sydneyStartOfDayISO(date: string): string {
+  return sydneyStartOfDay(date).toISOString();
+}
+
+/** Sydney's UTC offset, in minutes, at a given instant. */
+export function sydneyOffsetMinutes(instant: Date): number {
+  const formatted = new Intl.DateTimeFormat("en-US", {
+    timeZone: APP_TIME_ZONE,
+    timeZoneName: "longOffset",
+  }).formatToParts(instant);
+  const name = formatted.find((p) => p.type === "timeZoneName")?.value ?? "GMT+10:00";
+  const match = /GMT([+-])(\d{2}):(\d{2})/.exec(name);
+  if (!match) return 600;
+  const sign = match[1] === "-" ? -1 : 1;
+  return sign * (Number(match[2]) * 60 + Number(match[3]));
+}
