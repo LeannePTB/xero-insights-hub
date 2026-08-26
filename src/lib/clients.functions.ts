@@ -1,5 +1,4 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   ALL_TIERS,
@@ -77,40 +76,37 @@ export const listClients = createServerFn({ method: "POST" })
     // read through the caller's session. It is never recomputed here, and any
     // failure resolves to Standard (fail closed) inside the helper.
     const { clientEntitlement } = await import("@/lib/entitlement.server");
-    const entitlements = await Promise.all(
-      (rows ?? []).map((c: any) => clientEntitlement(context.supabase, c.id)),
+    const entitlementByClient = new Map<string, any>(
+      await Promise.all(
+        (rows ?? []).map(
+          async (c: any) =>
+            [c.id, await clientEntitlement(context.supabase, c.id)] as [string, any],
+        ),
+      ),
     );
 
-    // PostgREST can apply one RPC invocation to an array of argument objects.
-    // This keeps the database function as the single source of truth while
-    // resolving every listed client's Business Health entitlement in one read.
+    // Business Health entitlement per client, keyed by client id — never by
+    // position. It reuses the deny-list reads already made above (plan ceiling,
+    // organisation and client exclusions), so it costs no extra round trip and
+    // mirrors public.client_allowed_widgets. The only thing that function adds
+    // is the WIP ceiling, which never contains `health`, so this can under-
+    // permit but never over-permit. Any failure resolves to false for that
+    // client and never fails the list.
     const healthByClient = new Map<string, boolean>();
-    if (clientIds.length) {
-      const baseUrl = process.env['SUPABASE_URL'];
-      const key = process.env['SUPABASE_PUBLISHABLE_KEY'];
-      const token = getRequestHeader("authorization")?.replace(/^Bearer\s+/i, "") ?? null;
-      if (!baseUrl || !key || !token) throw new Error("Could not check Business Health access.");
-      const response = await fetch(`${baseUrl}/rest/v1/rpc/client_can_use_widget`, {
-        method: "POST",
-        headers: {
-          apikey: key,
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Prefer: "params=multiple-objects",
-        },
-        body: JSON.stringify(clientIds.map((clientId: string) => ({
-          _client_id: clientId,
-          _widget: "health",
-        }))),
-      });
-      if (!response.ok) throw new Error("Could not check Business Health access.");
-      const decisions = await response.json() as boolean[];
-      clientIds.forEach((clientId: string, index: number) => {
-        healthByClient.set(clientId, decisions[index] === true);
-      });
+    for (const c of (rows ?? []) as any[]) {
+      try {
+        const tier = entitlementByClient.get(c.id)?.tier as string | undefined;
+        const widgets = tier
+          ? visibleWidgets(ceilingFor(ceilings, tier), exIndex.effective(tier, { firmId, clientId: c.id }))
+          : [];
+        healthByClient.set(c.id, widgets.includes("health"));
+      } catch (err) {
+        console.error("[listClients] health entitlement failed", { clientId: c.id, err });
+        healthByClient.set(c.id, false);
+      }
     }
 
-    const clients = (rows ?? []).map((c: any, i: number) => {
+    const clients = (rows ?? []).map((c: any) => {
 
       const grantedTiers = Array.from(
         new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
@@ -127,7 +123,7 @@ export const listClients = createServerFn({ method: "POST" })
         // Per-viewer grants + per-client widget overrides. NOT the client's
         // dashboard tier — use `entitlement` for that.
         clientTiers,
-        entitlement: entitlements[i],
+        entitlement: entitlementByClient.get(c.id) ?? null,
         tierWidgets: resolveTierWidgets(c.id),
         healthAllowed: healthByClient.get(c.id) === true,
       };
