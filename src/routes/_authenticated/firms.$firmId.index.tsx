@@ -112,7 +112,9 @@ function FirmPage() {
     is_always_free: plan.isAlwaysFree,
     trial_ends_at: plan.trialEndsAt,
     current_period_end: plan.currentPeriodEnd,
+    planName: planLevels.find((l) => l.scope === "firm" && l.key === plan.tier)?.label ?? null,
   });
+
 
   return (
     <div className="min-h-screen bg-background">
