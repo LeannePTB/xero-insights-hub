@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getReceivablesList } from "@/lib/xero/receivables.functions";
 import { Button } from "@/components/ui/button";
+import { AwaitingSnapshot, DataSourceLine } from "@/components/dashboard/DataSourceLine";
 import { ArrowLeft, Loader2, RefreshCw, HandCoins, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/receivables/$tenantId")({
@@ -39,6 +40,7 @@ function ReceivablesPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               Unpaid customer invoices · as of {data?.asOf ?? "—"} · {data?.invoices.length ?? 0} invoices
             </p>
+            <DataSourceLine source={data?.source} />
           </div>
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
             <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} /> Refresh
@@ -52,6 +54,8 @@ function ReceivablesPage() {
             </div>
           ) : error ? (
             <div className="m-6 rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{(error as Error).message}</div>
+          ) : data?.source?.mode === "pending" ? (
+            <div className="p-6"><AwaitingSnapshot /></div>
           ) : !data?.invoices.length ? (
             <div className="p-10 text-center text-sm text-muted-foreground">No outstanding invoices.</div>
           ) : (

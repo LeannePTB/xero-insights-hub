@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, HandCoins, Loader2 } from "lucide-react";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
+import { AwaitingSnapshot, DataSourceLine } from "@/components/dashboard/DataSourceLine";
 import { getReceivablesList } from "@/lib/xero/receivables.functions";
 
 function fmt(n: number, ccy = "AUD") {
@@ -48,6 +49,7 @@ export function ReceivablesWidget({
             <HandCoins className="h-4 w-4 text-primary" /> Accounts Receivable Ageing
             <BasisBadge basis={basis} />
           </h3>
+          <DataSourceLine source={data?.source} />
           <p className="text-xs text-muted-foreground">Oldest outstanding customer invoices.</p>
         </div>
       </div>
@@ -59,6 +61,8 @@ export function ReceivablesWidget({
           </div>
         ) : error ? (
           <p className="text-sm text-destructive">{(error as Error).message}</p>
+        ) : data?.source?.mode === "pending" ? (
+          <AwaitingSnapshot />
         ) : !oldest.length ? (
           <p className="text-sm text-muted-foreground">No outstanding invoices.</p>
         ) : (

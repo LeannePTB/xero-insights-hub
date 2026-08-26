@@ -41,23 +41,14 @@ export const getAgedReceivables = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
-    const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "receivables");
-    const conn = await getConnectionByTenant(data.tenantId);
-
-    const invoices: XeroInvoice[] = [];
-    for (let page = 1; page <= 5; page++) {
-      const res = await xeroGet<{ Invoices?: XeroInvoice[] }>(conn, "Invoices", {
-        where:
-          'Type=="ACCREC"&&Status!="PAID"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"',
-        page: String(page),
-        order: "DueDate ASC",
-      });
-      const batch = res.Invoices ?? [];
-      invoices.push(...batch);
-      if (batch.length < 100) break;
-    }
+    const { resolveOpenInvoices } = await import("./open-invoices.server");
+    const { invoices, source } = await resolveOpenInvoices({
+      supabase: context.supabase,
+      tenantId: data.tenantId,
+      side: "ACCREC",
+    });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -98,7 +89,7 @@ export const getAgedReceivables = createServerFn({ method: "POST" })
       buckets: labels.map((l) => bucketMap.get(l)!),
       topCustomers,
     };
-    return result;
+    return { ...result, source };
   });
 
 export type ReceivableInvoice = {
@@ -120,39 +111,20 @@ export const getReceivablesList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
-    const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "receivables");
-    const conn = await getConnectionByTenant(data.tenantId);
-
-    let shortCode: string | null = null;
-    try {
-      const orgRes = await xeroGet<{ Organisations?: { ShortCode?: string }[] }>(
-        conn,
-        "Organisations",
-      );
-      shortCode = orgRes.Organisations?.[0]?.ShortCode ?? null;
-    } catch {
-      shortCode = null;
-    }
+    const { resolveOpenInvoices, resolveShortCode } = await import("./open-invoices.server");
+    const { invoices, source } = await resolveOpenInvoices({
+      supabase: context.supabase,
+      tenantId: data.tenantId,
+      side: "ACCREC",
+    });
+    const shortCode = await resolveShortCode(context.supabase, data.tenantId, source.mode);
     function deepLink(path: string): string {
       if (shortCode) {
         return `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(shortCode)}&redirecturl=${encodeURIComponent(path)}`;
       }
       return `https://go.xero.com${path}`;
-    }
-
-    const invoices: any[] = [];
-    for (let page = 1; page <= 10; page++) {
-      const res = await xeroGet<{ Invoices?: any[] }>(conn, "Invoices", {
-        where:
-          'Type=="ACCREC"&&Status!="PAID"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"',
-        page: String(page),
-        order: "DueDate ASC",
-      });
-      const batch = res.Invoices ?? [];
-      invoices.push(...batch);
-      if (batch.length < 100) break;
     }
 
     const today = new Date();
@@ -184,6 +156,6 @@ export const getReceivablesList = createServerFn({ method: "POST" })
       })
       .sort((a, b) => b.daysOverdue - a.daysOverdue);
 
-    return { asOf: today.toISOString().slice(0, 10), invoices: list };
+    return { asOf: today.toISOString().slice(0, 10), invoices: list, source };
   });
 
