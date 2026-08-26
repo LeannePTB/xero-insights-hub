@@ -11,9 +11,8 @@
 // snapshot read goes through `context.supabase`, so RLS applies as the caller.
 
 import { INVOICE_PAGE_LIMIT } from "./snapshot-keys";
-import { readSnapshot } from "./snapshot-read.server";
+import { connectionStatus, readSnapshot } from "./snapshot-read.server";
 import { isSnapshotDisabled } from "./snapshot-flags";
-import { connectionStatus } from "./snapshot-read.server";
 import { liveSource, pendingSource, type SnapshotSource } from "./snapshot-source";
 
 export type InvoiceSide = "ACCREC" | "ACCPAY";
