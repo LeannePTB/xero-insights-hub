@@ -11,6 +11,8 @@ import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 import { firmPlanView } from "@/lib/firmPlans";
 import { useFirmWidgets } from "@/hooks/useFirmWidget";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
+
 import { toast } from "sonner";
 import { SubscriptionExpiryBanner } from "@/components/admin/SubscriptionExpiryBanner";
 
@@ -61,6 +63,9 @@ function FirmPage() {
   const fetchCtx = useServerFn(getMyContext);
   // Organisation-level features are gated by the plan (database-resolved).
   const canConsolidate = useFirmWidgets(firmId).can("loan_consolidation");
+  // Plan names come from the plan_levels catalogue, never a hardcoded map.
+  const { levels: planLevels } = usePlanLevels("firm");
+
 
 
   const firmQ = useQuery({
@@ -112,7 +117,9 @@ function FirmPage() {
     is_always_free: plan.isAlwaysFree,
     trial_ends_at: plan.trialEndsAt,
     current_period_end: plan.currentPeriodEnd,
+    planName: planLevels.find((l) => l.scope === "firm" && l.key === plan.tier)?.label ?? null,
   });
+
 
   return (
     <div className="min-h-screen bg-background">
