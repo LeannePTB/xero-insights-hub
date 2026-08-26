@@ -11,6 +11,8 @@ import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 import { firmPlanView } from "@/lib/firmPlans";
 import { useFirmWidgets } from "@/hooks/useFirmWidget";
+import { usePlanLevels } from "@/hooks/usePlanLevels";
+
 import { toast } from "sonner";
 import { SubscriptionExpiryBanner } from "@/components/admin/SubscriptionExpiryBanner";
 
