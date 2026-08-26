@@ -258,9 +258,6 @@ export function FirmClientsSection({
                     (t) => t !== effectiveTier,
                   );
 
-                  const tenantIds = (c.client_xero_orgs ?? [])
-                    .map((o: any) => o.xero_connections?.tenant_id)
-                    .filter(Boolean);
                   const tenantNames = (c.client_xero_orgs ?? [])
                     .map((o: any) => o.xero_connections?.tenant_name)
                     .filter(Boolean)
