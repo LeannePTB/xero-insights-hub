@@ -403,6 +403,7 @@ export function TierEditor({
   toggleDisabled,
   onDelete,
   onEdit,
+  detachedOrgs,
 }: {
   tier: DashboardTier;
   initial: WidgetKey[];
@@ -417,9 +418,12 @@ export function TierEditor({
   toggleDisabled?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
+  detachedOrgs?: { firmId: string; name: string }[];
 }) {
   const [selected, setSelected] = useState<Set<WidgetKey>>(new Set(initial));
+  const [showDetached, setShowDetached] = useState(false);
   useEffect(() => { setSelected(new Set(initial)); }, [initial.join(",")]);
+
 
   const dirty = useMemo(() => {
     const a = [...selected].sort().join(",");
