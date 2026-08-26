@@ -316,6 +316,13 @@ async function waitForRateLimit(res: Response, attempt: number) {
   await new Promise((r) => setTimeout(r, Math.min(seconds, 60) * 1000));
 }
 
+/**
+ * Public entry point. Identical signature, return type and failure behaviour
+ * to before; the only addition is a per-request memo so the same report is
+ * not pulled from Xero twice while serving one request. Retry, token refresh
+ * and backoff are untouched — they live in `xeroGetUncached` below and run
+ * inside the memoised call, so a retried request is still one memo entry.
+ */
 export async function xeroGet<T = unknown>(
   conn: Connection,
   path: string,
@@ -323,6 +330,19 @@ export async function xeroGet<T = unknown>(
   retries = 1,
   rateRetries = 3,
 ): Promise<T> {
+  const { memoiseXeroGet, xeroMemoKey } = await import("./request-memo.server");
+  const key = xeroMemoKey("accounting", conn.tenant_id, path, params);
+  return memoiseXeroGet<T>(key, () => xeroGetUncached<T>(conn, path, params, retries, rateRetries));
+}
+
+async function xeroGetUncached<T = unknown>(
+  conn: Connection,
+  path: string,
+  params: Record<string, string | undefined> = {},
+  retries = 1,
+  rateRetries = 3,
+): Promise<T> {
+
   // Don't fire a request we know Xero will reject for a missing scope — that
   // produced hundreds of predictable 401s and junk telemetry rows.
   const requiredScope = PATH_SCOPE[path];
@@ -355,14 +375,14 @@ export async function xeroGet<T = unknown>(
   // the single token-refresh retry (and vice versa).
   if (res.status === 429 && rateRetries > 0) {
     await waitForRateLimit(res, 4 - rateRetries);
-    return xeroGet<T>(conn, path, params, retries, rateRetries - 1);
+    return xeroGetUncached<T>(conn, path, params, retries, rateRetries - 1);
   }
   if (res.status === 429) {
     throw new Error(XERO_RATE_LIMIT_MESSAGE);
   }
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
-    return xeroGet<T>(refreshed, path, params, retries - 1, rateRetries);
+    return xeroGetUncached<T>(refreshed, path, params, retries - 1, rateRetries);
   }
 
   if (!res.ok) {
@@ -430,6 +450,17 @@ export async function xeroGetAssets<T = unknown>(
   params: Record<string, string | undefined> = {},
   retries = 1,
 ): Promise<T> {
+  const { memoiseXeroGet, xeroMemoKey } = await import("./request-memo.server");
+  const key = xeroMemoKey("assets", conn.tenant_id, path, params);
+  return memoiseXeroGet<T>(key, () => xeroGetAssetsUncached<T>(conn, path, params, retries));
+}
+
+async function xeroGetAssetsUncached<T = unknown>(
+  conn: Connection,
+  path: string,
+  params: Record<string, string | undefined> = {},
+  retries = 1,
+): Promise<T> {
   if (conn.id) {
     const missing = await missingScopesForConnection(conn.id);
     if (missing.includes("assets.read")) {
@@ -453,11 +484,11 @@ export async function xeroGetAssets<T = unknown>(
   if (res.status === 429 && retries > 0) {
     const retryAfter = Math.min(parseInt(res.headers.get("retry-after") || "5", 10), 10);
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
-    return xeroGetAssets<T>(conn, path, params, retries - 1);
+    return xeroGetAssetsUncached<T>(conn, path, params, retries - 1);
   }
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
-    return xeroGetAssets<T>(refreshed, path, params, retries - 1);
+    return xeroGetAssetsUncached<T>(refreshed, path, params, retries - 1);
   }
   if (!res.ok) {
     const body = await res.text();
