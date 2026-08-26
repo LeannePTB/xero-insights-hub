@@ -128,7 +128,7 @@ export type TaxLiabilities = {
 };
 
 // Tax-line extraction is pure and shared with the snapshot rules engine.
-import { buildProtectedMoney, extractTaxLines } from "./tax-lines";
+import { buildProtectedMoney, extractTaxLines, taxLinesOrThrow } from "./tax-lines";
 import type { ProtectedMoney } from "./tax-lines";
 export { classifyTaxLine, extractTaxLines, buildProtectedMoney } from "./tax-lines";
 export type {
@@ -157,17 +157,20 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
     const conn = await getConnectionByTenant(data.tenantId);
     const mode = data.mode ?? "balance";
 
-    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.date });
+    const [res, accountsRes] = await Promise.all([
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.date }),
+      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
+    ]);
     const report = res.Reports?.[0];
     if (!report) throw new Error("No Balance Sheet returned by Xero.");
-    const endLines = extractTaxLines(report);
+    const endLines = taxLinesOrThrow(extractTaxLines(report, accountsRes));
 
     let lines = endLines;
     if (mode === "movement" && data.fromDate) {
       const openingDate = isoDayBefore(data.fromDate);
       const openRes = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: openingDate });
       const openReport = openRes.Reports?.[0];
-      const openLines = openReport ? extractTaxLines(openReport) : [];
+      const openLines = openReport ? taxLinesOrThrow(extractTaxLines(openReport, accountsRes)) : [];
       const openMap = new Map<string, number>();
       for (const l of openLines) openMap.set(l.name, (openMap.get(l.name) ?? 0) + l.amount);
       const seen = new Set<string>();
@@ -219,10 +222,13 @@ export const getSuperPayable = createServerFn({ method: "POST" })
     const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
     const conn = await getConnectionByTenant(data.tenantId);
-    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.date });
+    const [res, accountsRes] = await Promise.all([
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.date }),
+      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
+    ]);
     const report = res.Reports?.[0];
     if (!report) return { asAtDate: data.date, balance: 0, lines: [] };
-    const all = extractTaxLines(report);
+    const all = taxLinesOrThrow(extractTaxLines(report, accountsRes));
     const supers = all.filter((l) => l.category === "super").map((l) => ({ name: l.name, amount: l.amount }));
     const balance = supers.reduce((s, l) => s + l.amount, 0);
     return { asAtDate: data.date, balance, lines: supers };
@@ -251,9 +257,12 @@ export const getCurrentTaxBalance = createServerFn({ method: "POST" })
     await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
     const conn = await getConnectionByTenant(data.tenantId);
     const date = data.date ?? new Date().toISOString().slice(0, 10);
-    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date });
+    const [res, accountsRes] = await Promise.all([
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date }),
+      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
+    ]);
     const report = res.Reports?.[0];
-    const lines = report ? extractTaxLines(report) : [];
+    const lines = report ? taxLinesOrThrow(extractTaxLines(report, accountsRes)) : [];
     const out: CurrentTaxBalance = {
       asAtDate: date,
       gst: 0,
@@ -309,17 +318,18 @@ export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
     const conn = await getConnectionByTenant(data.tenantId);
     const asAt = data.date ?? new Date().toISOString().slice(0, 10);
 
-    const [bsRes, basis] = await Promise.all([
+    const [bsRes, accountsRes, basis] = await Promise.all([
       xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {
         date: asAt,
         ...((data.basis ?? null) === "cash" ? { paymentsOnly: "true" } : {}),
       }),
+      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
       data.basis
         ? Promise.resolve(data.basis)
         : getClientReportBasis(data.tenantId).catch(() => "accrual" as const),
     ]);
     const bsReport = bsRes.Reports?.[0];
-    const bsLines = bsReport ? extractTaxLines(bsReport) : [];
+    const bsLines = bsReport ? taxLinesOrThrow(extractTaxLines(bsReport, accountsRes)) : [];
     // Exclude super – it lives in the Superannuation widget.
     const taxLines = bsLines.filter((l) => l.category !== "super");
     const balanceSheetTotal = taxLines.reduce((s, l) => s + l.amount, 0);
@@ -433,8 +443,11 @@ export const getProtectedMoney = createServerFn({ method: "POST" })
     await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
     const conn = await getConnectionByTenant(data.tenantId);
     const date = data.date ?? new Date().toISOString().slice(0, 10);
-    const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date });
+    const [res, accountsRes] = await Promise.all([
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date }),
+      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
+    ]);
     const report = res.Reports?.[0];
-    const lines = report ? extractTaxLines(report) : [];
+    const lines = report ? taxLinesOrThrow(extractTaxLines(report, accountsRes)) : [];
     return buildProtectedMoney(date, lines);
   });
