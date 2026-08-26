@@ -9,6 +9,7 @@ import { listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
 import { getMyContext } from "@/lib/roles.functions";
+import { listClientVerdicts } from "@/lib/health/verdicts.functions";
 
 
 import { ALL_TIERS, tierLabel, type DashboardTier } from "@/lib/tiers";
@@ -84,6 +85,7 @@ export function FirmClientsSection({
   const fetchPlanTiers = useServerFn(getAllowedTiersForFirm);
   const removeClient = useServerFn(deleteClient);
   const fetchSupportAccess = useServerFn(getSupportAccess);
+  const fetchVerdicts = useServerFn(listClientVerdicts);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
 
   const supportQ = useQuery({
@@ -137,6 +139,16 @@ export function FirmClientsSection({
 
   const clients = clientsQ.data?.clients ?? [];
   const atLimit = typeof clientLimit === "number" && clients.length >= clientLimit;
+
+  // One query for every badge on the list: reads stored snapshots through RLS
+  // as the caller and makes zero Xero calls. Staff-only surface.
+  const clientIdsForVerdicts = clients.map((c: any) => c.id);
+  const verdictsQ = useQuery({
+    queryKey: ["client-verdicts", firmId, clientIdsForVerdicts.join(",")],
+    enabled: showHealth && canOpenClientData && clientIdsForVerdicts.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => fetchVerdicts({ data: { firmId, clientIds: clientIdsForVerdicts } }),
+  });
 
   return (
     <div>
@@ -246,9 +258,6 @@ export function FirmClientsSection({
                     (t) => t !== effectiveTier,
                   );
 
-                  const tenantIds = (c.client_xero_orgs ?? [])
-                    .map((o: any) => o.xero_connections?.tenant_id)
-                    .filter(Boolean);
                   const tenantNames = (c.client_xero_orgs ?? [])
                     .map((o: any) => o.xero_connections?.tenant_name)
                     .filter(Boolean)
@@ -266,7 +275,7 @@ export function FirmClientsSection({
                           {tenantNames || "No Xero org linked"}
                         </div>
                         {canOpenClientData && showHealth && c.healthAllowed && (
-                            <ClientHealthBadge tenantId={tenantIds[0] ?? null} clientId={c.id} />
+                            <ClientHealthBadge verdict={verdictsQ.data?.verdicts?.[c.id]} />
                           )}
                       </div>
                     </>

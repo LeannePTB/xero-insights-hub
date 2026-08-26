@@ -125,45 +125,16 @@ export type TaxLiabilities = {
   mode?: "balance" | "movement";
 };
 
-function classifyTaxLine(name: string): TaxLiabilities["lines"][number]["category"] | null {
-  const n = name.toLowerCase();
-  if (n.includes("gst") || n.includes("vat") || n.includes("sales tax")) return "gst";
-  if (n.includes("payg") || n.includes("paye") || n.includes("withholding")) return "payg";
-  if (n.includes("super")) return "super";
-  if (n.includes("tax payable") || n.includes("income tax") || n.includes("bas")) return "other-tax";
-  return null;
-}
+// Tax-line extraction is pure and shared with the snapshot rules engine.
+import { buildProtectedMoney, extractTaxLines } from "./tax-lines";
+import type { ProtectedMoney } from "./tax-lines";
+export { classifyTaxLine, extractTaxLines, buildProtectedMoney } from "./tax-lines";
+export type {
+  ProtectedMoney,
+  ProtectedMoneyComponent,
+  ProtectedMoneyComponentKey,
+} from "./tax-lines";
 
-function walkRows(rows: XeroReportRow[] | undefined, visit: (r: XeroReportRow) => void) {
-  if (!rows) return;
-  for (const r of rows) {
-    visit(r);
-    if (r.Rows) walkRows(r.Rows, visit);
-  }
-}
-
-function extractTaxLines(report: any) {
-  const lines: (TaxLiabilities["lines"][number] & { accountId?: string })[] = [];
-  walkRows(report?.Rows, (r) => {
-    if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
-    const name = r.Cells[0].Value;
-    if (!name) return;
-    const category = classifyTaxLine(name);
-    if (!category) return;
-    const amount = parseAmount(r.Cells[1].Value);
-    let accountId: string | undefined;
-    for (const cell of r.Cells) {
-      const attrs = (cell as any).Attributes;
-      if (!Array.isArray(attrs)) continue;
-      for (const a of attrs) {
-        if (a?.Id === "account" && typeof a.Value === "string") accountId = a.Value;
-      }
-      if (accountId) break;
-    }
-    lines.push({ name, amount, category, accountId });
-  });
-  return lines;
-}
 
 function isoDayBefore(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -443,83 +414,13 @@ export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
 // Protected money – money the business holds but does not own.
 // GST net position + PAYG withheld not yet remitted + superannuation accrued
 // but unpaid. Superannuation IS included here (unlike getTaxLiabilityBuckets):
-// it is already owed to employees. Ships unused.
+// it is already owed to employees.
+//
+// The builder and its types live in `./tax-lines` so the snapshot rules engine
+// can reuse them without importing the Xero API client. They are re-exported
+// at the top of this file.
 // ============================================================================
 
-export type ProtectedMoneyComponentKey = "gst" | "payg" | "super";
-
-/** A component either resolves to an amount, or is explicitly unresolved
- *  because no Balance Sheet account matched its name patterns. An unresolved
- *  component is NOT the same as a resolved zero. */
-export type ProtectedMoneyComponent =
-  | {
-      key: ProtectedMoneyComponentKey;
-      label: string;
-      status: "resolved";
-      amount: number;
-      /** Account lines that contributed to the amount. */
-      accounts: { name: string; amount: number }[];
-    }
-  | {
-      key: ProtectedMoneyComponentKey;
-      label: string;
-      status: "unresolved";
-      amount: null;
-      accounts: [];
-      /** Why it could not be resolved, naming the component. */
-      reason: string;
-    };
-
-export type ProtectedMoney = {
-  asAtDate: string;
-  /** Sum of the resolved components only. */
-  total: number;
-  /** True when every component resolved; false when any is unresolved. */
-  complete: boolean;
-  components: ProtectedMoneyComponent[];
-  /** Keys of the components that could not be resolved. */
-  unresolved: ProtectedMoneyComponentKey[];
-};
-
-const PROTECTED_MONEY_LABELS: Record<ProtectedMoneyComponentKey, string> = {
-  gst: "GST net position",
-  payg: "PAYG withholding not yet remitted",
-  super: "Superannuation accrued but unpaid",
-};
-
-/** Build the protected-money figure from already-extracted tax lines, so a
- *  caller that already has a Balance Sheet does not fetch it again. */
-export function buildProtectedMoney(
-  asAtDate: string,
-  lines: { name: string; amount: number; category: "gst" | "payg" | "super" | "other-tax" }[],
-): ProtectedMoney {
-  const keys: ProtectedMoneyComponentKey[] = ["gst", "payg", "super"];
-  const components: ProtectedMoneyComponent[] = keys.map((key) => {
-    const matched = lines.filter((l) => l.category === key);
-    const label = PROTECTED_MONEY_LABELS[key];
-    if (!matched.length) {
-      return {
-        key,
-        label,
-        status: "unresolved",
-        amount: null,
-        accounts: [],
-        reason: `${label}: no account in the Balance Sheet matched this component, so the amount is unknown (this is not zero).`,
-      };
-    }
-    return {
-      key,
-      label,
-      status: "resolved",
-      amount: matched.reduce((s, l) => s + l.amount, 0),
-      accounts: matched.map((l) => ({ name: l.name, amount: l.amount })),
-    };
-  });
-
-  const unresolved = components.filter((c) => c.status === "unresolved").map((c) => c.key);
-  const total = components.reduce((s, c) => s + (c.status === "resolved" ? c.amount : 0), 0);
-  return { asAtDate, total, complete: unresolved.length === 0, components, unresolved };
-}
 
 export const getProtectedMoney = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
