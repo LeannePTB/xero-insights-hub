@@ -61,6 +61,9 @@ function FirmPage() {
   const fetchCtx = useServerFn(getMyContext);
   // Organisation-level features are gated by the plan (database-resolved).
   const canConsolidate = useFirmWidgets(firmId).can("loan_consolidation");
+  // Plan names come from the plan_levels catalogue, never a hardcoded map.
+  const { levels: planLevels } = usePlanLevels("firm");
+
 
 
   const firmQ = useQuery({
