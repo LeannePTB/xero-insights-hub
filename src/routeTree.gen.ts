@@ -38,6 +38,7 @@ import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/l
 import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as ApiPublicXeroSnapshotRefreshRouteImport } from './routes/api/public/xero/snapshot-refresh'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
 import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
@@ -213,6 +214,12 @@ const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
   path: '/lovable/email/auth/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicXeroSnapshotRefreshRoute =
+  ApiPublicXeroSnapshotRefreshRouteImport.update({
+    id: '/api/public/xero/snapshot-refresh',
+    path: '/api/public/xero/snapshot-refresh',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
   id: '/api/public/xero/callback',
   path: '/api/public/xero/callback',
@@ -360,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
+  '/api/public/xero/snapshot-refresh': typeof ApiPublicXeroSnapshotRefreshRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -406,6 +414,7 @@ export interface FileRoutesByTo {
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
+  '/api/public/xero/snapshot-refresh': typeof ApiPublicXeroSnapshotRefreshRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -457,6 +466,7 @@ export interface FileRoutesById {
   '/_authenticated/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
+  '/api/public/xero/snapshot-refresh': typeof ApiPublicXeroSnapshotRefreshRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
   '/lovable/email/queue/process': typeof LovableEmailQueueProcessRoute
@@ -508,6 +518,7 @@ export interface FileRouteTypes {
     | '/firms/$firmId/settings'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
+    | '/api/public/xero/snapshot-refresh'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -554,6 +565,7 @@ export interface FileRouteTypes {
     | '/firms/$firmId/settings'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
+    | '/api/public/xero/snapshot-refresh'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -604,6 +616,7 @@ export interface FileRouteTypes {
     | '/_authenticated/firms/$firmId/settings'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
+    | '/api/public/xero/snapshot-refresh'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
     | '/lovable/email/queue/process'
@@ -634,6 +647,7 @@ export interface RootRouteChildren {
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicXeroCallbackRoute: typeof ApiPublicXeroCallbackRoute
+  ApiPublicXeroSnapshotRefreshRoute: typeof ApiPublicXeroSnapshotRefreshRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
   LovableEmailQueueProcessRoute: typeof LovableEmailQueueProcessRoute
@@ -844,6 +858,13 @@ declare module '@tanstack/react-router' {
       path: '/lovable/email/auth/preview'
       fullPath: '/lovable/email/auth/preview'
       preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/xero/snapshot-refresh': {
+      id: '/api/public/xero/snapshot-refresh'
+      path: '/api/public/xero/snapshot-refresh'
+      fullPath: '/api/public/xero/snapshot-refresh'
+      preLoaderRoute: typeof ApiPublicXeroSnapshotRefreshRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/xero/callback': {
@@ -1115,6 +1136,7 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicXeroCallbackRoute: ApiPublicXeroCallbackRoute,
+  ApiPublicXeroSnapshotRefreshRoute: ApiPublicXeroSnapshotRefreshRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
   LovableEmailQueueProcessRoute: LovableEmailQueueProcessRoute,
