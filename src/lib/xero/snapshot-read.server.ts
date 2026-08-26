@@ -112,9 +112,10 @@ export async function readSnapshot(opts: {
     payload: data.payload,
     source: {
       mode: "snapshot",
-      // Stored as a Sydney start-of-day timestamptz; the calendar date is what
-      // the figures describe.
-      asAt: String(data.as_at).slice(0, 10),
+      // Stored as a Sydney start-of-day timestamptz. Render the SYDNEY
+      // calendar date, not the UTC one: slicing the raw string would show the
+      // previous day for every snapshot taken after 10am UTC.
+      asAt: sydneyDate(new Date(data.as_at as string)),
       fetchedAt,
       stale: ageSeconds >= threshold,
       complete: data.complete !== false,
