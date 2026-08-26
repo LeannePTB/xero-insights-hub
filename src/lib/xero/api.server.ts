@@ -450,6 +450,17 @@ export async function xeroGetAssets<T = unknown>(
   params: Record<string, string | undefined> = {},
   retries = 1,
 ): Promise<T> {
+  const { memoiseXeroGet, xeroMemoKey } = await import("./request-memo.server");
+  const key = xeroMemoKey("assets", conn.tenant_id, path, params);
+  return memoiseXeroGet<T>(key, () => xeroGetAssetsUncached<T>(conn, path, params, retries));
+}
+
+async function xeroGetAssetsUncached<T = unknown>(
+  conn: Connection,
+  path: string,
+  params: Record<string, string | undefined> = {},
+  retries = 1,
+): Promise<T> {
   if (conn.id) {
     const missing = await missingScopesForConnection(conn.id);
     if (missing.includes("assets.read")) {
@@ -473,11 +484,11 @@ export async function xeroGetAssets<T = unknown>(
   if (res.status === 429 && retries > 0) {
     const retryAfter = Math.min(parseInt(res.headers.get("retry-after") || "5", 10), 10);
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
-    return xeroGetAssets<T>(conn, path, params, retries - 1);
+    return xeroGetAssetsUncached<T>(conn, path, params, retries - 1);
   }
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
-    return xeroGetAssets<T>(refreshed, path, params, retries - 1);
+    return xeroGetAssetsUncached<T>(refreshed, path, params, retries - 1);
   }
   if (!res.ok) {
     const body = await res.text();
