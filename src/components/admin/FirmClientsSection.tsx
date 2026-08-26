@@ -9,6 +9,7 @@ import { listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
 import { getMyContext } from "@/lib/roles.functions";
+import { listClientVerdicts } from "@/lib/health/verdicts.functions";
 
 
 import { ALL_TIERS, tierLabel, type DashboardTier } from "@/lib/tiers";
