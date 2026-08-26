@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowRight, Wallet, Loader2 } from "lucide-react";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
+import { AwaitingSnapshot, DataSourceLine } from "@/components/dashboard/DataSourceLine";
 import { getPayablesList } from "@/lib/xero/payables.functions";
 
 function fmt(n: number, ccy = "AUD") {
@@ -48,6 +49,7 @@ export function PayablesWidget({
             <Wallet className="h-4 w-4 text-primary" /> Accounts Payable Ageing
             <BasisBadge basis={basis} />
           </h3>
+          <DataSourceLine source={data?.source} />
           <p className="text-xs text-muted-foreground">Oldest outstanding supplier bills.</p>
         </div>
       </div>
@@ -59,6 +61,8 @@ export function PayablesWidget({
           </div>
         ) : error ? (
           <p className="text-sm text-destructive">{(error as Error).message}</p>
+        ) : data?.source?.mode === "pending" ? (
+          <AwaitingSnapshot />
         ) : !oldest.length ? (
           <p className="text-sm text-muted-foreground">No outstanding bills.</p>
         ) : (
