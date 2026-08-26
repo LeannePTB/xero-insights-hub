@@ -147,7 +147,12 @@ export function composeVerdict(
   const detail =
     verdict.state === "issues"
       ? [findings[0]!.detail, findings[0]!.repetition].filter(Boolean).join(" ")
-      : verdict.detail;
+      : verdict.state === "no_data" || verdict.state === "stale"
+        ? // The engine's own wording for these states talks about snapshots and
+          // overnight refreshes, which is staff language. A delivered document
+          // states the position plainly instead.
+          "The accounting records needed for this review could not be read when this report was prepared."
+        : verdict.detail;
 
   return {
     state:
