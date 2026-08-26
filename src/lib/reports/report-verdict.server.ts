@@ -15,6 +15,7 @@ import type { AsAtEntry } from "@/lib/xero/asat-ledger.server";
 import type { ReportVerdict, ReportVerdictFinding } from "./monthly-report";
 import { NON_ADVICE_LINE } from "./monthly-report";
 import { evaluateFromRows, type SnapshotRow, type Verdict } from "@/lib/health/rules.server";
+import { dedupeGapSentences } from "./coverage-gaps";
 
 type Conn = Parameters<typeof import("@/lib/xero/api.server").xeroGet>[0];
 
@@ -99,8 +100,11 @@ const COVERAGE_ALL =
   "Every check in this review was completed against the accounting records for the period.";
 
 function coverageSentence(gaps: string[]): string {
-  if (!gaps.length) return COVERAGE_ALL;
-  const joined = gaps.join(" ");
+  // De-duplicated by cause, not by rule: two rules blocked by the same missing
+  // input become one sentence. See @/lib/reports/coverage-gaps.
+  const merged = dedupeGapSentences(gaps);
+  if (!merged.length) return COVERAGE_ALL;
+  const joined = merged.join(" ");
   return `Some parts of this review could not be completed from the records available for the period. ${joined}`;
 }
 
