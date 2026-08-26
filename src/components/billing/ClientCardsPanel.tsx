@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { getClientWidgetMatrix, setClientWidget } from "@/lib/tier-config.functions";
-import { WIDGET_LABEL, type WidgetKey } from "@/lib/tiers";
+import { WIDGET_LABEL, toggleableWidgets, widgetKeyGroup, type WidgetKey } from "@/lib/tiers";
 import { InTestingBadge } from "@/components/dashboard/InTestingBadge";
 
 /**
@@ -48,11 +48,24 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
     );
   }
 
+  // One row per rendered card: deprecated keys (superannuation, true
+  // break-even) render inside another card and never get a row of their own.
+  const keysInList = new Set(q.data.rows.map((r) => r.widget as string));
+  const canonicalRows = toggleableWidgets(q.data.rows.map((r) => r.widget as string));
+  const byKey = new Map(q.data.rows.map((r) => [r.widget as string, r]));
+  const rows = canonicalRows
+    .map((k) => byKey.get(k))
+    .filter((r): r is NonNullable<typeof r> => !!r);
+
   async function onToggle(w: WidgetKey, next: boolean, isWip = false) {
     if (busy) return;
     setBusy(w);
     try {
-      await toggle({ data: { clientId, widget: w, enabled: next } });
+      // Merged cards write BOTH stored keys so a pair never half-toggles.
+      for (const key of widgetKeyGroup(w)) {
+        if (!keysInList.has(key)) continue;
+        await toggle({ data: { clientId, widget: key as WidgetKey, enabled: next } });
+      }
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["client-widget-matrix", clientId] }),
         // The dashboard reads ["client-widgets", clientId, <preview tier>].
@@ -91,7 +104,7 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
       </p>
 
       <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
-        {q.data.rows.map((r) => {
+        {rows.map((r) => {
           const w = r.widget as WidgetKey;
           const orgOff = r.reason === "organisation";
           return (
