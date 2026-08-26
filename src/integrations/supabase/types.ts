@@ -2140,6 +2140,168 @@ export type Database = {
           },
         ]
       }
+      xero_snapshot_runs: {
+        Row: {
+          client_id: string
+          created_at: string
+          duration_ms: number | null
+          error: string | null
+          finished_at: string | null
+          firm_id: string
+          id: string
+          reports_failed: number
+          reports_requested: number
+          reports_succeeded: number
+          started_at: string
+          status: string
+          tenant_id: string
+          trigger: string
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          finished_at?: string | null
+          firm_id: string
+          id?: string
+          reports_failed?: number
+          reports_requested?: number
+          reports_succeeded?: number
+          started_at?: string
+          status?: string
+          tenant_id: string
+          trigger: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          duration_ms?: number | null
+          error?: string | null
+          finished_at?: string | null
+          firm_id?: string
+          id?: string
+          reports_failed?: number
+          reports_requested?: number
+          reports_succeeded?: number
+          started_at?: string
+          status?: string
+          tenant_id?: string
+          trigger?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_snapshot_runs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xero_snapshot_runs_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "xero_snapshot_runs_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      xero_snapshots: {
+        Row: {
+          as_at: string
+          client_id: string
+          complete: boolean
+          created_at: string
+          fetched_at: string
+          firm_id: string
+          id: string
+          params: Json
+          params_hash: string
+          payload: Json
+          payload_version: number
+          report_key: string
+          run_id: string | null
+          source_endpoint: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          as_at: string
+          client_id: string
+          complete?: boolean
+          created_at?: string
+          fetched_at?: string
+          firm_id: string
+          id?: string
+          params?: Json
+          params_hash: string
+          payload: Json
+          payload_version: number
+          report_key: string
+          run_id?: string | null
+          source_endpoint: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          as_at?: string
+          client_id?: string
+          complete?: boolean
+          created_at?: string
+          fetched_at?: string
+          firm_id?: string
+          id?: string
+          params?: Json
+          params_hash?: string
+          payload?: Json
+          payload_version?: number
+          report_key?: string
+          run_id?: string | null
+          source_endpoint?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_snapshots_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xero_snapshots_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "xero_snapshots_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xero_snapshots_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "xero_snapshot_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       admin_firm_overview: {
@@ -2266,6 +2428,10 @@ export type Database = {
         Returns: undefined
       }
       org_addon_widgets: { Args: never; Returns: string[] }
+      prune_xero_snapshot_runs: {
+        Args: { _abandoned_hours?: number; _retention_days?: number }
+        Returns: number
+      }
       purge_expired_security_logs: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
