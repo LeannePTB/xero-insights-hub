@@ -217,11 +217,13 @@ export async function refreshTenant(
   }
 
   const startedCalls = budget.used;
+  const startedAt = Date.now();
   // Sydney, not UTC: at 3am Sydney the UTC date is still yesterday.
   const reports = snapshotReports(sydneyDate());
   let succeeded = 0;
   let failed = 0;
   let fatal: string | null = null;
+  let ceiling: SnapshotCallCeilingError | null = null;
   const errors: string[] = [];
 
   try {
@@ -248,6 +250,7 @@ export async function refreshTenant(
       }
     }
   } catch (e) {
+    if (e instanceof SnapshotCallCeilingError) ceiling = e;
     fatal = e instanceof Error ? e.message : String(e);
   }
 
@@ -268,9 +271,12 @@ export async function refreshTenant(
       reports_failed: failed,
       error: fatal ?? (errors.length ? errors.join(" | ").slice(0, 1000) : null),
       finished_at: new Date().toISOString(),
-      duration_ms: null,
+      duration_ms: Date.now() - startedAt,
     })
     .eq("id", runId);
+
+  // The run row is closed out first, then the ceiling aborts the whole job.
+  if (ceiling) throw ceiling;
 
   const result: TenantRefreshResult = {
     tenantId: target.tenantId,
