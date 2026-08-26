@@ -88,13 +88,14 @@ export function firmPlanView(input: {
   const clientLimit = clientLimitFor(tier, isAlwaysFree);
   const status = input.status ?? null;
   const stored = input.planName?.trim() || null;
-  const planLabel = stored
-    ? stored
-    : isAlwaysFree
+  const planLabel = isAlwaysFree
     ? "Free forever"
+    : stored
+    ? stored
     : tier
     ? TIER_NAME[tier] ?? "Legacy"
     : "No plan";
+
 
 
   let statusLabel = "No plan";
