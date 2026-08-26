@@ -48,7 +48,7 @@ export const runXeroAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ tenantId: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
     const { tenantId } = data;
     const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
     const { ruleCoaHygiene, ruleArAp, ruleBank, rulePayments } = await import("@/lib/xero/audit/rules.server");
@@ -141,7 +141,7 @@ export const getLatestAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ tenantId: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
     const { getConnectionByTenant } = await import("@/lib/xero/api.server");
     await getConnectionByTenant(data.tenantId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -177,7 +177,7 @@ export const snoozeFinding = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
     const { getConnectionByTenant } = await import("@/lib/xero/api.server");
     await getConnectionByTenant(data.tenantId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -206,7 +206,7 @@ export const resolveFinding = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
     const { getConnectionByTenant } = await import("@/lib/xero/api.server");
     await getConnectionByTenant(data.tenantId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -230,7 +230,7 @@ export const unsnoozeFinding = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ tenantId: z.string().min(1), findingKey: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await (supabaseAdmin as any)
       .from("audit_finding_snoozes")
