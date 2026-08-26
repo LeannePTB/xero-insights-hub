@@ -89,11 +89,7 @@ export async function resolveShortCode(
   mode: SnapshotSource["mode"],
 ): Promise<string | null> {
   if (mode === "snapshot") {
-    const rolledBack = isSnapshotDisabled(reportKey);
-
-  const hit = rolledBack
-    ? null
-    : await readSnapshot({ supabase, tenantId, reportKey: "organisation" });
+    const hit = await readSnapshot({ supabase, tenantId, reportKey: "organisation" });
     const orgs = hit?.payload?.Organisations ?? [];
     return orgs[0]?.ShortCode ?? null;
   }
