@@ -138,6 +138,16 @@ export function FirmClientsSection({
   const clients = clientsQ.data?.clients ?? [];
   const atLimit = typeof clientLimit === "number" && clients.length >= clientLimit;
 
+  // One query for every badge on the list: reads stored snapshots through RLS
+  // as the caller and makes zero Xero calls. Staff-only surface.
+  const clientIdsForVerdicts = clients.map((c: any) => c.id);
+  const verdictsQ = useQuery({
+    queryKey: ["client-verdicts", firmId, clientIdsForVerdicts.join(",")],
+    enabled: showHealth && canOpenClientData && clientIdsForVerdicts.length > 0,
+    staleTime: 5 * 60 * 1000,
+    queryFn: () => fetchVerdicts({ data: { firmId, clientIds: clientIdsForVerdicts } }),
+  });
+
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
