@@ -46,6 +46,7 @@ import { canSearchOrganisationTransactions } from "@/lib/xero/search.functions";
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
+import { RefreshSnapshotsButton } from "@/components/dashboard/RefreshSnapshotsButton";
 import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLapsedNotice";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
@@ -319,6 +320,13 @@ function ClientDashboard() {
           </div>
           {isAdvisor && (
             <div className="flex shrink-0 items-center gap-2">
+              {/* One refresh control per dashboard. The throttle is enforced
+                  server-side, per tenant; this button is a courtesy only. */}
+              <RefreshSnapshotsButton
+                tenantIds={orgs
+                  .map((o: any) => o.xero_connections?.tenant_id)
+                  .filter((t: string | undefined): t is string => !!t)}
+              />
               <Button variant="outline" asChild>
                 <Link to="/clients/$clientId/reports" params={{ clientId }}>
                   <FileText className="mr-2 h-4 w-4" /> Monthly Management Reports
