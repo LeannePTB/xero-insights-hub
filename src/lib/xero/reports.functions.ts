@@ -126,11 +126,9 @@ export type TaxLiabilities = {
 };
 
 // Tax-line extraction is pure and shared with the snapshot rules engine.
-export {
-  classifyTaxLine,
-  extractTaxLines,
-  buildProtectedMoney,
-} from "./tax-lines";
+import { buildProtectedMoney, extractTaxLines } from "./tax-lines";
+import type { ProtectedMoney } from "./tax-lines";
+export { classifyTaxLine, extractTaxLines, buildProtectedMoney } from "./tax-lines";
 export type {
   ProtectedMoney,
   ProtectedMoneyComponent,
