@@ -222,6 +222,16 @@ function TierSettings() {
 
           {isSuperAdmin && <WipOverviewCard />}
 
+          <p className="text-xs text-muted-foreground">
+            Cards are set at three levels: the platform default (this screen), one organisation
+            (Organisation settings → Cards included by default), and one individual client (open
+            the client from{" "}
+            <Link to="/dashboard" className="text-primary hover:underline">
+              All clients
+            </Link>{" "}
+            and use its settings screen). An organisation&apos;s own list replaces this one.
+          </p>
+
           {tiers.map((tier) => {
             const level = levelByKey.get(tier);
             const isWip = tier === "wip";
@@ -232,6 +242,7 @@ function TierSettings() {
               <TierEditor
                 key={tier}
                 tier={tier as DashboardTier}
+                detachedOrgs={overridesQ.data?.byTier?.[tier] ?? []}
                 title={tierLabel(tier, level?.label)}
                 description={tierDescription(tier, level?.description)}
                 initial={((cfgQ.data?.global as Record<string, WidgetKey[]>)?.[tier]) ?? []}
