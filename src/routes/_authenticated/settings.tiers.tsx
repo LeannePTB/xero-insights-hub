@@ -53,6 +53,11 @@ function TierSettings() {
     queryFn: () => fetchCfg({ data: { clientId: null } }),
   });
   const settingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchSettings() });
+  const overridesQ = useQuery({
+    queryKey: ["org-tier-overrides"],
+    queryFn: () => fetchOverrides(),
+    retry: false,
+  });
   const levelsQ = usePlanLevels("dashboard");
 
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
