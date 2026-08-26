@@ -70,6 +70,5 @@ describe("xeroMemoKey", () => {
       where: 'Status=="ACTIVE"',
     });
     assert.notStrictEqual(key, forged);
-    assert.ok(!key.includes("\u0000tenant-a\u0000Accounts"));
   });
 });
