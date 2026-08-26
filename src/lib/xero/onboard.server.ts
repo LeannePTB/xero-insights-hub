@@ -173,6 +173,16 @@ export async function createClientsFromTenants(params: {
       },
     ]);
 
+    // First link for this tenant: prepare its figures now rather than leaving
+    // the dashboard blank until 3am. Fire-and-forget — the connection has
+    // already succeeded and nothing below depends on this.
+    try {
+      const { scheduleFirstLinkRefresh } = await import("./first-link-refresh.server");
+      scheduleFirstLinkRefresh(connection.tenant_id);
+    } catch {
+      /* never blocks the connection flow */
+    }
+
     outcome.created.push({ clientId: client.id, name });
     remaining -= 1;
   }
