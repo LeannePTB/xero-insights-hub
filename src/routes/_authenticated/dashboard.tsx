@@ -229,7 +229,10 @@ function SubscriptionCard({
   isSuperAdmin: boolean;
   wide: boolean;
 }) {
-  const view = planView(f);
+  // Plan names come from the plan_levels catalogue, never a hardcoded map.
+  const { levels: planLevels } = usePlanLevels("firm");
+  const view = planView(f, planLevels.find((l) => l.key === f.tier)?.label ?? null);
+
   const usedPct = Math.min(100, Math.round((f.clientCount / Math.max(1, f.clientLimit)) * 100));
   const barTone =
     usedPct >= 100 ? "bg-red-500"
