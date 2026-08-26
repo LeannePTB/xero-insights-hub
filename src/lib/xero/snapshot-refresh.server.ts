@@ -48,6 +48,25 @@ export type TenantRefreshResult = {
  * Ordered by a stable hash of the tenant id so the same organisation is not
  * always processed first.
  */
+/**
+ * Resolve one tenant to its client and organisation, server-side.
+ * The caller's authorisation is checked before this is reached; this only
+ * turns an already-authorised tenant id into the ids the writer needs.
+ */
+export async function resolveRefreshTarget(tenantId: string): Promise<RefreshTarget | null> {
+  const { data, error } = await (supabaseAdmin as any)
+    .from("client_xero_orgs")
+    .select("client_id, clients!inner(firm_id), xero_connections!inner(tenant_id, status)")
+    .eq("xero_connections.tenant_id", tenantId)
+    .eq("xero_connections.status", "connected")
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  const firmId = data?.clients?.firm_id as string | undefined;
+  if (!data?.client_id || !firmId) return null;
+  return { clientId: data.client_id as string, firmId, tenantId };
+}
+
 export async function listRefreshTargets(): Promise<RefreshTarget[]> {
   const { data, error } = await (supabaseAdmin as any)
     .from("client_xero_orgs")
