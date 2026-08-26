@@ -9,7 +9,7 @@
 // a caller (4); entitlement is untouched because nothing reads the rows (3, 8).
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { sydneyDate } from "@/lib/sydney-time";
+import { sydneyDate, sydneyStartOfDayISO } from "@/lib/sydney-time";
 import {
   INVOICE_PAGE_LIMIT,
   MAX_XERO_CALLS_PER_RUN,
