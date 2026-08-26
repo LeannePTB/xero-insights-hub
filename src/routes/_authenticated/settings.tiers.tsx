@@ -450,13 +450,21 @@ export function TierEditor({
     <section className={`rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] ${isOff ? "opacity-70" : ""}`}>
       <div className="mb-1 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <h2 className="font-display text-lg font-semibold truncate">{title ?? TIER_LABEL[tier]}</h2>
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-semibold truncate">{title ?? TIER_LABEL[tier]}</h2>
+            {detachedOrgs !== undefined && (
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Platform default
+              </p>
+            )}
+          </div>
           {onToggleEnabled && (
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
               {enabled ? "On" : "Off"}
             </span>
           )}
         </div>
+
         <div className="flex items-center gap-2">
           {onToggleEnabled && (
             <Switch
