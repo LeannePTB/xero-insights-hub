@@ -1,86 +1,125 @@
-# Where Autotek's organisation-level tier row came from
+# Diagnosis — "Starter (5 clients)" vs "Clients allowed: 1"
 
-Read-only investigation. No code or data changed.
+Read-only investigation. Nothing changed.
 
-## 1. When and by whom
+## 1. Where each number comes from
 
-`tier_widget_config` has no created-by/updated-by column. Columns are: `id, client_id, tier, widgets, created_at, updated_at, excluded_widgets, firm_id`. Attribution therefore has to come from `audit_log`.
+**The badge — hardcoded string in application code.**
+`src/lib/firmPlans.ts:17` — `TIER_LABEL.starter = "Starter (5 clients)"`.
+`firmPlanView()` (same file, `planLabel`) picks it purely from `subscriptions.tier`; it never sees any limit column.
+Rendered at `src/routes/_authenticated/firms.$firmId.settings.tsx:174` — `<Badge variant="secondary">{planV.planLabel}</Badge>`.
 
-Every organisation-level row in the table (`client_id IS NULL AND firm_id IS NOT NULL`):
+**"0 of 1 clients used" and "Clients allowed: 1" — a database column.**
+`src/routes/_authenticated/firms.$firmId.settings.tsx:179` and `:219` both read `view.clientLimit`, which comes from `getFirmSubscription` in `src/lib/firm-subscription.functions.ts:133`: `clientLimitFor(s.tier, isAlwaysFree, { override, catalogue })`, where `catalogue` is built from `plan_levels` rows (`scope = 'firm'`, `key`, `client_limit`). So the number is `plan_levels.client_limit` for `starter`, which is **1**.
 
-| id | firm_id | tier | widgets | excluded_widgets | created_at | updated_at |
-|---|---|---|---|---|---|---|
-| 02623fa5-… | 78abaf83-… (Autotek NSW) | advisory | {} | {cashflow, transaction_search, true_breakeven, accounting_breakeven} | 2026-08-19 07:07:52.630976+00 | 2026-08-19 07:07:52.630976+00 |
-| 33881770-… | 78abaf83-… (Autotek NSW) | multi_company | {} | {unreconciled} | 2026-08-19 07:56:35.924702+00 | 2026-08-19 07:57:06.825132+00 |
-| af5492f9-… | cb63e0c4-… | multi_company | {} | {unreconciled} | 2026-08-24 08:54:58.848248+00 | 2026-08-26 01:17:21.027452+00 |
+**Xero files allowed: 1** — `plan_levels.xero_org_limit` for `starter` (also 1), via `summary.xeroFileLimit`.
 
-Matching `audit_log` rows (`action = 'org_widget_toggled'`):
+So: one value is a string a human typed into `firmPlans.ts`, the other is a live column. The `plan_levels.starter` row was edited from 5 down to 1 at some point; the string never moved.
 
-- The Autotek **advisory** row's only audit entry is at exactly its `created_at`, with `actor_user_id = NULL` and meta `{"note": "Applied directly: the settings panel is still writing the retired widgets column.", "tier": "advisory", "widget": "transaction_search", "enabled": false}`. A null actor means it was not written by a signed-in user through the app — it was applied as a direct database statement during earlier remediation work. That single statement is also why the row carries four exclusions while only one toggle was logged.
-- The two `multi_company` rows have normal audit trails: actor `57d544ad-…`, one row per click, produced by the "Cards included by default" panel.
+## 2. Which one is enforced
 
-So: Autotek's advisory row was **not** created by routine navigation. It was created by a one-off direct write on 19 August.
+The column — twice, and the badge never.
 
-## 2. How many organisations have overridden each tier
+Database (authoritative), trigger `trg_enforce_client_limit` on `public.clients`, function `app_private.enforce_client_limit()`:
 
 ```
-firms | orgs_with_rows
-    4 |              2
-
-tier          | org-level rows
-multi_company | 2
-advisory      | 1
+select client_limit into _lim from app_private.firm_limits(NEW.firm_id);
+if _lim is null then return NEW; end if;
+select count(*) into _cnt from public.clients where firm_id = NEW.firm_id;
+if _cnt >= _lim then
+  raise exception 'PLAN_LIMIT_CLIENTS: this organisation''s plan allows % client(s). Upgrade to add more.', _lim
 ```
 
-Two of four organisations have at least one organisation-level row, and each of those rows exists because someone clicked a card toggle (or, in the advisory case, a manual fix was applied). No organisation has a row for a tier nobody touched.
+Application pre-check, `src/lib/clients.functions.ts:342-359`, using the same `plan_levels` catalogue:
 
-## 3. What creates an organisation-level row
+```
+const limit = clientLimitFor((subRow as any)?.tier, (firmRow as any)?.is_always_free, {
+  override: (subRow as any)?.client_limit_override ?? null,
+  catalogue: firmLimitCatalogue(planRows as any),
+});
+...
+if ((usedCount ?? 0) >= limit) {
+  throw new Error(`Client limit reached (${usedCount}/${limit}). Upgrade the subscription to add more clients.`);
+}
+```
 
-Exactly **one** code path writes `firm_id IS NOT NULL` rows:
+A second client is blocked at 1. The badge is decorative and, for this organisation, wrong by a factor of five.
 
-- `public.set_org_widget_enabled(_firm_id, _tier, _widget, _enabled)` — an `INSERT … ON CONFLICT (firm_id, tier) DO UPDATE`, seeding from the platform row's exclusions.
-- Called from `src/lib/tier-config.functions.ts` → `setOrgWidget` (line 269), whose only caller is `src/components/admin/OrgDefaultCardsPanel.tsx` (`onToggle`, line 51) on the organisation settings screen.
+## 3. The actual rows
 
-Answers to the specific questions:
+`firms` + `subscriptions` for Bangkok On Darby (`499e7cb4-7938-463a-8b02-89114e2cddce`):
 
-- **Opening the tier settings screen** — no. `getOrgWidgetMatrix` only reads (`src/lib/widget-resolve.server.ts` `fetchExclusions`). No write on mount.
-- **Clicking Save with nothing changed** — not applicable: the panel has no Save button, only per-card pill toggles that each fire one RPC. There is no idempotent save that could write a no-op row.
-- **"Set tier for all clients"** — no. `public.set_all_client_tiers` writes `client_subscriptions` and `audit_log` only; it never touches `tier_widget_config`.
-- **Creating an organisation or adding a client** — no. No trigger and no insert in any migration or server function seeds a row.
-- **Changing a client's tier** — no. `setClientDashboardTier` writes `client_subscriptions`. Separately, `public.set_client_widget_enabled` writes a **client-level** row (`client_id` set), never an organisation-level one.
+| field | value |
+| --- | --- |
+| is_always_free | false |
+| tier | starter |
+| status | trialing |
+| trial_ends_at | 2026-09-30 00:00:00+00 |
+| current_period_end | null |
+| client_limit_override | null |
+| cancel_at_period_end | false |
+| consolidation_enabled | false |
 
-Other writers, for completeness: `savePlatformTierWidgets` (platform row only, `src/lib/tier-config.functions.ts:89`), `saveClientTierWidgets` (client rows only, line ~140), and `deletePlanLevel` (`src/lib/plan-levels.functions.ts:154`) which deletes all rows for a removed tier.
+`plan_levels` where `scope = 'firm'`:
 
-## 4. Does Autotek's advisory row match the platform default?
+| key | label | description | client_limit | xero_org_limit | allows_multi_org | is_free | enabled | allowed_tiers |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| ptb | PTB | Complimentary plan for Positive Traction bookkeeping clients… | 1 | 1 | false | true | true | {basic, advisory, multi_company} |
+| starter | Starter | Up to 5 client subscriptions. | 1 | 1 | false | false | true | {basic, advisory} |
+| growth | Growth | Up to 10 client subscriptions. | 10 | 10 | false | false | true | {basic, advisory} |
+| scale | Multi Company Consolidation | Up to 20 client subscriptions. | 20 | 20 | false | false | true | {multi_company} |
 
-No.
+Note: the stored `plan_levels.label` for starter is just **"Starter"** — no number. The "(5 clients)" is only in `firmPlans.ts`.
 
-- Platform `advisory` (id 965b0265-…): `excluded_widgets = {}`
-- Autotek `advisory`: `excluded_widgets = {cashflow, transaction_search, true_breakeven, accounting_breakeven}`
+Client count: the organisation had 0 clients when you looked; a client ("Bangkok on King") was created at 2026-08-26 07:41:50 UTC, so it now reads **1 of 1** and is at its limit.
 
-The row is a deliberate (if manually applied) edit, not an accidental duplicate. Note that `xero_audit` is **not** in it — which is why the Xero File Audit card is still visible for that client, and why changing the platform Advisory row has no effect on Autotek.
+## 4. Derived or stored?
 
-## 5. The consequence
+Stored, in three separate places, none of which is the limit column:
 
-Confirmed. `public.set_org_widget_enabled` and `public.client_allowed_widgets` both use `coalesce(org row, platform row)` — the organisation row **replaces** the platform row for that tier; it does not merge. Client-level exclusions are then unioned on top.
+1. **`src/lib/firmPlans.ts` `TIER_LABEL`** — hand-edited TypeScript. Every entry with a number is a hostage to fortune:
+   - `starter: "Starter (5 clients)"` — **disagrees**: `plan_levels.starter.client_limit = 1`.
+   - `growth: "Growth (10 clients)"` — agrees (10).
+   - `scale: "Scale (20 clients)"` — count agrees (20) but the **name** disagrees: the stored label is "Multi Company Consolidation".
+   - `firm: "Organisation (50 clients)"` — **no `plan_levels` row exists** for `firm`, so `clientLimitFor` falls through to the hardcoded `CLIENT_LIMITS.firm = 50`. Nothing to disagree with, and nothing an admin can change from the tier screen either.
+   - `ptb: "PTB (1 client, free)"` — agrees (1).
+   - `free` / `legacy` — no numbers, no rows; both resolve to the hardcoded 9999.
+2. **`plan_levels.description`** — also stored prose with a number: starter says *"Up to 5 client subscriptions."* against `client_limit = 1`. This one is user-visible in the "Change plan" cards (`firms.$firmId.settings.tsx:358`), directly above the card's own "Clients: 1" line.
+3. **`CLIENT_LIMITS` in `firmPlans.ts`** — a second hardcoded copy of the limits themselves, used whenever a tier has no `plan_levels` row (`firm`, `free`, `legacy`). That is a numeric fallback, not a label, but it is the same class of problem.
 
-Practical effect: for `(organisation, tier)` pairs that have their own row, later changes to the platform row for that tier are invisible forever.
+So there are currently **two** wrong texts for starter (label and description) and **one** wrong name for scale.
 
-Currently in that state:
-- Autotek NSW — `advisory` and `multi_company` detached
-- Organisation cb63e0c4-… — `multi_company` detached
+## 5. Everywhere the pair is displayed
 
-That is 2 of 4 organisations, 3 `(organisation, tier)` pairs. Every other pair still follows the platform default.
+Every screen calling `firmPlanView()` shows the hardcoded label:
 
-## Risk for the twenty incoming clients
+- `src/routes/_authenticated/firms.$firmId.settings.tsx:174` — organisation settings badge (the reported screen), sitting next to `view.clientLimit` at `:179`, `:219`, `:269`, `:275-281`.
+- `src/routes/_authenticated/firms.$firmId.index.tsx:186` — organisation overview, `planLabel` passed into the header/clients section.
+- `src/routes/_authenticated/dashboard.tsx:249` — the organisation card badge on the all-organisations list.
 
-Low as the code stands: a new organisation starts with no row and follows the platform default, and a row only appears when someone deliberately toggles a card on that organisation's settings screen. Navigation alone detaches nothing. The real hazard is that the detachment is **silent and permanent** — one toggle in August means a card added to the platform Advisory tier in October never reaches that organisation, with nothing on screen saying so.
+Screens showing the *stored* label and description instead (correct name, but the description prose can still lie):
 
-## Recommended fix (not implemented)
+- "Change plan" cards, `firms.$firmId.settings.tsx:335-375` — `p.label`, `p.description`, `p.clientLimit`, `p.xeroOrgLimit`, from `getFirmSubscription`'s `plans` array.
+- The change-plan confirmation, `firms.$firmId.settings.tsx:427` — `{target?.clientLimit} clients` (derived, correct).
+- Plan level admin editor, `src/lib/plan-levels.functions.ts` / the tier settings screen — edits the columns.
 
-1. **Make the state visible.** `getOrgWidgetMatrix` already returns `usesOrgRow` per tier but `OrgDefaultCardsPanel` ignores it. Show a line when it is true: "This organisation has its own card list for the Advisory dashboard and no longer follows the platform default," with a "Follow platform default again" action that deletes the organisation row for that tier.
-2. **Flag drift.** On the platform tier screen (`src/routes/_authenticated/settings.tiers.tsx`), show how many organisations have detached from each tier, so a platform edit that will not reach everyone is obvious at the time it is made.
-3. **Consider changing the model** (larger, needs its own decision): store organisation deltas as `{turned_off, turned_on}` relative to the platform row rather than an absolute exclusion list, so new platform cards flow through. This changes `client_allowed_widgets` and both toggle RPCs and is not a UI-only change.
-4. **Tidy Autotek's advisory row** if the four exclusions are no longer wanted — either re-enable the cards through the organisation panel or delete the row so it follows the platform default again.
+Limit-related error copy is already derived and safe: `src/lib/plan-errors.ts`, `src/lib/xero/connections.functions.ts` and the database exception all interpolate the live number. No emails or public pricing screen bake a count into a plan name.
 
-Nothing above has been applied.
+`src/lib/tiers.ts` `TIER_LABEL` is a different thing — dashboard tiers (Standard/Advisory), no client counts. Not affected.
+
+## 6. Recommendation
+
+Your preference is the right one, with one refinement.
+
+**Do:**
+- Delete the counts from `TIER_LABEL` in `firmPlans.ts` so it holds plain names only ("Starter", "Growth", …) — the same content as `TIER_SHORT`, which suggests collapsing the two.
+- Make `firmPlanView()` take the resolved limit (it already computes `clientLimit`) and have the badge render name and number as two adjacent pieces — `Starter · 1 client` — or simply drop the count from the badge entirely, since "0 of 1 clients used" is already sitting 20 pixels to its right. Rendering the same fact twice on one line is what created the bug; deriving both from one source removes the contradiction, but showing it once is better still.
+- Prefer the **stored** `plan_levels.label` over the hardcoded map wherever a plan name is shown, so the scale plan reads "Multi Company Consolidation" everywhere. `firmPlanView` currently has no access to the catalogue; passing it in is the same change as passing the limit.
+- Treat `plan_levels.description` as the remaining hazard: either stop writing counts into it (leave the numbers to the "Clients: N" line beneath) or, at minimum, fix the starter row's prose. This is a data edit, not code, and would be a separate approval.
+
+**Reasons not to, considered:**
+- *Marketing copy.* These labels are not public pricing copy — every render is inside the authenticated advisor UI, next to the enforced number. There is no case for the name disagreeing with the limit here. If a public pricing page appears later it can have its own copy table, deliberately separate.
+- *Overrides.* `subscriptions.client_limit_override` means the effective limit is per-organisation, so a plan-name-with-a-count is wrong for any organisation with an override, whatever the plan row says. That is an additional argument for deriving, not against.
+- *Tiers with no row.* `firm`, `free` and `legacy` have no `plan_levels` row and fall back to `CLIENT_LIMITS`. Deriving the label from the resolved limit works for them too, but it is worth deciding whether those three should exist at all, since they cannot be administered.
+
+No files, rows, policies or database objects were changed.
