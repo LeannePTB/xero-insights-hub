@@ -100,7 +100,9 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, data.widget ?? "pnl");
+    // The caller does not choose which lock is tested. `data.widget` is a
+    // label for the calling card only; profit and loss always requires `pnl`.
+    await assertWidgetAccess(context.userId, data.tenantId, "pnl");
     const conn = await getConnectionByTenant(data.tenantId);
     const basis = data.basis ?? (await getClientReportBasis(data.tenantId));
     const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {
