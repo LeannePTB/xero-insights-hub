@@ -99,8 +99,11 @@ const COVERAGE_ALL =
   "Every check in this review was completed against the accounting records for the period.";
 
 function coverageSentence(gaps: string[]): string {
-  if (!gaps.length) return COVERAGE_ALL;
-  const joined = gaps.join(" ");
+  // De-duplicated by cause, not by rule: two rules blocked by the same missing
+  // input become one sentence. See @/lib/reports/coverage-gaps.
+  const merged = dedupeGapSentences(gaps);
+  if (!merged.length) return COVERAGE_ALL;
+  const joined = merged.join(" ");
   return `Some parts of this review could not be completed from the records available for the period. ${joined}`;
 }
 
