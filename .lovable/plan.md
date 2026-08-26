@@ -1,125 +1,129 @@
-# Diagnosis — "Starter (5 clients)" vs "Clients allowed: 1"
+# Verdict page one for the Monthly Management Report
 
-Read-only investigation. Nothing changed.
+Plan only. Nothing below is implemented.
 
-## 1. Where each number comes from
+## 1. What exists now
 
-**The badge — hardcoded string in application code.**
-`src/lib/firmPlans.ts:17` — `TIER_LABEL.starter = "Starter (5 clients)"`.
-`firmPlanView()` (same file, `planLabel`) picks it purely from `subscriptions.tier`; it never sees any limit column.
-Rendered at `src/routes/_authenticated/firms.$firmId.settings.tsx:174` — `<Badge variant="secondary">{planV.planLabel}</Badge>`.
+Files: `src/lib/reports/monthly-report.ts` (types, payload version, formatting), `monthly-report.functions.ts` (server-function wrappers), `monthly-report-context.server.ts` (access + persistence), `monthly-report.server.ts` (the calculation, 815 lines), `report-pdf.server.ts` (jsPDF render + private bucket), `report-delivery.server.ts` (finalise, delete, email, token access), `report-link.functions.ts`, `report-pdf.functions.ts`, `pnl-grouping.ts`, `variance-polarity.ts`. UI: `src/components/reports/MonthlyReportPreview.tsx`, `ReportDeliveryDialogs.tsx`, route `src/routes/_authenticated/clients.$clientId.reports.tsx`, recipient route `src/routes/report.$token.tsx`.
 
-**"0 of 1 clients used" and "Clients allowed: 1" — a database column.**
-`src/routes/_authenticated/firms.$firmId.settings.tsx:179` and `:219` both read `view.clientLimit`, which comes from `getFirmSubscription` in `src/lib/firm-subscription.functions.ts:133`: `clientLimitFor(s.tier, isAlwaysFree, { override, catalogue })`, where `catalogue` is built from `plan_levels` rows (`scope = 'firm'`, `key`, `client_limit`). So the number is `plan_levels.client_limit` for `starter`, which is **1**.
+- **Trigger.** Manual only. Staff pick a period end and press generate (`generateMonthlyReport`). There is no cron, no scheduled generation.
+- **Scope.** Per **client**, pinned to **one Xero tenant**. `resolveReportContext` resolves the tenant server-side from `client_xero_orgs`; a client with several Xero organisations reports on one of them (`preferTenantId`, validated against the client). Never per Xero file independently of a client.
+- **Generation.** `computeMonthlyReport` fetches live from Xero: three sequential `Reports/ProfitAndLoss` calls (month, prior month, FY to date, `standardLayout=false`, memoised on the date pair), `Accounts` once for regrouping, and the as-at subledger for ageing. Notes come from `client_notes` where `include_in_report = true`.
+- **Format.** A JSONB payload (`client_reports.payload`, `payload_version` currently **10**) rendered two ways: on screen by `MonthlyReportPreview`, and to PDF by `report-pdf.server.ts` into the private `client-reports` bucket. The PDF is rendered from the stored payload only — no Xero fetch at render time.
+- **Sections, in current order:** Notes; Key figures (revenue, expenses, profit after tax, net margin — month, prior month, variance, FY YTD vs prior FY YTD, one sentence each); Profit and Loss (organisation's own layout, month / prior month / variance / FY YTD); Receivables ageing detail; Payables ageing detail; frozen disclaimer. Incomplete generations carry `failedSections` and a banner.
+- **Lifecycle.** `draft` → `final` → `sent`. Finalising refuses an older `payload_version` and refuses any failed section, then renders the final PDF once. Drafts of the same version are refreshed in place; otherwise a new version row.
+- **Delivery.** Both. Staff download the PDF, and `sendReport` emails per-recipient links: one random token each, only the SHA-256 hash stored in `report_recipients`, expiry default 30 days (max 180), opens counted. A token reaches exactly one report and no other data.
 
-**Xero files allowed: 1** — `plan_levels.xero_org_limit` for `starter` (also 1), via `summary.xeroFileLimit`.
+## 2. Page one — structure
 
-So: one value is a string a human typed into `firmPlans.ts`, the other is a live column. The `plan_levels.starter` row was edited from 5 down to 1 at some point; the string never moved.
+Page one sits before Notes and before every number, on screen and in the PDF.
 
-## 2. Which one is enforced
+```text
+  [ month + client + "Management summary" ]
 
-The column — twice, and the badge never.
-
-Database (authoritative), trigger `trg_enforce_client_limit` on `public.clients`, function `app_private.enforce_client_limit()`:
-
-```
-select client_limit into _lim from app_private.firm_limits(NEW.firm_id);
-if _lim is null then return NEW; end if;
-select count(*) into _cnt from public.clients where firm_id = NEW.firm_id;
-if _cnt >= _lim then
-  raise exception 'PLAN_LIMIT_CLIENTS: this organisation''s plan allows % client(s). Upgrade to add more.', _lim
+  1  THE FINDING          one heading + one paragraph, from the ranked verdict
+  2  HOW LONG             "This has been the case for N months running."
+  3  BOOKKEEPER'S LINE    short comment from Positive Traction staff (optional)
+  4  WHAT WE COULD ASSESS one or two sentences, prose, never a badge
+  5  NEXT STEP            "We will cover this at your next catch-up."
 ```
 
-Application pre-check, `src/lib/clients.functions.ts:342-359`, using the same `plan_levels` catalogue:
+1. **The finding.** The top-ranked `Finding` from `rankFindings` — `title` as the heading, `detail` as the paragraph. Ranking is already consequence-then-days, so the highest-consequence item leads. Below it, remaining findings as a short list (title + detail), no severity colours or chips in the document.
+2. **How long.** Per rule id: "Raised in each of the last N reports" / "First raised this month" / "Raised again after not appearing last month". See section 3 for where N comes from.
+3. **Bookkeeper's line.** Section 5.
+4. **Coverage as a sentence.** The engine already returns `gaps[]` in plain prose ("No GST, PAYG withholding or superannuation account could be matched on the Balance Sheet, so protected money is unknown."). Joined into: "This month we assessed protected money, statutory balances and debtor ageing. Debtor ageing could not be assessed because the open invoice list was incomplete." Diligence phrasing, no apology, no badge.
+5. **Nothing fires (`state: "ok"`).** "Nothing in this month's checks required attention. We reviewed protected money against cash at bank, statutory balances and the debtor book." Plus the coverage sentence and the bookkeeper's line if present. Never "you are fine", never a score.
+6. **Nothing can be assessed (`no_data` / `disconnected` / `stale` / all gaps).** Page one states what is missing and what will restore it, and the report should not be finalised in that state — the existing finalise guard already blocks incomplete payloads; the verdict section joins that guard as a failed section.
 
+## 3. Month-on-month comparison
+
+`xero_snapshots` is keyed one row per `(client, tenant, report_key, params_hash)` and upserted — latest only, no history. It cannot answer "fourth month running".
+
+`client_reports` **is** the history: one row per client per `period_end` per version, with a frozen JSONB payload. So the answer is: **no new database object is required.** Store the evaluated verdict inside the report payload (new `verdict` block, payload version bump to 11), then compute repetition by reading the prior finalised reports for the same client:
+
+```text
+select payload->'verdict' from client_reports
+ where client_id = ? and report_key = 'monthly_management'
+   and status in ('final','sent') and period_end < ?
+ order by period_end desc limit 11
 ```
-const limit = clientLimitFor((subRow as any)?.tier, (firmRow as any)?.is_always_free, {
-  override: (subRow as any)?.client_limit_override ?? null,
-  catalogue: firmLimitCatalogue(planRows as any),
-});
-...
-if ((usedCount ?? 0) >= limit) {
-  throw new Error(`Client limit reached (${usedCount}/${limit}). Upgrade the subscription to add more clients.`);
-}
-```
 
-A second client is blocked at 1. The badge is decorative and, for this organisation, wrong by a factor of five.
+Streak = count of consecutive prior months whose verdict lists the same `ruleId`, walking back until a month is missing or does not carry the rule. Gaps in months are gaps in the streak and are worded as such ("raised in 4 of the last 6 reports"), never silently bridged.
 
-## 3. The actual rows
+Consequences of this choice, stated plainly:
+- Repetition only starts accruing from the first report generated after this ships. Earlier months have no verdict block, so wording for them is "not previously assessed" — not "did not fire".
+- Drafts are excluded, so regenerating a draft cannot change history.
+- A verdict frozen in a finalised report is the record of what was said, which is the correct legal position for a delivered document.
 
-`firms` + `subscriptions` for Bangkok On Darby (`499e7cb4-7938-463a-8b02-89114e2cddce`):
+If you later want repetition on the **dashboard** as well (outside report months), that would need stored evaluations — a `client_verdict_evaluations` table — and I would bring that to you for approval separately. Not in this plan.
 
-| field | value |
-| --- | --- |
-| is_always_free | false |
-| tier | starter |
-| status | trialing |
-| trial_ends_at | 2026-09-30 00:00:00+00 |
-| current_period_end | null |
-| client_limit_override | null |
-| cancel_at_period_end | false |
-| consolidation_enabled | false |
+## 4. Business Health in the report — decision confirmed
 
-`plan_levels` where `scope = 'firm'`:
+Removing the composite score and pillar scores from the report works. Checked:
 
-| key | label | description | client_limit | xero_org_limit | allows_multi_org | is_free | enabled | allowed_tiers |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ptb | PTB | Complimentary plan for Positive Traction bookkeeping clients… | 1 | 1 | false | true | true | {basic, advisory, multi_company} |
-| starter | Starter | Up to 5 client subscriptions. | 1 | 1 | false | false | true | {basic, advisory} |
-| growth | Growth | Up to 10 client subscriptions. | 10 | 10 | false | false | true | {basic, advisory} |
-| scale | Multi Company Consolidation | Up to 20 client subscriptions. | 20 | 20 | false | false | true | {multi_company} |
+- `src/lib/health.functions.ts` and the dashboard widget (`HealthWidget.tsx`) are read by the dashboard only. `monthly-report.server.ts` does not import them today — the report never contained the score, so there is nothing to remove and nothing to break. The dashboard widget is untouched by definition.
+- The underlying metrics you want kept as evidence (margin, runway, debtor days, working capital) are **not all** in the report payload today. Net margin is (`keyFigures`). Runway, debtor days and working capital are not. Keeping them as "supporting evidence" therefore means adding a small `supporting` block to the payload computed from data the report already fetches plus the Balance Sheet, presented as figures with no score and no rating.
+- The one thing to watch: the report and the dashboard would then show the same metrics computed by two code paths. The metric maths should be lifted into one shared pure module both call, so a figure can never disagree between the screen and the delivered document.
 
-Note: the stored `plan_levels.label` for starter is just **"Starter"** — no number. The "(5 clients)" is only in `firmPlans.ts`.
+## 5. The bookkeeper's sentence
 
-Client count: the organisation had 0 clients when you looked; a client ("Bangkok on King") was created at 2026-08-26 07:41:50 UTC, so it now reads **1 of 1** and is at its limit.
+Smallest mechanism, no new table: reuse `client_notes`. It already has `body`, `author_id`, `created_at` and `include_in_report`. Page one takes **the most recent report-marked note authored in the report's own month** and prints it under the generated verdict, attributed to the author and dated. Remaining report-marked notes continue to appear in the existing Notes section, unchanged.
 
-## 4. Derived or stored?
+- Nothing new is stored, nothing is migrated, no column added.
+- The note is frozen into the payload at generation, like every other figure, so editing it later does not alter a sent report.
+- **The report can be generated, finalised and sent without it.** It is never a finalise guard.
+- **When absent,** page one simply omits the block — no placeholder, no "no comment provided" line. The generated verdict and the coverage sentence stand alone.
+- Trade-off to accept: staff must remember to tick "Include in management report" on that note. The report screen should show, before finalising, whether a comment for this month was found — a quiet line, not a blocker.
 
-Stored, in three separate places, none of which is the limit column:
+## 6. Data source
 
-1. **`src/lib/firmPlans.ts` `TIER_LABEL`** — hand-edited TypeScript. Every entry with a number is a hostage to fortune:
-   - `starter: "Starter (5 clients)"` — **disagrees**: `plan_levels.starter.client_limit = 1`.
-   - `growth: "Growth (10 clients)"` — agrees (10).
-   - `scale: "Scale (20 clients)"` — count agrees (20) but the **name** disagrees: the stored label is "Multi Company Consolidation".
-   - `firm: "Organisation (50 clients)"` — **no `plan_levels` row exists** for `firm`, so `clientLimitFor` falls through to the hardcoded `CLIENT_LIMITS.firm = 50`. Nothing to disagree with, and nothing an admin can change from the tier screen either.
-   - `ptb: "PTB (1 client, free)"` — agrees (1).
-   - `free` / `legacy` — no numbers, no rows; both resolve to the hardcoded 9999.
-2. **`plan_levels.description`** — also stored prose with a number: starter says *"Up to 5 client subscriptions."* against `client_limit = 1`. This one is user-visible in the "Change plan" cards (`firms.$firmId.settings.tsx:358`), directly above the card's own "Clients: 1" line.
-3. **`CLIENT_LIMITS` in `firmPlans.ts`** — a second hardcoded copy of the limits themselves, used whenever a tier has no `plan_levels` row (`firm`, `free`, `legacy`). That is a numeric fallback, not a label, but it is the same class of problem.
+Confirmed workable, with one change.
 
-So there are currently **two** wrong texts for starter (label and description) and **one** wrong name for scale.
+`rules.server.ts` is pure over `SnapshotRow[]` — `{ report_key, payload, payload_version, as_at, fetched_at, complete }` — where `payload` is the raw Xero response. Nothing in the rules reads the snapshot table. So the report can build the same shaped rows from its **own live fetch** and pass them straight in.
 
-## 5. Everywhere the pair is displayed
+What changes:
+- The report must additionally fetch `Reports/BalanceSheet` as at the period end and the open `ACCREC` invoices as at the period end (the as-at subledger engine already reconstructs this for the receivables section — reuse it rather than adding a Xero call).
+- `evaluateClient` currently applies freshness rules — `keyState` returns `stale` when `fetched_at` is older than `STALENESS_SECONDS`, and `payload_version !== SNAPSHOT_PAYLOAD_VERSION` yields `wrong_version`. Live-fetched rows are fresh by construction, but they must not be labelled with the snapshot payload version. The clean fix is a small `evaluateFromRows(rows, { skipFreshness: true })` entry point, or passing `fetched_at = now` and the current version. Do **not** let the report read `xero_snapshots` — a finalised report must pin its own figures.
+- Historic periods: the rules evaluate "as at the period end" only if the inputs are as at the period end. The Balance Sheet call takes a date, and the subledger engine already reconstructs open invoices at the period end, so this holds. R05's wording already carries the as-at date.
 
-Every screen calling `firmPlanView()` shows the hardcoded label:
+## 7. Wording constraints
 
-- `src/routes/_authenticated/firms.$firmId.settings.tsx:174` — organisation settings badge (the reported screen), sitting next to `view.clientLimit` at `:179`, `:219`, `:269`, `:275-281`.
-- `src/routes/_authenticated/firms.$firmId.index.tsx:186` — organisation overview, `planLabel` passed into the header/clients section.
-- `src/routes/_authenticated/dashboard.tsx:249` — the organisation card badge on the all-organisations list.
+Audited the current strings in `rules.server.ts`. Compliant already:
 
-Screens showing the *stored* label and description instead (correct name, but the description prose can still lie):
+- No occurrence of "insolvent", "trading while insolvent", "you should", "we recommend", or "advice" anywhere in the rules engine or thresholds.
+- R05 carries an explicit carve-out in both code comment and output text: "This is the balance owing only — it says nothing about what has been lodged." Correct, and must survive into the document verbatim.
+- Findings are descriptive: "X of GST, PAYG withholding and superannuation is held against Y cash at bank."
 
-- "Change plan" cards, `firms.$firmId.settings.tsx:335-375` — `p.label`, `p.description`, `p.clientLimit`, `p.xeroOrgLimit`, from `getFirmSubscription`'s `plans` array.
-- The change-plan confirmation, `firms.$firmId.settings.tsx:427` — `{target?.clientLimit} clients` (derived, correct).
-- Plan level admin editor, `src/lib/plan-levels.functions.ts` / the tier settings screen — edits the columns.
+Needs rewording for a document rather than a badge:
 
-Limit-related error copy is already derived and safe: `src/lib/plan-errors.ts`, `src/lib/xero/connections.functions.ts` and the database exception all interpolate the live number. No emails or public pricing screen bake a count into a plan name.
+1. **"Protected money exceeds cash at bank"** (R01 critical) — factual, keep, but the document must not sit it next to any word implying inability to pay. No adjacent framing beyond the figures.
+2. **"Debtor book is badly aged"** (R06) — "badly" is a judgement in a badge and reads as criticism in a delivered document. Use "Most of the debtor book is more than 90 days past due" and let the figure do the work.
+3. **"Reconnect it before relying on any figure"** (disconnected) — imperative. In a document: "The Xero connection was not available when this report was prepared." Then the standard next-step line.
+4. **"No issues found" / "Every check passed"** — "passed" implies an assessment standard the engagement does not offer. Reword as in 2.5 above: what was reviewed, and that nothing required attention.
+5. **Next-step line** must point at a conversation, never a decision: "We will cover this at your next catch-up." Never "you should", never a deadline.
+6. **Engagement carve-out.** The report must not imply that raising an item transfers responsibility. Add one sentence to page one, adjacent to the coverage sentence: "These observations come from the accounting records and do not constitute a compliance review, or tax, legal or solvency advice." This sits alongside — not replacing — the frozen disclaimer in `disclaimerText()`, which is unchanged.
 
-`src/lib/tiers.ts` `TIER_LABEL` is a different thing — dashboard tiers (Standard/Advisory), no client counts. Not affected.
+All wording lives in the rules engine, which currently serves a staff badge. Two consumers with different tolerances means the strings should be split: neutral document wording as the canonical text, with the badge free to abbreviate it.
 
-## 6. Recommendation
+## 8. Retiring the Standard (`basic`) tier — later, not in this build
 
-Your preference is the right one, with one refinement.
+Actual data, read now from `client_subscriptions`:
 
-**Do:**
-- Delete the counts from `TIER_LABEL` in `firmPlans.ts` so it holds plain names only ("Starter", "Growth", …) — the same content as `TIER_SHORT`, which suggests collapsing the two.
-- Make `firmPlanView()` take the resolved limit (it already computes `clientLimit`) and have the badge render name and number as two adjacent pieces — `Starter · 1 client` — or simply drop the count from the badge entirely, since "0 of 1 clients used" is already sitting 20 pixels to its right. Rendering the same fact twice on one line is what created the bug; deriving both from one source removes the contradiction, but showing it once is better still.
-- Prefer the **stored** `plan_levels.label` over the hardcoded map wherever a plan name is shown, so the scale plan reads "Multi Company Consolidation" everywhere. `firmPlanView` currently has no access to the catalogue; passing it in is the same change as passing the limit.
-- Treat `plan_levels.description` as the remaining hazard: either stop writing counts into it (leave the numbers to the "Clients: N" line beneath) or, at minimum, fix the starter row's prose. This is a data edit, not code, and would be a separate approval.
+- **No client is on `basic` today.** Tiers in use: `advisory` (1 — Autotek New South Wales Pty Ltd), `multi_company` (12 — all DRTABT Projects), and **2 clients with no subscription row at all**: "Bangkok on King" (Bangkok On Darby) and "Positive Traction" (Positive Traction).
+- Those two matter, because `src/lib/entitlement.server.ts` **defaults to `basic`** when no row exists (lines 21 and 44), and `tier-config.functions.ts` falls back to the `basic` catalogue entry twice (lines 236, 648). So `basic` is not just a tier — it is the fallback for absent data.
 
-**Reasons not to, considered:**
-- *Marketing copy.* These labels are not public pricing copy — every render is inside the authenticated advisor UI, next to the enforced number. There is no case for the name disagreeing with the limit here. If a public pricing page appears later it can have its own copy table, deliberately separate.
-- *Overrides.* `subscriptions.client_limit_override` means the effective limit is per-organisation, so a plan-name-with-a-count is wrong for any organisation with an override, whatever the plan row says. That is an additional argument for deriving, not against.
-- *Tiers with no row.* `firm`, `free` and `legacy` have no `plan_levels` row and fall back to `CLIENT_LIMITS`. Deriving the label from the resolved limit works for them too, but it is worth deciding whether those three should exist at all, since they cannot be administered.
+What they would lose: the `basic` widget set in `src/lib/tiers.ts` — health, receivables, payables, P&L, notes, unreconciled.
 
-No files, rows, policies or database objects were changed.
+To retire it cleanly:
+1. Give every client an explicit subscription row so nothing relies on the default.
+2. Replace the `basic` default in `entitlement.server.ts` and both fallbacks in `tier-config.functions.ts` with the new free-tier key — the fallback must stay a real tier, never "no tier", or access fails open into an empty dashboard.
+3. `tier_settings` has rows only for `advisory` and `basic`; the new free tier needs a row or it has no kill switch.
+4. `DashboardTier` is a TypeScript union **and** a database enum (`clients.report_basis` style `USER-DEFINED` types are in use). Removing the enum value is a migration and would need your approval; leaving the value in place and disabling it in `plan_levels` is the safer retirement.
+5. `plan_levels.ptb` has `allowed_tiers = {basic}` — that must change before `basic` is disabled, or the default client organisation plan points at a disabled tier.
+
+Note: knowledge item §12.6 still stands — plan `free` has `is_free = false` and `allowed_tiers = {pt}` where `pt` is not a valid `dashboard_tier`, so any cast will throw. That has to be sorted before the free tier becomes the product.
+
+## Approval needed
+
+- No new database objects, no migrations, no RLS changes in this plan.
+- `client_reports.payload_version` bumps 10 → 11 (a value change, not a schema change).
