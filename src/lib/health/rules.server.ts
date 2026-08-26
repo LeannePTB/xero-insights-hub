@@ -91,9 +91,10 @@ function money(n: number): string {
 // ---------------------------------------------------------------------------
 
 /** Returns a finding, or a reason the rule could not be evaluated. */
-export function ruleProtectedMoneyVsCash(
-  balanceSheet: SnapshotRow,
-): { finding: Finding | null; unavailable?: string } {
+export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow): {
+  finding: Finding | null;
+  unavailable?: string;
+} {
   const lines = extractTaxLines(balanceSheet.payload);
   const protectedMoney = buildProtectedMoney(balanceSheet.as_at, lines);
   const cash = extractCashAtBank(balanceSheet.payload).total;
@@ -160,14 +161,17 @@ export function ruleProtectedMoneyVsCash(
 // that reports lodgement status. Never word it as "overdue".
 // ---------------------------------------------------------------------------
 
-export function ruleStatutoryMagnitude(
-  balanceSheet: SnapshotRow,
-): { finding: Finding | null; unavailable?: string } {
+export function ruleStatutoryMagnitude(balanceSheet: SnapshotRow): {
+  finding: Finding | null;
+  unavailable?: string;
+} {
   const lines = extractTaxLines(balanceSheet.payload);
   const statutory = lines
     .filter((l) => l.category === "gst" || l.category === "payg" || l.category === "other-tax")
     .reduce((s, l) => s + l.amount, 0);
-  if (!lines.some((l) => l.category === "gst" || l.category === "payg" || l.category === "other-tax")) {
+  if (
+    !lines.some((l) => l.category === "gst" || l.category === "payg" || l.category === "other-tax")
+  ) {
     return {
       finding: null,
       unavailable: "No GST, PAYG withholding or tax account could be matched on the Balance Sheet.",
@@ -218,7 +222,10 @@ export function ruleDebtors(row: SnapshotRow): { finding: Finding | null; unavai
   // concentration computed on part of the book would be wrong in the safe-
   // looking direction, so the rule refuses to run.
   if (!row.complete) {
-    return { finding: null, unavailable: "The open invoice list is incomplete, so debtor ageing was not assessed." };
+    return {
+      finding: null,
+      unavailable: "The open invoice list is incomplete, so debtor ageing was not assessed.",
+    };
   }
 
   const invoices = invoicesOf(row.payload);
@@ -326,7 +333,8 @@ export function evaluateClient(input: ClientVerdictInput): Verdict {
     return {
       state: "disconnected",
       label: "Xero disconnected",
-      detail: "This client's Xero connection is disconnected. Reconnect it before relying on any figure.",
+      detail:
+        "This client's Xero connection is disconnected. Reconnect it before relying on any figure.",
       findings: [],
     };
   }
@@ -334,7 +342,8 @@ export function evaluateClient(input: ClientVerdictInput): Verdict {
   const byKey = new Map<string, SnapshotRow>();
   for (const row of input.snapshots) {
     const existing = byKey.get(row.report_key);
-    if (!existing || new Date(row.fetched_at) > new Date(existing.fetched_at)) byKey.set(row.report_key, row);
+    if (!existing || new Date(row.fetched_at) > new Date(existing.fetched_at))
+      byKey.set(row.report_key, row);
   }
 
   const states = new Map<string, KeyState>();
@@ -345,13 +354,16 @@ export function evaluateClient(input: ClientVerdictInput): Verdict {
     return {
       state: "no_data",
       label: "No snapshot yet",
-      detail: "No snapshot has been stored for this client yet. The next overnight refresh will produce one.",
+      detail:
+        "No snapshot has been stored for this client yet. The next overnight refresh will produce one.",
       findings: [],
     };
   }
   if (allStates.includes("stale")) {
     const newest = [...byKey.values()].sort((a, b) => (a.fetched_at < b.fetched_at ? 1 : -1))[0];
-    const when = newest ? new Date(newest.fetched_at).toLocaleDateString("en-AU") : "an earlier date";
+    const when = newest
+      ? new Date(newest.fetched_at).toLocaleDateString("en-AU")
+      : "an earlier date";
     return {
       state: "stale",
       label: "Data out of date",

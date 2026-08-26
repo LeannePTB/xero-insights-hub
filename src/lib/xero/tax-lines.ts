@@ -8,7 +8,12 @@
 
 export type TaxLineCategory = "gst" | "payg" | "super" | "other-tax";
 
-export type TaxLine = { name: string; amount: number; category: TaxLineCategory; accountId?: string };
+export type TaxLine = {
+  name: string;
+  amount: number;
+  category: TaxLineCategory;
+  accountId?: string;
+};
 
 type Row = {
   RowType?: string;
@@ -29,7 +34,8 @@ export function classifyTaxLine(name: string): TaxLineCategory | null {
   if (n.includes("gst") || n.includes("vat") || n.includes("sales tax")) return "gst";
   if (n.includes("payg") || n.includes("paye") || n.includes("withholding")) return "payg";
   if (n.includes("super")) return "super";
-  if (n.includes("tax payable") || n.includes("income tax") || n.includes("bas")) return "other-tax";
+  if (n.includes("tax payable") || n.includes("income tax") || n.includes("bas"))
+    return "other-tax";
   return null;
 }
 
@@ -145,7 +151,10 @@ export function buildProtectedMoney(
  * Cash at bank from a Balance Sheet payload: every leaf row under a section
  * whose title mentions "bank", excluding the section's own "Total …" row.
  */
-export function extractCashAtBank(report: any): { total: number; accounts: { name: string; balance: number }[] } {
+export function extractCashAtBank(report: any): {
+  total: number;
+  accounts: { name: string; balance: number }[];
+} {
   const accounts: { name: string; balance: number }[] = [];
   let total = 0;
   const sections: Row[] = report?.Rows ?? [];

@@ -14,7 +14,9 @@ const NOW = new Date("2026-08-26T02:00:00Z");
 const FRESH = "2026-08-25T17:10:00Z";
 const OLD = "2026-08-20T17:10:00Z";
 
-function row(over: Partial<SnapshotRow> & Pick<SnapshotRow, "report_key" | "payload">): SnapshotRow {
+function row(
+  over: Partial<SnapshotRow> & Pick<SnapshotRow, "report_key" | "payload">,
+): SnapshotRow {
   return {
     payload_version: SNAPSHOT_PAYLOAD_VERSION,
     as_at: "2026-08-26",
@@ -36,7 +38,10 @@ function balanceSheet(bank: number, tax: { name: string; amount: number }[]) {
       {
         RowType: "Section",
         Title: "Current Liabilities",
-        Rows: tax.map((t) => ({ RowType: "Row", Cells: [{ Value: t.name }, { Value: String(t.amount) }] })),
+        Rows: tax.map((t) => ({
+          RowType: "Row",
+          Cells: [{ Value: t.name }, { Value: String(t.amount) }],
+        })),
       },
     ],
   };
@@ -71,14 +76,18 @@ const CONNECTED = [{ tenantId: "t1", status: "connected" }];
 
 describe("R01 protected money vs cash", () => {
   it("fires critical when protected money exceeds cash at bank", () => {
-    const r = ruleProtectedMoneyVsCash(row({ report_key: "balance_sheet", payload: balanceSheet(50_000, FULL_TAX) }));
+    const r = ruleProtectedMoneyVsCash(
+      row({ report_key: "balance_sheet", payload: balanceSheet(50_000, FULL_TAX) }),
+    );
     assert.ok(r.finding);
     assert.strictEqual(r.finding!.severity, "critical");
     assert.strictEqual(r.finding!.ruleId, "R01");
   });
 
   it("does not fire when protected money is well under cash", () => {
-    const r = ruleProtectedMoneyVsCash(row({ report_key: "balance_sheet", payload: balanceSheet(500_000, FULL_TAX) }));
+    const r = ruleProtectedMoneyVsCash(
+      row({ report_key: "balance_sheet", payload: balanceSheet(500_000, FULL_TAX) }),
+    );
     assert.strictEqual(r.finding, null);
     assert.strictEqual(r.unavailable, undefined);
   });
@@ -97,7 +106,9 @@ describe("R01 protected money vs cash", () => {
 
 describe("R06 debtors", () => {
   it("does not fire on a truncated (complete = false) invoice payload", () => {
-    const payload = invoicePayload([{ due: 100_000, dueDate: "2020-01-01", contact: "Ancient Co" }]);
+    const payload = invoicePayload([
+      { due: 100_000, dueDate: "2020-01-01", contact: "Ancient Co" },
+    ]);
     const r = ruleDebtors(row({ report_key: "invoices_accrec_open", payload, complete: false }));
     assert.strictEqual(r.finding, null);
     assert.match(r.unavailable ?? "", /incomplete/i);
@@ -137,7 +148,12 @@ describe("coverage gate", () => {
   });
 
   it("a missing required key produces a partial state, never green", () => {
-    const v = evaluateClient({ clientId: "c1", connections: CONNECTED, snapshots: [healthyBs], now: NOW });
+    const v = evaluateClient({
+      clientId: "c1",
+      connections: CONNECTED,
+      snapshots: [healthyBs],
+      now: NOW,
+    });
     assert.strictEqual(v.state, "partial");
   });
 
@@ -168,7 +184,11 @@ describe("coverage gate", () => {
 });
 
 describe("ranking", () => {
-  const make = (ruleId: string, consequenceScore: number, daysToConsequence: number | null): Finding => ({
+  const make = (
+    ruleId: string,
+    consequenceScore: number,
+    daysToConsequence: number | null,
+  ): Finding => ({
     ruleId,
     title: ruleId,
     detail: "",

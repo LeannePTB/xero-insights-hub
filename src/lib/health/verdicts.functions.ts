@@ -26,7 +26,9 @@ export const listClientVerdicts = createServerFn({ method: "POST" })
     // on (firm_id, report_key).
     let q = context.supabase
       .from("xero_snapshots")
-      .select("client_id, tenant_id, report_key, payload, payload_version, as_at, fetched_at, complete")
+      .select(
+        "client_id, tenant_id, report_key, payload, payload_version, as_at, fetched_at, complete",
+      )
       .in("report_key", REQUIRED_REPORT_KEYS as unknown as string[])
       .in("client_id", clientIds);
     if (data.firmId) q = q.eq("firm_id", data.firmId);

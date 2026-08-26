@@ -15,9 +15,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
  */
 
 const SEVERITY_STYLES: Record<string, string> = {
-  critical: "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-300",
-  warning: "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300",
-  watch: "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-300",
+  critical:
+    "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-300",
+  warning:
+    "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300",
+  watch:
+    "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-300",
 };
 
 const OK_STYLE =
@@ -26,17 +29,35 @@ const MUTED_STYLE = "border-dashed border-border bg-muted/30 text-muted-foregrou
 
 export function ClientHealthBadge({ verdict }: { verdict: Verdict | undefined }) {
   if (!verdict) {
-    return <Badge style={MUTED_STYLE} icon={<CircleSlash className="h-3 w-3" />} label="Loading…" tip="Checking the most recent snapshot." />;
+    return (
+      <Badge
+        style={MUTED_STYLE}
+        icon={<CircleSlash className="h-3 w-3" />}
+        label="Loading…"
+        tip="Checking the most recent snapshot."
+      />
+    );
   }
 
   if (verdict.state === "ok") {
-    return <Badge style={OK_STYLE} icon={<CheckCircle2 className="h-3 w-3" />} label={verdict.label} tip={verdict.detail} />;
+    return (
+      <Badge
+        style={OK_STYLE}
+        icon={<CheckCircle2 className="h-3 w-3" />}
+        label={verdict.label}
+        tip={verdict.detail}
+      />
+    );
   }
 
   if (verdict.state === "issues") {
     const style = SEVERITY_STYLES[verdict.severity] ?? SEVERITY_STYLES.watch;
     const icon =
-      verdict.severity === "critical" ? <AlertCircle className="h-3 w-3" /> : <AlertTriangle className="h-3 w-3" />;
+      verdict.severity === "critical" ? (
+        <AlertCircle className="h-3 w-3" />
+      ) : (
+        <AlertTriangle className="h-3 w-3" />
+      );
     const tip = (
       <ol className="space-y-1.5">
         {verdict.findings.map((f) => (
@@ -58,7 +79,14 @@ export function ClientHealthBadge({ verdict }: { verdict: Verdict | undefined })
     );
   }
 
-  return <Badge style={MUTED_STYLE} icon={<Info className="h-3 w-3" />} label={verdict.label} tip={verdict.detail} />;
+  return (
+    <Badge
+      style={MUTED_STYLE}
+      icon={<Info className="h-3 w-3" />}
+      label={verdict.label}
+      tip={verdict.detail}
+    />
+  );
 }
 
 function Badge({
