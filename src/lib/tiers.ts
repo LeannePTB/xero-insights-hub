@@ -90,10 +90,10 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   pnl: "Profit & Loss",
   notes: "Notes",
   unreconciled: "Uncoded Bankfeed Questions",
-  tax_liability: "Tax Liabilities",
-  superannuation: "Superannuation Liabilities",
-  accounting_breakeven: "Accounting Break-Even",
-  true_breakeven: "True Break-Even (Cash)",
+  tax_liability: "Money Held for Someone Else",
+  superannuation: "Superannuation (shown in Money Held for Someone Else)",
+  accounting_breakeven: "Break-Even",
+  true_breakeven: "True Break-Even (shown in Break-Even)",
   cashflow: "Cash Flow",
   cashflow_scenario: "Cashflow Scenario",
   xero_audit: "Xero File Audit",
@@ -103,6 +103,45 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   gst_reconciliation: "GST Reconciliation (indicative)",
   transaction_search: "Transaction Search",
 };
+
+/**
+ * Widget keys that now render INSIDE another card.
+ *
+ * The keys are deliberately NOT removed from the catalogue: a tier row, a
+ * per-client override or an exclusion list may still reference them, and
+ * editing those rows is a database change. The alias is resolved in code at
+ * render time instead, so nobody loses a card and no entitlement, plan, tier
+ * or policy row is touched.
+ */
+export const DEPRECATED_WIDGET_ALIASES: Partial<Record<WidgetKey, WidgetKey>> = {
+  // Superannuation is a component of "Money Held for Someone Else".
+  superannuation: "tax_liability",
+  // Cash commitments are an expandable section of the merged Break-Even card.
+  true_breakeven: "accounting_breakeven",
+};
+
+/** The card a widget key renders as today. Unknown keys pass through. */
+export function canonicalWidget(key: string): string {
+  return (DEPRECATED_WIDGET_ALIASES as Record<string, string | undefined>)[key] ?? key;
+}
+
+/**
+ * Map an entitled widget list onto the cards that actually render, preserving
+ * order and dropping the duplicate a merge would otherwise produce. Entitlement
+ * is unchanged: this only decides how many cards the entitlement draws.
+ */
+export function renderableWidgets(keys: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const key of keys) {
+    const canonical = canonicalWidget(key);
+    if (seen.has(canonical)) continue;
+    seen.add(canonical);
+    out.push(canonical);
+  }
+  return out;
+}
+
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
 
