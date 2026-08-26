@@ -142,6 +142,30 @@ export function renderableWidgets(keys: string[]): string[] {
   return out;
 }
 
+/**
+ * Every stored key that a rendered card is made of: the canonical key plus any
+ * deprecated key that now renders inside it. Used by the settings screens so a
+ * single merged toggle writes BOTH keys and stored rows never half-toggle.
+ * Derived from DEPRECATED_WIDGET_ALIASES — never a second hardcoded list.
+ */
+export function widgetKeyGroup(canonical: string): string[] {
+  const aliases = Object.entries(DEPRECATED_WIDGET_ALIASES)
+    .filter(([, target]) => target === canonical)
+    .map(([key]) => key);
+  return [canonical, ...aliases];
+}
+
+/**
+ * The list of cards to offer as toggles: merged pairs collapse to one row and
+ * deprecated keys never appear on their own.
+ */
+export function toggleableWidgets(keys: string[]): string[] {
+  return renderableWidgets(keys);
+}
+
+
+
+
 
 export const ALL_TIERS: DashboardTier[] = ["basic", "advisory", "investigate", "multi_company"];
 

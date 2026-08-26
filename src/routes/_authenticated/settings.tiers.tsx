@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyContext } from "@/lib/roles.functions";
-import { listTierConfig, savePlatformTierWidgets, listTierSettings, setTierEnabled } from "@/lib/tier-config.functions";
+import { listTierConfig, savePlatformTierWidgets, listTierSettings, setTierEnabled, listOrgTierOverrides } from "@/lib/tier-config.functions";
 import { savePlanLevel, deletePlanLevel, type PlanLevel } from "@/lib/plan-levels.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
-import { ALL_TIERS, ALL_WIDGETS, TIER_LABEL, TIER_DESCRIPTION, WIDGET_LABEL, tierLabel, tierDescription, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import { ALL_TIERS, ALL_WIDGETS, TIER_LABEL, TIER_DESCRIPTION, WIDGET_LABEL, tierLabel, tierDescription, toggleableWidgets, widgetKeyGroup, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,7 @@ function TierSettings() {
   const fetchCtx = useServerFn(getMyContext);
   const fetchCfg = useServerFn(listTierConfig);
   const fetchSettings = useServerFn(listTierSettings);
+  const fetchOverrides = useServerFn(listOrgTierOverrides);
   const saveFn = useServerFn(savePlatformTierWidgets);
   const toggleFn = useServerFn(setTierEnabled);
   const savePlanFn = useServerFn(savePlanLevel);
@@ -53,6 +54,11 @@ function TierSettings() {
     queryFn: () => fetchCfg({ data: { clientId: null } }),
   });
   const settingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchSettings() });
+  const overridesQ = useQuery({
+    queryKey: ["org-tier-overrides"],
+    queryFn: () => fetchOverrides(),
+    retry: false,
+  });
   const levelsQ = usePlanLevels("dashboard");
 
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
@@ -216,6 +222,16 @@ function TierSettings() {
 
           {isSuperAdmin && <WipOverviewCard />}
 
+          <p className="text-xs text-muted-foreground">
+            Cards are set at three levels: the platform default (this screen), one organisation
+            (Organisation settings → Cards included by default), and one individual client (open
+            the client from{" "}
+            <Link to="/dashboard" className="text-primary hover:underline">
+              All clients
+            </Link>{" "}
+            and use its settings screen). An organisation&apos;s own list replaces this one.
+          </p>
+
           {tiers.map((tier) => {
             const level = levelByKey.get(tier);
             const isWip = tier === "wip";
@@ -226,6 +242,7 @@ function TierSettings() {
               <TierEditor
                 key={tier}
                 tier={tier as DashboardTier}
+                detachedOrgs={overridesQ.data?.byTier?.[tier] ?? []}
                 title={tierLabel(tier, level?.label)}
                 description={tierDescription(tier, level?.description)}
                 initial={((cfgQ.data?.global as Record<string, WidgetKey[]>)?.[tier]) ?? []}
@@ -386,6 +403,7 @@ export function TierEditor({
   toggleDisabled,
   onDelete,
   onEdit,
+  detachedOrgs,
 }: {
   tier: DashboardTier;
   initial: WidgetKey[];
@@ -400,9 +418,12 @@ export function TierEditor({
   toggleDisabled?: boolean;
   onDelete?: () => void;
   onEdit?: () => void;
+  detachedOrgs?: { firmId: string; name: string }[];
 }) {
   const [selected, setSelected] = useState<Set<WidgetKey>>(new Set(initial));
+  const [showDetached, setShowDetached] = useState(false);
   useEffect(() => { setSelected(new Set(initial)); }, [initial.join(",")]);
+
 
   const dirty = useMemo(() => {
     const a = [...selected].sort().join(",");
@@ -410,11 +431,18 @@ export function TierEditor({
     return a !== b;
   }, [selected, initial]);
 
+  // Merged cards are one checkbox that writes BOTH stored keys, so a pair can
+  // never end up half-selected. The group comes from DEPRECATED_WIDGET_ALIASES.
+  const cards = toggleableWidgets(ALL_WIDGETS as string[]) as WidgetKey[];
+
   function toggle(w: WidgetKey) {
     const next = new Set(selected);
-    if (next.has(w)) next.delete(w); else next.add(w);
+    const group = widgetKeyGroup(w) as WidgetKey[];
+    if (next.has(w)) for (const k of group) next.delete(k);
+    else for (const k of group) next.add(k);
     setSelected(next);
   }
+
 
   const isOff = onToggleEnabled !== undefined && enabled === false;
 
@@ -422,13 +450,21 @@ export function TierEditor({
     <section className={`rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] ${isOff ? "opacity-70" : ""}`}>
       <div className="mb-1 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <h2 className="font-display text-lg font-semibold truncate">{title ?? TIER_LABEL[tier]}</h2>
+          <div className="min-w-0">
+            <h2 className="font-display text-lg font-semibold truncate">{title ?? TIER_LABEL[tier]}</h2>
+            {detachedOrgs !== undefined && (
+              <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                Platform default
+              </p>
+            )}
+          </div>
           {onToggleEnabled && (
             <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${enabled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>
               {enabled ? "On" : "Off"}
             </span>
           )}
         </div>
+
         <div className="flex items-center gap-2">
           {onToggleEnabled && (
             <Switch
@@ -462,9 +498,45 @@ export function TierEditor({
           </Button>
         </div>
       </div>
-      <p className="mb-4 text-xs text-muted-foreground">{description ?? TIER_DESCRIPTION[tier]}</p>
+      <p className="mb-1 text-xs text-muted-foreground">{description ?? TIER_DESCRIPTION[tier]}</p>
+      {detachedOrgs !== undefined && detachedOrgs.length > 0 && (
+        <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
+          <p className="text-xs text-muted-foreground">
+            {detachedOrgs.length}{" "}
+            {detachedOrgs.length === 1 ? "organisation has" : "organisations have"} their own card
+            list for this tier — changes here won&apos;t reach them.{" "}
+            <button
+              type="button"
+              onClick={() => setShowDetached((v) => !v)}
+              className="text-primary hover:underline"
+            >
+              {showDetached ? "Hide" : "Show which"}
+            </button>
+          </p>
+          {showDetached && (
+            <ul className="mt-2 space-y-1">
+              {detachedOrgs.map((o) => (
+                <li key={o.firmId} className="text-xs">
+                  <Link
+                    to="/firms/$firmId/settings"
+                    params={{ firmId: o.firmId }}
+                    className="text-primary hover:underline"
+                  >
+                    {o.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {detachedOrgs !== undefined && detachedOrgs.length === 0 && (
+        <p className="mb-4 text-xs text-muted-foreground">
+          Every organisation follows this platform default for this tier.
+        </p>
+      )}
       <fieldset disabled={isOff} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {ALL_WIDGETS.map((w) => (
+        {cards.map((w) => (
           <label
             key={w}
             className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -476,4 +548,5 @@ export function TierEditor({
       </fieldset>
     </section>
   );
+
 }
