@@ -125,45 +125,18 @@ export type TaxLiabilities = {
   mode?: "balance" | "movement";
 };
 
-function classifyTaxLine(name: string): TaxLiabilities["lines"][number]["category"] | null {
-  const n = name.toLowerCase();
-  if (n.includes("gst") || n.includes("vat") || n.includes("sales tax")) return "gst";
-  if (n.includes("payg") || n.includes("paye") || n.includes("withholding")) return "payg";
-  if (n.includes("super")) return "super";
-  if (n.includes("tax payable") || n.includes("income tax") || n.includes("bas")) return "other-tax";
-  return null;
-}
+// Tax-line extraction is pure and shared with the snapshot rules engine.
+export {
+  classifyTaxLine,
+  extractTaxLines,
+  buildProtectedMoney,
+} from "./tax-lines";
+export type {
+  ProtectedMoney,
+  ProtectedMoneyComponent,
+  ProtectedMoneyComponentKey,
+} from "./tax-lines";
 
-function walkRows(rows: XeroReportRow[] | undefined, visit: (r: XeroReportRow) => void) {
-  if (!rows) return;
-  for (const r of rows) {
-    visit(r);
-    if (r.Rows) walkRows(r.Rows, visit);
-  }
-}
-
-function extractTaxLines(report: any) {
-  const lines: (TaxLiabilities["lines"][number] & { accountId?: string })[] = [];
-  walkRows(report?.Rows, (r) => {
-    if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
-    const name = r.Cells[0].Value;
-    if (!name) return;
-    const category = classifyTaxLine(name);
-    if (!category) return;
-    const amount = parseAmount(r.Cells[1].Value);
-    let accountId: string | undefined;
-    for (const cell of r.Cells) {
-      const attrs = (cell as any).Attributes;
-      if (!Array.isArray(attrs)) continue;
-      for (const a of attrs) {
-        if (a?.Id === "account" && typeof a.Value === "string") accountId = a.Value;
-      }
-      if (accountId) break;
-    }
-    lines.push({ name, amount, category, accountId });
-  });
-  return lines;
-}
 
 function isoDayBefore(dateStr: string): string {
   const [y, m, d] = dateStr.split("-").map(Number);
