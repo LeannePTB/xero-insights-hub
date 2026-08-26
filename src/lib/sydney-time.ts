@@ -96,13 +96,13 @@ export function startOfFinancialYear(date: string): string {
  */
 export function sydneyStartOfDay(date: string): Date {
   const { y, m, d } = parts(date);
-  // First guess: treat the wall time as UTC, then correct by the offset that
-  // actually applies at that instant. One correction is enough because the
-  // offset only changes at 2-3am on two days a year and midnight is outside
-  // the ambiguous window in Sydney.
+  // Treat the wall time as UTC, then correct twice. The second pass matters:
+  // on the two changeover days the offset at the naive guess is not the offset
+  // that actually applies at Sydney midnight, and a single pass lands an hour
+  // out (23:00 the previous day, or 01:00).
   const guess = Date.UTC(y, m - 1, d, 0, 0, 0);
-  const offsetMinutes = sydneyOffsetMinutes(new Date(guess));
-  return new Date(guess - offsetMinutes * 60_000);
+  const firstPass = guess - sydneyOffsetMinutes(new Date(guess)) * 60_000;
+  return new Date(guess - sydneyOffsetMinutes(new Date(firstPass)) * 60_000);
 }
 
 /** The same instant as an ISO string, for writing to `timestamptz` columns. */
