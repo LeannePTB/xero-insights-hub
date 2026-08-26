@@ -233,7 +233,21 @@ export function MonthlyReportPreview({
         </div>
       )}
 
-      {/* 1. Notes — the practice's commentary is read BEFORE the tables, so it
+      {/* 1. Page one — the verdict, before Notes and before every number.
+          Absent on payloads written before v11; never reconstructed. */}
+      {payload.verdict ? <VerdictPage verdict={payload.verdict} /> : null}
+
+      {/* A quiet staff-only line while the report is still a draft. It never
+          blocks finalising — a month with no comment is normal. */}
+      {status === "draft" && payload.verdict ? (
+        <p className="px-1 text-xs text-muted-foreground">
+          {payload.verdict.comment
+            ? `A comment for ${payload.meta.monthLabel} was found and is included on page one.`
+            : `No comment for ${payload.meta.monthLabel} was found. Page one will be sent without one.`}
+        </p>
+      ) : null}
+
+      {/* 2. Notes — the practice's commentary is read BEFORE the tables, so it
           sits directly under the header. Do not move it back below Payables. */}
       <SectionShell title="Notes">
         {!payload.notes ? (
