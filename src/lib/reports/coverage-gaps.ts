@@ -26,7 +26,7 @@ export type GapCause =
 export function classifyGap(gap: string): GapCause | null {
   const g = gap.toLowerCase();
 
-  if (g.includes("could not be matched on the balance sheet")) {
+  if (/could (not )?be matched on the balance sheet/.test(g)) {
     // "Protected money is incomplete: super could not be matched …" — some
     // components resolved, so the cause is a partial mapping, not an absent one.
     if (g.startsWith("protected money is incomplete")) return "partial_statutory_accounts";
