@@ -1,98 +1,91 @@
-# File capability profile + widget merges
+# Diagnosis — is "off" actually off?
 
-Plan only. Nothing below has been built. No database object, entitlement, tier, plan or RLS change is proposed except where explicitly flagged for your approval (there is exactly one such flag, in Part A item 4).
+Read-only investigation. Nothing was changed.
 
-## Part A — capability profile
+## 1. Autotek NSW — the card is not turned off
 
-### 1. The flags and their derivation
+- Client id: `55959877-2802-4d17-8853-719814972fbc` ("Autotek New South Wales Pty Ltd"), organisation `78abaf83-0129-48b1-bdf9-77c18aa2b2a3`.
+- Tier: `advisory` (from `client_subscriptions`: `subscription_type = free_forever`, `status = active`, `dashboard_tier = advisory`, comp reason "Dashboard tier assigned by the organisation").
+- `client_access`: no viewer rows at all — no client user has been invited yet.
+- `tier_widget_config` rows touching this client:
+  - organisation row, tier `advisory`: `widgets = {}`, `excluded_widgets = {cashflow, transaction_search, true_breakeven, accounting_breakeven}`
+  - organisation row, tier `multi_company`: `excluded_widgets = {unreconciled}`
+  - **no client-level row exists for this client**
+  - platform default rows for `basic`/`advisory`/`multi_company`/`wip` all have `excluded_widgets = {}`
+- Ceiling for `advisory` (`plan_levels.widgets`) includes `xero_audit`.
 
-Computed from stored snapshots only: `organisation`, `accounts`, `balance_sheet`, `invoices_accrec_open`, `invoices_accpay_open`. Zero Xero calls.
+`client_allowed_widgets` and `client_can_use_widget` could not be executed directly (the read role is denied EXECUTE on them — expected), so the answer is derived from the function's own SQL, read from the catalogue: ceiling (advisory) − organisation exclusions − client exclusions. `xero_audit` is in the ceiling and appears in no exclusion list.
 
-- `hasGst` — high confidence. `organisation.Class !== "NON_GST_CASHBOOK"` AND (`PaysTax === true` OR a `balance_sheet` line classified `gst` by `classifyTaxLine` in `src/lib/xero/tax-lines.ts`). Class is a Xero-set field, not a name match.
-- `hasPayroll` — low/medium confidence, see item 3. True when a `balance_sheet` line classifies as `super` or `payg`, OR `accounts` contains an EXPENSE account whose name matches wages/salaries/payroll. Reported as `yes | no | unknown`, never a bare boolean.
-- `usesInvoicing` — medium confidence, transient risk. `invoices_accrec_open` payload has at least one invoice, OR `accounts` contains a system `DEBTORS`/Accounts Receivable account with a non-zero balance-sheet debtors line.
-- `usesBills` — same shape against `invoices_accpay_open` plus a creditors line.
-- `hasFixedAssetRegister` — medium. `accounts` contains at least one account with `Class === "ASSET"` and `Type === "FIXED"`, and the balance sheet shows a non-zero fixed-asset section. Presence of FIXED accounts proves the chart supports it; it does not prove a depreciation register is maintained, so the flag means "fixed assets exist", not "register is complete".
-- `hasBankFeeds` — rename to `bankAccountCount`. `accounts` count where `Type === "BANK"`. Feeds themselves are not visible in these snapshots; do not claim feed status.
+**Plainly: `xero_audit` is currently PERMITTED for Autotek NSW.** The card is rendering because it is switched on. Whoever turned it "off" either toggled it on a different tier row (the `multi_company` row is the only other one, and it only excludes `unreconciled`), or the toggle did not persist. The four things that *are* off for this client are cashflow, transaction search, true break-even and accounting break-even.
 
-Every flag also carries `evidence` (which snapshot key and which matched account/line names) so a wrong flag is diagnosable without a Xero call.
+Worth noting: `true_breakeven` and `accounting_breakeven` are both excluded, and `cashflow` too — so the Advisory section for this client is thin, which may be why an unexpected audit card stands out.
 
-### 2. Structural vs transient — the rule that decides gating
+## 2. Is the card gated at all?
 
-Only structural absence hides a card. Transient absence shows the card with an honest empty state.
+`src/routes/_authenticated/clients.$clientId.index.tsx`:
 
-| Widget | Absence type | Evidence that separates them | Action |
+- `AuditSummaryCard` — line 230, inside `if (widgets.includes("xero_audit"))`. Gated in the UI.
+- `TransactionSearchWidget` — line 270, `widgets.includes("transaction_search") && orgSearchQ.data?.allowed`. Gated twice.
+- `LoanConsolidationWidget` — line 264, `widgets.includes("loan_consolidation")`. Gated in the UI.
+
+`widgets` comes from `getClientWidgets` (`src/lib/tier-config.functions.ts:441`), which calls `client_allowed_widgets` through the caller's own session. So the UI list is honest and single-sourced. The audit card is not the exception; it is simply enabled.
+
+## 3. Per-widget gate audit
+
+"Enforced on server" means the server function refuses when the widget is excluded for that client. "Reachable anyway" means data still comes back to a caller who invokes the server function directly while the card is hidden.
+
+| Widget key | Hidden in UI | Enforced on server | Reachable anyway |
 |---|---|---|---|
-| GST reconciliation | structural | `Class = NON_GST_CASHBOOK` / `PaysTax = false` — the file can never produce GST | hide permanently |
-| Superannuation (merged, see Part B) | ambiguous | no super line could mean no payroll or unusual naming | show, empty state |
-| Receivables | transient | zero open invoices this week says nothing about the file | always show |
-| Payables | transient | same | always show |
-| Fixed assets reconciliation | structural-ish | no FIXED-type accounts at all in `accounts` | hide, but only on zero FIXED accounts; any FIXED account means show |
-| Break-even (merged) | transient | no cost classifications is a setup gap, not a file property | show with a setup prompt |
-| Cash Flow | transient | zeros are a real answer | always show |
+| health | yes | `assertWidgetAccess` (`health.functions.ts:425`) | yes for any organisation member — see note A |
+| receivables | yes | `assertWidgetAccess` (`receivables.functions.ts:45,115`) | yes, note A |
+| payables | yes | `assertWidgetAccess` (`payables.functions.ts:50,123`) | yes, note A |
+| pnl | yes | `assertWidgetAccess(data.widget ?? "pnl")` (`reports.functions.ts:103`) | yes — **widget key is taken from the request body**, note B |
+| tax_liability (Protected Money) | yes | `assertWidgetAccess("tax_liability")` (`reports.functions.ts:154,218,249,306,431`) | yes, note A |
+| accounting_breakeven (merged) | yes | P&L half only, via the request-supplied widget key; `getTrueBreakevenInputs` (`true-breakeven.functions.ts:26`) has **no widget check** — RLS only | yes |
+| cashflow | yes | `assertWidgetAccess("cashflow")` (`cashflow.functions.ts:138`) | yes, note A |
+| cashflow_scenario | yes | `assertWidgetAccess("cashflow_scenario")` (`scenario.functions.ts:212`) | yes, note A |
+| balance_sheet_reconciliation | yes | `assertClientWidget` via `recon-snapshot.server.ts:33` | no for viewers; yes for staff, note A |
+| fixed_assets_reconciliation | yes (+ capability) | same path | as above |
+| gst_reconciliation | yes (+ capability) | same path | as above |
+| **xero_audit** | yes | **no widget check at all** — `audit.functions.ts` only calls `assertAdvisor` (global `advisor`/`super_admin` role) then `getConnectionByTenant(tenantId)` | **yes — see note C, the worst one** |
+| transaction_search | yes | full: client access, organisation staff, `assertClientWidget` (`search.functions.ts:139-146`) | no |
+| loan_consolidation | yes | `clientCanUseWidget` / `firmCanUseWidget` (`loan-consolidation.functions.ts:146`, `consolidations.functions.ts:36`, `consolidation-groups.functions.ts:49`, `consolidated.functions.ts:74`) | no |
+| unreconciled | yes | no widget check — RLS on `unreconciled_lines` only | yes |
+| notes | yes | no widget check — RLS on `client_notes` only | yes |
+| file capability profile | n/a | `getEffectiveTier` access check only (`file-capability.functions.ts`) | reads snapshots the caller can already read |
 
-Where the profile cannot tell structural from transient — payroll, invoicing on a file that simply has nothing open right now — default to showing the card. A card that appears and disappears with the trading week is worse than a blank card.
+**Note A — the structural one.** `assertWidgetAccess` (`src/lib/xero/access.server.ts:100`) returns early for anyone `getEffectiveTier` calls an advisor, and *every active member of the organisation* is an advisor there (`isAdvisor: true, tier: "investigate"`), as is a super admin with an approved support grant. So for staff, widget exclusions are a UI preference, not a control. For an invited client viewer they are enforced. That is a defensible design, but it is not what "turned off" sounds like.
 
-### 3. Payroll inference and its false-negative risk
+**Note B — client-chosen widget key.** `getProfitAndLoss` authorises against `data.widget`, supplied by the caller. A viewer who has `accounting_breakeven` but not `pnl` can pass `widget: "accounting_breakeven"` and receive the full profit and loss. The check is real but the caller picks which lock to test.
 
-Balance-sheet super/PAYG lines plus wage expense accounts are good enough to say "probably yes"; they are not good enough to say "definitely no". Name matching in `classifyTaxLine` keys off `super`, `payg`, `paye`, `withholding`. A file with accounts named "Employee Entitlements", "Statutory Deductions", "Contributions Payable" or a numeric-code-only chart yields a false negative. This has already bitten us on PAYG.
+**Note C — the audit card.** `getLatestAudit` / `runXeroAudit` / `snoozeFinding` / `resolveFinding` / `unsnoozeFinding` check only that the caller holds a platform-wide `advisor` or `super_admin` role, then resolve the tenant with `getConnectionByTenant` (`api.server.ts:223`), which looks up `xero_connections` by `tenant_id` through `supabaseAdmin` with **no organisation scoping**. There is no `assertWidgetAccess`, no `platformStaffCanAccessFirm`, no membership check. Any holder of the `advisor` role can read — and re-run, writing rows and burning Xero calls — the audit of any tenant in the platform by tenant id. This breaches invariants 3 and 4 in section 0 of the Access Control Spec: a bare role is being treated as a grant, and a `tenantId` from the request body is acting as one.
 
-Consequence for the design: `hasPayroll` is tri-state and only the explicit `no` from a `NON_GST_CASHBOOK` file with zero wage accounts and zero super/PAYG lines is treated as structural. Everything else shows the card. Payroll is never used to hide a card on the strength of name matching alone.
+## 4. Does "off" mean one thing?
 
-### 4. Override
+Four ways a card can be off, and they do **not** converge:
 
-Smallest mechanism that needs no new database object: reuse the existing per-client widget switch, `public.set_client_widget_enabled(_client_id, _widget, _enabled)`, already used by the tier settings UI. Staff force a widget on or off there; the capability profile only ever suppresses a widget that is otherwise enabled, and an explicit staff decision wins over the profile in both directions.
+1. **Not in the tier's plan ceiling** (`plan_levels.widgets`) — enforced in the database function, so it reaches every consumer that calls it.
+2. **In `excluded_widgets`** at organisation or client level — same function, same reach. Organisation row *replaces* the platform row (precedence, not union); client row is added on top. `src/lib/widget-resolve.server.ts` reimplements this in TypeScript for the admin screens; it currently matches the SQL, but it is a second copy of a rule the spec says must have one implementation.
+3. **Per-client disable** — this is just (2) with a client-level row. No separate mechanism.
+4. **Capability profile** — `src/lib/xero/file-capability.server.ts`, presentation only, applied in the route at lines 259 and 261.
 
-That requires storing "explicitly on" vs "default", which the existing `tier_widget_config.widgets` / `excluded_widgets` arrays already express. No new table, column, policy or function. If, on build, the existing arrays turn out not to distinguish "on by default" from "forced on", I will stop and bring you a single-column proposal for approval rather than adding it silently.
+The divergence is not in how "off" is computed — it is in **who honours it**. `client_allowed_widgets` is honoured by the UI list, by `assertClientWidget` (search, reconciliations, loan consolidation), and by `assertWidgetAccess` **for viewers only**. It is honoured by nothing at all for `xero_audit`, `unreconciled`, `notes` and the true-break-even inputs.
 
-### 5. Where it is computed
+**Capability gating cannot make a card appear.** `hiddenWidgets` only ever populates `gst_reconciliation` and `fixed_assets_reconciliation`, and it is only ever consumed as `widgets.includes(x) && !structurallyHidden(...)`. It subtracts; it can never add. An `unknown` profile yields an empty `hiddenWidgets`, so it shows. It is not why the audit card is on.
 
-Derived at read time, not stored. New file `src/lib/xero/file-capability.server.ts` exporting `resolveFileCapability({ supabase, tenantId, clientId })`, built on `readSnapshot` from `src/lib/xero/snapshot-read.server.ts` so RLS applies as the caller and a tenantId stays a filter, not a grant. It reads four snapshot rows already fetched daily, so the marginal cost is four indexed selects. Memoised per request via `src/lib/xero/request-memo.server.ts`.
+## 5. Client-facing vs staff
 
-No stored capability state: it would go stale the moment a chart of accounts changes, and would need its own invalidation path and a database object. Read-time derivation is both cheaper and self-healing.
+- **Client viewer** (`client_access` row): sees only widgets in `client_allowed_widgets`, and `assertWidgetAccess` enforces that server-side. Cannot use transaction search (organisation-staff check rejects them). Cannot reach the audit functions (`assertAdvisor` rejects them). Two real gaps for viewers: the P&L widget-key substitution (note B), and `getTrueBreakevenInputs` / notes / unreconciled, which are RLS-scoped but not widget-scoped — a viewer with a row-level path to a client can read those regardless of the card being off. Autotek has no viewers today, so nothing is exposed there right now.
+- **Organisation staff (e.g. DRTABT)**: full `investigate` tier over their own organisation's clients regardless of any exclusion. Correct on access; misleading on "off".
+- **Traction Advisory staff**: reach a client organisation via membership (Path A) or an approved support grant (Path B) for the Xero-data functions. **Except the audit functions**, which need neither — a platform role alone is enough for any tenant. That is the one place where Path C metadata privilege leaks into Xero financial data.
 
-## Part B — the merges
+Transaction search's "organisation staff only" claim **is** enforced server-side, in this order: `assertClientDataAccessForClient` → `firmIdForClient` → `assertOrganisationStaff` → `assertClientWidget`. It is the model the rest should follow.
 
-### 6. Tax liabilities + Superannuation → one card
+## Recommended fixes, in order (nothing implemented)
 
-Promote `getProtectedMoney` (`src/lib/xero/reports.functions.ts:425`) to the single implementation. It already returns GST, PAYG and super from one balance sheet read, with the resolved/unresolved distinction that keeps "no matching account" separate from "zero".
-
-- New card: "Money you are holding for someone else", widget key `tax_liability` retained.
-- `superannuation` becomes a section inside it. The key is not deleted: it stays in the catalogue as a deprecated alias so any tier row referencing it keeps validating, and the resolver maps it to `tax_liability`. Nobody loses a card and no tier or plan row is edited.
-- `src/components/dashboard/SuperannuationWidget.tsx` and `TaxLiabilityWidget.tsx` are replaced by one component; the superannuation server path is retired in favour of `getProtectedMoney`.
-- Files: `src/lib/tiers.ts` (label + alias only), the two dashboard components, `src/routes/_authenticated/clients.$clientId.index.tsx`.
-
-### 7. Accounting Break-Even + True Break-Even → one card
-
-Revised after verifying against the stored snapshots.
-
-They render identical numbers for all 12 clients today because `client_true_breakeven_inputs` has **zero rows** — every client's cash commitments are empty. Merge into one card keyed `accounting_breakeven` (label "Break-Even"), with cash commitments as an expandable section fed by the existing inputs. `true_breakeven` becomes a deprecated alias in the same way as `superannuation`.
-
-Correction to the earlier assumption: missing cost classifications do **not** force a 100% gross margin. `getProfitAndLoss` (`src/lib/xero/reports.functions.ts:68`) already parses Total Cost of Sales, so the widget's margin is Xero's own Gross Profit margin — verified identical across all 14 tenants. The 100% figures on 12 files are Xero's answer, because those files have no Cost of Sales section at all. Classifications only split operating expenses into fixed/variable, and are therefore an override, never a prerequisite. No empty state is added for missing classifications.
-
-Account types are not used as a second margin source: zero tenants have any `OVERHEADS` accounts, and DIRECTCOSTS accounts already sit inside the Cost of Sales section. They stay where they are — seeding the fixed/variable split inside `buildClassificationResolver`.
-
-Where no break-even is possible — the five files with no income (A.C.N. 657 659 026, X14, X11, X8, X10) — the card states that no income is recorded for the period, keeps the date range control live, and offers no setup prompt, because setup is not what is missing.
-
-`is_wages` in `client_cost_classifications` is read by `src/lib/health.functions.ts:600` and must survive unchanged. `src/lib/xero/scenario.functions.ts:259` also reads the table; Cashflow Scenario is untouched.
-
-Files: `src/components/dashboard/AccountingBreakevenWidget.tsx`, `TrueBreakevenWidget.tsx`, `TrueBreakevenSection.tsx`, `useBreakevenData.ts`, `src/lib/tiers.ts`.
-
-
-### 8. Business Health on snapshots
-
-Confirmed as the fix. `getBusinessHealthDetail` today calls Xero directly at `src/lib/health.functions.ts:553` (P&L), `:558` (balance sheet), `:559` (AR invoices), plus optional prior-period calls at `:563`, `:568`, `:569`. The AR call at `:559` is the disagreement: Receivables reads `invoices_accrec_open` from the snapshot while Health re-fetches live, so the two cards can show different totals on one screen.
-
-Converting Health to `readSnapshot` for `profit_and_loss_*`, `balance_sheet`, `balance_sheet_prior`, `invoices_accrec_open` and `invoices_accpay_open` makes both cards read the identical stored payload, so they cannot disagree. Health keeps its live branch only when the user's chosen date range does not hash-match the catalogue params, exactly as Receivables does. Health's computation is unchanged.
-
-### 9. Dead code
-
-Confirmed. `rg "getBusinessHealth\b" src` returns two hits, both inside `src/lib/health.functions.ts`: the declaration at line 274 and a comment at line 398 noting its summary was merged into `getBusinessHealthDetail`. No route, component or other module imports it. Safe to delete along with any helper that becomes unreachable with it.
-
-## Net effect on card count
-
-Advisory clients go from a set including two break-evens and two tax/super cards to one of each, plus structural hiding of GST reconciliation on cashbook files. No widget's computation changes.
-
-## Invariants (section 0)
-
-Touched: 4 and 8. The capability profile reads snapshots through `context.supabase`, so a tenantId remains a filter and never a grant; hiding a card never widens who can see data. Fail-closed holds: an unreadable or missing snapshot yields an `unknown` profile, and `unknown` shows the card rather than hiding it, so a profile failure can never suppress data a user is entitled to.
+1. **`src/lib/xero/audit.functions.ts`** — replace `assertAdvisor` with the search pattern: resolve the client and organisation from the tenant server-side, `assertClientDataAccessForClient` / `platformStaffCanAccessFirm`, then `assertClientWidget(..., "xero_audit")`. Apply to all five exported functions.
+2. **`src/lib/xero/reports.functions.ts:103`** — stop authorising against a caller-supplied widget key. Check `pnl`, or check that the caller holds *all* of the keys the P&L can serve.
+3. **Decide and document what "off" means for staff.** Either `assertWidgetAccess` stops exempting advisors, or the settings copy says plainly that switching a card off hides it from the client dashboard and does not restrict organisation staff. The current wording implies the former; the code does the latter.
+4. **Add `assertClientWidget`** to `getTrueBreakevenInputs`/`upsertTrueBreakevenInputs`, the unreconciled functions and the notes reads, so RLS is not the only gate on a card that is switched off.
+5. **Collapse the duplicate resolution.** `widget-resolve.server.ts` should call the database function rather than re-derive the ceiling−exclusions maths, per spec section 0.7.
+6. **Autotek NSW specifically** — no code fix needed. If the audit card should be off, add `xero_audit` to the client-level exclusion row for tier `advisory`; there is currently no client row at all.
