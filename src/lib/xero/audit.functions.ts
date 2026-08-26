@@ -2,17 +2,46 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-// Server functions for the Xero file audit. All gated to advisor / super_admin
-// via has_role; tenant access is checked through getConnectionByTenant.
+// Server functions for the Xero file audit.
+//
+// Access: a `tenantId` in the request body is a FILTER, never a GRANT. The
+// client and organisation that own the file are resolved SERVER-SIDE from the
+// tenant, and every grant comes from the database:
+//   1. public.user_can_access_client  — can this caller reach the client at all
+//   2. public.user_can_access_firm    — is this caller ORGANISATION STAFF
+//      (the audit spans a whole Xero file, so an invited client viewer is
+//      refused, exactly as with transaction search)
+//   3. public.client_can_use_widget(_, 'xero_audit') — is the card in the plan
+// A platform role on its own grants nothing.
 
-async function assertAdvisor(supabase: any, userId: string): Promise<void> {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .in("role", ["advisor", "super_admin"]);
-  if (error) throw new Error(error.message);
-  if (!data || data.length === 0) throw new Error("Forbidden: advisor only");
+async function assertAuditAccess(
+  supabase: any,
+  userId: string,
+  tenantId: string,
+): Promise<{ clientId: string; firmId: string }> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: link } = await (supabaseAdmin as any)
+    .from("client_xero_orgs")
+    .select("client_id, clients!inner(id, firm_id), xero_connections!inner(tenant_id)")
+    .eq("xero_connections.tenant_id", tenantId)
+    .limit(1)
+    .maybeSingle();
+  const clientId = (link?.client_id as string | undefined) ?? null;
+  const firmId = (link?.clients?.firm_id as string | undefined) ?? null;
+  if (!clientId || !firmId) {
+    throw new Error("That Xero organisation is not linked to a client.");
+  }
+
+  const { assertClientDataAccessForClient, assertClientDataAccessForFirm } = await import(
+    "@/lib/support-access.server"
+  );
+  await assertClientDataAccessForClient(userId, clientId);
+  await assertClientDataAccessForFirm(userId, firmId);
+
+  const { assertClientWidget } = await import("@/lib/widget-access.server");
+  await assertClientWidget(supabase, clientId, "xero_audit");
+
+  return { clientId, firmId };
 }
 
 export const runXeroAudit = createServerFn({ method: "POST" })
