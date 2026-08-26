@@ -490,9 +490,45 @@ export function TierEditor({
           </Button>
         </div>
       </div>
-      <p className="mb-4 text-xs text-muted-foreground">{description ?? TIER_DESCRIPTION[tier]}</p>
+      <p className="mb-1 text-xs text-muted-foreground">{description ?? TIER_DESCRIPTION[tier]}</p>
+      {detachedOrgs !== undefined && detachedOrgs.length > 0 && (
+        <div className="mb-4 rounded-lg border border-border bg-muted/30 p-3">
+          <p className="text-xs text-muted-foreground">
+            {detachedOrgs.length}{" "}
+            {detachedOrgs.length === 1 ? "organisation has" : "organisations have"} their own card
+            list for this tier — changes here won&apos;t reach them.{" "}
+            <button
+              type="button"
+              onClick={() => setShowDetached((v) => !v)}
+              className="text-primary hover:underline"
+            >
+              {showDetached ? "Hide" : "Show which"}
+            </button>
+          </p>
+          {showDetached && (
+            <ul className="mt-2 space-y-1">
+              {detachedOrgs.map((o) => (
+                <li key={o.firmId} className="text-xs">
+                  <Link
+                    to="/firms/$firmId/settings"
+                    params={{ firmId: o.firmId }}
+                    className="text-primary hover:underline"
+                  >
+                    {o.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      {detachedOrgs !== undefined && detachedOrgs.length === 0 && (
+        <p className="mb-4 text-xs text-muted-foreground">
+          Every organisation follows this platform default for this tier.
+        </p>
+      )}
       <fieldset disabled={isOff} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-        {ALL_WIDGETS.map((w) => (
+        {cards.map((w) => (
           <label
             key={w}
             className="flex cursor-pointer items-center gap-2 rounded-md border border-border bg-background px-3 py-2 text-sm"
@@ -504,4 +540,5 @@ export function TierEditor({
       </fieldset>
     </section>
   );
+
 }
