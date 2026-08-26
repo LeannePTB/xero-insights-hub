@@ -13,7 +13,9 @@
 // Pure — no imports, so both the report builder and any test can use it.
 
 export type GapCause =
-  | "no_statutory_accounts"
+  | "statutory_absent"
+  | "statutory_unrecognised"
+  | "statutory_input_invalid"
   | "partial_statutory_accounts"
   | "balance_sheet_unavailable"
   | "debtors_unavailable";
@@ -26,11 +28,20 @@ export type GapCause =
 export function classifyGap(gap: string): GapCause | null {
   const g = gap.toLowerCase();
 
+  if (g.includes("no gst, payg withholding or superannuation balances appeared on the balance sheet")) {
+    return "statutory_absent";
+  }
+  if (g.includes("included statutory balance lines that this report could not identify reliably")) {
+    return "statutory_unrecognised";
+  }
+  if (g.includes("available accounting records were not sufficient to determine")) {
+    return "statutory_input_invalid";
+  }
   if (/could (not )?be matched on the balance sheet/.test(g)) {
     // "Protected money is incomplete: super could not be matched …" — some
     // components resolved, so the cause is a partial mapping, not an absent one.
     if (g.startsWith("protected money is incomplete")) return "partial_statutory_accounts";
-    return "no_statutory_accounts";
+    return "statutory_absent";
   }
   if (g.includes("balance sheet snapshot")) return "balance_sheet_unavailable";
   if (g.includes("open invoice")) return "debtors_unavailable";
@@ -42,8 +53,12 @@ export function classifyGap(gap: string): GapCause | null {
  * for the review — covering every rule that the cause blocked.
  */
 const CAUSE_SENTENCE: Record<GapCause, string> = {
-  no_statutory_accounts:
-    "No GST, PAYG withholding, superannuation or tax account could be matched on the Balance Sheet, so neither the money held against cash at bank nor the statutory balances carried on the Balance Sheet could be assessed for this period.",
+  statutory_absent:
+    "No GST, PAYG withholding or superannuation balances appeared on the Balance Sheet for this period, so protected money could not be assessed from that report.",
+  statutory_unrecognised:
+    "The Balance Sheet included statutory balance lines that this report could not identify reliably, so protected money could not be assessed.",
+  statutory_input_invalid:
+    "The available accounting records were not sufficient to determine the GST, PAYG withholding and superannuation balances for this period, so protected money was not assessed.",
   partial_statutory_accounts:
     "Some GST, PAYG withholding or superannuation accounts could not be matched on the Balance Sheet, so the money held against cash at bank is understated and the statutory balances are read from the accounts that could be matched.",
   balance_sheet_unavailable:
@@ -80,7 +95,7 @@ export function dedupeGapSentences(gaps: string[]): string[] {
 
   // A partial mapping and an absent mapping are the same underlying story; if
   // both somehow appear, the stronger (absent) sentence already says it.
-  if (seenCauses.has("no_statutory_accounts") && seenCauses.has("partial_statutory_accounts")) {
+  if (seenCauses.has("statutory_absent") && seenCauses.has("partial_statutory_accounts")) {
     return out.filter((s) => s !== CAUSE_SENTENCE["partial_statutory_accounts"]);
   }
   return out;

@@ -6,7 +6,7 @@
 // Staff-only: nothing here is rendered on a client-facing surface.
 
 import { SNAPSHOT_PAYLOAD_VERSION, STALENESS_SECONDS } from "@/lib/xero/snapshot-keys";
-import { buildProtectedMoney, extractCashAtBank, extractTaxLines } from "@/lib/xero/tax-lines";
+import { buildProtectedMoney, analyseBalanceSheet, type TaxLineExtraction } from "@/lib/xero/tax-lines";
 import {
   R01_PROTECTED_MONEY,
   R05_STATUTORY_MAGNITUDE,
@@ -107,20 +107,39 @@ function money(n: number): string {
 // ---------------------------------------------------------------------------
 
 /** Returns a finding, or a reason the rule could not be evaluated. */
-export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow): {
+const PROTECTED_MONEY_ABSENT =
+  "No GST, PAYG withholding or superannuation balances appeared on the Balance Sheet for this period, so protected money could not be assessed from that report.";
+const PROTECTED_MONEY_UNRECOGNISED =
+  "The Balance Sheet included statutory balance lines that this report could not identify reliably, so protected money could not be assessed.";
+const PROTECTED_MONEY_UNKNOWN =
+  "The available accounting records were not sufficient to determine the GST, PAYG withholding and superannuation balances for this period, so protected money was not assessed.";
+
+function taxExtractionUnavailable(result: TaxLineExtraction): string | null {
+  if (result.status === "assessed") return null;
+  if (result.status === "absent") return PROTECTED_MONEY_ABSENT;
+  if (result.status === "unrecognised") return PROTECTED_MONEY_UNRECOGNISED;
+  return PROTECTED_MONEY_UNKNOWN;
+}
+
+/** Returns a finding, or a reason the rule could not be evaluated. */
+export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: SnapshotRow): {
   finding: Finding | null;
   unavailable?: string;
+  debug?: { protectedMoneyTotal?: number; cashAtBank?: number };
 } {
-  const lines = extractTaxLines(balanceSheet.payload);
-  const protectedMoney = buildProtectedMoney(balanceSheet.as_at, lines);
-  const cash = extractCashAtBank(balanceSheet.payload).total;
+  const analysed = analyseBalanceSheet(balanceSheet.payload, accounts?.payload);
+  if (analysed.status === "input_invalid" || analysed.cashAtBank.status === "input_invalid") {
+    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN };
+  }
+
+  const unavailable = taxExtractionUnavailable(analysed.taxLines);
+  if (unavailable) return { finding: null, unavailable };
+
+  const protectedMoney = buildProtectedMoney(balanceSheet.as_at, analysed.taxLines.lines);
+  const cash = analysed.cashAtBank.total;
 
   if (protectedMoney.unresolved.length === 3) {
-    return {
-      finding: null,
-      unavailable:
-        "No GST, PAYG withholding or superannuation account could be matched on the Balance Sheet, so protected money is unknown.",
-    };
+    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash } };
   }
 
   const t = R01_PROTECTED_MONEY;
@@ -147,6 +166,7 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow): {
       return {
         finding: null,
         unavailable: `Protected money is incomplete: ${protectedMoney.unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
+        debug: { protectedMoneyTotal: total, cashAtBank: cash },
       };
     }
     return { finding: null };
@@ -166,6 +186,7 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow): {
       consequenceScore: t.consequence[severity],
       daysToConsequence: null,
     },
+    debug: { protectedMoneyTotal: total, cashAtBank: cash },
   };
 }
 
@@ -177,11 +198,20 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow): {
 // that reports lodgement status. Never word it as "overdue".
 // ---------------------------------------------------------------------------
 
-export function ruleStatutoryMagnitude(balanceSheet: SnapshotRow): {
+export function ruleStatutoryMagnitude(balanceSheet: SnapshotRow, accounts?: SnapshotRow): {
   finding: Finding | null;
   unavailable?: string;
+  debug?: { statutoryTotal?: number; cashAtBank?: number };
 } {
-  const lines = extractTaxLines(balanceSheet.payload);
+  const analysed = analyseBalanceSheet(balanceSheet.payload, accounts?.payload);
+  if (analysed.status === "input_invalid" || analysed.cashAtBank.status === "input_invalid") {
+    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN };
+  }
+
+  const unavailable = taxExtractionUnavailable(analysed.taxLines);
+  if (unavailable) return { finding: null, unavailable };
+
+  const lines = analysed.taxLines.lines;
   const statutory = lines
     .filter((l) => l.category === "gst" || l.category === "payg" || l.category === "other-tax")
     .reduce((s, l) => s + l.amount, 0);
@@ -191,17 +221,18 @@ export function ruleStatutoryMagnitude(balanceSheet: SnapshotRow): {
     return {
       finding: null,
       unavailable: "No GST, PAYG withholding or tax account could be matched on the Balance Sheet.",
+      debug: { statutoryTotal: statutory, cashAtBank: analysed.cashAtBank.total },
     };
   }
 
-  const cash = extractCashAtBank(balanceSheet.payload).total;
+  const cash = analysed.cashAtBank.total;
   const t = R05_STATUTORY_MAGNITUDE;
   const ratio = cash > 0 ? statutory / cash : statutory > 0 ? Infinity : 0;
 
   let severity: RuleSeverity | null = null;
   if (ratio >= t.warningRatio) severity = "warning";
   else if (ratio >= t.watchRatio) severity = "watch";
-  if (!severity) return { finding: null };
+  if (!severity) return { finding: null, debug: { statutoryTotal: statutory, cashAtBank: cash } };
 
   return {
     finding: {
@@ -212,6 +243,7 @@ export function ruleStatutoryMagnitude(balanceSheet: SnapshotRow): {
       consequenceScore: t.consequence[severity],
       daysToConsequence: null,
     },
+    debug: { statutoryTotal: statutory, cashAtBank: cash },
   };
 }
 
@@ -417,8 +449,9 @@ export function evaluateFromRows(
   const bs = byKey.get("balance_sheet");
   if (bs && (bsState === "usable" || bsState === "partial")) {
     if (bsState === "partial") gaps.push("The Balance Sheet snapshot is incomplete.");
+    const accounts = byKey.get("accounts");
     for (const run of [ruleProtectedMoneyVsCash, ruleStatutoryMagnitude]) {
-      const r = run(bs);
+      const r = run(bs, accounts);
       if (r.finding) findings.push(r.finding);
       else if (r.unavailable) gaps.push(r.unavailable);
     }

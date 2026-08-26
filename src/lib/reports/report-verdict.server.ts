@@ -202,8 +202,12 @@ export async function buildReportVerdict(opts: BuildVerdictOptions): Promise<Rep
   const rows: SnapshotRow[] = [];
 
   try {
-    const bs = await xeroGet<any>(opts.conn, "Reports/BalanceSheet", { date: opts.periodEnd });
+    const [bs, accounts] = await Promise.all([
+      xeroGet<any>(opts.conn, "Reports/BalanceSheet", { date: opts.periodEnd }),
+      xeroGet<any>(opts.conn, "Accounts"),
+    ]);
     rows.push(liveRow("balance_sheet", opts.periodEnd, bs, true));
+    rows.push(liveRow("accounts", opts.periodEnd, accounts, true));
   } catch {
     // Left out entirely: the engine reports the missing check as a coverage
     // gap, which is what page one must say.

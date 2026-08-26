@@ -34,4 +34,4 @@ export const R06_DEBTORS = {
 } as const;
 
 /** Report keys a client must have before any verdict is produced. */
-export const REQUIRED_REPORT_KEYS = ["balance_sheet", "invoices_accrec_open"] as const;
+export const REQUIRED_REPORT_KEYS = ["balance_sheet", "accounts", "invoices_accrec_open"] as const;

@@ -17,7 +17,7 @@
 // entitled to because a snapshot has not landed yet would be a worse failure
 // than showing an honest empty one.
 
-import { classifyTaxLine } from "./tax-lines";
+import { analyseBalanceSheet } from "./tax-lines";
 import { readSnapshot } from "./snapshot-read.server";
 import { memoiseXeroGet } from "./request-memo.server";
 
@@ -131,20 +131,13 @@ async function computeFileCapability(opts: {
   // Only the narrowest possible case — a cashbook file with no wage accounts
   // AND no super/PAYG balance-sheet lines — is even recorded as `no`, and the
   // consequence of `no` is nothing at all.
-  const bsNames: string[] = [];
-  const walk = (rows: any[] | undefined) => {
-    for (const r of rows ?? []) {
-      const name = r?.Cells?.[0]?.Value;
-      if (r?.RowType === "Row" && typeof name === "string" && name.trim()) bsNames.push(name.trim());
-      walk(r?.Rows);
-    }
-  };
-  walk(bsPayload?.Reports?.[0]?.Rows);
-
-  const superOrPaygLines = bsNames.filter((n) => {
-    const cat = classifyTaxLine(n);
-    return cat === "super" || cat === "payg";
-  });
+  const bsAnalysis = bsPayload ? analyseBalanceSheet(bsPayload, accountsPayload) : null;
+  const superOrPaygLines =
+    bsAnalysis?.status === "assessed" && bsAnalysis.taxLines.status === "assessed"
+      ? bsAnalysis.taxLines.lines
+          .filter((l) => l.category === "super" || l.category === "payg")
+          .map((l) => l.name)
+      : [];
   const wageAccounts = accounts
     .filter((a) => String(a?.Class ?? "") === "EXPENSE" && WAGE_ACCOUNT.test(String(a?.Name ?? "")))
     .map((a) => String(a.Name));
