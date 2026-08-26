@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import assert from "node:assert";
+import { describe, it } from "node:test";
 import { xeroMemoKey } from "./request-memo.server";
 
 describe("xeroMemoKey", () => {
@@ -9,7 +10,7 @@ describe("xeroMemoKey", () => {
     const b = xeroMemoKey("accounting", "tenant-b", "Reports/BalanceSheet", {
       date: "2026-08-31",
     });
-    expect(a).not.toBe(b);
+    assert.notStrictEqual(a, b);
   });
 
   it("separates as-at dates and reporting bases", () => {
@@ -29,9 +30,9 @@ describe("xeroMemoKey", () => {
       paymentsOnly: "true",
     });
 
-    expect(july).not.toBe(august);
-    expect(july).not.toBe(cashBasis);
-    expect(august).not.toBe(cashBasis);
+    assert.notStrictEqual(july, august);
+    assert.notStrictEqual(july, cashBasis);
+    assert.notStrictEqual(august, cashBasis);
   });
 
   it("separates the Accounting API from the Assets API even with identical paths", () => {
@@ -41,7 +42,7 @@ describe("xeroMemoKey", () => {
     const assets = xeroMemoKey("assets", "tenant-a", "Assets", {
       status: "DRAFT",
     });
-    expect(accounting).not.toBe(assets);
+    assert.notStrictEqual(accounting, assets);
   });
 
   it("is insensitive to argument order and drops empty or undefined params", () => {
@@ -57,8 +58,8 @@ describe("xeroMemoKey", () => {
       trackingOptionID1: "",
       date: "2026-08-31",
     });
-    expect(ordered).toBe(reversed);
-    expect(ordered).not.toContain("trackingOptionID");
+    assert.strictEqual(ordered, reversed);
+    assert.ok(!ordered.includes("trackingOptionID"));
   });
 
   it("cannot be forged by a value containing the internal separator", () => {
@@ -68,7 +69,7 @@ describe("xeroMemoKey", () => {
     const forged = xeroMemoKey("accounting", "tenant-a", "Accounts", {
       where: 'Status=="ACTIVE"',
     });
-    expect(key).not.toBe(forged);
-    expect(key).not.toContain("\u0000tenant-a\u0000Accounts");
+    assert.notStrictEqual(key, forged);
+    assert.ok(!key.includes("\u0000tenant-a\u0000Accounts"));
   });
 });
