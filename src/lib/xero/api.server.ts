@@ -316,6 +316,13 @@ async function waitForRateLimit(res: Response, attempt: number) {
   await new Promise((r) => setTimeout(r, Math.min(seconds, 60) * 1000));
 }
 
+/**
+ * Public entry point. Identical signature, return type and failure behaviour
+ * to before; the only addition is a per-request memo so the same report is
+ * not pulled from Xero twice while serving one request. Retry, token refresh
+ * and backoff are untouched — they live in `xeroGetUncached` below and run
+ * inside the memoised call, so a retried request is still one memo entry.
+ */
 export async function xeroGet<T = unknown>(
   conn: Connection,
   path: string,
@@ -323,6 +330,19 @@ export async function xeroGet<T = unknown>(
   retries = 1,
   rateRetries = 3,
 ): Promise<T> {
+  const { memoiseXeroGet, xeroMemoKey } = await import("./request-memo.server");
+  const key = xeroMemoKey("accounting", conn.tenant_id, path, params);
+  return memoiseXeroGet<T>(key, () => xeroGetUncached<T>(conn, path, params, retries, rateRetries));
+}
+
+async function xeroGetUncached<T = unknown>(
+  conn: Connection,
+  path: string,
+  params: Record<string, string | undefined> = {},
+  retries = 1,
+  rateRetries = 3,
+): Promise<T> {
+
   // Don't fire a request we know Xero will reject for a missing scope — that
   // produced hundreds of predictable 401s and junk telemetry rows.
   const requiredScope = PATH_SCOPE[path];
