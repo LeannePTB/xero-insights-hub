@@ -12,17 +12,12 @@ export const CLIENT_LIMITS = {
 
 export type FirmTier = keyof typeof CLIENT_LIMITS;
 
-export const TIER_LABEL: Record<FirmTier, string> = {
-  ptb: "PTB (1 client, free)",
-  starter: "Starter (5 clients)",
-  growth: "Growth (10 clients)",
-  scale: "Scale (20 clients)",
-  firm: "Organisation (50 clients)",
-  free: "Free forever",
-  legacy: "Legacy",
-};
-
-export const TIER_SHORT: Record<FirmTier, string> = {
+/**
+ * Fallback plan names for tiers with no `plan_levels` row (`firm`, `free`,
+ * `legacy`). Names only — never a limit. Limits are read from the catalogue
+ * so a label can never disagree with what is enforced.
+ */
+export const TIER_NAME: Record<FirmTier, string> = {
   ptb: "PTB",
   starter: "Starter",
   growth: "Growth",
@@ -31,6 +26,7 @@ export const TIER_SHORT: Record<FirmTier, string> = {
   free: "Free",
   legacy: "Legacy",
 };
+
 
 // Stripe price lookup_keys — created via the payments--batch_create_product tool.
 export const TIER_PRICE_KEY: Record<Exclude<FirmTier, "free" | "legacy" | "ptb">, string> = {
