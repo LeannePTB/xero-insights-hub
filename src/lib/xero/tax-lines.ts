@@ -228,27 +228,64 @@ function extractTaxLinesFromReport(
   return { status: "absent", lines: [], unrecognised: [] };
 }
 
-function extractCashAtBankFromReport(report: BalanceSheetReport): CashAtBankExtraction {
+function isActiveBankAccount(account: XeroAccountRef | undefined): boolean {
+  if (!account) return false;
+  return (
+    normaliseText(account.Type).toUpperCase() === "BANK" &&
+    normaliseText(account.Class).toUpperCase() === "ASSET" &&
+    normaliseText(account.Status).toUpperCase() === "ACTIVE"
+  );
+}
+
+/**
+ * Cash at bank, resolved from Xero's own account metadata rather than the
+ * layout of the Balance Sheet.
+ *
+ * The old implementation matched top-level sections titled "Bank", which is a
+ * layout convention, not a fact: files that group their bank accounts under
+ * "Current Assets" produced no figure at all, and the summary "Total Bank" row
+ * was added to the sum alongside the accounts it summarised. Rows are now
+ * matched on their account ID, so only real accounts are counted and total rows
+ * (which carry no account attribute) can never be.
+ *
+ * When no bank row matches, the two causes are kept apart: a file with no
+ * active bank account is `absent`, a file that has them but whose rows could
+ * not be matched is `unrecognised`. An internal failure is never reported as
+ * the client having no bank accounts.
+ */
+function extractCashAtBankFromReport(
+  report: BalanceSheetReport,
+  accountsById: Map<string, XeroAccountRef>,
+): CashAtBankExtraction {
   const accounts: { name: string; balance: number }[] = [];
   let total = 0;
-  let sawBankSection = false;
 
-  for (const section of report.Rows ?? []) {
-    const title = (section.Title || "").toLowerCase();
-    if (!title.includes("bank")) continue;
-    sawBankSection = true;
-    walkTaxRows(section.Rows, (r) => {
-      if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
-      const name = r.Cells[0]?.Value;
-      if (!name) return;
-      const amount = parseTaxAmount(r.Cells[1]?.Value);
-      total += amount;
-      if (!name.toLowerCase().startsWith("total ")) accounts.push({ name, balance: amount });
-    });
+  walkTaxRows(report.Rows, (r) => {
+    if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
+    const name = r.Cells[0]?.Value;
+    if (!name) return;
+    const accountId = accountIdFromCells(r.Cells);
+    if (!accountId) return;
+    const account = accountsById.get(accountId);
+    if (!isActiveBankAccount(account)) return;
+    const amount = parseTaxAmount(r.Cells[1]?.Value);
+    total += amount;
+    accounts.push({ name, balance: amount });
+  });
+
+  if (accounts.length > 0) return { status: "assessed", total, accounts };
+
+  const fileHasBankAccounts = [...accountsById.values()].some(isActiveBankAccount);
+  if (fileHasBankAccounts) {
+    return {
+      status: "unrecognised",
+      total: 0,
+      accounts: [],
+      reason:
+        "The file has active bank accounts, but none of them could be matched to a line on the Balance Sheet, so cash at bank could not be read.",
+    };
   }
-
-  if (!sawBankSection && accounts.length === 0) return { status: "absent", total: 0, accounts: [] };
-  return { status: "assessed", total, accounts };
+  return { status: "absent", total: 0, accounts: [] };
 }
 
 /**
@@ -268,12 +305,15 @@ export function analyseBalanceSheet(balanceSheetInput: any, accountsInput?: any)
     };
   }
 
-  const cashAtBank = extractCashAtBankFromReport(reportResult.report);
   const accountsResult = normaliseAccounts(accountsInput);
   const taxLines =
     accountsResult.status === "assessed"
       ? extractTaxLinesFromReport(reportResult.report, accountsResult.byId)
       : invalidTax(accountsResult.reason);
+  const cashAtBank =
+    accountsResult.status === "assessed"
+      ? extractCashAtBankFromReport(reportResult.report, accountsResult.byId)
+      : invalidCash(accountsResult.reason);
 
   return { status: "assessed", report: reportResult.report, taxLines, cashAtBank };
 }
@@ -283,10 +323,15 @@ export function extractTaxLines(balanceSheetInput: any, accountsInput?: any): Ta
   return analyseBalanceSheet(balanceSheetInput, accountsInput).taxLines;
 }
 
-/** Cash at bank from a Balance Sheet payload. */
-export function extractCashAtBank(balanceSheetInput: any): CashAtBankExtraction {
-  return analyseBalanceSheet(balanceSheetInput, { Accounts: [] }).cashAtBank;
+/**
+ * Cash at bank from a Balance Sheet payload. The Accounts payload is required:
+ * without it the bank accounts cannot be identified, and the result is
+ * `input_invalid` rather than a silent zero.
+ */
+export function extractCashAtBank(balanceSheetInput: any, accountsInput?: any): CashAtBankExtraction {
+  return analyseBalanceSheet(balanceSheetInput, accountsInput).cashAtBank;
 }
+
 
 export function taxLinesOrEmpty(result: TaxLineExtraction): TaxLine[] {
   return result.status === "assessed" ? result.lines : [];
