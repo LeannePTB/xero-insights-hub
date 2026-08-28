@@ -125,7 +125,99 @@ describe("R01 protected money vs cash", () => {
     assert.strictEqual(r.finding, null);
     assert.match(r.unavailable ?? "", /super/);
   });
+
+  it("does not fire when cash at bank is unknown", () => {
+    // Bank accounts exist in the file but no Balance Sheet row matched them.
+    const payload = {
+      Rows: [
+        {
+          RowType: "Section",
+          Title: "Current Liabilities",
+          Rows: FULL_TAX.map((t) => ({
+            RowType: "Row",
+            Cells: [accountCell(t.name, t.accountId), { Value: String(t.amount) }],
+          })),
+        },
+      ],
+    };
+    const r = ruleProtectedMoneyVsCash(row({ report_key: "balance_sheet", payload }), accountRow());
+    assert.strictEqual(r.finding, null);
+    assert.match(r.unavailable ?? "", /cash at bank/i);
+  });
+
+  it("does not fire when protected money is unknown", () => {
+    const payload = balanceSheet(50_000, []);
+    const r = ruleProtectedMoneyVsCash(row({ report_key: "balance_sheet", payload }), accountRow());
+    assert.strictEqual(r.finding, null);
+    assert.ok(r.unavailable);
+  });
+
+  it("does not fire when cash at bank is not a positive balance", () => {
+    const r = ruleProtectedMoneyVsCash(
+      row({ report_key: "balance_sheet", payload: balanceSheet(-10_000, FULL_TAX) }),
+      accountRow(),
+    );
+    assert.strictEqual(r.finding, null);
+    assert.match(r.unavailable ?? "", /not a positive balance/i);
+  });
 });
+
+describe("cash at bank", () => {
+  it("excludes a non-bank account and the section total", () => {
+    const payload = {
+      Rows: [
+        {
+          RowType: "Section",
+          Title: "Bank",
+          Rows: [
+            { RowType: "Row", Cells: [accountCell("Business Cheque", "bank-1"), { Value: "50000" }] },
+            { RowType: "Row", Cells: [accountCell("Loan account", "loan-1"), { Value: "-30000" }] },
+            { RowType: "Row", Cells: [{ Value: "Total Bank" }, { Value: "20000" }] },
+          ],
+        },
+      ],
+    };
+    const analysed = analyseBalanceSheet(payload, {
+      Accounts: [
+        ...ACCOUNTS.Accounts,
+        { AccountID: "loan-1", Name: "Loan account", Class: "LIABILITY", Status: "ACTIVE", Type: "CURRLIAB" },
+      ],
+    });
+    assert.strictEqual(analysed.cashAtBank.status, "assessed");
+    if (analysed.cashAtBank.status !== "assessed") throw new Error("expected assessed cash");
+    assert.strictEqual(analysed.cashAtBank.total, 50_000);
+    assert.strictEqual(analysed.cashAtBank.accounts.length, 1);
+  });
+
+  it("finds bank accounts that are not under a section titled Bank", () => {
+    const payload = {
+      Rows: [
+        {
+          RowType: "Section",
+          Title: "Current Assets",
+          Rows: [{ RowType: "Row", Cells: [accountCell("Business Cheque", "bank-1"), { Value: "12345" }] }],
+        },
+      ],
+    };
+    const analysed = analyseBalanceSheet(payload, ACCOUNTS);
+    assert.strictEqual(analysed.cashAtBank.status, "assessed");
+    if (analysed.cashAtBank.status !== "assessed") throw new Error("expected assessed cash");
+    assert.strictEqual(analysed.cashAtBank.total, 12_345);
+  });
+
+  it("reports unrecognised, not absent, when the file has bank accounts but no row matched", () => {
+    const analysed = analyseBalanceSheet({ Rows: [] }, ACCOUNTS);
+    assert.strictEqual(analysed.cashAtBank.status, "unrecognised");
+  });
+
+  it("reports absent only when the file has no active bank account", () => {
+    const analysed = analyseBalanceSheet({ Rows: [] }, {
+      Accounts: ACCOUNTS.Accounts.filter((a) => a.Type !== "BANK"),
+    });
+    assert.strictEqual(analysed.cashAtBank.status, "absent");
+  });
+});
+
 
 describe("Balance Sheet extraction", () => {
   it("accepts the full Xero Reports envelope and extracts protected money and cash", () => {
