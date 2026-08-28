@@ -337,12 +337,15 @@ describe("R06 debtors", () => {
 
 describe("coverage gate", () => {
   const healthyBs = row({ report_key: "balance_sheet", payload: balanceSheet(500_000, FULL_TAX) });
+  // Payables are part of full coverage: without them the lodged-and-owing half
+  // of protected money is refused, which is a gap, not a green.
+  const healthyPayables = row({ report_key: "invoices_accpay_open", payload: { Invoices: [] } });
 
   it("green only when everything is present, current and complete", () => {
     const v = evaluateClient({
       clientId: "c1",
       connections: CONNECTED,
-      snapshots: [healthyBs, accountRow(), HEALTHY_DEBTORS],
+      snapshots: [healthyBs, accountRow(), HEALTHY_DEBTORS, healthyPayables],
       now: NOW,
     });
     assert.strictEqual(v.state, "ok");
