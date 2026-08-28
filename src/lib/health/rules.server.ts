@@ -172,7 +172,9 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
 
   const t = R01_PROTECTED_MONEY;
   const total = protectedMoney.total;
-  const ratio = total / cash!;
+  const cashAmount = cash as number;
+  const ratio = total / cashAmount;
+
 
 
   let severity: RuleSeverity | null = null;
