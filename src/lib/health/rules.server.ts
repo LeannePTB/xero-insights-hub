@@ -542,8 +542,12 @@ export function evaluateFromRows(
   if (bs && (bsState === "usable" || bsState === "partial")) {
     if (bsState === "partial") gaps.push("The Balance Sheet snapshot is incomplete.");
     const accounts = byKey.get("accounts");
-    const apState = states.get("invoices_accpay_open");
-    const ap = apState === "usable" ? byKey.get("invoices_accpay_open") : undefined;
+    // Payables are not a required key (a verdict is still produced without
+    // them), so their usability is resolved here rather than read from
+    // `states`. Anything short of usable makes the split refuse.
+    const apRow = byKey.get("invoices_accpay_open");
+    const apState = keyState(apRow, "invoices_accpay_open", now, skipFreshness);
+    const ap = apState === "usable" ? apRow : undefined;
 
     const r01 = ruleProtectedMoneyVsCash(bs, accounts, ap);
     if (r01.finding) findings.push(r01.finding);
