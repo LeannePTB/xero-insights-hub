@@ -121,6 +121,29 @@ function taxExtractionUnavailable(result: TaxLineExtraction): string | null {
   return PROTECTED_MONEY_UNKNOWN;
 }
 
+// Precedence: a rule may only speak when BOTH sides of its comparison are
+// known. Cash at bank is the denominator of R01 and R05, so anything other
+// than a positive, fully read figure ends the rule as not assessed. A missing
+// denominator used to produce an infinite ratio, which read as critical.
+const CASH_ABSENT =
+  "No bank account balance appeared on the Balance Sheet for this period, so this could not be compared against cash at bank.";
+const CASH_UNKNOWN =
+  "Cash at bank could not be read from the accounting records for this period, so this could not be compared against it.";
+const CASH_NOT_POSITIVE =
+  "Cash at bank for this period is not a positive balance, so a comparison against it would not be meaningful and was not made.";
+
+type CashExtraction = ReturnType<typeof analyseBalanceSheet>["cashAtBank"];
+
+/** The reason cash cannot serve as the denominator, or null when it can. */
+function cashUnavailable(cash: CashExtraction): string | null {
+  if (cash.status === "absent") return CASH_ABSENT;
+  if (cash.status !== "assessed") return CASH_UNKNOWN;
+  // Includes overdrawn files and files whose "bank" accounts are loan or
+  // offset facilities: the total is real but it is not spendable cash.
+  if (!(cash.total > 0)) return CASH_NOT_POSITIVE;
+  return null;
+}
+
 /** Returns a finding, or a reason the rule could not be evaluated. */
 export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: SnapshotRow): {
   finding: Finding | null;
@@ -136,15 +159,21 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
   if (unavailable) return { finding: null, unavailable };
 
   const protectedMoney = buildProtectedMoney(balanceSheet.as_at, analysed.taxLines.lines);
-  const cash = analysed.cashAtBank.total;
+  const cash = analysed.cashAtBank.status === "assessed" ? analysed.cashAtBank.total : null;
 
   if (protectedMoney.unresolved.length === 3) {
-    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash } };
+    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
+  }
+
+  const cashReason = cashUnavailable(analysed.cashAtBank);
+  if (cashReason) {
+    return { finding: null, unavailable: cashReason, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
   }
 
   const t = R01_PROTECTED_MONEY;
   const total = protectedMoney.total;
-  const ratio = cash > 0 ? total / cash : total > 0 ? Infinity : 0;
+  const ratio = total / cash!;
+
 
   let severity: RuleSeverity | null = null;
   let title = "";
