@@ -121,6 +121,29 @@ function taxExtractionUnavailable(result: TaxLineExtraction): string | null {
   return PROTECTED_MONEY_UNKNOWN;
 }
 
+// Precedence: a rule may only speak when BOTH sides of its comparison are
+// known. Cash at bank is the denominator of R01 and R05, so anything other
+// than a positive, fully read figure ends the rule as not assessed. A missing
+// denominator used to produce an infinite ratio, which read as critical.
+const CASH_ABSENT =
+  "No bank account balance appeared on the Balance Sheet for this period, so this could not be compared against cash at bank.";
+const CASH_UNKNOWN =
+  "Cash at bank could not be read from the accounting records for this period, so this could not be compared against it.";
+const CASH_NOT_POSITIVE =
+  "Cash at bank for this period is not a positive balance, so a comparison against it would not be meaningful and was not made.";
+
+type CashExtraction = ReturnType<typeof analyseBalanceSheet>["cashAtBank"];
+
+/** The reason cash cannot serve as the denominator, or null when it can. */
+function cashUnavailable(cash: CashExtraction): string | null {
+  if (cash.status === "absent") return CASH_ABSENT;
+  if (cash.status !== "assessed") return CASH_UNKNOWN;
+  // Includes overdrawn files and files whose "bank" accounts are loan or
+  // offset facilities: the total is real but it is not spendable cash.
+  if (!(cash.total > 0)) return CASH_NOT_POSITIVE;
+  return null;
+}
+
 /** Returns a finding, or a reason the rule could not be evaluated. */
 export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: SnapshotRow): {
   finding: Finding | null;
@@ -136,15 +159,23 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
   if (unavailable) return { finding: null, unavailable };
 
   const protectedMoney = buildProtectedMoney(balanceSheet.as_at, analysed.taxLines.lines);
-  const cash = analysed.cashAtBank.total;
+  const cash = analysed.cashAtBank.status === "assessed" ? analysed.cashAtBank.total : null;
 
   if (protectedMoney.unresolved.length === 3) {
-    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash } };
+    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
+  }
+
+  const cashReason = cashUnavailable(analysed.cashAtBank);
+  if (cashReason) {
+    return { finding: null, unavailable: cashReason, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
   }
 
   const t = R01_PROTECTED_MONEY;
   const total = protectedMoney.total;
-  const ratio = cash > 0 ? total / cash : total > 0 ? Infinity : 0;
+  const cashAmount = cash as number;
+  const ratio = total / cashAmount;
+
+
 
   let severity: RuleSeverity | null = null;
   let title = "";
@@ -166,7 +197,7 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
       return {
         finding: null,
         unavailable: `Protected money is incomplete: ${protectedMoney.unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
-        debug: { protectedMoneyTotal: total, cashAtBank: cash },
+        debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
       };
     }
     return { finding: null };
@@ -181,12 +212,12 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
     finding: {
       ruleId: "R01",
       title,
-      detail: `${money(total)} of GST, PAYG withholding and superannuation is held against ${money(cash)} cash at bank.${gap}`,
+      detail: `${money(total)} of GST, PAYG withholding and superannuation is held against ${money(cashAmount)} cash at bank.${gap}`,
       severity,
       consequenceScore: t.consequence[severity],
       daysToConsequence: null,
     },
-    debug: { protectedMoneyTotal: total, cashAtBank: cash },
+    debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
   };
 }
 
@@ -221,13 +252,22 @@ export function ruleStatutoryMagnitude(balanceSheet: SnapshotRow, accounts?: Sna
     return {
       finding: null,
       unavailable: "No GST, PAYG withholding or tax account could be matched on the Balance Sheet.",
-      debug: { statutoryTotal: statutory, cashAtBank: analysed.cashAtBank.total },
+      debug: {
+        statutoryTotal: statutory,
+        cashAtBank: analysed.cashAtBank.status === "assessed" ? analysed.cashAtBank.total : undefined,
+      },
     };
   }
 
-  const cash = analysed.cashAtBank.total;
+  const cashReason = cashUnavailable(analysed.cashAtBank);
+  if (cashReason) {
+    return { finding: null, unavailable: cashReason, debug: { statutoryTotal: statutory } };
+  }
+
+  const cash = (analysed.cashAtBank as { total: number }).total;
   const t = R05_STATUTORY_MAGNITUDE;
-  const ratio = cash > 0 ? statutory / cash : statutory > 0 ? Infinity : 0;
+  const ratio = statutory / cash;
+
 
   let severity: RuleSeverity | null = null;
   if (ratio >= t.warningRatio) severity = "warning";
