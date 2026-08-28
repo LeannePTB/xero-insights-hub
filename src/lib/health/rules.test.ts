@@ -416,3 +416,251 @@ describe("ranking", () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// R01 — lodged and still owing (the three-part figure)
+//
+// Lodging a BAS moves the amount off the Balance Sheet statutory accounts and
+// into Accounts Payable as a bill to the ATO. Reading only the Balance Sheet
+// therefore understates protected money at exactly the wrong moment.
+// ---------------------------------------------------------------------------
+
+function billsPayload(
+  bills: {
+    contact: string;
+    date?: string;
+    total: number;
+    due: number;
+    lines: { accountId: string; amount: number }[];
+  }[],
+) {
+  return {
+    Invoices: bills.map((b, i) => ({
+      InvoiceID: `bill-${i}`,
+      Type: "ACCPAY",
+      Status: "AUTHORISED",
+      Contact: { Name: b.contact },
+      Date: b.date ?? "2026-08-05",
+      Total: b.total,
+      AmountDue: b.due,
+      LineItems: b.lines.map((l) => ({
+        AccountID: l.accountId,
+        LineAmount: l.amount,
+        TaxType: "BASEXCLUDED",
+      })),
+    })),
+  };
+}
+
+function payablesRow(payload: any, complete = true) {
+  return row({ report_key: "invoices_accpay_open", payload, complete });
+}
+
+const BS_ROW = row({ report_key: "balance_sheet", payload: balanceSheet(50_000, FULL_TAX) });
+
+describe("R01 lodged and still owing", () => {
+  it("bill pattern: adds the unpaid ATO bill coded to statutory accounts", () => {
+    const r = ruleProtectedMoneyVsCash(
+      BS_ROW,
+      accountRow(),
+      payablesRow(
+        billsPayload([
+          {
+            contact: "Australian Taxation Office",
+            total: 5_835,
+            due: 5_835,
+            lines: [
+              { accountId: "gst-1", amount: 3_000 },
+              { accountId: "payg-1", amount: 2_835 },
+            ],
+          },
+        ]),
+      ),
+    );
+    assert.strictEqual(r.split!.pattern, "bill");
+    assert.strictEqual(Math.round(r.split!.lodgedOwing!), 5_835);
+    assert.strictEqual(Math.round(r.split!.total!), 65_000 + 5_835);
+    assert.strictEqual(r.splitGap, undefined);
+  });
+
+  it("a part-paid bill is scaled by its unpaid proportion", () => {
+    // The July BAS: $5,835 raised, $4,835 paid, $1,000 outstanding. Without
+    // scaling this counts at $5,835.
+    const r = ruleProtectedMoneyVsCash(
+      BS_ROW,
+      accountRow(),
+      payablesRow(
+        billsPayload([
+          {
+            contact: "ATO",
+            total: 5_835,
+            due: 1_000,
+            lines: [{ accountId: "gst-1", amount: 5_835 }],
+          },
+        ]),
+      ),
+    );
+    assert.strictEqual(Math.round(r.split!.lodgedOwing!), 1_000);
+  });
+
+  it("a fully paid bill contributes nothing", () => {
+    const r = ruleProtectedMoneyVsCash(
+      BS_ROW,
+      accountRow(),
+      payablesRow(
+        billsPayload([
+          { contact: "ATO", total: 5_835, due: 0, lines: [{ accountId: "gst-1", amount: 5_835 }] },
+        ]),
+      ),
+    );
+    // No traceable contribution and no unpaid ATO bill: direct pattern.
+    assert.strictEqual(r.split!.pattern, "direct");
+    assert.strictEqual(r.split!.lodgedOwing, null);
+    assert.strictEqual(r.split!.total, 65_000);
+  });
+
+  it("a bill dated after the period end is excluded", () => {
+    const r = ruleProtectedMoneyVsCash(
+      BS_ROW,
+      accountRow(),
+      payablesRow(
+        billsPayload([
+          {
+            contact: "ATO",
+            date: "2026-09-10",
+            total: 4_000,
+            due: 4_000,
+            lines: [{ accountId: "gst-1", amount: 4_000 }],
+          },
+        ]),
+      ),
+    );
+    assert.strictEqual(r.split!.pattern, "direct");
+    assert.strictEqual(r.split!.total, 65_000);
+  });
+
+  it("no double counting: a bill already cleared off the Balance Sheet is counted once", () => {
+    // The Balance Sheet carries only the new accrual; the lodged amount sits
+    // in payables. Total must be the sum, not the sum plus the bill again.
+    const bs = row({
+      report_key: "balance_sheet",
+      payload: balanceSheet(50_000, [{ name: "GST", amount: 7_480, accountId: "gst-1" }]),
+    });
+    const r = ruleProtectedMoneyVsCash(
+      bs,
+      accountRow(),
+      payablesRow(
+        billsPayload([
+          { contact: "ATO", total: 5_835, due: 1_000, lines: [{ accountId: "gst-1", amount: 5_835 }] },
+        ]),
+      ),
+    );
+    assert.strictEqual(Math.round(r.split!.accruing), 7_480);
+    assert.strictEqual(Math.round(r.split!.lodgedOwing!), 1_000);
+    assert.strictEqual(Math.round(r.split!.total!), 8_480);
+  });
+
+  it("direct pattern: no ATO bills reports the Balance Sheet figure only", () => {
+    const r = ruleProtectedMoneyVsCash(
+      BS_ROW,
+      accountRow(),
+      payablesRow(
+        billsPayload([
+          { contact: "Bunnings", total: 500, due: 500, lines: [{ accountId: "other-1", amount: 500 }] },
+        ]),
+      ),
+    );
+    assert.strictEqual(r.split!.pattern, "direct");
+    assert.strictEqual(r.split!.lodgedOwing, null);
+    assert.strictEqual(r.splitGap, undefined);
+  });
+
+  it("clearing pattern refuses and suppresses the lodged and total lines", () => {
+    const bs = row({
+      report_key: "balance_sheet",
+      payload: {
+        Rows: [
+          {
+            RowType: "Section",
+            Title: "Bank",
+            Rows: [{ RowType: "Row", Cells: [accountCell("Business Cheque", "bank-1"), { Value: "50000" }] }],
+          },
+          {
+            RowType: "Section",
+            Title: "Current Liabilities",
+            Rows: [
+              ...FULL_TAX.map((t) => ({
+                RowType: "Row",
+                Cells: [accountCell(t.name, t.accountId), { Value: String(t.amount) }],
+              })),
+              // The suspense account carries a contra balance.
+              { RowType: "Row", Cells: [accountCell("Suspense - ATO", "susp-1"), { Value: "-57000" }] },
+            ],
+          },
+        ],
+      },
+    });
+    const accounts = {
+      Accounts: [
+        ...ACCOUNTS.Accounts,
+        { AccountID: "susp-1", Name: "Suspense - ATO", Class: "LIABILITY", Status: "ACTIVE" },
+      ],
+    };
+    const r = ruleProtectedMoneyVsCash(
+      bs,
+      accountRow(accounts),
+      payablesRow(
+        billsPayload([
+          { contact: "Australian Taxation Office", total: 30_773, due: 30_773, lines: [{ accountId: "susp-1", amount: 30_773 }] },
+        ]),
+      ),
+    );
+    assert.strictEqual(r.split!.pattern, "clearing");
+    assert.strictEqual(r.split!.lodgedOwing, null, "must be suppressed, never zero");
+    assert.strictEqual(r.split!.total, null, "must be suppressed, never zero");
+    assert.match(r.splitGap ?? "", /not coded to the GST, PAYG withholding or superannuation accounts/);
+  });
+
+  it("untraceable ATO bills refuse", () => {
+    const r = ruleProtectedMoneyVsCash(
+      BS_ROW,
+      accountRow(),
+      payablesRow(
+        billsPayload([
+          { contact: "Australian Taxation Office", total: 9_000, due: 9_000, lines: [{ accountId: "other-1", amount: 9_000 }] },
+        ]),
+      ),
+    );
+    assert.strictEqual(r.split!.pattern, "untraceable");
+    assert.strictEqual(r.split!.total, null);
+    assert.match(r.splitGap ?? "", /unpaid bills to the ATO/);
+  });
+
+  it("a missing or truncated payables snapshot refuses", () => {
+    const missing = ruleProtectedMoneyVsCash(BS_ROW, accountRow());
+    assert.strictEqual(missing.split!.pattern, "unavailable");
+    assert.strictEqual(missing.split!.total, null);
+    assert.match(missing.splitGap ?? "", /unpaid supplier bills could not be read in full/);
+
+    const truncated = ruleProtectedMoneyVsCash(
+      BS_ROW,
+      accountRow(),
+      payablesRow(billsPayload([]), false),
+    );
+    assert.strictEqual(truncated.split!.pattern, "unavailable");
+  });
+
+  it("severity is unchanged by the split", () => {
+    const without = ruleProtectedMoneyVsCash(BS_ROW, accountRow());
+    const with_ = ruleProtectedMoneyVsCash(
+      BS_ROW,
+      accountRow(),
+      payablesRow(
+        billsPayload([
+          { contact: "ATO", total: 50_000, due: 50_000, lines: [{ accountId: "gst-1", amount: 50_000 }] },
+        ]),
+      ),
+    );
+    assert.strictEqual(without.finding!.severity, with_.finding!.severity);
+  });
+});
