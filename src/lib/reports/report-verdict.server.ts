@@ -194,6 +194,13 @@ export type BuildVerdictOptions = {
   debtorEntries: AsAtEntry[] | null;
   /** False when the debtor book could not be read in full. */
   debtorsComplete: boolean;
+  /**
+   * Open payables as at the period end, with their line coding, reused from
+   * the payables ageing — no extra Xero call. Null when they could not be read,
+   * which makes the lodged-and-owing split refuse rather than assume nothing
+   * is outstanding.
+   */
+  creditorDocuments?: { invoice: any; outstanding: number }[] | null;
 };
 
 export async function buildReportVerdict(opts: BuildVerdictOptions): Promise<ReportVerdict> {
@@ -220,6 +227,25 @@ export async function buildReportVerdict(opts: BuildVerdictOptions): Promise<Rep
         opts.periodEnd,
         { Invoices: entriesAsInvoices(opts.debtorEntries) },
         opts.debtorsComplete,
+      ),
+    );
+  }
+
+  if (opts.creditorDocuments) {
+    // `AmountDue` is the balance now; the as-at outstanding is what the period
+    // is being reported on, so it is substituted here. The scaling of a
+    // part-paid bill uses this figure over the bill total.
+    rows.push(
+      liveRow(
+        "invoices_accpay_open",
+        opts.periodEnd,
+        {
+          Invoices: opts.creditorDocuments.map((d) => ({
+            ...d.invoice,
+            AmountDue: d.outstanding,
+          })),
+        },
+        true,
       ),
     );
   }

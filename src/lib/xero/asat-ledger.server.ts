@@ -33,6 +33,13 @@ export type AsAtLedger = {
   /** Control account balance at the period end — ties to the balance sheet. */
   balance: number;
   entries: AsAtEntry[];
+  /**
+   * The raw invoices in scope, each carrying its as-at outstanding amount.
+   * Line-level account coding is needed to tell an ATO bill from an ordinary
+   * supplier bill, and `AsAtEntry` aggregates that detail away. Reusing these
+   * costs no extra Xero call.
+   */
+  documents: { invoice: any; outstanding: number }[];
   unreconciled: { label: string; detail: string; amount?: number }[];
 };
 
@@ -216,8 +223,10 @@ export async function fetchAsAtLedger(
     }
   }
 
+  const documents: AsAtLedger["documents"] = [];
   for (const inv of inSet.values()) {
     const outstanding = (Number(inv.Total) || 0) - (settledByInvoice.get(inv.InvoiceID) ?? 0);
+    documents.push({ invoice: inv, outstanding: round2(outstanding) });
     if (round2(outstanding) === 0) continue;
     entries.push({
       contact: inv?.Contact?.Name ?? "Unknown",
@@ -229,5 +238,10 @@ export async function fetchAsAtLedger(
     });
   }
 
-  return { balance: round2(gross - paid - allocated - unallocated), entries, unreconciled };
+  return {
+    balance: round2(gross - paid - allocated - unallocated),
+    entries,
+    documents,
+    unreconciled,
+  };
 }
