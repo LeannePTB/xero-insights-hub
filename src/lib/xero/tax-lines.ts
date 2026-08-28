@@ -25,7 +25,9 @@ export type TaxLineExtraction =
 export type CashAtBankExtraction =
   | { status: "assessed"; total: number; accounts: { name: string; balance: number }[] }
   | { status: "absent"; total: 0; accounts: [] }
+  | { status: "unrecognised"; total: 0; accounts: []; reason: string }
   | { status: "input_invalid"; total: 0; accounts: []; reason: string };
+
 
 type Cell = {
   Value?: string;
