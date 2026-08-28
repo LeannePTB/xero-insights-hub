@@ -197,7 +197,7 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
       return {
         finding: null,
         unavailable: `Protected money is incomplete: ${protectedMoney.unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
-        debug: { protectedMoneyTotal: total, cashAtBank: cash },
+        debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
       };
     }
     return { finding: null };
@@ -212,12 +212,12 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
     finding: {
       ruleId: "R01",
       title,
-      detail: `${money(total)} of GST, PAYG withholding and superannuation is held against ${money(cash)} cash at bank.${gap}`,
+      detail: `${money(total)} of GST, PAYG withholding and superannuation is held against ${money(cashAmount)} cash at bank.${gap}`,
       severity,
       consequenceScore: t.consequence[severity],
       daysToConsequence: null,
     },
-    debug: { protectedMoneyTotal: total, cashAtBank: cash },
+    debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
   };
 }
 
