@@ -6,7 +6,19 @@
 // Staff-only: nothing here is rendered on a client-facing surface.
 
 import { SNAPSHOT_PAYLOAD_VERSION, STALENESS_SECONDS } from "@/lib/xero/snapshot-keys";
-import { buildProtectedMoney, analyseBalanceSheet, type TaxLineExtraction } from "@/lib/xero/tax-lines";
+import {
+  buildProtectedMoney,
+  analyseBalanceSheet,
+  accountRefsById,
+  balancesByAccountId,
+  type TaxLineExtraction,
+} from "@/lib/xero/tax-lines";
+import {
+  analyseAtoPayables,
+  billsFromPayload,
+  buildProtectedMoneySplit,
+  type ProtectedMoneySplit,
+} from "@/lib/xero/ato-payables";
 import {
   R01_PROTECTED_MONEY,
   R05_STATUTORY_MAGNITUDE,
@@ -145,9 +157,16 @@ function cashUnavailable(cash: CashExtraction): string | null {
 }
 
 /** Returns a finding, or a reason the rule could not be evaluated. */
-export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: SnapshotRow): {
+export function ruleProtectedMoneyVsCash(
+  balanceSheet: SnapshotRow,
+  accounts?: SnapshotRow,
+  payables?: SnapshotRow,
+): {
   finding: Finding | null;
   unavailable?: string;
+  /** Refusal sentence for the lodged-and-owing split, if it was refused. */
+  splitGap?: string;
+  split?: ProtectedMoneySplit;
   debug?: { protectedMoneyTotal?: number; cashAtBank?: number };
 } {
   const analysed = analyseBalanceSheet(balanceSheet.payload, accounts?.payload);
@@ -161,16 +180,37 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
   const protectedMoney = buildProtectedMoney(balanceSheet.as_at, analysed.taxLines.lines);
   const cash = analysed.cashAtBank.status === "assessed" ? analysed.cashAtBank.total : null;
 
+  // The lodged-and-owing half of the figure. Amounts come only from line
+  // AccountID matches against the very accounts matched above.
+  const statutoryAccountIds = analysed.taxLines.lines
+    .filter((l) => l.category === "gst" || l.category === "payg" || l.category === "super")
+    .map((l) => l.accountId)
+    .filter((id): id is string => typeof id === "string");
+
+  const atoAnalysis = analyseAtoPayables({
+    bills: payables ? billsFromPayload(payables.payload) : null,
+    complete: payables ? payables.complete : false,
+    periodEnd: balanceSheet.as_at,
+    statutoryAccountIds,
+    accountsById: accountRefsById(accounts?.payload),
+    balancesByAccountId: balancesByAccountId(balanceSheet.payload),
+  });
+  const split = buildProtectedMoneySplit(protectedMoney.total, atoAnalysis);
+  const splitGap = split.refusal ?? undefined;
+
   if (protectedMoney.unresolved.length === 3) {
-    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
+    return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN, splitGap, split, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
   }
 
   const cashReason = cashUnavailable(analysed.cashAtBank);
   if (cashReason) {
-    return { finding: null, unavailable: cashReason, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
+    return { finding: null, unavailable: cashReason, splitGap, split, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
   }
 
   const t = R01_PROTECTED_MONEY;
+  // Severity is driven by the Balance Sheet accrual exactly as it was before
+  // the lodged-and-owing split existed. Including the lodged amount in the
+  // numerator is a separate decision and is deliberately not made here.
   const total = protectedMoney.total;
   const cashAmount = cash as number;
   const ratio = total / cashAmount;
@@ -197,10 +237,12 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
       return {
         finding: null,
         unavailable: `Protected money is incomplete: ${protectedMoney.unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
+        splitGap,
+        split,
         debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
       };
     }
-    return { finding: null };
+    return { finding: null, splitGap, split };
   }
 
   const gap =
@@ -208,18 +250,28 @@ export function ruleProtectedMoneyVsCash(balanceSheet: SnapshotRow, accounts?: S
       ? ` ${protectedMoney.unresolved.length} component(s) could not be matched, so the true figure is higher.`
       : "";
 
+  // Where the split was refused, the lodged and total lines are suppressed
+  // entirely — they are never rendered as zero.
+  const splitSentence =
+    split.lodgedOwing !== null && split.total !== null && split.lodgedOwing > 0
+      ? ` A further ${money(split.lodgedOwing)} has been lodged and is still owing to the ATO in unpaid bills, so ${money(split.total)} is held or owed in total.`
+      : "";
+
   return {
     finding: {
       ruleId: "R01",
       title,
-      detail: `${money(total)} of GST, PAYG withholding and superannuation is held against ${money(cashAmount)} cash at bank.${gap}`,
+      detail: `${money(total)} of GST, PAYG withholding and superannuation is accruing toward the next lodgement against ${money(cashAmount)} cash at bank.${splitSentence}${gap}`,
       severity,
       consequenceScore: t.consequence[severity],
       daysToConsequence: null,
     },
+    splitGap,
+    split,
     debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
   };
 }
+
 
 // ---------------------------------------------------------------------------
 // R05 — statutory balances relative to cash (magnitude only)
@@ -490,11 +542,24 @@ export function evaluateFromRows(
   if (bs && (bsState === "usable" || bsState === "partial")) {
     if (bsState === "partial") gaps.push("The Balance Sheet snapshot is incomplete.");
     const accounts = byKey.get("accounts");
-    for (const run of [ruleProtectedMoneyVsCash, ruleStatutoryMagnitude]) {
-      const r = run(bs, accounts);
-      if (r.finding) findings.push(r.finding);
-      else if (r.unavailable) gaps.push(r.unavailable);
-    }
+    // Payables are not a required key (a verdict is still produced without
+    // them), so their usability is resolved here rather than read from
+    // `states`. Anything short of usable makes the split refuse.
+    const apRow = byKey.get("invoices_accpay_open");
+    const apState = keyState(apRow, "invoices_accpay_open", now, skipFreshness);
+    const ap = apState === "usable" ? apRow : undefined;
+
+    const r01 = ruleProtectedMoneyVsCash(bs, accounts, ap);
+    if (r01.finding) findings.push(r01.finding);
+    else if (r01.unavailable) gaps.push(r01.unavailable);
+    // A refused lodged-and-owing split is reported even when R01 itself fired:
+    // the reader must know the total was not established.
+    if (r01.splitGap) gaps.push(r01.splitGap);
+
+    const r05 = ruleStatutoryMagnitude(bs, accounts);
+    if (r05.finding) findings.push(r05.finding);
+    else if (r05.unavailable) gaps.push(r05.unavailable);
+
   } else {
     gaps.push("The Balance Sheet snapshot is missing, so protected money was not assessed.");
   }

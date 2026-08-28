@@ -184,6 +184,13 @@ function normaliseAccounts(input: any):
   return { status: "assessed", byId };
 }
 
+/** Accounts keyed by ID. Empty map when the payload is missing or malformed. */
+export function accountRefsById(accountsInput: any): Map<string, XeroAccountRef> {
+  const r = normaliseAccounts(accountsInput);
+  return r.status === "assessed" ? r.byId : new Map();
+}
+
+
 function invalidTax(reason: string): Extract<TaxLineExtraction, { status: "input_invalid" }> {
   return { status: "input_invalid", lines: [], unrecognised: [], reason };
 }
@@ -318,10 +325,29 @@ export function analyseBalanceSheet(balanceSheetInput: any, accountsInput?: any)
   return { status: "assessed", report: reportResult.report, taxLines, cashAtBank };
 }
 
+/**
+ * Every Balance Sheet row balance, keyed by account ID. Total rows carry no
+ * account attribute, so they can never be included. Used to spot a clearing
+ * account carrying a contra balance; never used to produce a figure.
+ */
+export function balancesByAccountId(balanceSheetInput: any): Map<string, number> {
+  const out = new Map<string, number>();
+  const reportResult = normaliseBalanceSheetReport(balanceSheetInput);
+  if (reportResult.status === "input_invalid") return out;
+  walkTaxRows(reportResult.report.Rows, (r) => {
+    if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
+    const accountId = accountIdFromCells(r.Cells);
+    if (!accountId) return;
+    out.set(accountId, parseTaxAmount(r.Cells[1]?.Value));
+  });
+  return out;
+}
+
 /** Pull every tax-classified line out of a Balance Sheet payload. */
 export function extractTaxLines(balanceSheetInput: any, accountsInput?: any): TaxLineExtraction {
   return analyseBalanceSheet(balanceSheetInput, accountsInput).taxLines;
 }
+
 
 /**
  * Cash at bank from a Balance Sheet payload. The Accounts payload is required:

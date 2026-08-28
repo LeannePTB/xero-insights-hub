@@ -18,7 +18,10 @@ export type GapCause =
   | "statutory_input_invalid"
   | "partial_statutory_accounts"
   | "balance_sheet_unavailable"
-  | "debtors_unavailable";
+  | "debtors_unavailable"
+  | "ato_pattern_unclear"
+  | "ato_payables_untraceable"
+  | "ato_payables_unavailable";
 
 /**
  * Classify a gap sentence by root cause. Unrecognised sentences return null
@@ -43,6 +46,11 @@ export function classifyGap(gap: string): GapCause | null {
     if (g.startsWith("protected money is incomplete")) return "partial_statutory_accounts";
     return "statutory_absent";
   }
+  if (g.includes("the way lodged activity statements are recorded")) return "ato_pattern_unclear";
+  if (g.includes("unpaid bills to the ato in this file")) return "ato_payables_untraceable";
+  if (g.includes("list of unpaid supplier bills could not be read in full")) {
+    return "ato_payables_unavailable";
+  }
   if (g.includes("balance sheet snapshot")) return "balance_sheet_unavailable";
   if (g.includes("open invoice")) return "debtors_unavailable";
   return null;
@@ -65,6 +73,12 @@ const CAUSE_SENTENCE: Record<GapCause, string> = {
     "The Balance Sheet for the period could not be read in full, so the money held against cash at bank and the statutory balances carried on the Balance Sheet were not assessed.",
   debtors_unavailable:
     "The list of open customer invoices could not be read in full, so the ageing and concentration of the debtor book were not assessed.",
+  ato_pattern_unclear:
+    "The way lodged activity statements are recorded in this file could not be established from the records available, so the amount already lodged and still owing to the ATO has not been included in this figure.",
+  ato_payables_untraceable:
+    "There are unpaid bills to the ATO in this file, but they are not coded to the GST, PAYG withholding or superannuation accounts, so they could not be reconciled against the balances on the Balance Sheet. Only the Balance Sheet position is reported here.",
+  ato_payables_unavailable:
+    "The list of unpaid supplier bills could not be read in full for this period, so any activity statement already lodged and still owing has not been included in this figure.",
 };
 
 /**

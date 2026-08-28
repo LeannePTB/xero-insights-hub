@@ -740,9 +740,13 @@ export async function computeMonthlyReport(opts: {
     failed.push({ section: "receivables", message: e?.message ?? "Receivables could not be read." });
   }
 
+  // Kept for the verdict on page one: the lodged-and-owing half of protected
+  // money is read from these same bills.
+  let creditorDocuments: { invoice: any; outstanding: number }[] | null = null;
   try {
     const ledger = await fetchAsAtLedger(conn, periodEnd, "ACCPAY");
     payables = buildAgeing(ledger.entries, periodEnd);
+    creditorDocuments = ledger.documents;
   } catch (e: any) {
     failed.push({ section: "payables", message: e?.message ?? "Payables could not be read." });
   }
@@ -792,6 +796,8 @@ export async function computeMonthlyReport(opts: {
       periodEnd,
       debtorEntries,
       debtorsComplete: debtorEntries !== null,
+      creditorDocuments,
+
     });
   } catch {
     // Page one is never a failable section: it must not block finalising.

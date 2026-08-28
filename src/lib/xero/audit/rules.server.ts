@@ -1,6 +1,8 @@
 // Pure rule functions that take already-fetched Xero payloads and return
 // findings. No network I/O so they're easy to test and compose.
 import { xeroDeepLink } from "./deeplinks";
+import { classifyTaxLine } from "../tax-lines";
+import { looksLikeAtoContact } from "../ato-payables";
 
 export type Severity = "high" | "medium" | "low";
 export type Category = "coa" | "bank" | "ar_ap" | "tax";
@@ -481,3 +483,63 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
   return out;
 }
 
+
+// ---------- Statutory traceability (A-STAT-TRACE) ----------
+//
+// Where a file records a lodged activity statement as a bill to the ATO, the
+// amount is coded straight to the GST and PAYG withholding accounts, so the
+// protected-money figure can be split into "accruing" and "lodged and still
+// owing". Where unpaid ATO bills exist but reach no statutory account, that
+// split cannot be established — which is a bookkeeping finding in its own
+// right, not merely a reporting limitation.
+//
+// Absence of ATO bills is NOT evidence of a defect: a file that codes payments
+// straight to the liability accounts is correct and raises nothing here.
+export function ruleStatutoryTrace(
+  invoices: XInvoice[],
+  accounts: XAccount[],
+  shortCode?: string | null,
+): Finding[] {
+  const statutory = new Set(
+    accounts
+      .filter((a) => {
+        const category = classifyTaxLine(a.Name ?? "", a as any);
+        return category === "gst" || category === "payg" || category === "super";
+      })
+      .map((a) => a.AccountID),
+  );
+
+  const atoBills = invoices.filter((inv) => {
+    if (inv.Type !== "ACCPAY") return false;
+    const status = (inv.Status ?? "").toUpperCase();
+    if (status !== "AUTHORISED" && status !== "SUBMITTED") return false;
+    if (Number(inv.AmountDue ?? 0) <= 0.01) return false;
+    return looksLikeAtoContact(inv.Contact?.Name);
+  });
+  if (!atoBills.length) return [];
+
+  const traceable = atoBills.filter((inv: any) =>
+    (inv.LineItems ?? []).some((li: any) => li?.AccountID && statutory.has(li.AccountID)),
+  );
+  if (traceable.length > 0) return [];
+
+  const total = atoBills.reduce((s, i) => s + (Number(i.AmountDue) || 0), 0);
+  return [
+    {
+      ruleId: "A-STAT-TRACE",
+      category: "tax",
+      severity: "medium",
+      title: "ATO bills cannot be traced to the statutory accounts",
+      message: `There ${atoBills.length === 1 ? "is 1 unpaid bill" : `are ${atoBills.length} unpaid bills`} to the ATO totalling ${total.toFixed(2)}, and none is coded to the GST, PAYG withholding or superannuation accounts. Until the coding is traceable, the amount already lodged and still owing cannot be reconciled against the Balance Sheet.`,
+      entityType: null,
+      entityId: null,
+      deepLink: xeroDeepLink("Bill", atoBills[0].InvoiceID, shortCode),
+      evidence: {
+        atoBillCount: atoBills.length,
+        amountDue: Number(total.toFixed(2)),
+        contacts: Array.from(new Set(atoBills.map((b) => b.Contact?.Name).filter(Boolean))),
+      },
+      findingKey: key("A-STAT-TRACE", ["global"]),
+    },
+  ];
+}
