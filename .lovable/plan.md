@@ -1,107 +1,122 @@
-# Completeness scan, then a phased plan to finish
+# R01: protected money split across the balance sheet and ATO payables
 
-Read-only scan. No files were edited and no database object was changed.
+Plan only. Nothing below is implemented yet. No thresholds change in this build.
 
-## Part A — what is unfinished
+## 0. The one thing that had to be checked first
 
-### 1. Dead, unwired or half-built code
+`invoices_accpay_open` **does include line-level account coding.** Every one of the 79 open bills stored across the 15 tenants carries a `LineItems` array, and every line carries `AccountID`, `AccountCode`, `Description`, `LineAmount` and `TaxType`. Example (Bangkok on King, one bill):
 
-Merge leftovers from today:
+```text
+AccountCode 820  GST                        12,262.00  BASEXCLUDED  "Activity Statement for Jul-Sep 2024 - GST"
+AccountCode 825  PAYG Withholdings Payable   6,822.00  BASEXCLUDED  "... - PAYG tax withheld"
+AccountCode 830  Income Tax Payable            360.00  BASEXCLUDED  "... - PAYG income tax instalment"
+```
 
-- `src/components/dashboard/TrueBreakevenSection.tsx` — never imported anywhere. `DEPRECATED_WIDGET_ALIASES` in `src/lib/tiers.ts:116-121` says cash commitments are "an expandable section of the merged Break-Even card", but `BreakevenWidget.tsx` contains no such section. The alias hides the old card and the merge target never gained its content, so true break-even is currently unreachable in the UI.
-- `src/lib/true-breakeven.functions.ts` — its presumed consumer is the orphaned section above; needs a targeted check before deletion.
+So the design can rest on line accounts. No new Xero call is needed, and `AccountID` joins straight onto the `accounts` snapshot that `analyseBalanceSheet` already consumes.
 
-Exports with no call site anywhere in `src/` (ripgrep-based, so treat as a candidate list rather than a verdict — dynamic `await import()` destructuring and test-only callers can produce false positives):
+Both `invoices_accpay_open` and `invoices_accrec_open` are stored `complete = true` for all 15 tenants today, so truncation is currently theoretical — but must still be handled (section 4).
 
-- Whole modules effectively dark: `src/lib/access.functions.ts` (`TIER_LIMITS`, `computeFirmAccess`), `src/lib/api/example.functions.ts`, `src/lib/xero/snapshot-compare.functions.ts`.
-- Billing: `createClientCheckout`, `openBillingPortal` (`src/lib/billing-checkout.functions.ts`), `requireStripeSecret`, `stripeConfigured` (`src/lib/stripe.server.ts`). Self-serve client checkout is written but not wired to any button.
-- Superseded by snapshots/merges: `getAgedPayables` (`src/lib/xero/payables.functions.ts`), `getAgedReceivables` (`src/lib/xero/receivables.functions.ts`), `getSuperPayable`, `getCurrentTaxBalance`, `getTaxLiabilityBuckets` (`src/lib/xero/reports.functions.ts`), `listXeroConnections` (`src/lib/xero/connections.functions.ts`).
-- Superseded by the RPC path: `getEffectiveWidgets`, `saveClientWidgets`, `saveFirmDefaultWidgets` (`src/lib/tier-config.functions.ts`), `getClientAllowedWidgets` (`src/lib/widget-access.functions.ts`).
-- Loan consolidation snapshots: `listGroupLoanSnapshots`, `getGroupLoanSnapshot`, `deleteGroupLoanSnapshot`, `autoSetupGroupLoanAccounts`, `getLoanScreenTarget` (`src/lib/loan-consolidation.functions.ts`) — a stored-snapshot feature with a table behind it and no UI.
-- Security admin: `resetUserMfa`, `listSecurityDocs`, `getSecurityContact`, `saveSecurityContact` (`src/lib/security.functions.ts`).
-- Support access helpers duplicated elsewhere: `isFirmMember`, `supportAccessActive`, `canAccessClient` (`src/lib/support-access.server.ts`).
-- Report internals that are only reachable through their orchestrators (expected, listed for completeness): most of `src/lib/reports/monthly-report.server.ts`, `report-pdf.server.ts`, `report-verdict.server.ts`.
+## 1. Identifying an ATO payable
 
-Catalogue vs. code: `bank_reconciliation` appears in stored `plan_levels.widgets` but is absent from `ALL_WIDGETS` in `src/lib/tiers.ts`, so it is a stored key that can never render. Every other `ALL_WIDGETS` key does have a render path in `src/routes/_authenticated/clients.$clientId.index.tsx`.
+Ranked by dependability:
 
-### 2. Tests that do not run
+1. **Line `AccountID` matches a statutory account already recognised by `analyseBalanceSheet`** — dependable, and the only signal used to *include an amount in a figure*. It is the same account identity R01 reads on the balance sheet, so the two sides can never disagree about what the money is.
+2. **Line `AccountID` matches a liability account whose name reads as an ATO clearing/suspense account** (Autotek's `850-1 Suspense - ATO`) — dependable enough to *classify the file's pattern*, not to add an amount blindly. Section 3.
+3. **`TaxType = BASEXCLUDED`** — necessary but not sufficient. Every statutory line observed uses it, but so do interest, wages and drawings lines. Use only as a corroborating check, never alone.
+4. **Contact name** (`Australian Tax Office`, `Australian Taxation Office`, `Australian Tax Office - Tax Returns` all appear in the real data) — used only as a *cross-check for refusal*: an ATO-named bill whose lines hit no statutory account is the trigger for "present but not traceable", not for a figure.
+5. **Reference / description text** ("Activity Statement for Jul-Sep 2024") — human-readable evidence to show staff, never a matching key.
 
-`package.json` has no `test` script and vitest is not a dependency. `src/lib/health/rules.test.ts` and `src/lib/xero/request-memo.test.ts` are written for `node:test` and execute only when run by hand. Nothing runs them automatically — including today's regression tests for the Balance Sheet envelope fix, which is exactly the class of defect that stayed invisible for months. **Zero test files execute in any project command.**
+Rule: **amounts come from line accounts; names only ever cause us to refuse, never to assert.**
 
-### 3. Data-quality landmines
+## 2. The three-part figure
 
-- `plan_levels` row `free`: `is_free = false` and `allowed_tiers = {pt}`; `pt` is not a member of the `dashboard_tier` enum, so any cast of that value throws.
-- Deprecated widget keys (`superannuation`, `true_breakeven`) still stored in tier and client rows. Harmless today because `renderableWidgets()` collapses them, but they make every stored row disagree with what ships.
-- `bank_reconciliation` stored but unrenderable (above).
-- `tier_settings` has rows only for `advisory` and `basic`; the other tiers have no kill switch.
+For a period end `D`:
 
-### 4. Displayed value computed differently from the enforced one
+- **Accruing toward the next lodgement** = the existing balance sheet figure, unchanged: `buildProtectedMoney(...)` over GST, PAYG withholding and superannuation lines from `analyseBalanceSheet`.
+- **Lodged and still owing** = for each open ACCPAY bill, the sum of `LineAmount` on lines whose `AccountID` is one of those same statutory accounts, **scaled by the proportion of the bill still unpaid** (`AmountDue / Total`), with bills dated after `D` excluded. Scaling is required because payments hit the bill, not the line, so a part-paid bill must not be counted in full.
+- **Total held or owed** = the sum of the two.
 
-This is the important section.
+**No double counting.** The bill's own line *is* the debit that removes the amount from the statutory account — that is the mechanism the workflow relies on. The balance sheet at `D` is therefore already net of every bill raised on or before `D`; adding the unpaid remainder of those bills adds each dollar exactly once. Verified on Positive Traction at 31 July: statutory accounts $7,480 (August accrual, bill not yet raised), July BAS bill $5,835 total with $1,000 due → accruing $7,480, lodged and owing $1,000, total $8,480. Under today's code R01 reports $7,480.
 
-- **Widget entitlement, computed twice.** `src/lib/widget-access.server.ts` calls the database (`client_allowed_widgets` / `firm_allowed_widgets`) and is documented as the single source of truth. But the code path that actually decides what the dashboard renders — `effectiveWidgets()` in `src/lib/xero/access.server.ts:82-92` — uses a full TypeScript reimplementation of the same ceiling-minus-exclusions algorithm in `src/lib/widget-resolve.server.ts` (whose own header says "Mirrors public.client_allowed_widgets — never diverge from it"). Also used by `clients.functions.ts` and `tier-config.functions.ts`. Two implementations, one enforced, no parity check. This is the same shape as the four defects found today.
-- **`client_allowed_widgets` / `firm_allowed_widgets` have no SQL definition in `supabase/migrations/`.** They exist in the database and in generated types only, so the canonical rule cannot be diffed against its TypeScript mirror from the repo.
-- **Net margin, computed twice with different formulas.** Canonical `netMarginPct` in `src/lib/metrics/core.ts:9-13` divides by revenue and returns `null` when revenue <= 0; Business Health uses it. The Monthly Management Report reimplements it inline at `src/lib/reports/monthly-report.server.ts:361-362` and `:384-385`, dividing by `revenue + otherIncome` and returning `0` instead of null. Same client, same month, two different published percentages — and `metrics/core.ts` claims in a comment that both callers use it.
-- **`DEFAULT_TIER_WIDGETS` fallback.** `xero/access.server.ts:82` falls back to the hardcoded table in `src/lib/tiers.ts:65-71` when there is no client row, so entitlement can come from TypeScript rather than the catalogue.
+## 3. Detecting the workflow per file
 
-### 5. Delivery gaps
+Evidence is taken only from stored snapshots (`invoices_accpay_open`, `accounts`, `balance_sheet`).
 
-- Email delivery **works today**: `sendReport` in `src/lib/reports/report-delivery.server.ts` finalises the report, ensures the PDF, creates an email-bound single-use token per recipient and enqueues the email. It is reachable from staff UI at `src/routes/_authenticated/clients.$clientId.reports.tsx` via `ReportDeliveryDialogs.tsx`. Recipients read it at `/report/$token`; the PDF is served as a short-lived signed URL.
-- **Nothing is scheduled.** The only cron jobs are the security-log purge and `xero-snapshot-refresh-daily`, which despite its name runs hourly at `:05`. There is no monthly report generation or send. Every report is generated and sent by hand.
-- A client user with a login reaches the dashboard, filtered by entitlement. A client without a login reaches only the token report link. The free tier as described (a delivered monthly report) is therefore currently a manual service.
+**Bill pattern** — at least one open ACCPAY bill has a line coded to a recognised statutory account. High confidence; it is direct evidence of the mechanism. Observed in Bangkok on King (codes 820/825/830) and Positive Traction (21300/21420). Treatment: three-part figure as above.
 
-### 6. The three suspect R01/R05 results
+**Direct pattern** — no open ACCPAY bill has a statutory line, and no ATO-named bill is open at all. Moderate confidence: absence of bills is consistent with direct coding but also with "nothing lodged yet". Treatment: balance sheet figure only, reported as today, with no claim that a lodged amount is outstanding. This is the current behaviour for the twelve tenants with no ATO bills.
 
-- **TracyFinlay, cash at bank ($583,388) — genuine data, plus a code defect.** The file's `Bank` section on the Balance Sheet contains mortgage, offset and credit-card accounts (`Macquarie 33A Princess St`, `Credit Card ANZ Black`, `Offset acc for Hall St`); the section's own `Total Bank` is -583,388.01. So the negative is real for that file, not a parse error. Separately, `extractCashAtBankFromReport` in `src/lib/xero/tax-lines.ts:229-250` adds **every** row in the section to the total including the `Total Bank` summary row, so any file where that row is present is double-counted. It also reads `Cells[1]` unconditionally, which is the wrong column on a comparative Balance Sheet with more than one period.
-- **X8 Enterprises critical on $33 with cash n/a — rule defect, and the most serious of the three.** `src/lib/health/rules.server.ts:131` only guards `cashAtBank.status === "input_invalid"`. When the status is `absent`, `total` is 0 and line 147 computes `const ratio = cash > 0 ? total / cash : total > 0 ? Infinity : 0` — Infinity, which clears `criticalRatio` of 1.0. R05 has the identical expression at line 230. A rule fires critical on an unknown denominator.
-- **Cash n/a on several tenants — extraction defect.** `extractCashAtBankFromReport` only looks at top-level sections whose `Title` contains "bank". Files that group cash differently return `absent`, which then feeds the Infinity path above.
+**Clearing pattern** — open ATO bills are coded to a liability account that is *not* one of the statutory accounts, and that account carries a large contra (negative) balance on the balance sheet. High confidence when both halves are present; the contra is what proves the account is being used as an ATO clearing account rather than an ordinary liability. Observed in Autotek (section 6). Treatment: **refuse the split** — see section 4 — until a decision is made about netting the clearing account, which this build will not make.
 
-Nothing here needs a threshold change. The fix is to refuse to compare when either side is unknown.
+## 4. Refusal wording
 
-## Part B — phases
+No figure is asserted unless the pattern is established. Proposed lines, in the report's existing register:
 
-Sequenced by what blocks the twenty, then what blocks charging, then the rest.
+- **Pattern unclear** — "The way lodged activity statements are recorded in this file could not be established from the records available, so the amount already lodged and still owing to the ATO has not been included in this figure."
+- **ATO bills present but not traceable to statutory accounts** — "There are unpaid bills to the ATO in this file, but they are not coded to the GST, PAYG withholding or superannuation accounts, so they could not be reconciled against the balances on the Balance Sheet. Only the Balance Sheet position is reported here."
+- **Payables snapshot missing or truncated** — "The list of unpaid supplier bills could not be read in full for this period, so any activity statement already lodged and still owing has not been included in this figure."
 
-### Phase 1 — correctness before anyone is onboarded (blocks the twenty)
+Each refusal suppresses the "lodged and owing" and "total" lines entirely rather than showing them as zero, and feeds the existing coverage-gap sentence machinery in `src/lib/reports/coverage-gaps.ts` so it de-duplicates alongside the other gaps.
 
-- Guard both R01 and R05: return the existing "unavailable" outcome whenever cash at bank is not `assessed`. Remove the `Infinity` expression rather than re-tuning it.
-- Fix `extractCashAtBankFromReport`: skip `Total ...` rows in the sum, and select the report column deliberately rather than assuming `Cells[1]`.
-- Decide what negative cash means for R01. A file like TracyFinlay's, where the Bank section holds loans and offsets, should not be silently compared. Suggested: treat cash <= 0 as unavailable with a stated reason, not as a critical finding.
-- Add a `test` script and a runner so `rules.test.ts` and `request-memo.test.ts` actually execute. Without this, today's envelope regressions protect nothing.
+## 5. Severity
 
-Skipped: the first twenty clients receive reports that assert a critical statutory-money problem on files where cash was never read. That is the same failure mode as last week — an internal gap presented to the client as a finding about their business.
+My view matches yours: **the total should drive severity**, but only where the split was established.
 
-### Phase 2 — make the free tier a delivered product (blocks the twenty)
+For it: a lodged BAS is a crystallised debt with a due date. Money still accruing is an estimate that will not be demanded for weeks. Treating the lodged, overdue portion as less urgent than the accrual inverts the real risk. Under the bill pattern, using the balance sheet alone also makes the figure *fall* the moment a BAS is lodged — the worst possible moment for it to look better.
 
-- Monthly generation and send: a scheduled job that generates the report for each eligible client for the closed month and either sends it or leaves it as a staff-reviewable draft. **Needs your approval** on two points: whether the first month goes out automatically or after staff review, and whether the verdict page is client-facing.
-- The scheduler needs a `pg_cron` entry, which is a database object. **Needs your approval.**
-- Recommend: draft-then-review for the first two cycles, automatic afterwards.
+Against it: the existing thresholds were calibrated against balance-sheet-only figures, so switching the numerator to the total will move some files across a boundary for reasons that are not a change in the business. There is also an asymmetry — files on the direct pattern will always have a smaller numerator than files on the bill pattern, so the same underlying position could grade differently by bookkeeping style alone.
 
-Skipped: twenty clients on a "delivered monthly report" tier that is delivered by hand, twenty times a month.
+Resolution: drive severity from the total, but only where the pattern is **bill**; where it is direct, the total already equals the balance sheet figure, so nothing changes; where it is clearing or unclear, keep the current behaviour and say so. Thresholds stay exactly as they are in this build, and a before/after grade table across all 15 tenants should be produced before anything is enabled.
 
-### Phase 3 — one entitlement implementation (blocks charging money)
+## 6. Autotek
 
-- Retire `src/lib/widget-resolve.server.ts` and route `effectiveWidgets()` through the database RPC, or — if the RPC cannot serve that path — delete the RPC and make the TypeScript path canonical. One of them, not both. Today's four defects were all this shape.
-- Capture the `client_allowed_widgets` / `firm_allowed_widgets` definitions into a repo migration so the rule is reviewable. Definition capture only, no behaviour change. **Needs your approval** as it touches database objects.
-- Fix the `free` plan row (`is_free`, `allowed_tiers`) and remove `bank_reconciliation` from stored widget lists. Data edit, no schema change. **Needs your approval.**
-- Make the Monthly Report call `metrics.netMarginPct`, and pick one denominator. Note this changes a published figure.
+Autotek is **not double counting, and not on the bill pattern** — it is the clearing pattern, and the corrected figure is materially different from either number in the question.
 
-Skipped: an organisation can be shown widgets it is not entitled to, or denied ones it pays for, and the two answers disagree with no test catching it.
+Its five open ATO bills are all coded to a single line: **`850-1 Suspense - ATO`**, a LIABILITY account, `BASEXCLUDED`, with descriptions like "Activity Statement for Apr 2026 - PAYG tax withheld" and one payment-plan bill covering four periods. A sixth bill, from contact "Australian Tax Office - Tax Returns", is coded to `830 Income Tax Payable` (a statutory account, but income tax, not BAS).
 
-### Phase 4 — commercial surface
+Balance sheet at the latest snapshot:
 
-- Wire up self-serve checkout (`createClientCheckout`, `openBillingPortal` are already written and unreachable), or delete them.
-- Retire the Standard tier, and resolve the `tier_settings` gap so every tier has a kill switch.
-- Delete the deprecated widget keys from stored rows once the merged toggles have been stable for a cycle.
+```text
+GST                          13,525.83
+PAYG Withholdings Payable    18,059.00
+Superannuation Payable        1,039.89
+Income Tax Payable            4,569.87
+Suspense - ATO              -57,716.83   <- contra, created by the bills
+```
 
-### Phase 5 — rules expansion
+Open ATO bills, amount due: 30,773.69 + 13,262.00 + 5,910.00 + 4,835.00 + 736.14 = **55,516.83** against Suspense, plus **5,638.62** against Income Tax Payable.
 
-R02, R04, R07, R09. These raise the value of the report but nothing breaks without them; R01, R05 and R06 already carry page one.
+So the $30,773 payment plan and the GST/PAYG balances are **not** mutually exclusive and **not** duplicated either — the duplication is cancelled by the −$57,716.83 contra, which today's R01 ignores entirely. Netting all of it:
 
-## What to cut rather than build
+```text
+statutory accounts (GST + PAYGW + Super)      32,624.72
+Suspense - ATO contra                        -57,716.83
+unpaid ATO bills against Suspense            +55,516.83
+                                             ----------
+corrected BAS-related position                30,424.72
+(plus Income Tax Payable 4,569.87 less its own bill's unpaid 5,638.62,
+ which is income tax, outside R01's scope)
+```
 
-- **The loan-consolidation snapshot feature.** Five unreachable server functions plus a table. Either wire one screen to it or delete the functions.
-- **`TrueBreakevenSection.tsx` and `true-breakeven.functions.ts`.** The merge decided cash commitments live inside Break-Even; that section was never built. Cut the orphan or finish the merge, but do not leave the alias claiming something that does not ship.
-- **`snapshot-compare.functions.ts`, `access.functions.ts`, `api/example.functions.ts`.** Delete.
-- **The client-facing dashboard for the first twenty.** The free tier is a report. Onboarding twenty logins in the same weeks as the report scheduler doubles the surface at the worst moment.
-- **The org-row replace-versus-merge model.** It only matters once organisations customise their own defaults at scale. Leave the current replace behaviour and the detachment notice already shipped.
+Today R01 reports **$32,624.72**. The corrected BAS figure is **$30,424.72** — close by coincidence, because the contra and the outstanding bills nearly offset. They would not offset in a file with more paid-down bills, which is exactly why the clearing pattern must be refused rather than approximated until the contra handling is explicitly designed.
+
+## 7. The file audit finding
+
+Yes — an untraceable statutory position is a bookkeeping defect, not just a gap in our reporting.
+
+- **Rule** `A-STAT-TRACE`, category: statutory accounts.
+- **Severity: warning.** Not critical — no figure is wrong on the face of the file, and the money may well be correctly recorded. But it makes the ATO position unverifiable from the ledger, which is the whole point of coding it there.
+- **Fires when** open ATO-named bills exist and none of their lines reach a recognised statutory account, or a liability account carrying a material contra balance is receiving ATO bills.
+- **Wording** — "Unpaid bills to the ATO in this file are coded to *{account name}* rather than to the GST and PAYG withholding accounts. The amount owed on lodged activity statements cannot be reconciled against the Balance Sheet from the records as recorded."
+- **Not raised** where no ATO bills exist at all; absence is not evidence of a defect.
+
+## Files this would touch when built
+
+- `src/lib/xero/tax-lines.ts` — a new extractor over `invoices_accpay_open`, joining line `AccountID` to the statutory accounts already resolved there; returns the same structured `ExtractionStatus` shape.
+- `src/lib/health/rules.server.ts` — R01 gains the three-part figure, the pattern classification and the three refusal paths.
+- `src/lib/reports/report-verdict.server.ts` — passes the already-fetched open payables through to the rules engine on the live report path.
+- `src/lib/reports/coverage-gaps.ts` — the new refusal sentences join the de-duplication set.
+- `src/lib/health/rules.test.ts` — regression cases for each pattern, part-paid bills, bills dated after period end, and each refusal.
+- Audit rules module — the `A-STAT-TRACE` finding.
+
+No database object is created or altered.
