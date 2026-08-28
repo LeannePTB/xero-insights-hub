@@ -252,13 +252,22 @@ export function ruleStatutoryMagnitude(balanceSheet: SnapshotRow, accounts?: Sna
     return {
       finding: null,
       unavailable: "No GST, PAYG withholding or tax account could be matched on the Balance Sheet.",
-      debug: { statutoryTotal: statutory, cashAtBank: analysed.cashAtBank.total },
+      debug: {
+        statutoryTotal: statutory,
+        cashAtBank: analysed.cashAtBank.status === "assessed" ? analysed.cashAtBank.total : undefined,
+      },
     };
   }
 
-  const cash = analysed.cashAtBank.total;
+  const cashReason = cashUnavailable(analysed.cashAtBank);
+  if (cashReason) {
+    return { finding: null, unavailable: cashReason, debug: { statutoryTotal: statutory } };
+  }
+
+  const cash = (analysed.cashAtBank as { total: number }).total;
   const t = R05_STATUTORY_MAGNITUDE;
-  const ratio = cash > 0 ? statutory / cash : statutory > 0 ? Infinity : 0;
+  const ratio = statutory / cash;
+
 
   let severity: RuleSeverity | null = null;
   if (ratio >= t.warningRatio) severity = "warning";
