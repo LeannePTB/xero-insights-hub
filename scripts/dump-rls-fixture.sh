@@ -19,6 +19,7 @@ create or replace function auth.uid() returns uuid language sql stable as $fn$ s
 create or replace function auth.role() returns text language sql stable as $fn$ select current_setting('request.jwt.claims', true)::json->>'role' $fn$;
 create or replace function auth.jwt() returns jsonb language sql stable as $fn$ select coalesce(current_setting('request.jwt.claims', true),'{}')::jsonb $fn$;
 grant usage on schema public, app_private, auth to authenticated;
+set check_function_bodies = off;
 HDR
 psql -q -t -A -f scripts/dump-rls-fixture.sql
 } > tests/fixtures/rls-schema.sql

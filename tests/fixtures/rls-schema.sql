@@ -13,6 +13,7 @@ create or replace function auth.uid() returns uuid language sql stable as $fn$ s
 create or replace function auth.role() returns text language sql stable as $fn$ select current_setting('request.jwt.claims', true)::json->>'role' $fn$;
 create or replace function auth.jwt() returns jsonb language sql stable as $fn$ select coalesce(current_setting('request.jwt.claims', true),'{}')::jsonb $fn$;
 grant usage on schema public, app_private, auth to authenticated;
+set check_function_bodies = off;
 create type public.app_role as enum ('advisor', 'client_viewer', 'super_admin', 'firm_owner', 'firm_staff');
 create type public.dashboard_tier as enum ('basic', 'advisory', 'investigate', 'multi_company');
 create type public.report_basis as enum ('accrual', 'cash');
