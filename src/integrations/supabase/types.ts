@@ -2472,6 +2472,15 @@ export type Database = {
           unchanged: number
         }[]
       }
+      set_client_tier_widgets: {
+        Args: {
+          _clear: boolean
+          _client_id: string
+          _excluded: string[]
+          _tier: string
+        }
+        Returns: undefined
+      }
       set_client_widget_enabled: {
         Args: { _client_id: string; _enabled: boolean; _widget: string }
         Returns: {

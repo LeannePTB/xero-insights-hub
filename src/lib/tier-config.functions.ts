@@ -111,15 +111,16 @@ export const saveClientTierWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; tier: DashboardTier; widgets: WidgetKey[] | null }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
+    // Gate lives in the database: public.set_client_tier_widgets refuses anyone
+    // who is neither the client's owner nor an active member of its
+    // organisation. No local role check, no supabaseAdmin.
     if (data.widgets === null) {
-      const { error } = await supabaseAdmin
-        .from("tier_widget_config")
-        .delete()
-        .eq("client_id", data.clientId)
-        .eq("tier", data.tier);
+      const { error } = await (context.supabase as any).rpc("set_client_tier_widgets", {
+        _client_id: data.clientId,
+        _tier: data.tier,
+        _excluded: [],
+        _clear: true,
+      });
       if (error) throw new Error(error.message);
       return { ok: true };
     }
@@ -133,31 +134,13 @@ export const saveClientTierWidgets = createServerFn({ method: "POST" })
 
     const excluded = await exclusionsFor(context.supabase, data.tier, data.widgets);
 
-    const { data: existing, error: findErr } = await supabaseAdmin
-      .from("tier_widget_config")
-      .select("id")
-      .eq("tier", data.tier)
-      .eq("client_id", data.clientId)
-      .maybeSingle();
-    if (findErr) throw new Error(findErr.message);
-
-    if (existing) {
-      const { error } = await supabaseAdmin
-        .from("tier_widget_config")
-        .update({ excluded_widgets: excluded })
-        .eq("id", (existing as { id: string }).id);
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await supabaseAdmin
-        .from("tier_widget_config")
-        .insert({
-          client_id: data.clientId,
-          firm_id: null,
-          tier: data.tier,
-          excluded_widgets: excluded,
-        });
-      if (error) throw new Error(error.message);
-    }
+    const { error } = await (context.supabase as any).rpc("set_client_tier_widgets", {
+      _client_id: data.clientId,
+      _tier: data.tier,
+      _excluded: excluded,
+      _clear: false,
+    });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
