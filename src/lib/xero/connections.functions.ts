@@ -496,7 +496,6 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
     return { moved: true as const };
   });
 
-const ALLOWED_CUSTOM_HOSTS = new Set([siteHost()]);
 
 function normalizeOrigin(origin: string) {
   const parsed = new URL(origin);
@@ -506,7 +505,7 @@ function normalizeOrigin(origin: string) {
   }
 
   const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
-  const allowedHosts = new Set<string>(ALLOWED_CUSTOM_HOSTS);
+  const allowedHosts = new Set<string>([siteHost()]);
   if (projectId) {
     allowedHosts.add(`${projectId}.lovableproject.com`);
     allowedHosts.add(`id-preview--${projectId}.lovable.app`);

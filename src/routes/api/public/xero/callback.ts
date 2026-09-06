@@ -652,7 +652,11 @@ function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
   }
 }
 
-const ALLOWED_RETURN_HOSTS = new Set([siteHost(), "xero-shine-dashboards.lovable.app"]);
+
+function allowedReturnHosts() {
+  // Evaluated per call: env binds at request time on the Worker runtime.
+  return new Set([siteHost(), "xero-shine-dashboards.lovable.app"]);
+}
 
 function getSafeReturnOrigin(
   returnOrigin: string | null,
@@ -664,7 +668,7 @@ function getSafeReturnOrigin(
     if (typeof candidate !== "string" || !candidate.startsWith("https://")) continue;
     try {
       const parsed = new URL(candidate);
-      if (ALLOWED_RETURN_HOSTS.has(parsed.hostname) || parsed.hostname.endsWith(".lovable.app")) {
+      if (allowedReturnHosts().has(parsed.hostname) || parsed.hostname.endsWith(".lovable.app")) {
         return parsed.origin;
       }
     } catch {
