@@ -6,14 +6,15 @@ function sanitizeWidgets(widgets: string[]): WidgetKey[] {
   return widgets.filter((w): w is WidgetKey => (ALL_WIDGETS as string[]).includes(w));
 }
 
-async function assertAdvisor(supabase: any, userId: string) {
+async function assertSuperAdmin(supabase: any, userId: string) {
   const { data } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .in("role", ["advisor", "super_admin", "firm_owner", "firm_staff"]);
-  if (!data || data.length === 0) throw new Error("Advisor only.");
+    .eq("role", "super_admin");
+  if (!data || data.length === 0) throw new Error("Forbidden");
 }
+
 
 
 // Returns the platform default card list plus, optionally, the list for one
@@ -65,7 +66,7 @@ export const listTierConfig = createServerFn({ method: "POST" })
 
 // Shared maths only: turn an allow-list into the exclusions for a tier.
 async function exclusionsFor(
-  supabase: Parameters<typeof assertAdvisor>[0],
+  supabase: any,
   tier: DashboardTier,
   widgets: WidgetKey[],
 ) {
@@ -240,7 +241,7 @@ export const getOrgWidgetMatrix = createServerFn({ method: "POST" })
 export const listOrgTierOverrides = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: rows, error } = await (supabaseAdmin as any)
@@ -538,40 +539,6 @@ export const getClientWidgets = createServerFn({ method: "POST" })
     };
   });
 
-
-export const saveClientWidgets = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i: { clientId: string; widgets: WidgetKey[] | null }) => i)
-  .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
-    const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    let value: string[] | null = null;
-    if (data.widgets !== null) {
-      const planTiers = await allowedTiersForClient(data.clientId);
-      const { data: levels } = await supabaseAdmin
-        .from("plan_levels")
-        .select("key, widgets, enabled, sort_order")
-        .eq("scope", "dashboard")
-        .order("sort_order", { ascending: true });
-      const { cumulativeDashboardLevels } = await import("@/lib/plan-tiers");
-      const enabled = (levels ?? []).filter((l: any) => l.enabled !== false);
-      const usable = cumulativeDashboardLevels(enabled as any[], planTiers);
-
-      const allowed = new Set<WidgetKey>();
-      for (const l of usable) for (const w of sanitizeWidgets(((l as any).widgets ?? []) as string[])) allowed.add(w);
-      if (allowed.size === 0) for (const w of DEFAULT_TIER_WIDGETS.basic) allowed.add(w);
-      value = sanitizeWidgets(data.widgets).filter((w) => allowed.has(w));
-    }
-
-    const { error } = await (supabaseAdmin as any)
-      .from("clients")
-      .update({ dashboard_widgets: value })
-      .eq("id", data.clientId);
-    if (error) throw new Error(error.message);
-    return { ok: true };
-  });
 
 /**
  * Read-only summary of what an organisation's plan includes: limits, dashboard

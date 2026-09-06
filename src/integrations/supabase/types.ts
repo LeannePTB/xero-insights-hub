@@ -2322,6 +2322,10 @@ export type Database = {
       }
     }
     Functions: {
+      assert_client_write_access: {
+        Args: { _client_id: string }
+        Returns: undefined
+      }
       check_rate_limit: {
         Args: { _key: string; _max: number; _window_seconds: number }
         Returns: boolean
@@ -2363,6 +2367,10 @@ export type Database = {
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
+      }
+      delete_statement_upload: {
+        Args: { _upload_id: string }
+        Returns: undefined
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
