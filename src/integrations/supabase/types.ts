@@ -2455,6 +2455,10 @@ export type Database = {
           read_ct: number
         }[]
       }
+      reset_org_tier_widgets: {
+        Args: { _firm_id: string; _tier: string }
+        Returns: undefined
+      }
       set_all_client_tiers: {
         Args: {
           _firm_id: string
