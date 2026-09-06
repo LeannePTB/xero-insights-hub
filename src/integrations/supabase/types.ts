@@ -2488,6 +2488,10 @@ export type Database = {
           is_enabled: boolean
         }[]
       }
+      set_firm_default_widgets: {
+        Args: { _firm_id: string; _widgets: string[] }
+        Returns: number
+      }
       set_org_widget_enabled: {
         Args: {
           _enabled: boolean

@@ -654,51 +654,19 @@ export const saveFirmDefaultWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId: string; widgets: WidgetKey[] }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // Membership check unless platform admin.
-    const { data: roles } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    const isSuper = (roles ?? []).some((r: any) => r.role === "super_admin");
-    if (!isSuper) {
-      const { data: member } = await context.supabase
-        .from("firm_members")
-        .select("id")
-        .eq("firm_id", data.firmId)
-        .eq("user_id", context.userId)
-        .maybeSingle();
-      if (!member) throw new Error("Not a member of this organisation.");
-    }
-
+    // Sanitising stays here: ALL_WIDGETS is the application's list of known
+    // card keys. The gate and the write live in the database:
+    // public.set_firm_default_widgets refuses anyone who is not an active
+    // member of the organisation, and applies every client in one statement.
     const selected = sanitizeWidgets(data.widgets);
 
-    const { error: firmErr } = await (supabaseAdmin as any)
-      .from("firms")
-      .update({ default_widgets: selected })
-      .eq("id", data.firmId);
-    if (firmErr) throw new Error(firmErr.message);
+    const { data: updated, error } = await (context.supabase as any).rpc(
+      "set_firm_default_widgets",
+      { _firm_id: data.firmId, _widgets: selected },
+    );
+    if (error) throw new Error(error.message);
 
-    // Apply to existing clients: intersect each client's effective list.
-    const { data: clients } = await (supabaseAdmin as any)
-      .from("clients")
-      .select("id, dashboard_widgets")
-      .eq("firm_id", data.firmId);
-
-    for (const c of (clients ?? []) as any[]) {
-      const current: string[] = Array.isArray(c.dashboard_widgets)
-        ? c.dashboard_widgets
-        : selected;
-      const next = sanitizeWidgets(current).filter((w) => selected.includes(w));
-      await (supabaseAdmin as any)
-        .from("clients")
-        .update({ dashboard_widgets: next })
-        .eq("id", c.id);
-    }
-
-    return { ok: true, clientsUpdated: (clients ?? []).length };
+    return { ok: true, clientsUpdated: (updated as number | null) ?? 0 };
   });
 
 
