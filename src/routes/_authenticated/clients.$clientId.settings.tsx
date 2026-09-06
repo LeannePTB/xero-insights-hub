@@ -62,6 +62,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
+import { siteUrl } from "@/lib/site-origin";
 import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
 import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
 import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
@@ -879,7 +880,7 @@ function ClientSettings() {
                     size="sm"
                     className="mt-2"
                     onClick={async () => {
-                      const text = `Email: ${lastViewerCreated.email}\nPassword: ${lastViewerCreated.password}\nSign in: https://tractionadvisory.com.au/auth`;
+                      const text = `Email: ${lastViewerCreated.email}\nPassword: ${lastViewerCreated.password}\nSign in: ${siteUrl("/auth")}`;
                       try {
                         await navigator.clipboard.writeText(text);
                         toast.success("Credentials copied");

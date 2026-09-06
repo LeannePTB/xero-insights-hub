@@ -13,6 +13,7 @@
 //    dashboard, another period, another report, or any Xero data.
 
 import { createHash, randomBytes } from "crypto";
+import { siteOrigin } from "@/lib/site-origin";
 
 const DEFAULT_EXPIRY_DAYS = 30;
 const MAX_EXPIRY_DAYS = 180;
@@ -197,12 +198,6 @@ export async function revokeRecipient(supabase: any, userId: string, recipientId
     meta: { report_id: rec.report_id, client_id: rec.client_id, email: rec.email },
   });
   return { revoked: true };
-}
-
-function siteOrigin(): string {
-  const explicit = process.env["SITE_URL"] || process.env["VITE_SITE_URL"];
-  if (explicit) return explicit.replace(/\/+$/, "");
-  return "https://tractionadvisory.com.au";
 }
 
 /**

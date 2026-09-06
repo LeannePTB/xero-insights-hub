@@ -6,10 +6,9 @@
 import { randomBytes, createHash } from "crypto";
 import { xeroRequiredScopeString } from "@/lib/xero/scopes.server";
 import { MAX_BULK_RECONNECT_TENANTS, type FirmXeroFile } from "@/lib/xero/reconnect-all.shared";
+import { siteOrigin, xeroCallbackUrl } from "@/lib/site-origin";
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
-const CANONICAL_XERO_APP_ORIGIN = "https://tractionadvisory.com.au";
-const XERO_CALLBACK_URL = `${CANONICAL_XERO_APP_ORIGIN}/api/public/xero/callback`;
 
 function base64url(buf: Buffer) {
   return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
@@ -20,7 +19,7 @@ function normalizeOrigin(origin: string) {
     const url = new URL(origin);
     return `${url.protocol}//${url.host}`;
   } catch {
-    return CANONICAL_XERO_APP_ORIGIN;
+    return siteOrigin();
   }
 }
 
@@ -122,7 +121,7 @@ export async function startFirmReconnectAll(
   const url = new URL(XERO_AUTHORIZE_URL);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("client_id", clientId);
-  url.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
+  url.searchParams.set("redirect_uri", xeroCallbackUrl());
   url.searchParams.set("scope", await xeroRequiredScopeString());
   url.searchParams.set("state", state);
   url.searchParams.set("code_challenge", codeChallenge);

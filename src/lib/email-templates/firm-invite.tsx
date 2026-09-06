@@ -12,7 +12,7 @@ interface InviteEmailProps {
 }
 
 const InviteEmail = ({
-  inviteUrl = 'https://tractionadvisory.com.au',
+  inviteUrl = 'https://tractionadvisory.app',
   role = 'owner',
   firmName = null,
   inviterName = null,
@@ -56,7 +56,7 @@ export const template = {
       : "You've been invited to Traction Advisory",
   displayName: 'Account invite',
   previewData: {
-    inviteUrl: 'https://tractionadvisory.com.au/signup/example-token',
+    inviteUrl: 'https://tractionadvisory.app/signup/example-token',
     role: 'owner',
     firmName: 'Smith Advisory',
     inviterName: 'Admin',

@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { siteHost, xeroCallbackUrl } from "@/lib/site-origin";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
-const XERO_CALLBACK_URL = "https://tractionadvisory.com.au/api/public/xero/callback";
 
 type StateRow = {
   user_id: string | null;
@@ -111,7 +111,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         const tokenBody: Record<string, string> = {
           grant_type: "authorization_code",
           code,
-          redirect_uri: XERO_CALLBACK_URL,
+          redirect_uri: xeroCallbackUrl(),
         };
         if (
           codeVerifier &&
@@ -135,7 +135,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           console.error("Xero token exchange failed", {
             status: tokenRes.status,
             body: t,
-            redirectUri: XERO_CALLBACK_URL,
+            redirectUri: xeroCallbackUrl(),
             flow,
           });
           return redirectTo(
@@ -652,11 +652,11 @@ function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
   }
 }
 
-const ALLOWED_RETURN_HOSTS = new Set([
-  "tractionadvisory.com.au",
-  "www.tractionadvisory.com.au",
-  "xero-shine-dashboards.lovable.app",
-]);
+
+function allowedReturnHosts() {
+  // Evaluated per call: env binds at request time on the Worker runtime.
+  return new Set([siteHost(), "xero-shine-dashboards.lovable.app"]);
+}
 
 function getSafeReturnOrigin(
   returnOrigin: string | null,
@@ -668,7 +668,7 @@ function getSafeReturnOrigin(
     if (typeof candidate !== "string" || !candidate.startsWith("https://")) continue;
     try {
       const parsed = new URL(candidate);
-      if (ALLOWED_RETURN_HOSTS.has(parsed.hostname) || parsed.hostname.endsWith(".lovable.app")) {
+      if (allowedReturnHosts().has(parsed.hostname) || parsed.hostname.endsWith(".lovable.app")) {
         return parsed.origin;
       }
     } catch {

@@ -31,6 +31,7 @@ import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRoun
 import { toast } from "sonner";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { siteUrl } from "@/lib/site-origin";
 
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({
@@ -279,7 +280,7 @@ function AdvisorSettings() {
                     size="sm"
                     className="mt-2"
                     onClick={async () => {
-                      const text = `Email: ${lastCreated.email}\nPassword: ${lastCreated.password}\nSign in: https://tractionadvisory.com.au/auth`;
+                      const text = `Email: ${lastCreated.email}\nPassword: ${lastCreated.password}\nSign in: ${siteUrl("/auth")}`;
                       try {
                         await navigator.clipboard.writeText(text);
                         toast.success("Credentials copied");
