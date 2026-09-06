@@ -24,7 +24,8 @@ const CONN_B = "bbbbbbbb-cccc-4222-8222-222222222222";
 const TENANT_A = "tenant-a";
 const TENANT_B = "tenant-b";
 const USER_1 = "99999999-1111-4111-8111-111111111111"; // member of Org A only
-const USER_NONE = "99999999-0000-4000-8000-000000000000"; // no membership anywhere
+const USER_NONE = "99999999-0000-4000-8000-000000000000"; // no membership, owns nothing
+const USER_B = "99999999-2222-4222-8222-222222222222"; // Org B's own person
 
 /** Tables asserted for cross-organisation leakage, with how a row is attributed. */
 const ORG_B_ROW_PREDICATE: Record<string, string> = {
@@ -69,17 +70,17 @@ beforeAll(async () => {
   // Synthetic data only. Two organisations, one client each, one Xero file each.
   await db.exec(`
     insert into auth.users(id, email) values
-      ('${USER_1}', 'user1@example.invalid'), ('${USER_NONE}', 'nobody@example.invalid');
+      ('${USER_1}', 'user1@example.invalid'), ('${USER_NONE}', 'nobody@example.invalid'), ('${USER_B}', 'userb@example.invalid');
     insert into public.firms(id, name, owner_user_id) values
-      ('${ORG_A}', 'Org A', '${USER_1}'), ('${ORG_B}', 'Org B', null);
+      ('${ORG_A}', 'Org A', '${USER_1}'), ('${ORG_B}', 'Org B', '${USER_B}');
     insert into public.firm_members(id, firm_id, user_id, role, status) values
       (gen_random_uuid(), '${ORG_A}', '${USER_1}', 'owner', 'active');
     insert into public.clients(id, name, owner_user_id, firm_id) values
       ('${CLIENT_A}', 'Client A', '${USER_1}', '${ORG_A}'),
-      ('${CLIENT_B}', 'Client B', '${USER_NONE}', '${ORG_B}');
+      ('${CLIENT_B}', 'Client B', '${USER_B}', '${ORG_B}');
     insert into public.xero_connections(id, user_id, tenant_id, tenant_name, firm_id, status, expires_at, access_token_enc, refresh_token_enc, enc_version) values
       ('${CONN_A}', '${USER_1}', '${TENANT_A}', 'File A', '${ORG_A}', 'active', now() + interval '1 day', 'ctA', 'rtA', 1),
-      ('${CONN_B}', '${USER_NONE}', '${TENANT_B}', 'File B', '${ORG_B}', 'active', now() + interval '1 day', 'ctB', 'rtB', 1);
+      ('${CONN_B}', '${USER_B}', '${TENANT_B}', 'File B', '${ORG_B}', 'active', now() + interval '1 day', 'ctB', 'rtB', 1);
     insert into public.client_xero_orgs(id, client_id, xero_connection_id) values
       (gen_random_uuid(), '${CLIENT_A}', '${CONN_A}'), (gen_random_uuid(), '${CLIENT_B}', '${CONN_B}');
     insert into public.client_notes(id, client_id, body) values
@@ -95,7 +96,7 @@ beforeAll(async () => {
       (gen_random_uuid(), '${CLIENT_B}', '${TENANT_B}', 'recon', current_date, '{}', true, now());
     insert into public.report_cache(id, user_id, tenant_id, report_key, params_hash, payload, fetched_at) values
       (gen_random_uuid(), '${USER_1}', '${TENANT_A}', 'pnl', 'h', '{}', now()),
-      (gen_random_uuid(), '${USER_NONE}', '${TENANT_B}', 'pnl', 'h', '{}', now());
+      (gen_random_uuid(), '${USER_B}', '${TENANT_B}', 'pnl', 'h', '{}', now());
     insert into public.consolidation_groups(id, firm_id, name) values
       ('${ORG_A}', '${ORG_A}', 'Group A'), ('${ORG_B}', '${ORG_B}', 'Group B');
     insert into public.loan_consolidation_snapshots(id, group_id, as_at, payload, generated_at) values
@@ -114,7 +115,7 @@ beforeAll(async () => {
       (gen_random_uuid(), '${CLIENT_B}', 'free_forever', 'free_forever', 'basic');
     insert into public.xero_oauth_states(state, user_id, firm_id, expires_at, flow) values
       ('sa', '${USER_1}', '${ORG_A}', now() + interval '1 hour', 'connect'),
-      ('sb', '${USER_NONE}', '${ORG_B}', now() + interval '1 hour', 'connect');
+      ('sb', '${USER_B}', '${ORG_B}', now() + interval '1 hour', 'connect');
   `);
 });
 
@@ -134,9 +135,6 @@ describe("cross-organisation isolation", () => {
   it("a user with no membership anywhere sees nothing", async () => {
     await asUser(USER_NONE, async () => {
       for (const table of Object.keys(ORG_B_ROW_PREDICATE)) {
-        // report_cache and xero_oauth_states are keyed to the user, and this user
-        // legitimately owns the Org B rows seeded above, so they are excluded.
-        if (table === "report_cache" || table === "xero_oauth_states") continue;
         expect(await countVisible(table, "true"), table).toBe(0);
       }
     });
