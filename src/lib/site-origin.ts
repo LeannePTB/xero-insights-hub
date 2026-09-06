@@ -68,3 +68,61 @@ export function siteHost(): string {
     return new URL(FALLBACK_ORIGIN).hostname;
   }
 }
+
+/**
+ * The published slug host assigned to this project on Lovable, from the
+ * project's published URL (xero-shine-dashboards.lovable.app). Explicit, not
+ * a wildcard: anyone can publish to *.lovable.app, so the parent domain must
+ * never be trusted.
+ */
+const PUBLISHED_SLUG_HOSTS = ["xero-shine-dashboards.lovable.app"];
+
+/** True outside production builds (dev server / preview SSR). */
+function isNonProduction(): boolean {
+  try {
+    if (typeof process !== "undefined" && process.env?.["NODE_ENV"]) {
+      return process.env["NODE_ENV"] !== "production";
+    }
+  } catch {
+    // ignore
+  }
+  try {
+    const viteDev = (import.meta as any).env?.DEV;
+    if (typeof viteDev === "boolean") return viteDev;
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
+/**
+ * The exact set of hostnames accepted as legitimate app origins on OAuth
+ * return paths. Built per call: env binds at request time on the Worker
+ * runtime. Never widen this to a wildcard — *.lovable.app is open to anyone.
+ *
+ * Sources:
+ *   - siteHost()                    → tractionadvisory.app (canonical)
+ *   - PUBLISHED_SLUG_HOSTS          → this project's published Lovable URL
+ *   - LOVABLE_PROJECT_ID-derived    → this project's own preview hosts
+ *   - localhost                     → non-production only
+ */
+export function allowedAppHosts(): Set<string> {
+  const hosts = new Set<string>([siteHost(), ...PUBLISHED_SLUG_HOSTS]);
+  let projectId: string | undefined;
+  try {
+    projectId =
+      typeof process !== "undefined"
+        ? (process.env?.["LOVABLE_PROJECT_ID"] ?? process.env?.["__LOVABLE_PROJECT_ID"])
+        : undefined;
+  } catch {
+    projectId = undefined;
+  }
+  if (projectId) {
+    hosts.add(`${projectId}.lovableproject.com`);
+    hosts.add(`id-preview--${projectId}.lovable.app`);
+    hosts.add(`project--${projectId}.lovable.app`);
+    hosts.add(`project--${projectId}-dev.lovable.app`);
+  }
+  if (isNonProduction()) hosts.add("localhost");
+  return hosts;
+}
