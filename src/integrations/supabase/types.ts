@@ -2369,6 +2369,10 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      firm_access_path: {
+        Args: { _firm_id: string; _user_id: string }
+        Returns: string
+      }
       firm_allowed_widgets: { Args: { _firm_id: string }; Returns: string[] }
       firm_can_use_widget: {
         Args: { _firm_id: string; _widget: string }
