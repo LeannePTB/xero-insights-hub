@@ -126,3 +126,29 @@ export function allowedAppHosts(): Set<string> {
   if (isNonProduction()) hosts.add("localhost");
   return hosts;
 }
+
+/**
+ * Validate a caller-supplied app origin used on OAuth return paths.
+ *
+ * Single implementation, shared by every place that stores a `return_origin`
+ * (`connections.functions.ts` and `reconnect-all.server.ts`). Rejects rather
+ * than falling back: a caller sending an unrecognised origin is an anomaly.
+ *
+ * Returns the canonical `siteOrigin()` for any accepted non-localhost host,
+ * so the value stored in `xero_oauth_states.return_origin` is always ours.
+ */
+export function assertAppOrigin(origin: string): string {
+  let parsed: URL;
+  try {
+    parsed = new URL(origin);
+  } catch {
+    throw new Error("Invalid app origin for Xero connection.");
+  }
+  const allowedHosts = allowedAppHosts();
+  if (parsed.hostname === "localhost" && allowedHosts.has("localhost")) return parsed.origin;
+  if (parsed.protocol !== "https:") {
+    throw new Error("Invalid app origin for Xero connection.");
+  }
+  if (allowedHosts.has(parsed.hostname)) return siteOrigin();
+  throw new Error("Invalid app origin for Xero connection.");
+}
