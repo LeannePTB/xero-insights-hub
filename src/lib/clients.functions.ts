@@ -682,8 +682,7 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
     let userId = existing?.id as string | undefined;
 
     if (!userId) {
-      const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
-      const redirectTo = projectId ? `https://project--${projectId}.lovable.app/auth` : undefined;
+      const redirectTo = siteUrl("/auth");
       const { data: invited, error: e } = await (supabaseAdmin as any).auth.admin.inviteUserByEmail(
         email,
         redirectTo ? { redirectTo } : undefined,

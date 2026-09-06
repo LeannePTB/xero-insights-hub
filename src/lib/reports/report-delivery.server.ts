@@ -199,12 +199,6 @@ export async function revokeRecipient(supabase: any, userId: string, recipientId
   return { revoked: true };
 }
 
-function siteOrigin(): string {
-  const explicit = process.env["SITE_URL"] || process.env["VITE_SITE_URL"];
-  if (explicit) return explicit.replace(/\/+$/, "");
-  return "https://tractionadvisory.com.au";
-}
-
 /**
  * Email a finalised report. One random token per recipient; only its hash is
  * stored. The raw token exists in the link and nowhere else.

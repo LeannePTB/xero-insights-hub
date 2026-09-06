@@ -231,7 +231,7 @@ export const sendAdvisorPasswordReset = createServerFn({ method: "POST" })
     if (error || !u?.user?.email) throw new Error("User not found");
     const email = u.user.email as string;
     const { error: rErr } = await (supabaseAdmin as any).auth.resetPasswordForEmail(email, {
-      redirectTo: "https://tractionadvisory.com.au/set-password",
+      redirectTo: siteUrl("/set-password"),
     });
     if (rErr) throw new Error(rErr.message);
     return { ok: true, email };
@@ -296,7 +296,7 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
   });
 
 function getInviteRedirect() {
-  return "https://tractionadvisory.com.au/set-password";
+  return siteUrl("/set-password");
 }
 
 async function resendInviteForUser(supabaseAdmin: any, userId: string) {

@@ -202,7 +202,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         owner_user_id: context.userId,
       });
 
-      const inviteUrl = `https://tractionadvisory.com.au/signup/${token}`;
+      const inviteUrl = siteUrl(`/signup/${token}`);
       let emailStatus: string = "skipped";
       try {
         const { enqueueAppEmail } = await import("@/lib/email/send.server");
@@ -274,7 +274,7 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
     });
 
     // Build the canonical signup URL and fire-and-forget the email.
-    const inviteUrl = `https://tractionadvisory.com.au/signup/${token}`;
+    const inviteUrl = siteUrl(`/signup/${token}`);
     let emailStatus: string = "skipped";
     try {
       const { enqueueAppEmail } = await import("@/lib/email/send.server");
@@ -325,7 +325,7 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
 
     const { data: firm } = await (supabaseAdmin as any)
       .from("firms").select("name").eq("id", data.firmId).maybeSingle();
-    const inviteUrl = `https://tractionadvisory.com.au/signup/${token}`;
+    const inviteUrl = siteUrl(`/signup/${token}`);
     let emailStatus: string = "skipped";
     try {
       const { enqueueAppEmail } = await import("@/lib/email/send.server");

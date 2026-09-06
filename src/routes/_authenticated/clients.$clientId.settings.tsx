@@ -879,7 +879,7 @@ function ClientSettings() {
                     size="sm"
                     className="mt-2"
                     onClick={async () => {
-                      const text = `Email: ${lastViewerCreated.email}\nPassword: ${lastViewerCreated.password}\nSign in: https://tractionadvisory.com.au/auth`;
+                      const text = `Email: ${lastViewerCreated.email}\nPassword: ${lastViewerCreated.password}\nSign in: ${siteUrl("/auth")}`;
                       try {
                         await navigator.clipboard.writeText(text);
                         toast.success("Credentials copied");

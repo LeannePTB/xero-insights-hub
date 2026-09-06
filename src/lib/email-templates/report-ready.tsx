@@ -13,7 +13,7 @@ interface ReportReadyProps {
 }
 
 const ReportReadyEmail = ({
-  reportUrl = 'https://tractionadvisory.com.au',
+  reportUrl = 'https://tractionadvisory.app',
   reportTitle = 'Monthly management report',
   clientName = null,
   recipientEmail = null,
@@ -52,7 +52,7 @@ export const template = {
   subject: (d: Record<string, any>) => d.reportTitle ?? 'Your management report is ready',
   displayName: 'Management report ready',
   previewData: {
-    reportUrl: 'https://tractionadvisory.com.au/report/example-token',
+    reportUrl: 'https://tractionadvisory.app/report/example-token',
     reportTitle: 'Monthly Management Report — Example Pty Ltd — July 2026',
     clientName: 'Example Pty Ltd',
     recipientEmail: 'owner@example.com',

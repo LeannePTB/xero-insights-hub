@@ -2,14 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { randomBytes, createHash } from "crypto";
 import { xeroIdentityScopeString } from "@/lib/xero/scopes";
+import { siteOrigin, siteHost, xeroCallbackUrl } from "@/lib/site-origin";
 
 function base64url(buf: Buffer) {
   return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
-const CANONICAL_XERO_APP_ORIGIN = "https://tractionadvisory.com.au";
-const XERO_CALLBACK_URL = `${CANONICAL_XERO_APP_ORIGIN}/api/public/xero/callback`;
 const IDENTITY_SCOPES = xeroIdentityScopeString();
 
 /**
@@ -47,7 +46,7 @@ export const startXeroSignIn = createServerFn({ method: "POST" })
     const url = new URL(XERO_AUTHORIZE_URL);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
-    url.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
+    url.searchParams.set("redirect_uri", xeroCallbackUrl());
     url.searchParams.set("scope", IDENTITY_SCOPES);
     url.searchParams.set("state", state);
     url.searchParams.set("code_challenge", codeChallenge);
@@ -240,13 +239,13 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     const url = new URL(XERO_AUTHORIZE_URL);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
-    url.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
+    url.searchParams.set("redirect_uri", xeroCallbackUrl());
     url.searchParams.set("scope", scopeString);
     url.searchParams.set("state", state);
     url.searchParams.set("code_challenge", codeChallenge);
     url.searchParams.set("code_challenge_method", "S256");
     console.info("Starting Xero OAuth", {
-      redirectUri: XERO_CALLBACK_URL,
+      redirectUri: xeroCallbackUrl(),
       scopes: scopeString,
       returnOrigin,
     });
@@ -324,7 +323,7 @@ export const startXeroOnboardConnect = createServerFn({ method: "POST" })
     const url = new URL(XERO_AUTHORIZE_URL);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
-    url.searchParams.set("redirect_uri", XERO_CALLBACK_URL);
+    url.searchParams.set("redirect_uri", xeroCallbackUrl());
     url.searchParams.set("scope", scopeString);
     url.searchParams.set("state", state);
     url.searchParams.set("code_challenge", codeChallenge);
@@ -497,7 +496,7 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
     return { moved: true as const };
   });
 
-const ALLOWED_CUSTOM_HOSTS = new Set(["tractionadvisory.com.au", "www.tractionadvisory.com.au"]);
+const ALLOWED_CUSTOM_HOSTS = new Set([siteHost()]);
 
 function normalizeOrigin(origin: string) {
   const parsed = new URL(origin);
@@ -516,8 +515,8 @@ function normalizeOrigin(origin: string) {
   }
 
   // Allow any *.lovable.app host (covers published slug subdomains).
-  if (parsed.hostname.endsWith(".lovable.app")) return CANONICAL_XERO_APP_ORIGIN;
-  if (allowedHosts.has(parsed.hostname)) return CANONICAL_XERO_APP_ORIGIN;
+  if (parsed.hostname.endsWith(".lovable.app")) return siteOrigin();
+  if (allowedHosts.has(parsed.hostname)) return siteOrigin();
 
   throw new Error("Invalid app origin for Xero connection.");
 }
