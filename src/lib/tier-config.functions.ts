@@ -6,14 +6,15 @@ function sanitizeWidgets(widgets: string[]): WidgetKey[] {
   return widgets.filter((w): w is WidgetKey => (ALL_WIDGETS as string[]).includes(w));
 }
 
-async function assertAdvisor(supabase: any, userId: string) {
+async function assertSuperAdmin(supabase: any, userId: string) {
   const { data } = await supabase
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)
-    .in("role", ["advisor", "super_admin", "firm_owner", "firm_staff"]);
-  if (!data || data.length === 0) throw new Error("Advisor only.");
+    .eq("role", "super_admin");
+  if (!data || data.length === 0) throw new Error("Forbidden");
 }
+
 
 
 // Returns the platform default card list plus, optionally, the list for one
