@@ -38,7 +38,7 @@ export function AddOrganisationDialog({
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [tier, setTier] = useState("ptb");
+  const [tier, setTier] = useState("included");
   const [status, setStatus] = useState("active");
   const [endDate, setEndDate] = useState(isoDate(new Date(Date.now() + 7 * 864e5)));
   const [ownerMode, setOwnerMode] = useState<"password" | "invite" | "none">("none");
@@ -89,7 +89,7 @@ export function AddOrganisationDialog({
   });
 
   function reset() {
-    setName(""); setTier("ptb"); setStatus("active");
+    setName(""); setTier("included"); setStatus("active");
     setEndDate(isoDate(new Date(Date.now() + 7 * 864e5)));
     setOwnerMode("none"); setEmail(""); setOwnerName("");
     setPassword(""); setDone(null); setCopied(false); setErrorMsg(null);
@@ -172,7 +172,7 @@ export function AddOrganisationDialog({
                 <Input id="o-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
               </div>
               <p className="text-xs text-muted-foreground">
-                PTB is the free default for organisations we set up: one client, one Xero file and the Standard dashboard.
+                Included is the free default for bookkeeping client organisations we set up: one client, one Xero file and the Standard dashboard.
               </p>
             </div>
 
