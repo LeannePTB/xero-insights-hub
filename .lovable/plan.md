@@ -1,122 +1,89 @@
-# R01: protected money split across the balance sheet and ATO payables
+# Domain migration audit — `tractionadvisory.com.au` to `tractionadvisory.app`
 
-Plan only. Nothing below is implemented yet. No thresholds change in this build.
+Findings only. Nothing was changed: no files edited, no database objects created or altered.
 
-## 0. The one thing that had to be checked first
+## 1. Literal occurrences of the old domain
 
-`invoices_accpay_open` **does include line-level account coding.** Every one of the 79 open bills stored across the 15 tenants carries a `LineItems` array, and every line carries `AccountID`, `AccountCode`, `Description`, `LineAmount` and `TaxType`. Example (Bangkok on King, one bill):
+| File | Line | What it is | Verdict |
+|---|---|---|---|
+| `src/routes/api/public/xero/callback.ts` | 5 | `XERO_CALLBACK_URL` constant used when exchanging the auth code | **Change** — must match the registered redirect exactly |
+| `src/routes/api/public/xero/callback.ts` | 656–658 | `ALLOWED_RETURN_HOSTS` = `.com.au`, `www.com.au`, `xero-shine-dashboards.lovable.app` | **Change** (add `.app`; decide whether to keep `.com.au`) |
+| `src/lib/xero/connections.functions.ts` | 11 | `CANONICAL_XERO_APP_ORIGIN` — builds the redirect sent to Xero | **Change** |
+| `src/lib/xero/connections.functions.ts` | 500 | `ALLOWED_CUSTOM_HOSTS` allow-list for the calling origin | **Change** |
+| `src/lib/xero/reconnect-all.server.ts` | 11 | Same canonical origin constant, duplicated | **Change** |
+| `src/lib/invites.functions.ts` | 205, 277, 328 | Invite links `https://…/signup/{token}` hardcoded | **Change** |
+| `src/lib/advisors.functions.ts` | 234, 299 | Password-set redirect hardcoded (`getInviteRedirect`) | **Change** |
+| `src/lib/admin.functions.ts` | 164 | Password-set redirect hardcoded | **Change** |
+| `src/routes/auth.tsx` | 97–101 | Reset-password redirect: `window.location.origin` in preview, else hardcoded `.com.au` | **Change** the fallback |
+| `src/lib/reports/report-delivery.server.ts` | 202–205 | `siteOrigin()` — `SITE_URL` / `VITE_SITE_URL` else hardcoded `.com.au`; used for report links (line 270) | **Change** fallback (or set `SITE_URL`) |
+| `src/lib/email-templates/report-ready.tsx` | 16, 55 | Default/preview URL only (real URL is passed in) | Cosmetic — change |
+| `src/lib/email-templates/firm-invite.tsx` | 15, 59 | Default/preview URL only | Cosmetic — change |
+| `src/routes/lovable/email/auth/webhook.ts` | 35–37, 137 | `SENDER_DOMAIN`, `ROOT_DOMAIN`, `FROM_DOMAIN`; `siteUrl` in auth emails | **Ambiguous** — see §4 |
+| `src/routes/lovable/email/auth/preview.ts` | 22 | `ROOT_DOMAIN` for template preview | Ambiguous (follow §4) |
+| `src/lib/email/send.server.ts` | 13–14 | `SENDER_DOMAIN`, `FROM_DOMAIN` (From address) | **Ambiguous** — sending domain, not app domain |
+| `src/routes/lovable/email/transactional/send.ts` | 11, 14 | Same pair | Ambiguous |
+| `src/routes/_authenticated/settings.advisors.tsx` | 282 | "Sign in:" text copied to clipboard for a new advisor | **Change** |
+| `src/routes/_authenticated/clients.$clientId.settings.tsx` | 882 | Same clipboard text for a client viewer | **Change** |
+| `supabase/migrations/20260826015658_*.sql` | 20 | Cron job posts to `https://www.tractionadvisory.com.au/api/public/xero/snapshot-refresh` | **Change** — see §9 |
+| `.lovable/plan/*.md` (3 files) | — | Historical plan notes | Leave |
 
-```text
-AccountCode 820  GST                        12,262.00  BASEXCLUDED  "Activity Statement for Jul-Sep 2024 - GST"
-AccountCode 825  PAYG Withholdings Payable   6,822.00  BASEXCLUDED  "... - PAYG tax withheld"
-AccountCode 830  Income Tax Payable            360.00  BASEXCLUDED  "... - PAYG income tax instalment"
-```
+Live database rows (not code): `security_contact_details` and `xero_assessment_contact` both hold `website = https://www.tractionadvisory.com.au/` and `primary_contact_email/contact_email = admin@tractionadvisory.com.au`. These feed the Xero security assessment pack. **Your decision** — data edit, not a code change.
 
-So the design can rest on line accounts. No new Xero call is needed, and `AccountID` joins straight onto the `accounts` snapshot that `analyseBalanceSheet` already consumes.
+Old brand leftovers: `supabase/migrations/20260627060009_*.sql` lines 49, 71 default `website` to `https://www.positivetraction.com.au/`.
 
-Both `invoices_accpay_open` and `invoices_accrec_open` are stored `complete = true` for all 15 tenants today, so truncation is currently theoretical — but must still be handled (section 4).
+## 2. The Xero `redirect_uri` actually sent
 
-## 1. Identifying an ATO payable
+Constructed as a **hardcoded module constant**, not an env var and not `window.location.origin`:
 
-Ranked by dependability:
+- `src/lib/xero/connections.functions.ts:11–12` — `CANONICAL_XERO_APP_ORIGIN + "/api/public/xero/callback"`, set on the authorise URL at line 49 and in the other connect/reconnect flows in the same file.
+- `src/lib/xero/reconnect-all.server.ts:11` — a second copy of the same constant.
+- `src/routes/api/public/xero/callback.ts:5` — a third copy, sent again on the token exchange (Xero requires it to match).
 
-1. **Line `AccountID` matches a statutory account already recognised by `analyseBalanceSheet`** — dependable, and the only signal used to *include an amount in a figure*. It is the same account identity R01 reads on the balance sheet, so the two sides can never disagree about what the money is.
-2. **Line `AccountID` matches a liability account whose name reads as an ATO clearing/suspense account** (Autotek's `850-1 Suspense - ATO`) — dependable enough to *classify the file's pattern*, not to add an amount blindly. Section 3.
-3. **`TaxType = BASEXCLUDED`** — necessary but not sufficient. Every statutory line observed uses it, but so do interest, wages and drawings lines. Use only as a corroborating check, never alone.
-4. **Contact name** (`Australian Tax Office`, `Australian Taxation Office`, `Australian Tax Office - Tax Returns` all appear in the real data) — used only as a *cross-check for refusal*: an ATO-named bill whose lines hit no statutory account is the trigger for "present but not traceable", not for a figure.
-5. **Reference / description text** ("Activity Statement for Jul-Sep 2024") — human-readable evidence to show staff, never a matching key.
+Currently all three produce `https://tractionadvisory.com.au/api/public/xero/callback`, which will **fail** against the registered `https://tractionadvisory.app/api/public/xero/callback`. The browser's origin is used separately: `normalizeOrigin()` (connections line 502) validates the caller's origin against an allow-list and then **discards it**, always returning the canonical constant — so the redirect never varies by host, but a user on `tractionadvisory.app` will currently be **rejected** by that allow-list before the flow even starts.
 
-Rule: **amounts come from line accounts; names only ever cause us to refuse, never to assert.**
+The three copies must move in lockstep. A single shared constant would be safer, but that is a change, not a finding.
 
-## 2. The three-part figure
+## 3. Environment variables holding a base or site URL
 
-For a period end `D`:
+Only one pair exists: `SITE_URL` and `VITE_SITE_URL`, read at `src/lib/reports/report-delivery.server.ts:203`. Neither is present in `.env` and neither appears in the project secrets list (secrets are: `LOVABLE_API_KEY`, `PAYMENTS_SANDBOX_WEBHOOK_SECRET`, `STRIPE_SANDBOX_API_KEY`, `TOKEN_ENC_KEY`, `XERO_CLIENT_ID`, `XERO_CLIENT_SECRET`) — so the hardcoded `.com.au` fallback is what runs today. No `APP_URL`, `PUBLIC_URL`, `BASE_URL` or `NEXT_PUBLIC_*` anywhere. The other URL variables are Supabase endpoints (`SUPABASE_URL`, `VITE_SUPABASE_URL`), unaffected. No values printed.
 
-- **Accruing toward the next lodgement** = the existing balance sheet figure, unchanged: `buildProtectedMoney(...)` over GST, PAYG withholding and superannuation lines from `analyseBalanceSheet`.
-- **Lodged and still owing** = for each open ACCPAY bill, the sum of `LineAmount` on lines whose `AccountID` is one of those same statutory accounts, **scaled by the proportion of the bill still unpaid** (`AmountDue / Total`), with bills dated after `D` excluded. Scaling is required because payments hit the bill, not the line, so a part-paid bill must not be counted in full.
-- **Total held or owed** = the sum of the two.
+Also `src/lib/clients.functions.ts:686` builds a sign-in redirect from `project--{LOVABLE_PROJECT_ID}.lovable.app` rather than the custom domain — **your decision** whether that should now be the live domain.
 
-**No double counting.** The bill's own line *is* the debit that removes the amount from the statutory account — that is the mechanism the workflow relies on. The balance sheet at `D` is therefore already net of every bill raised on or before `D`; adding the unpaid remainder of those bills adds each dollar exactly once. Verified on Positive Traction at 31 July: statutory accounts $7,480 (August accrual, bill not yet raised), July BAS bill $5,835 total with $1,000 due → accruing $7,480, lodged and owing $1,000, total $8,480. Under today's code R01 reports $7,480.
+## 4. Emails and link building
 
-## 3. Detecting the workflow per file
+- Invites: `src/lib/invites.functions.ts` (hardcoded, §1).
+- Password reset / set-password: `advisors.functions.ts`, `admin.functions.ts`, `auth.tsx`.
+- Report-ready: link built in `report-delivery.server.ts:270` from `siteOrigin()`.
+- Supabase auth emails: `src/routes/lovable/email/auth/webhook.ts:137` sets `siteUrl` from `ROOT_DOMAIN`. The confirmation links themselves come from Supabase's own Site URL / redirect allow-list setting, which is **outside the repo** — it must be updated in the backend auth settings or reset and invite links will keep landing on the old domain.
+- Sending identity (`notify.tractionadvisory.com.au`, `noreply@tractionadvisory.com.au`) is a **separate decision**: moving it needs new DNS/DKIM for `tractionadvisory.app`. Keeping `.com.au` as the sending domain while links point at `.app` is legitimate.
 
-Evidence is taken only from stored snapshots (`invoices_accpay_open`, `accounts`, `balance_sheet`).
+## 5. Monthly report PDF
 
-**Bill pattern** — at least one open ACCPAY bill has a line coded to a recognised statutory account. High confidence; it is direct evidence of the mechanism. Observed in Bangkok on King (codes 820/825/830) and Positive Traction (21300/21420). Treatment: three-part figure as above.
+`src/lib/reports/report-pdf.server.ts` — header band (lines 124–158) and footer (160–174) contain **no URL**: logo image, client name, month, generated date, version, page numbers. No domain is printed or embedded in the PDF. The only URL in the report path is the emailed link (§4). Nothing to change here.
 
-**Direct pattern** — no open ACCPAY bill has a statutory line, and no ATO-named bill is open at all. Moderate confidence: absence of bills is consistent with direct coding but also with "nothing lodged yet". Treatment: balance sheet figure only, reported as today, with no claim that a lodged amount is outstanding. This is the current behaviour for the twelve tenants with no ATO bills.
+## 6. CORS allow-lists
 
-**Clearing pattern** — open ATO bills are coded to a liability account that is *not* one of the statutory accounts, and that account carries a large contra (negative) balance on the balance sheet. High confidence when both halves are present; the contra is what proves the account is being used as an ATO clearing account rather than an ordinary liability. Observed in Autotek (section 6). Treatment: **refuse the split** — see section 4 — until a decision is made about netting the clearing account, which this build will not make.
+**None found.** No `Access-Control-Allow-Origin` header is set anywhere in the app, and there are no Supabase edge functions in this project (all server work is TanStack server functions and `/api/public/*` routes). Nothing to change.
 
-## 4. Refusal wording
+## 7. Cookies and auth storage
 
-No figure is asserted unless the pattern is established. Proposed lines, in the report's existing register:
+**No cookie is set with a `Domain=` attribute anywhere in the repo.** Supabase auth uses browser storage, not cookies: `src/integrations/supabase/client.ts:24` uses `brokeredPreviewStorage()`, and `previewAuthStorage.ts:8` only special-cases Lovable preview zones (`lovable.app`, `lovableproject.com`, etc.). Storage is therefore origin-scoped: sessions will not carry across from `.com.au` to `.app` — expected, and confirms no parent-domain scoping. No change needed.
 
-- **Pattern unclear** — "The way lodged activity statements are recorded in this file could not be established from the records available, so the amount already lodged and still owing to the ATO has not been included in this figure."
-- **ATO bills present but not traceable to statutory accounts** — "There are unpaid bills to the ATO in this file, but they are not coded to the GST, PAYG withholding or superannuation accounts, so they could not be reconciled against the balances on the Balance Sheet. Only the Balance Sheet position is reported here."
-- **Payables snapshot missing or truncated** — "The list of unpaid supplier bills could not be read in full for this period, so any activity statement already lodged and still owing has not been included in this figure."
+## 8. Content-Security-Policy
 
-Each refusal suppresses the "lodged and owing" and "total" lines entirely rather than showing them as zero, and feeds the existing coverage-gap sentence machinery in `src/lib/reports/coverage-gaps.ts` so it de-duplicates alongside the other gaps.
+Present in `src/start.ts:35–50`, **report-only** (`content-security-policy-report-only`), with `frame-ancestors 'none'` — no domain allow-list, so it is domain-agnostic and needs no change. `x-frame-options: DENY` and HSTS with `includeSubDomains; preload` are also set — note that the HSTS preload directive will apply to `tractionadvisory.app` subdomains too once served there.
 
-## 5. Severity
+## 9. Not a domain issue — flagged, not fixed
 
-My view matches yours: **the total should drive severity**, but only where the split was established.
+1. **Cron job authorises with the wrong secret name.** The live `xero-snapshot-refresh-daily` job sends `Bearer` from vault secret `email_queue_service_role_key`, while `snapshot-refresh.ts:22` compares against `SUPABASE_SERVICE_ROLE_KEY`. It also runs **hourly** (`5 * * * *`) despite being named "daily" and previously described as a 3am run. And it posts to `www.` — after the move it will 404 or redirect and silently stop refreshing.
+2. **Three duplicate copies** of the Xero callback URL constant — exactly the drift risk this migration exposes.
+3. `normalizeOrigin` in `connections.functions.ts:519` accepts **any** `*.lovable.app` host; `getSafeReturnOrigin` in `callback.ts:671` does the same for return redirects. Broad for an OAuth return allow-list.
+4. Plain-text credentials copied to the clipboard in `settings.advisors.tsx:282` and `clients.$clientId.settings.tsx:882`.
+5. Stale contact rows in `security_contact_details` / `xero_assessment_contact` still describe the old website — these are the details Xero sees.
 
-For it: a lodged BAS is a crystallised debt with a due date. Money still accruing is an estimate that will not be demanded for weeks. Treating the lodged, overdue portion as less urgent than the accrual inverts the real risk. Under the bill pattern, using the balance sheet alone also makes the figure *fall* the moment a BAS is lodged — the worst possible moment for it to look better.
+## Decisions I need from you
 
-Against it: the existing thresholds were calibrated against balance-sheet-only figures, so switching the numerator to the total will move some files across a boundary for reasons that are not a change in the business. There is also an asymmetry — files on the direct pattern will always have a smaller numerator than files on the bill pattern, so the same underlying position could grade differently by bookkeeping style alone.
-
-Resolution: drive severity from the total, but only where the pattern is **bill**; where it is direct, the total already equals the balance sheet figure, so nothing changes; where it is clearing or unclear, keep the current behaviour and say so. Thresholds stay exactly as they are in this build, and a before/after grade table across all 15 tenants should be produced before anything is enabled.
-
-## 6. Autotek
-
-Autotek is **not double counting, and not on the bill pattern** — it is the clearing pattern, and the corrected figure is materially different from either number in the question.
-
-Its five open ATO bills are all coded to a single line: **`850-1 Suspense - ATO`**, a LIABILITY account, `BASEXCLUDED`, with descriptions like "Activity Statement for Apr 2026 - PAYG tax withheld" and one payment-plan bill covering four periods. A sixth bill, from contact "Australian Tax Office - Tax Returns", is coded to `830 Income Tax Payable` (a statutory account, but income tax, not BAS).
-
-Balance sheet at the latest snapshot:
-
-```text
-GST                          13,525.83
-PAYG Withholdings Payable    18,059.00
-Superannuation Payable        1,039.89
-Income Tax Payable            4,569.87
-Suspense - ATO              -57,716.83   <- contra, created by the bills
-```
-
-Open ATO bills, amount due: 30,773.69 + 13,262.00 + 5,910.00 + 4,835.00 + 736.14 = **55,516.83** against Suspense, plus **5,638.62** against Income Tax Payable.
-
-So the $30,773 payment plan and the GST/PAYG balances are **not** mutually exclusive and **not** duplicated either — the duplication is cancelled by the −$57,716.83 contra, which today's R01 ignores entirely. Netting all of it:
-
-```text
-statutory accounts (GST + PAYGW + Super)      32,624.72
-Suspense - ATO contra                        -57,716.83
-unpaid ATO bills against Suspense            +55,516.83
-                                             ----------
-corrected BAS-related position                30,424.72
-(plus Income Tax Payable 4,569.87 less its own bill's unpaid 5,638.62,
- which is income tax, outside R01's scope)
-```
-
-Today R01 reports **$32,624.72**. The corrected BAS figure is **$30,424.72** — close by coincidence, because the contra and the outstanding bills nearly offset. They would not offset in a file with more paid-down bills, which is exactly why the clearing pattern must be refused rather than approximated until the contra handling is explicitly designed.
-
-## 7. The file audit finding
-
-Yes — an untraceable statutory position is a bookkeeping defect, not just a gap in our reporting.
-
-- **Rule** `A-STAT-TRACE`, category: statutory accounts.
-- **Severity: warning.** Not critical — no figure is wrong on the face of the file, and the money may well be correctly recorded. But it makes the ATO position unverifiable from the ledger, which is the whole point of coding it there.
-- **Fires when** open ATO-named bills exist and none of their lines reach a recognised statutory account, or a liability account carrying a material contra balance is receiving ATO bills.
-- **Wording** — "Unpaid bills to the ATO in this file are coded to *{account name}* rather than to the GST and PAYG withholding accounts. The amount owed on lodged activity statements cannot be reconciled against the Balance Sheet from the records as recorded."
-- **Not raised** where no ATO bills exist at all; absence is not evidence of a defect.
-
-## Files this would touch when built
-
-- `src/lib/xero/tax-lines.ts` — a new extractor over `invoices_accpay_open`, joining line `AccountID` to the statutory accounts already resolved there; returns the same structured `ExtractionStatus` shape.
-- `src/lib/health/rules.server.ts` — R01 gains the three-part figure, the pattern classification and the three refusal paths.
-- `src/lib/reports/report-verdict.server.ts` — passes the already-fetched open payables through to the rules engine on the live report path.
-- `src/lib/reports/coverage-gaps.ts` — the new refusal sentences join the de-duplication set.
-- `src/lib/health/rules.test.ts` — regression cases for each pattern, part-paid bills, bills dated after period end, and each refusal.
-- Audit rules module — the `A-STAT-TRACE` finding.
-
-No database object is created or altered.
+1. Does `tractionadvisory.com.au` stay live as a redirect (keep it in the allow-lists), or is it retired?
+2. Does email sending move to `tractionadvisory.app`, or stay on `notify.tractionadvisory.com.au`?
+3. Prefer a single `SITE_URL` environment variable everywhere, or keep hardcoded constants pointing at the new domain?
+4. Should the stored security-contact website/email rows be updated too?
