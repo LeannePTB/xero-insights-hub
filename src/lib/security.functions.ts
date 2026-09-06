@@ -53,13 +53,13 @@ export const getSecurityPosture = createServerFn({ method: "GET" })
     // Token encryption coverage.
     const { count: encCount } = await supabaseAdmin
       .from("xero_connections")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .not("access_token_enc", "is", null);
     const plainCount = 0;
 
     const { count: totalConns } = await supabaseAdmin
       .from("xero_connections")
-      .select("*", { count: "exact", head: true });
+      .select("id", { count: "exact", head: true });
 
     // MFA enrolment via SECURITY DEFINER RPC — reads auth.mfa_factors directly,
     // since auth.admin.listUsers() does not return the factors array.
@@ -84,7 +84,7 @@ export const getSecurityPosture = createServerFn({ method: "GET" })
     const cutoff = new Date(Date.now() - 1000 * 60 * 60 * 24 * 365 * 2).toISOString();
     const { count: oldAudit } = await supabaseAdmin
       .from("audit_log")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .lt("at", cutoff);
 
     return {
@@ -165,7 +165,9 @@ export const getSecurityContact = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
       .from("security_contact_details")
-      .select("*")
+      .select(
+        "company_legal_name, trading_name, abn, registered_address, website, app_name, xero_client_id, primary_contact_name, primary_contact_role, primary_contact_email, primary_contact_phone, xero_api_usage, assessment_date",
+      )
       .eq("singleton", true)
       .maybeSingle();
     if (error) throw new Error(error.message);

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { allowedAppHosts, xeroCallbackUrl } from "@/lib/site-origin";
+import { allowedAppHosts, siteOrigin, xeroCallbackUrl } from "@/lib/site-origin";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
@@ -28,7 +28,9 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         const state = url.searchParams.get("state");
         const error = url.searchParams.get("error");
         const rawErrorDescription = url.searchParams.get("error_description");
-        const origin = `${url.protocol}//${url.host}`;
+        // Fallback origin is the canonical site origin, never the request Host
+        // header — a spoofed Host must not be able to steer any redirect.
+        const origin = siteOrigin();
         let returnOrigin = origin;
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
