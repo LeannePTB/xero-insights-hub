@@ -90,32 +90,15 @@ export const savePlatformTierWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { tier: DashboardTier; widgets: WidgetKey[] }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const excluded = await exclusionsFor(context.supabase, data.tier, data.widgets);
 
-    // Partial unique indexes rule out ON CONFLICT here, so select/update/insert.
-    const { data: existing, error: findErr } = await supabaseAdmin
-      .from("tier_widget_config")
-      .select("id")
-      .eq("tier", data.tier)
-      .is("client_id", null)
-      .is("firm_id", null)
-      .maybeSingle();
-    if (findErr) throw new Error(findErr.message);
-
-    if (existing) {
-      const { error } = await supabaseAdmin
-        .from("tier_widget_config")
-        .update({ excluded_widgets: excluded })
-        .eq("id", (existing as { id: string }).id);
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await supabaseAdmin
-        .from("tier_widget_config")
-        .insert({ client_id: null, firm_id: null, tier: data.tier, excluded_widgets: excluded });
-      if (error) throw new Error(error.message);
-    }
+    // Gate lives in the database: public.set_platform_tier_widgets refuses
+    // anyone who is not a super admin. No local role check, no supabaseAdmin.
+    const { error } = await (context.supabase as any).rpc("set_platform_tier_widgets", {
+      _tier: data.tier,
+      _excluded: excluded,
+    });
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
@@ -378,11 +361,12 @@ export const setTierEnabled = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { tier: DashboardTier; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("tier_settings")
-      .upsert({ tier: data.tier, enabled: data.enabled }, { onConflict: "tier" });
+    // Gate lives in the database: public.set_tier_enabled refuses anyone who
+    // is not a super admin. No local role check, no supabaseAdmin.
+    const { error } = await (context.supabase as any).rpc("set_tier_enabled", {
+      _tier: data.tier,
+      _enabled: data.enabled,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
