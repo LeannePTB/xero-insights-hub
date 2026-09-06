@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.reset_org_tier_widgets(uuid, text) FROM PUBLIC, anon;

@@ -316,31 +316,19 @@ export const resetOrgTierToPlatformDefault = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId: string; tier: string }) => i)
   .handler(async ({ data, context }) => {
-    // Authorisation is the database's, not ours.
-    const { data: canAccess, error: accessErr } = await (context.supabase as any).rpc(
-      "user_can_access_firm",
-      { _user_id: context.userId, _firm_id: data.firmId },
-    );
-    if (accessErr) throw new Error(accessErr.message);
-    if (canAccess !== true) throw new Error("You don't have access to this organisation.");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await (supabaseAdmin as any)
-      .from("tier_widget_config")
-      .delete()
-      .eq("firm_id", data.firmId)
-      .eq("tier", data.tier)
-      .is("client_id", null);
-    if (error) throw new Error(error.message);
-
-    await (supabaseAdmin as any).from("audit_log").insert({
-      actor_user_id: context.userId,
-      firm_id: data.firmId,
-      action: "org_widget_row_reset",
-      target_type: "tier_widget_config",
-      meta: { tier: data.tier },
+    // Authorisation, delete and audit row all live in the database RPC —
+    // membership only, no support-grant access (Path B is read-only).
+    const { error } = await context.supabase.rpc("reset_org_tier_widgets", {
+      _firm_id: data.firmId,
+      _tier: data.tier,
     });
-
+    if (error) {
+      throw new Error(
+        error.message?.includes("NO_ACCESS")
+          ? "You don't have access to this organisation."
+          : error.message,
+      );
+    }
     return { ok: true };
   });
 
