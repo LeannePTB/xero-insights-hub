@@ -26,6 +26,10 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 8. **3 super_admin accounts**, all Positive Traction. Confirm each is needed and MFA-enforced. Outside the codebase.
 9. **GST treatment undecided** — TODO in `billing-checkout.functions.ts`. Do not guess.
 10. **`sandbox_exec`** (Lovable platform role, not application code) holds `SELECT, INSERT` on `xero_connections` including both token columns, and has `rolbypassrls`. Raise with Lovable; cannot be fixed from here.
+11. **Connection status is not verified against Xero.** The app treats a row as connected based on the account-level refresh token, which is shared across all of a user's organisations and says nothing about any single one. If a client revokes access at their end, the app will not notice and will keep presenting the file as connected. Discovered 6 Sep 2026 via a stale record ("Hay Officesmart Newsagency") that Xero had not listed as connected for an unknown period; the row was removed the same day.
+12. **`disconnectXero` sends the wrong identifier to Xero.** It passes the local row `uuid` to `DELETE /connections/{id}`, which expects the Xero connection id — a value the schema does not store. Xero returns 404, which the code swallows as success, so the remote connection is probably never removed. Affects every client offboarding. Fixing needs a new column to store Xero's connection id.
+13. **Revocation is account-wide, not per organisation.** All of a user's connections share one refresh token, so revoking to remove one organisation would disconnect all of them. `disconnectXero` has no guard against this. Revocation should only ever be used when removing a user's last connection.
+14. **Orphaned connections recur.** The OAuth callback stamps `firm_id` only for tenants it considers new, so an organisation already in `known_tenant_ids` is re-upserted unstamped on every reconnect. `disconnectOrphanXeroConnection` discards tokens locally without revoking, which removes any means of a proper removal later.
 
 ## Standing caution
 
