@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { siteHost, xeroCallbackUrl } from "@/lib/site-origin";
+import { allowedAppHosts, siteHost, xeroCallbackUrl } from "@/lib/site-origin";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
