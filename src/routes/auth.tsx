@@ -12,6 +12,7 @@ import { BrandMark } from "@/components/BrandMark";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { startXeroSignIn } from "@/lib/xero/connections.functions";
 import heroImage from "@/assets/hero-construction.jpg";
+import { siteUrl } from "@/lib/site-origin";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,

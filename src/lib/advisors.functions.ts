@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { siteUrl } from "@/lib/site-origin";
 
 export const PRIMARY_ADVISOR_USER_ID = "57d544ad-db50-4330-9b12-bcffdf4c6065";
 

@@ -13,6 +13,7 @@
 //    dashboard, another period, another report, or any Xero data.
 
 import { createHash, randomBytes } from "crypto";
+import { siteOrigin } from "@/lib/site-origin";
 
 const DEFAULT_EXPIRY_DAYS = 30;
 const MAX_EXPIRY_DAYS = 180;

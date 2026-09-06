@@ -31,6 +31,7 @@ import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRoun
 import { toast } from "sonner";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { AdminShell } from "@/components/admin/AdminShell";
+import { siteUrl } from "@/lib/site-origin";
 
 
 export const Route = createFileRoute("/_authenticated/settings/advisors")({

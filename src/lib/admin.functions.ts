@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { siteUrl } from "@/lib/site-origin";
 
 async function assertSuperAdmin(supabase: any, _userId: string) {
   const { data, error } = await supabase
