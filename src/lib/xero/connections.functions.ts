@@ -31,7 +31,7 @@ export const startXeroSignIn = createServerFn({ method: "POST" })
     const state = randomBytes(24).toString("hex");
     const codeVerifier = base64url(randomBytes(48));
     const codeChallenge = base64url(createHash("sha256").update(codeVerifier).digest());
-    const returnOrigin = normalizeOrigin(data.origin);
+    const returnOrigin = assertAppOrigin(data.origin);
 
     const { error } = await supabaseAdmin.from("xero_oauth_states").insert({
       state,
@@ -220,7 +220,7 @@ export const startXeroConnect = createServerFn({ method: "POST" })
     // OAuth 2.0 PKCE (S256) — required by Xero security standard.
     const codeVerifier = base64url(randomBytes(48));
     const codeChallenge = base64url(createHash("sha256").update(codeVerifier).digest());
-    const returnOrigin = normalizeOrigin(data.origin);
+    const returnOrigin = assertAppOrigin(data.origin);
     const { error } = await context.supabase.from("xero_oauth_states").insert({
       state,
       user_id: context.userId,
@@ -303,7 +303,7 @@ export const startXeroOnboardConnect = createServerFn({ method: "POST" })
     const state = randomBytes(24).toString("hex");
     const codeVerifier = base64url(randomBytes(48));
     const codeChallenge = base64url(createHash("sha256").update(codeVerifier).digest());
-    const returnOrigin = normalizeOrigin(data.origin);
+    const returnOrigin = assertAppOrigin(data.origin);
     const { error } = await context.supabase.from("xero_oauth_states").insert({
       state,
       user_id: context.userId,
@@ -497,17 +497,6 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
   });
 
 
-function normalizeOrigin(origin: string) {
-  const parsed = new URL(origin);
-  const allowedHosts = allowedAppHosts();
-  if (parsed.hostname === "localhost" && allowedHosts.has("localhost")) return parsed.origin;
-  if (parsed.protocol !== "https:") {
-    throw new Error("Invalid app origin for Xero connection.");
-  }
-  if (allowedHosts.has(parsed.hostname)) return siteOrigin();
-
-  throw new Error("Invalid app origin for Xero connection.");
-}
 
 export const disconnectXero = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

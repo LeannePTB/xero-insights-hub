@@ -14,14 +14,6 @@ function base64url(buf: Buffer) {
   return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
 }
 
-function normalizeOrigin(origin: string) {
-  try {
-    const url = new URL(origin);
-    return `${url.protocol}//${url.host}`;
-  } catch {
-    return siteOrigin();
-  }
-}
 
 /**
  * The organisation's Xero files with the scopes each one is still missing.
@@ -109,7 +101,7 @@ export async function startFirmReconnectAll(
     state,
     user_id: userId,
     code_verifier: codeVerifier,
-    return_origin: normalizeOrigin(origin),
+    return_origin: assertAppOrigin(origin),
     client_id: null,
     firm_id: firmId,
     flow: "reconnect",
