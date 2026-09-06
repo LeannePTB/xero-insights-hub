@@ -10,6 +10,8 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 - **Plan `free` / `pt` enum.** No `free` row exists in `plan_levels`. `pt` appears in no `allowed_tiers`. `plan-tiers.ts` filters unknown keys and falls back to `basic`; nothing casts a raw string to `dashboard_tier` (enum: `basic, advisory, investigate, multi_company`).
 - **Grant hygiene, 6 Sep 2026.** `anon` DML revoked on `xero_snapshots` and `xero_snapshot_runs`; `INSERT` revoked from `authenticated` on `audit_log`. Both were denied by RLS beforehand — the grants contradicted the model, they were not live holes.
 - **OAuth return-origin allow-lists, 6 Sep 2026.** `*.lovable.app` wildcard removed. Single `assertAppOrigin` in `src/lib/site-origin.ts` used by every `return_origin` writer; `getSafeReturnOrigin` validates every redirect consumer against the same explicit host list.
+- **Function tidy-up round 1, 6 Sep 2026.** `app_private.shares_firm_with` now requires `status = 'active'` on both sides of the join (defect: removed/suspended members still counted). `public.xero_tenant_already_linked` EXECUTE revoked from `authenticated`/`anon`/`PUBLIC` — only `service_role` callers exist. `public.xero_missing_scopes` keeps EXECUTE for `authenticated` (called through `context.supabase`) and now resolves the connection's `firm_id` and requires `has_firm_access` or `platform_staff_can_access_firm`, returning `null` otherwise. `app_private.firm_ids_for_tenant` **left unchanged**: the `snoozes write for firm staff` policy on `audit_finding_snoozes` calls it directly, so revoking EXECUTE from `authenticated` would break that policy.
+
 
 ## Open
 
