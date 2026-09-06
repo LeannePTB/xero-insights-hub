@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
+import { siteUrl } from "@/lib/site-origin";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
-import { siteUrl } from "@/lib/site-origin";
   ALL_TIERS,
   DEFAULT_TIER_WIDGETS,
   type DashboardTier,
