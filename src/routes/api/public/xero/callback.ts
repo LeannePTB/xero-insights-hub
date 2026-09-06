@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { siteHost, xeroCallbackUrl } from "@/lib/site-origin";
+import { allowedAppHosts, xeroCallbackUrl } from "@/lib/site-origin";
 
 const XERO_TOKEN_URL = "https://identity.xero.com/connect/token";
 const XERO_CONNECTIONS_URL = "https://api.xero.com/connections";
@@ -653,22 +653,18 @@ function decodeJwtPayload(jwt: string): Record<string, unknown> | null {
 }
 
 
-function allowedReturnHosts() {
-  // Evaluated per call: env binds at request time on the Worker runtime.
-  return new Set([siteHost(), "xero-shine-dashboards.lovable.app"]);
-}
-
 function getSafeReturnOrigin(
   returnOrigin: string | null,
   legacyCodeVerifier: string | null,
   fallback: string,
 ) {
+  const allowed = allowedAppHosts();
   const candidates = [returnOrigin, legacyCodeVerifier];
   for (const candidate of candidates) {
     if (typeof candidate !== "string" || !candidate.startsWith("https://")) continue;
     try {
       const parsed = new URL(candidate);
-      if (allowedReturnHosts().has(parsed.hostname) || parsed.hostname.endsWith(".lovable.app")) {
+      if (allowed.has(parsed.hostname)) {
         return parsed.origin;
       }
     } catch {
