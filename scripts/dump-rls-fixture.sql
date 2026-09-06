@@ -1,10 +1,8 @@
-\pset tuples_only on
-\pset format unaligned
 with tabs(t) as (values
  ('xero_connections'),('clients'),('firms'),('firm_members'),('client_xero_orgs'),('client_notes'),
  ('xero_snapshots'),('client_reports'),('reconciliation_snapshots'),('report_cache'),('audit_log'),
  ('subscriptions'),('client_subscriptions'),('consolidation_groups'),('loan_consolidation_snapshots'),
- ('unreconciled_lines'),('xero_oauth_states'),('client_access'),('firm_support_access'),('user_roles'))
+ ('unreconciled_lines'),('unreconciled_uploads'),('xero_oauth_states'),('client_access'),('firm_support_access'),('user_roles'))
 select string_agg(stmt, E'\n') from (
   -- enum types
   select 1 as ord, 'create type public.'||quote_ident(t.typname)||' as enum ('||
