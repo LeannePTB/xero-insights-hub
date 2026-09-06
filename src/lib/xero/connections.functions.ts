@@ -499,22 +499,11 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
 
 function normalizeOrigin(origin: string) {
   const parsed = new URL(origin);
-  if (parsed.hostname === "localhost") return parsed.origin;
+  const allowedHosts = allowedAppHosts();
+  if (parsed.hostname === "localhost" && allowedHosts.has("localhost")) return parsed.origin;
   if (parsed.protocol !== "https:") {
     throw new Error("Invalid app origin for Xero connection.");
   }
-
-  const projectId = process.env.LOVABLE_PROJECT_ID ?? process.env.__LOVABLE_PROJECT_ID;
-  const allowedHosts = new Set<string>([siteHost()]);
-  if (projectId) {
-    allowedHosts.add(`${projectId}.lovableproject.com`);
-    allowedHosts.add(`id-preview--${projectId}.lovable.app`);
-    allowedHosts.add(`project--${projectId}.lovable.app`);
-    allowedHosts.add(`project--${projectId}-dev.lovable.app`);
-  }
-
-  // Allow any *.lovable.app host (covers published slug subdomains).
-  if (parsed.hostname.endsWith(".lovable.app")) return siteOrigin();
   if (allowedHosts.has(parsed.hostname)) return siteOrigin();
 
   throw new Error("Invalid app origin for Xero connection.");
