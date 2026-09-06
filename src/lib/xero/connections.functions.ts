@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { randomBytes, createHash } from "crypto";
 import { xeroIdentityScopeString } from "@/lib/xero/scopes";
-import { siteOrigin, xeroCallbackUrl, assertAppOrigin } from "@/lib/site-origin";
+import { xeroCallbackUrl, assertAppOrigin } from "@/lib/site-origin";
 
 function base64url(buf: Buffer) {
   return buf.toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
