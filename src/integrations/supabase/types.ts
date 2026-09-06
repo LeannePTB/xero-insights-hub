@@ -2490,6 +2490,14 @@ export type Database = {
           clients_affected: number
         }[]
       }
+      set_platform_tier_widgets: {
+        Args: { _excluded: string[]; _tier: string }
+        Returns: undefined
+      }
+      set_tier_enabled: {
+        Args: { _enabled: boolean; _tier: string }
+        Returns: undefined
+      }
       transfer_organisation_ownership: {
         Args: {
           _firm_id: string
