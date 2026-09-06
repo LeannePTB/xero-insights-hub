@@ -6,7 +6,7 @@
 import { randomBytes, createHash } from "crypto";
 import { xeroRequiredScopeString } from "@/lib/xero/scopes.server";
 import { MAX_BULK_RECONNECT_TENANTS, type FirmXeroFile } from "@/lib/xero/reconnect-all.shared";
-import { siteOrigin, xeroCallbackUrl } from "@/lib/site-origin";
+import { siteOrigin, xeroCallbackUrl, assertAppOrigin } from "@/lib/site-origin";
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 
