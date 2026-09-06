@@ -53,13 +53,13 @@ export const getSecurityPosture = createServerFn({ method: "GET" })
     // Token encryption coverage.
     const { count: encCount } = await supabaseAdmin
       .from("xero_connections")
-      .select("*", { count: "exact", head: true })
+      .select("id", { count: "exact", head: true })
       .not("access_token_enc", "is", null);
     const plainCount = 0;
 
     const { count: totalConns } = await supabaseAdmin
       .from("xero_connections")
-      .select("*", { count: "exact", head: true });
+      .select("id", { count: "exact", head: true });
 
     // MFA enrolment via SECURITY DEFINER RPC — reads auth.mfa_factors directly,
     // since auth.admin.listUsers() does not return the factors array.
