@@ -109,30 +109,16 @@ function parseStatementCsv(text: string): ParsedLine[] {
 }
 
 // ---------- Auth helpers ----------
-async function assertAdvisor(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "advisor");
-  if (!data || data.length === 0) throw new Error("Advisor only.");
-}
-
+// Read access: ownership, active organisation membership, or an explicit
+// client_access row. The rule lives in the database (public.user_can_access_client);
+// this only asks it. Holding the `advisor` role is no longer enough on its own.
 async function assertClientAccess(supabase: any, userId: string, clientId: string) {
-  // Advisor or has access row
-  const { data: roleRows } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "advisor");
-  if (roleRows && roleRows.length > 0) return;
-  const { data: access } = await supabase
-    .from("client_access")
-    .select("client_id")
-    .eq("user_id", userId)
-    .eq("client_id", clientId)
-    .maybeSingle();
-  if (!access) throw new Error("You don't have access to this client.");
+  const { data, error } = await supabase.rpc("user_can_access_client", {
+    _user_id: userId,
+    _client_id: clientId,
+  });
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("You don't have access to this client.");
 }
 
 // ---------- Server functions ----------
@@ -140,7 +126,19 @@ export const uploadStatementLines = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; filename: string; csv: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    // ADVISORY CHECK: the batched inserts below run as supabaseAdmin, which
+    // bypasses RLS. Nothing forces this call — if you add another write to this
+    // path, you must call the same gate first or the write is unauthorised.
+    const { error: gateErr } = await context.supabase.rpc("assert_client_write_access", {
+      _client_id: data.clientId,
+    });
+    if (gateErr) {
+      throw new Error(
+        gateErr.message?.includes("NO_ACCESS")
+          ? "You don't have access to this client."
+          : gateErr.message,
+      );
+    }
     if (!data.csv?.trim()) throw new Error("Empty file.");
     if (data.csv.length > 5_000_000) throw new Error("File too large (max 5MB).");
 
@@ -237,12 +235,17 @@ export const deleteUpload = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { uploadId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
-      .from("unreconciled_uploads")
-      .delete()
-      .eq("id", data.uploadId);
-    if (error) throw new Error(error.message);
+    // Authorisation, client resolution, delete and audit row all live in the
+    // database RPC — membership only, no support-grant access (Path B is read-only).
+    const { error } = await context.supabase.rpc("delete_statement_upload", {
+      _upload_id: data.uploadId,
+    });
+    if (error) {
+      throw new Error(
+        error.message?.includes("NO_ACCESS")
+          ? "You don't have access to this upload."
+          : error.message,
+      );
+    }
     return { ok: true };
   });
