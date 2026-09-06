@@ -62,6 +62,23 @@ export async function logXeroRead(
     for (const [k, t] of recentReads) if (now - t > READ_DEDUPE_MS) recentReads.delete(k);
   }
 
+  // Which access path did this reader have — membership (Path A) or a
+  // support grant (Path B)? The rule lives in the database; we only read it.
+  // A failure here must not cost us the audit row, so the marker is optional.
+  let accessPath: string | null = null;
+  try {
+    if (conn.firm_id) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data, error } = await (supabaseAdmin as any).rpc("firm_access_path", {
+        _user_id: conn.user_id,
+        _firm_id: conn.firm_id,
+      });
+      if (!error && typeof data === "string") accessPath = data;
+    }
+  } catch (e) {
+    console.warn("[audit] access path lookup failed", e);
+  }
+
   await writeAudit({
     actorUserId: conn.user_id,
     firmId: conn.firm_id ?? null,
@@ -72,6 +89,7 @@ export async function logXeroRead(
       endpoint: path,
       tenant_name: conn.tenant_name ?? null,
       deduped_window_minutes: READ_DEDUPE_MS / 60000,
+      access_path: accessPath,
     },
   });
 }
