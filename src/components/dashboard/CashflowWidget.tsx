@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getCashflow } from "@/lib/xero/cashflow.functions";
@@ -9,8 +9,8 @@ import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoad
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import {
   DateRangeControls,
+  clearLegacyRangeStorage,
   toISO,
-  usePersistedDate,
   startOfCurrentMonth,
   today,
 } from "@/components/dashboard/DateRangeControls";
@@ -32,9 +32,11 @@ export function CashflowWidget({
   const currency = useTenantCurrency(tenantId);
   const fmt = (n: number) => formatMoneyExact(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  const storageKey = `cashflow-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfCurrentMonth);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
+  // Range is deliberately not persisted: every page load opens on the
+  // default (1st of the current month → today).
+  const [fromDate, setFromDate] = useState<Date>(startOfCurrentMonth);
+  const [toDate, setToDate] = useState<Date>(today);
+  useEffect(clearLegacyRangeStorage, []);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);

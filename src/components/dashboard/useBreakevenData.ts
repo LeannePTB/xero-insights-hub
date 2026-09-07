@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
@@ -6,7 +6,7 @@ import { listCostClassifications } from "@/lib/cost-classification.functions";
 import { getExpenseAccounts } from "@/lib/xero/accounts.functions";
 import { buildClassificationResolver } from "@/lib/cost-classification";
 import {
-  usePersistedDate,
+  clearLegacyRangeStorage,
   toISO,
   startOfCurrentMonth,
   today,
@@ -37,9 +37,11 @@ export function useBreakevenData({
   const fetchPnl = useServerFn(getProfitAndLoss);
   const fetchClassifications = useServerFn(listCostClassifications);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  const storageKey = `breakeven-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfCurrentMonth);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
+  // Range is deliberately not persisted: every page load opens on the
+  // default (1st of the current month → today).
+  const [fromDate, setFromDate] = useState<Date>(startOfCurrentMonth);
+  const [toDate, setToDate] = useState<Date>(today);
+  useEffect(clearLegacyRangeStorage, []);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
