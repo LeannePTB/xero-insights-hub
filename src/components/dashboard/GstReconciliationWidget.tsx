@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
-import { getGstReconciliation } from "@/lib/xero/gst.functions";
+import { getGstReconciliation, type GstResponse } from "@/lib/xero/gst.functions";
 import { money as fmt, gstPeriodOptions } from "@/components/dashboard/recon-periods";
 import { usePersistedDisclosure } from "@/hooks/usePersistedDisclosure";
 
