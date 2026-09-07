@@ -71,6 +71,7 @@ export async function userCanManageClient(userId: string, clientId: string): Pro
     .select("id")
     .eq("firm_id", client.firm_id)
     .eq("user_id", userId)
+    .eq("status", "active")
     .limit(1)
     .maybeSingle();
   return Boolean(membership);

@@ -56,6 +56,7 @@ async function resolveGroup(supabase: any, userId: string, groupId: string): Pro
     .select("id")
     .eq("firm_id", group.firm_id)
     .eq("user_id", userId)
+    .eq("status", "active")
     .maybeSingle();
   let allowed = Boolean(member);
   if (!allowed) {

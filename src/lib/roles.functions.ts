@@ -18,6 +18,7 @@ export const getMyContext = createServerFn({ method: "GET" })
       .from("firm_members")
       .select("firm_id")
       .eq("user_id", context.userId)
+      .eq("status", "active")
       .order("created_at", { ascending: true });
     const firmIds = ((memberships ?? []) as any[]).map((m) => m.firm_id as string);
     const firmId: string | null = firmIds[0] ?? null;

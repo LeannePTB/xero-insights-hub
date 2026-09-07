@@ -33,6 +33,7 @@ async function assertFirmAccess(supabase: any, userId: string, firmId: string) {
     .select("id")
     .eq("firm_id", firmId)
     .eq("user_id", userId)
+    .eq("status", "active")
     .maybeSingle();
   if (!member) {
     const { data: superRow } = await supabase
@@ -232,6 +233,7 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
       .select("id")
       .eq("firm_id", firmId)
       .eq("user_id", context.userId)
+      .eq("status", "active")
       .maybeSingle();
     const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
     const grantActive =
