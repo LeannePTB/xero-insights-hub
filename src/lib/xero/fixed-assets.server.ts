@@ -1,4 +1,7 @@
-// Server-only Fixed Assets reconciliation engine.
+// Server-only Xero fixed asset register reader.
+//
+// The Fixed Assets Reconciliation card was removed; this file remains because
+// the Balance Sheet Reconciliation still reads the asset register.
 //
 // Compares Xero's fixed asset register (assets.xro/1.0) against the fixed
 // asset accounts on the general ledger. Fail closed: if the register cannot be
@@ -7,44 +10,9 @@
 // GL balance then shows as a difference, which is the point.
 
 import type { Connection } from "./api.server";
-import {
-  bsValueFor,
-  errText,
-  fetchBalanceSheet,
-  periodFor,
-  round2,
-  type BalanceSheet,
-  type XeroAccount,
-} from "./recon-shared.server";
+import { errText } from "./recon-shared.server";
 
-export type FixedAssetRow = {
-  key: string;
-  label: string;
-  isAccumulated: boolean;
-  bs: { opening: number | null; closing: number | null };
-  register: { opening: number | null; closing: number | null };
-  difference: { opening: number | null; closing: number | null };
-  status: "balanced" | "variance" | "unavailable";
-  reason?: string;
-};
 
-export type FixedAssetsResult = {
-  asAt: string;
-  periodFrom: string;
-  rows: FixedAssetRow[];
-  totals: {
-    bsClosing: number | null;
-    registerClosing: number | null;
-    differenceClosing: number | null;
-  };
-  registerAssetCount: number;
-  draftAssetCount: number;
-  registerEmpty: boolean;
-  registerAvailable: boolean;
-  registerAsAtToday: boolean;
-  complete: boolean;
-  issues: string[];
-};
 
 type RegisterAccount = { cost: number; accumulated: number; priorAccumulated: number };
 
@@ -126,116 +94,4 @@ export async function fetchAssetRegister(conn: Connection, asAt: string): Promis
   } catch (e) {
     return { available: false, assetCount: 0, draftCount: 0, byAccount: new Map(), reason: errText(e) };
   }
-}
-
-export async function computeFixedAssetsReconciliation(
-  conn: Connection,
-  asAt: string,
-): Promise<FixedAssetsResult> {
-  const { xeroGet } = await import("./api.server");
-  const { from, priorEnd } = periodFor(asAt);
-  const issues: string[] = [];
-  let complete = true;
-
-  let accounts: XeroAccount[] = [];
-  let closingBs: BalanceSheet | null = null;
-  let openingBs: BalanceSheet | null = null;
-  try {
-    const [accRes, closing] = await Promise.all([
-      xeroGet<{ Accounts?: XeroAccount[] }>(conn, "Accounts", {}),
-      fetchBalanceSheet(conn, asAt),
-    ]);
-    accounts = accRes.Accounts ?? [];
-    closingBs = closing;
-  } catch (e) {
-    complete = false;
-    issues.push(`Balance Sheet unavailable: ${errText(e)}`);
-  }
-  try {
-    openingBs = await fetchBalanceSheet(conn, priorEnd);
-  } catch (e) {
-    complete = false;
-    issues.push(`Opening Balance Sheet unavailable: ${errText(e)}`);
-  }
-
-  const register = await fetchAssetRegister(conn, asAt);
-  if (!register.available) {
-    complete = false;
-    issues.push(`Asset register unavailable: ${register.reason}`);
-  }
-
-  const fixedAccounts = accounts.filter((a) => a.Type === "FIXED");
-  const rows: FixedAssetRow[] = [];
-  for (const acc of fixedAccounts) {
-    const bsClosing = closingBs ? bsValueFor(closingBs, acc) : null;
-    const bsOpening = openingBs ? bsValueFor(openingBs, acc) : null;
-    if (bsClosing === null && bsOpening === null) continue; // not on the balance sheet at all
-    const isAccum = /accum/i.test(acc.Name);
-    const reg = register.byAccount.get(acc.AccountID.toLowerCase());
-    const regClosing = register.available
-      ? isAccum
-        ? -(reg?.accumulated ?? 0)
-        : reg?.cost ?? 0
-      : null;
-    const regOpening = register.available
-      ? isAccum
-        ? -(reg?.priorAccumulated ?? 0)
-        : reg?.cost ?? 0
-      : null;
-    const diffClosing =
-      bsClosing !== null && regClosing !== null ? round2(bsClosing - regClosing) : null;
-    const diffOpening =
-      bsOpening !== null && regOpening !== null ? round2(bsOpening - regOpening) : null;
-    rows.push({
-      key: acc.AccountID,
-      label: acc.Name,
-      isAccumulated: isAccum,
-      bs: { opening: bsOpening === null ? null : round2(bsOpening), closing: bsClosing === null ? null : round2(bsClosing) },
-      register: { opening: regOpening, closing: regClosing },
-      difference: { opening: diffOpening, closing: diffClosing },
-      status:
-        diffClosing === null
-          ? "unavailable"
-          : Math.abs(diffClosing) < 0.005
-            ? "balanced"
-            : "variance",
-      reason:
-        diffClosing === null
-          ? register.available
-            ? "The Balance Sheet balance could not be loaded."
-            : register.reason
-          : undefined,
-    });
-  }
-
-  rows.sort((a, b) => {
-    const rank = (r: FixedAssetRow) =>
-      r.status === "unavailable" ? 0 : r.status === "variance" ? 1 : 2;
-    return rank(a) - rank(b) || a.label.localeCompare(b.label);
-  });
-
-  const sum = (pick: (r: FixedAssetRow) => number | null) =>
-    rows.some((r) => pick(r) === null) ? null : round2(rows.reduce((s, r) => s + (pick(r) as number), 0));
-
-  return {
-    asAt,
-    periodFrom: from,
-    rows,
-    totals: {
-      bsClosing: sum((r) => r.bs.closing),
-      registerClosing: sum((r) => r.register.closing),
-      differenceClosing: sum((r) => r.difference.closing),
-    },
-    registerAssetCount: register.assetCount,
-    // Drafts do not depreciate and are not part of the register, so the
-    // variance stands either way — this only changes what the user is told.
-    draftAssetCount: register.draftCount,
-    registerEmpty: register.available && register.assetCount === 0,
-    registerAvailable: register.available,
-    // Xero's register reports accumulated depreciation as at today, not as at
-    // an arbitrary past date, so historic depreciation figures are indicative.
-    registerAsAtToday: asAt < new Date().toISOString().slice(0, 10),
-    complete,
-    issues,
-  };
 }
