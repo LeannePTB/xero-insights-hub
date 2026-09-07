@@ -23,7 +23,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as ApiPublicTmpBatchProbeRouteImport } from './routes/api/public/_tmp-batch-probe'
+import { Route as ApiPublicTmpBatchProbeRouteImport } from './routes/api/public/tmp-batch-probe'
 import { Route as AuthenticatedSettingsTiersRouteImport } from './routes/_authenticated/settings.tiers'
 import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
 import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
@@ -130,8 +130,8 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicTmpBatchProbeRoute = ApiPublicTmpBatchProbeRouteImport.update({
-  id: '/api/public/_tmp-batch-probe',
-  path: '/api/public',
+  id: '/api/public/tmp-batch-probe',
+  path: '/api/public/tmp-batch-probe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsTiersRoute =
@@ -359,7 +359,7 @@ export interface FileRoutesByFullPath {
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
-  '/api/public': typeof ApiPublicTmpBatchProbeRoute
+  '/api/public/tmp-batch-probe': typeof ApiPublicTmpBatchProbeRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
@@ -408,7 +408,7 @@ export interface FileRoutesByTo {
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
-  '/api/public': typeof ApiPublicTmpBatchProbeRoute
+  '/api/public/tmp-batch-probe': typeof ApiPublicTmpBatchProbeRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
@@ -460,7 +460,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/tiers': typeof AuthenticatedSettingsTiersRoute
-  '/api/public/_tmp-batch-probe': typeof ApiPublicTmpBatchProbeRoute
+  '/api/public/tmp-batch-probe': typeof ApiPublicTmpBatchProbeRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
@@ -513,7 +513,7 @@ export interface FileRouteTypes {
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/tiers'
-    | '/api/public'
+    | '/api/public/tmp-batch-probe'
     | '/lovable/email/suppression'
     | '/admin/'
     | '/admin/firms/$firmId'
@@ -562,7 +562,7 @@ export interface FileRouteTypes {
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/tiers'
-    | '/api/public'
+    | '/api/public/tmp-batch-probe'
     | '/lovable/email/suppression'
     | '/admin'
     | '/admin/firms/$firmId'
@@ -613,7 +613,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/activity'
     | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/tiers'
-    | '/api/public/_tmp-batch-probe'
+    | '/api/public/tmp-batch-probe'
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/firms/$firmId'
@@ -768,10 +768,10 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/_tmp-batch-probe': {
-      id: '/api/public/_tmp-batch-probe'
-      path: '/api/public'
-      fullPath: '/api/public'
+    '/api/public/tmp-batch-probe': {
+      id: '/api/public/tmp-batch-probe'
+      path: '/api/public/tmp-batch-probe'
+      fullPath: '/api/public/tmp-batch-probe'
       preLoaderRoute: typeof ApiPublicTmpBatchProbeRouteImport
       parentRoute: typeof rootRouteImport
     }
