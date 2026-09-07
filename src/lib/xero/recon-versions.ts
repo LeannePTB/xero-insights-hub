@@ -10,8 +10,6 @@
 export const RECON_VERSIONS: Record<string, number> = {
   // v2: extended from four accounts to every balance sheet account.
   balance_sheet_reconciliation: 2,
-  // v2: draft assets reported separately from an empty register.
-  fixed_assets_reconciliation: 2,
   gst_reconciliation: 1,
   loan_consolidation: 1,
 };

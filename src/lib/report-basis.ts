@@ -16,7 +16,6 @@ export const FIXED_CARD_BASIS: Record<string, ReportBasis> = {
   true_breakeven: "cash",
   cashflow: "cash",
   balance_sheet_reconciliation: "accrual",
-  fixed_assets_reconciliation: "accrual",
 };
 
 export const FIXED_CARD_BASIS_LABELS: { key: string; label: string; reason: string }[] = [
@@ -32,7 +31,6 @@ export const FIXED_CARD_BASIS_LABELS: { key: string; label: string; reason: stri
     label: "Balance Sheet Reconciliation",
     reason: "Xero's Balance Sheet has no cash option; AR/AP control accounts only exist on accruals",
   },
-  { key: "fixed_assets_reconciliation", label: "Fixed Assets Reconciliation", reason: "Ties to the balance sheet" },
 ];
 
 export function basisLabel(basis: ReportBasis): string {

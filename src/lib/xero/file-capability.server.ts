@@ -188,7 +188,6 @@ async function computeFileCapability(opts: {
   // ---- the only two structural hides --------------------------------------
   const hiddenWidgets: string[] = [];
   if (hasGst === "no") hiddenWidgets.push("gst_reconciliation");
-  if (hasFixedAssetRegister === "no") hiddenWidgets.push("fixed_assets_reconciliation");
 
   return {
     tenantId,

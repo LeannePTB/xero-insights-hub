@@ -24,7 +24,6 @@ import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
 import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 import { BalanceSheetReconciliationWidget } from "@/components/dashboard/BalanceSheetReconciliationWidget";
-import { FixedAssetsReconciliationWidget } from "@/components/dashboard/FixedAssetsReconciliationWidget";
 import { GstReconciliationWidget } from "@/components/dashboard/GstReconciliationWidget";
 
 
@@ -257,10 +256,7 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:cashflow_scenario`, node: mark("cashflow_scenario", <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
       if (widgets.includes("balance_sheet_reconciliation"))
         advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: mark("balance_sheet_reconciliation", <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} loanConsolidationHref={client?.firm_id ? `/firms/${client.firm_id}/loans` : undefined} />) });
-      // The only two structural hides: a chart with no FIXED-type account has
-      // nowhere to hold a fixed asset, and a non-GST cashbook has no GST ledger.
-      if (widgets.includes("fixed_assets_reconciliation") && !structurallyHidden(tenantId, "fixed_assets_reconciliation"))
-        advanced.push({ id: `${o.id}:fixed_assets_reconciliation`, node: mark("fixed_assets_reconciliation", <FixedAssetsReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
+      // Structural hide: a non-GST cashbook has no GST ledger.
       if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
         advanced.push({ id: `${o.id}:gst_reconciliation`, node: mark("gst_reconciliation", <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
 
