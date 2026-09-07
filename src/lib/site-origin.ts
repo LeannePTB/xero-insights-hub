@@ -8,7 +8,7 @@
  * Resolution order (first non-empty wins):
  *   1. SITE_URL            — server-only environment variable
  *   2. VITE_SITE_URL       — readable on both server and client
- *   3. https://tractionadvisory.app  — hardcoded fallback
+ *   3. https://tractionadvisory.com.au  — hardcoded fallback
  *
  * NOTE: this module is imported from client-reachable code, so `process.env`
  * is accessed defensively — it does not exist in the browser.
@@ -17,14 +17,21 @@
  * a different domain and is NOT configured here.
  */
 
-const FALLBACK_ORIGIN = "https://tractionadvisory.app";
+const FALLBACK_ORIGIN = "https://tractionadvisory.com.au";
+
+/**
+ * Origins we used to be canonical on. They are STILL accepted as valid app
+ * origins on OAuth return paths so anything already in flight resolves, but
+ * they are never generated. Removed in a later cleanup.
+ */
+const LEGACY_APP_HOSTS = ["tractionadvisory.app", "www.tractionadvisory.app"];
 
 function trimTrailingSlashes(value: string) {
   return value.replace(/\/+$/, "");
 }
 
 /**
- * The canonical origin, with no trailing slash — e.g. `https://tractionadvisory.app`.
+ * The canonical origin, with no trailing slash — e.g. `https://tractionadvisory.com.au`.
  * A function, not a module-scope constant: on Cloudflare Workers env binds at
  * request time, so a module-scope read would resolve to undefined.
  */
@@ -60,7 +67,7 @@ export function xeroCallbackUrl(): string {
   return `${siteOrigin()}/api/public/xero/callback`;
 }
 
-/** Host of the canonical origin, e.g. `tractionadvisory.app`. */
+/** Host of the canonical origin, e.g. `tractionadvisory.com.au`. */
 export function siteHost(): string {
   try {
     return new URL(siteOrigin()).hostname;
@@ -98,16 +105,25 @@ function isNonProduction(): boolean {
 /**
  * The exact set of hostnames accepted as legitimate app origins on OAuth
  * return paths. Built per call: env binds at request time on the Worker
- * runtime. Never widen this to a wildcard — *.lovable.app is open to anyone.
+ * runtime. Never widen this to a wildcard — *.lovable.app is open to anyone,
+ * and neither the canonical domain nor the legacy one is ever wildcarded.
  *
  * Sources:
- *   - siteHost()                    → tractionadvisory.app (canonical)
+ *   - siteHost()                    → tractionadvisory.com.au (canonical)
+ *   - its `www.` form               → the other name DNS serves
+ *   - LEGACY_APP_HOSTS              → tractionadvisory.app, still accepted
  *   - PUBLISHED_SLUG_HOSTS          → this project's published Lovable URL
  *   - LOVABLE_PROJECT_ID-derived    → this project's own preview hosts
  *   - localhost                     → non-production only
  */
 export function allowedAppHosts(): Set<string> {
-  const hosts = new Set<string>([siteHost(), ...PUBLISHED_SLUG_HOSTS]);
+  const canonical = siteHost();
+  const hosts = new Set<string>([
+    canonical,
+    canonical.startsWith("www.") ? canonical.slice(4) : `www.${canonical}`,
+    ...LEGACY_APP_HOSTS,
+    ...PUBLISHED_SLUG_HOSTS,
+  ]);
   let projectId: string | undefined;
   try {
     projectId =
