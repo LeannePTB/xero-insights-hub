@@ -174,7 +174,6 @@ function AgeingTable({ detail, label }: { detail: AgeingDetail; label: string })
 }
 
 
-import { ReportVerdictPage } from "@/components/reports/ReportVerdictPage";
 
 export function MonthlyReportPreview({
   payload,
@@ -231,7 +230,7 @@ export function MonthlyReportPreview({
 
       {/* 1. Page one — the verdict, before Notes and before every number.
           Absent on payloads written before v11; never reconstructed. */}
-      {payload.verdict ? <VerdictPage verdict={payload.verdict} /> : null}
+      {payload.verdict ? <ReportVerdictPage verdict={payload.verdict} /> : null}
 
       {/* A quiet staff-only line while the report is still a draft. It never
           blocks finalising — a month with no comment is normal. */}
