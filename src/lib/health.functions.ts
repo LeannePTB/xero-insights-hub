@@ -663,10 +663,12 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
 
 
     // ---------- MONEY ----------
+    const priorWindowLabel = `${fmtDayLabel(priorFrom)} – ${fmtDayLabel(priorToStr)}`;
     const moneyMetrics: PillarMetric[] = [
       revenueGrowthPct === null
-        ? { key: "revenue_growth", label: "Revenue growing?", pill: "No prior year", status: "neutral" }
-        : { key: "revenue_growth", label: "Revenue growing?", pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}%`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
+        ? { key: "revenue_growth", label: `Revenue vs a year ago (${priorWindowLabel})`, pill: "No prior year", status: "neutral" }
+        : { key: "revenue_growth", label: `Revenue vs a year ago (${priorWindowLabel})`, pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}%`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
+
       { key: "gross_margin", label: `Gross margin ${grossMarginPct.toFixed(1)}%`, pill: grossMarginPct >= 60 ? "Great" : grossMarginPct >= 45 ? "Good" : grossMarginPct >= 30 ? "OK" : "Poor", status: statusFor(grossMarginPct, { good: 45, watch: 30 }) },
       { key: "net_margin", label: `Net margin ${netMarginPct.toFixed(1)}%`, pill: netMarginPct >= 10 ? "Healthy" : netMarginPct >= 0 ? "Thin" : "Loss", status: statusFor(netMarginPct, { good: 10, watch: 0 }) },
       {
