@@ -75,7 +75,15 @@ export function BreakevenWidget({
           </div>
         ) : (
           <>
+            {s.months < 1 && (
+              <p className="mt-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+                This period is shorter than a full month, so the monthly figures below
+                are scaled up from what has happened so far. Treat them as a running
+                estimate, not a settled month.
+              </p>
+            )}
             <div className="mt-6 overflow-hidden rounded-lg border border-border">
+
               <table className="w-full text-sm">
                 <tbody>
                   {(
