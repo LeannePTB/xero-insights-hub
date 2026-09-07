@@ -8,6 +8,7 @@ import { DateRangeControls } from "@/components/dashboard/DateRangeControls";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { cn } from "@/lib/utils";
 import { useBreakevenData, fmtAUD, fmtPct } from "@/components/dashboard/useBreakevenData";
+import { useIsAdvisor } from "@/hooks/useIsAdvisor";
 
 export function BreakevenWidget({
   tenantId,
@@ -23,6 +24,8 @@ export function BreakevenWidget({
   basis?: "accrual" | "cash";
 }) {
   const s = useBreakevenData({ tenantId, clientId, basis, loadDelayMs });
+  // Cost-classification prompts are preparer tooling; clients never see them.
+  const { isAdvisor } = useIsAdvisor();
 
   const operatingResult = s.income - s.totalVariable - s.fixedOpex;
   const isProfit = operatingResult >= 0;
