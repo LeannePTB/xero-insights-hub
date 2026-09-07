@@ -8,7 +8,7 @@
  * Resolution order (first non-empty wins):
  *   1. SITE_URL            — server-only environment variable
  *   2. VITE_SITE_URL       — readable on both server and client
- *   3. https://tractionadvisory.app  — hardcoded fallback
+ *   3. https://tractionadvisory.com.au  — hardcoded fallback
  *
  * NOTE: this module is imported from client-reachable code, so `process.env`
  * is accessed defensively — it does not exist in the browser.
@@ -17,7 +17,14 @@
  * a different domain and is NOT configured here.
  */
 
-const FALLBACK_ORIGIN = "https://tractionadvisory.app";
+const FALLBACK_ORIGIN = "https://tractionadvisory.com.au";
+
+/**
+ * Origins we used to be canonical on. They are STILL accepted as valid app
+ * origins on OAuth return paths so anything already in flight resolves, but
+ * they are never generated. Removed in a later cleanup.
+ */
+const LEGACY_APP_HOSTS = ["tractionadvisory.app", "www.tractionadvisory.app"];
 
 function trimTrailingSlashes(value: string) {
   return value.replace(/\/+$/, "");
