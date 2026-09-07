@@ -234,6 +234,26 @@ function sectionRank(s: ParsedSection): number {
 // ---------------------------------------------------------------------------
 
 /**
+ * Xero emits its calculated subtotals (Gross Profit, Net Profit, …) as plain
+ * rows with no AccountID. They can never match an account, and the report
+ * recomputes them from the regrouped lines, so they are dropped before
+ * matching — otherwise they fire the unmatched-account warning on every file.
+ * Compared case-insensitively and trimmed. A row that DOES carry an AccountID
+ * is never skipped, whatever it is named.
+ */
+const CALCULATED_SUBTOTAL_NAMES = new Set([
+  "gross profit",
+  "net profit",
+  "net loss",
+  "total income",
+  "total revenue",
+  "total expenses",
+  "total operating expenses",
+  "total cost of sales",
+  "operating profit",
+]);
+
+/**
  * Rebuild the P&L sections from each account's Xero `Type`, because the API
  * sections come from the Report Code and can disagree with the organisation's
  * own report. Gross Profit, Net Profit and every subtotal are then derived
@@ -275,6 +295,12 @@ export function regroupByAccountType(
     // recomputed below from the regrouped lines.
     if (s.kind === "summary") continue;
     for (const r of s.rows) {
+      // Calculated subtotal rows (no AccountID, subtotal name) are skipped
+      // entirely: not bucketed, not reported, not counted. Skipping them
+      // cannot move a figure — they previously landed in an "Unmatched — …"
+      // bucket, whose kind ("other" for the untitled section Xero puts them
+      // in) is summed by neither kindTotals nor totalsForPeriod.
+      if (!r.accountId && CALCULATED_SUBTOTAL_NAMES.has(r.name.trim().toLowerCase())) continue;
       const account = matchAccount(index, r);
       const target = account ? sectionForAccountType(account.type) : null;
       if (target) {
