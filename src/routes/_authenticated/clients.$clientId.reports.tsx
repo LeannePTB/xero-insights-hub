@@ -214,6 +214,7 @@ function ReportsPage() {
               payload={preview.payload}
               status={preview.status}
               version={preview.version}
+              showWarnings
             />
           </section>
         ) : null}
