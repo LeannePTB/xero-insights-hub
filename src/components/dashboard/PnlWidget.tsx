@@ -9,11 +9,10 @@ import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import {
-  DateRangeControls,
+  PeriodSelect,
+  monthRangeFor,
   clearLegacyRangeStorage,
   toISO,
-  startOfCurrentMonth,
-  today,
 } from "@/components/dashboard/DateRangeControls";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
