@@ -234,6 +234,26 @@ function sectionRank(s: ParsedSection): number {
 // ---------------------------------------------------------------------------
 
 /**
+ * Xero emits its calculated subtotals (Gross Profit, Net Profit, …) as plain
+ * rows with no AccountID. They can never match an account, and the report
+ * recomputes them from the regrouped lines, so they are dropped before
+ * matching — otherwise they fire the unmatched-account warning on every file.
+ * Compared case-insensitively and trimmed. A row that DOES carry an AccountID
+ * is never skipped, whatever it is named.
+ */
+const CALCULATED_SUBTOTAL_NAMES = new Set([
+  "gross profit",
+  "net profit",
+  "net loss",
+  "total income",
+  "total revenue",
+  "total expenses",
+  "total operating expenses",
+  "total cost of sales",
+  "operating profit",
+]);
+
+/**
  * Rebuild the P&L sections from each account's Xero `Type`, because the API
  * sections come from the Report Code and can disagree with the organisation's
  * own report. Gross Profit, Net Profit and every subtotal are then derived
