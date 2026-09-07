@@ -261,11 +261,17 @@ export function TrueBreakevenSection({
                 <tr className="border-b border-border">
                   <th scope="row" className="px-3 py-2 text-left font-medium">
                     Monthly Revenue
+                    {months < 1 && (
+                      <span className="ml-1 font-normal italic text-muted-foreground">
+                        (scaled up from a part month)
+                      </span>
+                    )}
                   </th>
                   <td className="px-3 py-2 text-right font-mono tabular-nums">
                     {fmt(monthlyIncome)}
                   </td>
                 </tr>
+
                 <tr className="border-b border-border">
                   <th scope="row" className="px-3 py-2 text-left font-medium">
                     Above or Below True Break-Even?

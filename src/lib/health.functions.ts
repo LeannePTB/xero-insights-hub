@@ -58,6 +58,54 @@ function fyToDateRange(today: Date): { from: string; to: string; label: string }
   return { from, to, label };
 }
 
+/**
+ * Length of an inclusive date range expressed in months, where each calendar
+ * month contributes the fraction of its own length that the range covers.
+ *
+ * Deliberately NOT a fixed 30.4375-day month: using each month's real length
+ * makes a whole calendar month come out at exactly 1.0, so any range made of
+ * whole months (a month, a quarter, a financial year to a month end) gives
+ * precisely the figure the previous calendar-count arithmetic gave. Part
+ * months are the only thing that moves.
+ */
+export function monthsInRange(fromISO: string, toISO: string): number {
+  const from = new Date(`${fromISO}T00:00:00Z`);
+  const to = new Date(`${toISO}T00:00:00Z`);
+  if (isNaN(from.getTime()) || isNaN(to.getTime()) || to < from) return 1;
+  let total = 0;
+  let y = from.getUTCFullYear();
+  let m = from.getUTCMonth();
+  while (y < to.getUTCFullYear() || (y === to.getUTCFullYear() && m <= to.getUTCMonth())) {
+    const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const monthStart = Date.UTC(y, m, 1);
+    const monthEnd = Date.UTC(y, m, daysInMonth);
+    const coverFrom = Math.max(monthStart, from.getTime());
+    const coverTo = Math.min(monthEnd, to.getTime());
+    const covered = Math.round((coverTo - coverFrom) / 86_400_000) + 1;
+    total += covered / daysInMonth;
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  // One day still has to divide into something sane.
+  return Math.max(1 / 31, total);
+}
+
+/** "2025-09-07" -> "7 Sep 2025". Labels only; never used in a calculation. */
+function fmtDayLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (isNaN(d.getTime())) return iso;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+}
+
+
+
+
+
+
 function summarisePnl(report: any) {
   let income = 0;
   let cogs = 0;
@@ -196,7 +244,10 @@ function pickAlert(h: {
   monthsRunway: number | null;
   netMarginPct: number;
   cashInBank: number;
+  /** Display guard: on a very short part period the loss alarm is held back. */
+  suppressLossAlert?: boolean;
 }): BusinessHealth["alert"] {
+
   const badDebtPct = h.revenue > 0 ? (h.badDebts / h.revenue) * 100 : 0;
   const profitable = h.netMarginPct >= 0;
   type Candidate = { weight: number; alert: NonNullable<BusinessHealth["alert"]> };
@@ -237,7 +288,7 @@ function pickAlert(h: {
       },
     });
   }
-  if (h.netMarginPct < 0) {
+  if (h.netMarginPct < 0 && !h.suppressLossAlert) {
     candidates.push({
       weight: 40 + Math.abs(h.netMarginPct),
       alert: {
@@ -320,6 +371,18 @@ export type BusinessHealthDetail = {
   label: string;
   summary: string;
   alert: BusinessHealth["alert"];
+  /**
+   * Display guard. `isPartPeriod` = the range ends before the last day of its
+   * month, so the figures are still settling. `suppressVerdict` = that, and
+   * under 14 days, so verdict wording and the loss alarm are held back.
+   */
+  partPeriod: {
+    isPartPeriod: boolean;
+    days: number;
+    suppressVerdict: boolean;
+    periodEnd: string;
+  };
+
   drivers: HealthDrivers;
   pillars: Pillar[];
 };
@@ -593,24 +656,42 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
 
     const fyStart = new Date(`${fy.from}T00:00:00Z`);
     const periodEnd = new Date(`${fy.to}T00:00:00Z`);
-    const monthsElapsed = Math.max(
-      1,
-      (periodEnd.getUTCFullYear() - fyStart.getUTCFullYear()) * 12 +
-        (periodEnd.getUTCMonth() - fyStart.getUTCMonth()) + 1,
-    );
+    // Divisor for "per month" figures. Each calendar month contributes the
+    // share of its OWN length that the range covers, so a whole month is
+    // exactly 1.0 and a range of whole months matches the previous
+    // calendar-count arithmetic exactly. Only part months differ — which is
+    // the fault being fixed: seven days used to count as a full month.
+    const monthsElapsed = monthsInRange(fy.from, fy.to);
     const monthlyOpex = pnl.expenses / monthsElapsed;
     const monthlyRevenue = pnl.income / monthsElapsed;
     const monthsRunway = metrics.monthsRunway(bs.cash, monthlyOpex);
     const revenueGrowthPct = priorPnl.income > 0 ? ((pnl.income - priorPnl.income) / priorPnl.income) * 100 : null;
 
+    // ---------- PART-PERIOD GUARD (display only) ----------
+    // A range whose end falls before the last day of the month it sits in is
+    // still running. Nothing about the scoring changes; the card is told so it
+    // can say so, and hold back verdict language on a very short window.
+    const rangeDays = Math.max(
+      1,
+      Math.round((periodEnd.getTime() - fyStart.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+    );
+    const lastDayOfEndMonth = new Date(
+      Date.UTC(periodEnd.getUTCFullYear(), periodEnd.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    const isPartPeriod = periodEnd.getUTCDate() < lastDayOfEndMonth;
+    const suppressVerdict = isPartPeriod && rangeDays < 14;
+
+
     // Business Health never prints absolute dollar amounts — Profit & Loss owns the money.
 
 
     // ---------- MONEY ----------
+    const priorWindowLabel = `${fmtDayLabel(priorFrom)} – ${fmtDayLabel(priorToStr)}`;
     const moneyMetrics: PillarMetric[] = [
       revenueGrowthPct === null
-        ? { key: "revenue_growth", label: "Revenue growing?", pill: "No prior year", status: "neutral" }
-        : { key: "revenue_growth", label: "Revenue growing?", pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}%`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
+        ? { key: "revenue_growth", label: `Revenue vs a year ago (${priorWindowLabel})`, pill: "No prior year", status: "neutral" }
+        : { key: "revenue_growth", label: `Revenue vs a year ago (${priorWindowLabel})`, pill: `${revenueGrowthPct >= 0 ? "+" : ""}${revenueGrowthPct.toFixed(1)}%`, status: statusFor(revenueGrowthPct, { good: 5, watch: 0 }) },
+
       { key: "gross_margin", label: `Gross margin ${grossMarginPct.toFixed(1)}%`, pill: grossMarginPct >= 60 ? "Great" : grossMarginPct >= 45 ? "Good" : grossMarginPct >= 30 ? "OK" : "Poor", status: statusFor(grossMarginPct, { good: 45, watch: 30 }) },
       { key: "net_margin", label: `Net margin ${netMarginPct.toFixed(1)}%`, pill: netMarginPct >= 10 ? "Healthy" : netMarginPct >= 0 ? "Thin" : "Loss", status: statusFor(netMarginPct, { good: 10, watch: 0 }) },
       {
@@ -719,7 +800,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
             : "bad";
 
     const cashFlowMetrics: PillarMetric[] = [
-      { key: "net_cash_movement", label: "Net cash movement", pill: cashMovementPill, status: cashMovementStatus },
+      { key: "net_cash_movement", label: `Net cash movement since ${fmtDayLabel(bsStartDate)}`, pill: cashMovementPill, status: cashMovementStatus },
       { key: "working_capital", label: "Working capital", pill: workingCapitalPill, status: workingCapitalStatus },
       { key: "dso", label: "Days sales outstanding", pill: dsoPill, status: dsoStatus },
       { key: "quick_ratio", label: "Quick ratio", pill: quickRatioPill, status: quickRatioStatus },
@@ -798,6 +879,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       monthsRunway,
       netMarginPct,
       cashInBank: bs.cash,
+      suppressLossAlert: suppressVerdict,
     });
 
     return {
@@ -812,12 +894,19 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       label: bandLabel,
       summary,
       alert,
+      partPeriod: {
+        isPartPeriod,
+        days: rangeDays,
+        suppressVerdict,
+        periodEnd: fy.to,
+      },
       drivers: {
         netMarginPct,
         grossMarginPct,
         badDebtsPctOfRevenue: badDebtsPct,
         monthsRunway,
       },
+
       pillars: [
 
         { key: "money", title: "Money", subtitle: "Are you profitable?", score: moneyScore, metrics: moneyMetrics, ctaLabel: "Why is cash so low?" },

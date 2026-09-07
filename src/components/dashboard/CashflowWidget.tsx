@@ -11,8 +11,8 @@ import {
   DateRangeControls,
   toISO,
   usePersistedDate,
-  startOfLastCompletedMonth,
-  endOfLastCompletedMonth,
+  startOfCurrentMonth,
+  today,
 } from "@/components/dashboard/DateRangeControls";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
@@ -33,8 +33,8 @@ export function CashflowWidget({
   const fmt = (n: number) => formatMoneyExact(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `cashflow-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfLastCompletedMonth);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfLastCompletedMonth);
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfCurrentMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);

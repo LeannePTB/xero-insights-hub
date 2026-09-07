@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getProfitAndLoss } from "@/lib/xero/reports.functions";
@@ -11,8 +12,8 @@ import {
   DateRangeControls,
   toISO,
   usePersistedDate,
-  startOfLastCompletedMonth,
-  endOfLastCompletedMonth,
+  startOfCurrentMonth,
+  today,
 } from "@/components/dashboard/DateRangeControls";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
@@ -46,14 +47,15 @@ export function PnlWidget({
   const fmt = (n: number) => formatMoney(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `pnl-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfLastCompletedMonth);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfLastCompletedMonth);
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfCurrentMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
   const prior = priorRange(fromDate, toDate);
   const priorFromStr = toISO(prior.from);
   const priorToStr = toISO(prior.to);
+  const priorLabel = `${format(prior.from, "d MMM yyyy")} – ${format(prior.to, "d MMM yyyy")}`;
 
   const { data, isLoading, isFetching, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr, priorFromStr, priorToStr, basis],
@@ -127,13 +129,18 @@ export function PnlWidget({
         <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       ) : current ? (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Kpi label="Income" value={current.totalIncome} previous={priorData?.totalIncome ?? 0} higherIsBetter currency={currency} />
-            <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} currency={currency} />
-            <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} />
-            <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} />
-            <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} />
+          <p className="mt-6 text-[11px] text-muted-foreground">
+            Compared with the same length of time immediately before:{" "}
+            {format(prior.from, "d MMM yyyy")} to {format(prior.to, "d MMM yyyy")}
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Kpi label="Income" value={current.totalIncome} previous={priorData?.totalIncome ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
+            <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+            <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
+            <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+            <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
           </div>
+
 
           {expenseData.length > 0 && (
             <div className="mt-6">
@@ -168,12 +175,14 @@ function Kpi({
   previous,
   higherIsBetter,
   currency = "AUD",
+  priorLabel,
 }: {
   label: string;
   value: number;
   previous: number;
   higherIsBetter: boolean;
   currency?: string;
+  priorLabel?: string;
 }) {
   const fmt = (n: number) => formatMoney(n, currency);
   const delta = value - previous;
@@ -200,7 +209,10 @@ function Kpi({
           )}
         </span>
       </div>
-      <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">Prior: {fmt(previous)}</p>
+      <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+        {priorLabel ? `${priorLabel}: ` : "Prior: "}
+        {fmt(previous)}
+      </p>
     </div>
   );
 }
