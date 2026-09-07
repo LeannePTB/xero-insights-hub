@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Activity, AlertTriangle } from "lucide-react";
@@ -7,7 +8,7 @@ import { HealthScoreDonut } from "./HealthScoreDonut";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DateRangeControls,
-  usePersistedDate,
+  clearLegacyRangeStorage,
   toISO,
   startOfCurrentMonth,
   today,
@@ -31,14 +32,12 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
   // current-period P&L is fetched once instead of twice.
   const fetchHealth = useServerFn(getBusinessHealthDetail);
   const currency = useTenantCurrency(tenantId);
-  const [fromDate, setFromDate] = usePersistedDate(
-    `health:from:${tenantId ?? "none"}`,
-    startOfCurrentMonth,
-  );
-  const [toDate, setToDate] = usePersistedDate(
-    `health:to:${tenantId ?? "none"}`,
-    today,
-  );
+  // Range is deliberately not persisted: every page load opens on the
+  // default (1st of the current month → today). Changing it lasts only for
+  // the time on the page.
+  const [fromDate, setFromDate] = useState<Date>(startOfCurrentMonth);
+  const [toDate, setToDate] = useState<Date>(today);
+  useEffect(clearLegacyRangeStorage, []);
 
   const [detailOpen, setDetailOpen] = usePersistedDisclosure(
     `health-detail:${tenantId ?? "none"}`,
