@@ -1,4 +1,5 @@
 import { AlertTriangle } from "lucide-react";
+import { ReportVerdictPage } from "@/components/reports/ReportVerdictPage";
 import {
   SECTION_LABELS,
   renderableFailedSections,
