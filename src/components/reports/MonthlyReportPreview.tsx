@@ -221,10 +221,13 @@ export function MonthlyReportPreview({
   payload,
   status,
   version,
+  showWarnings = false,
 }: {
   payload: MonthlyReportPayload;
   status?: string;
   version?: number;
+  /** Preparer-facing mapping notes. Default hidden so any new caller is client-safe. */
+  showWarnings?: boolean;
 }) {
   const m = payload.meta;
   const shownFailures = renderableFailedSections(payload);
