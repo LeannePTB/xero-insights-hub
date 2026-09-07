@@ -346,10 +346,21 @@ type XPayment = {
   Status?: string;
   PaymentType?: string;
   Account?: { AccountID?: string; Name?: string; Code?: string };
-  Invoice?: { InvoiceID?: string; InvoiceNumber?: string; Contact?: { ContactID?: string; Name?: string } };
+  Invoice?: {
+    InvoiceID?: string;
+    InvoiceNumber?: string;
+    Type?: "ACCREC" | "ACCPAY";
+    Contact?: { ContactID?: string; Name?: string };
+  };
+  // Present when the payment was made as part of a batch payment. A batch is
+  // one act of paying many bills, so repetition inside it is not a duplicate.
+  BatchPayment?: { BatchPaymentID?: string } | null;
 };
 
-const DUP_WINDOW_MS = 30 * 86_400_000;
+/** Duplicate-payment window and severity — the only place these are set. */
+const DUP_WINDOW_DAYS = 7;
+const DUP_WINDOW_MS = DUP_WINDOW_DAYS * 86_400_000;
+const DUP_SEVERITY: Severity = "medium";
 
 export function rulePayments(payments: XPayment[], shortCode?: string | null): Finding[] {
   const out: Finding[] = [];
@@ -364,6 +375,8 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
     contactName: string;
     invoiceId: string;
     invoiceNumber: string;
+    invoiceType: string;
+    batchId: string;
     type: string;
   };
 
@@ -384,56 +397,76 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
       contactName: p.Invoice?.Contact?.Name ?? "Unknown contact",
       invoiceId: p.Invoice?.InvoiceID ?? "",
       invoiceNumber: p.Invoice?.InvoiceNumber ?? "",
+      invoiceType: (p.Invoice?.Type ?? "").toUpperCase(),
+      batchId: p.BatchPayment?.BatchPaymentID ?? "",
       type: (p.PaymentType ?? "").toUpperCase(),
     });
   }
 
-  // Group by contact + amount (+ account for primary rule)
+  // Group by contact + amount + bank account.
   const sameAccountGroups = new Map<string, Norm[]>();
-  const crossAccountGroups = new Map<string, Norm[]>();
   for (const n of norm) {
     if (!n.contactId) continue;
-    const amtKey = n.amount.toFixed(2);
-    const sk = `${n.contactId}|${amtKey}|${n.accountId}`;
-    const ck = `${n.contactId}|${amtKey}`;
+    const sk = `${n.contactId}|${n.amount.toFixed(2)}|${n.accountId}`;
     (sameAccountGroups.get(sk) ?? sameAccountGroups.set(sk, []).get(sk)!).push(n);
-    (crossAccountGroups.get(ck) ?? crossAccountGroups.set(ck, []).get(ck)!).push(n);
   }
 
   const emitted = new Set<string>();
 
-  const emitCluster = (
-    cluster: Norm[],
-    opts: { severity: Severity; ruleId: string; titlePrefix: string; crossAccount: boolean },
-  ) => {
+  const emitCluster = (cluster: Norm[]) => {
     if (cluster.length < 2) return;
-    // Exclude clusters where every payment is against the same invoice (split payments).
-    const distinctInvoices = new Set(cluster.map((c) => c.invoiceId).filter(Boolean));
-    if (distinctInvoices.size <= 1 && cluster.every((c) => c.invoiceId)) return;
+
+    // One batch payment is a single act of paying, not repetition.
+    const batchIds = new Set(cluster.map((c) => c.batchId));
+    if (batchIds.size === 1 && cluster[0].batchId) return;
+
+    // A genuine double payment settles the SAME document twice. Payments that
+    // each settle a different document are ordinary recurring trade.
+    const counts = new Map<string, number>();
+    for (const c of cluster) if (c.invoiceId) counts.set(c.invoiceId, (counts.get(c.invoiceId) ?? 0) + 1);
+    const repeatedDoc = [...counts.entries()].find(([, n]) => n >= 2)?.[0] ?? null;
+    const noDocument = cluster.every((c) => !c.invoiceId);
+    if (!repeatedDoc && !noDocument) return;
 
     const sorted = [...cluster].sort((a, b) => a.date.getTime() - b.date.getTime());
     const first = sorted[0];
     const last = sorted[sorted.length - 1];
     const days = Math.round((last.date.getTime() - first.date.getTime()) / 86_400_000);
-    const fk = key(opts.ruleId, [first.contactId, first.amount.toFixed(2), ...sorted.map((s) => s.id)]);
+    const ruleId = "payments.possible_duplicate";
+    const fk = key(ruleId, [first.contactId, first.amount.toFixed(2), ...sorted.map((s) => s.id)]);
     if (emitted.has(fk)) return;
     emitted.add(fk);
 
-    const acctText = opts.crossAccount
-      ? ` across ${new Set(sorted.map((s) => s.accountName || s.accountId)).size} bank accounts`
-      : first.accountName
-        ? ` from ${first.accountName}`
-        : "";
+    const dates = sorted.map((s) => s.date.toISOString().slice(0, 10)).join(", ");
+    const acctText = first.accountName ? ` from ${first.accountName}` : "";
+
+    // The document the repeat is against decides both the wording and the link.
+    const docPayment = repeatedDoc ? sorted.find((s) => s.invoiceId === repeatedDoc)! : null;
+    const docEntity = docPayment
+      ? docPayment.invoiceType === "ACCREC"
+        ? "Invoice"
+        : docPayment.invoiceType === "ACCPAY"
+          ? "Bill"
+          : null
+      : null;
+    const repeatCount = repeatedDoc ? counts.get(repeatedDoc)! : 0;
+
+    const message = repeatedDoc
+      ? `${repeatCount} payments of ${first.amount.toFixed(2)} settle the same ${docEntity === "Invoice" ? "invoice" : "bill"} ${docPayment!.invoiceNumber || repeatedDoc} for ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"} (${dates}). The same document has been paid more than once — check before it is written off.`
+      : `${sorted.length} payments of ${first.amount.toFixed(2)} to ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"} (${dates}) are not allocated to any invoice or bill. Allocate them, or confirm they are on-account payments.`;
 
     out.push({
-      ruleId: opts.ruleId,
+      ruleId,
       category: "ar_ap",
-      severity: opts.severity,
-      title: `${opts.titlePrefix} — ${first.contactName}`,
-      message: `${sorted.length} payments of ${first.amount.toFixed(2)} to ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"} (${sorted.map((s) => s.date.toISOString().slice(0, 10)).join(", ")}). Review for a possible double payment.`,
-      entityType: "Payment",
-      entityId: first.id,
-      deepLink: xeroDeepLink("Payment", first.id, shortCode),
+      severity: DUP_SEVERITY,
+      title: repeatedDoc
+        ? `Same document paid more than once — ${first.contactName}`
+        : `Unallocated payments — ${first.contactName}`,
+      message,
+      entityType: docEntity ?? "Payment",
+      entityId: docEntity ? repeatedDoc : first.id,
+      // No document, or a document of unknown type, means no link we can trust.
+      deepLink: docEntity ? xeroDeepLink(docEntity, repeatedDoc, shortCode) : null,
       evidence: {
         amount: first.amount,
         contact: first.contactName,
@@ -442,46 +475,31 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
         accounts: Array.from(new Set(sorted.map((s) => s.accountName).filter(Boolean))),
         invoices: Array.from(new Set(sorted.map((s) => s.invoiceNumber).filter(Boolean))),
         windowDays: days,
+        case: repeatedDoc ? "same_document" : "unallocated",
       },
       findingKey: fk,
     });
   };
 
-  const walkWindow = (groups: Map<string, Norm[]>, opts: { severity: Severity; ruleId: string; titlePrefix: string; crossAccount: boolean }) => {
-    for (const [, list] of groups) {
-      if (list.length < 2) continue;
-      const sorted = [...list].sort((a, b) => a.date.getTime() - b.date.getTime());
-      let i = 0;
-      while (i < sorted.length) {
-        const cluster: Norm[] = [sorted[i]];
-        let j = i + 1;
-        while (j < sorted.length && sorted[j].date.getTime() - cluster[0].date.getTime() <= DUP_WINDOW_MS) {
-          cluster.push(sorted[j]);
-          j++;
-        }
-        if (cluster.length >= 2) emitCluster(cluster, opts);
-        i = cluster.length >= 2 ? j : i + 1;
+  for (const [, list] of sameAccountGroups) {
+    if (list.length < 2) continue;
+    const sorted = [...list].sort((a, b) => a.date.getTime() - b.date.getTime());
+    let i = 0;
+    while (i < sorted.length) {
+      const cluster: Norm[] = [sorted[i]];
+      let j = i + 1;
+      while (j < sorted.length && sorted[j].date.getTime() - cluster[0].date.getTime() <= DUP_WINDOW_MS) {
+        cluster.push(sorted[j]);
+        j++;
       }
+      if (cluster.length >= 2) emitCluster(cluster);
+      i = cluster.length >= 2 ? j : i + 1;
     }
-  };
-
-  walkWindow(sameAccountGroups, {
-    severity: "high",
-    ruleId: "payments.possible_duplicate",
-    titlePrefix: "Possible duplicate payment",
-    crossAccount: false,
-  });
-
-  // Cross-account: only emit if not already covered by same-account rule
-  walkWindow(crossAccountGroups, {
-    severity: "medium",
-    ruleId: "payments.cross_account_duplicate",
-    titlePrefix: "Possible duplicate payment across bank accounts",
-    crossAccount: true,
-  });
+  }
 
   return out;
 }
+
 
 
 // ---------- Statutory traceability (A-STAT-TRACE) ----------
