@@ -1,3 +1,5 @@
+import { LiveDot, deriveLiveState } from "@/components/dashboard/LiveDot";
+
 // One freshness line for every live dashboard card: what period the figures
 // cover, and when they were last pulled from Xero. Presentation only — it
 // never computes or alters a figure.
@@ -50,19 +52,29 @@ export function CardFreshness({
   from,
   to,
   updatedAt,
+  isFetching,
   className = "",
 }: {
   from?: string | Date | null;
   to?: string | Date | null;
   updatedAt?: number | string | null;
+  /** React Query's `isFetching` for the query that produced these figures. */
+  isFetching?: boolean;
   className?: string;
 }) {
   const coverage = formatCoverage(from, to);
   const parts = [coverage, `figures ${formatPulled(updatedAt)}`].filter(Boolean);
   if (parts.length === 0) return null;
+  // Live state is read from what the card already knows. No extra fetching.
+  const liveState = deriveLiveState({
+    isFetching,
+    hasData: Boolean(updatedAt),
+    fetchedAt: updatedAt,
+  });
   return (
-    <p className={`text-[11px] leading-snug text-muted-foreground ${className}`}>
-      {parts.join(" · ")}
+    <p className={`flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground ${className}`}>
+      <LiveDot state={liveState} />
+      <span>{parts.join(" · ")}</span>
     </p>
   );
 }
