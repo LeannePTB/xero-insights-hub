@@ -15,6 +15,7 @@ import {
   updateClientAccessTier,
   revokeClientAccess,
   updateClientReportBasis,
+  updateClientLodgementCycles,
   setClientXeroAllowance,
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
