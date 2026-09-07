@@ -295,6 +295,12 @@ export function regroupByAccountType(
     // recomputed below from the regrouped lines.
     if (s.kind === "summary") continue;
     for (const r of s.rows) {
+      // Calculated subtotal rows (no AccountID, subtotal name) are skipped
+      // entirely: not bucketed, not reported, not counted. Skipping them
+      // cannot move a figure — they previously landed in an "Unmatched — …"
+      // bucket, whose kind ("other" for the untitled section Xero puts them
+      // in) is summed by neither kindTotals nor totalsForPeriod.
+      if (!r.accountId && CALCULATED_SUBTOTAL_NAMES.has(r.name.trim().toLowerCase())) continue;
       const account = matchAccount(index, r);
       const target = account ? sectionForAccountType(account.type) : null;
       if (target) {
