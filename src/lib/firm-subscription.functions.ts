@@ -47,7 +47,9 @@ async function resolveAccess(supabase: any, userId: string, firmId: string): Pro
       .select("role")
       .eq("user_id", userId)
       .eq("firm_id", firmId)
+      .eq("status", "active")
       .maybeSingle(),
+
     supabase
       .from("user_roles")
       .select("role")
