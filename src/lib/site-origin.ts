@@ -105,16 +105,25 @@ function isNonProduction(): boolean {
 /**
  * The exact set of hostnames accepted as legitimate app origins on OAuth
  * return paths. Built per call: env binds at request time on the Worker
- * runtime. Never widen this to a wildcard — *.lovable.app is open to anyone.
+ * runtime. Never widen this to a wildcard — *.lovable.app is open to anyone,
+ * and neither the canonical domain nor the legacy one is ever wildcarded.
  *
  * Sources:
- *   - siteHost()                    → tractionadvisory.app (canonical)
+ *   - siteHost()                    → tractionadvisory.com.au (canonical)
+ *   - its `www.` form               → the other name DNS serves
+ *   - LEGACY_APP_HOSTS              → tractionadvisory.app, still accepted
  *   - PUBLISHED_SLUG_HOSTS          → this project's published Lovable URL
  *   - LOVABLE_PROJECT_ID-derived    → this project's own preview hosts
  *   - localhost                     → non-production only
  */
 export function allowedAppHosts(): Set<string> {
-  const hosts = new Set<string>([siteHost(), ...PUBLISHED_SLUG_HOSTS]);
+  const canonical = siteHost();
+  const hosts = new Set<string>([
+    canonical,
+    canonical.startsWith("www.") ? canonical.slice(4) : `www.${canonical}`,
+    ...LEGACY_APP_HOSTS,
+    ...PUBLISHED_SLUG_HOSTS,
+  ]);
   let projectId: string | undefined;
   try {
     projectId =
