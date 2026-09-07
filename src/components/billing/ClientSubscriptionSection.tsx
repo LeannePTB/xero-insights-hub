@@ -144,8 +144,13 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             placeholder="e.g. Goodwill for onboarding delay"
-            className="mb-3"
+            className="mb-2"
           />
+          {reason.trim().length < 3 && (
+            <p className="mb-3 text-xs text-muted-foreground">
+              A reason is required before you can start a trial or remove a comp.
+            </p>
+          )}
 
           <div className="flex flex-wrap items-center gap-2">
             <Button
