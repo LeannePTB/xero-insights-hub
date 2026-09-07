@@ -107,7 +107,8 @@ export function ClientSubscriptionSection({ clientId }: { clientId: string }) {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        The dashboard tier is set higher up this page, under “Dashboard tier”.
+        Billing and entitlement only — which dashboard this client sees is set in{" "}
+        <a href="#dashboard-tier" className="underline underline-offset-2">Dashboard tier</a>.
       </p>
 
       <p className="text-sm text-muted-foreground">

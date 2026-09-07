@@ -412,13 +412,25 @@ function ClientSettings() {
     return () => clearTimeout(t);
   }, [clientId]);
 
-  if (clientQ.isLoading) {
+  // Defence in depth: this page is preparer tooling. Anyone who is not an
+  // advisor is sent to their own client dashboard. Server-side checks are
+  // unchanged and remain the real protection.
+  const isAdvisorHere = !!myCtxQ.data?.isAdvisor;
+  useEffect(() => {
+    if (myCtxQ.isLoading || !myCtxQ.data) return;
+    if (!isAdvisorHere) {
+      navigate({ to: "/clients/$clientId", params: { clientId }, replace: true });
+    }
+  }, [myCtxQ.isLoading, myCtxQ.data, isAdvisorHere, clientId, navigate]);
+
+  if (clientQ.isLoading || myCtxQ.isLoading || !myCtxQ.data || !isAdvisorHere) {
     return (
       <div className="grid min-h-screen place-items-center text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
       </div>
     );
   }
+
   const client = clientQ.data?.client;
   if (!client) return <p className="p-6 text-sm text-destructive">Client not found.</p>;
 
@@ -1134,7 +1146,7 @@ function CostClassificationSection({
         <CollapsibleContent>
           {!enabled ? (
             <p className="text-sm text-muted-foreground">
-              Cost classification is turned off. The Breakeven widget treats all operating expenses as
+              Cost classification is turned off. Break-Even treats all operating expenses as
               fixed, and Cost of Sales as variable.
             </p>
           ) : linkedOrgs.length === 0 ? (
@@ -1210,7 +1222,7 @@ function ReportBasisSection({
         <p className="mb-3 text-xs text-muted-foreground">
           The default comes from the Xero file. Override it if the client's reports are prepared on
           a different basis — plenty of businesses report GST on cash and have their Profit &amp;
-          Loss prepared on accruals. Viewers don't see any of this.
+          Loss prepared on accruals.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <BasisSelectRow clientId={clientId} current={clientBasis} />

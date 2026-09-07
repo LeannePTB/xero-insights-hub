@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { getEfficiencyRecommendations } from "@/lib/health.recommendations";
 import type { PillarMetric } from "@/lib/health.functions";
 import { AlertTriangle, Info, Settings, TrendingUp } from "lucide-react";
+import { useIsAdvisor } from "@/hooks/useIsAdvisor";
 
 export function EfficiencyRecommendations({
   metrics,
@@ -10,12 +11,13 @@ export function EfficiencyRecommendations({
   metrics: PillarMetric[];
   clientId?: string;
 }) {
+  const { isAdvisor } = useIsAdvisor();
   const recs = getEfficiencyRecommendations(metrics);
   const wagesUntagged = metrics.some((m) => m.key === "wages" && m.pill === "Not tagged");
 
   return (
     <div className="mt-4 space-y-3">
-      {wagesUntagged && clientId && (
+      {isAdvisor && wagesUntagged && clientId && (
         <Link
           to="/clients/$clientId/settings"
           params={{ clientId }}
