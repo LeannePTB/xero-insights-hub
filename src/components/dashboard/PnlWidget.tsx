@@ -9,11 +9,10 @@ import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import {
-  DateRangeControls,
+  PeriodSelect,
+  monthRangeFor,
   clearLegacyRangeStorage,
   toISO,
-  startOfCurrentMonth,
-  today,
 } from "@/components/dashboard/DateRangeControls";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
@@ -45,10 +44,10 @@ export function PnlWidget({
   const fetchPnl = useServerFn(getProfitAndLoss);
   const currency = useTenantCurrency(tenantId);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  // Range is deliberately not persisted: every page load opens on the
-  // default (1st of the current month → today).
-  const [fromDate, setFromDate] = useState<Date>(startOfCurrentMonth);
-  const [toDate, setToDate] = useState<Date>(today);
+  // Preset-only period: no free date pickers on this card. Not persisted —
+  // every page load opens on the current month to date.
+  const [period, setPeriod] = useState<string>("current");
+  const { from: fromDate, to: toDate } = monthRangeFor(period);
   useEffect(clearLegacyRangeStorage, []);
 
   const fromStr = toISO(fromDate);
@@ -103,12 +102,7 @@ export function PnlWidget({
         </div>
       </div>
 
-      <DateRangeControls
-        fromDate={fromDate}
-        toDate={toDate}
-        onFromChange={setFromDate}
-        onToChange={setToDate}
-      />
+      <PeriodSelect value={period} onChange={setPeriod} monthsBack={6} />
 
       {!shouldLoad ? (
         <XeroLoadPrompt

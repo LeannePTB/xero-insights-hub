@@ -126,6 +126,47 @@ export function DateField({
   );
 }
 
+/**
+ * Named calendar-month options for cards that no longer expose free date
+ * pickers. `count` completed months back, newest first, plus the running
+ * current month as the default.
+ */
+export function monthRangeOptions(count = 6) {
+  const now = new Date();
+  const opts: { value: string; label: string }[] = [
+    { value: "current", label: `${format(now, "MMMM yyyy")} (so far)` },
+  ];
+  for (let i = 1; i <= count; i++) {
+    const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    opts.push({ value: `m-${i}`, label: format(start, "MMMM yyyy") });
+  }
+  return opts;
+}
+
+export function monthRangeFor(value: string): { from: Date; to: Date } {
+  const now = new Date();
+  if (value === "current") {
+    return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: new Date() };
+  }
+  if (value.startsWith("m-")) {
+    const i = Number(value.slice(2));
+    return {
+      from: new Date(now.getFullYear(), now.getMonth() - i, 1),
+      to: new Date(now.getFullYear(), now.getMonth() - i + 1, 0),
+    };
+  }
+  if (value === "fytd") {
+    // Australian financial year starts 1 July.
+    const y = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    return { from: new Date(y, 6, 1), to: new Date() };
+  }
+  const months = Number(value);
+  return {
+    from: new Date(now.getFullYear(), now.getMonth() - (months - 1), 1),
+    to: new Date(),
+  };
+}
+
 export function DateRangeControls({
   fromDate,
   toDate,
@@ -181,3 +222,45 @@ export function DateRangeControls({
     </div>
   );
 }
+
+/**
+ * Preset-only period control: no free date pickers. Used by the Profit & Loss
+ * card. Other cards keep `DateRangeControls` unchanged.
+ */
+export function PeriodSelect({
+  value,
+  onChange,
+  monthsBack = 6,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  monthsBack?: number;
+}) {
+  const options = [
+    ...monthRangeOptions(monthsBack),
+    { value: "fytd", label: "Financial year to date" },
+    { value: "3", label: "Last 3 months" },
+    { value: "6", label: "Last 6 months" },
+    { value: "12", label: "Last 12 months" },
+  ];
+  return (
+    <div className="mt-4 flex flex-wrap items-center gap-2">
+      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        Period
+      </span>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-8 w-[210px] text-xs">
+          <SelectValue placeholder="Quick range" />
+        </SelectTrigger>
+        <SelectContent className="max-h-72">
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
