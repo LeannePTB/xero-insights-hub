@@ -593,15 +593,31 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
 
     const fyStart = new Date(`${fy.from}T00:00:00Z`);
     const periodEnd = new Date(`${fy.to}T00:00:00Z`);
-    const monthsElapsed = Math.max(
-      1,
-      (periodEnd.getUTCFullYear() - fyStart.getUTCFullYear()) * 12 +
-        (periodEnd.getUTCMonth() - fyStart.getUTCMonth()) + 1,
-    );
+    // Divisor for "per month" figures. Each calendar month contributes the
+    // share of its OWN length that the range covers, so a whole month is
+    // exactly 1.0 and a range of whole months matches the previous
+    // calendar-count arithmetic exactly. Only part months differ — which is
+    // the fault being fixed: seven days used to count as a full month.
+    const monthsElapsed = monthsInRange(fy.from, fy.to);
     const monthlyOpex = pnl.expenses / monthsElapsed;
     const monthlyRevenue = pnl.income / monthsElapsed;
     const monthsRunway = metrics.monthsRunway(bs.cash, monthlyOpex);
     const revenueGrowthPct = priorPnl.income > 0 ? ((pnl.income - priorPnl.income) / priorPnl.income) * 100 : null;
+
+    // ---------- PART-PERIOD GUARD (display only) ----------
+    // A range whose end falls before the last day of the month it sits in is
+    // still running. Nothing about the scoring changes; the card is told so it
+    // can say so, and hold back verdict language on a very short window.
+    const rangeDays = Math.max(
+      1,
+      Math.round((periodEnd.getTime() - fyStart.getTime()) / (1000 * 60 * 60 * 24)) + 1,
+    );
+    const lastDayOfEndMonth = new Date(
+      Date.UTC(periodEnd.getUTCFullYear(), periodEnd.getUTCMonth() + 1, 0),
+    ).getUTCDate();
+    const isPartPeriod = periodEnd.getUTCDate() < lastDayOfEndMonth;
+    const suppressVerdict = isPartPeriod && rangeDays < 14;
+
 
     // Business Health never prints absolute dollar amounts — Profit & Loss owns the money.
 
