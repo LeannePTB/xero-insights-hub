@@ -28,7 +28,7 @@ export function ReceivablesWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchList = useServerFn(getReceivablesList);
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["xero-ar-list", tenantId],
     queryFn: () => fetchList({ data: { tenantId } }),
     retry: false,
@@ -49,7 +49,7 @@ export function ReceivablesWidget({
             <HandCoins className="h-4 w-4 text-primary" /> Accounts Receivable Ageing
             <BasisBadge basis={basis} />
           </h3>
-          <DataSourceLine source={data?.source} />
+          <DataSourceLine source={data?.source} isFetching={isFetching} />
           <p className="text-xs text-muted-foreground">Oldest outstanding customer invoices.</p>
         </div>
       </div>

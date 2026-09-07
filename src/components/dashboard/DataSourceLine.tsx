@@ -1,5 +1,6 @@
 import { AlertTriangle, PlugZap } from "lucide-react";
 import type { SnapshotSource } from "@/lib/xero/snapshot-source";
+import { LiveDot, deriveLiveState } from "@/components/dashboard/LiveDot";
 
 // The single provenance line for every converted widget. No converted widget
 // writes its own copy — one component, one set of words, everywhere.
@@ -30,12 +31,26 @@ function fmtAgo(iso: string | null): string {
 
 export function DataSourceLine({
   source,
+  isFetching,
   className = "",
 }: {
   source: SnapshotSource | null | undefined;
+  /** React Query's `isFetching` for the query that produced these figures. */
+  isFetching?: boolean;
   className?: string;
 }) {
   if (!source) return null;
+
+  // Same signals the wording below already uses — a stored snapshot never
+  // gets the live dot.
+  const liveState = deriveLiveState({
+    isFetching,
+    hasData: true,
+    fetchedAt: source.fetchedAt,
+    isStored: source.mode !== "live",
+    isStale: Boolean(source.stale),
+    isDisconnected: source.connection === "disconnected",
+  });
 
   const rows: React.ReactNode[] = [];
 
@@ -82,7 +97,16 @@ export function DataSourceLine({
     );
   }
 
-  return <div className={`mt-1 space-y-0.5 text-[11px] leading-snug ${className}`}>{rows}</div>;
+  return (
+    <div className={`mt-1 space-y-0.5 text-[11px] leading-snug ${className}`}>
+      <div className="flex items-start gap-1.5">
+        <span className="mt-1">
+          <LiveDot state={liveState} />
+        </span>
+        <div className="min-w-0 flex-1 space-y-0.5">{rows}</div>
+      </div>
+    </div>
+  );
 }
 
 /**

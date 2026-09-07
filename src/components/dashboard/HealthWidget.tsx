@@ -131,6 +131,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
                 from={fromDate}
                 to={toDate}
                 updatedAt={q.dataUpdatedAt}
+                isFetching={q.isFetching}
               />
 
               {q.data.alert && (

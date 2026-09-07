@@ -41,6 +41,7 @@ export function BreakevenWidget({
             from={s.fromDate}
             to={s.toDate}
             updatedAt={s.data ? s.updatedAt : null}
+            isFetching={s.isFetching}
           />
         </div>
         <Button variant="ghost" size="sm" onClick={() => { s.setShouldLoad(true); s.refetch(); }} disabled={s.isFetching} title="Refresh">

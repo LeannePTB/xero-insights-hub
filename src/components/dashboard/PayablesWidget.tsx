@@ -28,7 +28,7 @@ export function PayablesWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchList = useServerFn(getPayablesList);
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["xero-ap-list", tenantId],
     queryFn: () => fetchList({ data: { tenantId } }),
     retry: false,
@@ -49,7 +49,7 @@ export function PayablesWidget({
             <Wallet className="h-4 w-4 text-primary" /> Accounts Payable Ageing
             <BasisBadge basis={basis} />
           </h3>
-          <DataSourceLine source={data?.source} />
+          <DataSourceLine source={data?.source} isFetching={isFetching} />
           <p className="text-xs text-muted-foreground">Oldest outstanding supplier bills.</p>
         </div>
       </div>
