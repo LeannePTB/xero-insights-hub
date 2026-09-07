@@ -138,7 +138,7 @@ export const getClient = createServerFn({ method: "POST" })
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     const SELECT =
-      "id, name, owner_user_id, firm_id, report_basis, max_xero_orgs, consolidation_mode, consolidation_org_ids, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name, status, disconnected_at))";
+      "id, name, owner_user_id, firm_id, report_basis, gst_cycle, payg_withholding_cycle, max_xero_orgs, consolidation_mode, consolidation_org_ids, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name, status, disconnected_at))";
     const { data: client, error } = await context.supabase
       .from("clients")
       .select(SELECT)
@@ -439,6 +439,48 @@ export const updateClientReportBasis = createServerFn({ method: "POST" })
       .update({ report_basis: data.basis })
       .eq("id", data.clientId);
     if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+/**
+ * Lodgement cycles. Same authorisation as `updateClientReportBasis`: the write
+ * goes through `context.supabase`, so the `clients` RLS policies decide — the
+ * rule lives in one place (invariant 7) and is not restated here. Unlike report
+ * basis these are ATO obligations, so a change is recorded in the audit log.
+ */
+export const updateClientLodgementCycles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (i: {
+      clientId: string;
+      gstCycle?: "monthly" | "quarterly" | "annual" | "not_registered" | null;
+      paygWithholdingCycle?: "monthly" | "quarterly" | "not_registered" | null;
+    }) => i,
+  )
+  .handler(async ({ data, context }) => {
+    const patch: Record<string, unknown> = {};
+    if ("gstCycle" in data) patch.gst_cycle = data.gstCycle ?? null;
+    if ("paygWithholdingCycle" in data)
+      patch.payg_withholding_cycle = data.paygWithholdingCycle ?? null;
+    if (Object.keys(patch).length === 0) return { ok: true };
+
+    const { data: rows, error } = await context.supabase
+      .from("clients")
+      .update(patch as any)
+      .eq("id", data.clientId)
+      .select("id, firm_id, gst_cycle, payg_withholding_cycle");
+    if (error) throw new Error(error.message);
+    if (!rows || rows.length === 0) throw new Error("You cannot change this client.");
+
+    const { writeAudit } = await import("@/lib/audit.server");
+    await writeAudit({
+      actorUserId: context.userId,
+      firmId: (rows[0] as any).firm_id ?? null,
+      action: "client_lodgement_cycle_changed",
+      targetType: "client",
+      targetId: data.clientId,
+      meta: patch,
+    });
     return { ok: true };
   });
 

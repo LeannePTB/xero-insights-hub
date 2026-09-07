@@ -15,6 +15,7 @@ import {
   updateClientAccessTier,
   revokeClientAccess,
   updateClientReportBasis,
+  updateClientLodgementCycles,
   setClientXeroAllowance,
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
@@ -511,6 +512,19 @@ function ClientSettings() {
               ?.tenant_id}
           />
         </Section>
+
+        {/* Lodgement cycles */}
+        <Section title="How often this client lodges" collapsible>
+          <LodgementCyclesSection
+            clientId={clientId}
+            gstCycle={(client.gst_cycle as GstCycle | null) ?? null}
+            paygCycle={(client.payg_withholding_cycle as PaygCycle | null) ?? null}
+            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+              ?.tenant_id}
+          />
+        </Section>
+
+
 
         {/* Xero orgs */}
         <Section
@@ -1259,3 +1273,149 @@ function ReportBasisSection({
   );
 }
 
+
+export type GstCycle = "monthly" | "quarterly" | "annual" | "not_registered";
+export type PaygCycle = "monthly" | "quarterly" | "not_registered";
+
+const GST_CYCLE_LABELS: Record<GstCycle, string> = {
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  annual: "Annually",
+  not_registered: "Not registered for GST",
+};
+
+const PAYG_CYCLE_LABELS: Record<PaygCycle, string> = {
+  monthly: "Monthly",
+  quarterly: "Quarterly",
+  not_registered: "Does not withhold",
+};
+
+/** Xero's SalesTaxPeriod codes, mapped to the cycles we store. */
+function gstCycleFromXero(period: string | null | undefined): GstCycle | null {
+  if (!period) return null;
+  const p = period.toUpperCase();
+  if (p.startsWith("MONTHLY")) return "monthly";
+  if (p.startsWith("QUARTERLY")) return "quarterly";
+  if (p.startsWith("ANNUAL") || p.startsWith("YEARLY")) return "annual";
+  if (p === "NONE") return "not_registered";
+  return null;
+}
+
+/**
+ * Lodgement cycles. Stored per client and set by the preparer: Xero's
+ * SalesTaxPeriod is unreliable (files report a quarterly cycle while also
+ * reporting they pay no GST), and the PAYG withholding cycle is an ATO
+ * classification that Xero does not hold at all. Nothing is adopted from Xero
+ * automatically — it is only ever shown as a suggestion to confirm.
+ */
+function LodgementCyclesSection({
+  clientId,
+  gstCycle,
+  paygCycle,
+  tenantId,
+}: {
+  clientId: string;
+  gstCycle: GstCycle | null;
+  paygCycle: PaygCycle | null;
+  tenantId?: string;
+}) {
+  const qc = useQueryClient();
+  const saveFn = useServerFn(updateClientLodgementCycles);
+  const salesTaxBasisFn = useServerFn(getXeroSalesTaxBasis);
+
+  const xeroQ = useQuery({
+    queryKey: ["xero-sales-tax-basis", tenantId],
+    enabled: !!tenantId,
+    staleTime: 30 * 60 * 1000,
+    queryFn: () => salesTaxBasisFn({ data: { tenantId: tenantId! } }),
+  });
+  const xeroPeriod = (xeroQ.data as any)?.salesTaxPeriod ?? null;
+  const xeroSuggestion = gstCycleFromXero(xeroPeriod);
+
+  const mut = useMutation({
+    mutationFn: (patch: { gstCycle?: GstCycle; paygWithholdingCycle?: PaygCycle }) =>
+      saveFn({ data: { clientId, ...patch } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["client", clientId] });
+      toast.success("Lodgement cycle saved");
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not save the lodgement cycle"),
+  });
+
+  return (
+    <div className="space-y-6">
+      <p className="text-xs text-muted-foreground">
+        How often this client lodges with the ATO. Both are set by hand — nothing here is filled in
+        automatically, because a guessed cycle produces a confidently wrong due date.
+      </p>
+
+      <div className="space-y-2">
+        <Label htmlFor="gst-cycle">GST (business activity statement)</Label>
+        <Select
+          value={gstCycle ?? ""}
+          onValueChange={(v) => mut.mutate({ gstCycle: v as GstCycle })}
+          disabled={mut.isPending}
+        >
+          <SelectTrigger id="gst-cycle" className="w-64">
+            <SelectValue placeholder="Not set yet" />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(GST_CYCLE_LABELS) as GstCycle[]).map((k) => (
+              <SelectItem key={k} value={k}>
+                {GST_CYCLE_LABELS[k]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {gstCycle
+            ? `Set here to ${GST_CYCLE_LABELS[gstCycle].toLowerCase()}.`
+            : "Not set yet — nothing will assume a GST cycle for this client."}
+        </p>
+        {xeroQ.isLoading ? (
+          <p className="text-xs text-muted-foreground">Reading the cycle Xero holds…</p>
+        ) : xeroSuggestion ? (
+          <p className="text-xs text-muted-foreground">
+            Xero reports this file as{" "}
+            <strong>{GST_CYCLE_LABELS[xeroSuggestion].toLowerCase()}</strong>
+            {xeroPeriod ? ` (${xeroPeriod})` : ""}.{" "}
+            {gstCycle
+              ? "What is set here is what we use."
+              : "That is only a suggestion — choose it above to confirm it."}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Xero holds no GST cycle for this file, so it has to be set here.
+          </p>
+        )}
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="payg-cycle">PAYG withholding (tax withheld from wages)</Label>
+        <Select
+          value={paygCycle ?? ""}
+          onValueChange={(v) => mut.mutate({ paygWithholdingCycle: v as PaygCycle })}
+          disabled={mut.isPending}
+        >
+          <SelectTrigger id="payg-cycle" className="w-64">
+            <SelectValue placeholder="Not set yet" />
+          </SelectTrigger>
+          <SelectContent>
+            {(Object.keys(PAYG_CYCLE_LABELS) as PaygCycle[]).map((k) => (
+              <SelectItem key={k} value={k}>
+                {PAYG_CYCLE_LABELS[k]}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">
+          {paygCycle
+            ? `Set here to ${PAYG_CYCLE_LABELS[paygCycle].toLowerCase()}.`
+            : "Not set yet."}{" "}
+          Xero does not hold this — the ATO sets it from how much tax the client withholds, so it
+          must come from the client's ATO correspondence.
+        </p>
+      </div>
+    </div>
+  );
+}

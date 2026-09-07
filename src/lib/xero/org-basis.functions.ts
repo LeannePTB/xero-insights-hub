@@ -18,14 +18,14 @@ export const getXeroSalesTaxBasis = createServerFn({ method: "POST" })
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     try {
       const conn = await getConnectionByTenant(data.tenantId);
-      const res = await xeroGet<{ Organisations?: Array<{ SalesTaxBasis?: string }> }>(
-        conn,
-        "Organisation",
-      );
+      const res = await xeroGet<{
+        Organisations?: Array<{ SalesTaxBasis?: string; SalesTaxPeriod?: string }>;
+      }>(conn, "Organisation");
       const raw = res.Organisations?.[0]?.SalesTaxBasis ?? null;
-      return { raw, basis: normaliseSalesTaxBasis(raw) };
+      const salesTaxPeriod = res.Organisations?.[0]?.SalesTaxPeriod ?? null;
+      return { raw, basis: normaliseSalesTaxBasis(raw), salesTaxPeriod };
     } catch (e) {
       console.warn("[xero] sales tax basis read failed", e instanceof Error ? e.message : e);
-      return { raw: null, basis: null };
+      return { raw: null, basis: null, salesTaxPeriod: null };
     }
   });

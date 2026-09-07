@@ -667,12 +667,16 @@ export type Database = {
           created_at: string
           dashboard_widgets: string[] | null
           firm_id: string | null
+          gst_cycle: Database["public"]["Enums"]["gst_cycle"] | null
           id: string
           logo_path: string | null
           max_xero_orgs: number
           name: string
           notes: string
           owner_user_id: string
+          payg_withholding_cycle:
+            | Database["public"]["Enums"]["payg_withholding_cycle"]
+            | null
           report_basis: Database["public"]["Enums"]["report_basis"]
           updated_at: string
         }
@@ -684,12 +688,16 @@ export type Database = {
           created_at?: string
           dashboard_widgets?: string[] | null
           firm_id?: string | null
+          gst_cycle?: Database["public"]["Enums"]["gst_cycle"] | null
           id?: string
           logo_path?: string | null
           max_xero_orgs?: number
           name: string
           notes?: string
           owner_user_id: string
+          payg_withholding_cycle?:
+            | Database["public"]["Enums"]["payg_withholding_cycle"]
+            | null
           report_basis?: Database["public"]["Enums"]["report_basis"]
           updated_at?: string
         }
@@ -701,12 +709,16 @@ export type Database = {
           created_at?: string
           dashboard_widgets?: string[] | null
           firm_id?: string | null
+          gst_cycle?: Database["public"]["Enums"]["gst_cycle"] | null
           id?: string
           logo_path?: string | null
           max_xero_orgs?: number
           name?: string
           notes?: string
           owner_user_id?: string
+          payg_withholding_cycle?:
+            | Database["public"]["Enums"]["payg_withholding_cycle"]
+            | null
           report_basis?: Database["public"]["Enums"]["report_basis"]
           updated_at?: string
         }
@@ -2583,6 +2595,8 @@ export type Database = {
       client_subscription_type: "paid" | "free_forever" | "trial"
       dashboard_tier: "basic" | "advisory" | "investigate" | "multi_company"
       firm_member_role: "owner" | "staff"
+      gst_cycle: "monthly" | "quarterly" | "annual" | "not_registered"
+      payg_withholding_cycle: "monthly" | "quarterly" | "not_registered"
       report_basis: "accrual" | "cash"
       subscription_status:
         | "trialing"
@@ -2743,6 +2757,8 @@ export const Constants = {
       client_subscription_type: ["paid", "free_forever", "trial"],
       dashboard_tier: ["basic", "advisory", "investigate", "multi_company"],
       firm_member_role: ["owner", "staff"],
+      gst_cycle: ["monthly", "quarterly", "annual", "not_registered"],
+      payg_withholding_cycle: ["monthly", "quarterly", "not_registered"],
       report_basis: ["accrual", "cash"],
       subscription_status: [
         "trialing",
