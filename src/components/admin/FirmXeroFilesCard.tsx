@@ -101,18 +101,19 @@ export function FirmXeroFilesCard({
             Xero organisations
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Files already linked to this organisation. Reconnecting refreshes their permissions —
-            it never links anything new.
+            {files.length === 1
+              ? "One Xero file linked to this organisation. Reconnecting refreshes its permissions — it never links anything new."
+              : "Xero files linked to this organisation. Reconnecting refreshes their permissions — it never links anything new."}
           </p>
         </div>
-        {files.length > 1 && (
+        {files.length >= 1 && (
           <Button variant="outline" size="sm" onClick={() => setConfirmOpen(true)} disabled={starting}>
             {starting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="mr-2 h-4 w-4" />
             )}
-            Reconnect all Xero files
+            Reconnect Xero file{files.length === 1 ? "" : "s"}
           </Button>
         )}
       </div>
