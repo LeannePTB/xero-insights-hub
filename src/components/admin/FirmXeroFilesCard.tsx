@@ -156,11 +156,13 @@ export function FirmXeroFilesCard({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reconnect all Xero files</AlertDialogTitle>
+            <AlertDialogTitle>
+              {files.length === 1 ? "Reconnect Xero file" : "Reconnect Xero files"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              You'll be sent to Xero's consent screen. Tick <strong>all {files.length}</strong>{" "}
-              organisations you want reconnected — anything you leave unticked will not be
-              refreshed, and you'd need to run this again. Nothing new is linked either way.
+              {files.length === 1
+                ? "You'll be sent to Xero's consent screen. Tick the organisation to refresh its permissions. Nothing new is linked."
+                : `You'll be sent to Xero's consent screen. Tick the ${files.length} organisations you want reconnected — anything left unticked will not be refreshed, and you'd need to run this again. Nothing new is linked either way.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
