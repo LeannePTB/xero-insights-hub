@@ -11,17 +11,13 @@ import {
   DateRangeControls,
   toISO,
   usePersistedDate,
+  startOfLastCompletedMonth,
+  endOfLastCompletedMonth,
 } from "@/components/dashboard/DateRangeControls";
+import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
 
-function startOfFiscalYear() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1);
-}
-function today() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
-}
+
 
 export function CashflowWidget({
   tenantId,
@@ -37,13 +33,13 @@ export function CashflowWidget({
   const fmt = (n: number) => formatMoneyExact(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `cashflow-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfFiscalYear);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfLastCompletedMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfLastCompletedMonth);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
+  const { data, isLoading, isFetching, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["xero-cashflow", tenantId, fromStr, toStr],
     queryFn: () => fetchCashflow({ data: { tenantId, fromDate: fromStr, toDate: toStr } }),
     enabled: shouldLoad,

@@ -11,17 +11,13 @@ import {
   DateRangeControls,
   toISO,
   usePersistedDate,
+  startOfLastCompletedMonth,
+  endOfLastCompletedMonth,
 } from "@/components/dashboard/DateRangeControls";
+import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
 
-function startOfFiscalYear() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1);
-}
-function today() {
-  const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth() + 1, 0);
-}
+
 
 function priorRange(from: Date, to: Date): { from: Date; to: Date } {
   const ms = to.getTime() - from.getTime();
@@ -50,8 +46,8 @@ export function PnlWidget({
   const fmt = (n: number) => formatMoney(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `pnl-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfFiscalYear);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfLastCompletedMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfLastCompletedMonth);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
@@ -59,7 +55,7 @@ export function PnlWidget({
   const priorFromStr = toISO(prior.from);
   const priorToStr = toISO(prior.to);
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
+  const { data, isLoading, isFetching, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr, priorFromStr, priorToStr, basis],
     queryFn: async () => {
       const current = await fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "pnl", basis } });
@@ -92,9 +88,7 @@ export function PnlWidget({
             <h3 className="font-display text-lg font-semibold flex items-center gap-2"><LineChart className="h-4 w-4 text-primary" />Profit & Loss</h3>
             <BasisBadge basis={basis ?? "accrual"} />
           </div>
-          <p className="text-xs text-muted-foreground">
-            {fromStr} → {toStr}
-          </p>
+          <CardFreshness from={fromDate} to={toDate} updatedAt={data ? dataUpdatedAt : null} />
         </div>
         <div className="flex items-center gap-2">
           <Button
