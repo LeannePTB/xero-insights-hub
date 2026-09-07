@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/select";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { getGstReconciliation } from "@/lib/xero/gst.functions";
-import { money as fmt, periodOptions } from "@/components/dashboard/recon-periods";
+import { money as fmt, gstPeriodOptions } from "@/components/dashboard/recon-periods";
 
 function Line({
   label,
@@ -45,14 +45,17 @@ export function GstReconciliationWidget({
   tenantId: string;
   tenantName: string;
 }) {
-  const options = useMemo(periodOptions, []);
-  const defaultAsAt = options[1]?.value ?? options[0]!.value;
-  const [asAt, setAsAt] = useState(defaultAsAt);
+  const options = useMemo(gstPeriodOptions, []);
+  const defaultValue = options[1]?.value ?? options[0]!.value;
+  const [periodValue, setPeriodValue] = useState(defaultValue);
+  const selected = options.find((o) => o.value === periodValue) ?? options[0]!;
+  const asAt = selected.asAt;
+  const window = selected.kind;
   const fetchGst = useServerFn(getGstReconciliation);
 
   const q = useQuery({
-    queryKey: ["gst-reconciliation", clientId, tenantId, asAt],
-    queryFn: () => fetchGst({ data: { clientId, tenantId, asAt } }),
+    queryKey: ["gst-reconciliation", clientId, tenantId, window, asAt],
+    queryFn: () => fetchGst({ data: { clientId, tenantId, asAt, window } }),
     retry: false,
     staleTime: 5 * 60 * 1000,
   });
@@ -61,7 +64,7 @@ export function GstReconciliationWidget({
   async function recalculate() {
     setRecalculating(true);
     try {
-      await fetchGst({ data: { clientId, tenantId, asAt, recalculate: true } });
+      await fetchGst({ data: { clientId, tenantId, asAt, window, recalculate: true } });
       await q.refetch();
     } finally {
       setRecalculating(false);
@@ -87,13 +90,16 @@ export function GstReconciliationWidget({
                   new Date(`${data.periodTo}T00:00:00`),
                   "d MMM yyyy",
                 )}`
-              : format(new Date(`${asAt}T00:00:00`), "d MMMM yyyy")}{" "}
+              : `${format(new Date(`${selected.from}T00:00:00`), "d MMM")} – ${format(
+                  new Date(`${selected.to}T00:00:00`),
+                  "d MMM yyyy",
+                )}`}{" "}
             · a review aid, not a lodgement figure
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={asAt} onValueChange={setAsAt}>
-            <SelectTrigger className="h-8 w-[230px] text-xs">
+          <Select value={periodValue} onValueChange={setPeriodValue}>
+            <SelectTrigger className="h-8 w-[260px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
