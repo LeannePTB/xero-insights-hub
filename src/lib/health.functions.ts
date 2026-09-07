@@ -788,7 +788,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
             : "bad";
 
     const cashFlowMetrics: PillarMetric[] = [
-      { key: "net_cash_movement", label: "Net cash movement", pill: cashMovementPill, status: cashMovementStatus },
+      { key: "net_cash_movement", label: `Net cash movement since ${fmtDayLabel(bsStartDate)}`, pill: cashMovementPill, status: cashMovementStatus },
       { key: "working_capital", label: "Working capital", pill: workingCapitalPill, status: workingCapitalStatus },
       { key: "dso", label: "Days sales outstanding", pill: dsoPill, status: dsoStatus },
       { key: "quick_ratio", label: "Quick ratio", pill: quickRatioPill, status: quickRatioStatus },
