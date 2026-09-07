@@ -61,9 +61,7 @@ export function CashflowWidget({
             <h3 className="font-display text-lg font-semibold flex items-center gap-2"><Wallet className="h-4 w-4 text-primary" />Cash Flow</h3>
             <BasisBadge basis="cash" />
           </div>
-          <p className="text-xs text-muted-foreground">
-            {fromStr} → {toStr}
-          </p>
+          <CardFreshness from={fromDate} to={toDate} updatedAt={data ? dataUpdatedAt : null} />
         </div>
         <Button
           variant="ghost"
