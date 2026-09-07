@@ -11,6 +11,9 @@ export const RECON_VERSIONS: Record<string, number> = {
   // v2: extended from four accounts to every balance sheet account.
   balance_sheet_reconciliation: 2,
   gst_reconciliation: 1,
+  // Quarterly GST windows are keyed separately so a monthly snapshot at the
+  // same as-at date is never served as a quarter.
+  gst_reconciliation_quarter: 1,
   loan_consolidation: 1,
 };
 
