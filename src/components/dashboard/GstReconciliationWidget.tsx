@@ -37,7 +37,7 @@ function Line({
   );
 }
 
-function netGst(data: NonNullable<ReturnType<typeof useQuery>["data"]>) {
+function netGst(data: GstResponse) {
   const sales = data.gstOnSales ?? 0;
   const purchases = data.gstOnPurchases ?? 0;
   return { net: sales - purchases, sales, purchases };
