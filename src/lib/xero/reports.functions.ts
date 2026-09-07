@@ -100,9 +100,13 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
-    // The caller does not choose which lock is tested. `data.widget` is a
-    // label for the calling card only; profit and loss always requires `pnl`.
-    await assertWidgetAccess(context.userId, data.tenantId, "pnl");
+    // The caller cannot name an arbitrary lock: the validator above fixes the
+    // set to the three cards that are made of profit and loss figures, and each
+    // is still tested against this viewer's own entitlement. Break-Even is
+    // authorised as Break-Even, so owning that card without the separate Profit
+    // & Loss card still shows figures rather than an error.
+    await assertWidgetAccess(context.userId, data.tenantId, data.widget ?? "pnl");
+
     const conn = await getConnectionByTenant(data.tenantId);
     const basis = data.basis ?? (await getClientReportBasis(data.tenantId));
     const res = await xeroGet<{ Reports: any[] }>(conn, "Reports/ProfitAndLoss", {

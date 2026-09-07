@@ -107,8 +107,14 @@ export async function assertWidgetAccess(
   if (!isAdvisor && !tier) throw new Error("You don't have access to this organisation.");
   // Advisors are always allowed; gating only applies to viewers.
   if (isAdvisor) return;
-  const widgets = await effectiveWidgets(clientId, tier!);
-  if (!widgets.includes(widget)) {
+  const { canonicalWidget } = await import("@/lib/tiers");
+  // Merged cards: a stored entitlement for a retired key (superannuation,
+  // true_breakeven) is the same entitlement as the card it now renders as.
+  // Resolving both sides through the one alias table keeps entitlement
+  // unchanged and stops a merge silently locking a card the client owns.
+  const widgets = (await effectiveWidgets(clientId, tier!)).map((w) => canonicalWidget(w));
+  if (!widgets.includes(canonicalWidget(widget))) {
     throw new Error("This widget is not enabled for your dashboard.");
   }
 }
+
