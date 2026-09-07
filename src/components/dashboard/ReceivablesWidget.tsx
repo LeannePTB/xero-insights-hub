@@ -28,7 +28,7 @@ export function ReceivablesWidget({
   basis?: "accrual" | "cash";
 }) {
   const fetchList = useServerFn(getReceivablesList);
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, isFetching, error } = useQuery({
     queryKey: ["xero-ar-list", tenantId],
     queryFn: () => fetchList({ data: { tenantId } }),
     retry: false,
