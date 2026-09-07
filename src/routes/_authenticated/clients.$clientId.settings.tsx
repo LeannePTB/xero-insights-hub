@@ -412,13 +412,25 @@ function ClientSettings() {
     return () => clearTimeout(t);
   }, [clientId]);
 
-  if (clientQ.isLoading) {
+  // Defence in depth: this page is preparer tooling. Anyone who is not an
+  // advisor is sent to their own client dashboard. Server-side checks are
+  // unchanged and remain the real protection.
+  const isAdvisorHere = !!myCtxQ.data?.isAdvisor;
+  useEffect(() => {
+    if (myCtxQ.isLoading || !myCtxQ.data) return;
+    if (!isAdvisorHere) {
+      navigate({ to: "/clients/$clientId", params: { clientId }, replace: true });
+    }
+  }, [myCtxQ.isLoading, myCtxQ.data, isAdvisorHere, clientId, navigate]);
+
+  if (clientQ.isLoading || myCtxQ.isLoading || !myCtxQ.data || !isAdvisorHere) {
     return (
       <div className="grid min-h-screen place-items-center text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
       </div>
     );
   }
+
   const client = clientQ.data?.client;
   if (!client) return <p className="p-6 text-sm text-destructive">Client not found.</p>;
 
