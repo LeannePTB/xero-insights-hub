@@ -41,6 +41,9 @@ import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { TransactionSearchWidget } from "@/components/dashboard/TransactionSearchWidget";
 import { canSearchOrganisationTransactions } from "@/lib/xero/search.functions";
+import { listMonthlyReports, getStoredMonthlyReport } from "@/lib/reports/monthly-report.functions";
+import { ReportVerdictPage } from "@/components/reports/ReportVerdictPage";
+import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getClientWidgets } from "@/lib/tier-config.functions";
@@ -382,6 +385,8 @@ function ClientDashboard() {
 
         {isAdvisor && <OrganisationLapsedNotice clientId={clientId} />}
 
+        <LatestReportPageOne clientId={clientId} />
+
         {widgets.includes("notes") && (
           <div className="mt-6 w-full">
             {isWip("notes") ? (
@@ -442,6 +447,60 @@ function ClientDashboard() {
         )}
         {/* /SubscriptionGate */}
       </main>
+    </div>
+  );
+}
+
+/**
+ * Page one of the most recent finalised monthly report, above the live cards.
+ * Reads through the caller's own session (RLS decides); a client viewer only
+ * ever sees a final/sent report the policy already entitles them to. Renders
+ * nothing when no finalised report exists — the page falls back to the
+ * ordinary layout.
+ */
+function LatestReportPageOne({ clientId }: { clientId: string }) {
+  const listFn = useServerFn(listMonthlyReports);
+  const getFn = useServerFn(getStoredMonthlyReport);
+  const listQ = useQuery({
+    queryKey: ["monthly-reports", clientId],
+    queryFn: () => listFn({ data: { clientId } }),
+    staleTime: 5 * 60 * 1000,
+  });
+  const latestFinal = (listQ.data?.reports ?? []).find(
+    (r: any) => r.status === "final" || r.status === "sent",
+  );
+  const reportQ = useQuery({
+    queryKey: ["stored-monthly-report", latestFinal?.id],
+    queryFn: () => getFn({ data: { reportId: latestFinal!.id } }),
+    enabled: !!latestFinal,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const payload = reportQ.data?.report?.payload as MonthlyReportPayload | undefined;
+  if (!payload?.verdict) return null;
+  const m = payload.meta;
+
+  return (
+    <div className="mt-6 space-y-3">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
+        <p className="text-sm text-muted-foreground">
+          From your {m.monthLabel} report — a view of the business as at{" "}
+          {new Date(m.periodEnd).toLocaleDateString("en-AU", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+          . The figures below are live.
+        </p>
+        <Link
+          to="/clients/$clientId/reports"
+          params={{ clientId }}
+          className="text-sm font-medium text-primary hover:underline"
+        >
+          Read the full report
+        </Link>
+      </div>
+      <ReportVerdictPage verdict={payload.verdict} />
     </div>
   );
 }
