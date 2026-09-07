@@ -867,6 +867,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       monthsRunway,
       netMarginPct,
       cashInBank: bs.cash,
+      suppressLossAlert: suppressVerdict,
     });
 
     return {
@@ -881,12 +882,19 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       label: bandLabel,
       summary,
       alert,
+      partPeriod: {
+        isPartPeriod,
+        days: rangeDays,
+        suppressVerdict,
+        periodEnd: fy.to,
+      },
       drivers: {
         netMarginPct,
         grossMarginPct,
         badDebtsPctOfRevenue: badDebtsPct,
         monthsRunway,
       },
+
       pillars: [
 
         { key: "money", title: "Money", subtitle: "Are you profitable?", score: moneyScore, metrics: moneyMetrics, ctaLabel: "Why is cash so low?" },
