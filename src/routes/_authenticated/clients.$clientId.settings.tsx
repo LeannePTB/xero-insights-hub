@@ -513,6 +513,19 @@ function ClientSettings() {
           />
         </Section>
 
+        {/* Lodgement cycles */}
+        <Section title="How often this client lodges" collapsible>
+          <LodgementCyclesSection
+            clientId={clientId}
+            gstCycle={(client.gst_cycle as GstCycle | null) ?? null}
+            paygCycle={(client.payg_withholding_cycle as PaygCycle | null) ?? null}
+            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+              ?.tenant_id}
+          />
+        </Section>
+
+
+
         {/* Xero orgs */}
         <Section
           title="Xero organisations"
