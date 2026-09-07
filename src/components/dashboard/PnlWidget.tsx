@@ -12,8 +12,8 @@ import {
   DateRangeControls,
   toISO,
   usePersistedDate,
-  startOfLastCompletedMonth,
-  endOfLastCompletedMonth,
+  startOfCurrentMonth,
+  today,
 } from "@/components/dashboard/DateRangeControls";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { useTenantCurrency, formatMoney } from "@/components/dashboard/useTenantCurrency";
@@ -47,8 +47,8 @@ export function PnlWidget({
   const fmt = (n: number) => formatMoney(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `pnl-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfLastCompletedMonth);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfLastCompletedMonth);
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfCurrentMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);

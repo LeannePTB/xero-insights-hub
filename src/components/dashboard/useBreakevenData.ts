@@ -8,8 +8,8 @@ import { buildClassificationResolver } from "@/lib/cost-classification";
 import {
   usePersistedDate,
   toISO,
-  startOfLastCompletedMonth,
-  endOfLastCompletedMonth,
+  startOfCurrentMonth,
+  today,
 } from "@/components/dashboard/DateRangeControls";
 
 
@@ -38,8 +38,8 @@ export function useBreakevenData({
   const fetchClassifications = useServerFn(listCostClassifications);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `breakeven-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfLastCompletedMonth);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfLastCompletedMonth);
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfCurrentMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);

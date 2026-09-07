@@ -9,8 +9,8 @@ import {
   DateRangeControls,
   usePersistedDate,
   toISO,
-  startOfLastCompletedMonth,
-  endOfLastCompletedMonth,
+  startOfCurrentMonth,
+  today,
 } from "./DateRangeControls";
 import { CardFreshness } from "./CardFreshness";
 import { usePersistedDisclosure } from "@/hooks/usePersistedDisclosure";
@@ -33,11 +33,11 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
   const currency = useTenantCurrency(tenantId);
   const [fromDate, setFromDate] = usePersistedDate(
     `health:from:${tenantId ?? "none"}`,
-    startOfLastCompletedMonth,
+    startOfCurrentMonth,
   );
   const [toDate, setToDate] = usePersistedDate(
     `health:to:${tenantId ?? "none"}`,
-    endOfLastCompletedMonth,
+    today,
   );
 
   const [detailOpen, setDetailOpen] = usePersistedDisclosure(
