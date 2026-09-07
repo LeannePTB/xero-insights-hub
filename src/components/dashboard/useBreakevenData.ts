@@ -13,15 +13,34 @@ import {
 } from "@/components/dashboard/DateRangeControls";
 
 
+/**
+ * Length of an inclusive date range in months, where each calendar month
+ * contributes the fraction of its own length that the range covers. A whole
+ * calendar month is exactly 1.0, so ranges made of whole months are unchanged;
+ * a part month (1 Sep to 7 Sep) comes out below 1, which is what stops a few
+ * days of trading being read as a full month.
+ */
 function monthsBetween(from: Date, to: Date) {
-  const months =
-    (to.getFullYear() - from.getFullYear()) * 12 +
-    (to.getMonth() - from.getMonth()) +
-    (to.getDate() >= from.getDate() ? 1 : 0);
-  const ms = to.getTime() - from.getTime();
-  const fractional = ms / (1000 * 60 * 60 * 24 * 30.4375);
-  return Math.max(0.1, Math.max(months, fractional));
+  if (to < from) return 0.1;
+  let total = 0;
+  let y = from.getFullYear();
+  let m = from.getMonth();
+  while (y < to.getFullYear() || (y === to.getFullYear() && m <= to.getMonth())) {
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const monthStart = new Date(y, m, 1).getTime();
+    const monthEnd = new Date(y, m, daysInMonth).getTime();
+    const coverFrom = Math.max(monthStart, new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime());
+    const coverTo = Math.min(monthEnd, new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime());
+    total += (Math.round((coverTo - coverFrom) / 86_400_000) + 1) / daysInMonth;
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  return Math.max(0.1, total);
 }
+
 
 export function useBreakevenData({
   tenantId,
