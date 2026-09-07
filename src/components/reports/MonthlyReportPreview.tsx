@@ -221,10 +221,13 @@ export function MonthlyReportPreview({
   payload,
   status,
   version,
+  showWarnings = false,
 }: {
   payload: MonthlyReportPayload;
   status?: string;
   version?: number;
+  /** Preparer-facing mapping notes. Default hidden so any new caller is client-safe. */
+  showWarnings?: boolean;
 }) {
   const m = payload.meta;
   const shownFailures = renderableFailedSections(payload);
@@ -282,9 +285,10 @@ export function MonthlyReportPreview({
       ) : null}
 
       {/* Preparer-facing mapping notes. These sit BELOW the verdict: they are
-          about how Xero returned the data, not about the business. Page one
-          must be read first. Do not move this above the verdict. */}
-      {(payload.warnings ?? []).length > 0 && (
+           about how Xero returned the data, not about the business. Page one
+           must be read first. Do not move this above the verdict. Hidden on
+           the client-facing token route unless the caller explicitly opts in. */}
+      {showWarnings && (payload.warnings ?? []).length > 0 && (
         <div className="rounded-2xl border border-border bg-muted/40 p-4 text-sm">
           <p className="font-medium">Worth knowing about this report</p>
           <ul className="mt-2 space-y-1 text-muted-foreground">
