@@ -101,18 +101,19 @@ export function FirmXeroFilesCard({
             Xero organisations
           </h2>
           <p className="mt-1 text-xs text-muted-foreground">
-            Files already linked to this organisation. Reconnecting refreshes their permissions —
-            it never links anything new.
+            {files.length === 1
+              ? "One Xero file linked to this organisation. Reconnecting refreshes its permissions — it never links anything new."
+              : "Xero files linked to this organisation. Reconnecting refreshes their permissions — it never links anything new."}
           </p>
         </div>
-        {files.length > 1 && (
+        {files.length >= 1 && (
           <Button variant="outline" size="sm" onClick={() => setConfirmOpen(true)} disabled={starting}>
             {starting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="mr-2 h-4 w-4" />
             )}
-            Reconnect all Xero files
+            Reconnect Xero file{files.length === 1 ? "" : "s"}
           </Button>
         )}
       </div>
@@ -155,11 +156,13 @@ export function FirmXeroFilesCard({
       <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Reconnect all Xero files</AlertDialogTitle>
+            <AlertDialogTitle>
+              {files.length === 1 ? "Reconnect Xero file" : "Reconnect Xero files"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              You'll be sent to Xero's consent screen. Tick <strong>all {files.length}</strong>{" "}
-              organisations you want reconnected — anything you leave unticked will not be
-              refreshed, and you'd need to run this again. Nothing new is linked either way.
+              {files.length === 1
+                ? "You'll be sent to Xero's consent screen. Tick the organisation to refresh its permissions. Nothing new is linked."
+                : `You'll be sent to Xero's consent screen. Tick the ${files.length} organisations you want reconnected — anything left unticked will not be refreshed, and you'd need to run this again. Nothing new is linked either way.`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
