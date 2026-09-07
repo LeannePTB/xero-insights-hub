@@ -102,12 +102,7 @@ export function PnlWidget({
         </div>
       </div>
 
-      <DateRangeControls
-        fromDate={fromDate}
-        toDate={toDate}
-        onFromChange={setFromDate}
-        onToChange={setToDate}
-      />
+      <PeriodSelect value={period} onChange={setPeriod} monthsBack={6} />
 
       {!shouldLoad ? (
         <XeroLoadPrompt
