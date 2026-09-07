@@ -277,7 +277,7 @@ function pickAlert(h: {
       },
     });
   }
-  if (h.netMarginPct < 0) {
+  if (h.netMarginPct < 0 && !h.suppressLossAlert) {
     candidates.push({
       weight: 40 + Math.abs(h.netMarginPct),
       alert: {
