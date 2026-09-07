@@ -62,6 +62,35 @@ export function usePersistedDate(
   return [date, setDate];
 }
 
+/**
+ * The four range cards (Business Health, Profit & Loss, Cash Flow,
+ * Break-Even) no longer persist their range — every page load starts on the
+ * default. This removes any values an earlier version left in sessionStorage
+ * so nobody is left with a stranded old choice. Idempotent and cheap; each
+ * card calls it once on mount.
+ */
+const LEGACY_RANGE_KEY_PREFIXES = [
+  "health:from:",
+  "health:to:",
+  "pnl-range:",
+  "cashflow-range:",
+  "breakeven-range:",
+];
+export function clearLegacyRangeStorage() {
+  if (typeof window === "undefined") return;
+  try {
+    const ss = window.sessionStorage;
+    const toRemove: string[] = [];
+    for (let i = 0; i < ss.length; i++) {
+      const k = ss.key(i);
+      if (k && LEGACY_RANGE_KEY_PREFIXES.some((p) => k.startsWith(p))) {
+        toRemove.push(k);
+      }
+    }
+    toRemove.forEach((k) => ss.removeItem(k));
+  } catch {}
+}
+
 export function DateField({
   label,
   value,
