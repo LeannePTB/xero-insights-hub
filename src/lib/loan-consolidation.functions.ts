@@ -111,6 +111,7 @@ async function firmMemberRole(
     .select("role")
     .eq("user_id", userId)
     .eq("firm_id", firmId)
+    .eq("status", "active")
     .maybeSingle();
   return (data?.role as string | undefined) ?? null;
 }

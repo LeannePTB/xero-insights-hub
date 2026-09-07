@@ -37,6 +37,7 @@ export async function computeFirmAccess(userId: string): Promise<FirmAccessState
     .from("firm_members")
     .select("firm_id, role")
     .eq("user_id", userId)
+    .eq("status", "active")
     .order("created_at", { ascending: true })
     .limit(1)
     .maybeSingle();

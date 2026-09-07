@@ -52,7 +52,7 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
       (supabaseAdmin as any).from("subscriptions").select("firm_id, tier, status, trial_ends_at, current_period_end, client_limit_override").in("firm_id", firmIds),
       (supabaseAdmin as any).from("clients").select("firm_id").in("firm_id", firmIds),
       (supabaseAdmin as any).from("firms").select("id, is_always_free").in("id", firmIds),
-      (supabaseAdmin as any).from("firm_members").select("firm_id").eq("user_id", context.userId),
+      (supabaseAdmin as any).from("firm_members").select("firm_id").eq("user_id", context.userId).eq("status", "active"),
     ]);
     const { data: planRows } = await (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
     const catalogue = firmLimitCatalogue(planRows);
@@ -101,7 +101,8 @@ export const listMyFirms = createServerFn({ method: "GET" })
     const { data, error } = await context.supabase
       .from("firm_members")
       .select("firm_id, firms(id, name)")
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .eq("status", "active");
     if (error) throw new Error(error.message);
     const firms = ((data ?? []) as any[])
       .map((r) => r.firms)
@@ -161,6 +162,7 @@ export const getMyFirm = createServerFn({ method: "POST" })
       .select("firm_id")
       .eq("user_id", context.userId)
       .eq("firm_id", data.firmId)
+      .eq("status", "active")
       .maybeSingle();
     let db: any = context.supabase;
     if (!membership) {

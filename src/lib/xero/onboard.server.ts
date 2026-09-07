@@ -56,6 +56,7 @@ export async function assertFirmCanAddClient(firmId: string, userId: string) {
       .select("id")
       .eq("firm_id", firmId)
       .eq("user_id", userId)
+      .eq("status", "active")
       .limit(1)
       .maybeSingle(),
     supabaseAdmin

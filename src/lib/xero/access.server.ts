@@ -41,6 +41,7 @@ export async function getEffectiveTier(
       .select("user_id")
       .eq("user_id", userId)
       .eq("firm_id", firmId)
+      .eq("status", "active")
       .maybeSingle();
     if (member) return { isAdvisor: true, tier: "investigate", clientId };
   }

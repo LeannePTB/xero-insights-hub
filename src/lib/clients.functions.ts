@@ -27,6 +27,7 @@ export const listClients = createServerFn({ method: "POST" })
         .from("firm_members")
         .select("firm_id")
         .eq("user_id", context.userId)
+        .eq("status", "active")
         .order("created_at", { ascending: true });
       const myFirms = ((memberships ?? []) as any[]).map((m) => m.firm_id as string);
       if (firmId && !myFirms.includes(firmId)) throw new Error("Not a member of that business.");
@@ -288,6 +289,7 @@ export const createClient = createServerFn({ method: "POST" })
         .select("firm_id")
         .eq("user_id", context.userId)
         .eq("firm_id", firmId)
+        .eq("status", "active")
         .maybeSingle();
       if (!membership) {
         const { data: superRow } = await context.supabase
@@ -303,6 +305,7 @@ export const createClient = createServerFn({ method: "POST" })
         .from("firm_members")
         .select("firm_id")
         .eq("user_id", context.userId)
+        .eq("status", "active")
         .order("created_at", { ascending: true })
         .limit(1)
         .maybeSingle();
