@@ -95,28 +95,44 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
 
       {q.data && (
         <>
+          {q.data.partPeriod.isPartPeriod && (
+            <p className="mt-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              This period is still running, so these figures cover part of the month
+              only. They will settle as the rest of the month is invoiced, paid and
+              reconciled.
+              {q.data.partPeriod.suppressVerdict &&
+                " It is too early in the month to give an overall verdict, so the wording below is held back until there are at least two weeks of figures."}
+            </p>
+          )}
           <div className="mt-4 flex flex-wrap items-center gap-5">
             <HealthScoreDonut score={q.data.score} band={q.data.band} />
             <div className="min-w-0 flex-1">
               <p
                 className={
                   "font-display text-lg font-semibold " +
-                  (q.data.band === "strong"
-                    ? "text-foreground"
-                    : q.data.band === "watch"
-                      ? "text-amber-700 dark:text-amber-400"
-                      : "text-destructive")
+                  (q.data.partPeriod.suppressVerdict
+                    ? "text-muted-foreground"
+                    : q.data.band === "strong"
+                      ? "text-foreground"
+                      : q.data.band === "watch"
+                        ? "text-amber-700 dark:text-amber-400"
+                        : "text-destructive")
                 }
               >
-                {q.data.label}
+                {q.data.partPeriod.suppressVerdict
+                  ? "Too early in the month to call"
+                  : q.data.label}
               </p>
-              <p className="mt-1 text-sm text-muted-foreground">{q.data.summary}</p>
+              {!q.data.partPeriod.suppressVerdict && (
+                <p className="mt-1 text-sm text-muted-foreground">{q.data.summary}</p>
+              )}
               <CardFreshness
                 className="mt-2"
                 from={fromDate}
                 to={toDate}
                 updatedAt={q.dataUpdatedAt}
               />
+
               {q.data.alert && (
                 <div
                   className={
