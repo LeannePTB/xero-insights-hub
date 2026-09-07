@@ -371,6 +371,18 @@ export type BusinessHealthDetail = {
   label: string;
   summary: string;
   alert: BusinessHealth["alert"];
+  /**
+   * Display guard. `isPartPeriod` = the range ends before the last day of its
+   * month, so the figures are still settling. `suppressVerdict` = that, and
+   * under 14 days, so verdict wording and the loss alarm are held back.
+   */
+  partPeriod: {
+    isPartPeriod: boolean;
+    days: number;
+    suppressVerdict: boolean;
+    periodEnd: string;
+  };
+
   drivers: HealthDrivers;
   pillars: Pillar[];
 };
