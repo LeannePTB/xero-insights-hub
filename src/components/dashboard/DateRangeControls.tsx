@@ -14,6 +14,20 @@ export function toISO(d: Date) {
   return `${y}-${m}-${day}`;
 }
 
+/**
+ * Default range for live cards: the last COMPLETED calendar month. A part-month
+ * default made mid-month logins look like a collapse against a full prior
+ * month. Only used when nothing is saved for this card.
+ */
+export function startOfLastCompletedMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth() - 1, 1);
+}
+export function endOfLastCompletedMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 0);
+}
+
 export function usePersistedDate(
   key: string,
   fallback: () => Date,

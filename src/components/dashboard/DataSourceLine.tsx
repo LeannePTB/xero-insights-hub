@@ -52,7 +52,7 @@ export function DataSourceLine({
   } else if (source.mode === "live") {
     rows.push(
       <span key="live" className="text-muted-foreground">
-        Live from Xero · fetched {fmtAgo(source.fetchedAt)}
+        As at today · figures pulled {fmtAgo(source.fetchedAt)}
       </span>,
     );
   } else if (source.stale) {
@@ -60,7 +60,7 @@ export function DataSourceLine({
       <span key="stale" className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
         <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
         <span>
-          Figures may be out of date — as at {fmtDate(source.asAt)} · last updated{" "}
+          Figures may be out of date — as at {fmtDate(source.asAt)} · figures pulled{" "}
           {fmtAgo(source.fetchedAt)}. Refresh to update.
         </span>
       </span>,
@@ -68,7 +68,7 @@ export function DataSourceLine({
   } else {
     rows.push(
       <span key="fresh" className="text-muted-foreground">
-        As at {fmtDate(source.asAt)} · updated {fmtAgo(source.fetchedAt)}
+        As at {fmtDate(source.asAt)} · figures pulled {fmtAgo(source.fetchedAt)}
       </span>,
     );
   }

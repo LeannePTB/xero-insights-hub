@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoadState";
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import { DateRangeControls } from "@/components/dashboard/DateRangeControls";
+import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { cn } from "@/lib/utils";
 import { useBreakevenData, fmtAUD, fmtPct } from "@/components/dashboard/useBreakevenData";
 
@@ -36,9 +37,11 @@ export function BreakevenWidget({
             <Target className="h-4 w-4 text-primary" /> Accounting Break-Even
             <BasisBadge basis={basis} />
           </h3>
-          <p className="text-xs text-muted-foreground">
-            Period: {s.fromStr} → {s.toStr} ({s.months.toFixed(1)} mo)
-          </p>
+          <CardFreshness
+            from={s.fromDate}
+            to={s.toDate}
+            updatedAt={s.data ? s.updatedAt : null}
+          />
         </div>
         <Button variant="ghost" size="sm" onClick={() => { s.setShouldLoad(true); s.refetch(); }} disabled={s.isFetching} title="Refresh">
           <RefreshCw className={`h-4 w-4 ${s.isFetching ? "animate-spin" : ""}`} />

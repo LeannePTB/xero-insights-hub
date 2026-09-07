@@ -5,16 +5,14 @@ import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { listCostClassifications } from "@/lib/cost-classification.functions";
 import { getExpenseAccounts } from "@/lib/xero/accounts.functions";
 import { buildClassificationResolver } from "@/lib/cost-classification";
-import { usePersistedDate, toISO } from "@/components/dashboard/DateRangeControls";
+import {
+  usePersistedDate,
+  toISO,
+  startOfLastCompletedMonth,
+  endOfLastCompletedMonth,
+} from "@/components/dashboard/DateRangeControls";
 
-function startOfThisMonth() {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth(), 1);
-}
-function endOfThisMonth() {
-  const d = new Date();
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
-}
+
 function monthsBetween(from: Date, to: Date) {
   const months =
     (to.getFullYear() - from.getFullYear()) * 12 +
@@ -40,8 +38,8 @@ export function useBreakevenData({
   const fetchClassifications = useServerFn(listCostClassifications);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
   const storageKey = `breakeven-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfThisMonth);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfThisMonth);
+  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfLastCompletedMonth);
+  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, endOfLastCompletedMonth);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
@@ -139,6 +137,7 @@ export function useBreakevenData({
     isFetching: pnlQ.isFetching,
     error: pnlQ.error,
     refetch: pnlQ.refetch,
+    updatedAt: pnlQ.dataUpdatedAt,
     data,
     income,
     cogs,
