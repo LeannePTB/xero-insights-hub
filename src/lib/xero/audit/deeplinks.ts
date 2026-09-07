@@ -1,29 +1,49 @@
-// Build Xero deep links for finding entities. Xero's go.xero.com URLs require
-// the shortCode to switch tenants. When we don't have it, fall back to a path
-// that prompts the user to pick the org first.
+// Xero deep links, copied from Xero's own published link builders in their
+// official MCP server (XeroAPI/xero-mcp-server, src/consts/deeplinks.ts).
+// Do not invent paths here — if Xero does not publish one, we do not link.
 //
-// Paths here must match the ones Xero actually serves (the same ones used by
-// src/lib/xero/loan-account-link.ts). Edit pages reject approved documents, so
-// always link to the View page.
-export function xeroDeepLink(entityType: string | null, entityId: string | null, shortCode?: string | null): string | null {
+// Every documented pattern except manual journals needs the organisation
+// shortCode, so without one we return null and the button is not rendered.
+// A missing button is better than a broken one.
+
+function orgLogin(shortCode: string, redirectPath: string): string {
+  return `https://go.xero.com/organisationlogin/default.aspx?shortcode=${shortCode}&redirecturl=${redirectPath}`;
+}
+
+export function xeroDeepLink(
+  entityType: string | null,
+  entityId: string | null,
+  shortCode?: string | null,
+): string | null {
   if (!entityType || !entityId) return null;
   const id = encodeURIComponent(entityId);
-  const path = (() => {
-    switch (entityType) {
-      case "Account": return `/GeneralLedger/AccountDetails.aspx?accID=${id}`;
-      case "Invoice": return `/AccountsReceivable/View.aspx?InvoiceID=${id}`;
-      case "Bill": return `/AccountsPayable/View.aspx?InvoiceID=${id}`;
-      case "CreditNote": return `/AccountsReceivable/ViewCreditNote.aspx?creditNoteID=${id}`;
-      case "Contact": return `/Contacts/View/${id}`;
-      case "Payment": return `/Bank/ViewTransaction.aspx?paymentID=${id}`;
-      default: return null;
-    }
-  })();
-  if (!path) return null;
-  if (shortCode) {
-    return `https://go.xero.com/organisationlogin/default.aspx?shortcode=${encodeURIComponent(
-      shortCode,
-    )}&redirecturl=${encodeURIComponent(path)}`;
+
+  // Manual journals are the one pattern Xero publishes without a shortCode.
+  if (entityType === "ManualJournal") {
+    return `https://go.xero.com/Journal/View.aspx?invoiceID=${id}`;
   }
-  return `https://go.xero.com${path}`;
+
+  if (!shortCode) return null;
+  const sc = shortCode;
+
+  switch (entityType) {
+    case "Invoice":
+      return `https://go.xero.com/app/${encodeURIComponent(sc)}/invoicing/view/${id}`;
+    case "Contact":
+      return `https://go.xero.com/app/${encodeURIComponent(sc)}/contacts/contact/${id}`;
+    case "Quote":
+      return `https://go.xero.com/app/${encodeURIComponent(sc)}/quotes/view/${id}`;
+    case "CreditNote":
+      return orgLogin(sc, `/AccountsPayable/ViewCreditNote.aspx?creditNoteID=${id}`);
+    case "Payment":
+      return orgLogin(sc, `/Bank/ViewTransaction.aspx?bankTransactionID=${id}`);
+    case "Bill":
+      return orgLogin(sc, `/AccountsPayable/Edit.aspx?InvoiceID=${id}`);
+    // Not in Xero's published list. Kept on the long-standing general ledger
+    // account page, wrapped in the documented organisationlogin switcher.
+    case "Account":
+      return orgLogin(sc, `/GeneralLedger/AccountDetails.aspx?accID=${id}`);
+    default:
+      return null;
+  }
 }
