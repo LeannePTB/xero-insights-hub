@@ -13,10 +13,11 @@ import {
   fetchBalanceSheet,
   inPeriod,
   pageAll,
-  periodFor,
+  rangeFor,
   round2,
   xeroDateIso,
   xeroDateLiteral,
+  type ReconWindow,
   type XeroAccount,
 } from "./recon-shared.server";
 
@@ -30,6 +31,7 @@ export type GstTransaction = {
 
 export type GstResult = {
   asAt: string;
+  window: ReconWindow;
   periodFrom: string;
   periodTo: string;
   controlAccountName: string | null;
@@ -51,9 +53,10 @@ const NEAR_ZERO = 0.005;
 export async function computeGstReconciliation(
   conn: Connection,
   asAt: string,
+  window: ReconWindow = "month",
 ): Promise<GstResult> {
   const { xeroGet } = await import("./api.server");
-  const { from, to, priorEnd } = periodFor(asAt);
+  const { from, to, priorEnd } = rangeFor(asAt, window);
   const issues: string[] = [];
   let complete = true;
 
@@ -221,6 +224,7 @@ export async function computeGstReconciliation(
 
   return {
     asAt,
+    window,
     periodFrom: from,
     periodTo: to,
     controlAccountName: control?.Name ?? null,

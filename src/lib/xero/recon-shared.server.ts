@@ -43,6 +43,25 @@ export function errText(e: unknown) {
   return e instanceof Error ? e.message : String(e ?? "Unknown error");
 }
 
+/** The window a reconciliation covers. `month` is the historical behaviour and
+ *  the only one the other reconciliation cards use. */
+export type ReconWindow = "month" | "quarter";
+
+/** Explicit from/to range for a GST window ending on `asAt`. Monthly windows
+ *  are identical to `periodFor`; quarterly windows span the whole calendar
+ *  quarter (the Australian BAS quarters align to these). */
+export function rangeFor(asAt: string, window: ReconWindow): { from: string; to: string; priorEnd: string } {
+  if (window === "month") return periodFor(asAt);
+  const end = new Date(`${asAt}T00:00:00Z`);
+  const from = new Date(Date.UTC(end.getUTCFullYear(), Math.floor(end.getUTCMonth() / 3) * 3, 1));
+  const prior = new Date(from.getTime() - 86_400_000);
+  return {
+    from: from.toISOString().slice(0, 10),
+    to: asAt,
+    priorEnd: prior.toISOString().slice(0, 10),
+  };
+}
+
 /** First day of the month containing `asAt`, and the day before it. */
 export function periodFor(asAt: string): { from: string; to: string; priorEnd: string } {
   const to = new Date(`${asAt}T00:00:00Z`);
