@@ -30,6 +30,7 @@ export type FirmSubscriptionView = {
   clientLimit: number;
   plans: FirmSubscriptionPlanOption[];
   canManage: boolean;
+  canChangePlan: boolean;
   isOwner: boolean;
   isSuperAdmin: boolean;
 };
@@ -138,6 +139,8 @@ export const getFirmSubscription = createServerFn({ method: "POST" })
       }),
       plans,
       canManage: access.isOwner || access.isSuperAdmin,
+      // Plan switching is super-admin only until a real payment path exists.
+      canChangePlan: access.isSuperAdmin,
       isOwner: access.isOwner,
       isSuperAdmin: access.isSuperAdmin,
     };

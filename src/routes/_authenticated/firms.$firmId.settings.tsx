@@ -124,6 +124,7 @@ function FirmSettingsPage() {
   const endLabel = fmtDate(view.subscription.currentPeriodEnd);
   const pendingCancel = view.subscription.cancelAtPeriodEnd;
   const canManage = view.canManage;
+  const canChangePlan = view.canChangePlan;
 
   const doChange = async (planKey: string) => {
     setBusy(planKey);
@@ -382,7 +383,7 @@ function FirmSettingsPage() {
                   )}
                 </ul>
 
-                {canManage && !current && (
+                {canChangePlan && !current && (
                   <Button
                     size="sm"
                     variant="outline"
