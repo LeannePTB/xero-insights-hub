@@ -5,7 +5,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const TENANT_ID = "7a684121-3a8f-4162-aef9-d176b55571a1";
 
-export const Route = createFileRoute("/api/public/_tmp-batch-probe")({
+export const Route = createFileRoute("/api/public/tmp-batch-probe")({
   server: {
     handlers: {
       GET: async () => {
