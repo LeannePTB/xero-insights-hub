@@ -138,7 +138,7 @@ export const getClient = createServerFn({ method: "POST" })
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     const SELECT =
-      "id, name, owner_user_id, firm_id, report_basis, basis_overrides, max_xero_orgs, consolidation_mode, consolidation_org_ids, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name, status, disconnected_at))";
+      "id, name, owner_user_id, firm_id, report_basis, max_xero_orgs, consolidation_mode, consolidation_org_ids, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name, status, disconnected_at))";
     const { data: client, error } = await context.supabase
       .from("clients")
       .select(SELECT)
@@ -440,36 +440,6 @@ export const updateClientReportBasis = createServerFn({ method: "POST" })
       .eq("id", data.clientId);
     if (error) throw new Error(error.message);
     return { ok: true };
-  });
-
-export type BasisOverrideWidget =
-  | "tax_liability"
-  | "pnl"
-  | "superannuation"
-  | "payables"
-  | "receivables"
-  | "accounting_breakeven"
-  | "true_breakeven"
-  | "cashflow";
-
-export const updateClientBasisOverride = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((i: { clientId: string; widget: BasisOverrideWidget; enabled: boolean }) => i)
-  .handler(async ({ data, context }) => {
-    const { data: row, error: readErr } = await context.supabase
-      .from("clients")
-      .select("basis_overrides")
-      .eq("id", data.clientId)
-      .maybeSingle();
-    if (readErr) throw new Error(readErr.message);
-    const current = (row?.basis_overrides as Record<string, boolean> | null) ?? {};
-    const next = { ...current, [data.widget]: data.enabled };
-    const { error } = await context.supabase
-      .from("clients")
-      .update({ basis_overrides: next })
-      .eq("id", data.clientId);
-    if (error) throw new Error(error.message);
-    return { overrides: next };
   });
 
 export const attachXeroOrg = createServerFn({ method: "POST" })
