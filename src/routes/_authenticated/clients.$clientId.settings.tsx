@@ -18,7 +18,7 @@ import {
   setClientXeroAllowance,
 } from "@/lib/clients.functions";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
-import { FIXED_CARD_BASIS, FIXED_CARD_BASIS_LABELS, basisLabel } from "@/lib/report-basis";
+import { basisLabel } from "@/lib/report-basis";
 import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
 import { listTierConfig, saveClientTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
@@ -503,7 +503,7 @@ function ClientSettings() {
         </Section>
 
         {/* Report basis */}
-        <Section title="Report basis" collapsible>
+        <Section title="Profit &amp; Loss basis" collapsible>
           <ReportBasisSection
             clientId={clientId}
             clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
@@ -1192,10 +1192,11 @@ function BasisSelectRow({ clientId, current }: { clientId: string; current: Repo
 }
 
 /**
- * Report basis card. The default comes from the Xero file's sales tax basis;
+ * Profit & Loss basis. The default comes from the Xero file's sales tax basis;
  * the client's basis can override it because a file's GST basis is not
- * necessarily its reporting basis. Only Profit & Loss keeps a per-card choice —
- * every other card has one correct basis, stated here as a fact.
+ * necessarily the basis its P&L is prepared on. Every other card has one
+ * correct basis, fixed in report-basis.ts. The control is only rendered where
+ * the two can genuinely differ.
  */
 function ReportBasisSection({
   clientId,
