@@ -324,7 +324,7 @@ function ReportsPage() {
                       <td className="py-2 pr-3">{fmtDate(r.period_end)}</td>
                       <td className="py-2 pr-3 tabular-nums">
                         v{r.version}
-                        {isStalePayload(r) && (
+                        {isAdvisor && isStalePayload(r) && (
                           <span
                             className="ml-2 rounded-full border border-destructive/40 bg-destructive/5 px-2 py-0.5 text-[10px] font-medium text-destructive"
                             title={`Calculated with payload v${r.payload_version ?? 0}; current is v${MONTHLY_REPORT_PAYLOAD_VERSION}.`}
@@ -334,8 +334,8 @@ function ReportsPage() {
                         )}
                       </td>
                       <td className="py-2 pr-3 capitalize">{r.status}</td>
-                      <td className="py-2 pr-3">{r.complete ? "Yes" : "No"}</td>
-                      <td className="py-2 pr-3">{r.generated_by_name}</td>
+                      {isAdvisor && <td className="py-2 pr-3">{r.complete ? "Yes" : "No"}</td>}
+                      {isAdvisor && <td className="py-2 pr-3">{r.generated_by_name}</td>}
                       <td className="py-2 pr-3">{fmtDate(r.generated_at)}</td>
                       <td className="py-2">
                         <div className="flex flex-wrap justify-end gap-1">
