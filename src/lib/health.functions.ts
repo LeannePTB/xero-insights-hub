@@ -93,6 +93,14 @@ export function monthsInRange(fromISO: string, toISO: string): number {
   return Math.max(1 / 31, total);
 }
 
+/** "2025-09-07" -> "7 Sep 2025". Labels only; never used in a calculation. */
+function fmtDayLabel(iso: string): string {
+  const d = new Date(`${iso}T00:00:00Z`);
+  if (isNaN(d.getTime())) return iso;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${d.getUTCDate()} ${months[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+
+
 
 
 function summarisePnl(report: any) {
