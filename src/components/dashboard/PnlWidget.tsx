@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -10,8 +10,8 @@ import { XeroErrorNotice, XeroLoadPrompt } from "@/components/dashboard/XeroLoad
 import { BasisBadge } from "@/components/dashboard/BasisBadge";
 import {
   DateRangeControls,
+  clearLegacyRangeStorage,
   toISO,
-  usePersistedDate,
   startOfCurrentMonth,
   today,
 } from "@/components/dashboard/DateRangeControls";
@@ -44,11 +44,12 @@ export function PnlWidget({
 }) {
   const fetchPnl = useServerFn(getProfitAndLoss);
   const currency = useTenantCurrency(tenantId);
-  const fmt = (n: number) => formatMoney(n, currency);
   const [shouldLoad, setShouldLoad] = useState(loadDelayMs <= 0);
-  const storageKey = `pnl-range:${tenantId}`;
-  const [fromDate, setFromDate] = usePersistedDate(`${storageKey}:from`, startOfCurrentMonth);
-  const [toDate, setToDate] = usePersistedDate(`${storageKey}:to`, today);
+  // Range is deliberately not persisted: every page load opens on the
+  // default (1st of the current month → today).
+  const [fromDate, setFromDate] = useState<Date>(startOfCurrentMonth);
+  const [toDate, setToDate] = useState<Date>(today);
+  useEffect(clearLegacyRangeStorage, []);
 
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
@@ -72,12 +73,6 @@ export function PnlWidget({
 
   const current = data?.current;
   const priorData = data?.prior;
-
-  const expenseData = (current?.expenseLines ?? []).slice(0, 6).map((e) => ({
-    name: e.name.length > 18 ? e.name.slice(0, 18) + "…" : e.name,
-    amount: e.amount,
-  }));
-  const maxExpense = Math.max(...expenseData.map((e) => Math.abs(e.amount)), 1);
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -140,29 +135,6 @@ export function PnlWidget({
             <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
             <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
           </div>
-
-
-          {expenseData.length > 0 && (
-            <div className="mt-6">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Top expense categories
-              </p>
-              <div className="space-y-3">
-                {expenseData.map((expense) => (
-                  <div key={expense.name} className="grid grid-cols-[7rem_1fr_5rem] items-center gap-3 text-xs">
-                    <span className="truncate text-muted-foreground">{expense.name}</span>
-                    <div className="h-2 rounded-full bg-muted">
-                      <div
-                        className="h-2 rounded-full bg-primary"
-                        style={{ width: `${Math.max(6, (Math.abs(expense.amount) / maxExpense) * 100)}%` }}
-                      />
-                    </div>
-                    <span className="text-right font-medium">{fmt(expense.amount)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </>
       ) : null}
     </div>

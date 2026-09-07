@@ -241,7 +241,7 @@ function ClientDashboard() {
       if (widgets.includes("payables"))
         standard.push({ id: `${o.id}:payables`, node: mark("payables", <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} />) });
       if (widgets.includes("pnl"))
-        standard.push({ id: `${o.id}:pnl`, node: mark("pnl", <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} />) });
+        standard.push({ id: `${o.id}:pnl`, fullWidth: true, node: mark("pnl", <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} />) });
       // Tax liabilities and Superannuation are one card: both read the same
       // balance sheet, and two cards could show different as-at dates.
       if (widgets.includes("tax_liability"))
