@@ -192,7 +192,9 @@ function ReportsPage() {
           Monthly management reports
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          {client?.name ?? "Client"} · a report is a point-in-time snapshot; the dashboard stays live.
+          {isAdvisor
+            ? `${client?.name ?? "Client"} · a report is a point-in-time snapshot; the dashboard stays live.`
+            : `${client?.name ?? "Client"} · a snapshot of your business for the period, prepared by Traction Advisory.`}
         </p>
 
         {/* Preview — sits directly under the page title so the period, version and
@@ -203,74 +205,31 @@ function ReportsPage() {
           </p>
         ) : preview ? (
           <section className="mt-6">
-            <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
-              {preview.source === "generated"
-                ? "Preview of the draft just generated"
-                : preview.source === "auto"
-                  ? "Showing the most recent report"
-                  : "Stored report (as generated)"}
-            </p>
+            {isAdvisor && (
+              <p className="mb-3 text-xs uppercase tracking-wider text-muted-foreground">
+                {preview.source === "generated"
+                  ? "Preview of the draft just generated"
+                  : preview.source === "auto"
+                    ? "Showing the most recent report"
+                    : "Stored report (as generated)"}
+              </p>
+            )}
             <MonthlyReportPreview
               payload={preview.payload}
               status={preview.status}
               version={preview.version}
-              showWarnings
+              showWarnings={isAdvisor}
+              showWorkflowDetails={isAdvisor}
             />
           </section>
         ) : null}
 
-        {/* Generate */}
-        <section className="mt-6 rounded-2xl border border-border bg-card p-6">
-          <h2 className="font-display text-lg font-semibold">Generate</h2>
-          <div className="mt-4 flex flex-wrap items-end gap-3">
-            <label className="text-sm">
-              <span className="block text-xs uppercase tracking-wider text-muted-foreground">Period</span>
-              <select
-                className="mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                value={periodEnd}
-                onChange={(e) => setPeriodEnd(e.target.value)}
-              >
-                {periods.map((p) => (
-                  <option key={p.value} value={p.value}>{p.label}</option>
-                ))}
-              </select>
-            </label>
-            {orgs.length > 1 && (
-              <label className="text-sm">
-                <span className="block text-xs uppercase tracking-wider text-muted-foreground">
-                  Xero organisation
-                </span>
-                <select
-                  className="mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                  value={tenantId}
-                  onChange={(e) => setTenantId(e.target.value)}
-                >
-                  <option value="">{orgs[0].tenantName} (default)</option>
-                  {orgs.map((o) => (
-                    <option key={o.tenantId} value={o.tenantId}>{o.tenantName}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-            <Button onClick={() => genMut.mutate(undefined)} disabled={genMut.isPending || !periodEnd}>
-              {genMut.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating…
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4" /> Generate draft
-                </>
-              )}
-            </Button>
-          </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Generating writes a draft. A finalised or sent report is never overwritten — regenerating
-            creates a new version. Current calculation: payload v{MONTHLY_REPORT_PAYLOAD_VERSION}. A
-            draft PDF is watermarked DRAFT; finalising renders the PDF once and it is never
-            regenerated.
-          </p>
-        </section>
+        {/* Generate — preparer-only; the server refuses generation for viewers. */}
+        {isAdvisor && (
+          <section className="mt-6 rounded-2xl border border-border bg-card p-6">
+...
+          </section>
+        )}
 
         {/* Notes */}
         <div className="mt-6">
