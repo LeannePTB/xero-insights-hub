@@ -54,28 +54,50 @@ function quarterStart(d: Date) {
   return new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);
 }
 
-/** GST presets. Monthly options behave exactly as before; the quarter options
- *  now describe a genuine three-month window, not a month wearing a quarter's
- *  label. */
+/** GST presets. In-progress periods end TODAY, not on a future period end, so
+ *  the label can never promise a full month or quarter the figures do not
+ *  cover. Completed periods keep their real end dates. */
 export function gstPeriodOptions(): GstPeriodOption[] {
   const now = new Date();
-  const monthEnds = [
-    new Date(now.getFullYear(), now.getMonth() + 1, 0),
-    new Date(now.getFullYear(), now.getMonth(), 0),
-  ];
-  const opts: GstPeriodOption[] = monthEnds.map((end, i) => {
-    const start = new Date(end.getFullYear(), end.getMonth(), 1);
-    return {
-      value: `month:${iso(end)}`,
-      label: `${i === 0 ? "This month" : "Last month"} — ${format(start, "d MMM")} to ${format(end, "d MMM yyyy")}`,
-      kind: "month" as const,
-      asAt: iso(end),
-      from: iso(start),
-      to: iso(end),
-    };
+  const today = iso(now);
+
+  const opts: GstPeriodOption[] = [];
+
+  // Current month to date.
+  const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  opts.push({
+    value: `month:${today}`,
+    label: `This month (so far) — ${format(thisMonthStart, "d MMM")} to ${format(now, "d MMM yyyy")}`,
+    kind: "month",
+    asAt: today,
+    from: iso(thisMonthStart),
+    to: today,
   });
 
-  // The four Australian BAS quarter ends, most recent first.
+  // Last completed month.
+  const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+  const lastMonthStart = new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth(), 1);
+  opts.push({
+    value: `month:${iso(lastMonthEnd)}`,
+    label: `Last month — ${format(lastMonthStart, "d MMM")} to ${format(lastMonthEnd, "d MMM yyyy")}`,
+    kind: "month",
+    asAt: iso(lastMonthEnd),
+    from: iso(lastMonthStart),
+    to: iso(lastMonthEnd),
+  });
+
+  // Current BAS quarter to date.
+  const thisQuarterStart = quarterStart(now);
+  opts.push({
+    value: `quarter:${today}`,
+    label: `This quarter (so far) — ${format(thisQuarterStart, "d MMM")} to ${format(now, "d MMM yyyy")}`,
+    kind: "quarter",
+    asAt: today,
+    from: iso(thisQuarterStart),
+    to: today,
+  });
+
+  // The four Australian BAS quarter ends, most recent completed first.
   const quarters = [
     { m: 8, d: 30 }, // 30 September
     { m: 11, d: 31 }, // 31 December
@@ -92,8 +114,10 @@ export function gstPeriodOptions(): GstPeriodOption[] {
   ends.sort((a, b) => b.getTime() - a.getTime());
   for (const end of ends.slice(0, 4)) {
     const start = quarterStart(end);
+    const value = `quarter:${iso(end)}`;
+    if (opts.some((o) => o.value === value)) continue;
     opts.push({
-      value: `quarter:${iso(end)}`,
+      value,
       label: `Quarter — ${format(start, "d MMM")} to ${format(end, "d MMM yyyy")}`,
       kind: "quarter",
       asAt: iso(end),
