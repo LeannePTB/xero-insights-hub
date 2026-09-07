@@ -15,10 +15,20 @@ export function toISO(d: Date) {
 }
 
 /**
- * Default range for live cards: the last COMPLETED calendar month. A part-month
- * default made mid-month logins look like a collapse against a full prior
- * month. Only used when nothing is saved for this card.
+ * Default range for live cards: the current month so far (1st → today).
+ * Part-month figures are now day-normalised and the cards say the period is
+ * still running, so the default can show what is happening right now.
+ * Only used when nothing is saved for this card.
  */
+export function startOfCurrentMonth() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+export function today() {
+  return new Date();
+}
+
+/** Kept for any caller that genuinely wants the last completed month. */
 export function startOfLastCompletedMonth() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -27,6 +37,7 @@ export function endOfLastCompletedMonth() {
   const now = new Date();
   return new Date(now.getFullYear(), now.getMonth(), 0);
 }
+
 
 export function usePersistedDate(
   key: string,
