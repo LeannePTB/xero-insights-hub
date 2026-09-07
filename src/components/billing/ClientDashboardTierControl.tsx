@@ -93,7 +93,7 @@ export function ClientDashboardTierControl({ clientId }: { clientId: string }) {
       </div>
       <p className="text-xs text-muted-foreground">
         Sets which dashboard this client sees. The organisation's plan controls capacity and which
-        dashboards are available; billing stays in the Subscription card below.
+        dashboards are available. Billing and entitlement are handled in the Subscription card.
       </p>
     </div>
   );

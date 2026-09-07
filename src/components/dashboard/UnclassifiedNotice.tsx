@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
+import { useIsAdvisor } from "@/hooks/useIsAdvisor";
 
 /**
  * Shown on every card whose figures rest on cost classification. A break-even
@@ -13,6 +14,9 @@ export function UnclassifiedNotice({
   clientId?: string;
   count: number;
 }) {
+  const { isAdvisor } = useIsAdvisor();
+  // Classification is preparer work; the prompt means nothing to a business owner.
+  if (!isAdvisor) return null;
   if (!clientId || count <= 0) return null;
   return (
     <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">

@@ -196,7 +196,7 @@ export function BreakevenWidget({
               </div>
             </details>
 
-            {clientId && s.classificationEnabled && s.unclassifiedCount > 0 && (
+            {isAdvisor && clientId && s.classificationEnabled && s.unclassifiedCount > 0 && (
               <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1">
@@ -219,7 +219,7 @@ export function BreakevenWidget({
               </p>
             )}
 
-            {clientId && (
+            {isAdvisor && clientId && (
               <p className="mt-4 text-[11px] text-muted-foreground">
                 <Link
                   to="/clients/$clientId/settings"

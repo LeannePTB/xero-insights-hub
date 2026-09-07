@@ -1146,7 +1146,7 @@ function CostClassificationSection({
         <CollapsibleContent>
           {!enabled ? (
             <p className="text-sm text-muted-foreground">
-              Cost classification is turned off. The Breakeven widget treats all operating expenses as
+              Cost classification is turned off. Break-Even treats all operating expenses as
               fixed, and Cost of Sales as variable.
             </p>
           ) : linkedOrgs.length === 0 ? (
@@ -1222,7 +1222,7 @@ function ReportBasisSection({
         <p className="mb-3 text-xs text-muted-foreground">
           The default comes from the Xero file. Override it if the client's reports are prepared on
           a different basis — plenty of businesses report GST on cash and have their Profit &amp;
-          Loss prepared on accruals. Viewers don't see any of this.
+          Loss prepared on accruals.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <BasisSelectRow clientId={clientId} current={clientBasis} />
