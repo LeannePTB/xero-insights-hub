@@ -1216,58 +1216,45 @@ function ReportBasisSection({
   const xeroBasis = xeroQ.data?.basis ?? null;
   const xeroRaw = xeroQ.data?.raw ?? null;
 
-  return (
-    <div className="space-y-5">
-      <div>
-        <p className="mb-3 text-xs text-muted-foreground">
-          The default comes from the Xero file. Override it if the client's reports are prepared on
-          a different basis — plenty of businesses report GST on cash and have their Profit &amp;
-          Loss prepared on accruals.
-        </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <BasisSelectRow clientId={clientId} current={clientBasis} />
-          <p className="text-xs text-muted-foreground">
-            {xeroQ.isLoading
-              ? "Reading the basis from Xero…"
-              : xeroBasis
-                ? `From Xero: ${basisLabel(xeroBasis)}`
-                : `Basis could not be read from Xero${xeroRaw ? ` (SalesTaxBasis: ${xeroRaw})` : ""} — defaulting to Accrual`}
-          </p>
-        </div>
-        <p className="mt-2 text-xs font-medium">
-          In force: {basisLabel(clientBasis)}
-          {xeroBasis && xeroBasis !== clientBasis ? " — overrides the Xero basis" : ""}
-        </p>
-      </div>
+  // The control only earns its place where the two can genuinely differ:
+  // Xero says cash, an override is already in force, or Xero's basis could not
+  // be read at all (a file that is not GST registered returns nothing) — an
+  // ambiguous case is better shown than hidden.
+  const unreadable = !xeroQ.isLoading && !xeroBasis;
+  const showControl = xeroBasis === "cash" || (!!xeroBasis && xeroBasis !== clientBasis) || unreadable;
 
-      <div className="border-t border-border pt-4">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          How each card reports
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">
+        This sets the basis for the Profit &amp; Loss card only. The monthly management report is
+        always prepared on accruals, whatever is chosen here.
+      </p>
+
+      {xeroQ.isLoading ? (
+        <p className="text-xs text-muted-foreground">Reading the basis from Xero…</p>
+      ) : showControl ? (
+        <>
+          <p className="text-xs text-muted-foreground">
+            {xeroBasis
+              ? `Xero reports this file as ${basisLabel(xeroBasis)}.`
+              : `The basis could not be read from Xero${xeroRaw ? ` (SalesTaxBasis: ${xeroRaw})` : ""} — this is normal for a file that is not GST registered.`}{" "}
+            Plenty of businesses report GST on cash and have their Profit &amp; Loss prepared on
+            accruals, so set what this client's Profit &amp; Loss is actually prepared on.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <BasisSelectRow clientId={clientId} current={clientBasis} />
+            <p className="text-xs font-medium">
+              In force: {basisLabel(clientBasis)}
+              {xeroBasis && xeroBasis !== clientBasis ? " — overrides the Xero basis" : ""}
+            </p>
+          </div>
+        </>
+      ) : (
+        <p className="text-xs font-medium">
+          Profit &amp; Loss is prepared on {basisLabel(clientBasis)}, matching the Xero file.
         </p>
-        <ul className="divide-y divide-border rounded-lg border border-border bg-background">
-          <li className="px-3 py-2.5">
-            <p className="text-sm font-medium">Profit &amp; Loss</p>
-            <p className="text-xs text-muted-foreground">
-              Follows the client's basis ({basisLabel(clientBasis)})
-            </p>
-          </li>
-          <li className="px-3 py-2.5">
-            <p className="text-sm font-medium">GST Reconciliation</p>
-            <p className="text-xs text-muted-foreground">
-              Follows the GST basis in Xero
-              {xeroBasis ? ` (${basisLabel(xeroBasis)})` : " (not readable — using Accrual)"}
-            </p>
-          </li>
-          {FIXED_CARD_BASIS_LABELS.map((c) => (
-            <li key={c.key} className="px-3 py-2.5">
-              <p className="text-sm font-medium">
-                {c.label} · always {basisLabel(FIXED_CARD_BASIS[c.key])}
-              </p>
-              <p className="text-xs text-muted-foreground">{c.reason}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
+      )}
     </div>
   );
 }
+
