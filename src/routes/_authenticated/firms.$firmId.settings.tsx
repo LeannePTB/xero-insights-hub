@@ -124,6 +124,7 @@ function FirmSettingsPage() {
   const endLabel = fmtDate(view.subscription.currentPeriodEnd);
   const pendingCancel = view.subscription.cancelAtPeriodEnd;
   const canManage = view.canManage;
+  const canChangePlan = view.canChangePlan;
 
   const doChange = async (planKey: string) => {
     setBusy(planKey);
@@ -327,10 +328,13 @@ function FirmSettingsPage() {
 
       {/* Change plan */}
       <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-        <h2 className="text-sm font-medium">Change plan</h2>
+        <h2 className="text-sm font-medium">{canChangePlan ? "Change plan" : "Plans"}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          Pick the plan that suits this organisation. Changes apply straight away.
+          {canChangePlan
+            ? "Pick the plan that suits this organisation. Changes apply straight away."
+            : "Your current plan is marked below. To move to a different plan, contact Positive Traction."}
         </p>
+
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {view.plans.map((p) => {
@@ -382,7 +386,7 @@ function FirmSettingsPage() {
                   )}
                 </ul>
 
-                {canManage && !current && (
+                {canChangePlan && !current && (
                   <Button
                     size="sm"
                     variant="outline"

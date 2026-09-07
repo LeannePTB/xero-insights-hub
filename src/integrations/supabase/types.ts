@@ -2326,6 +2326,10 @@ export type Database = {
         Args: { _client_id: string }
         Returns: undefined
       }
+      change_firm_plan: {
+        Args: { _firm_id: string; _plan_key: string }
+        Returns: undefined
+      }
       check_rate_limit: {
         Args: { _key: string; _max: number; _window_seconds: number }
         Returns: boolean
