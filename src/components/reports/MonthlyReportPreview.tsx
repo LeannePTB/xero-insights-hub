@@ -180,12 +180,16 @@ export function MonthlyReportPreview({
   status,
   version,
   showWarnings = false,
+  showWorkflowDetails = false,
 }: {
   payload: MonthlyReportPayload;
   status?: string;
   version?: number;
   /** Preparer-facing mapping notes. Default hidden so any new caller is client-safe. */
   showWarnings?: boolean;
+  /** Preparer-facing workflow details: version/status/payload line and the
+      draft-comment note. Default hidden so any new caller is client-safe. */
+  showWorkflowDetails?: boolean;
 }) {
   const m = payload.meta;
   const shownFailures = renderableFailedSections(payload);
@@ -207,8 +211,9 @@ export function MonthlyReportPreview({
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
           Generated {fmtDate(m.generatedAt)} by Traction Advisory
-          {version ? ` · Version ${version}` : ""}
-          {status ? ` · ${status}` : ""} · payload v{payload.payloadVersion} · amounts in {m.currency}
+          {showWorkflowDetails && version ? ` · Version ${version}` : ""}
+          {showWorkflowDetails && status ? ` · ${status}` : ""}
+          {showWorkflowDetails ? ` · payload v${payload.payloadVersion}` : ""} · amounts in {m.currency}
         </p>
       </header>
 
@@ -234,7 +239,7 @@ export function MonthlyReportPreview({
 
       {/* A quiet staff-only line while the report is still a draft. It never
           blocks finalising — a month with no comment is normal. */}
-      {status === "draft" && payload.verdict ? (
+      {showWorkflowDetails && status === "draft" && payload.verdict ? (
         <p className="px-1 text-xs text-muted-foreground">
           {payload.verdict.comment
             ? `A comment for ${payload.meta.monthLabel} was found and is included on page one.`
