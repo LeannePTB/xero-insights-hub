@@ -127,13 +127,18 @@ export function PnlWidget({
         <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       ) : current ? (
         <>
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <Kpi label="Income" value={current.totalIncome} previous={priorData?.totalIncome ?? 0} higherIsBetter currency={currency} />
-            <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} currency={currency} />
-            <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} />
-            <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} />
-            <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} />
+          <p className="mt-6 text-[11px] text-muted-foreground">
+            Compared with the same length of time immediately before:{" "}
+            {format(prior.from, "d MMM yyyy")} to {format(prior.to, "d MMM yyyy")}
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <Kpi label="Income" value={current.totalIncome} previous={priorData?.totalIncome ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
+            <Kpi label="Cost of Sales" value={current.totalCostOfSales} previous={priorData?.totalCostOfSales ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+            <Kpi label="Gross Profit" value={current.grossProfit} previous={priorData?.grossProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
+            <Kpi label="Expenses" value={current.totalExpenses} previous={priorData?.totalExpenses ?? 0} higherIsBetter={false} currency={currency} priorLabel={priorLabel} />
+            <Kpi label="Net Profit" value={current.netProfit} previous={priorData?.netProfit ?? 0} higherIsBetter currency={currency} priorLabel={priorLabel} />
           </div>
+
 
           {expenseData.length > 0 && (
             <div className="mt-6">
