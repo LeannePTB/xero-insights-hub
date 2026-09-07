@@ -58,6 +58,43 @@ function fyToDateRange(today: Date): { from: string; to: string; label: string }
   return { from, to, label };
 }
 
+/**
+ * Length of an inclusive date range expressed in months, where each calendar
+ * month contributes the fraction of its own length that the range covers.
+ *
+ * Deliberately NOT a fixed 30.4375-day month: using each month's real length
+ * makes a whole calendar month come out at exactly 1.0, so any range made of
+ * whole months (a month, a quarter, a financial year to a month end) gives
+ * precisely the figure the previous calendar-count arithmetic gave. Part
+ * months are the only thing that moves.
+ */
+export function monthsInRange(fromISO: string, toISO: string): number {
+  const from = new Date(`${fromISO}T00:00:00Z`);
+  const to = new Date(`${toISO}T00:00:00Z`);
+  if (isNaN(from.getTime()) || isNaN(to.getTime()) || to < from) return 1;
+  let total = 0;
+  let y = from.getUTCFullYear();
+  let m = from.getUTCMonth();
+  while (y < to.getUTCFullYear() || (y === to.getUTCFullYear() && m <= to.getUTCMonth())) {
+    const daysInMonth = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+    const monthStart = Date.UTC(y, m, 1);
+    const monthEnd = Date.UTC(y, m, daysInMonth);
+    const coverFrom = Math.max(monthStart, from.getTime());
+    const coverTo = Math.min(monthEnd, to.getTime());
+    const covered = Math.round((coverTo - coverFrom) / 86_400_000) + 1;
+    total += covered / daysInMonth;
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  // One day still has to divide into something sane.
+  return Math.max(1 / 31, total);
+}
+
+
+
 function summarisePnl(report: any) {
   let income = 0;
   let cogs = 0;
