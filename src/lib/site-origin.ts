@@ -31,7 +31,7 @@ function trimTrailingSlashes(value: string) {
 }
 
 /**
- * The canonical origin, with no trailing slash — e.g. `https://tractionadvisory.app`.
+ * The canonical origin, with no trailing slash — e.g. `https://tractionadvisory.com.au`.
  * A function, not a module-scope constant: on Cloudflare Workers env binds at
  * request time, so a module-scope read would resolve to undefined.
  */
@@ -67,7 +67,7 @@ export function xeroCallbackUrl(): string {
   return `${siteOrigin()}/api/public/xero/callback`;
 }
 
-/** Host of the canonical origin, e.g. `tractionadvisory.app`. */
+/** Host of the canonical origin, e.g. `tractionadvisory.com.au`. */
 export function siteHost(): string {
   try {
     return new URL(siteOrigin()).hostname;
