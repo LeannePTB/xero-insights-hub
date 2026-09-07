@@ -1,21 +1,23 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Activity, AlertTriangle, RefreshCw } from "lucide-react";
+import { Activity, AlertTriangle } from "lucide-react";
 import { getBusinessHealthDetail } from "@/lib/health.functions";
 import { useTenantCurrency } from "./useTenantCurrency";
 import { HealthScoreDonut } from "./HealthScoreDonut";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DateRangeControls, usePersistedDate, toISO } from "./DateRangeControls";
+import {
+  DateRangeControls,
+  usePersistedDate,
+  toISO,
+  startOfLastCompletedMonth,
+  endOfLastCompletedMonth,
+} from "./DateRangeControls";
+import { CardFreshness } from "./CardFreshness";
+import { usePersistedDisclosure } from "@/hooks/usePersistedDisclosure";
+import { ChevronDown } from "lucide-react";
 import { HealthPillars } from "./HealthPillars";
 
-function fyStartDefault(): Date {
-  const t = new Date();
-  return new Date(t.getFullYear(), t.getMonth(), 1);
-}
-function endOfThisMonth(): Date {
-  const t = new Date();
-  return new Date(t.getFullYear(), t.getMonth() + 1, 0);
-}
+
 
 type Props = {
   tenantId?: string;
@@ -31,11 +33,15 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
   const currency = useTenantCurrency(tenantId);
   const [fromDate, setFromDate] = usePersistedDate(
     `health:from:${tenantId ?? "none"}`,
-    fyStartDefault,
+    startOfLastCompletedMonth,
   );
   const [toDate, setToDate] = usePersistedDate(
     `health:to:${tenantId ?? "none"}`,
-    endOfThisMonth,
+    endOfLastCompletedMonth,
+  );
+
+  const [detailOpen, setDetailOpen] = usePersistedDisclosure(
+    `health-detail:${tenantId ?? "none"}`,
   );
 
   const q = useQuery({
@@ -105,11 +111,12 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
                 {q.data.label}
               </p>
               <p className="mt-1 text-sm text-muted-foreground">{q.data.summary}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] text-muted-foreground">
-                  <RefreshCw className="h-3 w-3" /> Live from Xero · {formatDate(q.data.asOfDate)}
-                </span>
-              </div>
+              <CardFreshness
+                className="mt-2"
+                from={fromDate}
+                to={toDate}
+                updatedAt={q.dataUpdatedAt}
+              />
               {q.data.alert && (
                 <div
                   className={
@@ -168,7 +175,20 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
             </p>
           </div>
 
-          <HealthPillars pillars={q.data.pillars} clientId={clientId} />
+          <div className="mt-5">
+            <button
+              type="button"
+              onClick={() => setDetailOpen(!detailOpen)}
+              aria-expanded={detailOpen}
+              className="flex w-full items-center justify-between rounded-xl border border-border bg-background/60 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
+            >
+              <span>See the detail</span>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${detailOpen ? "rotate-180" : ""}`}
+              />
+            </button>
+            {detailOpen && <HealthPillars pillars={q.data.pillars} clientId={clientId} />}
+          </div>
         </>
       )}
     </div>
@@ -236,9 +256,4 @@ function Placeholder({ tenantName }: { tenantName?: string }) {
   );
 }
 
-function formatDate(iso: string): string {
-  if (!iso) return "";
-  const d = new Date(`${iso}T00:00:00Z`);
-  if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
-}
+
