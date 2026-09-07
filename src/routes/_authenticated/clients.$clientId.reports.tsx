@@ -363,27 +363,31 @@ function ReportsPage() {
                             )}
                             PDF
                           </Button>
-                          {r.status === "draft" ? (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setToFinalise(r)}
-                            >
-                              <CheckCircle2 className="mr-1 h-3 w-3" /> Finalise
-                            </Button>
-                          ) : (
-                            <Button size="sm" variant="outline" onClick={() => setToSend(r)}>
-                              <Mail className="mr-1 h-3 w-3" /> Email
-                            </Button>
+                          {isAdvisor && (
+                            <>
+                              {r.status === "draft" ? (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setToFinalise(r)}
+                                >
+                                  <CheckCircle2 className="mr-1 h-3 w-3" /> Finalise
+                                </Button>
+                              ) : (
+                                <Button size="sm" variant="outline" onClick={() => setToSend(r)}>
+                                  <Mail className="mr-1 h-3 w-3" /> Email
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => setToDelete(r)}
+                              >
+                                <Trash2 className="mr-1 h-3 w-3" /> Delete
+                              </Button>
+                            </>
                           )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setToDelete(r)}
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" /> Delete
-                          </Button>
                         </div>
                       </td>
                     </tr>
