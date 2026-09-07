@@ -233,7 +233,10 @@ function pickAlert(h: {
   monthsRunway: number | null;
   netMarginPct: number;
   cashInBank: number;
+  /** Display guard: on a very short part period the loss alarm is held back. */
+  suppressLossAlert?: boolean;
 }): BusinessHealth["alert"] {
+
   const badDebtPct = h.revenue > 0 ? (h.badDebts / h.revenue) * 100 : 0;
   const profitable = h.netMarginPct >= 0;
   type Candidate = { weight: number; alert: NonNullable<BusinessHealth["alert"]> };
