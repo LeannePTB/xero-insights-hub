@@ -143,73 +143,27 @@ export const getFirmSubscription = createServerFn({ method: "POST" })
     };
   });
 
-/** Owner (or super admin) switches the organisation onto another plan level. */
+/** Super admin switches the organisation onto another plan level. */
 export const changeFirmPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId: string; planKey: string }) => i)
   .handler(async ({ data, context }): Promise<{ ok: true; tier: string }> => {
-    const access = await resolveAccess(context.supabase, context.userId, data.firmId);
-    if (!access.isOwner && !access.isSuperAdmin) {
-      throw new Error("Only the organisation owner can change the plan.");
-    }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const admin: any = supabaseAdmin;
-
-    const [{ data: level }, { count }, { data: existing }] = await Promise.all([
-      admin
-        .from("plan_levels")
-        .select("key, label, client_limit, enabled")
-        .eq("scope", "firm")
-        .eq("key", data.planKey)
-        .maybeSingle(),
-      admin.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", data.firmId),
-      admin
-        .from("subscriptions")
-        .select("id, tier, status, client_limit_override")
-        .eq("firm_id", data.firmId)
-        .maybeSingle(),
-    ]);
-
-    if (!level || !level.enabled) throw new Error("That plan isn't available.");
-    const clientCount = count ?? 0;
-    if (clientCount > (level.client_limit ?? 0)) {
-      throw new Error(
-        `You have ${clientCount} clients but ${level.label} allows ${level.client_limit}. Remove clients first, or pick a larger plan.`,
-      );
-    }
-
-    const patch = {
-      tier: data.planKey,
-      // Clear a support override so the new plan's own limit applies.
-      client_limit_override: null,
-      cancel_at_period_end: false,
-      status: existing?.status === "canceled" ? "active" : (existing?.status ?? "active"),
-      updated_at: new Date().toISOString(),
-    };
-
-    if (existing) {
-      const { error } = await admin.from("subscriptions").update(patch).eq("id", existing.id);
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await admin
-        .from("subscriptions")
-        .insert({ firm_id: data.firmId, ...patch });
-      if (error) throw new Error(error.message);
-    }
-
-    const { writeAudit } = await import("@/lib/audit.server");
-    await writeAudit({
-      actorUserId: context.userId,
-      firmId: data.firmId,
-      action: "subscription_plan_changed",
-      targetType: "firm",
-      targetId: data.firmId,
-      meta: { from: existing?.tier ?? null, to: data.planKey, by_super_admin: !access.isOwner },
+    // Authorisation, limits, status preservation and the audit row all live in
+    // public.change_firm_plan — this is only a call site.
+    const { error } = await context.supabase.rpc("change_firm_plan", {
+      _firm_id: data.firmId,
+      _plan_key: data.planKey,
     });
+    if (error) {
+      if (error.message.includes("NO_ACCESS")) {
+        throw new Error("Only Positive Traction can change an organisation's plan.");
+      }
+      throw new Error(error.message);
+    }
 
     return { ok: true, tier: data.planKey };
   });
+
 
 /** Owner (or super admin) cancels at period end, or resumes a pending cancellation. */
 export const setFirmCancellation = createServerFn({ method: "POST" })
