@@ -2023,6 +2023,7 @@ export type Database = {
       xero_connections: {
         Row: {
           access_token_enc: string | null
+          authorisation_checked_at: string | null
           base_currency: string | null
           created_at: string
           disconnected_at: string | null
@@ -2042,6 +2043,7 @@ export type Database = {
         }
         Insert: {
           access_token_enc?: string | null
+          authorisation_checked_at?: string | null
           base_currency?: string | null
           created_at?: string
           disconnected_at?: string | null
@@ -2061,6 +2063,7 @@ export type Database = {
         }
         Update: {
           access_token_enc?: string | null
+          authorisation_checked_at?: string | null
           base_currency?: string | null
           created_at?: string
           disconnected_at?: string | null
