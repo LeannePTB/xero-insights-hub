@@ -23,7 +23,6 @@ import { PnlWidget } from "@/components/dashboard/PnlWidget";
 import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
 import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
-import { BalanceSheetReconciliationWidget } from "@/components/dashboard/BalanceSheetReconciliationWidget";
 import { GstReconciliationWidget, type GstCycle } from "@/components/dashboard/GstReconciliationWidget";
 
 
@@ -250,8 +249,6 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("cashflow_scenario"))
         advanced.push({ id: `${o.id}:cashflow_scenario`, node: <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
-      if (widgets.includes("balance_sheet_reconciliation"))
-        advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} loanConsolidationHref={client?.firm_id ? `/firms/${client.firm_id}/loans` : undefined} /> });
       // Structural hide: a non-GST cashbook has no GST ledger.
       if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
         advanced.push({ id: `${o.id}:gst_reconciliation`, node: <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} gstCycle={(client?.gst_cycle as GstCycle | null) ?? null} showWarnings={isAdvisor} /> });

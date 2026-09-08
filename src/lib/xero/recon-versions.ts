@@ -8,7 +8,9 @@
 // BUMP THE NUMBER whenever the shape or the calculation of a report changes.
 
 export const RECON_VERSIONS: Record<string, number> = {
-  // v2: extended from four accounts to every balance sheet account.
+  // The Balance Sheet Reconciliation card was removed, but its saved
+  // calculations were deliberately kept, so its version entry stays too: a
+  // retained payload must never be misread as version 1.
   balance_sheet_reconciliation: 2,
   // v3: PAYG withholding now comes from payroll pay runs in the period, not
   // from the movement on the liability account.
