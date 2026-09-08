@@ -1,5 +1,9 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyContext } from "@/lib/roles.functions";
+import { AdminNavShell } from "@/components/admin/AdminNavShell";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
