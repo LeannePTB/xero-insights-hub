@@ -37,8 +37,9 @@ export function periodOptions(): { value: string; label: string }[] {
   return opts;
 }
 
-/** A GST window: either a calendar month or an Australian BAS quarter. */
-export type GstWindowKind = "month" | "quarter";
+/** A GST window: a calendar month, an Australian BAS quarter, or an
+ *  Australian financial year (1 July – 30 June). */
+export type GstWindowKind = "month" | "quarter" | "year";
 
 export type GstPeriodOption = {
   value: string; // `${kind}:${asAt}` — unique per window, never per date alone
@@ -94,6 +95,17 @@ export function gstPeriodOptions(): GstPeriodOption[] {
     kind: "quarter",
     asAt: today,
     from: iso(thisQuarterStart),
+    to: today,
+  });
+
+  // Current Australian financial year to date (1 July – today).
+  const fyStart = new Date(now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1, 6, 1);
+  opts.push({
+    value: `year:${today}`,
+    label: `This financial year (so far) — ${format(fyStart, "d MMM")} to ${format(now, "d MMM yyyy")}`,
+    kind: "year",
+    asAt: today,
+    from: iso(fyStart),
     to: today,
   });
 

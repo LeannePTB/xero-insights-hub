@@ -14,7 +14,12 @@ import {
 import { ReconAgeNotice } from "@/components/dashboard/ReconAgeNotice";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { getGstReconciliation, type GstResponse } from "@/lib/xero/gst.functions";
-import { money as fmt, gstPeriodOptions } from "@/components/dashboard/recon-periods";
+import {
+  money as fmt,
+  gstPeriodOptions,
+  type GstPeriodOption,
+  type GstWindowKind,
+} from "@/components/dashboard/recon-periods";
 import { usePersistedDisclosure } from "@/hooks/usePersistedDisclosure";
 
 /**
@@ -52,21 +57,43 @@ function netGst(data: GstResponse) {
   return { net: sales - purchases, sales, purchases };
 }
 
+export type GstCycle = "monthly" | "quarterly" | "annual" | "not_registered";
+
+/** The period the card opens on for a lodgement cycle. `null` (cycle not
+ *  set) keeps the long-standing default — the last completed month — and the
+ *  card says so rather than guessing a cycle. */
+function defaultPeriodValue(cycle: GstCycle | null | undefined, options: GstPeriodOption[]) {
+  const want: Record<Exclude<GstCycle, "not_registered">, GstWindowKind> = {
+    monthly: "month",
+    quarterly: "quarter",
+    annual: "year",
+  };
+  const kind = cycle && cycle !== "not_registered" ? want[cycle] : null;
+  if (kind) {
+    // The current-period "to date" option is listed first for each kind.
+    const hit = options.find((o) => o.kind === kind);
+    if (hit) return hit.value;
+  }
+  return options[1]?.value ?? options[0]!.value;
+}
+
 export function GstReconciliationWidget({
   clientId,
   tenantId,
   tenantName,
+  gstCycle = null,
   showWarnings = false,
 }: {
   clientId: string;
   tenantId: string;
   tenantName: string;
+  /** The client's GST lodgement cycle, set on the client settings page. */
+  gstCycle?: GstCycle | null;
   /** Preparer-only surfaces: the balance-based reconciliation and its issues. */
   showWarnings?: boolean;
 }) {
   const options = useMemo(gstPeriodOptions, []);
-  const defaultValue = options[1]?.value ?? options[0]!.value;
-  const [periodValue, setPeriodValue] = useState(defaultValue);
+  const [periodValue, setPeriodValue] = useState(() => defaultPeriodValue(gstCycle, options));
   const selected = options.find((o) => o.value === periodValue) ?? options[0]!;
   const asAt = selected.asAt;
   const window = selected.kind;
@@ -75,11 +102,14 @@ export function GstReconciliationWidget({
     `gst-detail:${clientId}:${tenantId}`,
   );
 
+  const notRegistered = gstCycle === "not_registered";
   const q = useQuery({
     queryKey: ["gst-reconciliation", clientId, tenantId, window, asAt],
     queryFn: () => fetchGst({ data: { clientId, tenantId, asAt, window } }),
     retry: false,
     staleTime: 5 * 60 * 1000,
+    // A client who is not registered for GST has no period to fetch.
+    enabled: !notRegistered,
   });
 
   const [recalculating, setRecalculating] = useState(false);
@@ -107,40 +137,58 @@ export function GstReconciliationWidget({
             Activity statement — GST (indicative)
           </h3>
           <p className="text-xs text-muted-foreground">
-            {data
-              ? `${format(new Date(`${data.periodFrom}T00:00:00`), "d MMM")} – ${format(
-                  new Date(`${data.periodTo}T00:00:00`),
-                  "d MMM yyyy",
-                )}`
-              : `${format(new Date(`${selected.from}T00:00:00`), "d MMM")} – ${format(
-                  new Date(`${selected.to}T00:00:00`),
-                  "d MMM yyyy",
-                )}`}{" "}
+            {notRegistered
+              ? "Goods and services tax"
+              : data
+                ? `${format(new Date(`${data.periodFrom}T00:00:00`), "d MMM")} – ${format(
+                    new Date(`${data.periodTo}T00:00:00`),
+                    "d MMM yyyy",
+                  )}`
+                : `${format(new Date(`${selected.from}T00:00:00`), "d MMM")} – ${format(
+                    new Date(`${selected.to}T00:00:00`),
+                    "d MMM yyyy",
+                  )}`}{" "}
             · a review aid, not a lodgement figure
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={periodValue} onValueChange={setPeriodValue}>
-            <SelectTrigger className="h-8 w-[260px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {data?.canRecalculate && (
-            <Button variant="ghost" size="sm" onClick={recalculate} disabled={recalculating} title="Recalculate">
-              <RefreshCw className={`h-4 w-4 ${recalculating ? "animate-spin" : ""}`} />
-            </Button>
-          )}
-        </div>
+        {!notRegistered && (
+          <div className="flex items-center gap-2">
+            <Select value={periodValue} onValueChange={setPeriodValue}>
+              <SelectTrigger className="h-8 w-[260px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {data?.canRecalculate && (
+              <Button variant="ghost" size="sm" onClick={recalculate} disabled={recalculating} title="Recalculate">
+                <RefreshCw className={`h-4 w-4 ${recalculating ? "animate-spin" : ""}`} />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
-      {q.isLoading || recalculating ? (
+      {!gstCycle && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          No GST lodgement cycle is set for this client, so this card opens on last month. Set the
+          cycle on the client settings page under “GST (business activity statement)” and it will
+          open on the current period instead.
+        </p>
+      )}
+
+      {notRegistered ? (
+        <p className="mt-6 text-sm text-muted-foreground">
+          This client is not registered for GST, so there is no activity statement period to show.
+          If that changes, set the new cycle on the client settings page under “GST (business
+          activity statement)”.
+        </p>
+      ) : q.isLoading || recalculating ? (
         <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Working out this period's GST…
         </div>
