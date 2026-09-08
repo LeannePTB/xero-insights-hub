@@ -134,6 +134,7 @@ export function ruleCoaHygiene(
   accounts: XAccount[],
   shortCode?: string | null,
   balances?: AccountBalances,
+  overrides?: StatutoryOverrides,
 ): Finding[] {
   const out: Finding[] = [];
 
@@ -165,10 +166,20 @@ export function ruleCoaHygiene(
 
   // Suspense / clearing accounts with non-zero balance. The test is on the
   // absolute value, so the Balance Sheet's sign presentation does not matter.
-  const suspectNames = /suspense|clearing|unallocated|ask my accountant|holding/i;
+  //
+  // Whole words only: "Holding account" matches, "PAYG Withholdings Payable"
+  // must not — a substring test read `holding` inside `Withholdings` and
+  // reported a statutory liability as a clearing account.
+  const suspectNames = /\b(?:suspense|clearing|unallocated|ask my accountant|holding)\b/i;
   for (const a of accounts) {
     if ((a.Status ?? "ACTIVE") !== "ACTIVE") continue;
     if (!suspectNames.test(a.Name)) continue;
+    // An account deliberately mapped (or recognised) as GST, PAYG withholding
+    // or superannuation is a statutory account, not a clearing account with a
+    // stray balance. The decision goes through the one resolver, so this rule
+    // and the reports can never disagree.
+    const statutory = classifyTaxLine(a.Name ?? "", a as any, overrides);
+    if (statutory === "gst" || statutory === "payg" || statutory === "super") continue;
     const bal = balanceOf(a, balances);
     if (bal === null) continue;
     if (Math.abs(bal) >= 1) {
