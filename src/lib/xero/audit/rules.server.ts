@@ -362,9 +362,36 @@ type XPayment = {
 /** Duplicate-payment window and severity — the only place these are set. */
 const DUP_WINDOW_DAYS = 7;
 const DUP_WINDOW_MS = DUP_WINDOW_DAYS * 86_400_000;
-const DUP_SEVERITY: Severity = "medium";
+/** Unallocated payments are a housekeeping matter, not a fact. */
+const UNALLOCATED_SEVERITY: Severity = "medium";
+/** An overpayment is a fact, not a suspicion. */
+const OVERPAY_SEVERITY: Severity = "high";
+/** Per-line GST rounding: allow 2c absolute, or 0.5% of the document. */
+const OVERPAY_TOLERANCE_CENTS = 0.02;
+const OVERPAY_TOLERANCE_RATE = 0.005;
+/** Xero accepts up to 100 ids on Invoices?IDs=. */
+export const DOC_TOTALS_BATCH = 100;
 
-export function rulePayments(payments: XPayment[], shortCode?: string | null): Finding[] {
+export type DocTotal = {
+  total: number;
+  amountPaid: number | null;
+  amountCredited: number | null;
+  invoiceNumber: string;
+  type: string;
+};
+/**
+ * Looks up document totals, e.g. Invoices?IDs=a,b,c. Returns only the ids it
+ * could resolve. If it throws, or omits an id, that document is treated as
+ * UNKNOWN and nothing is emitted for it — a false accusation of double payment
+ * is worse than a missed one.
+ */
+export type DocTotalsFetcher = (ids: string[]) => Promise<Map<string, DocTotal>>;
+
+export async function rulePayments(
+  payments: XPayment[],
+  shortCode?: string | null,
+  fetchDocTotals?: DocTotalsFetcher,
+): Promise<Finding[]> {
   const out: Finding[] = [];
 
   type Norm = {
@@ -389,6 +416,7 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
     const d = parseXeroDate(p.Date);
     const amt = Math.round(Number(p.Amount ?? 0) * 100) / 100;
     if (!d || amt <= 0) continue;
+    const type = (p.PaymentType ?? "").toUpperCase();
     norm.push({
       id: p.PaymentID,
       date: d,
@@ -401,8 +429,22 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
       invoiceNumber: p.Invoice?.InvoiceNumber ?? "",
       invoiceType: (p.Invoice?.Type ?? "").toUpperCase(),
       batchId: p.BatchPayment?.BatchPaymentID ?? p.BatchPaymentID ?? "",
-      type: (p.PaymentType ?? "").toUpperCase(),
+      type,
     });
+  }
+
+  // Prepayments and overpayments are their OWN Xero document types, not
+  // invoices. Invoices?IDs= cannot return a total for them, so they can never
+  // be tested here — exclude them from the overpayment test outright rather
+  // than letting them fall through as "total unavailable".
+  const isPrepaidType = (t: string) => t.includes("PREPAYMENT") || t.includes("OVERPAYMENT");
+
+  // Everything ever paid against a document in the fetched window. The
+  // overpayment test is about the document, not about one cluster.
+  const paidByDoc = new Map<string, number>();
+  for (const n of norm) {
+    if (!n.invoiceId || isPrepaidType(n.type)) continue;
+    paidByDoc.set(n.invoiceId, Math.round(((paidByDoc.get(n.invoiceId) ?? 0) + n.amount) * 100) / 100);
   }
 
   // Group by contact + amount + bank account.
@@ -413,76 +455,30 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
     (sameAccountGroups.get(sk) ?? sameAccountGroups.set(sk, []).get(sk)!).push(n);
   }
 
-  const emitted = new Set<string>();
+  // ---- Pass 1: build the clusters and collect the documents worth pricing ----
+  type Candidate = { cluster: Norm[]; docId: string | null };
+  const candidates: Candidate[] = [];
+  const docIds = new Set<string>();
 
-  const emitCluster = (cluster: Norm[]) => {
+  const consider = (cluster: Norm[]) => {
     if (cluster.length < 2) return;
 
-    // One batch payment is a single act of paying, not repetition.
+    // One batch payment is a single act of paying, not repetition. Kept: the
+    // overpayment test does not make it redundant, because a batch can still
+    // contain two lines against the same bill.
     const batchIds = new Set(cluster.map((c) => c.batchId));
     if (batchIds.size === 1 && cluster[0].batchId) return;
 
-    // A genuine double payment settles the SAME document twice. Payments that
-    // each settle a different document are ordinary recurring trade.
     const counts = new Map<string, number>();
-    for (const c of cluster) if (c.invoiceId) counts.set(c.invoiceId, (counts.get(c.invoiceId) ?? 0) + 1);
+    for (const c of cluster)
+      if (c.invoiceId && !isPrepaidType(c.type))
+        counts.set(c.invoiceId, (counts.get(c.invoiceId) ?? 0) + 1);
     const repeatedDoc = [...counts.entries()].find(([, n]) => n >= 2)?.[0] ?? null;
     const noDocument = cluster.every((c) => !c.invoiceId);
     if (!repeatedDoc && !noDocument) return;
 
-    const sorted = [...cluster].sort((a, b) => a.date.getTime() - b.date.getTime());
-    const first = sorted[0];
-    const last = sorted[sorted.length - 1];
-    const days = Math.round((last.date.getTime() - first.date.getTime()) / 86_400_000);
-    const ruleId = "payments.possible_duplicate";
-    const fk = key(ruleId, [first.contactId, first.amount.toFixed(2), ...sorted.map((s) => s.id)]);
-    if (emitted.has(fk)) return;
-    emitted.add(fk);
-
-    
-    const acctText = first.accountName ? ` from ${first.accountName}` : "";
-
-    // The document the repeat is against decides both the wording and the link.
-    const docPayment = repeatedDoc ? sorted.find((s) => s.invoiceId === repeatedDoc)! : null;
-    const docEntity = docPayment
-      ? docPayment.invoiceType === "ACCREC"
-        ? "Invoice"
-        : docPayment.invoiceType === "ACCPAY"
-          ? "Bill"
-          : null
-      : null;
-    const repeatCount = repeatedDoc ? counts.get(repeatedDoc)! : 0;
-
-    // The payments are listed under the finding, so the dates are not repeated here.
-    const message = repeatedDoc
-      ? `${repeatCount} payments of ${first.amount.toFixed(2)} settle the same ${docEntity === "Invoice" ? "invoice" : "bill"} ${docPayment!.invoiceNumber || repeatedDoc} for ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"}. The same document has been paid more than once — check before it is written off.`
-      : `${sorted.length} payments of ${first.amount.toFixed(2)} to ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"} are not allocated to any invoice or bill. Allocate them, or confirm they are on-account payments.`;
-
-
-    out.push({
-      ruleId,
-      category: "ar_ap",
-      severity: DUP_SEVERITY,
-      title: repeatedDoc
-        ? `Same document paid more than once — ${first.contactName}`
-        : `Unallocated payments — ${first.contactName}`,
-      message,
-      entityType: docEntity ?? "Payment",
-      entityId: docEntity ? repeatedDoc : first.id,
-      // No document, or a document of unknown type, means no link we can trust.
-      deepLink: docEntity ? xeroDeepLink(docEntity, repeatedDoc, shortCode) : null,
-      evidence: {
-        amount: first.amount,
-        contact: first.contactName,
-        paymentIds: sorted.map((s) => s.id),
-        dates: sorted.map((s) => s.date.toISOString().slice(0, 10)),
-        accounts: Array.from(new Set(sorted.map((s) => s.accountName).filter(Boolean))),
-        invoices: Array.from(new Set(sorted.map((s) => s.invoiceNumber).filter(Boolean))),
-        windowDays: days,
-        case: repeatedDoc ? "same_document" : "unallocated",
-      },
-      findingKey: fk,
-    });
+    if (repeatedDoc) docIds.add(repeatedDoc);
+    candidates.push({ cluster, docId: repeatedDoc });
   };
 
   for (const [, list] of sameAccountGroups) {
@@ -496,13 +492,122 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
         cluster.push(sorted[j]);
         j++;
       }
-      if (cluster.length >= 2) emitCluster(cluster);
+      if (cluster.length >= 2) consider(cluster);
       i = cluster.length >= 2 ? j : i + 1;
     }
   }
 
+  // ---- Pass 2: price those documents, in batches ----
+  const totals = new Map<string, DocTotal>();
+  if (fetchDocTotals && docIds.size > 0) {
+    const ids = [...docIds];
+    for (let i = 0; i < ids.length; i += DOC_TOTALS_BATCH) {
+      const batch = ids.slice(i, i + DOC_TOTALS_BATCH);
+      try {
+        const got = await fetchDocTotals(batch);
+        for (const [id, t] of got) totals.set(id, t);
+      } catch {
+        // Totals unavailable for this batch: emit nothing for those documents.
+      }
+    }
+  }
+
+  // ---- Pass 3: emit ----
+  const emitted = new Set<string>();
+
+  for (const { cluster, docId } of candidates) {
+    const sorted = [...cluster].sort((a, b) => a.date.getTime() - b.date.getTime());
+    const first = sorted[0];
+    const last = sorted[sorted.length - 1];
+    const days = Math.round((last.date.getTime() - first.date.getTime()) / 86_400_000);
+    const acctText = first.accountName ? ` from ${first.accountName}` : "";
+
+    let ruleId: string;
+    let severity: Severity;
+    let title: string;
+    let message: string;
+    let entityType: string;
+    let entityId: string;
+    let deepLink: string | null;
+    let extraEvidence: Record<string, unknown>;
+
+    if (docId) {
+      // A document paid more than once is ordinary instalment trade — rent in
+      // parts, a payment plan, a supplier statement paid down. The only fact
+      // worth reporting is that the payments EXCEED what the document was for.
+      const doc = totals.get(docId);
+      if (!doc) continue; // total could not be fetched — say nothing.
+      const paid = doc.amountPaid ?? paidByDoc.get(docId) ?? 0;
+      const tolerance = Math.max(OVERPAY_TOLERANCE_CENTS, Math.abs(doc.total) * OVERPAY_TOLERANCE_RATE);
+      const over = Math.round((paid - doc.total) * 100) / 100;
+      if (over <= tolerance) continue;
+
+      const docPayment = sorted.find((s) => s.invoiceId === docId)!;
+      const docEntity =
+        (doc.type || docPayment.invoiceType) === "ACCREC"
+          ? "Invoice"
+          : (doc.type || docPayment.invoiceType) === "ACCPAY"
+            ? "Bill"
+            : null;
+      const label = docEntity === "Invoice" ? "invoice" : "bill";
+      const number = doc.invoiceNumber || docPayment.invoiceNumber || docId;
+
+      ruleId = "payments.overpaid_document";
+      severity = OVERPAY_SEVERITY;
+      title = `${docEntity === "Invoice" ? "Invoice" : "Bill"} overpaid — ${first.contactName}`;
+      message = `${label.charAt(0).toUpperCase()}${label.slice(1)} ${number} for ${first.contactName} is for ${doc.total.toFixed(2)}, but ${paid.toFixed(2)} has been paid against it${acctText} — ${over.toFixed(2)} more than the ${label} was for. Recover it, or check whether a payment was entered twice.`;
+      entityType = docEntity ?? "Invoice";
+      entityId = docId;
+      deepLink = docEntity ? xeroDeepLink(docEntity, docId, shortCode) : null;
+      extraEvidence = {
+        case: "overpaid",
+        documentTotal: doc.total,
+        amountPaid: paid,
+        overBy: over,
+        amountCredited: doc.amountCredited,
+        tolerance: Math.round(tolerance * 100) / 100,
+      };
+    } else {
+      ruleId = "payments.possible_duplicate";
+      severity = UNALLOCATED_SEVERITY;
+      title = `Unallocated payments — ${first.contactName}`;
+      message = `${sorted.length} payments of ${first.amount.toFixed(2)} to ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"} are not allocated to any invoice or bill. Allocate them, or confirm they are on-account payments.`;
+      entityType = "Payment";
+      entityId = first.id;
+      deepLink = null;
+      extraEvidence = { case: "unallocated" };
+    }
+
+    const fk = key(ruleId, [first.contactId, first.amount.toFixed(2), ...sorted.map((s) => s.id)]);
+    if (emitted.has(fk)) continue;
+    emitted.add(fk);
+
+    out.push({
+      ruleId,
+      category: "ar_ap",
+      severity,
+      title,
+      message,
+      entityType,
+      entityId,
+      deepLink,
+      evidence: {
+        amount: first.amount,
+        contact: first.contactName,
+        paymentIds: sorted.map((s) => s.id),
+        dates: sorted.map((s) => s.date.toISOString().slice(0, 10)),
+        accounts: Array.from(new Set(sorted.map((s) => s.accountName).filter(Boolean))),
+        invoices: Array.from(new Set(sorted.map((s) => s.invoiceNumber).filter(Boolean))),
+        windowDays: days,
+        ...extraEvidence,
+      },
+      findingKey: fk,
+    });
+  }
+
   return out;
 }
+
 
 // ---------- Payments (unreconciled, outside batches) ----------
 //
