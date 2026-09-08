@@ -229,7 +229,7 @@ function TierSettings() {
             )}
           </div>
 
-          {isSuperAdmin && <WipOverviewCard />}
+
 
           <p className="text-xs text-muted-foreground">
             Cards are set at three levels: the platform default (this screen), one organisation
