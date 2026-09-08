@@ -184,7 +184,11 @@ export async function computeGstReconciliation(
   asAt: string,
   window: ReconWindow = "month",
   overrides?: StatutoryOverrides,
+  /** Caller's own session, used only to read the stored nightly pay-run
+   *  snapshot. Omitted, the pay-run list is read live once. */
+  supabase?: unknown,
 ): Promise<GstResult> {
+
 
   const { xeroGet } = await import("./api.server");
   const { from, to, priorEnd } = rangeFor(asAt, window);
@@ -376,8 +380,10 @@ export async function computeGstReconciliation(
   // The pay runs whose PAYDAY falls in the period. One list call, snapshotted
   // nightly; a file without payroll withholds nothing, which is a real zero,
   // while a read we could not make stays null and says so.
-  const { fetchPayRuns, payRunsInPeriod } = await import("./payroll.server");
-  const runs = await fetchPayRuns(conn);
+  const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
+  const runs = supabase
+    ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, conn })
+    : await fetchPayRuns(conn);
   let paygPayroll: PaygPayrollSection;
   if (runs.status === "available") {
     const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
