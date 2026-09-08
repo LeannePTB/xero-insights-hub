@@ -183,6 +183,10 @@ export async function computeGstReconciliation(
   let control: XeroAccount | null = null;
   let openingBalance: number | null = null;
   let closingBalance: number | null = null;
+  // Held for the PAYG side, which reuses these two reports rather than
+  // fetching its own — no extra Xero call.
+  let closingBs: BalanceSheet | null = null;
+  let openingBs: BalanceSheet | null = null;
   try {
     const accRes = await xeroGet<{ Accounts?: XeroAccount[] }>(conn, "Accounts", {});
     accounts = accRes.Accounts ?? [];
@@ -192,7 +196,7 @@ export async function computeGstReconciliation(
       accounts.find((a) => /gst/i.test(a.Name) && a.Class === "LIABILITY") ??
       null;
     if (!control) throw new Error("No GST control account was found in the chart of accounts.");
-    const [closingBs, openingBs] = await Promise.all([
+    [closingBs, openingBs] = await Promise.all([
       fetchBalanceSheet(conn, asAt),
       fetchBalanceSheet(conn, priorEnd),
     ]);
@@ -205,6 +209,7 @@ export async function computeGstReconciliation(
     complete = false;
     issues.push(`GST control balance unavailable: ${errText(e)}`);
   }
+
 
   // --- Tax on transactions in the period -----------------------------------
   const dtFrom = xeroDateLiteral(from);
