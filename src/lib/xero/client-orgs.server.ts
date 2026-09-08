@@ -57,13 +57,14 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
 }
 
 export async function userCanManageClient(userId: string, clientId: string): Promise<boolean> {
-  const [{ data: client }, { data: roles }] = await Promise.all([
-    supabaseAdmin.from("clients").select("owner_user_id, firm_id").eq("id", clientId).maybeSingle(),
-    supabaseAdmin.from("user_roles").select("role").eq("user_id", userId),
-  ]);
+  const { data: client } = await supabaseAdmin
+    .from("clients")
+    .select("owner_user_id, firm_id")
+    .eq("id", clientId)
+    .maybeSingle();
   if (!client) return false;
-  // Only the platform super admin crosses organisation boundaries.
-  if (roles?.some((row) => row.role === "super_admin")) return true;
+  // Invariant 3: being super_admin grants no access on its own. Ownership or an
+  // active membership of the client's organisation decides, and nothing else.
   if (client.owner_user_id === userId) return true;
   if (!client.firm_id) return false;
   const { data: membership } = await supabaseAdmin
