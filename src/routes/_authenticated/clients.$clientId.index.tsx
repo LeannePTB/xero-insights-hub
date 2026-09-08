@@ -24,7 +24,7 @@ import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
 import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 import { BalanceSheetReconciliationWidget } from "@/components/dashboard/BalanceSheetReconciliationWidget";
-import { GstReconciliationWidget } from "@/components/dashboard/GstReconciliationWidget";
+import { GstReconciliationWidget, type GstCycle } from "@/components/dashboard/GstReconciliationWidget";
 
 
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
