@@ -20,16 +20,38 @@ export type StatutoryAccountRow = {
   stored: StatutoryCategory[];
 };
 
+/**
+ * The tenant id in the request is a FILTER, never a grant (invariant 4, §10).
+ * Prove the Xero file actually belongs to this client before it is used for
+ * anything. Same join and same wording as `getExpenseAccounts`.
+ */
+async function assertTenantBelongsToClient(clientId: string, tenantId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: links, error } = await supabaseAdmin
+    .from("client_xero_orgs")
+    .select("xero_connections(tenant_id)")
+    .eq("client_id", clientId);
+  if (error) throw new Error(error.message);
+  const permitted = new Set(
+    ((links ?? []) as any[]).map((l) => l.xero_connections?.tenant_id).filter(Boolean) as string[],
+  );
+  if (!permitted.has(tenantId)) {
+    throw new Error("That Xero organisation does not belong to this client.");
+  }
+}
+
 export const listStatutoryAccounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { clientId: string; tenantId: string }) => input)
   .handler(async ({ data, context }): Promise<{ rows: StatutoryAccountRow[] }> => {
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
     await assertClientDataAccessForClient(context.userId, data.clientId);
+    await assertTenantBelongsToClient(data.clientId, data.tenantId);
 
     const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
     const conn = await getConnectionByTenant(data.tenantId);
     const accountsRes = await xeroGet<{ Accounts?: any[] }>(conn, "Accounts");
+
 
     const { data: stored, error } = await context.supabase
       .from("client_statutory_accounts")
