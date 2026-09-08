@@ -82,6 +82,12 @@ async function fetchAuthorisedTenantIds(accessToken: string): Promise<string[] |
 export async function reconcileAuthorisedTenants(
   /** Optional filter: only these Xero user accounts. Logic is unchanged. */
   userIds?: string[],
+  /**
+   * Optional filter: only these connection rows may be changed. Used by the
+   * on-demand check so a page load can never alter a row outside its scope.
+   * Omitted by the nightly job, which is global by design.
+   */
+  connectionIds?: string[],
 ): Promise<AuthorisationReconcileSummary> {
   const summary: AuthorisationReconcileSummary = {
     usersChecked: 0,
@@ -101,14 +107,17 @@ export async function reconcileAuthorisedTenants(
 
   const rows = (data ?? []) as Row[];
   const only = userIds && userIds.length > 0 ? new Set(userIds) : null;
+  const onlyRows = connectionIds && connectionIds.length > 0 ? new Set(connectionIds) : null;
   const byUser = new Map<string, Row[]>();
   for (const row of rows) {
     if (!row.user_id || !row.tenant_id) continue;
     if (only && !only.has(row.user_id)) continue;
+    if (onlyRows && !onlyRows.has(row.id)) continue;
     const list = byUser.get(row.user_id) ?? [];
     list.push(row);
     byUser.set(row.user_id, list);
   }
+
 
   for (const [userId, userRows] of byUser) {
     // Probe with a row that still holds usable tokens; getConnection goes
