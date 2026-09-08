@@ -38,6 +38,8 @@ export type SnapshotSource = {
   /** Xero connection state at read time. */
   connection: "connected" | "disconnected" | "unknown";
   reason?: SnapshotSourceReason;
+  /** True when the figures are part stored and part live (see `mergeSources`). */
+  mixed?: boolean;
 };
 
 /** The provenance of a value fetched live from Xero just now. */
@@ -66,5 +68,44 @@ export function pendingSource(connection: SnapshotSource["connection"] = "unknow
     complete: true,
     connection,
     reason: "missing",
+  };
+}
+
+/**
+ * Combine the provenance of every component a card is made of.
+ *
+ * A card that blends a live call with a stored copy is only as fresh as its
+ * OLDEST component, so that is what this reports: the earliest `fetchedAt`,
+ * `mode: "snapshot"` if any part was stored, `mixed` when it is part stored and
+ * part live, stale if any part is stale, complete only if every part is.
+ * Overstating freshness is the fault this exists to prevent.
+ */
+export function mergeSources(parts: (SnapshotSource | null | undefined)[]): SnapshotSource | null {
+  const list = parts.filter(Boolean) as SnapshotSource[];
+  if (list.length === 0) return null;
+  if (list.length === 1) return list[0]!;
+
+  const stored = list.filter((s) => s.mode === "snapshot");
+  const live = list.filter((s) => s.mode === "live");
+  const pending = list.some((s) => s.mode === "pending");
+
+  const times = list.map((s) => (s.fetchedAt ? new Date(s.fetchedAt).getTime() : NaN)).filter((t) => !isNaN(t));
+  const oldest = times.length ? new Date(Math.min(...times)).toISOString() : null;
+
+  const asAts = stored.map((s) => s.asAt).filter(Boolean) as string[];
+  asAts.sort();
+
+  return {
+    mode: pending && stored.length === 0 && live.length === 0 ? "pending" : stored.length > 0 ? "snapshot" : "live",
+    asAt: asAts[0] ?? null,
+    fetchedAt: oldest,
+    stale: list.some((s) => s.stale),
+    complete: list.every((s) => s.complete),
+    connection: list.some((s) => s.connection === "disconnected")
+      ? "disconnected"
+      : list.every((s) => s.connection === "connected")
+        ? "connected"
+        : "unknown",
+    mixed: stored.length > 0 && live.length > 0,
   };
 }
