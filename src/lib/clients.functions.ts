@@ -480,19 +480,45 @@ export const deleteClient = createServerFn({ method: "POST" })
       }
     }
 
-    if (superRow) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { error: adminErr } = await supabaseAdmin
-        .from("clients")
-        .delete()
-        .eq("id", data.clientId);
-      if (adminErr) throw new Error(adminErr.message);
-      return { ok: true, xero };
-    }
-    const { error } = await context.supabase.from("clients").delete().eq("id", data.clientId);
+    // One database call does the whole removal in a single transaction:
+    // it unmatches other clients' loan accounts that point at this client,
+    // drops its consolidation group memberships, writes the audit row, then
+    // deletes the client. Either all of it happens or none of it does.
+    const { data: cleared, error } = await (context.supabase as any).rpc("remove_client", {
+      _client_id: data.clientId,
+    });
     if (error) throw new Error(error.message);
-    return { ok: true, xero };
+    const row = Array.isArray(cleared) ? cleared[0] : cleared;
+    return {
+      ok: true,
+      xero,
+      cleared: {
+        groupsRemoved: row?.groups_removed ?? 0,
+        pairingsCleared: row?.pairings_cleared ?? 0,
+        referencingClients: (row?.referencing_clients ?? []) as string[],
+      },
+    };
   });
+
+/**
+ * What removing this client would clear elsewhere. Read through the same
+ * gate as the removal itself; the rule lives in the database.
+ */
+export const getClientRemovalImpact = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: { clientId: string }) => i)
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await (context.supabase as any).rpc("client_removal_impact", {
+      _client_id: data.clientId,
+    });
+    if (error) throw new Error(error.message);
+    const row = Array.isArray(rows) ? rows[0] : rows;
+    return {
+      groupCount: (row?.group_count ?? 0) as number,
+      referencingClients: (row?.referencing_clients ?? []) as string[],
+    };
+  });
+
 
 export const renameClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
