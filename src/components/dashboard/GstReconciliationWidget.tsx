@@ -52,21 +52,43 @@ function netGst(data: GstResponse) {
   return { net: sales - purchases, sales, purchases };
 }
 
+export type GstCycle = "monthly" | "quarterly" | "annual" | "not_registered";
+
+/** The period the card opens on for a lodgement cycle. `null` (cycle not
+ *  set) keeps the long-standing default — the last completed month — and the
+ *  card says so rather than guessing a cycle. */
+function defaultPeriodValue(cycle: GstCycle | null | undefined, options: GstPeriodOption[]) {
+  const want: Record<Exclude<GstCycle, "not_registered">, GstWindowKind> = {
+    monthly: "month",
+    quarterly: "quarter",
+    annual: "year",
+  };
+  const kind = cycle && cycle !== "not_registered" ? want[cycle] : null;
+  if (kind) {
+    // The "to date" option of that kind — always present in the list.
+    const hit = options.find((o) => o.kind === kind && o.value === `${kind}:${o.asAt}`);
+    if (hit) return hit.value;
+  }
+  return options[1]?.value ?? options[0]!.value;
+}
+
 export function GstReconciliationWidget({
   clientId,
   tenantId,
   tenantName,
+  gstCycle = null,
   showWarnings = false,
 }: {
   clientId: string;
   tenantId: string;
   tenantName: string;
+  /** The client's GST lodgement cycle, set on the client settings page. */
+  gstCycle?: GstCycle | null;
   /** Preparer-only surfaces: the balance-based reconciliation and its issues. */
   showWarnings?: boolean;
 }) {
   const options = useMemo(gstPeriodOptions, []);
-  const defaultValue = options[1]?.value ?? options[0]!.value;
-  const [periodValue, setPeriodValue] = useState(defaultValue);
+  const [periodValue, setPeriodValue] = useState(() => defaultPeriodValue(gstCycle, options));
   const selected = options.find((o) => o.value === periodValue) ?? options[0]!;
   const asAt = selected.asAt;
   const window = selected.kind;

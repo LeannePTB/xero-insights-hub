@@ -98,6 +98,17 @@ export function gstPeriodOptions(): GstPeriodOption[] {
     to: today,
   });
 
+  // Current Australian financial year to date (1 July – today).
+  const fyStart = new Date(now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1, 6, 1);
+  opts.push({
+    value: `year:${today}`,
+    label: `This financial year (so far) — ${format(fyStart, "d MMM")} to ${format(now, "d MMM yyyy")}`,
+    kind: "year",
+    asAt: today,
+    from: iso(fyStart),
+    to: today,
+  });
+
   // The four Australian BAS quarter ends, most recent completed first.
   const quarters = [
     { m: 8, d: 30 }, // 30 September
