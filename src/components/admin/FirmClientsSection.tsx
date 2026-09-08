@@ -234,7 +234,23 @@ export function FirmClientsSection({
                   consolidation groups and account mappings, and its saved figures. Reports built
                   from those saved figures will no longer be available.
                 </p>
+                {impactGroups > 0 && (
+                  <p>
+                    This client is in {impactGroups} consolidation{" "}
+                    {impactGroups === 1 ? "group" : "groups"}. Removing it takes it out of{" "}
+                    {impactGroups === 1 ? "that group" : "those groups"}.
+                  </p>
+                )}
+                {impactNames.length > 0 && (
+                  <p>
+                    {nameList}{" "}
+                    {impactNames.length === 1 ? "has loan accounts" : "have loan accounts"} matched
+                    to this client. Removing it leaves those loans unmatched in their
+                    consolidation.
+                  </p>
+                )}
               </div>
+
             </DialogDescription>
           </DialogHeader>
 
