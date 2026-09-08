@@ -348,6 +348,8 @@ export const Route = createFileRoute("/api/public/xero/callback")({
                 scopes: tokens.scope,
                 status: "connected",
                 disconnected_at: null,
+                // A real reconnect clears whatever cause was recorded.
+                disconnected_reason: null,
               })
               .eq("tenant_id", tenantId)
               .or(`firm_id.eq.${firmId},firm_id.is.null`)
@@ -444,6 +446,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           scopes: tokens.scope,
           status: "connected",
           disconnected_at: null,
+          disconnected_reason: null,
         });
         const isNewTenant = (tenantId: string) =>
           Boolean(intendedFirmId) && !knownTenantIds.has(tenantId);
