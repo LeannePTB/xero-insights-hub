@@ -104,6 +104,14 @@ function TierSettings() {
     mutationFn: ({ widgets, enabled }: { widgets?: WidgetKey[]; enabled?: boolean }) => {
       const level = levelByKey.get("wip");
       if (!level) throw new Error("The In testing tier could not be found.");
+      const stored = ((level.widgets as string[] | null) ?? []).filter(Boolean);
+      // A Save may never drop a key the panel could not show. The panel offers
+      // the catalogue (ALL_WIDGETS) only, so anything stored outside it is
+      // invisible and is carried through untouched.
+      const invisible = stored.filter((w) => !(ALL_WIDGETS as string[]).includes(w));
+      const next = widgets
+        ? Array.from(new Set([...(widgets as string[]), ...invisible]))
+        : stored;
       return savePlanFn({
         data: {
           id: level.id,
@@ -113,11 +121,12 @@ function TierSettings() {
           description: level.description ?? "",
           xero_org_limit: level.xero_org_limit ?? 1,
           allows_multi_org: !!level.allows_multi_org,
-          widgets: widgets ?? level.widgets,
+          widgets: next,
           sort_order: level.sort_order ?? 100,
           enabled: enabled ?? level.enabled,
         },
       });
+
     },
     onSuccess: (_result, change) => {
       toast.success(change.enabled === undefined ? "Saved" : change.enabled ? "Tier enabled" : "Tier disabled");
