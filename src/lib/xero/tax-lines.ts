@@ -519,38 +519,64 @@ const PROTECTED_MONEY_LABELS: Record<ProtectedMoneyComponentKey, string> = {
   gst: "GST net position",
   payg: "PAYG withholding not yet remitted",
   super: "Superannuation accrued but unpaid",
+  "ato-combined": "Owed to the ATO — GST and PAYG withholding together, not split",
 };
 
 /** Build the protected-money figure from already-extracted tax lines, so a
- *  caller that already has a Balance Sheet does not fetch it again. */
+ *  caller that already has a Balance Sheet does not fetch it again.
+ *
+ *  Where a client codes GST and PAYG withholding to one account, that balance
+ *  is a single amount owed to the ATO. There is nothing in the data to divide
+ *  it by, so it is presented whole under its own heading and the GST and PAYG
+ *  headings are omitted rather than reported as missing — the money is in the
+ *  total, it simply is not split. Superannuation is owed to employees' funds,
+ *  not the ATO, and is never part of this component.
+ */
 export function buildProtectedMoney(
   asAtDate: string,
   lines: { name: string; amount: number; category: TaxLineCategory }[],
 ): ProtectedMoney {
+  const combined = lines.filter((l) => l.category === "ato-combined");
   const keys: ProtectedMoneyComponentKey[] = ["gst", "payg", "super"];
-  const components: ProtectedMoneyComponent[] = keys.map((key) => {
+  const components: ProtectedMoneyComponent[] = [];
+
+  for (const key of keys) {
     const matched = lines.filter((l) => l.category === key);
     const label = PROTECTED_MONEY_LABELS[key];
     if (!matched.length) {
-      return {
+      // Inside the combined figure, not missing from it.
+      if (combined.length && (key === "gst" || key === "payg")) continue;
+      components.push({
         key,
         label,
         status: "unresolved",
         amount: null,
         accounts: [],
         reason: `${label}: no account in the Balance Sheet matched this component, so the amount is unknown (this is not zero).`,
-      };
+      });
+      continue;
     }
-    return {
+    components.push({
       key,
       label,
       status: "resolved",
       amount: matched.reduce((s, l) => s + l.amount, 0),
       accounts: matched.map((l) => ({ name: l.name, amount: l.amount })),
-    };
-  });
+    });
+  }
+
+  if (combined.length) {
+    components.unshift({
+      key: "ato-combined",
+      label: PROTECTED_MONEY_LABELS["ato-combined"],
+      status: "resolved",
+      amount: combined.reduce((s, l) => s + l.amount, 0),
+      accounts: combined.map((l) => ({ name: l.name, amount: l.amount })),
+    });
+  }
 
   const unresolved = components.filter((c) => c.status === "unresolved").map((c) => c.key);
   const total = components.reduce((s, c) => s + (c.status === "resolved" ? c.amount : 0), 0);
   return { asAtDate, total, complete: unresolved.length === 0, components, unresolved };
 }
+
