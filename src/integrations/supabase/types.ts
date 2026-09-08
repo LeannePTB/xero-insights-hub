@@ -2454,7 +2454,6 @@ export type Database = {
         Returns: boolean
       }
       firm_has_consolidation: { Args: { _firm_id: string }; Returns: boolean }
-      firm_has_wip: { Args: { _firm_id: string }; Returns: boolean }
       firm_plan_limits: {
         Args: { _firm_id: string }
         Returns: {
