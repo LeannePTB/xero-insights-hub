@@ -478,6 +478,10 @@ export const getLoanReconciliation = createServerFn({ method: "POST" })
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
       throw new Error("You don't have access to this client.");
     }
+    if (data.tenantId) {
+      const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
+      await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    }
     const supabaseAdmin = await getSupabaseAdmin();
     const { runLoanReconciliation } = await import("./loan-recon.server");
     return runLoanReconciliation({
@@ -496,8 +500,28 @@ export const getLoanMismatchDetail = createServerFn({ method: "POST" })
       throw new Error("You don't have access to this client.");
     }
     const supabaseAdmin = await getSupabaseAdmin();
+    // The row id is a filter, not a grant: the drill-down is built from the row,
+    // so prove the row itself belongs to a client this caller may read. The
+    // counterparty side is reached through the row's own pairing, which is set
+    // by an owner/advisor, so cross-client pairings inside one organisation
+    // still resolve.
+    const { data: ownerRow, error: ownerErr } = await supabaseAdmin
+      .from("loan_consolidation_accounts")
+      .select("client_id")
+      .eq("id", data.rowId)
+      .maybeSingle();
+    if (ownerErr) throw new Error(ownerErr.message);
+    if (!ownerRow) throw new Error("Loan account row not found");
+    const rowClientId = (ownerRow as any).client_id as string;
+    if (
+      rowClientId !== data.clientId &&
+      !(await canReadClient(context.supabase, context.userId, rowClientId))
+    ) {
+      throw new Error("You don't have access to this client.");
+    }
     const { runLoanMismatchDetail } = await import("./loan-mismatch.server");
     return runLoanMismatchDetail({ supabase: supabaseAdmin, rowId: data.rowId, asAt: data.asAt });
+
   });
 
 // ---- Group-scoped (Company Loan Consolidation screen) ----------------------
