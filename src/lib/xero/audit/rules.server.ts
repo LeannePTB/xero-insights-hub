@@ -34,8 +34,69 @@ type XAccount = {
   TaxType?: string;
   BankAccountNumber?: string;
   EnablePaymentsToAccount?: boolean;
+  /**
+   * NOT a usable balance source. Measured on a live file: Xero returns
+   * CurrentBalance on 0 of 123 accounts from the Accounts endpoint — not even
+   * for bank accounts. Rules that need a balance take one from the Balance
+   * Sheet report instead (see AccountBalances below).
+   */
   CurrentBalance?: number;
 };
+
+/**
+ * Point-in-time balances by AccountID, read from `Reports/BalanceSheet`.
+ *
+ * Sign convention is the report's own presentation: a value is positive when
+ * the account sits in its natural direction for its section — an asset with
+ * money in it is positive, a liability that is owed is positive, and a debit
+ * balance on a liability comes back negative. Verified against one live file:
+ * the bank account read 7,288.19 on the Balance Sheet and 7,288.19 as a YTD
+ * debit on the Trial Balance, while a liability holding a debit balance read
+ * -65,379.83 on the Balance Sheet and 65,379.83 as a YTD debit.
+ *
+ * Balance-sheet accounts only. Revenue and expense accounts never appear, and
+ * neither do archived accounts.
+ */
+export type AccountBalances = Map<string, number>;
+
+/** Balance for an account, or null when the source does not carry one. */
+function balanceOf(a: XAccount, balances?: AccountBalances): number | null {
+  const v = balances?.get(a.AccountID);
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+/**
+ * Pull point-in-time balances out of a `Reports/BalanceSheet` response.
+ *
+ * Each account row carries its AccountID in the first cell's attributes; the
+ * next cell is the balance at the report date. Values are taken exactly as
+ * the report presents them — see AccountBalances for the sign convention.
+ * A malformed or missing report yields an empty map, and every balance-based
+ * rule then emits nothing rather than treating "no balance" as zero.
+ */
+export function parseBalanceSheetBalances(report: unknown): AccountBalances {
+  const balances: AccountBalances = new Map();
+  const rows = (report as any)?.Rows;
+  if (!Array.isArray(rows)) return balances;
+  for (const section of rows) {
+    for (const row of section?.Rows ?? []) {
+      const cells = row?.Cells;
+      if (!Array.isArray(cells) || cells.length < 2) continue;
+      const attrs = cells[0]?.Attributes;
+      const id = Array.isArray(attrs)
+        ? attrs.find((a: any) => a?.Id === "account" || a?.Id)?.Value
+        : undefined;
+      if (typeof id !== "string" || !id) continue;
+      const value = Number(cells[1]?.Value);
+      if (!Number.isFinite(value)) continue;
+      balances.set(id, value);
+    }
+  }
+  return balances;
+}
+
+
+
 
 type XInvoice = {
   InvoiceID: string;
@@ -69,7 +130,11 @@ function parseXeroDate(s?: string): Date | null {
 }
 
 // ---------- Chart of accounts ----------
-export function ruleCoaHygiene(accounts: XAccount[], shortCode?: string | null): Finding[] {
+export function ruleCoaHygiene(
+  accounts: XAccount[],
+  shortCode?: string | null,
+  balances?: AccountBalances,
+): Finding[] {
   const out: Finding[] = [];
 
   // Duplicate names within same Type+Class
@@ -98,12 +163,14 @@ export function ruleCoaHygiene(accounts: XAccount[], shortCode?: string | null):
     }
   }
 
-  // Suspense / clearing accounts with non-zero balance
+  // Suspense / clearing accounts with non-zero balance. The test is on the
+  // absolute value, so the Balance Sheet's sign presentation does not matter.
   const suspectNames = /suspense|clearing|unallocated|ask my accountant|holding/i;
   for (const a of accounts) {
     if ((a.Status ?? "ACTIVE") !== "ACTIVE") continue;
     if (!suspectNames.test(a.Name)) continue;
-    const bal = Number(a.CurrentBalance ?? 0);
+    const bal = balanceOf(a, balances);
+    if (bal === null) continue;
     if (Math.abs(bal) >= 1) {
       out.push({
         ruleId: "coa.suspense_balance",
@@ -187,10 +254,18 @@ export function ruleCoaHygiene(accounts: XAccount[], shortCode?: string | null):
     }
   }
 
-  // Archived accounts with balance
+  // Archived accounts with balance.
+  //
+  // Left unsourced deliberately: archived accounts appear on neither the
+  // Balance Sheet nor the Trial Balance (measured: 25 archived accounts on a
+  // live file, 0 rows on either report), and 17 of those 25 are revenue or
+  // expense accounts, which no point-in-time report carries. There is no
+  // correct balance to give this rule, so it stays inert rather than
+  // accusing anyone on an approximation.
   for (const a of accounts) {
     if ((a.Status ?? "").toUpperCase() !== "ARCHIVED") continue;
-    const bal = Number(a.CurrentBalance ?? 0);
+    const bal = balanceOf(a, balances);
+    if (bal === null) continue;
     if (Math.abs(bal) >= 1) {
       out.push({
         ruleId: "coa.archived_with_balance",
@@ -314,11 +389,18 @@ export function ruleArAp(
 }
 
 // ---------- Bank ----------
-export function ruleBank(accounts: XAccount[], shortCode?: string | null): Finding[] {
+export function ruleBank(
+  accounts: XAccount[],
+  shortCode?: string | null,
+  balances?: AccountBalances,
+): Finding[] {
   const out: Finding[] = [];
   const banks = accounts.filter((a) => (a.Type ?? "").toUpperCase() === "BANK" && (a.Status ?? "ACTIVE") === "ACTIVE");
   for (const b of banks) {
-    const bal = Number(b.CurrentBalance ?? 0);
+    // Balance Sheet presentation: an asset in credit reads negative, which is
+    // exactly the overdraft this rule tests for. No sign flip is applied.
+    const bal = balanceOf(b, balances);
+    if (bal === null) continue;
     if (bal < -0.01) {
       out.push({
         ruleId: "bank.negative_balance",
