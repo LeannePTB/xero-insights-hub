@@ -213,10 +213,10 @@ function ClientDashboard() {
       ) : (
         <HealthWidget clientName={client.name} />
       );
-      standard.push({ id: "health", fullWidth: true, node: mark("health", healthNode) });
+      standard.push({ id: "health", fullWidth: true, node: healthNode });
     }
     if (widgets.includes("unreconciled"))
-      standard.push({ id: "unreconciled", node: mark("unreconciled", <UnreconciledCard clientId={clientId} />) });
+      standard.push({ id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> });
 
     for (const o of orgs) {
       const tenantId = o.xero_connections?.tenant_id;
@@ -226,35 +226,35 @@ function ClientDashboard() {
         advanced.push({
           id: `${o.id}:xero_audit`,
           fullWidth: true,
-          node: mark("xero_audit", <AuditSummaryCard tenantId={tenantId} tenantName={tenantName} clientId={clientId} />),
+          node: <AuditSummaryCard tenantId={tenantId} tenantName={tenantName} clientId={clientId} />,
         });
       if (widgets.includes("receivables"))
-        standard.push({ id: `${o.id}:receivables`, node: mark("receivables", <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("receivables")} />) });
+        standard.push({ id: `${o.id}:receivables`, node: <ReceivablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("receivables")} /> });
       if (widgets.includes("payables"))
-        standard.push({ id: `${o.id}:payables`, node: mark("payables", <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} />) });
+        standard.push({ id: `${o.id}:payables`, node: <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} /> });
       if (widgets.includes("pnl"))
-        standard.push({ id: `${o.id}:pnl`, fullWidth: true, node: mark("pnl", <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} />) });
+        standard.push({ id: `${o.id}:pnl`, fullWidth: true, node: <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} /> });
       // Superannuation stands alone: it is owed to employees' funds, not the
       // ATO, and nothing else on the dashboard reports it.
       // Structural hide: a file with no superannuation at all, on the balance
       // sheet or on any pay run. Missing payroll permission never hides it.
       if (widgets.includes("superannuation") && !structurallyHidden(tenantId, "superannuation"))
 
-        advanced.push({ id: `${o.id}:superannuation`, node: mark("superannuation", <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />) });
+        advanced.push({ id: `${o.id}:superannuation`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
       // Accounting and True break-even are one card; cash commitments are an
       // expandable section inside it.
       if (widgets.includes("accounting_breakeven"))
-        advanced.push({ id: `${o.id}:accounting_breakeven`, node: mark("accounting_breakeven", <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} />) });
+        advanced.push({ id: `${o.id}:accounting_breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} /> });
 
       if (widgets.includes("cashflow"))
-        advanced.push({ id: `${o.id}:cashflow`, node: mark("cashflow", <CashflowWidget tenantId={tenantId} tenantName={tenantName} />) });
+        advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("cashflow_scenario"))
-        advanced.push({ id: `${o.id}:cashflow_scenario`, node: mark("cashflow_scenario", <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
+        advanced.push({ id: `${o.id}:cashflow_scenario`, node: <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
       if (widgets.includes("balance_sheet_reconciliation"))
-        advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: mark("balance_sheet_reconciliation", <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} loanConsolidationHref={client?.firm_id ? `/firms/${client.firm_id}/loans` : undefined} />) });
+        advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} loanConsolidationHref={client?.firm_id ? `/firms/${client.firm_id}/loans` : undefined} /> });
       // Structural hide: a non-GST cashbook has no GST ledger.
       if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
-        advanced.push({ id: `${o.id}:gst_reconciliation`, node: mark("gst_reconciliation", <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} showWarnings={isAdvisor} />) });
+        advanced.push({ id: `${o.id}:gst_reconciliation`, node: <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} showWarnings={isAdvisor} /> });
 
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
@@ -262,10 +262,10 @@ function ClientDashboard() {
       // permission is not the same thing, and never hides it.
       if (widgets.includes("payg_withholding") && !structurallyHidden(tenantId, "payg_withholding"))
 
-        advanced.push({ id: `${o.id}:payg_withholding`, node: mark("payg_withholding", <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />) });
+        advanced.push({ id: `${o.id}:payg_withholding`, node: <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
 
       if (widgets.includes("loan_consolidation"))
-        advanced.push({ id: `${o.id}:loan_consolidation`, node: mark("loan_consolidation", <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
+        advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
     }
 
     // Transaction Search is organisation-wide, not per-org, so it lives in the
@@ -274,7 +274,7 @@ function ClientDashboard() {
       advanced.push({
         id: "transaction_search",
         fullWidth: true,
-        node: mark("transaction_search", <TransactionSearchWidget clientId={clientId} />),
+        node: <TransactionSearchWidget clientId={clientId} />,
       });
     }
 
