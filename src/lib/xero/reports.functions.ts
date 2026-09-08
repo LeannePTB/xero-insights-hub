@@ -214,11 +214,8 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
     return out;
   });
 
-export type SuperPayable = {
-  asAtDate: string;
-  balance: number;
-  lines: { name: string; amount: number }[];
-};
+
+
 
 /**
  * Superannuation from PAYROLL, per payday.
