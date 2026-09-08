@@ -104,7 +104,7 @@ export async function loadPayRuns(opts: {
   tenantId: string;
   clientId?: string | null;
   conn?: Connection;
-}): Promise<PayrollPayRuns & { fromSnapshot: boolean; fetchedAt?: string }> {
+}): Promise<PayrollPayRuns & { fromSnapshot: boolean; fetchedAt?: string | null }> {
   const { readSnapshot } = await import("./snapshot-read.server");
   const hit = await readSnapshot({
     supabase: opts.supabase,
