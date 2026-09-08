@@ -196,10 +196,28 @@ function ClientDashboard() {
   }
 
 
-  const { standardCards, advancedCards } = useMemo<{ standardCards: SortableCard[]; advancedCards: SortableCard[] }>(() => {
+  // The three statutory cards (GST, PAYG withholding, superannuation) are NOT
+  // sortable. They render in a fixed block at the top of the Advisory section,
+  // because a single ordered list poured into height-balanced columns can never
+  // guarantee they sit together in the left column. Hide rules are untouched:
+  // a card only enters the block if it would have been rendered before.
+  type StatutoryBlock = {
+    orgId: string;
+    gst: ReactNode | null;
+    payg: ReactNode | null;
+    superannuation: ReactNode | null;
+  };
+
+  const { standardCards, advancedCards, statutoryBlocks } = useMemo<{
+    standardCards: SortableCard[];
+    advancedCards: SortableCard[];
+    statutoryBlocks: StatutoryBlock[];
+  }>(() => {
     const standard: SortableCard[] = [];
     const advanced: SortableCard[] = [];
-    if (!client) return { standardCards: standard, advancedCards: advanced };
+    const statutory: StatutoryBlock[] = [];
+    if (!client) return { standardCards: standard, advancedCards: advanced, statutoryBlocks: statutory };
+
 
     if (widgets.includes("health")) {
       const healthNode = orgs.length > 0 ? (
