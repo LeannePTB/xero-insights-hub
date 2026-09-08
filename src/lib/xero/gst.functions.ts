@@ -55,7 +55,7 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
       tenantId: data.tenantId,
       asAt: data.asAt,
       recalculate: data.recalculate,
-      reportKey: data.window === "quarter" ? GST_QUARTER_REPORT_KEY : GST_REPORT_KEY,
+      reportKey: REPORT_KEYS[data.window ?? "month"]!,
       widget: "gst_reconciliation",
       compute: (conn) =>
         computeGstReconciliation(conn, data.asAt, data.window ?? "month", overrides, context.supabase),
