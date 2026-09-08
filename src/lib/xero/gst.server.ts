@@ -380,8 +380,10 @@ export async function computeGstReconciliation(
   // The pay runs whose PAYDAY falls in the period. One list call, snapshotted
   // nightly; a file without payroll withholds nothing, which is a real zero,
   // while a read we could not make stays null and says so.
-  const { fetchPayRuns, payRunsInPeriod } = await import("./payroll.server");
-  const runs = await fetchPayRuns(conn);
+  const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
+  const runs = supabase
+    ? await loadPayRuns({ supabase, tenantId: conn.tenantId, conn })
+    : await fetchPayRuns(conn);
   let paygPayroll: PaygPayrollSection;
   if (runs.status === "available") {
     const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
