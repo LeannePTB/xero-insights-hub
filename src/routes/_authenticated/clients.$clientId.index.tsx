@@ -244,7 +244,7 @@ function ClientDashboard() {
       // Superannuation stands alone: it is owed to employees' funds, not the
       // ATO, and nothing else on the dashboard reports it.
       if (widgets.includes("superannuation"))
-        advanced.push({ id: `${o.id}:superannuation`, node: mark("superannuation", <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} />) });
+        advanced.push({ id: `${o.id}:superannuation`, node: mark("superannuation", <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />) });
       // Accounting and True break-even are one card; cash commitments are an
       // expandable section inside it.
       if (widgets.includes("accounting_breakeven"))
@@ -258,7 +258,7 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:balance_sheet_reconciliation`, node: mark("balance_sheet_reconciliation", <BalanceSheetReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} loanConsolidationHref={client?.firm_id ? `/firms/${client.firm_id}/loans` : undefined} />) });
       // Structural hide: a non-GST cashbook has no GST ledger.
       if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
-        advanced.push({ id: `${o.id}:gst_reconciliation`, node: mark("gst_reconciliation", <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
+        advanced.push({ id: `${o.id}:gst_reconciliation`, node: mark("gst_reconciliation", <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} showWarnings={isAdvisor} />) });
 
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: mark("loan_consolidation", <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });

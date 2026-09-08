@@ -47,6 +47,7 @@ export const STALENESS_SECONDS: Record<string, number> = {
   organisation: 30 * 3600,
   invoices_accrec_open: 30 * 3600,
   invoices_accpay_open: 30 * 3600,
+  payroll_payruns: 30 * 3600,
 };
 
 export type SnapshotReport = {
@@ -58,6 +59,12 @@ export type SnapshotReport = {
   asAt: string;
   /** True when the report is assembled from paginated `Invoices` pages. */
   paginated?: boolean;
+  /**
+   * Which Xero API the report comes from. Payroll lives on its own base URL
+   * and is SKIPPED for any connection that has not granted payroll access —
+   * a missing grant is not a failed report.
+   */
+  api?: "accounting" | "payroll";
 };
 
 /**
@@ -128,6 +135,15 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       },
       asAt: today,
       paginated: true,
+    },
+    {
+      // Pay runs carry the payday, PAYG withheld and super accrued. One call
+      // per hundred pay runs; payslips are never read.
+      reportKey: "payroll_payruns",
+      path: "PayRuns",
+      params: {},
+      asAt: today,
+      api: "payroll",
     },
   ];
 }

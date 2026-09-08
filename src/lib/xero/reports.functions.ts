@@ -214,28 +214,48 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
     return out;
   });
 
-export type SuperPayable = {
-  asAtDate: string;
-  balance: number;
-  lines: { name: string; amount: number }[];
-};
 
-export const getSuperPayable = createServerFn({ method: "POST" })
+
+
+/**
+ * Superannuation from PAYROLL, per payday.
+ *
+ * Xero exposes no record of super being PAID to a fund — no payment batches,
+ * no auto-super submissions, no dates. So this reports what was ACCRUED on
+ * each payday and how old the oldest one is, and never states that a payday
+ * was or was not paid on time.
+ */
+export const getSuperPayroll = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; date: string }) => input)
-  .handler(async ({ data, context }): Promise<SuperPayable> => {
-    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+  .inputValidator((input: { tenantId: string; clientId?: string; months?: number }) => input)
+  .handler(async ({ data, context }) => {
     const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "superannuation");
-    const conn = await getConnectionByTenant(data.tenantId);
-    const [res, accountsRes] = await Promise.all([
-      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.date }),
-      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
-    ]);
-    const report = res.Reports?.[0];
-    if (!report) return { asAtDate: data.date, balance: 0, lines: [] };
-    const all = taxLinesOrThrow(extractTaxLines(report, accountsRes));
-    const supers = all.filter((l) => l.category === "super").map((l) => ({ name: l.name, amount: l.amount }));
-    const balance = supers.reduce((s, l) => s + l.amount, 0);
-    return { asAtDate: data.date, balance, lines: supers };
+    const { loadPayRuns } = await import("./payroll.server");
+    const runs = await loadPayRuns({
+      supabase: context.supabase,
+      tenantId: data.tenantId,
+      clientId: data.clientId ?? null,
+    });
+    if (runs.status !== "available") {
+      return { status: runs.status, reason: "reason" in runs ? runs.reason : null } as const;
+    }
+    // Recent paydays only: the card is about what has just been accrued.
+    const months = Math.min(Math.max(data.months ?? 6, 1), 24);
+    const cutoff = new Date();
+    cutoff.setMonth(cutoff.getMonth() - months);
+    const cutoffIso = cutoff.toISOString().slice(0, 10);
+    const payRuns = runs.payRuns
+      .filter((r) => !!r.paymentDate && r.paymentDate >= cutoffIso)
+      .map((r) => ({ paymentDate: r.paymentDate, periodEnd: r.periodEnd, super: r.super }));
+    return {
+      status: "available" as const,
+      months,
+      payRuns,
+      accrued: Math.round(payRuns.reduce((s, r) => s + r.super, 0) * 100) / 100,
+      latestPayday: payRuns[0]?.paymentDate ?? null,
+      oldestPayday: payRuns.length ? payRuns[payRuns.length - 1]!.paymentDate : null,
+      fromSnapshot: runs.fromSnapshot,
+      fetchedAt: runs.fetchedAt ?? null,
+    };
   });

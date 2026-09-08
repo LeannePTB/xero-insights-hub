@@ -63,6 +63,17 @@ export type CombinedAtoSection = {
   movement: number | null;
 };
 
+/**
+ * PAYG withheld in the period, taken from the pay runs whose PAYDAY falls in
+ * it. This is a period figure from payroll itself — not a balance movement —
+ * so it belongs on the activity statement front page.
+ */
+export type PaygPayrollSection =
+  | { status: "available"; withheld: number; payRuns: { paymentDate: string | null; tax: number }[] }
+  | { status: "no_payroll" }
+  | { status: "not_authorised"; reason: string }
+  | { status: "unavailable"; reason: string };
+
 export type GstResult = {
   asAt: string;
   window: ReconWindow;
@@ -80,7 +91,9 @@ export type GstResult = {
   ties: boolean;
   complete: boolean;
   issues: string[];
+  /** Balance-derived, preparer-only. The front page uses `paygPayroll`. */
   payg: PaygSection;
+  paygPayroll: PaygPayrollSection;
   combinedAto: CombinedAtoSection | null;
   /** GST net plus PAYG withheld. Null when either side is unavailable. */
   estimatedPayable: number | null;
@@ -359,12 +372,35 @@ export async function computeGstReconciliation(
           };
         })();
 
+  // --- PAYG withheld, from payroll -----------------------------------------
+  // The pay runs whose PAYDAY falls in the period. One list call, snapshotted
+  // nightly; a file without payroll withholds nothing, which is a real zero,
+  // while a read we could not make stays null and says so.
+  const { fetchPayRuns, payRunsInPeriod } = await import("./payroll.server");
+  const runs = await fetchPayRuns(conn);
+  let paygPayroll: PaygPayrollSection;
+  if (runs.status === "available") {
+    const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
+    paygPayroll = {
+      status: "available",
+      withheld: round2(inPeriodRuns.reduce((s, r) => s + r.tax, 0)),
+      payRuns: inPeriodRuns.map((r) => ({ paymentDate: r.paymentDate, tax: round2(r.tax) })),
+    };
+  } else {
+    paygPayroll = runs;
+    if (runs.status !== "no_payroll") complete = false;
+  }
+
   const gstNet =
     gstOnSales !== null && gstOnPurchases !== null ? round2(gstOnSales - gstOnPurchases) : null;
+  const paygWithheldForTotal =
+    paygPayroll.status === "available"
+      ? paygPayroll.withheld
+      : paygPayroll.status === "no_payroll"
+        ? 0
+        : null;
   const estimatedPayable =
-    gstNet !== null && payg.status === "resolved" && payg.withheld !== null
-      ? round2(gstNet + payg.withheld)
-      : null;
+    gstNet !== null && paygWithheldForTotal !== null ? round2(gstNet + paygWithheldForTotal) : null;
 
 
 
@@ -386,6 +422,7 @@ export async function computeGstReconciliation(
     complete,
     issues,
     payg,
+    paygPayroll,
     combinedAto,
     estimatedPayable,
   };
