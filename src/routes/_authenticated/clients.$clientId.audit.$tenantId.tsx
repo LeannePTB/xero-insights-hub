@@ -36,6 +36,7 @@ function AuditPage() {
 
   const [catFilter, setCatFilter] = useState<string>("all");
   const [sevFilter, setSevFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [showSnoozed, setShowSnoozed] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
