@@ -70,6 +70,9 @@ function unknownCapability(tenantId: string): FileCapability {
     usesBills: "unknown",
     hasFixedAssetRegister: "unknown",
     bankAccountCount: null,
+    hasPayRuns: "unknown",
+    hasSuper: "unknown",
+
     evidence: { profile: ["No stored snapshots for this file yet — every card is shown."] },
     hiddenWidgets: [],
   };
