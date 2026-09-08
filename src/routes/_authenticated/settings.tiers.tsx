@@ -25,7 +25,6 @@ import { ArrowLeft, Loader2, Pencil, Plus, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminShell } from "@/components/admin/AdminShell";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
-import { WipOverviewCard } from "@/components/admin/WipOverviewCard";
 
 export const Route = createFileRoute("/_authenticated/settings/tiers")({
   head: () => ({
@@ -100,44 +99,7 @@ function TierSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const saveWipMut = useMutation({
-    mutationFn: ({ widgets, enabled }: { widgets?: WidgetKey[]; enabled?: boolean }) => {
-      const level = levelByKey.get("wip");
-      if (!level) throw new Error("The In testing tier could not be found.");
-      const stored = ((level.widgets as string[] | null) ?? []).filter(Boolean);
-      // A Save may never drop a key the panel could not show. The panel offers
-      // the catalogue (ALL_WIDGETS) only, so anything stored outside it is
-      // invisible and is carried through untouched.
-      const invisible = stored.filter((w) => !(ALL_WIDGETS as string[]).includes(w));
-      const next = widgets
-        ? Array.from(new Set([...(widgets as string[]), ...invisible]))
-        : stored;
-      return savePlanFn({
-        data: {
-          id: level.id,
-          scope: "dashboard",
-          key: level.key,
-          label: level.label,
-          description: level.description ?? "",
-          xero_org_limit: level.xero_org_limit ?? 1,
-          allows_multi_org: !!level.allows_multi_org,
-          widgets: next,
-          sort_order: level.sort_order ?? 100,
-          enabled: enabled ?? level.enabled,
-        },
-      });
 
-    },
-    onSuccess: (_result, change) => {
-      toast.success(change.enabled === undefined ? "Saved" : change.enabled ? "Tier enabled" : "Tier disabled");
-      qc.invalidateQueries({ queryKey: ["plan-levels"] });
-      qc.invalidateQueries({ queryKey: ["tier-config"] });
-      qc.invalidateQueries({ queryKey: ["wip-overview"] });
-      qc.invalidateQueries({ queryKey: ["effective-widgets"] });
-      qc.invalidateQueries({ queryKey: ["client-widgets"] });
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Could not save In testing"),
-  });
 
   const toggleMut = useMutation({
     mutationFn: (v: { tier: string; enabled: boolean }) =>
@@ -229,7 +191,7 @@ function TierSettings() {
             )}
           </div>
 
-          {isSuperAdmin && <WipOverviewCard />}
+
 
           <p className="text-xs text-muted-foreground">
             Cards are set at three levels: the platform default (this screen), one organisation
@@ -243,10 +205,8 @@ function TierSettings() {
 
           {tiers.map((tier) => {
             const level = levelByKey.get(tier);
-            const isWip = tier === "wip";
-            const enabled = isWip
-              ? level?.enabled !== false
-              : (settingsQ.data?.enabled as Record<string, boolean> | undefined)?.[tier] ?? true;
+            const enabled =
+              (settingsQ.data?.enabled as Record<string, boolean> | undefined)?.[tier] ?? true;
             return (
               <TierEditor
                 key={tier}
@@ -254,28 +214,12 @@ function TierSettings() {
                 detachedOrgs={overridesQ.data?.byTier?.[tier] ?? []}
                 title={tierLabel(tier, level?.label)}
                 description={tierDescription(tier, level?.description)}
-                // "In testing" edits the row itself (plan_levels.widgets), so it
-                // must show the row itself. tier_widget_config exclusions are
-                // never consulted for the 'wip' tier at render time — cards are
-                // resolved against the client's own entitled tier — so reading
-                // ceiling−exclusions here would hide keys the Save then deleted.
-                initial={
-                  isWip
-                    ? (((level?.widgets as string[] | null) ?? []).filter((w) =>
-                        (ALL_WIDGETS as string[]).includes(w),
-                      ) as WidgetKey[])
-                    : ((cfgQ.data?.global as Record<string, WidgetKey[]>)?.[tier]) ?? []
-                }
-
-                saving={isWip ? saveWipMut.isPending : saveMut.isPending}
-                onSave={(widgets) =>
-                  isWip ? saveWipMut.mutate({ widgets }) : saveMut.mutate({ tier, widgets })
-                }
+                initial={((cfgQ.data?.global as Record<string, WidgetKey[]>)?.[tier]) ?? []}
+                saving={saveMut.isPending}
+                onSave={(widgets) => saveMut.mutate({ tier, widgets })}
                 enabled={enabled}
-                onToggleEnabled={(v) =>
-                  isWip ? saveWipMut.mutate({ enabled: v }) : toggleMut.mutate({ tier, enabled: v })
-                }
-                toggleDisabled={isWip ? saveWipMut.isPending : toggleMut.isPending}
+                onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
+                toggleDisabled={toggleMut.isPending}
                 onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
                 onEdit={
                   isSuperAdmin && level
