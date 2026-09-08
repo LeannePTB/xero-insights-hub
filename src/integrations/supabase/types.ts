@@ -2417,6 +2417,13 @@ export type Database = {
           tier: Database["public"]["Enums"]["dashboard_tier"]
         }[]
       }
+      client_removal_impact: {
+        Args: { _client_id: string }
+        Returns: {
+          group_count: number
+          referencing_clients: string[]
+        }[]
+      }
       delete_client_report: {
         Args: { _reason?: string; _report_id: string }
         Returns: {
@@ -2521,6 +2528,14 @@ export type Database = {
           message: Json
           msg_id: number
           read_ct: number
+        }[]
+      }
+      remove_client: {
+        Args: { _client_id: string }
+        Returns: {
+          groups_removed: number
+          pairings_cleared: number
+          referencing_clients: string[]
         }[]
       }
       reset_org_tier_widgets: {

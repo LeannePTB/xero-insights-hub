@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
-import { listClients, deleteClient } from "@/lib/clients.functions";
+import { listClients, deleteClient, getClientRemovalImpact } from "@/lib/clients.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
@@ -84,12 +84,28 @@ export function FirmClientsSection({
   const fetchTierSettings = useServerFn(listTierSettings);
   const fetchPlanTiers = useServerFn(getAllowedTiersForFirm);
   const removeClient = useServerFn(deleteClient);
+  const fetchRemovalImpact = useServerFn(getClientRemovalImpact);
   const fetchSupportAccess = useServerFn(getSupportAccess);
   const fetchVerdicts = useServerFn(listClientVerdicts);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
   // Unticked by default: removing a client must never silently drop a Xero
   // authorisation the owner would have to ask the client to grant again.
   const [disconnectXero, setDisconnectXero] = useState(false);
+
+  // What the removal would clear elsewhere: consolidation group membership and
+  // other clients' loan matches. Only shown when there is a consequence.
+  const impactQ = useQuery({
+    queryKey: ["client-removal-impact", pendingDelete?.id],
+    enabled: !!pendingDelete,
+    queryFn: () => fetchRemovalImpact({ data: { clientId: pendingDelete!.id } }),
+  });
+  const impactNames: string[] = impactQ.data?.referencingClients ?? [];
+  const impactGroups = impactQ.data?.groupCount ?? 0;
+  const nameList =
+    impactNames.length === 1
+      ? impactNames[0]
+      : `${impactNames.slice(0, -1).join(", ")} and ${impactNames[impactNames.length - 1]}`;
+
 
   const supportQ = useQuery({
     queryKey: ["support-access", firmId],
@@ -218,7 +234,23 @@ export function FirmClientsSection({
                   consolidation groups and account mappings, and its saved figures. Reports built
                   from those saved figures will no longer be available.
                 </p>
+                {impactGroups > 0 && (
+                  <p>
+                    This client is in {impactGroups} consolidation{" "}
+                    {impactGroups === 1 ? "group" : "groups"}. Removing it takes it out of{" "}
+                    {impactGroups === 1 ? "that group" : "those groups"}.
+                  </p>
+                )}
+                {impactNames.length > 0 && (
+                  <p>
+                    {nameList}{" "}
+                    {impactNames.length === 1 ? "has loan accounts" : "have loan accounts"} matched
+                    to this client. Removing it leaves those loans unmatched in their
+                    consolidation.
+                  </p>
+                )}
               </div>
+
             </DialogDescription>
           </DialogHeader>
 
