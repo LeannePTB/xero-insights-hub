@@ -35,7 +35,7 @@ import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
-import { tierLabel as tierLabelFor, renderableWidgets, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
+import { tierLabel as tierLabelFor, renderableWidgets, defaultCardRank, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 import { getFileCapability } from "@/lib/xero/file-capability.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
@@ -244,7 +244,10 @@ function ClientDashboard() {
         standard.push({ id: `${o.id}:pnl`, fullWidth: true, node: mark("pnl", <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} />) });
       // Superannuation stands alone: it is owed to employees' funds, not the
       // ATO, and nothing else on the dashboard reports it.
-      if (widgets.includes("superannuation"))
+      // Structural hide: a file with no superannuation at all, on the balance
+      // sheet or on any pay run. Missing payroll permission never hides it.
+      if (widgets.includes("superannuation") && !structurallyHidden(tenantId, "superannuation"))
+
         advanced.push({ id: `${o.id}:superannuation`, node: mark("superannuation", <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />) });
       // Accounting and True break-even are one card; cash commitments are an
       // expandable section inside it.
@@ -263,7 +266,10 @@ function ClientDashboard() {
 
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
-      if (widgets.includes("payg_withholding"))
+      // Structural hide: a file that has never run a pay run. Missing payroll
+      // permission is not the same thing, and never hides it.
+      if (widgets.includes("payg_withholding") && !structurallyHidden(tenantId, "payg_withholding"))
+
         advanced.push({ id: `${o.id}:payg_withholding`, node: mark("payg_withholding", <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />) });
 
       if (widgets.includes("loan_consolidation"))
@@ -282,7 +288,30 @@ function ClientDashboard() {
 
     // Notes is pinned to the top of the dashboard, outside the sortable grid.
 
+    // DETERMINISTIC DEFAULT ORDER. Cards are pushed above in whatever order the
+    // code happens to read best; the order a person actually sees comes from
+    // DEFAULT_CARD_ORDER in src/lib/tiers.ts. Cards stay grouped by Xero file,
+    // and within a file they follow the catalogue order — so GST, PAYG
+    // withholding and superannuation always sit together, in that sequence.
+    // A stored per-client order still wins; this is only the fallback.
+    const orgIndex = new Map<string, number>(orgs.map((o: any, i: number) => [String(o.id), i]));
+    const sortMeta = (id: string) => {
+      const sep = id.indexOf(":");
+      const orgPart = sep > 0 ? id.slice(0, sep) : null;
+      const widget = sep > 0 ? id.slice(sep + 1) : id;
+      const orgIdx = orgPart !== null ? orgIndex.get(orgPart) ?? 9999 : -1;
+      return { orgIdx, rank: defaultCardRank(widget) };
+    };
+    const byDefaultOrder = (a: SortableCard, b: SortableCard) => {
+      const ma = sortMeta(a.id);
+      const mb = sortMeta(b.id);
+      return ma.orgIdx - mb.orgIdx || ma.rank - mb.rank;
+    };
+    standard.sort(byDefaultOrder);
+    advanced.sort(byDefaultOrder);
+
     return { standardCards: standard, advancedCards: advanced };
+
 
   }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
 
