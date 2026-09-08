@@ -16,6 +16,14 @@ import { getGstReconciliation, type GstResponse } from "@/lib/xero/gst.functions
 import { money as fmt, gstPeriodOptions } from "@/components/dashboard/recon-periods";
 import { usePersistedDisclosure } from "@/hooks/usePersistedDisclosure";
 
+/**
+ * The activity statement front page reports the PERIOD only — what happened
+ * between the two dates. No opening or closing balances appear on it, because
+ * a balance is a position on a date and answers a different question. The
+ * balance-based reconciliation still exists, but it is a preparer's check and
+ * lives behind `showWarnings`, exactly like every other preparer-only surface.
+ */
+
 function Line({
   label,
   value,
@@ -47,10 +55,13 @@ export function GstReconciliationWidget({
   clientId,
   tenantId,
   tenantName,
+  showWarnings = false,
 }: {
   clientId: string;
   tenantId: string;
   tenantName: string;
+  /** Preparer-only surfaces: the balance-based reconciliation and its issues. */
+  showWarnings?: boolean;
 }) {
   const options = useMemo(gstPeriodOptions, []);
   const defaultValue = options[1]?.value ?? options[0]!.value;
@@ -82,6 +93,7 @@ export function GstReconciliationWidget({
   }
 
   const data = q.data;
+  const payroll = data?.paygPayroll;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -130,7 +142,7 @@ export function GstReconciliationWidget({
 
       {q.isLoading || recalculating ? (
         <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Rebuilding the GST and PAYG movements…
+          <Loader2 className="h-4 w-4 animate-spin" /> Working out this period's GST and PAYG…
         </div>
       ) : q.error ? (
         <div className="mt-4">
@@ -138,212 +150,212 @@ export function GstReconciliationWidget({
         </div>
       ) : data ? (
         <>
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              {(() => {
-                const { net } = netGst(data);
-                const payg = data.payg;
-                const withheld = payg.status === "resolved" ? payg.withheld : null;
-                const total = data.estimatedPayable;
-                const headline = total ?? net;
-                const isRefund = headline < 0;
-                return (
-                  <>
+          <div className="mt-6">
+            {(() => {
+              const { net } = netGst(data);
+              const withheld = payroll?.status === "available" ? payroll.withheld : null;
+              const total = data.estimatedPayable;
+              const headline = total ?? net;
+              const isRefund = headline < 0;
+              return (
+                <>
+                  <p className="text-xs text-muted-foreground">
+                    {total !== null
+                      ? isRefund
+                        ? "Estimated refund for this period"
+                        : "Estimated amount payable for this period"
+                      : isRefund
+                        ? "GST refund position — GST only"
+                        : "Approximate GST for this period — GST only"}
+                  </p>
+                  <p className="font-display text-5xl font-semibold tabular-nums tracking-tight text-foreground">
+                    {fmt(isRefund ? -headline : headline)}
+                  </p>
+                  {total !== null && (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      GST {fmt(net)}
+                      {withheld !== null ? ` + PAYG withheld ${fmt(withheld)}` : " + no PAYG withheld"}
+                    </p>
+                  )}
+                  {isRefund && total === null && (
                     <p className="text-xs text-muted-foreground">
-                      {total !== null
-                        ? isRefund
-                          ? "Estimated refund for this period"
-                          : "Estimated amount payable for this period"
-                        : isRefund
-                          ? "GST refund position — GST only"
-                          : "Approximate GST for this period — GST only"}
+                      GST on purchases exceeded GST on sales
                     </p>
-                    <p className="font-display text-5xl font-semibold tabular-nums tracking-tight text-foreground">
-                      {fmt(isRefund ? -headline : headline)}
-                    </p>
-                    {total !== null ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        GST {fmt(net)} + PAYG withheld {fmt(withheld)}
-                      </p>
-                    ) : (
-                      <p className="mt-1 text-xs text-muted-foreground">GST {fmt(net)}</p>
-                    )}
-                    {isRefund && total === null && (
-                      <p className="text-xs text-muted-foreground">
-                        GST on purchases exceeded GST on sales
-                      </p>
-                    )}
-                  </>
-                );
-              })()}
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Indicative, not a lodgement figure
-              </p>
-            </div>
+                  )}
+                  <p className="mt-1 text-[11px] text-muted-foreground">
+                    Indicative, not a lodgement figure
+                  </p>
+                </>
+              );
+            })()}
+          </div>
 
-            {data.ties ? (
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                <CheckCircle2 className="h-3.5 w-3.5" /> Ties to control account
-              </span>
-            ) : (
-              <div className="flex shrink-0 items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-                <div>
-                  <p className="font-semibold">Does not tie — do not trust the headline</p>
-                  <p className="opacity-90">{fmt(data.difference)} unexplained</p>
+          {/* The parts. Every line is a period figure — nothing here is a balance. */}
+          <div className="mt-5 rounded-xl border border-border p-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              How it is made up
+            </p>
+            <div className="mt-1">
+              <Line label="GST on sales" value={data.gstOnSales} />
+              <Line label="GST on purchases" value={data.gstOnPurchases} />
+              <Line label="GST net" value={netGst(data).net} strong />
+              {payroll?.status === "available" ? (
+                <Line
+                  label={`PAYG withheld (${payroll.payRuns.length} pay ${
+                    payroll.payRuns.length === 1 ? "day" : "days"
+                  })`}
+                  value={payroll.withheld}
+                  strong
+                />
+              ) : payroll?.status === "no_payroll" ? (
+                <div className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">
+                  <span className="text-sm">PAYG withheld</span>
+                  <span className="text-sm text-muted-foreground">No payroll in this file</span>
                 </div>
-              </div>
+              ) : (
+                <div className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">
+                  <span className="text-sm">PAYG withheld</span>
+                  <span className="text-sm text-muted-foreground">Not available</span>
+                </div>
+              )}
+            </div>
+            {payroll?.status === "available" && (
+              <p className="mt-2 text-[11px] text-muted-foreground">
+                Taken from the pay runs paid in this period, so it is what payroll actually
+                withheld — not a balance movement.
+              </p>
             )}
           </div>
 
           {/* Refusals: never present a GST-only figure as the whole statement. */}
-          {data.payg.status === "unresolved" && (
+          {payroll && payroll.status !== "available" && payroll.status !== "no_payroll" && (
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <p>
-                <span className="font-medium">PAYG withholding could not be identified.</span>{" "}
-                {data.payg.reason} The amount actually payable will be higher if wages were paid in
-                this period. You can say which account holds PAYG withholding in this client's
-                settings.
+                <span className="font-medium">PAYG withholding could not be read for this period.</span>{" "}
+                {payroll.status === "not_authorised"
+                  ? "This organisation has not authorised payroll access in Xero yet, so pay runs cannot be read. Reconnecting it grants read-only access only."
+                  : "Xero's payroll data could not be read just now."}{" "}
+                The amount actually payable will be higher if wages were paid in this period.
               </p>
             </div>
           )}
 
-          {data.combinedAto && (
-            <div className="mt-4 rounded-lg border border-border bg-background/60 px-3 py-2 text-xs text-muted-foreground">
-              <p className="font-medium text-foreground">
-                {data.combinedAto.accountNames.join(", ")} holds GST and PAYG withholding together
-              </p>
-              <p className="mt-1">
-                It moved {fmt(data.combinedAto.movement)} over this period, and closed at{" "}
-                {fmt(data.combinedAto.closing)}. Nothing in the file says how much of that is GST
-                and how much is PAYG withholding, so it is not split and it is not added to the
-                total above — part of it may already be counted in the GST figure.
-              </p>
-            </div>
-          )}
-
-
-          {data && !data.complete && (
+          {showWarnings && !data.complete && (
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <p className="font-medium">Incomplete — some data could not be loaded</p>
             </div>
           )}
 
-          <div className="mt-5">
-            <button
-              type="button"
-              onClick={() => setDetailOpen(!detailOpen)}
-              aria-expanded={detailOpen}
-              className="flex w-full items-center justify-between rounded-xl border border-border bg-background/60 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
-            >
-              <span>Check the figures tie</span>
-              <ChevronDown
-                className={`h-4 w-4 text-muted-foreground transition-transform ${detailOpen ? "rotate-180" : ""}`}
-              />
-            </button>
-            {detailOpen && (
-              <div className="mt-3 space-y-4">
-                <div className="rounded-xl border border-border p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    {data.controlAccountName ?? "GST"} control account
-                  </p>
-                  <div className="mt-1">
-                    <Line label="Opening balance" value={data.openingBalance} />
-                    <Line label="GST on sales" value={data.gstOnSales} />
-                    <Line label="GST on purchases" value={data.gstOnPurchases} />
-                    <Line label="Paid to the ATO and journals" value={data.movementsTotal} />
-                    <Line label="Expected closing balance" value={data.expectedClosing} strong />
-                    <Line label="Balance sheet closing balance" value={data.closingBalance} strong />
-                    <Line label="Difference" value={data.difference} strong />
-                  </div>
-                </div>
-
-                {data.payg.status === "resolved" && (
+          {/* Preparer-only: the balance-based check, and the only place any
+              balance appears on this card. */}
+          {showWarnings && (
+            <div className="mt-5">
+              <button
+                type="button"
+                onClick={() => setDetailOpen(!detailOpen)}
+                aria-expanded={detailOpen}
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-background/60 px-3 py-2 text-sm font-medium text-foreground hover:bg-muted/40"
+              >
+                <span>Check the figures tie (preparer only)</span>
+                <span className="flex items-center gap-2">
+                  {data.ties ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Ties
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-medium text-destructive">
+                      <AlertTriangle className="h-3.5 w-3.5" /> {fmt(data.difference)} unexplained
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`h-4 w-4 text-muted-foreground transition-transform ${detailOpen ? "rotate-180" : ""}`}
+                  />
+                </span>
+              </button>
+              {detailOpen && (
+                <div className="mt-3 space-y-4">
                   <div className="rounded-xl border border-border p-3">
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      {data.payg.accountNames.join(", ")}
+                      {data.controlAccountName ?? "GST"} control account
                     </p>
                     <div className="mt-1">
-                      <Line label="Opening balance" value={data.payg.opening} />
-                      <Line label="Paid to the ATO and journals" value={data.payg.paidToAto} />
-                      <Line label="Balance sheet closing balance" value={data.payg.closing} strong />
-                      <Line label="PAYG withheld in the period" value={data.payg.withheld} strong />
+                      <Line label="Opening balance" value={data.openingBalance} />
+                      <Line label="GST on sales" value={data.gstOnSales} />
+                      <Line label="GST on purchases" value={data.gstOnPurchases} />
+                      <Line label="Paid to the ATO and journals" value={data.movementsTotal} />
+                      <Line label="Expected closing balance" value={data.expectedClosing} strong />
+                      <Line label="Balance sheet closing balance" value={data.closingBalance} strong />
+                      <Line label="Difference" value={data.difference} strong />
                     </div>
-                    <p className="mt-2 text-[11px] text-muted-foreground">
-                      Payroll postings cannot be read through Xero's accounting API, so what was
-                      withheld is worked out from the movement on this account — closing balance
-                      less opening balance, plus anything paid to the ATO. There is no second
-                      source to check it against, so unlike the GST side it cannot be tied.
-                    </p>
                   </div>
-                )}
 
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    GST account transactions in the period
-                  </p>
-                  {(data.accountMovements.length ?? 0) === 0 ? (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Nothing was coded directly to the GST account in this period.
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      GST account transactions in the period
                     </p>
-                  ) : (
-                    <div className="mt-2 overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                            <th className="py-2 pr-3 font-semibold">Date</th>
-                            <th className="py-2 px-3 font-semibold">Source</th>
-                            <th className="py-2 px-3 font-semibold">Reference</th>
-                            <th className="py-2 pl-3 text-right font-semibold">Amount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {data.accountMovements.map((m, i) => (
-                            <tr key={i} className="border-b border-border/50 last:border-0">
-                              <td className="py-2 pr-3 whitespace-nowrap">
-                                {m.date ? format(new Date(`${m.date}T00:00:00`), "d MMM yyyy") : "—"}
-                              </td>
-                              <td className="py-2 px-3">{m.source}</td>
-                              <td className="py-2 px-3 text-muted-foreground">
-                                {m.contact ? `${m.contact}${m.reference ? " · " : ""}` : ""}
-                                {m.reference ?? ""}
-                              </td>
-                              <td className="py-2 pl-3 text-right tabular-nums">{fmt(m.amount)}</td>
+                    {(data.accountMovements.length ?? 0) === 0 ? (
+                      <p className="mt-2 text-sm text-muted-foreground">
+                        Nothing was coded directly to the GST account in this period.
+                      </p>
+                    ) : (
+                      <div className="mt-2 overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                              <th className="py-2 pr-3 font-semibold">Date</th>
+                              <th className="py-2 px-3 font-semibold">Source</th>
+                              <th className="py-2 px-3 font-semibold">Reference</th>
+                              <th className="py-2 pl-3 text-right font-semibold">Amount</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                          </thead>
+                          <tbody>
+                            {data.accountMovements.map((m, i) => (
+                              <tr key={i} className="border-b border-border/50 last:border-0">
+                                <td className="py-2 pr-3 whitespace-nowrap">
+                                  {m.date ? format(new Date(`${m.date}T00:00:00`), "d MMM yyyy") : "—"}
+                                </td>
+                                <td className="py-2 px-3">{m.source}</td>
+                                <td className="py-2 px-3 text-muted-foreground">
+                                  {m.contact ? `${m.contact}${m.reference ? " · " : ""}` : ""}
+                                  {m.reference ?? ""}
+                                </td>
+                                <td className="py-2 pl-3 text-right tabular-nums">{fmt(m.amount)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-[11px] text-muted-foreground">
+                    Xero's API does not expose the Activity Statement, so these figures are rebuilt
+                    from transaction tax amounts and the GST account movements. Treat them as
+                    indicative.
+                  </p>
+
+                  {(data.issues.length ?? 0) > 0 && (
+                    <ul className="space-y-1 text-xs text-amber-600 dark:text-amber-400">
+                      {data.issues.map((m, i) => (
+                        <li key={i}>{m}</li>
+                      ))}
+                    </ul>
+                  )}
+
+                  {data.generatedAt && (
+                    <p className="text-[11px] text-muted-foreground">
+                      {data.fromSnapshot ? "Snapshot taken" : "Calculated"}{" "}
+                      {format(new Date(data.generatedAt), "d MMM yyyy, h:mm a")}
+                    </p>
                   )}
                 </div>
-
-                <p className="text-[11px] text-muted-foreground">
-                  Xero's API does not expose the Activity Statement, so these figures are rebuilt from
-                  transaction tax amounts and the GST account movements. Treat them as indicative.
-                </p>
-
-                {(data.issues.length ?? 0) > 0 && (
-                  <ul className="space-y-1 text-xs text-amber-600 dark:text-amber-400">
-                    {data.issues.map((m, i) => (
-                      <li key={i}>{m}</li>
-                    ))}
-                  </ul>
-                )}
-
-                {data.generatedAt && (
-                  <p className="text-[11px] text-muted-foreground">
-                    {data.fromSnapshot ? "Snapshot taken" : "Calculated"}{" "}
-                    {format(new Date(data.generatedAt), "d MMM yyyy, h:mm a")}
-                  </p>
-                )}
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </>
       ) : null}
     </div>
   );
 }
-
