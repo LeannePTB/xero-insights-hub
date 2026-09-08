@@ -218,44 +218,102 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
 
 
 /**
- * Superannuation from PAYROLL, per payday.
+ * Superannuation NOT YET PAID.
  *
- * Xero exposes no record of super being PAID to a fund — no payment batches,
- * no auto-super submissions, no dates. So this reports what was ACCRUED on
- * each payday and how old the oldest one is, and never states that a payday
- * was or was not paid on time.
+ * The answer is the balance on the superannuation liability account: accrued
+ * less paid. Xero exposes NO super payment data through its API — the payment
+ * batches visible in Xero's own screens, with their Paid/Processing/Failed
+ * statuses, are not available to us. Payment is therefore INFERRED from the
+ * balance falling, and nothing here may imply we can see a payment.
+ *
+ * Pay run data is used for one purpose only: to explain an outstanding balance
+ * by working backwards from the most recent payday. It is never listed.
  */
-export const getSuperPayroll = createServerFn({ method: "POST" })
+export type SuperannuationPosition =
+  | { status: "no_super_accounts" }
+  | {
+      status: "available";
+      /** Balance on the super liability account(s), as at today. */
+      outstanding: number;
+      accounts: { name: string; amount: number }[];
+      /** True when whole paydays add up to the outstanding balance. */
+      matchesPaydays: boolean;
+      /** Number of whole paydays the balance covers, when it matches. */
+      unpaidPaydays: number | null;
+      /** Oldest payday not covered by a payment, when pay runs are readable. */
+      oldestUnpaidPayday: string | null;
+      /** Why pay runs could not be used, when they could not. */
+      payrollStatus: "available" | "no_payroll" | "not_authorised" | "unavailable";
+    };
+
+export const getSuperannuationPosition = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; clientId?: string; months?: number }) => input)
-  .handler(async ({ data, context }) => {
+  .inputValidator((input: { tenantId: string; clientId?: string }) => input)
+  .handler(async ({ data, context }): Promise<SuperannuationPosition> => {
     const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "superannuation");
+
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { getStatutoryOverrides } = await import("./statutory-overrides.server");
+    const conn = await getConnectionByTenant(data.tenantId);
+    const overrides = await getStatutoryOverrides(
+      context.supabase as any,
+      data.clientId ?? null,
+      data.tenantId,
+    );
+
+    const [bsRes, accountsRes] = await Promise.all([
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {}),
+      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
+    ]);
+    const report = bsRes.Reports?.[0];
+    if (!report) throw new Error("No Balance Sheet returned by Xero.");
+    const extraction = extractTaxLines(report, accountsRes, overrides);
+    const superLines = (extraction.lines ?? []).filter((l) => l.category === "super");
+    if (superLines.length === 0) return { status: "no_super_accounts" };
+
+    const round = (n: number) => Math.round(n * 100) / 100;
+    const outstanding = round(superLines.reduce((s, l) => s + l.amount, 0));
+
+    // Pay runs explain an outstanding balance; they never produce the figure.
     const { loadPayRuns } = await import("./payroll.server");
     const runs = await loadPayRuns({
       supabase: context.supabase,
       tenantId: data.tenantId,
       clientId: data.clientId ?? null,
     });
-    if (runs.status !== "available") {
-      return { status: runs.status, reason: "reason" in runs ? runs.reason : null } as const;
+    const payrollStatus = runs.status;
+
+    let matchesPaydays = false;
+    let unpaidPaydays: number | null = null;
+    let oldestUnpaidPayday: string | null = null;
+
+    if (runs.status === "available" && outstanding > 0.005) {
+      // Newest payday first: accumulate until the accruals reach the balance.
+      const ordered = runs.payRuns
+        .filter((r) => !!r.paymentDate)
+        .sort((a, b) => (b.paymentDate ?? "").localeCompare(a.paymentDate ?? ""));
+      let cumulative = 0;
+      for (let i = 0; i < ordered.length; i++) {
+        cumulative = round(cumulative + ordered[i]!.super);
+        oldestUnpaidPayday = ordered[i]!.paymentDate;
+        if (Math.abs(cumulative - outstanding) < 0.005) {
+          matchesPaydays = true;
+          unpaidPaydays = i + 1;
+          break;
+        }
+        if (cumulative > outstanding) break;
+      }
     }
-    // Recent paydays only: the card is about what has just been accrued.
-    const months = Math.min(Math.max(data.months ?? 6, 1), 24);
-    const cutoff = new Date();
-    cutoff.setMonth(cutoff.getMonth() - months);
-    const cutoffIso = cutoff.toISOString().slice(0, 10);
-    const payRuns = runs.payRuns
-      .filter((r) => !!r.paymentDate && r.paymentDate >= cutoffIso)
-      .map((r) => ({ paymentDate: r.paymentDate, periodEnd: r.periodEnd, super: r.super }));
+
     return {
-      status: "available" as const,
-      months,
-      payRuns,
-      accrued: Math.round(payRuns.reduce((s, r) => s + r.super, 0) * 100) / 100,
-      latestPayday: payRuns[0]?.paymentDate ?? null,
-      oldestPayday: payRuns.length ? payRuns[payRuns.length - 1]!.paymentDate : null,
-      fromSnapshot: runs.fromSnapshot,
-      fetchedAt: runs.fetchedAt ?? null,
+      status: "available",
+      outstanding,
+      accounts: superLines.map((l) => ({ name: l.name, amount: round(l.amount) })),
+      matchesPaydays,
+      unpaidPaydays,
+      oldestUnpaidPayday,
+      payrollStatus,
     };
   });
+
