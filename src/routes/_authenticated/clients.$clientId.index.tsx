@@ -239,6 +239,11 @@ function ClientDashboard() {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
+      // Fixed statutory block for this Xero file. Populated below under the
+      // exact same conditions the sortable cards used, then pushed only if it
+      // holds at least one card.
+      const block: StatutoryBlock = { orgId: String(o.id), gst: null, payg: null, superannuation: null };
+
       if (widgets.includes("xero_audit"))
         advanced.push({
           id: `${o.id}:xero_audit`,
@@ -256,8 +261,8 @@ function ClientDashboard() {
       // Structural hide: a file with no superannuation at all, on the balance
       // sheet or on any pay run. Missing payroll permission never hides it.
       if (widgets.includes("superannuation") && !structurallyHidden(tenantId, "superannuation"))
+        block.superannuation = <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />;
 
-        advanced.push({ id: `${o.id}:superannuation`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
       // Accounting and True break-even are one card; cash commitments are an
       // expandable section inside it.
       if (widgets.includes("accounting_breakeven"))
@@ -269,18 +274,20 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:cashflow_scenario`, node: <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
       // Structural hide: a non-GST cashbook has no GST ledger.
       if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
-        advanced.push({ id: `${o.id}:gst_reconciliation`, node: <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} gstCycle={(client?.gst_cycle as GstCycle | null) ?? null} showWarnings={isAdvisor} /> });
+        block.gst = <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} gstCycle={(client?.gst_cycle as GstCycle | null) ?? null} showWarnings={isAdvisor} />;
 
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
       // Structural hide: a file that has never run a pay run. Missing payroll
       // permission is not the same thing, and never hides it.
       if (widgets.includes("payg_withholding") && !structurallyHidden(tenantId, "payg_withholding"))
+        block.payg = <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />;
 
-        advanced.push({ id: `${o.id}:payg_withholding`, node: <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
 
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+
+      if (block.gst || block.payg || block.superannuation) statutory.push(block);
     }
 
     // Transaction Search is organisation-wide, not per-org, so it lives in the
@@ -317,7 +324,7 @@ function ClientDashboard() {
     standard.sort(byDefaultOrder);
     advanced.sort(byDefaultOrder);
 
-    return { standardCards: standard, advancedCards: advanced };
+    return { standardCards: standard, advancedCards: advanced, statutoryBlocks: statutory };
 
 
   }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
