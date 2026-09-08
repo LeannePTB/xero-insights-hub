@@ -244,7 +244,10 @@ function ClientDashboard() {
         standard.push({ id: `${o.id}:pnl`, fullWidth: true, node: mark("pnl", <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} />) });
       // Superannuation stands alone: it is owed to employees' funds, not the
       // ATO, and nothing else on the dashboard reports it.
-      if (widgets.includes("superannuation"))
+      // Structural hide: a file with no superannuation at all, on the balance
+      // sheet or on any pay run. Missing payroll permission never hides it.
+      if (widgets.includes("superannuation") && !structurallyHidden(tenantId, "superannuation"))
+
         advanced.push({ id: `${o.id}:superannuation`, node: mark("superannuation", <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />) });
       // Accounting and True break-even are one card; cash commitments are an
       // expandable section inside it.
@@ -263,7 +266,10 @@ function ClientDashboard() {
 
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
-      if (widgets.includes("payg_withholding"))
+      // Structural hide: a file that has never run a pay run. Missing payroll
+      // permission is not the same thing, and never hides it.
+      if (widgets.includes("payg_withholding") && !structurallyHidden(tenantId, "payg_withholding"))
+
         advanced.push({ id: `${o.id}:payg_withholding`, node: mark("payg_withholding", <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />) });
 
       if (widgets.includes("loan_consolidation"))
