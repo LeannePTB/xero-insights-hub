@@ -174,6 +174,14 @@ export function GstReconciliationWidget({
         )}
       </div>
 
+      {!gstCycle && (
+        <p className="mt-3 text-xs text-muted-foreground">
+          No GST lodgement cycle is set for this client, so this card opens on last month. Set the
+          cycle on the client settings page under “GST (business activity statement)” and it will
+          open on the current period instead.
+        </p>
+      )}
+
       {notRegistered ? (
         <p className="mt-6 text-sm text-muted-foreground">
           This client is not registered for GST, so there is no activity statement period to show.
