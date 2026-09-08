@@ -23,6 +23,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
+import { Route as ApiPublicTmpAcctDiagRouteImport } from './routes/api/public/tmp-acct-diag'
 import { Route as AuthenticatedSettingsTiersRouteImport } from './routes/_authenticated/settings.tiers'
 import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
 import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
@@ -126,6 +127,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicTmpAcctDiagRoute = ApiPublicTmpAcctDiagRouteImport.update({
+  id: '/api/public/tmp-acct-diag',
+  path: '/api/public/tmp-acct-diag',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedSettingsTiersRoute =
@@ -353,6 +359,7 @@ export interface FileRoutesByFullPath {
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
+  '/api/public/tmp-acct-diag': typeof ApiPublicTmpAcctDiagRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
@@ -401,6 +408,7 @@ export interface FileRoutesByTo {
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
+  '/api/public/tmp-acct-diag': typeof ApiPublicTmpAcctDiagRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
@@ -452,6 +460,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/tiers': typeof AuthenticatedSettingsTiersRoute
+  '/api/public/tmp-acct-diag': typeof ApiPublicTmpAcctDiagRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
@@ -504,6 +513,7 @@ export interface FileRouteTypes {
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/tiers'
+    | '/api/public/tmp-acct-diag'
     | '/lovable/email/suppression'
     | '/admin/'
     | '/admin/firms/$firmId'
@@ -552,6 +562,7 @@ export interface FileRouteTypes {
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/tiers'
+    | '/api/public/tmp-acct-diag'
     | '/lovable/email/suppression'
     | '/admin'
     | '/admin/firms/$firmId'
@@ -602,6 +613,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/activity'
     | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/tiers'
+    | '/api/public/tmp-acct-diag'
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/firms/$firmId'
@@ -644,6 +656,7 @@ export interface RootRouteChildren {
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
   ReportTokenRoute: typeof ReportTokenRoute
   SignupTokenRoute: typeof SignupTokenRoute
+  ApiPublicTmpAcctDiagRoute: typeof ApiPublicTmpAcctDiagRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicXeroCallbackRoute: typeof ApiPublicXeroCallbackRoute
@@ -753,6 +766,13 @@ declare module '@tanstack/react-router' {
       path: '/lovable/email/suppression'
       fullPath: '/lovable/email/suppression'
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/tmp-acct-diag': {
+      id: '/api/public/tmp-acct-diag'
+      path: '/api/public/tmp-acct-diag'
+      fullPath: '/api/public/tmp-acct-diag'
+      preLoaderRoute: typeof ApiPublicTmpAcctDiagRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/settings/tiers': {
@@ -1133,6 +1153,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
   ReportTokenRoute: ReportTokenRoute,
   SignupTokenRoute: SignupTokenRoute,
+  ApiPublicTmpAcctDiagRoute: ApiPublicTmpAcctDiagRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicXeroCallbackRoute: ApiPublicXeroCallbackRoute,
