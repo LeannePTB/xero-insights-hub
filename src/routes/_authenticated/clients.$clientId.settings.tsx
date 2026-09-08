@@ -1002,8 +1002,10 @@ function ClientSettings() {
             <Trash2 className="mr-2 h-4 w-4" /> Delete client
           </Button>
           <p className="mt-2 text-xs text-muted-foreground">
-            This removes the client and all viewer access. Linked Xero organisations stay connected
-            and can be reused.
+            This removes the client and everything held for it: viewer access, consolidation groups,
+            account mappings and saved figures. Linked Xero organisations stay connected and can be
+            reused — to disconnect them as well, remove the client from the clients list, where that
+            choice is offered.
           </p>
         </Section>
 
