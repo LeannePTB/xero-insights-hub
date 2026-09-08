@@ -480,7 +480,8 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
     if (!targetFirmId || sourceFirmId !== targetFirmId) {
       throw new Error("That Xero file belongs to another organisation and cannot be moved here.");
     }
-    if (!superAdmin && !(await userCanManageClient(context.userId, existing.client_id))) {
+    // Invariant 3: no super-admin shortcut past the source client's own gate.
+    if (!(await userCanManageClient(context.userId, existing.client_id))) {
       throw new Error("You cannot manage the subscription that currently holds this Xero file.");
     }
 

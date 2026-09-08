@@ -29,11 +29,9 @@ export const listClients = createServerFn({ method: "POST" })
     }
 
 
-    // Super admins manage every organisation, including ones they don't belong to,
-    // so they read through the admin client (RLS scopes reads to firm membership).
-    const db: any = isSuper
-      ? (await import("@/integrations/supabase/client.server")).supabaseAdmin
-      : context.supabase;
+    // Reads always go through the caller's session, so RLS scopes them to the
+    // organisations the caller is actually a member of.
+    const db: any = context.supabase;
 
     let q = db
       .from("clients")
