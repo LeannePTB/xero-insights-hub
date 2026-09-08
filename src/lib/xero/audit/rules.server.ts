@@ -452,9 +452,11 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
       : null;
     const repeatCount = repeatedDoc ? counts.get(repeatedDoc)! : 0;
 
+    // The payments are listed under the finding, so the dates are not repeated here.
     const message = repeatedDoc
-      ? `${repeatCount} payments of ${first.amount.toFixed(2)} settle the same ${docEntity === "Invoice" ? "invoice" : "bill"} ${docPayment!.invoiceNumber || repeatedDoc} for ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"} (${dates}). The same document has been paid more than once — check before it is written off.`
-      : `${sorted.length} payments of ${first.amount.toFixed(2)} to ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"} (${dates}) are not allocated to any invoice or bill. Allocate them, or confirm they are on-account payments.`;
+      ? `${repeatCount} payments of ${first.amount.toFixed(2)} settle the same ${docEntity === "Invoice" ? "invoice" : "bill"} ${docPayment!.invoiceNumber || repeatedDoc} for ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"}. The same document has been paid more than once — check before it is written off.`
+      : `${sorted.length} payments of ${first.amount.toFixed(2)} to ${first.contactName}${acctText} within ${days} day${days === 1 ? "" : "s"} are not allocated to any invoice or bill. Allocate them, or confirm they are on-account payments.`;
+
 
     out.push({
       ruleId,
