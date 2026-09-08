@@ -9,6 +9,7 @@ import { SNAPSHOT_PAYLOAD_VERSION, STALENESS_SECONDS } from "@/lib/xero/snapshot
 import {
   buildProtectedMoney,
   analyseBalanceSheet,
+  type StatutoryOverrides,
   accountRefsById,
   balancesByAccountId,
   type TaxLineExtraction,
@@ -161,6 +162,7 @@ export function ruleProtectedMoneyVsCash(
   balanceSheet: SnapshotRow,
   accounts?: SnapshotRow,
   payables?: SnapshotRow,
+  overrides?: StatutoryOverrides,
 ): {
   finding: Finding | null;
   unavailable?: string;
@@ -169,7 +171,7 @@ export function ruleProtectedMoneyVsCash(
   split?: ProtectedMoneySplit;
   debug?: { protectedMoneyTotal?: number; cashAtBank?: number };
 } {
-  const analysed = analyseBalanceSheet(balanceSheet.payload, accounts?.payload);
+  const analysed = analyseBalanceSheet(balanceSheet.payload, accounts?.payload, overrides);
   if (analysed.status === "input_invalid" || analysed.cashAtBank.status === "input_invalid") {
     return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN };
   }
@@ -281,12 +283,16 @@ export function ruleProtectedMoneyVsCash(
 // that reports lodgement status. Never word it as "overdue".
 // ---------------------------------------------------------------------------
 
-export function ruleStatutoryMagnitude(balanceSheet: SnapshotRow, accounts?: SnapshotRow): {
+export function ruleStatutoryMagnitude(
+  balanceSheet: SnapshotRow,
+  accounts?: SnapshotRow,
+  overrides?: StatutoryOverrides,
+): {
   finding: Finding | null;
   unavailable?: string;
   debug?: { statutoryTotal?: number; cashAtBank?: number };
 } {
-  const analysed = analyseBalanceSheet(balanceSheet.payload, accounts?.payload);
+  const analysed = analyseBalanceSheet(balanceSheet.payload, accounts?.payload, overrides);
   if (analysed.status === "input_invalid" || analysed.cashAtBank.status === "input_invalid") {
     return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN };
   }
@@ -463,11 +469,16 @@ export function rankFindings(findings: Finding[]): Finding[] {
 export type EvaluateOptions = {
   /** See `keyState`: for rows fetched live rather than read from a snapshot. */
   skipFreshness?: boolean;
+  /**
+   * Per-client statutory account overrides. Passed straight to
+   * `classifyTaxLine`; absent means name matching, exactly as before.
+   */
+  statutoryOverrides?: StatutoryOverrides;
 };
 
 /** Evaluate against stored snapshot rows (the staff badge). */
-export function evaluateClient(input: ClientVerdictInput): Verdict {
-  return evaluateFromRows(input, {});
+export function evaluateClient(input: ClientVerdictInput, options: EvaluateOptions = {}): Verdict {
+  return evaluateFromRows(input, options);
 }
 
 /**
@@ -549,14 +560,14 @@ export function evaluateFromRows(
     const apState = keyState(apRow, "invoices_accpay_open", now, skipFreshness);
     const ap = apState === "usable" ? apRow : undefined;
 
-    const r01 = ruleProtectedMoneyVsCash(bs, accounts, ap);
+    const r01 = ruleProtectedMoneyVsCash(bs, accounts, ap, options.statutoryOverrides);
     if (r01.finding) findings.push(r01.finding);
     else if (r01.unavailable) gaps.push(r01.unavailable);
     // A refused lodged-and-owing split is reported even when R01 itself fired:
     // the reader must know the total was not established.
     if (r01.splitGap) gaps.push(r01.splitGap);
 
-    const r05 = ruleStatutoryMagnitude(bs, accounts);
+    const r05 = ruleStatutoryMagnitude(bs, accounts, options.statutoryOverrides);
     if (r05.finding) findings.push(r05.finding);
     else if (r05.unavailable) gaps.push(r05.unavailable);
 
