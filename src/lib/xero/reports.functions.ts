@@ -127,13 +127,13 @@ export type TaxLiabilities = {
   payg: number;
   superannuation: number;
   totalTaxLiability: number;
-  lines: { name: string; amount: number; category: "gst" | "payg" | "super" | "other-tax" }[];
+  lines: { name: string; amount: number; category: TaxLineCategory }[];
   mode?: "balance" | "movement";
 };
 
 // Tax-line extraction is pure and shared with the snapshot rules engine.
 import { buildProtectedMoney, extractTaxLines, taxLinesOrThrow } from "./tax-lines";
-import type { ProtectedMoney } from "./tax-lines";
+import type { ProtectedMoney, TaxLineCategory } from "./tax-lines";
 export { classifyTaxLine, extractTaxLines, buildProtectedMoney } from "./tax-lines";
 export type {
   ProtectedMoney,
@@ -249,7 +249,7 @@ export type CurrentTaxBalance = {
   superannuation: number;
   otherTax: number;
   total: number;
-  lines: { name: string; amount: number; category: "gst" | "payg" | "super" | "other-tax" }[];
+  lines: { name: string; amount: number; category: TaxLineCategory }[];
 };
 
 export const getCurrentTaxBalance = createServerFn({ method: "POST" })
@@ -304,7 +304,7 @@ export type TaxLiabilityBuckets = {
   difference: number;
   lines: {
     name: string;
-    category: "gst" | "payg" | "super" | "other-tax";
+    category: TaxLineCategory;
     balanceSheetAmount: number;
     bucket: TaxBucket;
   }[];
@@ -339,9 +339,16 @@ export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
     const balanceSheetTotal = taxLines.reduce((s, l) => s + l.amount, 0);
 
     // Per-category BS totals
-    const bsByCat: Record<"gst" | "payg" | "other-tax", number> = { gst: 0, payg: 0, "other-tax": 0 };
+    // An account carrying GST and PAYG withholding together gets its own
+    // bucket; it is never divided between the two.
+    const bsByCat: Record<"gst" | "payg" | "other-tax" | "ato-combined", number> = {
+      gst: 0,
+      payg: 0,
+      "other-tax": 0,
+      "ato-combined": 0,
+    };
     for (const l of taxLines) {
-      if (l.category === "gst" || l.category === "payg" || l.category === "other-tax") {
+      if (l.category !== "super") {
         bsByCat[l.category] += l.amount;
       }
     }
@@ -362,9 +369,10 @@ export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
       gst: { notYetDue: 0, dueNow: 0, overdue: 0 },
       payg: { notYetDue: 0, dueNow: 0, overdue: 0 },
       "other-tax": { notYetDue: 0, dueNow: 0, overdue: 0 },
+      "ato-combined": { notYetDue: 0, dueNow: 0, overdue: 0 },
     };
 
-    function bucketCategory(cat: "gst" | "payg" | "other-tax", lodged: { dueDate: string; amount: number }[]) {
+    function bucketCategory(cat: "gst" | "payg" | "other-tax" | "ato-combined", lodged: { dueDate: string; amount: number }[]) {
       const bsAmount = bsByCat[cat];
       let remaining = bsAmount;
       let overdue = 0;
@@ -387,14 +395,15 @@ export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
     bucketCategory("gst", lodgedByCat.gst);
     bucketCategory("payg", lodgedByCat.payg);
     bucketCategory("other-tax", []);
+    bucketCategory("ato-combined", []);
 
-    const notYetDue = bucketByCat.gst.notYetDue + bucketByCat.payg.notYetDue + bucketByCat["other-tax"].notYetDue;
-    const dueNow = bucketByCat.gst.dueNow + bucketByCat.payg.dueNow + bucketByCat["other-tax"].dueNow;
-    const overdue = bucketByCat.gst.overdue + bucketByCat.payg.overdue + bucketByCat["other-tax"].overdue;
+    const notYetDue = bucketByCat.gst.notYetDue + bucketByCat.payg.notYetDue + bucketByCat["other-tax"].notYetDue + bucketByCat["ato-combined"].notYetDue;
+    const dueNow = bucketByCat.gst.dueNow + bucketByCat.payg.dueNow + bucketByCat["other-tax"].dueNow + bucketByCat["ato-combined"].dueNow;
+    const overdue = bucketByCat.gst.overdue + bucketByCat.payg.overdue + bucketByCat["other-tax"].overdue + bucketByCat["ato-combined"].overdue;
     const bucketTotal = notYetDue + dueNow + overdue;
 
     // Tag each line with the dominant bucket for its category.
-    const dominant = (cat: "gst" | "payg" | "other-tax" | "super"): TaxBucket => {
+    const dominant = (cat: TaxLineCategory): TaxBucket => {
       if (cat === "super") return "not-due";
       const b = bucketByCat[cat];
       if (b.overdue >= b.dueNow && b.overdue >= b.notYetDue && b.overdue > 0) return "overdue";

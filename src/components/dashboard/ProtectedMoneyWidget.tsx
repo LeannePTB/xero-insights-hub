@@ -25,11 +25,13 @@ function fmt(n: number) {
   }).format(n);
 }
 
-const COMPONENT_ICON = {
+const COMPONENT_ICON: Record<string, typeof Receipt> = {
   gst: Receipt,
   payg: Wallet,
   super: PiggyBank,
-} as const;
+  // One account holding GST and PAYG withholding together.
+  "ato-combined": Receipt,
+};
 
 export function ProtectedMoneyWidget({
   tenantId,

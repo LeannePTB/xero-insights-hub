@@ -179,7 +179,13 @@ export function ruleCoaHygiene(
     // stray balance. The decision goes through the one resolver, so this rule
     // and the reports can never disagree.
     const statutory = classifyTaxLine(a.Name ?? "", a as any, overrides);
-    if (statutory === "gst" || statutory === "payg" || statutory === "super") continue;
+    if (
+      statutory === "gst" ||
+      statutory === "payg" ||
+      statutory === "super" ||
+      statutory === "ato-combined"
+    )
+      continue;
     const bal = balanceOf(a, balances);
     if (bal === null) continue;
     if (Math.abs(bal) >= 1) {
@@ -739,7 +745,13 @@ export function ruleStatutoryTrace(
     accounts
       .filter((a) => {
         const category = classifyTaxLine(a.Name ?? "", a as any, overrides);
-        return category === "gst" || category === "payg" || category === "super";
+        // An account mapped to several categories at once is still traceable.
+        return (
+          category === "gst" ||
+          category === "payg" ||
+          category === "super" ||
+          category === "ato-combined"
+        );
       })
       .map((a) => a.AccountID),
   );

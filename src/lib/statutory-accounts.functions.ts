@@ -16,8 +16,8 @@ export type StatutoryAccountRow = {
   accountName: string;
   /** What name matching alone would say: gst, payg, super, or null. */
   detected: StatutoryCategory | null;
-  /** What a person has set, or null when nobody has. */
-  stored: StatutoryCategory | null;
+  /** Every category a person has ticked. Empty when nobody has set this account. */
+  stored: StatutoryCategory[];
 };
 
 export const listStatutoryAccounts = createServerFn({ method: "POST" })
@@ -38,9 +38,14 @@ export const listStatutoryAccounts = createServerFn({ method: "POST" })
       .eq("tenant_id", data.tenantId);
     if (error) throw new Error(error.message);
 
-    const storedByName = new Map<string, StatutoryCategory>();
+    // One row per account per category, so an account can be GST and PAYG
+    // withholding at once.
+    const storedByName = new Map<string, StatutoryCategory[]>();
     for (const row of (stored ?? []) as any[]) {
-      storedByName.set(String(row.account_name).trim().toLowerCase(), row.category);
+      const k = String(row.account_name).trim().toLowerCase();
+      const list = storedByName.get(k) ?? [];
+      if (!list.includes(row.category)) list.push(row.category);
+      storedByName.set(k, list);
     }
 
     const rows: StatutoryAccountRow[] = [];
@@ -56,7 +61,7 @@ export const listStatutoryAccounts = createServerFn({ method: "POST" })
         accountId: String(a.AccountID),
         accountName: name,
         detected: detected === "gst" || detected === "payg" || detected === "super" ? detected : null,
-        stored: storedByName.get(name.toLowerCase()) ?? null,
+        stored: storedByName.get(name.toLowerCase()) ?? [],
       });
     }
     rows.sort((x, y) => x.accountName.localeCompare(y.accountName));
@@ -70,37 +75,46 @@ export const setStatutoryAccount = createServerFn({ method: "POST" })
       clientId: string;
       tenantId: string;
       accountName: string;
-      /** null clears the override and returns the account to name matching. */
-      category: StatutoryCategory | null;
+      /** The complete set for this account. An empty array clears the override
+       *  and returns the account to name matching. */
+      categories: StatutoryCategory[];
     }) => input,
   )
   .handler(async ({ data, context }) => {
     const accountName = data.accountName.trim();
     if (!accountName) throw new Error("An account name is required.");
 
-    if (data.category === null) {
+    const categories = Array.from(new Set(data.categories));
+    if (categories.includes("none") && categories.length > 1) {
+      throw new Error("An account is either not statutory or it holds something — not both.");
+    }
+    if (categories.includes("super") && (categories.includes("gst") || categories.includes("payg"))) {
+      throw new Error(
+        "Superannuation is owed to employees' funds, not the ATO, so it cannot share an account with GST or PAYG withholding here.",
+      );
+    }
+
+    // Replace the whole set for this account: delete what is there, then write
+    // what was ticked. Both statements go through the caller's own session, so
+    // the table's RLS is the only authorisation rule (invariant 7).
+    const { error: delError } = await context.supabase
+      .from("client_statutory_accounts")
+      .delete()
+      .eq("client_id", data.clientId)
+      .eq("tenant_id", data.tenantId)
+      .eq("account_name", accountName);
+    if (delError) throw new Error(delError.message);
+
+    if (categories.length > 0) {
       const { data: rows, error } = await context.supabase
         .from("client_statutory_accounts")
-        .delete()
-        .eq("client_id", data.clientId)
-        .eq("tenant_id", data.tenantId)
-        .eq("account_name", accountName)
-        .select("id");
-      if (error) throw new Error(error.message);
-      // A delete that matches nothing is not proof of refusal, so no row count
-      // is asserted here; RLS refuses the write outright when it applies.
-      void rows;
-    } else {
-      const { data: rows, error } = await context.supabase
-        .from("client_statutory_accounts")
-        .upsert(
-          {
+        .insert(
+          categories.map((category) => ({
             client_id: data.clientId,
             tenant_id: data.tenantId,
             account_name: accountName,
-            category: data.category,
-          } as any,
-          { onConflict: "client_id,tenant_id,account_name" },
+            category,
+          })) as any,
         )
         .select("id");
       if (error) throw new Error(error.message);
@@ -123,7 +137,7 @@ export const setStatutoryAccount = createServerFn({ method: "POST" })
       meta: {
         tenant_id: data.tenantId,
         account_name: accountName,
-        category: data.category,
+        categories,
       },
     });
     return { ok: true };

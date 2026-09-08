@@ -185,7 +185,13 @@ export function ruleProtectedMoneyVsCash(
   // The lodged-and-owing half of the figure. Amounts come only from line
   // AccountID matches against the very accounts matched above.
   const statutoryAccountIds = analysed.taxLines.lines
-    .filter((l) => l.category === "gst" || l.category === "payg" || l.category === "super")
+    .filter(
+      (l) =>
+        l.category === "gst" ||
+        l.category === "payg" ||
+        l.category === "super" ||
+        l.category === "ato-combined",
+    )
     .map((l) => l.accountId)
     .filter((id): id is string => typeof id === "string");
 
@@ -200,7 +206,10 @@ export function ruleProtectedMoneyVsCash(
   const split = buildProtectedMoneySplit(protectedMoney.total, atoAnalysis);
   const splitGap = split.refusal ?? undefined;
 
-  if (protectedMoney.unresolved.length === 3) {
+  // Nothing resolved at all. Counting components rather than hard-coding three:
+  // a combined ATO account replaces the separate GST and PAYG components, so
+  // the number of components is no longer fixed.
+  if (protectedMoney.components.every((c) => c.status === "unresolved")) {
     return { finding: null, unavailable: PROTECTED_MONEY_UNKNOWN, splitGap, split, debug: { protectedMoneyTotal: protectedMoney.total, cashAtBank: cash ?? undefined } };
   }
 
@@ -302,10 +311,10 @@ export function ruleStatutoryMagnitude(
 
   const lines = analysed.taxLines.lines;
   const statutory = lines
-    .filter((l) => l.category === "gst" || l.category === "payg" || l.category === "other-tax")
+    .filter((l) => l.category !== "super")
     .reduce((s, l) => s + l.amount, 0);
   if (
-    !lines.some((l) => l.category === "gst" || l.category === "payg" || l.category === "other-tax")
+    !lines.some((l) => l.category !== "super")
   ) {
     return {
       finding: null,
