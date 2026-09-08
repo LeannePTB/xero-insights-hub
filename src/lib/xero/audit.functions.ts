@@ -130,7 +130,7 @@ export const runXeroAudit = createServerFn({ method: "POST" })
       };
 
       const findings = [
-        ...ruleCoaHygiene(accounts, shortCode, balances),
+        ...ruleCoaHygiene(accounts, shortCode, balances, statutoryOverrides),
         ...ruleBank(accounts, shortCode, balances),
         ...ruleArAp(invoices, creditNotes, shortCode),
         ...(await rulePayments(payments, shortCode, fetchDocTotals)),
