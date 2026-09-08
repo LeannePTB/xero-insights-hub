@@ -189,19 +189,6 @@ export function GstReconciliationWidget({
           </div>
 
 
-          {/* Refusals: never present a GST-only figure as the whole statement. */}
-          {payroll && payroll.status !== "available" && payroll.status !== "no_payroll" && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
-              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <p>
-                <span className="font-medium">PAYG withholding could not be read for this period.</span>{" "}
-                {payroll.status === "not_authorised"
-                  ? "This organisation has not authorised payroll access in Xero yet, so pay runs cannot be read. Reconnecting it grants read-only access only."
-                  : "Xero's payroll data could not be read just now."}{" "}
-                The amount actually payable will be higher if wages were paid in this period.
-              </p>
-            </div>
-          )}
 
           {showWarnings && !data.complete && (
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
