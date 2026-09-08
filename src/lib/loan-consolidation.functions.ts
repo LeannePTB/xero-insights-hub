@@ -293,6 +293,11 @@ export const listSelectedAccounts = createServerFn({ method: "POST" })
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
       throw new Error("You don't have access to this client.");
     }
+    if (data.tenantId) {
+      const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
+      await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    }
+
     const supabaseAdmin = await getSupabaseAdmin();
     let q = supabaseAdmin
       .from("loan_consolidation_accounts")
