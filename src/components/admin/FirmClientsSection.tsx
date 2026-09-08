@@ -182,15 +182,50 @@ export function FirmClientsSection({
         )}
       </div>
 
-      <Dialog open={!!pendingDelete} onOpenChange={(o) => !o && setPendingDelete(null)}>
+      <Dialog
+        open={!!pendingDelete}
+        onOpenChange={(o) => {
+          if (!o) {
+            setPendingDelete(null);
+            setDisconnectXero(false);
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Remove client</DialogTitle>
-            <DialogDescription>
-              Remove “{pendingDelete?.name}” from {firmName}? This deletes the client and all viewer
-              access. Linked Xero organisations stay connected and can be reused.
+            <DialogDescription asChild>
+              <div className="space-y-2 text-left">
+                <p>
+                  Remove “{pendingDelete?.name}” from {firmName}? This cannot be undone.
+                </p>
+                <p>
+                  Removing the client deletes everything held for it: viewer access, its
+                  consolidation groups and account mappings, and its saved figures. Reports built
+                  from those saved figures will no longer be available.
+                </p>
+              </div>
             </DialogDescription>
           </DialogHeader>
+
+          <label className="flex items-start gap-3 rounded-lg border border-border p-3 text-left">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 shrink-0"
+              checked={disconnectXero}
+              onChange={(e) => setDisconnectXero(e.target.checked)}
+            />
+            <span className="text-sm">
+              <span className="font-medium">Also disconnect this client’s Xero files</span>
+              <span className="mt-1 block text-xs text-muted-foreground">
+                Leave this unticked and the Xero files stay connected and can be linked to another
+                client. Tick it and this app loses access to those files — reconnecting later needs
+                the client to authorise it again in Xero. Only files linked to this client are
+                affected; every other Xero file stays connected.
+              </span>
+            </span>
+          </label>
+
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => setPendingDelete(null)}>Cancel</Button>
             <Button
@@ -199,7 +234,7 @@ export function FirmClientsSection({
               onClick={() => pendingDelete && deleteMut.mutate(pendingDelete.id)}
             >
               {deleteMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Remove client
+              {disconnectXero ? "Remove client and disconnect Xero" : "Remove client"}
             </Button>
           </div>
         </DialogContent>
