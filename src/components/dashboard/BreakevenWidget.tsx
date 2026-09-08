@@ -43,7 +43,7 @@ export function BreakevenWidget({
           <CardFreshness
             from={s.fromDate}
             to={s.toDate}
-            updatedAt={s.data ? s.updatedAt : null}
+            source={s.data?.source}
             isFetching={s.isFetching}
           />
         </div>
