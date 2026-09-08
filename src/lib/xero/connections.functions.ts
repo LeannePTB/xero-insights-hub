@@ -511,8 +511,9 @@ export const disconnectXero = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
-    // Look up the connection row (we need the Xero connection id + tokens to
-    // revoke remotely before deleting locally).
+    // Look up the connection row so we can check who is asking and which
+    // tenant to detach. Xero's own connection id is NOT stored — it is looked
+    // up from GET /connections at the moment of the disconnect.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: row, error: lookupErr } = await supabaseAdmin
       .from("xero_connections")
