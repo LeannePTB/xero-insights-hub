@@ -44,3 +44,7 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 ## Standing caution
 
 This list records what has been looked at, not what exists. Absence from it is not evidence of safety.
+
+## Xero scope availability (recorded 8 Sep 2026)
+
+**`accounting.journals.read` is NOT available to this app.** It does not appear on the app's entitled scope list; Xero rejects the authorise request with `invalid_scope` when it is included. Do not request it again. Any period-derived figure (e.g. PAYG withheld from journal lines) must come from payroll scopes (`payroll.payruns.read`, `payroll.payslip.read`, `payroll.employees.read`, `payroll.settings.read` — added 8 Sep 2026) or from transaction data, never from `Journals`. This cost two failed attempts on 8 Sep 2026 (one live outage of the connect flow) before being established.
