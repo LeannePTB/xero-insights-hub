@@ -132,8 +132,8 @@ export type TaxLiabilities = {
 };
 
 // Tax-line extraction is pure and shared with the snapshot rules engine.
-import { buildProtectedMoney, extractTaxLines, taxLinesOrThrow } from "./tax-lines";
-import type { ProtectedMoney, TaxLineCategory } from "./tax-lines";
+import { extractTaxLines, taxLinesOrThrow } from "./tax-lines";
+import type { TaxLineCategory } from "./tax-lines";
 export { classifyTaxLine, extractTaxLines, buildProtectedMoney } from "./tax-lines";
 export type {
   ProtectedMoney,
@@ -157,7 +157,9 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    // This read feeds the cash-commitments section inside the Break-Even card,
+    // which is the card the viewer is entitled to.
+    await assertWidgetAccess(context.userId, data.tenantId, "accounting_breakeven");
     const conn = await getConnectionByTenant(data.tenantId);
     const mode = data.mode ?? "balance";
 
@@ -224,7 +226,7 @@ export const getSuperPayable = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<SuperPayable> => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    await assertWidgetAccess(context.userId, data.tenantId, "superannuation");
     const conn = await getConnectionByTenant(data.tenantId);
     const [res, accountsRes] = await Promise.all([
       xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.date }),
