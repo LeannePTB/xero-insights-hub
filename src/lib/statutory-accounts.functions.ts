@@ -116,6 +116,13 @@ export const setStatutoryAccount = createServerFn({ method: "POST" })
       );
     }
 
+    // The tenant id is a filter, not a grant: no row may be keyed to a Xero
+    // file this client does not own, even though RLS already confines the write
+    // to clients the caller can manage.
+    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+
+
+
     // Replace the whole set for this account: delete what is there, then write
     // what was ticked. Both statements go through the caller's own session, so
     // the table's RLS is the only authorisation rule (invariant 7).
