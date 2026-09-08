@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { getPaygWithholdingPosition } from "@/lib/xero/reports.functions";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { useTenantCurrency, formatMoneyExact } from "@/components/dashboard/useTenantCurrency";
+import { CardFreshness } from "@/components/dashboard/CardFreshness";
 
 /**
  * PAYG withholding, month by month.
@@ -58,6 +59,9 @@ export function PaygWithholdingWidget({
           <p className="mt-1 text-xs text-muted-foreground">
             What was withheld from wages each month, and what is still owing
           </p>
+          {/* The balance is live, the pay runs may be last night's copy: the
+              line reports the older of the two. */}
+          <CardFreshness className="mt-1.5" source={data?.source} isFetching={isFetching} />
         </div>
         <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isFetching} title="Refresh">
           <RefreshCw className={`h-4 w-4 ${isFetching ? "animate-spin" : ""}`} />
