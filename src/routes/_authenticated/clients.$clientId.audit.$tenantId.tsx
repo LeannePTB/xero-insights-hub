@@ -286,7 +286,11 @@ function AuditPage() {
 
           {visible.length === 0 ? (
             <p className="rounded border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-              {run ? "No findings match the current filters." : "Run the audit to see findings."}
+              {!run
+                ? "Run the audit to see findings."
+                : term
+                  ? `No findings match "${search.trim()}" with the current filters.`
+                  : "No findings match the current filters."}
             </p>
           ) : (
             <ul className="divide-y">
@@ -364,6 +368,21 @@ function AuditPage() {
 
 /** "Open bill in Xero" / "Open invoice in Xero" — the link opens the document,
  *  not a payment, so the label says which document it is. */
+/**
+ * Client-side search over a finding. Covers the two fields the preparer reads
+ * on screen — title and message — plus the contact name held in evidence, since
+ * a supplier or customer name is the usual thing being looked for and some
+ * messages abbreviate it. Case-insensitive substring match.
+ */
+function matchesSearch(finding: any, term: string): boolean {
+  const contact = finding?.evidence?.contact;
+  const haystack = [finding?.title, finding?.message, typeof contact === "string" ? contact : null]
+    .filter((v): v is string => typeof v === "string" && v.length > 0)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(term);
+}
+
 function openLabel(finding: any): string {
   if (finding?.entity_type === "Bill") return "Open bill in Xero";
   if (finding?.entity_type === "Invoice") return "Open invoice in Xero";
