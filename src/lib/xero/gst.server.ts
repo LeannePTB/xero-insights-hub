@@ -184,7 +184,11 @@ export async function computeGstReconciliation(
   asAt: string,
   window: ReconWindow = "month",
   overrides?: StatutoryOverrides,
+  /** Caller's own session, used only to read the stored nightly pay-run
+   *  snapshot. Omitted, the pay-run list is read live once. */
+  supabase?: unknown,
 ): Promise<GstResult> {
+
 
   const { xeroGet } = await import("./api.server");
   const { from, to, priorEnd } = rangeFor(asAt, window);
