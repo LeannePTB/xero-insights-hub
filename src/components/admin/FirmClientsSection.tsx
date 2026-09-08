@@ -84,12 +84,28 @@ export function FirmClientsSection({
   const fetchTierSettings = useServerFn(listTierSettings);
   const fetchPlanTiers = useServerFn(getAllowedTiersForFirm);
   const removeClient = useServerFn(deleteClient);
+  const fetchRemovalImpact = useServerFn(getClientRemovalImpact);
   const fetchSupportAccess = useServerFn(getSupportAccess);
   const fetchVerdicts = useServerFn(listClientVerdicts);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
   // Unticked by default: removing a client must never silently drop a Xero
   // authorisation the owner would have to ask the client to grant again.
   const [disconnectXero, setDisconnectXero] = useState(false);
+
+  // What the removal would clear elsewhere: consolidation group membership and
+  // other clients' loan matches. Only shown when there is a consequence.
+  const impactQ = useQuery({
+    queryKey: ["client-removal-impact", pendingDelete?.id],
+    enabled: !!pendingDelete,
+    queryFn: () => fetchRemovalImpact({ data: { clientId: pendingDelete!.id } }),
+  });
+  const impactNames: string[] = impactQ.data?.referencingClients ?? [];
+  const impactGroups = impactQ.data?.groupCount ?? 0;
+  const nameList =
+    impactNames.length === 1
+      ? impactNames[0]
+      : `${impactNames.slice(0, -1).join(", ")} and ${impactNames[impactNames.length - 1]}`;
+
 
   const supportQ = useQuery({
     queryKey: ["support-access", firmId],
