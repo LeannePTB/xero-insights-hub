@@ -69,7 +69,7 @@ export const listConsolidationGroups = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<ConsolidationGroupsView> => {
-    await assertFirmAccess(context.supabase, context.userId, data.firmId);
+    await assertFirmAccess(context.supabase, context.userId, data.firmId, { allowSupportRead: true });
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [{ data: firm }, { data: sub }, { data: clients }, { data: groups }] = await Promise.all([
@@ -219,7 +219,7 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const firmId = await firmIdForGroup(supabaseAdmin, data.groupId);
-    await assertFirmAccess(context.supabase, context.userId, firmId);
+    await assertFirmAccess(context.supabase, context.userId, firmId, { allowSupportRead: true });
 
     const [{ data: group }, { data: members }, { data: roles }] = await Promise.all([
       supabaseAdmin.from("consolidation_groups").select("id, name").eq("id", data.groupId).maybeSingle(),
