@@ -35,7 +35,7 @@ import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
-import { tierLabel as tierLabelFor, renderableWidgets, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
+import { tierLabel as tierLabelFor, renderableWidgets, defaultCardRank, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 import { getFileCapability } from "@/lib/xero/file-capability.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
@@ -282,7 +282,30 @@ function ClientDashboard() {
 
     // Notes is pinned to the top of the dashboard, outside the sortable grid.
 
+    // DETERMINISTIC DEFAULT ORDER. Cards are pushed above in whatever order the
+    // code happens to read best; the order a person actually sees comes from
+    // DEFAULT_CARD_ORDER in src/lib/tiers.ts. Cards stay grouped by Xero file,
+    // and within a file they follow the catalogue order — so GST, PAYG
+    // withholding and superannuation always sit together, in that sequence.
+    // A stored per-client order still wins; this is only the fallback.
+    const orgIndex = new Map<string, number>(orgs.map((o: any, i: number) => [String(o.id), i]));
+    const sortMeta = (id: string) => {
+      const sep = id.indexOf(":");
+      const orgPart = sep > 0 ? id.slice(0, sep) : null;
+      const widget = sep > 0 ? id.slice(sep + 1) : id;
+      const orgIdx = orgPart !== null ? orgIndex.get(orgPart) ?? 9999 : -1;
+      return { orgIdx, rank: defaultCardRank(widget) };
+    };
+    const byDefaultOrder = (a: SortableCard, b: SortableCard) => {
+      const ma = sortMeta(a.id);
+      const mb = sortMeta(b.id);
+      return ma.orgIdx - mb.orgIdx || ma.rank - mb.rank;
+    };
+    standard.sort(byDefaultOrder);
+    advanced.sort(byDefaultOrder);
+
     return { standardCards: standard, advancedCards: advanced };
+
 
   }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
 
