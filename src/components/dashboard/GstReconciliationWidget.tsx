@@ -92,7 +92,7 @@ export function GstReconciliationWidget({
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <Percent className="h-4 w-4 text-primary" />
-            GST — indicative
+            Activity statement — GST and PAYG withholding (indicative)
           </h3>
           <p className="text-xs text-muted-foreground">
             {data
@@ -130,7 +130,7 @@ export function GstReconciliationWidget({
 
       {q.isLoading || recalculating ? (
         <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Rebuilding the GST movement…
+          <Loader2 className="h-4 w-4 animate-spin" /> Rebuilding the GST and PAYG movements…
         </div>
       ) : q.error ? (
         <div className="mt-4">
@@ -259,6 +259,26 @@ export function GstReconciliationWidget({
                     <Line label="Difference" value={data.difference} strong />
                   </div>
                 </div>
+
+                {data.payg.status === "resolved" && (
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      {data.payg.accountNames.join(", ")}
+                    </p>
+                    <div className="mt-1">
+                      <Line label="Opening balance" value={data.payg.opening} />
+                      <Line label="Paid to the ATO and journals" value={data.payg.paidToAto} />
+                      <Line label="Balance sheet closing balance" value={data.payg.closing} strong />
+                      <Line label="PAYG withheld in the period" value={data.payg.withheld} strong />
+                    </div>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Payroll postings cannot be read through Xero's accounting API, so what was
+                      withheld is worked out from the movement on this account — closing balance
+                      less opening balance, plus anything paid to the ATO. There is no second
+                      source to check it against, so unlike the GST side it cannot be tied.
+                    </p>
+                  </div>
+                )}
 
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
