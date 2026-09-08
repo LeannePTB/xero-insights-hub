@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
-import { listClients, deleteClient } from "@/lib/clients.functions";
+import { listClients, deleteClient, getClientRemovalImpact } from "@/lib/clients.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
