@@ -48,7 +48,11 @@ export const runXeroAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ tenantId: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
+    const { clientId: auditClientId } = await assertAuditAccess(
+      context.supabase,
+      context.userId,
+      data.tenantId,
+    );
     const { tenantId } = data;
     const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
     const { ruleCoaHygiene, ruleArAp, ruleBank, rulePayments, ruleStatutoryTrace, parseBalanceSheetBalances } = await import("@/lib/xero/audit/rules.server");
@@ -93,6 +97,12 @@ export const runXeroAudit = createServerFn({ method: "POST" })
       const invoices = (invoicesRes?.Invoices ?? []) as any[];
       const creditNotes = (creditNotesRes?.CreditNotes ?? []) as any[];
       const payments = (paymentsRes?.Payments ?? []) as any[];
+      const { getStatutoryOverrides } = await import("@/lib/xero/statutory-overrides.server");
+      const statutoryOverrides = await getStatutoryOverrides(
+        context.supabase,
+        auditClientId,
+        tenantId,
+      );
       const balances = parseBalanceSheetBalances(balanceSheetRes?.Reports?.[0] ?? null);
 
 
@@ -125,7 +135,7 @@ export const runXeroAudit = createServerFn({ method: "POST" })
         ...ruleArAp(invoices, creditNotes, shortCode),
         ...(await rulePayments(payments, shortCode, fetchDocTotals)),
         
-        ...ruleStatutoryTrace(invoices, accounts, shortCode),
+        ...ruleStatutoryTrace(invoices, accounts, shortCode, statutoryOverrides),
       ];
 
       // Persist findings.
@@ -175,7 +185,11 @@ export const getLatestAudit = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ tenantId: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
+    const { clientId: auditClientId } = await assertAuditAccess(
+      context.supabase,
+      context.userId,
+      data.tenantId,
+    );
     const { getConnectionByTenant } = await import("@/lib/xero/api.server");
     await getConnectionByTenant(data.tenantId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -211,7 +225,11 @@ export const snoozeFinding = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
+    const { clientId: auditClientId } = await assertAuditAccess(
+      context.supabase,
+      context.userId,
+      data.tenantId,
+    );
     const { getConnectionByTenant } = await import("@/lib/xero/api.server");
     await getConnectionByTenant(data.tenantId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -240,7 +258,11 @@ export const resolveFinding = createServerFn({ method: "POST" })
     }).parse(d),
   )
   .handler(async ({ data, context }) => {
-    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
+    const { clientId: auditClientId } = await assertAuditAccess(
+      context.supabase,
+      context.userId,
+      data.tenantId,
+    );
     const { getConnectionByTenant } = await import("@/lib/xero/api.server");
     await getConnectionByTenant(data.tenantId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -264,7 +286,11 @@ export const unsnoozeFinding = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => z.object({ tenantId: z.string().min(1), findingKey: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
-    await assertAuditAccess(context.supabase, context.userId, data.tenantId);
+    const { clientId: auditClientId } = await assertAuditAccess(
+      context.supabase,
+      context.userId,
+      data.tenantId,
+    );
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await (supabaseAdmin as any)
       .from("audit_finding_snoozes")

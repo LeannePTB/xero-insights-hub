@@ -250,6 +250,16 @@ export async function buildReportVerdict(opts: BuildVerdictOptions): Promise<Rep
     );
   }
 
+  // Statutory overrides come from the database for this client and file, and
+  // are handed to the one resolver in classifyTaxLine — the same path the
+  // audit rule takes.
+  const { getStatutoryOverrides } = await import("@/lib/xero/statutory-overrides.server");
+  const statutoryOverrides = await getStatutoryOverrides(
+    opts.supabase,
+    opts.clientId,
+    opts.tenantId,
+  );
+
   const verdict = evaluateFromRows(
     {
       clientId: opts.clientId,
@@ -257,7 +267,7 @@ export async function buildReportVerdict(opts: BuildVerdictOptions): Promise<Rep
       snapshots: rows,
       now: new Date(),
     },
-    { skipFreshness: true },
+    { skipFreshness: true, statutoryOverrides },
   );
 
   const priors = await loadPriorVerdicts(opts.supabase, opts.clientId, opts.periodEnd);
