@@ -35,9 +35,11 @@ export function WipOverviewCard() {
         <SuperAdminChip />
       </div>
       <p className="mt-1 text-sm text-muted-foreground">
-        These cards are added on top of a client&apos;s normal tier for any organisation with early
-        access switched on. Switch access on in the organisation&apos;s Subscription section; edit
-        the list itself in the database.
+        These cards are offered to any organisation with early access switched on, on top of its
+        normal tier. Being offered is not a guarantee: a card still has to survive the
+        organisation&apos;s card settings and the client&apos;s own switches before it appears on a
+        dashboard. Switch early access on in the organisation&apos;s Subscription section; edit the
+        list itself in the database.
       </p>
       {!enabled && (
         <p className="mt-2 text-sm text-destructive">
