@@ -6,7 +6,9 @@
 // (`@/lib/health/rules.server`), and the rules engine must never pull the
 // Xero API client into its import graph.
 
-export type TaxLineCategory = "gst" | "payg" | "super" | "other-tax";
+/** "ato-combined" is one account carrying GST and PAYG withholding together:
+ *  a single amount owed to the ATO that must never be split between them. */
+export type TaxLineCategory = "gst" | "payg" | "super" | "other-tax" | "ato-combined";
 export type ExtractionStatus = "assessed" | "absent" | "unrecognised" | "input_invalid";
 
 export type TaxLine = {
@@ -313,8 +315,16 @@ function extractTaxLinesFromReport(
     if (!category) {
       // An account a person has explicitly marked "none" is settled, not
       // unrecognised, however statutory its name looks.
-      const settled = overrides?.get(statutoryOverrideKey(name)) === "none";
-      if (!settled && looksStatutoryButUnclassified(name, account)) unrecognised.push(name);
+      const resolution = resolveStatutoryOverride(name, overrides);
+      // "none" is settled, however statutory the name looks. A conflicting
+      // mapping (super alongside GST or PAYG) is the opposite: the balance is
+      // statutory but cannot be attributed, so it is reported as unidentified
+      // rather than folded into any total.
+      if (resolution === "conflict") {
+        unrecognised.push(name);
+        return;
+      }
+      if (resolution !== "none" && looksStatutoryButUnclassified(name, account)) unrecognised.push(name);
       return;
     }
 
