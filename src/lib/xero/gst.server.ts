@@ -385,5 +385,9 @@ export async function computeGstReconciliation(
     ties,
     complete,
     issues,
+    payg,
+    combinedAto,
+    estimatedPayable,
   };
+
 }
