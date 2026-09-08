@@ -87,6 +87,9 @@ export function FirmClientsSection({
   const fetchSupportAccess = useServerFn(getSupportAccess);
   const fetchVerdicts = useServerFn(listClientVerdicts);
   const [pendingDelete, setPendingDelete] = useState<{ id: string; name: string } | null>(null);
+  // Unticked by default: removing a client must never silently drop a Xero
+  // authorisation the owner would have to ask the client to grant again.
+  const [disconnectXero, setDisconnectXero] = useState(false);
 
   const supportQ = useQuery({
     queryKey: ["support-access", firmId],
@@ -126,10 +129,21 @@ export function FirmClientsSection({
   );
 
   const deleteMut = useMutation({
-    mutationFn: (clientId: string) => removeClient({ data: { clientId } }),
-    onSuccess: () => {
+    mutationFn: (clientId: string) =>
+      removeClient({ data: { clientId, disconnectXeroFiles: disconnectXero } }),
+    onSuccess: (res: any) => {
+      const files: Array<{ tenantName: string | null; result: string }> = res?.xero ?? [];
+      const failed = files.filter((f) => f.result === "failed");
+      const shared = files.filter((f) => f.result === "shared");
       toast.success("Client removed");
+      for (const f of shared)
+        toast.warning(
+          `${f.tenantName ?? "A Xero file"} is linked to another client, so it was left connected.`,
+        );
+      for (const f of failed)
+        toast.error(`${f.tenantName ?? "A Xero file"} could not be disconnected from Xero.`);
       setPendingDelete(null);
+      setDisconnectXero(false);
       qc.invalidateQueries({ queryKey: ["clients", firmId] });
       qc.invalidateQueries({ queryKey: ["my-firm", firmId] });
       onChanged?.();
