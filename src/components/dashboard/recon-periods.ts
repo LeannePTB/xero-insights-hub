@@ -37,8 +37,9 @@ export function periodOptions(): { value: string; label: string }[] {
   return opts;
 }
 
-/** A GST window: either a calendar month or an Australian BAS quarter. */
-export type GstWindowKind = "month" | "quarter";
+/** A GST window: a calendar month, an Australian BAS quarter, or an
+ *  Australian financial year (1 July – 30 June). */
+export type GstWindowKind = "month" | "quarter" | "year";
 
 export type GstPeriodOption = {
   value: string; // `${kind}:${asAt}` — unique per window, never per date alone
