@@ -196,9 +196,60 @@ async function computeFileCapability(opts: {
     "feed status itself is not visible in a snapshot — no claim is made about it",
   ];
 
-  // ---- the only two structural hides --------------------------------------
+  // ---- hasPayRuns / hasSuper — structural, and only when we can SEE ---------
+  // The pay run list is the file's own answer, not a name match: the stored
+  // nightly snapshot when there is one, otherwise a single cheap list call.
+  // Missing payroll permission is NOT absence of payroll — it comes back
+  // `not_authorised`, which stays `unknown`, so the card keeps rendering and
+  // says the permission is missing rather than vanishing.
+  let hasPayRuns: CapabilityTri = "unknown";
+  let payRunSuper = 0;
+  let payRunsNote = "pay runs not read";
+  try {
+    const { loadPayRuns } = await import("./payroll.server");
+    const runs = await loadPayRuns({ supabase, tenantId, clientId: clientId ?? null });
+    if (runs.status === "available") {
+      hasPayRuns = runs.payRuns.length > 0 ? "yes" : "no";
+      payRunSuper = runs.payRuns.reduce((s, r) => s + (Number(r.super) || 0), 0);
+      payRunsNote = `pay runs: ${runs.payRuns.length} posted, super accrued across all of them ${payRunSuper}`;
+    } else if (runs.status === "no_payroll") {
+      hasPayRuns = "no";
+      payRunsNote = "pay runs: list read cleanly and is empty — this file has never run payroll";
+    } else {
+      payRunsNote = `pay runs: ${runs.status} — unknown, so nothing is hidden`;
+    }
+  } catch (e) {
+    payRunsNote = `pay runs: read failed (${(e as Error).message}) — unknown, so nothing is hidden`;
+  }
+  evidence.hasPayRuns = [payRunsNote];
+
+  const superLines =
+    bsAnalysis?.status === "assessed" && bsAnalysis.taxLines.status === "assessed"
+      ? bsAnalysis.taxLines.lines.filter((l) => l.category === "super").map((l) => l.name)
+      : [];
+  let hasSuper: CapabilityTri = "unknown";
+  if (superLines.length > 0 || payRunSuper > 0) {
+    hasSuper = "yes";
+  } else if (bsAnalysis?.status === "assessed" && hasPayRuns !== "unknown") {
+    // Both sides read cleanly and neither shows superannuation: structural.
+    // A payroll file with a zero-super PERIOD is unaffected — the test looks at
+    // every pay run the file has, not at one period.
+    hasSuper = "no";
+  }
+  evidence.hasSuper = [
+    superLines.length > 0
+      ? `balance_sheet: ${superLines.join(", ")}`
+      : bsAnalysis?.status === "assessed"
+        ? "balance_sheet: no superannuation liability line"
+        : "balance sheet not assessed",
+    payRunsNote,
+  ];
+
+  // ---- the structural hides ------------------------------------------------
   const hiddenWidgets: string[] = [];
   if (hasGst === "no") hiddenWidgets.push("gst_reconciliation");
+  if (hasPayRuns === "no") hiddenWidgets.push("payg_withholding");
+  if (hasSuper === "no") hiddenWidgets.push("superannuation");
 
   return {
     tenantId,
@@ -208,6 +259,9 @@ async function computeFileCapability(opts: {
     usesBills,
     hasFixedAssetRegister,
     bankAccountCount,
+    hasPayRuns,
+    hasSuper,
+
     evidence,
     hiddenWidgets,
   };
