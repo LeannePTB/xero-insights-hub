@@ -196,6 +196,7 @@ function AuditPage() {
           {run ? (
             <p className="text-xs text-muted-foreground">
               Last run {new Date(run.run_at).toLocaleString()} · {findings.length} finding{findings.length === 1 ? "" : "s"} · {visible.length} shown
+              {findings.length > visible.length ? ` · ${findings.length - visible.length} hidden by filters` : ""}
               {run.error ? <span className="ml-2 text-destructive">· {run.error}</span> : null}
             </p>
           ) : (
@@ -203,6 +204,26 @@ function AuditPage() {
           )}
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search findings — supplier or customer name, or any wording"
+              aria-label="Search findings"
+              className="pl-9 pr-9"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={catFilter} onValueChange={setCatFilter}>
               <SelectTrigger className="w-[200px]"><SelectValue placeholder="Category" /></SelectTrigger>
@@ -229,7 +250,7 @@ function AuditPage() {
             {selectableKeys.length > 0 && (
               <label className="ml-2 flex items-center gap-2 text-sm">
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-                Select all ({selectableKeys.length})
+                Select all {selectableKeys.length} shown
               </label>
             )}
           </div>
