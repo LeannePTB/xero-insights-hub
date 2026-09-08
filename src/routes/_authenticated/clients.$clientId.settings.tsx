@@ -18,6 +18,7 @@ import {
   updateClientLodgementCycles,
   setClientXeroAllowance,
 } from "@/lib/clients.functions";
+import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccountsSection";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
 import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
@@ -524,7 +525,13 @@ function ClientSettings() {
           />
         </Section>
 
-
+        <Section title="How this client codes GST, PAYG and super" collapsible>
+          <StatutoryAccountsSection
+            clientId={clientId}
+            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+              ?.tenant_id}
+          />
+        </Section>
 
         {/* Xero orgs */}
         <Section
