@@ -1,3 +1,4 @@
+import { liveSource, type SnapshotSource } from "./snapshot-source";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -28,6 +29,8 @@ export type CashflowProjectionBucket = {
 
 export type Cashflow = {
   asOf: string;
+  /** Where the figures came from. Cash flow is a live Xero read every load. */
+  source: SnapshotSource;
   // Current position
   totalCash: number;
   currency: string;
@@ -307,6 +310,7 @@ export const getCashflow = createServerFn({ method: "POST" })
     }
 
     const result: Cashflow = {
+      source: liveSource("disabled"),
       asOf: toISO(today),
       totalCash,
       currency: accounts[0]?.currency ?? "AUD",

@@ -129,7 +129,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
                 className="mt-2"
                 from={fromDate}
                 to={toDate}
-                updatedAt={q.dataUpdatedAt}
+                source={q.data?.source}
                 isFetching={q.isFetching}
               />
 

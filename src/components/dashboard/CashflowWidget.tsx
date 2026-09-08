@@ -41,7 +41,7 @@ export function CashflowWidget({
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
 
-  const { data, isLoading, isFetching, error, refetch, dataUpdatedAt } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-cashflow", tenantId, fromStr, toStr],
     queryFn: () => fetchCashflow({ data: { tenantId, fromDate: fromStr, toDate: toStr } }),
     enabled: shouldLoad,
@@ -63,7 +63,7 @@ export function CashflowWidget({
             <h3 className="font-display text-lg font-semibold flex items-center gap-2"><Wallet className="h-4 w-4 text-primary" />Cash Flow</h3>
             <BasisBadge basis="cash" />
           </div>
-          <CardFreshness from={fromDate} to={toDate} updatedAt={data ? dataUpdatedAt : null} isFetching={isFetching} />
+          <CardFreshness from={fromDate} to={toDate} source={data?.source} isFetching={isFetching} />
         </div>
         <Button
           variant="ghost"

@@ -1,4 +1,6 @@
 import { LiveDot, deriveLiveState } from "@/components/dashboard/LiveDot";
+import type { SnapshotSource } from "@/lib/xero/snapshot-source";
+
 
 // One freshness line for every live dashboard card: what period the figures
 // cover, and when they were last pulled from Xero. Presentation only — it
@@ -45,31 +47,53 @@ export function formatPulled(at: number | string | null | undefined): string {
 }
 
 /**
- * `updatedAt` should be the moment the figures were retrieved — for live cards
- * that is React Query's `dataUpdatedAt` for the fetch that produced them.
+ * The freshness line for every live dashboard card.
+ *
+ * It takes PROVENANCE, never a timestamp. A React Query `dataUpdatedAt` is the
+ * moment OUR query ran, which is not the moment the figures were pulled from
+ * Xero — feeding it here is what made Business Health claim live figures over
+ * a copy saved at 3am. The only accepted input is the `SnapshotSource` the
+ * server function returns alongside its figures, so a query time can no longer
+ * be passed at all: it is a number, and this prop is not.
  */
 export function CardFreshness({
   from,
   to,
-  updatedAt,
+  source,
   isFetching,
   className = "",
 }: {
   from?: string | Date | null;
   to?: string | Date | null;
-  updatedAt?: number | string | null;
+  /** Provenance from the server function that produced these figures. */
+  source?: SnapshotSource | null;
   /** React Query's `isFetching` for the query that produced these figures. */
   isFetching?: boolean;
   className?: string;
 }) {
   const coverage = formatCoverage(from, to);
-  const parts = [coverage, `figures ${formatPulled(updatedAt)}`].filter(Boolean);
+  const stored = !!source && source.mode === "snapshot";
+  const pulled = formatPulled(source?.fetchedAt);
+  const provenance = !source
+    ? "figures not pulled yet"
+    : source.mode === "pending"
+      ? "figures not pulled yet"
+      : source.mixed
+        ? `partly saved figures · oldest ${pulled}`
+        : stored
+          ? `saved figures · ${pulled}`
+          : `figures ${pulled}`;
+  const parts = [coverage, provenance].filter(Boolean);
   if (parts.length === 0) return null;
-  // Live state is read from what the card already knows. No extra fetching.
+  // Live state comes from the same provenance, so a stored copy can never
+  // pulse and can never be labelled "Live from Xero".
   const liveState = deriveLiveState({
     isFetching,
-    hasData: Boolean(updatedAt),
-    fetchedAt: updatedAt,
+    hasData: Boolean(source?.fetchedAt),
+    fetchedAt: source?.fetchedAt ?? null,
+    isStored: stored || !!source?.mixed,
+    isStale: Boolean(source?.stale),
+    isDisconnected: source?.connection === "disconnected",
   });
   return (
     <p className={`flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground ${className}`}>
@@ -78,3 +102,4 @@ export function CardFreshness({
     </p>
   );
 }
+

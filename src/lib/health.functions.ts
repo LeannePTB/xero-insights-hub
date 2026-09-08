@@ -357,6 +357,8 @@ export type HealthDrivers = {
   monthsRunway: number | null;
 };
 
+import type { SnapshotSource } from "@/lib/xero/snapshot-source";
+
 export type BusinessHealthDetail = {
   asOfDate: string;
   fyLabel: string;
@@ -385,6 +387,11 @@ export type BusinessHealthDetail = {
 
   drivers: HealthDrivers;
   pillars: Pillar[];
+  /**
+   * Where the figures came from. This card blends live calls with the copies
+   * saved overnight, so the provenance is merged and reports the OLDEST part.
+   */
+  source: SnapshotSource;
 };
 
 
@@ -538,6 +545,10 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
     const { readSnapshot, paramsMatchCatalogue } = await import("./xero/snapshot-read.server");
     const { sydneyDate } = await import("@/lib/sydney-time");
     const todaySyd = sydneyDate();
+    // Every component records where it came from, so the freshness line can
+    // report the oldest of them rather than the moment our own query ran.
+    const { liveSource, mergeSources } = await import("@/lib/xero/snapshot-source");
+    const usedSources: (import("@/lib/xero/snapshot-source").SnapshotSource | null)[] = [];
     const snap = async <T,>(reportKey: string, params: Record<string, string | undefined>): Promise<T | null> => {
       try {
         if (!paramsMatchCatalogue(reportKey, params, todaySyd)) return null;
@@ -547,6 +558,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
           clientId: data.clientId ?? null,
           reportKey,
         });
+        if (hit?.payload) usedSources.push(hit.source);
         return (hit?.payload as T) ?? null;
       } catch (e) {
         console.warn(`[health-detail] snapshot ${reportKey} unusable:`, (e as Error).message);
@@ -882,7 +894,14 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
       suppressLossAlert: suppressVerdict,
     });
 
+    // Seven components feed this card. Anything that did not come from a saved
+    // copy was fetched live just now.
+    const liveCount = 7 - usedSources.length;
+    const source =
+      mergeSources([...usedSources, ...(liveCount > 0 ? [liveSource("missing")] : [])]) ?? liveSource("missing");
+
     return {
+      source,
       asOfDate,
       fyLabel: fy.label,
       currency,

@@ -21,6 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ReconAgeNotice } from "@/components/dashboard/ReconAgeNotice";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { getBalanceSheetReconciliation } from "@/lib/xero/reconciliation.functions";
 import { money as fmt, periodOptions } from "@/components/dashboard/recon-periods";
@@ -315,6 +316,13 @@ export function BalanceSheetReconciliationWidget({
               {data.fromSnapshot ? " — figures are locked so they don't drift." : ""}
             </p>
           )}
+
+          <ReconAgeNotice
+            className="mt-1"
+            generatedAt={data?.generatedAt}
+            fromSnapshot={data?.fromSnapshot}
+            canRecalculate={data?.canRecalculate}
+          />
         </>
       )}
     </div>
