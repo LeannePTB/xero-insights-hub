@@ -24,7 +24,7 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 3. ~~`xero_oauth_states` policy targets `PUBLIC`~~ — **closed 6 Sep 2026**, see Closed above.
 4. **Path B audit rows.** `logXeroRead()` records `meta.access_path` on live Xero calls only (`api.server.ts:401`, `:504`), and skips it when `conn.firm_id` is null. Reads served from stored data write no audit row at all: `snapshot-read.server.ts`, `verdicts.functions.ts`, `client_reports`, `reconciliation_snapshots`, `report_cache`, `audit_findings`, and `search.functions.ts` — the last being the widget built specifically for support-grant holders.
 5. **`loan-consolidation.functions.ts:178`** selects `tenant_id, tenant_name` for every connection in the database via `supabaseAdmin`, unfiltered by organisation. Callers filter afterwards; no leak to a response was confirmed.
-6. **`tier_settings`** has rows for `advisory` and `basic` only — `investigate`, `multi_company` and `wip` have no kill switch. `investigate` is in the enum but has no plan row; decide whether it is retired.
+6. **`tier_settings`** has rows for `advisory` and `basic` only — `investigate` and `multi_company` have no kill switch. `investigate` is in the enum but has no plan row; decide whether it is retired.
 7. **DRTABT Projects has 12 clients on `multi` (limit 10)** — no more until raised or overridden.
 8. **3 super_admin accounts**, all Positive Traction. Confirm each is needed and MFA-enforced. Outside the codebase.
 9. **GST treatment undecided** — TODO in `billing-checkout.functions.ts`. Do not guess.
