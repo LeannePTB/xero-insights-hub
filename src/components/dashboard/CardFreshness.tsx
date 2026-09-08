@@ -95,11 +95,21 @@ export function CardFreshness({
     isStale: Boolean(source?.stale),
     isDisconnected: source?.connection === "disconnected",
   });
+  // Ageing figures must say so in words, not only in the colour of the dot.
+  const overdue = !!source?.stale && !isFetching;
   return (
     <p className={`flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground ${className}`}>
       <LiveDot state={liveState} />
-      <span>{parts.join(" · ")}</span>
+      <span>
+        {parts.join(" · ")}
+        {overdue && (
+          <span className="text-amber-700 dark:text-amber-400">
+            {" · not updated since before last night — may be out of date"}
+          </span>
+        )}
+      </span>
     </p>
   );
+
 }
 
