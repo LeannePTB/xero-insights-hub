@@ -6,10 +6,13 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
+import { usePersistedSidebarOpen } from "./AdminNavShell";
 
 export function AdminShell({ children }: { children?: ReactNode }) {
+  const [open, setOpen] = usePersistedSidebarOpen();
+
   return (
-    <SidebarProvider>
+    <SidebarProvider open={open} onOpenChange={setOpen}>
       <AdminSidebar />
       <SidebarInset className="min-w-0 overflow-x-hidden">
         <header className="flex h-12 items-center border-b px-4 md:hidden">
@@ -20,4 +23,3 @@ export function AdminShell({ children }: { children?: ReactNode }) {
     </SidebarProvider>
   );
 }
-

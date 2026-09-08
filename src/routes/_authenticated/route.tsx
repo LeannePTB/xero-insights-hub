@@ -1,5 +1,9 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
+import { getMyContext } from "@/lib/roles.functions";
+import { AdminNavShell } from "@/components/admin/AdminNavShell";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -18,5 +22,34 @@ export const Route = createFileRoute("/_authenticated")({
 
     return { user: data.user };
   },
-  component: () => <Outlet />,
+  component: AuthenticatedLayout,
 });
+
+/** Routes that already render the admin menu through AdminShell. */
+function ownsAdminMenu(pathname: string) {
+  return (
+    pathname === "/admin" ||
+    pathname.startsWith("/admin/") ||
+    pathname.startsWith("/settings/tiers") ||
+    pathname.startsWith("/settings/advisors")
+  );
+}
+
+function AuthenticatedLayout() {
+  const fetchCtx = useServerFn(getMyContext);
+  const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+  // Presentation only: the menu appears for platform super admins, decided by
+  // the same server-side signal the admin screens use. Anyone else — including
+  // client viewers and ordinary organisation members — never renders it, and
+  // every route behind it keeps its own unchanged guard.
+  const showAdminMenu = ctxQ.data?.isSuperAdmin === true && !ownsAdminMenu(pathname);
+
+  if (!showAdminMenu) return <Outlet />;
+  return (
+    <AdminNavShell>
+      <Outlet />
+    </AdminNavShell>
+  );
+}
