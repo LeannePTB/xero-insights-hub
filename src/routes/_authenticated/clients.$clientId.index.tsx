@@ -466,16 +466,34 @@ function ClientDashboard() {
             </section>
           )}
 
-          {advancedCards.length > 0 && (
+          {(advancedCards.length > 0 || statutoryBlocks.length > 0) && (
             <section>
               <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                 Advisory
               </h2>
-              <SortableCardGrid
-                cards={advancedCards}
-                savedOrder={advancedSaved}
-                onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
-              />
+
+              {/* Fixed statutory block: GST beside PAYG withholding, then
+                  superannuation full width. Not draggable, always first. */}
+              {statutoryBlocks.map((b) => (
+                <div key={b.orgId} className="mb-6 space-y-6">
+                  {(b.gst || b.payg) && (
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                      {b.gst && <div className={b.payg ? undefined : "lg:col-span-2"}>{b.gst}</div>}
+                      {b.payg && <div className={b.gst ? undefined : "lg:col-span-2"}>{b.payg}</div>}
+                    </div>
+                  )}
+                  {b.superannuation && <div>{b.superannuation}</div>}
+                </div>
+              ))}
+
+              {advancedCards.length > 0 && (
+                <SortableCardGrid
+                  cards={advancedCards}
+                  savedOrder={advancedSaved}
+                  onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
+                />
+              )}
+
             </section>
           )}
 
