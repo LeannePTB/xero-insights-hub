@@ -22,23 +22,15 @@ export type StatutoryAccountRow = {
 
 /**
  * The tenant id in the request is a FILTER, never a grant (invariant 4, §10).
- * Prove the Xero file actually belongs to this client before it is used for
- * anything. Same join and same wording as `getExpenseAccounts`.
+ * One shared implementation lives in `@/lib/tenant-ownership.server`.
  */
 async function assertTenantBelongsToClient(clientId: string, tenantId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: links, error } = await supabaseAdmin
-    .from("client_xero_orgs")
-    .select("xero_connections(tenant_id)")
-    .eq("client_id", clientId);
-  if (error) throw new Error(error.message);
-  const permitted = new Set(
-    ((links ?? []) as any[]).map((l) => l.xero_connections?.tenant_id).filter(Boolean) as string[],
+  const { assertTenantBelongsToClient: assertOwned } = await import(
+    "@/lib/tenant-ownership.server"
   );
-  if (!permitted.has(tenantId)) {
-    throw new Error("That Xero organisation does not belong to this client.");
-  }
+  await assertOwned(clientId, tenantId);
 }
+
 
 export const listStatutoryAccounts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
