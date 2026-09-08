@@ -11,7 +11,6 @@ import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle, FileText } from "lucide-react";
-import { InTestingCard } from "@/components/dashboard/InTestingBadge";
 import { AppHeader } from "@/components/AppHeader";
 import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.functions";
 import { toast } from "sonner";
@@ -113,10 +112,6 @@ function ClientDashboard() {
   // Entitlement is unchanged; merged cards are collapsed onto the card that
   // now renders them, so an entitlement naming both halves draws one card.
   const widgets = renderableWidgets(widgetsQ.data?.widgets ?? []);
-  // Cards still in testing, badged wherever they render.
-  const wipWidgets: string[] = renderableWidgets((widgetsQ.data as any)?.wipWidgets ?? []);
-  const wipKey = wipWidgets.join(",");
-  const isWip = (widget: string) => wipWidgets.includes(widget);
 
   const tier: DashboardTier = effectivePreviewTier ?? tierLabelSource ?? "basic";
 
@@ -205,9 +200,6 @@ function ClientDashboard() {
   const { standardCards, advancedCards } = useMemo<{ standardCards: SortableCard[]; advancedCards: SortableCard[] }>(() => {
     const standard: SortableCard[] = [];
     const advanced: SortableCard[] = [];
-    const wipSet = new Set(wipWidgets);
-    const mark = (widget: string, node: ReactNode) =>
-      wipSet.has(widget) ? <InTestingCard>{node}</InTestingCard> : node;
     if (!client) return { standardCards: standard, advancedCards: advanced };
 
     if (widgets.includes("health")) {
@@ -313,7 +305,7 @@ function ClientDashboard() {
     return { standardCards: standard, advancedCards: advanced };
 
 
-  }, [client, clientId, orgs, widgets, wipKey, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
+  }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
 
   const savedOrder = orderQ.data?.order ?? [];
   const standardIds = new Set(standardCards.map((c) => c.id));
@@ -420,11 +412,7 @@ function ClientDashboard() {
 
         {widgets.includes("notes") && (
           <div className="mt-6 w-full">
-            {isWip("notes") ? (
-              <InTestingCard><NotesCard clientId={clientId} canEdit={isAdvisor} /></InTestingCard>
-            ) : (
-              <NotesCard clientId={clientId} canEdit={isAdvisor} />
-            )}
+            <NotesCard clientId={clientId} canEdit={isAdvisor} />
           </div>
         )}
 

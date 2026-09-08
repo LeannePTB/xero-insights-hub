@@ -7,7 +7,6 @@ import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { getClientWidgetMatrix, setClientWidget } from "@/lib/tier-config.functions";
 import { WIDGET_LABEL, toggleableWidgets, widgetKeyGroup, type WidgetKey } from "@/lib/tiers";
-import { InTestingBadge } from "@/components/dashboard/InTestingBadge";
 
 /**
  * Per-client card toggles.
@@ -57,7 +56,7 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
     .map((k) => byKey.get(k))
     .filter((r): r is NonNullable<typeof r> => !!r);
 
-  async function onToggle(w: WidgetKey, next: boolean, isWip = false) {
+  async function onToggle(w: WidgetKey, next: boolean) {
     if (busy) return;
     setBusy(w);
     try {
@@ -79,9 +78,7 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
     } catch (e: any) {
       if (e?.message === "NOT_IN_TIER") {
         toast.error(
-          isWip
-            ? `${WIDGET_LABEL[w] ?? w} is in testing, so it can only be switched back on for the whole organisation.`
-            : `${WIDGET_LABEL[w] ?? w} is not part of this client's dashboard tier. Change the tier above to include it.`,
+          `${WIDGET_LABEL[w] ?? w} is not part of this client's dashboard tier. Change the tier above to include it.`,
         );
         qc.invalidateQueries({ queryKey: ["client-widget-matrix", clientId] });
       } else {
@@ -112,7 +109,6 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
                   <span className="truncate">{WIDGET_LABEL[w] ?? w}</span>
-                  {(r as any).wip && <InTestingBadge />}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {r.on
@@ -132,7 +128,7 @@ export function ClientCardsPanel({ clientId }: { clientId: string }) {
                   <Switch
                     checked={r.on}
                     disabled={busy !== null}
-                    onCheckedChange={(v) => onToggle(w, v, (r as any).wip === true)}
+                    onCheckedChange={(v) => onToggle(w, v)}
                     aria-label={`${WIDGET_LABEL[w] ?? w} for this client`}
                   />
                 </div>
