@@ -142,16 +142,33 @@ export function GstReconciliationWidget({
             <div>
               {(() => {
                 const { net } = netGst(data);
-                const isRefund = net < 0;
+                const payg = data.payg;
+                const withheld = payg.status === "resolved" ? payg.withheld : null;
+                const total = data.estimatedPayable;
+                const headline = total ?? net;
+                const isRefund = headline < 0;
                 return (
                   <>
                     <p className="text-xs text-muted-foreground">
-                      {isRefund ? "GST refund position" : "Approximate GST for this period"}
+                      {total !== null
+                        ? isRefund
+                          ? "Estimated refund for this period"
+                          : "Estimated amount payable for this period"
+                        : isRefund
+                          ? "GST refund position — GST only"
+                          : "Approximate GST for this period — GST only"}
                     </p>
                     <p className="font-display text-5xl font-semibold tabular-nums tracking-tight text-foreground">
-                      {fmt(isRefund ? -net : net)}
+                      {fmt(isRefund ? -headline : headline)}
                     </p>
-                    {isRefund && (
+                    {total !== null ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        GST {fmt(net)} + PAYG withheld {fmt(withheld)}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-muted-foreground">GST {fmt(net)}</p>
+                    )}
+                    {isRefund && total === null && (
                       <p className="text-xs text-muted-foreground">
                         GST on purchases exceeded GST on sales
                       </p>
@@ -178,6 +195,34 @@ export function GstReconciliationWidget({
               </div>
             )}
           </div>
+
+          {/* Refusals: never present a GST-only figure as the whole statement. */}
+          {data.payg.status === "unresolved" && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <p>
+                <span className="font-medium">PAYG withholding could not be identified.</span>{" "}
+                {data.payg.reason} The amount actually payable will be higher if wages were paid in
+                this period. You can say which account holds PAYG withholding in this client's
+                settings.
+              </p>
+            </div>
+          )}
+
+          {data.combinedAto && (
+            <div className="mt-4 rounded-lg border border-border bg-background/60 px-3 py-2 text-xs text-muted-foreground">
+              <p className="font-medium text-foreground">
+                {data.combinedAto.accountNames.join(", ")} holds GST and PAYG withholding together
+              </p>
+              <p className="mt-1">
+                It moved {fmt(data.combinedAto.movement)} over this period, and closed at{" "}
+                {fmt(data.combinedAto.closing)}. Nothing in the file says how much of that is GST
+                and how much is PAYG withholding, so it is not split and it is not added to the
+                total above — part of it may already be counted in the GST figure.
+              </p>
+            </div>
+          )}
+
 
           {data && !data.complete && (
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
