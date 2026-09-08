@@ -17,7 +17,7 @@ import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.fu
 import { toast } from "sonner";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 
-import { ProtectedMoneyWidget } from "@/components/dashboard/ProtectedMoneyWidget";
+import { SuperannuationWidget } from "@/components/dashboard/SuperannuationWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
 
 import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
@@ -241,10 +241,10 @@ function ClientDashboard() {
         standard.push({ id: `${o.id}:payables`, node: mark("payables", <PayablesWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("payables")} />) });
       if (widgets.includes("pnl"))
         standard.push({ id: `${o.id}:pnl`, fullWidth: true, node: mark("pnl", <PnlWidget tenantId={tenantId} tenantName={tenantName} basis={basisFor("pnl")} />) });
-      // Tax liabilities and Superannuation are one card: both read the same
-      // balance sheet, and two cards could show different as-at dates.
-      if (widgets.includes("tax_liability"))
-        advanced.push({ id: `${o.id}:tax_liability`, node: mark("tax_liability", <ProtectedMoneyWidget tenantId={tenantId} tenantName={tenantName} />) });
+      // Superannuation stands alone: it is owed to employees' funds, not the
+      // ATO, and nothing else on the dashboard reports it.
+      if (widgets.includes("superannuation"))
+        advanced.push({ id: `${o.id}:superannuation`, node: mark("superannuation", <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} />) });
       // Accounting and True break-even are one card; cash commitments are an
       // expandable section inside it.
       if (widgets.includes("accounting_breakeven"))

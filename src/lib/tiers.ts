@@ -6,7 +6,6 @@ export type WidgetKey =
   | "pnl"
   | "notes"
   | "unreconciled"
-  | "tax_liability"
   | "superannuation"
   | "accounting_breakeven"
   | "true_breakeven"
@@ -26,7 +25,6 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "pnl",
   "notes",
   "unreconciled",
-  "tax_liability",
   "superannuation",
   "accounting_breakeven",
   "true_breakeven",
@@ -47,7 +45,6 @@ const ADVANCED: WidgetKey[] = [
   "pnl",
   "notes",
   "unreconciled",
-  "tax_liability",
   "superannuation",
   "accounting_breakeven",
   "true_breakeven",
@@ -87,8 +84,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   pnl: "Profit & Loss",
   notes: "Notes",
   unreconciled: "Uncoded Bankfeed Questions",
-  tax_liability: "Money Held for Someone Else",
-  superannuation: "Superannuation (shown in Money Held for Someone Else)",
+  superannuation: "Superannuation",
   accounting_breakeven: "Break-Even",
   true_breakeven: "True Break-Even (shown in Break-Even)",
   cashflow: "Cash Flow",
@@ -110,8 +106,6 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
  * or policy row is touched.
  */
 export const DEPRECATED_WIDGET_ALIASES: Partial<Record<WidgetKey, WidgetKey>> = {
-  // Superannuation is a component of "Money Held for Someone Else".
-  superannuation: "tax_liability",
   // Cash commitments are an expandable section of the merged Break-Even card.
   true_breakeven: "accounting_breakeven",
 };
