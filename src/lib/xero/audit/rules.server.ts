@@ -609,72 +609,21 @@ export async function rulePayments(
 }
 
 
-// ---------- Payments (unreconciled, outside batches) ----------
+// ---------- Payments (unreconciled) — WITHDRAWN ----------
 //
-// Batched payments are excluded outright, because of a known Xero defect:
-// when a batch payment is reconciled as a single bank line, Xero does NOT
-// reflect that back onto the individual payments — IsReconciled stays false
-// on every payment inside the batch even though the batch itself is
-// reconciled. The field therefore carries no signal for batched payments,
-// and counting them would report a false backlog (measured: 835 of 960
-// unreconciled payments on one live file sat inside 12 reconciled batches).
-// Do not "fix" this by including them.
-const UNRECONCILED_MIN_AGE_DAYS = 30;
+// A rule based on Payment.IsReconciled used to live here. It was withdrawn
+// after producing a false backlog twice, for two unrelated structural reasons:
+//   1. Batched payments: when a batch is reconciled as one bank line, Xero
+//      does not reflect that back onto the individual payments.
+//   2. Payments made from non-bank accounts (suspense, cash, loan and
+//      prepayment accounts with "enable payments" switched on) have no bank
+//      statement lines at all, so IsReconciled can never become true.
+// Measured on a live file: all 125 flagged standalone payments sat on non-bank
+// accounts, while every one of the 2,595 reconciled payments sat on the single
+// BANK account. IsReconciled is a bank-transaction flag, not a payment flag.
+// Do not reintroduce a rule on this field.
 
-export function ruleUnreconciledPayments(payments: XPayment[], asOf: Date = new Date()): Finding[] {
-  const cutoffMs = asOf.getTime() - UNRECONCILED_MIN_AGE_DAYS * 86_400_000;
 
-  let count = 0;
-  let total = 0;
-  let oldest: Date | null = null;
-  let batchedExcluded = 0;
-
-  for (const p of payments) {
-    const status = (p.Status ?? "").toUpperCase();
-    if (status === "DELETED") continue;
-    if (p.IsReconciled !== false) continue;
-    const batchId = p.BatchPayment?.BatchPaymentID ?? p.BatchPaymentID ?? "";
-    if (batchId) {
-      batchedExcluded++;
-      continue;
-    }
-    const d = parseXeroDate(p.Date);
-    const amt = Math.round(Number(p.Amount ?? 0) * 100) / 100;
-    if (!d || amt <= 0) continue;
-    // Recent items not yet reconciled are normal — only report aged ones.
-    if (d.getTime() > cutoffMs) continue;
-    count++;
-    total = Math.round((total + amt) * 100) / 100;
-    if (!oldest || d < oldest) oldest = d;
-  }
-
-  if (count === 0) return [];
-
-  const oldestText = oldest!.toISOString().slice(0, 10);
-  const ruleId = "payments.unreconciled";
-  return [
-    {
-      ruleId,
-      category: "ar_ap",
-      severity: "medium",
-      title: `${count} payment${count === 1 ? "" : "s"} not reconciled in the bank`,
-      message:
-        `${count} payment${count === 1 ? "" : "s"} totalling ${total.toFixed(2)} ${count === 1 ? "is" : "are"} not reconciled against the bank, the oldest dated ${oldestText}. Reconcile them, or check whether they ever left the account. ` +
-        `Batched payments are not counted here: Xero reports every payment inside a batch as unreconciled even after the batch itself is reconciled, so including them would overstate the number.`,
-      entityType: null,
-      entityId: null,
-      // No single document or payment to open — there is no link to build.
-      deepLink: null,
-      evidence: {
-        count,
-        total,
-        oldestDate: oldestText,
-        batchedExcluded,
-      },
-      findingKey: key(ruleId, [String(count), total.toFixed(2), oldestText]),
-    },
-  ];
-}
 
 // ---------- Statutory traceability (A-STAT-TRACE) ----------
 //
