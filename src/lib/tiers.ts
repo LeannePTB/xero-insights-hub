@@ -13,7 +13,6 @@ export type WidgetKey =
   | "cashflow_scenario"
   | "xero_audit"
   | "loan_consolidation"
-  | "balance_sheet_reconciliation"
   | "gst_reconciliation"
   | "payg_withholding"
   | "transaction_search";
@@ -33,7 +32,6 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "cashflow_scenario",
   "xero_audit",
   "loan_consolidation",
-  "balance_sheet_reconciliation",
   "gst_reconciliation",
   "payg_withholding",
   "transaction_search",
@@ -54,7 +52,6 @@ const ADVANCED: WidgetKey[] = [
   "cashflow_scenario",
   "xero_audit",
   "loan_consolidation",
-  "balance_sheet_reconciliation",
   "gst_reconciliation",
   "transaction_search",
 ];
@@ -93,7 +90,6 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   cashflow_scenario: "Cashflow Scenario",
   xero_audit: "Xero File Audit",
   loan_consolidation: "Loan Consolidation",
-  balance_sheet_reconciliation: "Balance Sheet Reconciliation",
   gst_reconciliation: "Activity statement — GST (indicative)",
   payg_withholding: "PAYG Withholding by Month",
   transaction_search: "Transaction Search",
@@ -146,7 +142,6 @@ export const DEFAULT_CARD_ORDER: WidgetKey[] = [
   "true_breakeven",
   "cashflow",
   "cashflow_scenario",
-  "balance_sheet_reconciliation",
   "loan_consolidation",
   "notes",
 ];
