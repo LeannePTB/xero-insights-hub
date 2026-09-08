@@ -278,59 +278,8 @@ export async function computeGstReconciliation(
   }
 
   // --- Transactions coded directly to the GST account ----------------------
-  if (control) {
-    const controlId = control.AccountID.toLowerCase();
-    const controlCode = (control.Code ?? "").trim();
-    const hits = (line: any) =>
-      (line?.AccountID && String(line.AccountID).toLowerCase() === controlId) ||
-      (!!controlCode && String(line?.AccountCode ?? "").trim() === controlCode);
-
-    const push = (
-      lines: any[] | undefined,
-      source: string,
-      date: string | undefined,
-      reference: string | null,
-      contact: string | null,
-      sign: number,
-    ) => {
-      for (const line of lines ?? []) {
-        if (!hits(line)) continue;
-        const amount = round2((Number(line?.LineAmount ?? line?.NetAmount) || 0) * sign);
-        if (Math.abs(amount) < NEAR_ZERO) continue;
-        movements.push({ date: xeroDateIso(date), source, reference, contact, amount });
-      }
-    };
-
-    for (const bt of bankTx) {
-      if (!inPeriod(bt?.Date, from, to)) continue;
-      const spend = String(bt?.Type ?? "").startsWith("SPEND");
-      push(
-        bt?.LineItems,
-        spend ? "Spend money" : "Receive money",
-        bt?.Date,
-        bt?.Reference ?? null,
-        bt?.Contact?.Name ?? null,
-        spend ? 1 : -1,
-      );
-    }
-    for (const mj of manualJournals) {
-      if (!inPeriod(mj?.Date, from, to)) continue;
-      push(mj?.JournalLines, "Manual journal", mj?.Date, mj?.Narration ?? null, null, 1);
-    }
-    for (const inv of invoices) {
-      if (!inPeriod(inv?.Date, from, to)) continue;
-      push(
-        inv?.LineItems,
-        inv?.Type === "ACCREC" ? "Sales invoice" : "Bill",
-        inv?.Date,
-        inv?.Reference ?? inv?.InvoiceNumber ?? null,
-        inv?.Contact?.Name ?? null,
-        inv?.Type === "ACCREC" ? -1 : 1,
-      );
-    }
-  }
-
-  movements.sort((a, b) => (a.date ?? "").localeCompare(b.date ?? ""));
+  const docs = { invoices, bankTx, manualJournals };
+  if (control) movements = collectMovements([control], docs, from, to);
   const movementsTotal = round2(movements.reduce((s, m) => s + m.amount, 0));
 
   let expectedClosing: number | null = null;
@@ -344,6 +293,80 @@ export async function computeGstReconciliation(
   const journalsMissing = issues.some((i) => i.startsWith("Manual journals"));
   const ties = difference !== null && Math.abs(difference) < NEAR_ZERO;
   if (journalsMissing && !ties) complete = false;
+
+  // --- PAYG withholding ----------------------------------------------------
+  // Accounts come from the ONE resolver: the per-client statutory mapping,
+  // with name matching as the fallback. No hardcoded names or codes, and no
+  // second lookup.
+  const controlId = control?.AccountID?.toLowerCase() ?? null;
+  const paygAccounts: XeroAccount[] = [];
+  const combinedAccounts: XeroAccount[] = [];
+  for (const a of accounts) {
+    if (String(a.Class ?? "").toUpperCase() !== "LIABILITY") continue;
+    if (String((a as any).Status ?? "ACTIVE").toUpperCase() !== "ACTIVE") continue;
+    if (controlId && a.AccountID.toLowerCase() === controlId) continue;
+    const category = classifyTaxLine(a.Name ?? "", a as any, overrides);
+    if (category === "payg") paygAccounts.push(a);
+    else if (category === "ato-combined") combinedAccounts.push(a);
+  }
+
+  let payg: PaygSection;
+  if (paygAccounts.length === 0) {
+    payg = {
+      status: "unresolved",
+      reason:
+        combinedAccounts.length > 0
+          ? "PAYG withholding is not held in an account of its own on this file — it shares an account with GST, so it cannot be separated out."
+          : "No account on this file could be identified as holding PAYG withholding, so the total below is GST only.",
+    };
+  } else {
+    const paygMovements = collectMovements(paygAccounts, docs, from, to);
+    const paidToAto = round2(paygMovements.reduce((s, m) => s + m.amount, 0));
+    const paygOpening = bsTotalFor(openingBs, paygAccounts);
+    const paygClosing = bsTotalFor(closingBs, paygAccounts);
+    // Payroll postings are not readable through the accounting API, so what
+    // was withheld is derived from the account movement rather than counted
+    // from payslips. There is no independent second source to check it
+    // against — the card says so rather than implying a tie.
+    const withheld =
+      paygOpening !== null && paygClosing !== null ? round2(paygClosing - paygOpening + paidToAto) : null;
+    if (withheld === null) {
+      complete = false;
+      issues.push("The PAYG withholding account did not appear on the Balance Sheet for both dates.");
+    }
+    payg = {
+      status: "resolved",
+      accountNames: paygAccounts.map((a) => a.Name),
+      opening: paygOpening,
+      closing: paygClosing,
+      paidToAto,
+      movements: paygMovements,
+      withheld,
+    };
+  }
+
+  const combinedAto: CombinedAtoSection | null =
+    combinedAccounts.length === 0
+      ? null
+      : (() => {
+          const opening = bsTotalFor(openingBs, combinedAccounts);
+          const closing = bsTotalFor(closingBs, combinedAccounts);
+          return {
+            accountNames: combinedAccounts.map((a) => a.Name),
+            opening,
+            closing,
+            movement: opening !== null && closing !== null ? round2(closing - opening) : null,
+          };
+        })();
+
+  const gstNet =
+    gstOnSales !== null && gstOnPurchases !== null ? round2(gstOnSales - gstOnPurchases) : null;
+  const estimatedPayable =
+    gstNet !== null && payg.status === "resolved" && payg.withheld !== null
+      ? round2(gstNet + payg.withheld)
+      : null;
+
+
 
   return {
     asAt,
