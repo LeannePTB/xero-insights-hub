@@ -102,11 +102,14 @@ export function GstReconciliationWidget({
     `gst-detail:${clientId}:${tenantId}`,
   );
 
+  const notRegistered = gstCycle === "not_registered";
   const q = useQuery({
     queryKey: ["gst-reconciliation", clientId, tenantId, window, asAt],
     queryFn: () => fetchGst({ data: { clientId, tenantId, asAt, window } }),
     retry: false,
     staleTime: 5 * 60 * 1000,
+    // A client who is not registered for GST has no period to fetch.
+    enabled: !notRegistered,
   });
 
   const [recalculating, setRecalculating] = useState(false);
