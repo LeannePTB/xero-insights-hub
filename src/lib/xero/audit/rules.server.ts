@@ -438,7 +438,7 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
     if (emitted.has(fk)) return;
     emitted.add(fk);
 
-    const dates = sorted.map((s) => s.date.toISOString().slice(0, 10)).join(", ");
+    
     const acctText = first.accountName ? ` from ${first.accountName}` : "";
 
     // The document the repeat is against decides both the wording and the link.
