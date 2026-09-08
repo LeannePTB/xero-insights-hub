@@ -243,10 +243,8 @@ function TierSettings() {
 
           {tiers.map((tier) => {
             const level = levelByKey.get(tier);
-            const isWip = tier === "wip";
-            const enabled = isWip
-              ? level?.enabled !== false
-              : (settingsQ.data?.enabled as Record<string, boolean> | undefined)?.[tier] ?? true;
+            const enabled =
+              (settingsQ.data?.enabled as Record<string, boolean> | undefined)?.[tier] ?? true;
             return (
               <TierEditor
                 key={tier}
@@ -254,28 +252,12 @@ function TierSettings() {
                 detachedOrgs={overridesQ.data?.byTier?.[tier] ?? []}
                 title={tierLabel(tier, level?.label)}
                 description={tierDescription(tier, level?.description)}
-                // "In testing" edits the row itself (plan_levels.widgets), so it
-                // must show the row itself. tier_widget_config exclusions are
-                // never consulted for the 'wip' tier at render time — cards are
-                // resolved against the client's own entitled tier — so reading
-                // ceiling−exclusions here would hide keys the Save then deleted.
-                initial={
-                  isWip
-                    ? (((level?.widgets as string[] | null) ?? []).filter((w) =>
-                        (ALL_WIDGETS as string[]).includes(w),
-                      ) as WidgetKey[])
-                    : ((cfgQ.data?.global as Record<string, WidgetKey[]>)?.[tier]) ?? []
-                }
-
-                saving={isWip ? saveWipMut.isPending : saveMut.isPending}
-                onSave={(widgets) =>
-                  isWip ? saveWipMut.mutate({ widgets }) : saveMut.mutate({ tier, widgets })
-                }
+                initial={((cfgQ.data?.global as Record<string, WidgetKey[]>)?.[tier]) ?? []}
+                saving={saveMut.isPending}
+                onSave={(widgets) => saveMut.mutate({ tier, widgets })}
                 enabled={enabled}
-                onToggleEnabled={(v) =>
-                  isWip ? saveWipMut.mutate({ enabled: v }) : toggleMut.mutate({ tier, enabled: v })
-                }
-                toggleDisabled={isWip ? saveWipMut.isPending : toggleMut.isPending}
+                onToggleEnabled={(v) => toggleMut.mutate({ tier, enabled: v })}
+                toggleDisabled={toggleMut.isPending}
                 onDelete={isSuperAdmin && level ? () => setPendingDelete(level) : undefined}
                 onEdit={
                   isSuperAdmin && level
