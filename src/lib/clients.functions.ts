@@ -406,13 +406,9 @@ export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string; disconnectXeroFiles?: boolean }) => i)
   .handler(async ({ data, context }) => {
-    // Super admins manage every organisation; RLS scopes deletes to firm owners.
-    const { data: superRow } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "super_admin")
-      .maybeSingle();
+    // Authorisation for the removal itself lives in the database routine
+    // called below (owner, active organisation member, or super admin).
+
 
     // Optional, opt-in: detach this client's Xero files first. Read through the
     // caller's own permissions, so someone who cannot see the client's links
