@@ -14,7 +14,12 @@ import {
 import { ReconAgeNotice } from "@/components/dashboard/ReconAgeNotice";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { getGstReconciliation, type GstResponse } from "@/lib/xero/gst.functions";
-import { money as fmt, gstPeriodOptions } from "@/components/dashboard/recon-periods";
+import {
+  money as fmt,
+  gstPeriodOptions,
+  type GstPeriodOption,
+  type GstWindowKind,
+} from "@/components/dashboard/recon-periods";
 import { usePersistedDisclosure } from "@/hooks/usePersistedDisclosure";
 
 /**
@@ -65,8 +70,8 @@ function defaultPeriodValue(cycle: GstCycle | null | undefined, options: GstPeri
   };
   const kind = cycle && cycle !== "not_registered" ? want[cycle] : null;
   if (kind) {
-    // The "to date" option of that kind — always present in the list.
-    const hit = options.find((o) => o.kind === kind && o.value === `${kind}:${o.asAt}`);
+    // The current-period "to date" option is listed first for each kind.
+    const hit = options.find((o) => o.kind === kind);
     if (hit) return hit.value;
   }
   return options[1]?.value ?? options[0]!.value;
