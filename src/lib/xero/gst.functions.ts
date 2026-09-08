@@ -9,6 +9,10 @@ export const GST_REPORT_KEY = "gst_reconciliation";
  *  windows therefore get their OWN report key, so a stored monthly payload can
  *  never be re-served as a quarter. */
 export const GST_QUARTER_REPORT_KEY = "gst_reconciliation_quarter";
+/** The financial-year window shares its as-at date with the monthly and
+ *  quarterly "to date" windows (all end today), so it needs its own key for
+ *  the same reason the quarter does. */
+export const GST_YEAR_REPORT_KEY = "gst_reconciliation_year";
 
 export type GstResponse = GstResult & SnapshotMeta;
 
@@ -16,14 +20,20 @@ type Input = {
   clientId: string;
   tenantId: string;
   asAt: string;
-  window?: "month" | "quarter";
+  window?: "month" | "quarter" | "year";
   recalculate?: boolean;
+};
+
+const REPORT_KEYS: Record<string, string> = {
+  month: GST_REPORT_KEY,
+  quarter: GST_QUARTER_REPORT_KEY,
+  year: GST_YEAR_REPORT_KEY,
 };
 
 function validate(i: Input): Input {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(i.asAt)) throw new Error("Invalid period end date.");
   const window = i.window ?? "month";
-  if (window !== "month" && window !== "quarter") throw new Error("Invalid period type.");
+  if (!REPORT_KEYS[window]) throw new Error("Invalid period type.");
   return { ...i, window };
 }
 
