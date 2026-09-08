@@ -65,6 +65,38 @@ function balanceOf(a: XAccount, balances?: AccountBalances): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
+/**
+ * Pull point-in-time balances out of a `Reports/BalanceSheet` response.
+ *
+ * Each account row carries its AccountID in the first cell's attributes; the
+ * next cell is the balance at the report date. Values are taken exactly as
+ * the report presents them — see AccountBalances for the sign convention.
+ * A malformed or missing report yields an empty map, and every balance-based
+ * rule then emits nothing rather than treating "no balance" as zero.
+ */
+export function parseBalanceSheetBalances(report: unknown): AccountBalances {
+  const balances: AccountBalances = new Map();
+  const rows = (report as any)?.Rows;
+  if (!Array.isArray(rows)) return balances;
+  for (const section of rows) {
+    for (const row of section?.Rows ?? []) {
+      const cells = row?.Cells;
+      if (!Array.isArray(cells) || cells.length < 2) continue;
+      const attrs = cells[0]?.Attributes;
+      const id = Array.isArray(attrs)
+        ? attrs.find((a: any) => a?.Id === "account" || a?.Id)?.Value
+        : undefined;
+      if (typeof id !== "string" || !id) continue;
+      const value = Number(cells[1]?.Value);
+      if (!Number.isFinite(value)) continue;
+      balances.set(id, value);
+    }
+  }
+  return balances;
+}
+
+
+
 
 type XInvoice = {
   InvoiceID: string;
