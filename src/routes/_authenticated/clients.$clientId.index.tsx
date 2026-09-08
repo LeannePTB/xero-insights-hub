@@ -17,6 +17,7 @@ import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.fu
 import { toast } from "sonner";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 
+import { PaygWithholdingWidget } from "@/components/dashboard/PaygWithholdingWidget";
 import { SuperannuationWidget } from "@/components/dashboard/SuperannuationWidget";
 import { PnlWidget } from "@/components/dashboard/PnlWidget";
 
@@ -259,6 +260,11 @@ function ClientDashboard() {
       // Structural hide: a non-GST cashbook has no GST ledger.
       if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
         advanced.push({ id: `${o.id}:gst_reconciliation`, node: mark("gst_reconciliation", <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} showWarnings={isAdvisor} />) });
+
+      // PAYG withholding stands alone: the activity statement card reports the
+      // period's GST only, and this answers what is still owing month by month.
+      if (widgets.includes("payg_withholding"))
+        advanced.push({ id: `${o.id}:payg_withholding`, node: mark("payg_withholding", <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />) });
 
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: mark("loan_consolidation", <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />) });
