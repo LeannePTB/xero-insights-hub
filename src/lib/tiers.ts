@@ -119,6 +119,47 @@ export function canonicalWidget(key: string): string {
 }
 
 /**
+ * THE DEFAULT CARD ORDER — the single place it is defined.
+ *
+ * Used only when a card has no position in the person's own stored order. A
+ * stored per-client order always wins; this decides what a fresh dashboard
+ * looks like, and where a brand new card lands for someone who has already
+ * dragged their cards around.
+ *
+ * The three statutory cards sit together and in lodgement order: GST, then
+ * PAYG withholding, then superannuation.
+ */
+export const DEFAULT_CARD_ORDER: WidgetKey[] = [
+  // Standard section
+  "health",
+  "unreconciled",
+  "receivables",
+  "payables",
+  "pnl",
+  // Advisory section
+  "xero_audit",
+  "transaction_search",
+  "gst_reconciliation",
+  "payg_withholding",
+  "superannuation",
+  "accounting_breakeven",
+  "true_breakeven",
+  "cashflow",
+  "cashflow_scenario",
+  "balance_sheet_reconciliation",
+  "loan_consolidation",
+  "notes",
+];
+
+/** Position of a widget in the default order; unknown keys sort last, stably. */
+export function defaultCardRank(widget: string): number {
+  const i = DEFAULT_CARD_ORDER.indexOf(canonicalWidget(widget) as WidgetKey);
+  return i < 0 ? DEFAULT_CARD_ORDER.length : i;
+}
+
+
+
+/**
  * Map an entitled widget list onto the cards that actually render, preserving
  * order and dropping the duplicate a merge would otherwise produce. Entitlement
  * is unchanged: this only decides how many cards the entitlement draws.
