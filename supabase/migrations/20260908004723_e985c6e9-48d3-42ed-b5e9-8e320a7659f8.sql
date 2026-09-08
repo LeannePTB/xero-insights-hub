@@ -1,0 +1,2 @@
+ALTER TABLE public.xero_connections ADD COLUMN IF NOT EXISTS authorisation_checked_at timestamptz;
+COMMENT ON COLUMN public.xero_connections.authorisation_checked_at IS 'Last time this row''s Xero user account was reconciled against GET /connections. Used only as a rate-limit stamp (10 minute window) for the on-demand check; written before the Xero call so concurrent requests cannot double-call.';

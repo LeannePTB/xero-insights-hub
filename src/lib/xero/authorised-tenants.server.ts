@@ -79,7 +79,10 @@ async function fetchAuthorisedTenantIds(accessToken: string): Promise<string[] |
  * on it), never one per connection. Safe to call repeatedly; it only writes
  * when a row's authorisation actually changed.
  */
-export async function reconcileAuthorisedTenants(): Promise<AuthorisationReconcileSummary> {
+export async function reconcileAuthorisedTenants(
+  /** Optional filter: only these Xero user accounts. Logic is unchanged. */
+  userIds?: string[],
+): Promise<AuthorisationReconcileSummary> {
   const summary: AuthorisationReconcileSummary = {
     usersChecked: 0,
     usersSkipped: 0,
@@ -97,9 +100,11 @@ export async function reconcileAuthorisedTenants(): Promise<AuthorisationReconci
   }
 
   const rows = (data ?? []) as Row[];
+  const only = userIds && userIds.length > 0 ? new Set(userIds) : null;
   const byUser = new Map<string, Row[]>();
   for (const row of rows) {
     if (!row.user_id || !row.tenant_id) continue;
+    if (only && !only.has(row.user_id)) continue;
     const list = byUser.get(row.user_id) ?? [];
     list.push(row);
     byUser.set(row.user_id, list);
