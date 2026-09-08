@@ -382,7 +382,7 @@ export async function computeGstReconciliation(
   // while a read we could not make stays null and says so.
   const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
   const runs = supabase
-    ? await loadPayRuns({ supabase, tenantId: conn.tenantId, conn })
+    ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, conn })
     : await fetchPayRuns(conn);
   let paygPayroll: PaygPayrollSection;
   if (runs.status === "available") {
