@@ -404,7 +404,7 @@ export const createClient = createServerFn({ method: "POST" })
 
 export const deleteClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((i: { clientId: string }) => i)
+  .inputValidator((i: { clientId: string; disconnectXeroFiles?: boolean }) => i)
   .handler(async ({ data, context }) => {
     // Super admins manage every organisation; RLS scopes deletes to firm owners.
     const { data: superRow } = await context.supabase
@@ -413,6 +413,73 @@ export const deleteClient = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .eq("role", "super_admin")
       .maybeSingle();
+
+    // Optional, opt-in: detach this client's Xero files first. Read through the
+    // caller's own permissions, so someone who cannot see the client's links
+    // cannot disconnect anything. Each file is detached on its own; the refresh
+    // token is never revoked (that is account-wide).
+    const xero: Array<{ tenantName: string | null; result: string; detail?: string }> = [];
+    if (data.disconnectXeroFiles) {
+      const { data: links } = await context.supabase
+        .from("client_xero_orgs")
+        .select("xero_connection_id, xero_connections(tenant_id, tenant_name)")
+        .eq("client_id", data.clientId);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { detachTenantFromXero } = await import("@/lib/xero/disconnect.server");
+
+      for (const link of links ?? []) {
+        const conn = (link as any).xero_connections as {
+          tenant_id: string;
+          tenant_name: string | null;
+        } | null;
+        if (!conn?.tenant_id) continue;
+
+        // A Xero file linked to more than one client is left connected: the
+        // other client still needs it. The database forbids this today, so it
+        // is a guard rather than an expected path.
+        const { count } = await supabaseAdmin
+          .from("client_xero_orgs")
+          .select("id", { count: "exact", head: true })
+          .eq("xero_connection_id", (link as any).xero_connection_id);
+        if ((count ?? 1) > 1) {
+          xero.push({ tenantName: conn.tenant_name, result: "shared" });
+          continue;
+        }
+
+        const outcome = await detachTenantFromXero(conn.tenant_id);
+        if (outcome.result === "failed") {
+          await supabaseAdmin.from("audit_log").insert({
+            actor_user_id: context.userId,
+            action: "xero_disconnect_failed",
+            target_type: "xero_connection",
+            target_id: conn.tenant_id,
+            meta: {
+              tenant_name: conn.tenant_name,
+              reason: outcome.reason,
+              source: "client_removal",
+            },
+          });
+          xero.push({ tenantName: conn.tenant_name, result: "failed", detail: outcome.reason });
+          continue;
+        }
+
+        await supabaseAdmin.from("audit_log").insert({
+          actor_user_id: context.userId,
+          action: "xero_disconnected",
+          target_type: "xero_connection",
+          target_id: conn.tenant_id,
+          meta: {
+            tenant_name: conn.tenant_name,
+            outcome: outcome.result,
+            other_files_still_connected: outcome.remaining,
+            source: "client_removal",
+          },
+        });
+        await supabaseAdmin.from("xero_connections").delete().eq("tenant_id", conn.tenant_id);
+        xero.push({ tenantName: conn.tenant_name, result: outcome.result });
+      }
+    }
+
     if (superRow) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error: adminErr } = await supabaseAdmin
@@ -420,11 +487,11 @@ export const deleteClient = createServerFn({ method: "POST" })
         .delete()
         .eq("id", data.clientId);
       if (adminErr) throw new Error(adminErr.message);
-      return { ok: true };
+      return { ok: true, xero };
     }
     const { error } = await context.supabase.from("clients").delete().eq("id", data.clientId);
     if (error) throw new Error(error.message);
-    return { ok: true };
+    return { ok: true, xero };
   });
 
 export const renameClient = createServerFn({ method: "POST" })
