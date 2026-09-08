@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, RefreshCw, Loader2, ExternalLink, BellOff, Bell, Play, Check, Undo2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, RefreshCw, Loader2, ExternalLink, BellOff, Bell, Play, Check, Undo2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/audit/$tenantId")({
@@ -35,6 +36,7 @@ function AuditPage() {
 
   const [catFilter, setCatFilter] = useState<string>("all");
   const [sevFilter, setSevFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
   const [showSnoozed, setShowSnoozed] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -78,6 +80,9 @@ function AuditPage() {
   const snoozes: Record<string, { until: string | null; note: string | null; resolved?: boolean; resolvedAt?: string | null }> =
     (q.data?.snoozes as any) ?? {};
 
+  // Search narrows the same list the category / severity / snoozed / resolved
+  // filters produce — every test below must pass, so the filters compose.
+  const term = search.trim().toLowerCase();
   const visible = useMemo(() => {
     const now = Date.now();
     return findings
@@ -89,10 +94,11 @@ function AuditPage() {
         if (!showSnoozed && isSnoozed) return false;
         if (catFilter !== "all" && f.category !== catFilter) return false;
         if (sevFilter !== "all" && f.severity !== sevFilter) return false;
+        if (term && !matchesSearch(f, term)) return false;
         return true;
       })
       .sort((a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9));
-  }, [findings, snoozes, catFilter, sevFilter, showSnoozed, showResolved]);
+  }, [findings, snoozes, catFilter, sevFilter, showSnoozed, showResolved, term]);
 
   const selectableKeys = useMemo(() => {
     const now = Date.now();
@@ -104,6 +110,18 @@ function AuditPage() {
       })
       .map((f) => f.finding_key as string);
   }, [visible, snoozes]);
+
+  // A selected finding that is no longer on screen could be resolved unseen, so
+  // the selection is pruned to what is currently shown whenever the list changes.
+  useEffect(() => {
+    setSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const allowed = new Set(selectableKeys);
+      const next = new Set(Array.from(prev).filter((k) => allowed.has(k)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [selectableKeys]);
+
 
   const allSelected = selectableKeys.length > 0 && selectableKeys.every((k) => selected.has(k));
   const toggleAll = () => {
@@ -178,6 +196,7 @@ function AuditPage() {
           {run ? (
             <p className="text-xs text-muted-foreground">
               Last run {new Date(run.run_at).toLocaleString()} · {findings.length} finding{findings.length === 1 ? "" : "s"} · {visible.length} shown
+              {findings.length > visible.length ? ` · ${findings.length - visible.length} hidden by filters` : ""}
               {run.error ? <span className="ml-2 text-destructive">· {run.error}</span> : null}
             </p>
           ) : (
@@ -185,6 +204,26 @@ function AuditPage() {
           )}
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search findings — supplier or customer name, or any wording"
+              aria-label="Search findings"
+              className="pl-9 pr-9"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:bg-accent"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            ) : null}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select value={catFilter} onValueChange={setCatFilter}>
               <SelectTrigger className="w-[200px]"><SelectValue placeholder="Category" /></SelectTrigger>
@@ -211,7 +250,7 @@ function AuditPage() {
             {selectableKeys.length > 0 && (
               <label className="ml-2 flex items-center gap-2 text-sm">
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
-                Select all ({selectableKeys.length})
+                Select all {selectableKeys.length} shown
               </label>
             )}
           </div>
@@ -247,7 +286,11 @@ function AuditPage() {
 
           {visible.length === 0 ? (
             <p className="rounded border bg-muted/30 p-6 text-center text-sm text-muted-foreground">
-              {run ? "No findings match the current filters." : "Run the audit to see findings."}
+              {!run
+                ? "Run the audit to see findings."
+                : term
+                  ? `No findings match "${search.trim()}" with the current filters.`
+                  : "No findings match the current filters."}
             </p>
           ) : (
             <ul className="divide-y">
@@ -325,6 +368,21 @@ function AuditPage() {
 
 /** "Open bill in Xero" / "Open invoice in Xero" — the link opens the document,
  *  not a payment, so the label says which document it is. */
+/**
+ * Client-side search over a finding. Covers the two fields the preparer reads
+ * on screen — title and message — plus the contact name held in evidence, since
+ * a supplier or customer name is the usual thing being looked for and some
+ * messages abbreviate it. Case-insensitive substring match.
+ */
+function matchesSearch(finding: any, term: string): boolean {
+  const contact = finding?.evidence?.contact;
+  const haystack = [finding?.title, finding?.message, typeof contact === "string" ? contact : null]
+    .filter((v): v is string => typeof v === "string" && v.length > 0)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(term);
+}
+
 function openLabel(finding: any): string {
   if (finding?.entity_type === "Bill") return "Open bill in Xero";
   if (finding?.entity_type === "Invoice") return "Open invoice in Xero";
