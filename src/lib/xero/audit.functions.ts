@@ -72,20 +72,29 @@ export const runXeroAudit = createServerFn({ method: "POST" })
       // Payments lookback: last 12 months
       const since = new Date(Date.now() - 365 * 86_400_000).toISOString();
       // Fetch in parallel. Org gives us shortCode for deep links.
-      const [orgRes, accountsRes, invoicesRes, creditNotesRes, paymentsRes] = await Promise.all([
-        xeroGet<any>(conn, "Organisations").catch(() => null),
-        xeroGet<any>(conn, "Accounts"),
-        // Pull all unpaid + paid in last 24m to bound size.
-        xeroGet<any>(conn, "Invoices", { Statuses: "AUTHORISED,SUBMITTED,DRAFT", page: "1" }),
-        xeroGet<any>(conn, "CreditNotes", { Statuses: "AUTHORISED,SUBMITTED" }).catch(() => ({ CreditNotes: [] })),
-        xeroGet<any>(conn, "Payments", { where: `Status=="AUTHORISED"&&Date>=DateTime(${since.slice(0, 10).replace(/-/g, ",")})` }).catch(() => ({ Payments: [] })),
-      ]);
+      const today = new Date().toISOString().slice(0, 10);
+      const [orgRes, accountsRes, invoicesRes, creditNotesRes, paymentsRes, balanceSheetRes] =
+        await Promise.all([
+          xeroGet<any>(conn, "Organisations").catch(() => null),
+          xeroGet<any>(conn, "Accounts"),
+          // Pull all unpaid + paid in last 24m to bound size.
+          xeroGet<any>(conn, "Invoices", { Statuses: "AUTHORISED,SUBMITTED,DRAFT", page: "1" }),
+          xeroGet<any>(conn, "CreditNotes", { Statuses: "AUTHORISED,SUBMITTED" }).catch(() => ({ CreditNotes: [] })),
+          xeroGet<any>(conn, "Payments", { where: `Status=="AUTHORISED"&&Date>=DateTime(${since.slice(0, 10).replace(/-/g, ",")})` }).catch(() => ({ Payments: [] })),
+          // The only source of real account balances: Accounts.CurrentBalance
+          // is absent on every account. One extra call per audit; existing
+          // accounting.reports.balancesheet.read scope. On failure the map is
+          // empty and every balance rule stays silent.
+          xeroGet<any>(conn, "Reports/BalanceSheet", { date: today }).catch(() => null),
+        ]);
 
       const shortCode: string | null = orgRes?.Organisations?.[0]?.ShortCode ?? null;
       const accounts = (accountsRes?.Accounts ?? []) as any[];
       const invoices = (invoicesRes?.Invoices ?? []) as any[];
       const creditNotes = (creditNotesRes?.CreditNotes ?? []) as any[];
       const payments = (paymentsRes?.Payments ?? []) as any[];
+      const balances = parseBalanceSheetBalances(balanceSheetRes?.Reports?.[0] ?? null);
+
 
       // Document totals for the overpayment test. Only documents inside a
       // flagged cluster are priced, in batches of 100 (Xero's IDs= ceiling) —
