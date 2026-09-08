@@ -483,7 +483,7 @@ export function taxLinesOrThrow(result: TaxLineExtraction): TaxLine[] {
 // Protected money – money the business holds but does not own.
 // ---------------------------------------------------------------------------
 
-export type ProtectedMoneyComponentKey = "gst" | "payg" | "super";
+export type ProtectedMoneyComponentKey = "gst" | "payg" | "super" | "ato-combined";
 
 /** A component either resolves to an amount, or is explicitly unresolved
  *  because no Balance Sheet account matched its name patterns. An unresolved
