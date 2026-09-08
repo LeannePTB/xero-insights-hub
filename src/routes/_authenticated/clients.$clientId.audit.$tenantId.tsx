@@ -274,10 +274,11 @@ function AuditPage() {
                         {f.deep_link ? (
                           <Button size="sm" variant="ghost" asChild>
                             <a href={f.deep_link} target="_blank" rel="noopener noreferrer">
-                              <ExternalLink className="mr-1 h-3 w-3" /> Open in Xero
+                              <ExternalLink className="mr-1 h-3 w-3" /> {openLabel(f)}
                             </a>
                           </Button>
                         ) : null}
+
                         {isResolved ? (
                           <Button size="sm" variant="ghost" onClick={() => resolveMut.mutate({ findingKey: f.finding_key, resolved: false })} disabled={resolveMut.isPending}>
                             <Undo2 className="mr-1 h-3 w-3" /> Reopen
@@ -299,7 +300,8 @@ function AuditPage() {
                       </div>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{f.message}</p>
-                    <TransactionLinks finding={f} />
+                    <PaymentRows finding={f} />
+
                     {isResolved && (
                       <p className="mt-1 text-xs text-muted-foreground">
                         Resolved{s?.resolvedAt ? ` on ${new Date(s.resolvedAt).toLocaleDateString()}` : ""}
@@ -321,31 +323,47 @@ function AuditPage() {
   );
 }
 
-function TransactionLinks({ finding }: { finding: any }) {
+/** "Open bill in Xero" / "Open invoice in Xero" — the link opens the document,
+ *  not a payment, so the label says which document it is. */
+function openLabel(finding: any): string {
+  if (finding?.entity_type === "Bill") return "Open bill in Xero";
+  if (finding?.entity_type === "Invoice") return "Open invoice in Xero";
+  return "Open in Xero";
+}
+
+/**
+ * The payments behind a payment finding, as plain rows. No per-payment links:
+ * Xero publishes no address that opens a single payment, and a batched payment
+ * has no bank transaction of its own — a missing link beats a broken one.
+ */
+function PaymentRows({ finding }: { finding: any }) {
   const ev = finding?.evidence ?? {};
-  const ids: string[] = Array.isArray(ev.paymentIds) ? ev.paymentIds : [];
   const dates: string[] = Array.isArray(ev.dates) ? ev.dates : [];
-  const base: string | null = finding?.deep_link ?? null;
-  const anchorId: string | null = finding?.entity_id ?? null;
-  if (ids.length < 2 || !base || !anchorId) return null;
+  const amount = typeof ev.amount === "number" ? ev.amount : null;
+  if (dates.length < 2 || amount === null) return null;
+  const isSameDoc = ev.case === "same_document";
+  const docNumber: string | null = Array.isArray(ev.invoices) ? (ev.invoices[0] ?? null) : null;
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-      <span className="text-muted-foreground">Transactions in Xero:</span>
-      {ids.map((id, i) => (
-        <a
-          key={id}
-          href={base.split(anchorId).join(id)}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-primary underline-offset-2 hover:underline"
-        >
-          <ExternalLink className="h-3 w-3" />
-          {dates[i] ?? `Payment ${i + 1}`}
-        </a>
-      ))}
+    <div className="mt-2 rounded-md border bg-muted/30 px-3 py-2">
+      <p className="text-xs font-medium">
+        {isSameDoc
+          ? `Payments against ${docNumber ? `${finding.entity_type === "Invoice" ? "invoice" : "bill"} ${docNumber}` : "this document"}`
+          : "Payments in this group"}
+      </p>
+      <ul className="mt-1 space-y-0.5">
+        {dates.map((d, i) => (
+          <li key={`${d}-${i}`} className="flex justify-between gap-4 text-sm tabular-nums">
+            <span>{new Date(d).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}</span>
+            <span>
+              {amount.toLocaleString("en-AU", { style: "currency", currency: "AUD" })}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
+
 
 function SeverityBadge({ severity }: { severity: string }) {
   const map: Record<string, string> = {
