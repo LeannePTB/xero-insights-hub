@@ -242,6 +242,7 @@ function invalidCash(reason: string): Extract<CashAtBankExtraction, { status: "i
 function extractTaxLinesFromReport(
   report: BalanceSheetReport,
   accountsById: Map<string, XeroAccountRef>,
+  overrides?: StatutoryOverrides,
 ): TaxLineExtraction {
   const lines: TaxLine[] = [];
   const unrecognised: string[] = [];
@@ -260,9 +261,12 @@ function extractTaxLinesFromReport(
     }
     if (!isActiveLiability(account)) return;
 
-    const category = classifyTaxLine(name, account);
+    const category = classifyTaxLine(name, account, overrides);
     if (!category) {
-      if (looksStatutoryButUnclassified(name, account)) unrecognised.push(name);
+      // An account a person has explicitly marked "none" is settled, not
+      // unrecognised, however statutory its name looks.
+      const settled = overrides?.get(statutoryOverrideKey(name)) === "none";
+      if (!settled && looksStatutoryButUnclassified(name, account)) unrecognised.push(name);
       return;
     }
 
@@ -340,7 +344,11 @@ function extractCashAtBankFromReport(
  * `{ Reports: [...] }` envelope or the inner report object and turns malformed
  * inputs into `input_invalid` instead of empty figures.
  */
-export function analyseBalanceSheet(balanceSheetInput: any, accountsInput?: any): BalanceSheetAnalysis {
+export function analyseBalanceSheet(
+  balanceSheetInput: any,
+  accountsInput?: any,
+  overrides?: StatutoryOverrides,
+): BalanceSheetAnalysis {
   const reportResult = normaliseBalanceSheetReport(balanceSheetInput);
   if (reportResult.status === "input_invalid") {
     const reason = reportResult.reason;
@@ -355,7 +363,7 @@ export function analyseBalanceSheet(balanceSheetInput: any, accountsInput?: any)
   const accountsResult = normaliseAccounts(accountsInput);
   const taxLines =
     accountsResult.status === "assessed"
-      ? extractTaxLinesFromReport(reportResult.report, accountsResult.byId)
+      ? extractTaxLinesFromReport(reportResult.report, accountsResult.byId, overrides)
       : invalidTax(accountsResult.reason);
   const cashAtBank =
     accountsResult.status === "assessed"
@@ -384,8 +392,12 @@ export function balancesByAccountId(balanceSheetInput: any): Map<string, number>
 }
 
 /** Pull every tax-classified line out of a Balance Sheet payload. */
-export function extractTaxLines(balanceSheetInput: any, accountsInput?: any): TaxLineExtraction {
-  return analyseBalanceSheet(balanceSheetInput, accountsInput).taxLines;
+export function extractTaxLines(
+  balanceSheetInput: any,
+  accountsInput?: any,
+  overrides?: StatutoryOverrides,
+): TaxLineExtraction {
+  return analyseBalanceSheet(balanceSheetInput, accountsInput, overrides).taxLines;
 }
 
 
