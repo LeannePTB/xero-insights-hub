@@ -356,6 +356,7 @@ type XPayment = {
   // one act of paying many bills, so repetition inside it is not a duplicate.
   BatchPayment?: { BatchPaymentID?: string } | null;
   BatchPaymentID?: string;
+  IsReconciled?: boolean;
 };
 
 /** Duplicate-payment window and severity — the only place these are set. */
