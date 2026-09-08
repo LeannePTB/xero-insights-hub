@@ -26,7 +26,14 @@ export const Route = createFileRoute("/api/public/tmp-batch-probe")({
           if (p?.BatchPayment?.BatchPaymentID) withBatch++;
           if (p?.Invoice?.Type) withInvoiceType++;
         }
+        const { rulePayments } = await import("@/lib/xero/audit/rules.server");
+        const findings = rulePayments(payments as any, "SC");
+        const cases: Record<string, number> = {};
+        for (const f of findings) cases[String((f.evidence as any).case)] = (cases[String((f.evidence as any).case)] ?? 0) + 1;
         return Response.json({
+          findings: findings.length,
+          cases,
+          withLink: findings.filter((f) => f.deepLink).length,
           total: payments.length,
           paymentKeys: [...keys].sort(),
           invoiceKeys: [...invoiceKeys].sort(),

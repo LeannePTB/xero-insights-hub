@@ -355,6 +355,7 @@ type XPayment = {
   // Present when the payment was made as part of a batch payment. A batch is
   // one act of paying many bills, so repetition inside it is not a duplicate.
   BatchPayment?: { BatchPaymentID?: string } | null;
+  BatchPaymentID?: string;
 };
 
 /** Duplicate-payment window and severity — the only place these are set. */
@@ -398,7 +399,7 @@ export function rulePayments(payments: XPayment[], shortCode?: string | null): F
       invoiceId: p.Invoice?.InvoiceID ?? "",
       invoiceNumber: p.Invoice?.InvoiceNumber ?? "",
       invoiceType: (p.Invoice?.Type ?? "").toUpperCase(),
-      batchId: p.BatchPayment?.BatchPaymentID ?? "",
+      batchId: p.BatchPayment?.BatchPaymentID ?? p.BatchPaymentID ?? "",
       type: (p.PaymentType ?? "").toUpperCase(),
     });
   }
