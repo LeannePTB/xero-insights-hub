@@ -196,10 +196,28 @@ function ClientDashboard() {
   }
 
 
-  const { standardCards, advancedCards } = useMemo<{ standardCards: SortableCard[]; advancedCards: SortableCard[] }>(() => {
+  // The three statutory cards (GST, PAYG withholding, superannuation) are NOT
+  // sortable. They render in a fixed block at the top of the Advisory section,
+  // because a single ordered list poured into height-balanced columns can never
+  // guarantee they sit together in the left column. Hide rules are untouched:
+  // a card only enters the block if it would have been rendered before.
+  type StatutoryBlock = {
+    orgId: string;
+    gst: ReactNode | null;
+    payg: ReactNode | null;
+    superannuation: ReactNode | null;
+  };
+
+  const { standardCards, advancedCards, statutoryBlocks } = useMemo<{
+    standardCards: SortableCard[];
+    advancedCards: SortableCard[];
+    statutoryBlocks: StatutoryBlock[];
+  }>(() => {
     const standard: SortableCard[] = [];
     const advanced: SortableCard[] = [];
-    if (!client) return { standardCards: standard, advancedCards: advanced };
+    const statutory: StatutoryBlock[] = [];
+    if (!client) return { standardCards: standard, advancedCards: advanced, statutoryBlocks: statutory };
+
 
     if (widgets.includes("health")) {
       const healthNode = orgs.length > 0 ? (
@@ -221,6 +239,11 @@ function ClientDashboard() {
       const tenantId = o.xero_connections?.tenant_id;
       const tenantName = o.xero_connections?.tenant_name ?? "Unknown";
       if (!tenantId) continue;
+      // Fixed statutory block for this Xero file. Populated below under the
+      // exact same conditions the sortable cards used, then pushed only if it
+      // holds at least one card.
+      const block: StatutoryBlock = { orgId: String(o.id), gst: null, payg: null, superannuation: null };
+
       if (widgets.includes("xero_audit"))
         advanced.push({
           id: `${o.id}:xero_audit`,
@@ -238,8 +261,8 @@ function ClientDashboard() {
       // Structural hide: a file with no superannuation at all, on the balance
       // sheet or on any pay run. Missing payroll permission never hides it.
       if (widgets.includes("superannuation") && !structurallyHidden(tenantId, "superannuation"))
+        block.superannuation = <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />;
 
-        advanced.push({ id: `${o.id}:superannuation`, node: <SuperannuationWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
       // Accounting and True break-even are one card; cash commitments are an
       // expandable section inside it.
       if (widgets.includes("accounting_breakeven"))
@@ -251,18 +274,20 @@ function ClientDashboard() {
         advanced.push({ id: `${o.id}:cashflow_scenario`, node: <ScenarioWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
       // Structural hide: a non-GST cashbook has no GST ledger.
       if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
-        advanced.push({ id: `${o.id}:gst_reconciliation`, node: <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} gstCycle={(client?.gst_cycle as GstCycle | null) ?? null} showWarnings={isAdvisor} /> });
+        block.gst = <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} gstCycle={(client?.gst_cycle as GstCycle | null) ?? null} showWarnings={isAdvisor} />;
 
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
       // Structural hide: a file that has never run a pay run. Missing payroll
       // permission is not the same thing, and never hides it.
       if (widgets.includes("payg_withholding") && !structurallyHidden(tenantId, "payg_withholding"))
+        block.payg = <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />;
 
-        advanced.push({ id: `${o.id}:payg_withholding`, node: <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} /> });
 
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
+
+      if (block.gst || block.payg || block.superannuation) statutory.push(block);
     }
 
     // Transaction Search is organisation-wide, not per-org, so it lives in the
@@ -299,7 +324,7 @@ function ClientDashboard() {
     standard.sort(byDefaultOrder);
     advanced.sort(byDefaultOrder);
 
-    return { standardCards: standard, advancedCards: advanced };
+    return { standardCards: standard, advancedCards: advanced, statutoryBlocks: statutory };
 
 
   }, [client, clientId, orgs, widgets, reportBasis, gstBasis, isAdvisor, orgSearchQ.data?.allowed, capabilityKey]);
@@ -441,16 +466,34 @@ function ClientDashboard() {
             </section>
           )}
 
-          {advancedCards.length > 0 && (
+          {(advancedCards.length > 0 || statutoryBlocks.length > 0) && (
             <section>
               <h2 className="mb-3 font-display text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                 Advisory
               </h2>
-              <SortableCardGrid
-                cards={advancedCards}
-                savedOrder={advancedSaved}
-                onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
-              />
+
+              {/* Fixed statutory block: GST beside PAYG withholding, then
+                  superannuation full width. Not draggable, always first. */}
+              {statutoryBlocks.map((b) => (
+                <div key={b.orgId} className="mb-6 space-y-6">
+                  {(b.gst || b.payg) && (
+                    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                      {b.gst && <div className={b.payg ? undefined : "lg:col-span-2"}>{b.gst}</div>}
+                      {b.payg && <div className={b.gst ? undefined : "lg:col-span-2"}>{b.payg}</div>}
+                    </div>
+                  )}
+                  {b.superannuation && <div>{b.superannuation}</div>}
+                </div>
+              ))}
+
+              {advancedCards.length > 0 && (
+                <SortableCardGrid
+                  cards={advancedCards}
+                  savedOrder={advancedSaved}
+                  onOrderChange={(next) => handleOrderChangeSection("advanced", next)}
+                />
+              )}
+
             </section>
           )}
 
