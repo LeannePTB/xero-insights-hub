@@ -216,7 +216,7 @@ export async function computeGstReconciliation(
   const dtTo = xeroDateLiteral(to);
   let gstOnSales: number | null = null;
   let gstOnPurchases: number | null = null;
-  const movements: GstTransaction[] = [];
+  let movements: GstTransaction[] = [];
 
   let invoices: any[] = [];
   let creditNotes: any[] = [];
