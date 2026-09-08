@@ -80,6 +80,9 @@ function AuditPage() {
   const snoozes: Record<string, { until: string | null; note: string | null; resolved?: boolean; resolvedAt?: string | null }> =
     (q.data?.snoozes as any) ?? {};
 
+  // Search narrows the same list the category / severity / snoozed / resolved
+  // filters produce — every test below must pass, so the filters compose.
+  const term = search.trim().toLowerCase();
   const visible = useMemo(() => {
     const now = Date.now();
     return findings
@@ -91,10 +94,11 @@ function AuditPage() {
         if (!showSnoozed && isSnoozed) return false;
         if (catFilter !== "all" && f.category !== catFilter) return false;
         if (sevFilter !== "all" && f.severity !== sevFilter) return false;
+        if (term && !matchesSearch(f, term)) return false;
         return true;
       })
       .sort((a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9));
-  }, [findings, snoozes, catFilter, sevFilter, showSnoozed, showResolved]);
+  }, [findings, snoozes, catFilter, sevFilter, showSnoozed, showResolved, term]);
 
   const selectableKeys = useMemo(() => {
     const now = Date.now();
@@ -106,6 +110,18 @@ function AuditPage() {
       })
       .map((f) => f.finding_key as string);
   }, [visible, snoozes]);
+
+  // A selected finding that is no longer on screen could be resolved unseen, so
+  // the selection is pruned to what is currently shown whenever the list changes.
+  useEffect(() => {
+    setSelected((prev) => {
+      if (prev.size === 0) return prev;
+      const allowed = new Set(selectableKeys);
+      const next = new Set(Array.from(prev).filter((k) => allowed.has(k)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [selectableKeys]);
+
 
   const allSelected = selectableKeys.length > 0 && selectableKeys.every((k) => selected.has(k));
   const toggleAll = () => {
