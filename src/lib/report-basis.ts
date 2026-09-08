@@ -10,7 +10,6 @@ export type ReportBasis = "accrual" | "cash";
 export const FIXED_CARD_BASIS: Record<string, ReportBasis> = {
   receivables: "accrual",
   payables: "accrual",
-  tax_liability: "accrual",
   superannuation: "accrual",
   accounting_breakeven: "accrual",
   true_breakeven: "cash",
@@ -21,8 +20,7 @@ export const FIXED_CARD_BASIS: Record<string, ReportBasis> = {
 export const FIXED_CARD_BASIS_LABELS: { key: string; label: string; reason: string }[] = [
   { key: "receivables", label: "Aged Receivables", reason: "On a cash basis there are no receivables" },
   { key: "payables", label: "Aged Payables", reason: "On a cash basis there are no payables" },
-  { key: "tax_liability", label: "Tax Liabilities", reason: "Liabilities are an accrual concept" },
-  { key: "superannuation", label: "Superannuation Liabilities", reason: "Liabilities are an accrual concept" },
+  { key: "superannuation", label: "Superannuation", reason: "Liabilities are an accrual concept" },
   { key: "accounting_breakeven", label: "Accounting Break-Even", reason: "Accrual by definition" },
   { key: "true_breakeven", label: "True Break-Even (Cash)", reason: "Cash by definition" },
   { key: "cashflow", label: "Cash Flow", reason: "Cash movement is cash movement" },

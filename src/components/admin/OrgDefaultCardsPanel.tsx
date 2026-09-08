@@ -28,7 +28,7 @@ import { WIDGET_LABEL, toggleableWidgets, widgetKeyGroup, type WidgetKey } from 
  * authorises the caller, seeds the organisation row from the platform default
  * and clears the card from each client's own exclusions when switching on.
  *
- * Merged cards (superannuation inside Money Held for Someone Else, cash
+ * Merged cards (cash
  * commitments inside Break-Even) are shown as ONE toggle and write BOTH stored
  * keys, so no pair is ever left half-switched.
  */

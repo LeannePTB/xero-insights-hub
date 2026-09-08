@@ -132,8 +132,8 @@ export type TaxLiabilities = {
 };
 
 // Tax-line extraction is pure and shared with the snapshot rules engine.
-import { buildProtectedMoney, extractTaxLines, taxLinesOrThrow } from "./tax-lines";
-import type { ProtectedMoney, TaxLineCategory } from "./tax-lines";
+import { extractTaxLines, taxLinesOrThrow } from "./tax-lines";
+import type { TaxLineCategory } from "./tax-lines";
 export { classifyTaxLine, extractTaxLines, buildProtectedMoney } from "./tax-lines";
 export type {
   ProtectedMoney,
@@ -157,7 +157,9 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    // This read feeds the cash-commitments section inside the Break-Even card,
+    // which is the card the viewer is entitled to.
+    await assertWidgetAccess(context.userId, data.tenantId, "accounting_breakeven");
     const conn = await getConnectionByTenant(data.tenantId);
     const mode = data.mode ?? "balance";
 
@@ -224,7 +226,7 @@ export const getSuperPayable = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<SuperPayable> => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
+    await assertWidgetAccess(context.userId, data.tenantId, "superannuation");
     const conn = await getConnectionByTenant(data.tenantId);
     const [res, accountsRes] = await Promise.all([
       xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date: data.date }),
@@ -236,231 +238,4 @@ export const getSuperPayable = createServerFn({ method: "POST" })
     const supers = all.filter((l) => l.category === "super").map((l) => ({ name: l.name, amount: l.amount }));
     const balance = supers.reduce((s, l) => s + l.amount, 0);
     return { asAtDate: data.date, balance, lines: supers };
-  });
-
-// ============================================================================
-// Current tax balance – live Balance Sheet snapshot of GST/PAYG/Super accounts
-// ============================================================================
-
-export type CurrentTaxBalance = {
-  asAtDate: string;
-  gst: number;
-  payg: number;
-  superannuation: number;
-  otherTax: number;
-  total: number;
-  lines: { name: string; amount: number; category: TaxLineCategory }[];
-};
-
-export const getCurrentTaxBalance = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; date?: string }) => input)
-  .handler(async ({ data, context }): Promise<CurrentTaxBalance> => {
-    const { getConnectionByTenant, xeroGet } = await import("./api.server");
-    const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
-    const conn = await getConnectionByTenant(data.tenantId);
-    const date = data.date ?? new Date().toISOString().slice(0, 10);
-    const [res, accountsRes] = await Promise.all([
-      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date }),
-      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
-    ]);
-    const report = res.Reports?.[0];
-    const lines = report ? taxLinesOrThrow(extractTaxLines(report, accountsRes)) : [];
-    const out: CurrentTaxBalance = {
-      asAtDate: date,
-      gst: 0,
-      payg: 0,
-      superannuation: 0,
-      otherTax: 0,
-      total: 0,
-      lines,
-    };
-    for (const l of lines) {
-      if (l.category === "gst") out.gst += l.amount;
-      else if (l.category === "payg") out.payg += l.amount;
-      else if (l.category === "super") out.superannuation += l.amount;
-      else out.otherTax += l.amount;
-    }
-    out.total = out.gst + out.payg + out.superannuation + out.otherTax;
-    out.lines.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
-    return out;
-  });
-
-// ============================================================================
-// Tax liability buckets – not yet due / due now / overdue, with BS reconciliation
-// ============================================================================
-
-export type TaxBucket = "not-due" | "due" | "overdue";
-
-export type TaxLiabilityBuckets = {
-  asAtDate: string;
-  basis: "cash" | "accrual";
-  notYetDue: number;
-  dueNow: number;
-  overdue: number;
-  balanceSheetTotal: number;
-  bucketTotal: number;
-  difference: number;
-  lines: {
-    name: string;
-    category: TaxLineCategory;
-    balanceSheetAmount: number;
-    bucket: TaxBucket;
-  }[];
-  asUnavailable?: boolean;
-  asMessage?: string;
-};
-
-export const getTaxLiabilityBuckets = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; date?: string; basis?: "accrual" | "cash" }) => input)
-  .handler(async ({ data, context }): Promise<TaxLiabilityBuckets> => {
-    const { getConnectionByTenant, xeroGet } = await import("./api.server");
-    const { assertWidgetAccess, getClientReportBasis } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
-    const conn = await getConnectionByTenant(data.tenantId);
-    const asAt = data.date ?? new Date().toISOString().slice(0, 10);
-
-    const [bsRes, accountsRes, basis] = await Promise.all([
-      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {
-        date: asAt,
-        ...((data.basis ?? null) === "cash" ? { paymentsOnly: "true" } : {}),
-      }),
-      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
-      data.basis
-        ? Promise.resolve(data.basis)
-        : getClientReportBasis(data.tenantId).catch(() => "accrual" as const),
-    ]);
-    const bsReport = bsRes.Reports?.[0];
-    const bsLines = bsReport ? taxLinesOrThrow(extractTaxLines(bsReport, accountsRes)) : [];
-    // Exclude super – it lives in the Superannuation widget.
-    const taxLines = bsLines.filter((l) => l.category !== "super");
-    const balanceSheetTotal = taxLines.reduce((s, l) => s + l.amount, 0);
-
-    // Per-category BS totals
-    // An account carrying GST and PAYG withholding together gets its own
-    // bucket; it is never divided between the two.
-    const bsByCat: Record<"gst" | "payg" | "other-tax" | "ato-combined", number> = {
-      gst: 0,
-      payg: 0,
-      "other-tax": 0,
-      "ato-combined": 0,
-    };
-    for (const l of taxLines) {
-      if (l.category !== "super") {
-        bsByCat[l.category] += l.amount;
-      }
-    }
-
-    // Xero's Accounting API has no Activity Statement endpoint, so lodged BAS
-    // amounts (and therefore due/overdue splits) can't be sourced from Xero.
-    const asUnavailable = true;
-    const asMessage =
-      "Lodged BAS amounts aren't available from Xero's API, so tax can't be split into due and overdue. The balance sheet totals below are accurate.";
-    const lodgedByCat: { gst: { dueDate: string; amount: number }[]; payg: { dueDate: string; amount: number }[] } = {
-      gst: [],
-      payg: [],
-    };
-
-    // Bucket each tax category against its BS balance.
-    const today = new Date().toISOString().slice(0, 10);
-    const bucketByCat: Record<string, { notYetDue: number; dueNow: number; overdue: number }> = {
-      gst: { notYetDue: 0, dueNow: 0, overdue: 0 },
-      payg: { notYetDue: 0, dueNow: 0, overdue: 0 },
-      "other-tax": { notYetDue: 0, dueNow: 0, overdue: 0 },
-      "ato-combined": { notYetDue: 0, dueNow: 0, overdue: 0 },
-    };
-
-    function bucketCategory(cat: "gst" | "payg" | "other-tax" | "ato-combined", lodged: { dueDate: string; amount: number }[]) {
-      const bsAmount = bsByCat[cat];
-      let remaining = bsAmount;
-      let overdue = 0;
-      let dueNow = 0;
-      if (!asUnavailable && lodged.length) {
-        // Sort lodged oldest first so we eat overdue from the BS balance first.
-        const sorted = [...lodged].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
-        for (const l of sorted) {
-          if (remaining <= 0) break;
-          const take = Math.min(remaining, l.amount);
-          if (take <= 0) continue;
-          if (l.dueDate < today) overdue += take;
-          else dueNow += take;
-          remaining -= take;
-        }
-      }
-      bucketByCat[cat] = { overdue, dueNow, notYetDue: remaining };
-    }
-
-    bucketCategory("gst", lodgedByCat.gst);
-    bucketCategory("payg", lodgedByCat.payg);
-    bucketCategory("other-tax", []);
-    bucketCategory("ato-combined", []);
-
-    const notYetDue = bucketByCat.gst.notYetDue + bucketByCat.payg.notYetDue + bucketByCat["other-tax"].notYetDue + bucketByCat["ato-combined"].notYetDue;
-    const dueNow = bucketByCat.gst.dueNow + bucketByCat.payg.dueNow + bucketByCat["other-tax"].dueNow + bucketByCat["ato-combined"].dueNow;
-    const overdue = bucketByCat.gst.overdue + bucketByCat.payg.overdue + bucketByCat["other-tax"].overdue + bucketByCat["ato-combined"].overdue;
-    const bucketTotal = notYetDue + dueNow + overdue;
-
-    // Tag each line with the dominant bucket for its category.
-    const dominant = (cat: TaxLineCategory): TaxBucket => {
-      if (cat === "super") return "not-due";
-      const b = bucketByCat[cat];
-      if (b.overdue >= b.dueNow && b.overdue >= b.notYetDue && b.overdue > 0) return "overdue";
-      if (b.dueNow >= b.notYetDue && b.dueNow > 0) return "due";
-      return "not-due";
-    };
-
-    const lines = taxLines
-      .map((l) => ({
-        name: l.name,
-        category: l.category,
-        balanceSheetAmount: l.amount,
-        bucket: dominant(l.category),
-      }))
-      .sort((a, b) => Math.abs(b.balanceSheetAmount) - Math.abs(a.balanceSheetAmount));
-
-    return {
-      asAtDate: asAt,
-      basis,
-      notYetDue,
-      dueNow,
-      overdue,
-      balanceSheetTotal,
-      bucketTotal,
-      difference: balanceSheetTotal - bucketTotal,
-      lines,
-      asUnavailable: asUnavailable || undefined,
-      asMessage,
-    };
-  });
-
-// ============================================================================
-// Protected money – money the business holds but does not own.
-// GST net position + PAYG withheld not yet remitted + superannuation accrued
-// but unpaid. Superannuation IS included here (unlike getTaxLiabilityBuckets):
-// it is already owed to employees.
-//
-// The builder and its types live in `./tax-lines` so the snapshot rules engine
-// can reuse them without importing the Xero API client. They are re-exported
-// at the top of this file.
-// ============================================================================
-
-
-export const getProtectedMoney = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .inputValidator((input: { tenantId: string; date?: string }) => input)
-  .handler(async ({ data, context }): Promise<ProtectedMoney> => {
-    const { getConnectionByTenant, xeroGet } = await import("./api.server");
-    const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "tax_liability");
-    const conn = await getConnectionByTenant(data.tenantId);
-    const date = data.date ?? new Date().toISOString().slice(0, 10);
-    const [res, accountsRes] = await Promise.all([
-      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", { date }),
-      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
-    ]);
-    const report = res.Reports?.[0];
-    const lines = report ? taxLinesOrThrow(extractTaxLines(report, accountsRes)) : [];
-    return buildProtectedMoney(date, lines);
   });
