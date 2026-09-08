@@ -58,17 +58,9 @@ async function resolveGroup(supabase: any, userId: string, groupId: string): Pro
     .eq("user_id", userId)
     .eq("status", "active")
     .maybeSingle();
-  let allowed = Boolean(member);
-  if (!allowed) {
-    const { data: roles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "super_admin")
-      .maybeSingle();
-    allowed = Boolean(roles);
-  }
-  if (!allowed) throw new Error("You don't have access to this organisation.");
+  // Invariant 3: active membership of the organisation decides. Being
+  // super_admin grants nothing on its own.
+  if (!member) throw new Error("You don't have access to this organisation.");
 
   // Consolidated views are an organisation-level feature gated by the plan.
   const { assertFirmWidget } = await import("@/lib/widget-access.server");

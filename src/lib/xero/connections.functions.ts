@@ -453,7 +453,7 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { clientId: string; connectionId: string }) => input)
   .handler(async ({ data, context }) => {
-    const { userCanManageClient, getClientOrgAllowance, getClientFirmId, isSuperAdmin } =
+    const { userCanManageClient, getClientOrgAllowance, getClientFirmId } =
       await import("@/lib/xero/client-orgs.server");
     if (!(await userCanManageClient(context.userId, data.clientId))) {
       throw new Error("You cannot manage this client subscription.");
@@ -473,14 +473,15 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
     if (existing.client_id === data.clientId)
       throw new Error("That Xero file is already on this subscription.");
 
-    const superAdmin = await isSuperAdmin(context.userId);
+    
     const targetFirmId = await getClientFirmId(data.clientId);
     const sourceFirmId = (existing.clients as any)?.firm_id ?? null;
     // Xero files never cross organisations — not even for platform admins.
     if (!targetFirmId || sourceFirmId !== targetFirmId) {
       throw new Error("That Xero file belongs to another organisation and cannot be moved here.");
     }
-    if (!superAdmin && !(await userCanManageClient(context.userId, existing.client_id))) {
+    // Invariant 3: no super-admin shortcut past the source client's own gate.
+    if (!(await userCanManageClient(context.userId, existing.client_id))) {
       throw new Error("You cannot manage the subscription that currently holds this Xero file.");
     }
 
