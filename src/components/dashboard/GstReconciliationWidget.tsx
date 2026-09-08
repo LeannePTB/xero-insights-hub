@@ -93,7 +93,6 @@ export function GstReconciliationWidget({
   }
 
   const data = q.data;
-  const payroll = data?.paygPayroll;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -104,7 +103,7 @@ export function GstReconciliationWidget({
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
             <Percent className="h-4 w-4 text-primary" />
-            Activity statement — GST and PAYG withholding (indicative)
+            Activity statement — GST (indicative)
           </h3>
           <p className="text-xs text-muted-foreground">
             {data
@@ -142,7 +141,7 @@ export function GstReconciliationWidget({
 
       {q.isLoading || recalculating ? (
         <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" /> Working out this period's GST and PAYG…
+          <Loader2 className="h-4 w-4 animate-spin" /> Working out this period's GST…
         </div>
       ) : q.error ? (
         <div className="mt-4">
@@ -153,31 +152,18 @@ export function GstReconciliationWidget({
           <div className="mt-6">
             {(() => {
               const { net } = netGst(data);
-              const withheld = payroll?.status === "available" ? payroll.withheld : null;
-              const total = data.estimatedPayable;
-              const headline = total ?? net;
-              const isRefund = headline < 0;
+              const isRefund = net < 0;
               return (
                 <>
                   <p className="text-xs text-muted-foreground">
-                    {total !== null
-                      ? isRefund
-                        ? "Estimated refund for this period"
-                        : "Estimated amount payable for this period"
-                      : isRefund
-                        ? "GST refund position — GST only"
-                        : "Approximate GST for this period — GST only"}
+                    {isRefund
+                      ? "Estimated GST refund for this period"
+                      : "Estimated GST payable for this period"}
                   </p>
                   <p className="font-display text-5xl font-semibold tabular-nums tracking-tight text-foreground">
-                    {fmt(isRefund ? -headline : headline)}
+                    {fmt(isRefund ? -net : net)}
                   </p>
-                  {total !== null && (
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      GST {fmt(net)}
-                      {withheld !== null ? ` + PAYG withheld ${fmt(withheld)}` : " + no PAYG withheld"}
-                    </p>
-                  )}
-                  {isRefund && total === null && (
+                  {isRefund && (
                     <p className="text-xs text-muted-foreground">
                       GST on purchases exceeded GST on sales
                     </p>
@@ -199,33 +185,9 @@ export function GstReconciliationWidget({
               <Line label="GST on sales" value={data.gstOnSales} />
               <Line label="GST on purchases" value={data.gstOnPurchases} />
               <Line label="GST net" value={netGst(data).net} strong />
-              {payroll?.status === "available" ? (
-                <Line
-                  label={`PAYG withheld (${payroll.payRuns.length} pay ${
-                    payroll.payRuns.length === 1 ? "day" : "days"
-                  })`}
-                  value={payroll.withheld}
-                  strong
-                />
-              ) : payroll?.status === "no_payroll" ? (
-                <div className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">
-                  <span className="text-sm">PAYG withheld</span>
-                  <span className="text-sm text-muted-foreground">No payroll in this file</span>
-                </div>
-              ) : (
-                <div className="flex items-center justify-between border-b border-border/50 py-2 last:border-0">
-                  <span className="text-sm">PAYG withheld</span>
-                  <span className="text-sm text-muted-foreground">Not available</span>
-                </div>
-              )}
             </div>
-            {payroll?.status === "available" && (
-              <p className="mt-2 text-[11px] text-muted-foreground">
-                Taken from the pay runs paid in this period, so it is what payroll actually
-                withheld — not a balance movement.
-              </p>
-            )}
           </div>
+
 
           {/* Refusals: never present a GST-only figure as the whole statement. */}
           {payroll && payroll.status !== "available" && payroll.status !== "no_payroll" && (
