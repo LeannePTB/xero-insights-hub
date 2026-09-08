@@ -57,6 +57,15 @@ export const startXeroSignIn = createServerFn({ method: "POST" })
 export const listXeroConnections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
+    // Status-bearing screen: refresh our view of Xero's authorisation at most
+    // once per user per 10 minutes. Fire-and-forget — never awaited, so a slow
+    // or failing Xero call cannot delay this response.
+    {
+      const { ensureAuthorisationFresh } = await import(
+        "@/lib/xero/authorisation-freshness.server"
+      );
+      ensureAuthorisationFresh();
+    }
     const { data, error } = await context.supabase
       .from("xero_connections")
       .select(

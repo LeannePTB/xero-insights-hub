@@ -405,6 +405,16 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             // scope verification is best-effort; never block the redirect
           }
 
+          // The consent screen may have granted a NARROWER set than before, so
+          // reconcile our rows against Xero right now rather than waiting for
+          // the nightly run. Never blocks or fails the reconnect.
+          {
+            const { reconcileAfterConnect } = await import(
+              "@/lib/xero/authorisation-freshness.server"
+            );
+            await reconcileAfterConnect(userId);
+          }
+
           const params = new URLSearchParams({
             xero: "reconnected",
             refreshed: String(refreshedNames.length),
@@ -492,6 +502,15 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }
 
 
+
+        // Tokens are stored: reflect the grant that was just given (which may
+        // have dropped organisations) immediately. Never blocks the connect.
+        {
+          const { reconcileAfterConnect } = await import(
+            "@/lib/xero/authorisation-freshness.server"
+          );
+          await reconcileAfterConnect(userId);
+        }
 
         // ─────────────────────────────────────────────────────────────────────
         // Onboard flow: create a client subscription per authorised Xero file

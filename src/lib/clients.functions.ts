@@ -137,6 +137,15 @@ export const getClient = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
+    // This feeds the client settings page, which reports Xero connectivity.
+    // Rate-limited to one /connections call per user per 10 minutes and never
+    // awaited, so the page renders with the status we hold either way.
+    {
+      const { ensureAuthorisationFresh } = await import(
+        "@/lib/xero/authorisation-freshness.server"
+      );
+      ensureAuthorisationFresh();
+    }
     const SELECT =
       "id, name, owner_user_id, firm_id, report_basis, gst_cycle, payg_withholding_cycle, max_xero_orgs, consolidation_mode, consolidation_org_ids, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name, status, disconnected_at))";
     const { data: client, error } = await context.supabase
