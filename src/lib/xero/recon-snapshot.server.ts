@@ -44,15 +44,30 @@ export async function runReconciliation<T extends { complete: boolean }>(opts: {
   if (!link) throw new Error("That Xero organisation is not linked to this client.");
   const tenantName = (link as any).xero_connections?.tenant_name ?? "Xero organisation";
 
-  // 3. Only super admins may force a recalculation.
-  const { data: superRow } = await supabase
-    .from("user_roles")
-    .select("user_id")
-    .eq("user_id", opts.userId)
-    .eq("role", "super_admin")
+  // 3. Any ACTIVE MEMBER of the organisation may recalculate. Recalculation is
+  //    a read from Xero — it changes no figure, only when the figures were
+  //    worked out — so the ordinary membership rule (section 6: write =
+  //    `has_firm_access`) is the right bar, not super-admin. Support grants are
+  //    read-only, so they are deliberately excluded: this persists a snapshot.
+  const { data: clientRow } = await supabase
+    .from("clients")
+    .select("firm_id")
+    .eq("id", clientId)
     .maybeSingle();
-  const canRecalculate = !!superRow;
+  const firmId = (clientRow as any)?.firm_id ?? null;
+  let canRecalculate = false;
+  if (firmId) {
+    const { data: memberRow } = await supabase
+      .from("firm_members")
+      .select("user_id")
+      .eq("firm_id", firmId)
+      .eq("user_id", opts.userId)
+      .eq("status", "active")
+      .maybeSingle();
+    canRecalculate = !!memberRow;
+  }
   const recalculate = !!opts.recalculate && canRecalculate;
+
 
   // 4. A complete snapshot is authoritative — the figures must not drift.
   const { reconVersion } = await import("./recon-versions");
