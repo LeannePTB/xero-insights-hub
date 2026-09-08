@@ -555,17 +555,19 @@ async function xeroGetPayrollUncached<T = unknown>(
   params: Record<string, string | undefined> = {},
   retries = 1,
 ): Promise<T> {
+  // The payroll scopes are deliberately NOT in `xero_required_scopes()` (that
+  // list drives the "needs attention" worklist), so this reads what the
+  // connection was actually GRANTED and refuses before spending a Xero call.
   const requiredScope = PAYROLL_PATH_SCOPE[path.split("/")[0] ?? path];
-  if (requiredScope && conn.id) {
-    const missing = await missingScopesForConnection(conn.id);
-    if (missing.includes(requiredScope)) {
-      throw new XeroScopeMissingError(
-        requiredScope,
-        conn.tenant_id,
-        `Reconnect to enable this — ${conn.tenant_name} hasn't authorised payroll yet.`,
-      );
-    }
+  const granted = (conn.scopes ?? "").split(/\s+/).filter(Boolean);
+  if (requiredScope && !granted.includes(requiredScope)) {
+    throw new XeroScopeMissingError(
+      requiredScope,
+      conn.tenant_id,
+      `Reconnect to enable this — ${conn.tenant_name} hasn't authorised payroll access yet.`,
+    );
   }
+
   const clean: Record<string, string> = {};
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
   const q = new URLSearchParams(clean).toString();
