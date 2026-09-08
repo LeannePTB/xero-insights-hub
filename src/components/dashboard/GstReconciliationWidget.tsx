@@ -152,6 +152,15 @@ export function GstReconciliationWidget({
                   )}`}{" "}
             · a review aid, not a lodgement figure
           </p>
+          {/* This card serves a saved calculation until someone recalculates,
+              so it reports that provenance through the one freshness line. */}
+          {!notRegistered && (
+            <CardFreshness
+              className="mt-1.5"
+              source={reconSource(data, data?.periodTo)}
+              isFetching={q.isFetching || recalculating}
+            />
+          )}
         </div>
         {!notRegistered && (
           <div className="flex items-center gap-2">
