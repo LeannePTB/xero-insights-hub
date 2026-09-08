@@ -317,3 +317,132 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
     };
   });
 
+
+/**
+ * PAYG WITHHELD, MONTH BY MONTH, AND WHAT IS STILL OWING.
+ *
+ * Two independent sources, deliberately:
+ *  - the MONTHLY figures come from the `Tax` field on pay runs, filtered by
+ *    payment date. That is the field verified against a client's own statement.
+ *  - what is STILL OWING is the balance on the PAYG withholding liability
+ *    account: accrued less paid.
+ *
+ * Xero exposes no ATO lodgement or payment data through its API, so payment is
+ * INFERRED from that balance falling. Nothing here may imply otherwise.
+ */
+export type PaygWithholdingPosition =
+  | { status: "no_payg_accounts" }
+  | { status: "no_payroll"; outstanding: number; reason: "no_payroll" | "not_authorised" | "unavailable" }
+  | {
+      status: "available";
+      /** Balance on the PAYG withholding liability account(s), as at today. */
+      outstanding: number;
+      accounts: { name: string; amount: number }[];
+      /** Newest month first. `month` is the first day of the month, ISO. */
+      months: { month: string; withheld: number; payRuns: number; owing: boolean; incomplete: boolean }[];
+      /** True when whole months add up to the outstanding balance. */
+      matchesMonths: boolean;
+      /** Oldest month the balance reaches, matched or not. */
+      oldestOwingMonth: string | null;
+    };
+
+export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { tenantId: string; clientId?: string; months?: number }) => input)
+  .handler(async ({ data, context }): Promise<PaygWithholdingPosition> => {
+    const { assertWidgetAccess } = await import("./access.server");
+    await assertWidgetAccess(context.userId, data.tenantId, "payg_withholding");
+
+    const { getConnectionByTenant, xeroGet } = await import("./api.server");
+    const { getStatutoryOverrides } = await import("./statutory-overrides.server");
+    const { sydneyDate, startOfMonth, addMonths } = await import("@/lib/sydney-time");
+    const conn = await getConnectionByTenant(data.tenantId);
+    const overrides = await getStatutoryOverrides(
+      context.supabase as any,
+      data.clientId ?? null,
+      data.tenantId,
+    );
+
+    const [bsRes, accountsRes] = await Promise.all([
+      xeroGet<{ Reports: any[] }>(conn, "Reports/BalanceSheet", {}),
+      xeroGet<{ Accounts?: any[] }>(conn, "Accounts"),
+    ]);
+    const report = bsRes.Reports?.[0];
+    if (!report) throw new Error("No Balance Sheet returned by Xero.");
+    const extraction = extractTaxLines(report, accountsRes, overrides);
+    const paygLines = (extraction.lines ?? []).filter((l) => l.category === "payg");
+    if (paygLines.length === 0) return { status: "no_payg_accounts" };
+
+    const round = (n: number) => Math.round(n * 100) / 100;
+    const outstanding = round(paygLines.reduce((s, l) => s + l.amount, 0));
+
+    const { loadPayRuns } = await import("./payroll.server");
+    const runs = await loadPayRuns({
+      supabase: context.supabase,
+      tenantId: data.tenantId,
+      clientId: data.clientId ?? null,
+    });
+    if (runs.status !== "available") {
+      return {
+        status: "no_payroll",
+        outstanding,
+        reason: runs.status === "no_payroll" ? "no_payroll" : runs.status,
+      };
+    }
+
+    // Monthly totals from the pay runs' PaymentDate — the date PAYG withholding
+    // is reported against.
+    const today = sydneyDate();
+    const thisMonth = startOfMonth(today);
+    const wanted = Math.min(Math.max(data.months ?? 6, 1), 24);
+    const monthKeys: string[] = [];
+    for (let i = 0; i < wanted; i++) monthKeys.push(startOfMonth(addMonths(thisMonth, -i)));
+
+    const byMonth = new Map<string, { withheld: number; payRuns: number }>();
+    for (const r of runs.payRuns) {
+      if (!r.paymentDate) continue;
+      const key = startOfMonth(r.paymentDate);
+      const cur = byMonth.get(key) ?? { withheld: 0, payRuns: 0 };
+      cur.withheld = round(cur.withheld + r.tax);
+      cur.payRuns += 1;
+      byMonth.set(key, cur);
+    }
+
+    // Match the outstanding balance against the monthly totals, newest first.
+    // Months the balance covers are owing; anything older has been paid.
+    let cumulative = 0;
+    let matchesMonths = false;
+    let oldestOwingMonth: string | null = null;
+    const owing = new Set<string>();
+    if (outstanding > 0.005) {
+      for (const key of monthKeys) {
+        const m = byMonth.get(key);
+        if (!m) continue;
+        cumulative = round(cumulative + m.withheld);
+        owing.add(key);
+        oldestOwingMonth = key;
+        if (Math.abs(cumulative - outstanding) < 0.005) {
+          matchesMonths = true;
+          break;
+        }
+        if (cumulative > outstanding) break;
+      }
+      // No clean division: do not claim a month-by-month split.
+      if (!matchesMonths) owing.clear();
+    }
+
+    return {
+      status: "available",
+      outstanding,
+      accounts: paygLines.map((l) => ({ name: l.name, amount: round(l.amount) })),
+      months: monthKeys.map((key) => ({
+        month: key,
+        withheld: byMonth.get(key)?.withheld ?? 0,
+        payRuns: byMonth.get(key)?.payRuns ?? 0,
+        owing: owing.has(key),
+        incomplete: key === thisMonth,
+      })),
+      matchesMonths,
+      oldestOwingMonth,
+    };
+  });
