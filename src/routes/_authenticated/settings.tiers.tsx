@@ -100,44 +100,7 @@ function TierSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const saveWipMut = useMutation({
-    mutationFn: ({ widgets, enabled }: { widgets?: WidgetKey[]; enabled?: boolean }) => {
-      const level = levelByKey.get("wip");
-      if (!level) throw new Error("The In testing tier could not be found.");
-      const stored = ((level.widgets as string[] | null) ?? []).filter(Boolean);
-      // A Save may never drop a key the panel could not show. The panel offers
-      // the catalogue (ALL_WIDGETS) only, so anything stored outside it is
-      // invisible and is carried through untouched.
-      const invisible = stored.filter((w) => !(ALL_WIDGETS as string[]).includes(w));
-      const next = widgets
-        ? Array.from(new Set([...(widgets as string[]), ...invisible]))
-        : stored;
-      return savePlanFn({
-        data: {
-          id: level.id,
-          scope: "dashboard",
-          key: level.key,
-          label: level.label,
-          description: level.description ?? "",
-          xero_org_limit: level.xero_org_limit ?? 1,
-          allows_multi_org: !!level.allows_multi_org,
-          widgets: next,
-          sort_order: level.sort_order ?? 100,
-          enabled: enabled ?? level.enabled,
-        },
-      });
 
-    },
-    onSuccess: (_result, change) => {
-      toast.success(change.enabled === undefined ? "Saved" : change.enabled ? "Tier enabled" : "Tier disabled");
-      qc.invalidateQueries({ queryKey: ["plan-levels"] });
-      qc.invalidateQueries({ queryKey: ["tier-config"] });
-      qc.invalidateQueries({ queryKey: ["wip-overview"] });
-      qc.invalidateQueries({ queryKey: ["effective-widgets"] });
-      qc.invalidateQueries({ queryKey: ["client-widgets"] });
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Could not save In testing"),
-  });
 
   const toggleMut = useMutation({
     mutationFn: (v: { tier: string; enabled: boolean }) =>
