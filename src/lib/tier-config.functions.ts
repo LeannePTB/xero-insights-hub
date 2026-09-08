@@ -91,10 +91,42 @@ export const savePlatformTierWidgets = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { tier: DashboardTier; widgets: WidgetKey[] }) => i)
   .handler(async ({ data, context }) => {
+    // A tick on a card the tier has never carried must ADD it to the tier's own
+    // list, or the save silently reverts (nothing to un-exclude, ceiling never
+    // grows). Additions are a UNION only: this path can never drop a key from
+    // plan_levels.widgets, so a card nobody unticked can never be lost here.
+    // Unticking is still expressed as an exclusion — the deny-list stays,
+    // because organisation and client rows are built on it.
+    await assertSuperAdmin(context.supabase, context.userId);
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: level } = await (supabaseAdmin as any)
+      .from("plan_levels")
+      .select("id, widgets")
+      .eq("scope", "dashboard")
+      .eq("key", data.tier)
+      .maybeSingle();
+
+    if (level) {
+      const current: string[] = (level.widgets as string[] | null) ?? [];
+      const have = new Set(current);
+      const additions = sanitizeWidgets(data.widgets as string[]).filter((w) => !have.has(w));
+      if (additions.length) {
+        const { error: addErr } = await (supabaseAdmin as any)
+          .from("plan_levels")
+          .update({ widgets: [...current, ...additions] })
+          .eq("id", level.id);
+        if (addErr) throw new Error(addErr.message);
+      }
+    }
+
+    // Exclusions are recomputed against the ceiling as it now stands, so the
+    // same save covers both directions: ticked-and-missing was just added,
+    // unticked becomes excluded.
     const excluded = await exclusionsFor(context.supabase, data.tier, data.widgets);
 
-    // Gate lives in the database: public.set_platform_tier_widgets refuses
-    // anyone who is not a super admin. No local role check, no supabaseAdmin.
+    // Gate also lives in the database: public.set_platform_tier_widgets refuses
+    // anyone who is not a super admin.
     const { error } = await (context.supabase as any).rpc("set_platform_tier_widgets", {
       _tier: data.tier,
       _excluded: excluded,
