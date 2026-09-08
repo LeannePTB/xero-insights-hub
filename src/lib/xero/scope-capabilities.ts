@@ -13,6 +13,11 @@ export const SCOPE_CAPABILITIES: Record<string, string> = {
   "accounting.payments.read": "payments",
   "accounting.contacts.read": "contacts",
   "accounting.settings.read": "chart of accounts and organisation settings",
+  "accounting.journals.read": "journals",
+  "payroll.payruns.read": "pay runs",
+  "payroll.payslip.read": "payslips",
+  "payroll.employees.read": "payroll employees",
+  "payroll.settings.read": "payroll settings",
 };
 
 export function capabilityFor(scope: string) {
