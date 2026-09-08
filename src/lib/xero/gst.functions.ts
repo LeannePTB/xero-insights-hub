@@ -47,6 +47,8 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
       recalculate: data.recalculate,
       reportKey: data.window === "quarter" ? GST_QUARTER_REPORT_KEY : GST_REPORT_KEY,
       widget: "gst_reconciliation",
-      compute: (conn) => computeGstReconciliation(conn, data.asAt, data.window ?? "month", overrides),
+      compute: (conn) =>
+        computeGstReconciliation(conn, data.asAt, data.window ?? "month", overrides, context.supabase),
+
     });
   });
