@@ -1,3 +1,4 @@
+import { liveSource, mergeSources, type SnapshotSource } from "./snapshot-source";
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
@@ -117,7 +118,10 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     });
     const report = res.Reports?.[0];
     if (!report) throw new Error("No P&L report returned by Xero.");
-    return { ...summarise(report), basis };
+    const { liveSource } = await import("./snapshot-source");
+    // Profit & loss is fetched from Xero on every load; say so with real
+    // provenance rather than letting the card infer it from a query time.
+    return { ...summarise(report), basis, source: liveSource("disabled") };
   });
 
 export type TaxLiabilities = {
@@ -249,7 +253,7 @@ export type SuperannuationPosition =
 export const getSuperannuationPosition = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { tenantId: string; clientId?: string }) => input)
-  .handler(async ({ data, context }): Promise<SuperannuationPosition> => {
+  .handler(async ({ data, context }): Promise<SuperannuationPosition & { source: SnapshotSource }> => {
     const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "superannuation");
 
@@ -270,7 +274,7 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
     if (!report) throw new Error("No Balance Sheet returned by Xero.");
     const extraction = extractTaxLines(report, accountsRes, overrides);
     const superLines = (extraction.lines ?? []).filter((l) => l.category === "super");
-    if (superLines.length === 0) return { status: "no_super_accounts" };
+    if (superLines.length === 0) return { status: "no_super_accounts", source: liveSource("disabled") };
 
     const round = (n: number) => Math.round(n * 100) / 100;
     const outstanding = round(superLines.reduce((s, l) => s + l.amount, 0));
@@ -283,6 +287,23 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
       clientId: data.clientId ?? null,
     });
     const payrollStatus = runs.status;
+
+    // The balance is live; the pay runs may be last night's saved copy. The
+    // card must report the older of the two.
+    const source =
+      mergeSources([
+        liveSource("disabled"),
+        runs.fromSnapshot
+          ? {
+              mode: "snapshot" as const,
+              asAt: null,
+              fetchedAt: runs.fetchedAt ?? null,
+              stale: false,
+              complete: true,
+              connection: "connected" as const,
+            }
+          : null,
+      ]) ?? liveSource("disabled");
 
     let matchesPaydays = false;
     let unpaidPaydays: number | null = null;
@@ -307,6 +328,7 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
     }
 
     return {
+      source,
       status: "available",
       outstanding,
       accounts: superLines.map((l) => ({ name: l.name, amount: round(l.amount) })),
@@ -349,7 +371,7 @@ export type PaygWithholdingPosition =
 export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { tenantId: string; clientId?: string; months?: number }) => input)
-  .handler(async ({ data, context }): Promise<PaygWithholdingPosition> => {
+  .handler(async ({ data, context }): Promise<PaygWithholdingPosition & { source: SnapshotSource }> => {
     const { assertWidgetAccess } = await import("./access.server");
     await assertWidgetAccess(context.userId, data.tenantId, "payg_withholding");
 
@@ -371,7 +393,7 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
     if (!report) throw new Error("No Balance Sheet returned by Xero.");
     const extraction = extractTaxLines(report, accountsRes, overrides);
     const paygLines = (extraction.lines ?? []).filter((l) => l.category === "payg");
-    if (paygLines.length === 0) return { status: "no_payg_accounts" };
+    if (paygLines.length === 0) return { status: "no_payg_accounts", source: liveSource("disabled") };
 
     const round = (n: number) => Math.round(n * 100) / 100;
     const outstanding = round(paygLines.reduce((s, l) => s + l.amount, 0));
@@ -382,8 +404,26 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
       tenantId: data.tenantId,
       clientId: data.clientId ?? null,
     });
+    // The balance is live; the pay runs may be last night's saved copy. The
+    // card must report the older of the two.
+    const source =
+      mergeSources([
+        liveSource("disabled"),
+        runs.fromSnapshot
+          ? {
+              mode: "snapshot" as const,
+              asAt: null,
+              fetchedAt: runs.fetchedAt ?? null,
+              stale: false,
+              complete: true,
+              connection: "connected" as const,
+            }
+          : null,
+      ]) ?? liveSource("disabled");
+
     if (runs.status !== "available") {
       return {
+        source,
         status: "no_payroll",
         outstanding,
         reason: runs.status === "no_payroll" ? "no_payroll" : runs.status,
@@ -432,6 +472,7 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
     }
 
     return {
+      source,
       status: "available",
       outstanding,
       accounts: paygLines.map((l) => ({ name: l.name, amount: round(l.amount) })),
