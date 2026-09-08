@@ -253,8 +253,12 @@ export const listLiabilityAccountsForTenant = createServerFn({ method: "POST" })
     if (!(await canManageClient(context.supabase, context.userId, data.clientId))) {
       throw new Error("Only the organisation's owners and advisors can set up loan accounts.");
     }
+    // The tenant id is a filter, not a grant: prove the file is this client's.
+    const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
+    await assertTenantBelongsToClient(data.clientId, data.tenantId);
     const { listAllAccounts } = await import("./xero/loan-xero.server");
     const accounts = await listAllAccounts(data.tenantId);
+
     const mapped = (accounts ?? [])
       .filter((a: any) => {
         const cls = a.Class;
