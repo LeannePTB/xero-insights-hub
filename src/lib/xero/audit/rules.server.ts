@@ -98,7 +98,11 @@ function parseXeroDate(s?: string): Date | null {
 }
 
 // ---------- Chart of accounts ----------
-export function ruleCoaHygiene(accounts: XAccount[], shortCode?: string | null): Finding[] {
+export function ruleCoaHygiene(
+  accounts: XAccount[],
+  shortCode?: string | null,
+  balances?: AccountBalances,
+): Finding[] {
   const out: Finding[] = [];
 
   // Duplicate names within same Type+Class
@@ -127,12 +131,14 @@ export function ruleCoaHygiene(accounts: XAccount[], shortCode?: string | null):
     }
   }
 
-  // Suspense / clearing accounts with non-zero balance
+  // Suspense / clearing accounts with non-zero balance. The test is on the
+  // absolute value, so the Balance Sheet's sign presentation does not matter.
   const suspectNames = /suspense|clearing|unallocated|ask my accountant|holding/i;
   for (const a of accounts) {
     if ((a.Status ?? "ACTIVE") !== "ACTIVE") continue;
     if (!suspectNames.test(a.Name)) continue;
-    const bal = Number(a.CurrentBalance ?? 0);
+    const bal = balanceOf(a, balances);
+    if (bal === null) continue;
     if (Math.abs(bal) >= 1) {
       out.push({
         ruleId: "coa.suspense_balance",
@@ -216,10 +222,18 @@ export function ruleCoaHygiene(accounts: XAccount[], shortCode?: string | null):
     }
   }
 
-  // Archived accounts with balance
+  // Archived accounts with balance.
+  //
+  // Left unsourced deliberately: archived accounts appear on neither the
+  // Balance Sheet nor the Trial Balance (measured: 25 archived accounts on a
+  // live file, 0 rows on either report), and 17 of those 25 are revenue or
+  // expense accounts, which no point-in-time report carries. There is no
+  // correct balance to give this rule, so it stays inert rather than
+  // accusing anyone on an approximation.
   for (const a of accounts) {
     if ((a.Status ?? "").toUpperCase() !== "ARCHIVED") continue;
-    const bal = Number(a.CurrentBalance ?? 0);
+    const bal = balanceOf(a, balances);
+    if (bal === null) continue;
     if (Math.abs(bal) >= 1) {
       out.push({
         ruleId: "coa.archived_with_balance",
@@ -343,11 +357,18 @@ export function ruleArAp(
 }
 
 // ---------- Bank ----------
-export function ruleBank(accounts: XAccount[], shortCode?: string | null): Finding[] {
+export function ruleBank(
+  accounts: XAccount[],
+  shortCode?: string | null,
+  balances?: AccountBalances,
+): Finding[] {
   const out: Finding[] = [];
   const banks = accounts.filter((a) => (a.Type ?? "").toUpperCase() === "BANK" && (a.Status ?? "ACTIVE") === "ACTIVE");
   for (const b of banks) {
-    const bal = Number(b.CurrentBalance ?? 0);
+    // Balance Sheet presentation: an asset in credit reads negative, which is
+    // exactly the overdraft this rule tests for. No sign flip is applied.
+    const bal = balanceOf(b, balances);
+    if (bal === null) continue;
     if (bal < -0.01) {
       out.push({
         ruleId: "bank.negative_balance",
