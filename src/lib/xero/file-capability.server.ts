@@ -42,6 +42,14 @@ export type FileCapability = {
   hasFixedAssetRegister: CapabilityTri;
   /** Accounts typed BANK. Feed status itself is not visible in a snapshot. */
   bankAccountCount: number | null;
+  /**
+   * Pay runs exist in this file. `no` ONLY when the pay run list read cleanly
+   * and was empty. Missing payroll permission is `unknown`, never `no`.
+   */
+  hasPayRuns: CapabilityTri;
+  /** Superannuation exists: a super liability line, or super on any pay run. */
+  hasSuper: CapabilityTri;
+
   /** Which snapshot and which matched names produced each flag. */
   evidence: Record<string, string[]>;
   /**
