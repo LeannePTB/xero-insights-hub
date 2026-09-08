@@ -15,21 +15,10 @@ export const getExpenseAccounts = createServerFn({ method: "POST" })
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
     await assertClientDataAccessForClient(context.userId, data.clientId);
 
-    // The client must actually own this Xero file.
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: links, error: linkErr } = await supabaseAdmin
-      .from("client_xero_orgs")
-      .select("xero_connections(tenant_id)")
-      .eq("client_id", data.clientId);
-    if (linkErr) throw new Error(linkErr.message);
-    const permitted = new Set(
-      ((links ?? []) as any[])
-        .map((l) => l.xero_connections?.tenant_id)
-        .filter(Boolean) as string[],
-    );
-    if (!permitted.has(data.tenantId)) {
-      throw new Error("That Xero organisation does not belong to this client.");
-    }
+    // The client must actually own this Xero file (shared rule, invariant 4/7).
+    const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
+    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+
 
     // Cost classification feeds break-even, the cash-flow scenario and the
     // wages marker in Business Health. Any one of those is enough.
