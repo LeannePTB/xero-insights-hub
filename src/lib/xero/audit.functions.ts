@@ -51,7 +51,7 @@ export const runXeroAudit = createServerFn({ method: "POST" })
     await assertAuditAccess(context.supabase, context.userId, data.tenantId);
     const { tenantId } = data;
     const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
-    const { ruleCoaHygiene, ruleArAp, ruleBank, rulePayments, ruleStatutoryTrace } = await import("@/lib/xero/audit/rules.server");
+    const { ruleCoaHygiene, ruleArAp, ruleBank, rulePayments, ruleStatutoryTrace, parseBalanceSheetBalances } = await import("@/lib/xero/audit/rules.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const conn = await getConnectionByTenant(tenantId);
@@ -120,8 +120,8 @@ export const runXeroAudit = createServerFn({ method: "POST" })
       };
 
       const findings = [
-        ...ruleCoaHygiene(accounts, shortCode),
-        ...ruleBank(accounts, shortCode),
+        ...ruleCoaHygiene(accounts, shortCode, balances),
+        ...ruleBank(accounts, shortCode, balances),
         ...ruleArAp(invoices, creditNotes, shortCode),
         ...(await rulePayments(payments, shortCode, fetchDocTotals)),
         
