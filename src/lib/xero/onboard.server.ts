@@ -48,25 +48,20 @@ export async function getFirmClientCapacity(firmId: string): Promise<FirmClientC
   };
 }
 
-/** Caller must belong to the firm (or be a platform admin) and have room for one more client. */
+/**
+ * Caller must be an active member of the organisation and have room for one
+ * more client. Invariant 3: super_admin grants nothing on its own.
+ */
 export async function assertFirmCanAddClient(firmId: string, userId: string) {
-  const [{ data: membership }, { data: superRow }] = await Promise.all([
-    supabaseAdmin
-      .from("firm_members")
-      .select("id")
-      .eq("firm_id", firmId)
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .limit(1)
-      .maybeSingle(),
-    supabaseAdmin
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "super_admin")
-      .maybeSingle(),
-  ]);
-  if (!membership && !superRow) throw new Error("You are not a member of that business.");
+  const { data: membership } = await supabaseAdmin
+    .from("firm_members")
+    .select("id")
+    .eq("firm_id", firmId)
+    .eq("user_id", userId)
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+  if (!membership) throw new Error("You are not a member of that business.");
 
   const capacity = await getFirmClientCapacity(firmId);
   if (capacity.remaining < 1) {

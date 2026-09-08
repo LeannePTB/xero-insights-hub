@@ -12,17 +12,10 @@ export const listClients = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { firmId?: string } | undefined) => i ?? {})
   .handler(async ({ data, context }) => {
-    // Determine the firm scope. Super-admins may pass any firmId (or none → all).
-    // Everyone else is restricted to their own firm.
-    const { data: roleRows } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    const isSuper = !!roleRows?.some((r: any) => r.role === "super_admin");
-
+    // Determine the firm scope. Invariant 3: a global role is never a shortcut
+    // into an organisation's client list — active membership decides for everyone.
     let firmId: string | null = data?.firmId ?? null;
-    if (!isSuper) {
-      // Every organisation the caller belongs to — never a global role shortcut.
+    {
       const { data: memberships } = await context.supabase
         .from("firm_members")
         .select("firm_id")
