@@ -58,6 +58,20 @@ export const listClientVerdicts = createServerFn({ method: "POST" })
       snapshots.set(row.client_id, list);
     }
 
+    // Statutory overrides for every client in the list, in one query, so the
+    // badge classifies accounts exactly as the monthly report does.
+    const { statutoryOverrideMap } = await import("@/lib/xero/tax-lines");
+    const { data: overrideRows } = await context.supabase
+      .from("client_statutory_accounts")
+      .select("client_id, account_name, category")
+      .in("client_id", clientIds);
+    const overridesByClient = new Map<string, any[]>();
+    for (const row of (overrideRows ?? []) as any[]) {
+      const list = overridesByClient.get(row.client_id) ?? [];
+      list.push(row);
+      overridesByClient.set(row.client_id, list);
+    }
+
     const now = new Date();
     const verdicts: Record<string, Verdict> = {};
     for (const clientId of clientIds) {
@@ -72,12 +86,15 @@ export const listClientVerdicts = createServerFn({ method: "POST" })
         };
         continue;
       }
-      verdicts[clientId] = evaluateClient({
-        clientId,
-        connections: connections.get(clientId) ?? [],
-        snapshots: snapshots.get(clientId) ?? [],
-        now,
-      });
+      verdicts[clientId] = evaluateClient(
+        {
+          clientId,
+          connections: connections.get(clientId) ?? [],
+          snapshots: snapshots.get(clientId) ?? [],
+          now,
+        },
+        { statutoryOverrides: statutoryOverrideMap(overridesByClient.get(clientId) ?? []) },
+      );
     }
 
     return { verdicts };

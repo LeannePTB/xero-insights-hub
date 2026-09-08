@@ -495,6 +495,44 @@ export type Database = {
           },
         ]
       }
+      client_statutory_accounts: {
+        Row: {
+          account_name: string
+          category: Database["public"]["Enums"]["statutory_category"]
+          client_id: string
+          created_at: string
+          id: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_name: string
+          category: Database["public"]["Enums"]["statutory_category"]
+          client_id: string
+          created_at?: string
+          id?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_name?: string
+          category?: Database["public"]["Enums"]["statutory_category"]
+          client_id?: string
+          created_at?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_statutory_accounts_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_subscriptions: {
         Row: {
           client_id: string
@@ -2604,6 +2642,7 @@ export type Database = {
       gst_cycle: "monthly" | "quarterly" | "annual" | "not_registered"
       payg_withholding_cycle: "monthly" | "quarterly" | "not_registered"
       report_basis: "accrual" | "cash"
+      statutory_category: "gst" | "payg" | "super" | "none"
       subscription_status:
         | "trialing"
         | "active"
@@ -2766,6 +2805,7 @@ export const Constants = {
       gst_cycle: ["monthly", "quarterly", "annual", "not_registered"],
       payg_withholding_cycle: ["monthly", "quarterly", "not_registered"],
       report_basis: ["accrual", "cash"],
+      statutory_category: ["gst", "payg", "super", "none"],
       subscription_status: [
         "trialing",
         "active",

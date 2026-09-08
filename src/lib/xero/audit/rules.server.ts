@@ -1,7 +1,7 @@
 // Pure rule functions that take already-fetched Xero payloads and return
 // findings. No network I/O so they're easy to test and compose.
 import { xeroDeepLink } from "./deeplinks";
-import { classifyTaxLine } from "../tax-lines";
+import { classifyTaxLine, type StatutoryOverrides } from "../tax-lines";
 import { looksLikeAtoContact } from "../ato-payables";
 
 export type Severity = "high" | "medium" | "low";
@@ -722,11 +722,12 @@ export function ruleStatutoryTrace(
   invoices: XInvoice[],
   accounts: XAccount[],
   shortCode?: string | null,
+  overrides?: StatutoryOverrides,
 ): Finding[] {
   const statutory = new Set(
     accounts
       .filter((a) => {
-        const category = classifyTaxLine(a.Name ?? "", a as any);
+        const category = classifyTaxLine(a.Name ?? "", a as any, overrides);
         return category === "gst" || category === "payg" || category === "super";
       })
       .map((a) => a.AccountID),
