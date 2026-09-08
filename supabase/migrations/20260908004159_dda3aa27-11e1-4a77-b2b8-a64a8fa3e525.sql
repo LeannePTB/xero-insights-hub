@@ -1,0 +1,4 @@
+ALTER TABLE public.xero_connections ADD COLUMN IF NOT EXISTS disconnected_reason text;
+
+COMMENT ON COLUMN public.xero_connections.disconnected_reason IS
+'Why status = disconnected was set. Values used today: not_authorised (the tenant is absent from Xero''s GET /connections list for the shared token), refresh_token_rejected (Xero refused the refresh token), unassigned_connection_cleanup (a super admin removed an unassigned row). NULL when connected, or when the row was disconnected before this column existed. The authorisation reconciliation may only restore rows whose reason is not_authorised — it must never revive a row disconnected for any other cause.';
