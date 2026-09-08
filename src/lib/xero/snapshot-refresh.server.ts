@@ -339,6 +339,21 @@ export async function refreshAllTenants(): Promise<{
     console.warn("[snapshot] prune failed", e instanceof Error ? e.message : e);
   }
 
+  // Ask Xero which tenants the stored token still covers, once per run (one
+  // call per Xero user account, not per connection), before deciding what to
+  // refresh. A tenant dropped from a later consent is invisible otherwise.
+  try {
+    const { reconcileAuthorisedTenants } = await import("./authorised-tenants.server");
+    const auth = await reconcileAuthorisedTenants();
+    console.info("[snapshot] authorisation reconcile", JSON.stringify(auth));
+  } catch (e) {
+    // Never let this stop the refresh, and never let it change statuses on
+    // failure — reconcileAuthorisedTenants already leaves rows untouched.
+    console.warn("[snapshot] authorisation reconcile failed", e instanceof Error ? e.message : e);
+  }
+
+
+
   const budget = new CallBudget(MAX_XERO_CALLS_PER_RUN);
   const targets = await listRefreshTargets();
   const results: TenantRefreshResult[] = [];

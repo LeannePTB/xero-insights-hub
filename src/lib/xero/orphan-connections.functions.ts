@@ -148,6 +148,7 @@ export const disconnectOrphanXeroConnection = createServerFn({ method: "POST" })
       .update({
         status: "disconnected",
         disconnected_at: new Date().toISOString(),
+        disconnected_reason: "unassigned_connection_cleanup",
         access_token_enc: null,
         refresh_token_enc: null,
       })

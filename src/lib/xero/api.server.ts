@@ -145,10 +145,17 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
       console.error(`[xero] refresh failed for tenant ${conn.tenant_id}: ${res.status} ${body}`);
       // Xero issues tokens at the user level — a failed refresh invalidates
       // every linked org. Surface that to the UI via the status column.
-      await supabaseAdmin
+      await (supabaseAdmin as any)
         .from("xero_connections")
-        .update({ status: "disconnected", disconnected_at: new Date().toISOString() })
+        .update({
+          status: "disconnected",
+          disconnected_at: new Date().toISOString(),
+          // Distinguishes this cause from a tenant dropped out of the consent;
+          // the authorisation reconcile must never revive these rows.
+          disconnected_reason: "refresh_token_rejected",
+        })
         .eq("user_id", conn.user_id);
+
       const { writeAudit } = await import("@/lib/audit.server");
       await writeAudit({
         actorUserId: conn.user_id,
@@ -181,12 +188,21 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
       refresh_token_enc: encryptTokenB64(t.refresh_token),
       expires_at,
       scopes: t.scope ?? conn.scopes,
-      status: "connected",
-      disconnected_at: null,
     })
 
     .eq("user_id", conn.user_id);
   if (error) throw new Error(`Failed to save refreshed Xero tokens: ${error.message}`);
+
+  // A working token clears a *token* failure, but says nothing about whether a
+  // given tenant is still inside the consent. Rows disconnected because Xero
+  // no longer lists them stay disconnected until the reconcile sees them back.
+  const { error: statusError } = await (supabaseAdmin as any)
+    .from("xero_connections")
+    .update({ status: "connected", disconnected_at: null, disconnected_reason: null })
+    .eq("user_id", conn.user_id)
+    .or("disconnected_reason.is.null,disconnected_reason.neq.not_authorised");
+  if (statusError) throw new Error(`Failed to save refreshed Xero tokens: ${statusError.message}`);
+
 
   const { writeAudit } = await import("@/lib/audit.server");
   await writeAudit({

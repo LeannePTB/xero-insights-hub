@@ -2026,6 +2026,7 @@ export type Database = {
           base_currency: string | null
           created_at: string
           disconnected_at: string | null
+          disconnected_reason: string | null
           enc_version: number
           expires_at: string
           firm_id: string | null
@@ -2044,6 +2045,7 @@ export type Database = {
           base_currency?: string | null
           created_at?: string
           disconnected_at?: string | null
+          disconnected_reason?: string | null
           enc_version?: number
           expires_at: string
           firm_id?: string | null
@@ -2062,6 +2064,7 @@ export type Database = {
           base_currency?: string | null
           created_at?: string
           disconnected_at?: string | null
+          disconnected_reason?: string | null
           enc_version?: number
           expires_at?: string
           firm_id?: string | null
