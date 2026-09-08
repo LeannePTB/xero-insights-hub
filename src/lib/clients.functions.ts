@@ -90,9 +90,8 @@ export const listClients = createServerFn({ method: "POST" })
     // Business Health entitlement per client, keyed by client id — never by
     // position. It reuses the deny-list reads already made above (plan ceiling,
     // organisation and client exclusions), so it costs no extra round trip and
-    // mirrors public.client_allowed_widgets. The only thing that function adds
-    // resolved list, which never contains `health`, so this can under-
-    // permit but never over-permit. Any failure resolves to false for that
+    // mirrors public.client_allowed_widgets, so this can under-permit but
+    // never over-permit. Any failure resolves to false for that
     // client and never fails the list.
     const healthByClient = new Map<string, boolean>();
     for (const c of (rows ?? []) as any[]) {
