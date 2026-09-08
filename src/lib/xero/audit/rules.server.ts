@@ -34,8 +34,37 @@ type XAccount = {
   TaxType?: string;
   BankAccountNumber?: string;
   EnablePaymentsToAccount?: boolean;
+  /**
+   * NOT a usable balance source. Measured on a live file: Xero returns
+   * CurrentBalance on 0 of 123 accounts from the Accounts endpoint — not even
+   * for bank accounts. Rules that need a balance take one from the Balance
+   * Sheet report instead (see AccountBalances below).
+   */
   CurrentBalance?: number;
 };
+
+/**
+ * Point-in-time balances by AccountID, read from `Reports/BalanceSheet`.
+ *
+ * Sign convention is the report's own presentation: a value is positive when
+ * the account sits in its natural direction for its section — an asset with
+ * money in it is positive, a liability that is owed is positive, and a debit
+ * balance on a liability comes back negative. Verified against one live file:
+ * the bank account read 7,288.19 on the Balance Sheet and 7,288.19 as a YTD
+ * debit on the Trial Balance, while a liability holding a debit balance read
+ * -65,379.83 on the Balance Sheet and 65,379.83 as a YTD debit.
+ *
+ * Balance-sheet accounts only. Revenue and expense accounts never appear, and
+ * neither do archived accounts.
+ */
+export type AccountBalances = Map<string, number>;
+
+/** Balance for an account, or null when the source does not carry one. */
+function balanceOf(a: XAccount, balances?: AccountBalances): number | null {
+  const v = balances?.get(a.AccountID);
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
 
 type XInvoice = {
   InvoiceID: string;
