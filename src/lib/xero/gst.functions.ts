@@ -33,6 +33,11 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<GstResponse> => {
     const { runReconciliation } = await import("./recon-snapshot.server");
     const { computeGstReconciliation } = await import("./gst.server");
+    const { getStatutoryOverrides } = await import("./statutory-overrides.server");
+    // The per-client statutory mapping, read under the caller's own session.
+    // It feeds the ONE resolver inside the engine — the report, the health
+    // rules and the audit rules all classify accounts the same way.
+    const overrides = await getStatutoryOverrides(context.supabase as any, data.clientId, data.tenantId);
     return runReconciliation({
       supabase: context.supabase as any,
       userId: context.userId,
@@ -42,6 +47,6 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
       recalculate: data.recalculate,
       reportKey: data.window === "quarter" ? GST_QUARTER_REPORT_KEY : GST_REPORT_KEY,
       widget: "gst_reconciliation",
-      compute: (conn) => computeGstReconciliation(conn, data.asAt, data.window ?? "month"),
+      compute: (conn) => computeGstReconciliation(conn, data.asAt, data.window ?? "month", overrides),
     });
   });
