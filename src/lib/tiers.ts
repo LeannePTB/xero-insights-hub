@@ -15,6 +15,7 @@ export type WidgetKey =
   | "loan_consolidation"
   | "balance_sheet_reconciliation"
   | "gst_reconciliation"
+  | "payg_withholding"
   | "transaction_search";
 
 
@@ -34,6 +35,7 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "loan_consolidation",
   "balance_sheet_reconciliation",
   "gst_reconciliation",
+  "payg_withholding",
   "transaction_search",
 ];
 
@@ -92,7 +94,8 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   xero_audit: "Xero File Audit",
   loan_consolidation: "Loan Consolidation",
   balance_sheet_reconciliation: "Balance Sheet Reconciliation",
-  gst_reconciliation: "GST Reconciliation (indicative)",
+  gst_reconciliation: "Activity statement — GST (indicative)",
+  payg_withholding: "PAYG Withholding by Month",
   transaction_search: "Transaction Search",
 };
 
