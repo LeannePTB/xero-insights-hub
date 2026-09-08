@@ -351,6 +351,9 @@ export const addLoanAccount = createServerFn({ method: "POST" })
     if (!(await canManageClient(context.supabase, context.userId, data.clientId))) {
       throw new Error("Only the organisation's owners and advisors can set up loan accounts.");
     }
+    const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
+    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+
     const { data: inserted, error } = await context.supabase
       .from("loan_consolidation_accounts")
       .insert({
