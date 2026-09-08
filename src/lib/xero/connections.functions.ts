@@ -57,15 +57,6 @@ export const startXeroSignIn = createServerFn({ method: "POST" })
 export const listXeroConnections = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    // Status-bearing screen: refresh our view of Xero's authorisation at most
-    // once per user per 10 minutes. Fire-and-forget — never awaited, so a slow
-    // or failing Xero call cannot delay this response.
-    {
-      const { ensureAuthorisationFresh } = await import(
-        "@/lib/xero/authorisation-freshness.server"
-      );
-      ensureAuthorisationFresh();
-    }
     const { data, error } = await context.supabase
       .from("xero_connections")
       .select(
@@ -73,7 +64,23 @@ export const listXeroConnections = createServerFn({ method: "GET" })
       )
       .order("created_at", { ascending: true });
     if (error) throw new Error(error.message);
+    // Status-bearing screen: refresh our view of Xero's authorisation for the
+    // tenants this caller can already see — never anyone else's — at most once
+    // per scope per 10 minutes. Fire-and-forget, never awaited, so a slow or
+    // failing Xero call cannot delay this response.
+    {
+      const tenantIds = ((data ?? []) as Array<{ tenant_id: string | null }>)
+        .map((c) => c.tenant_id)
+        .filter((t): t is string => !!t);
+      if (tenantIds.length > 0) {
+        const { ensureAuthorisationFresh } = await import(
+          "@/lib/xero/authorisation-freshness.server"
+        );
+        ensureAuthorisationFresh({ tenantIds });
+      }
+    }
     return { connections: data ?? [] };
+
   });
 
 /**

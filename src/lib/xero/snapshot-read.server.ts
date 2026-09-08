@@ -50,13 +50,15 @@ export async function connectionStatus(
   supabase: any,
   tenantId: string,
 ): Promise<SnapshotSource["connection"]> {
-  // Every card that reports connectivity comes through here. Fire-and-forget
-  // and rate-limited in the database to one Xero call per user per 10 minutes,
-  // so many cards / tabs cost nothing and cannot delay this read.
+  // Every card that reports connectivity comes through here. Scoped to the one
+  // tenant being read, fire-and-forget and rate-limited in the database to one
+  // Xero call per scope per 10 minutes, so many cards / tabs cost nothing and
+  // cannot delay this read.
   {
     const { ensureAuthorisationFresh } = await import("./authorisation-freshness.server");
-    ensureAuthorisationFresh();
+    ensureAuthorisationFresh({ tenantIds: [tenantId] });
   }
+
   const { data } = await supabase
     .from("xero_connections")
     .select("status")
