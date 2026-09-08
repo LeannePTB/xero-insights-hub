@@ -95,19 +95,58 @@ function isActiveLiability(account: XeroAccountRef | undefined): boolean {
   return normaliseText(account.Class).toUpperCase() === "LIABILITY" && normaliseText(account.Status).toUpperCase() === "ACTIVE";
 }
 
+/** A per-client override of what an account holds. `none` means "this account
+ *  is not statutory", and is as deliberate as any other value. */
+export type StatutoryCategory = "gst" | "payg" | "super" | "none";
+
+/**
+ * Per-client overrides, keyed by the account name lower-cased and trimmed —
+ * the same key `client_statutory_accounts` stores. Build one with
+ * `statutoryOverrideMap`.
+ */
+export type StatutoryOverrides = Map<string, StatutoryCategory>;
+
+export function statutoryOverrideKey(name: string): string {
+  return normaliseText(name).toLowerCase();
+}
+
+export function statutoryOverrideMap(
+  rows: { account_name: string; category: StatutoryCategory }[] | null | undefined,
+): StatutoryOverrides {
+  const map: StatutoryOverrides = new Map();
+  for (const row of rows ?? []) {
+    const k = statutoryOverrideKey(row?.account_name ?? "");
+    if (k) map.set(k, row.category);
+  }
+  return map;
+}
+
 /**
  * Classify a protected-money line. When account metadata is supplied, Xero's
  * authoritative fields are applied first: only ACTIVE LIABILITY accounts can be
  * classified, and SystemAccount=GST beats any name match.
+ *
+ * Resolution order, and it lives here rather than in any caller so the monthly
+ * report and the audit rule can never diverge:
+ *   1. the account must be an active liability (when metadata is supplied)
+ *   2. a stored per-client override, if one exists for this account name
+ *   3. Xero's SystemAccount=GST
+ *   4. name matching
+ * A name match is only ever a fallback; it is never written back as an
+ * override, so an account keeps following the name rules until a person
+ * deliberately sets it.
  */
 export function classifyTaxLine(
   name: string,
   account?: XeroAccountRef,
+  overrides?: StatutoryOverrides,
 ): TaxLineCategory | null {
-  if (account) {
-    if (!isActiveLiability(account)) return null;
-    if (normaliseText(account.SystemAccount).toUpperCase() === "GST") return "gst";
-  }
+  if (account && !isActiveLiability(account)) return null;
+
+  const override = overrides?.get(statutoryOverrideKey(name));
+  if (override) return override === "none" ? null : override;
+
+  if (account && normaliseText(account.SystemAccount).toUpperCase() === "GST") return "gst";
 
   if (hasWord(name, "gst") || hasWord(name, "vat") || hasPhrase(name, "sales tax")) return "gst";
   if (hasWord(name, "payg") || hasWord(name, "paye") || hasWord(name, "withholding")) return "payg";
@@ -116,6 +155,7 @@ export function classifyTaxLine(
     return "other-tax";
   return null;
 }
+
 
 function looksStatutoryButUnclassified(name: string, account: XeroAccountRef | undefined): boolean {
   if (normaliseText(account?.SystemAccount).toUpperCase() === "GST") return true;
