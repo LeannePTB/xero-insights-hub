@@ -101,10 +101,12 @@ export type StatutoryCategory = "gst" | "payg" | "super" | "none";
 
 /**
  * Per-client overrides, keyed by the account name lower-cased and trimmed —
- * the same key `client_statutory_accounts` stores. Build one with
+ * the same key `client_statutory_accounts` stores. An account may carry more
+ * than one category (an ATO account used for GST and PAYG withholding
+ * together), so the value is the set a person ticked. Build one with
  * `statutoryOverrideMap`.
  */
-export type StatutoryOverrides = Map<string, StatutoryCategory>;
+export type StatutoryOverrides = Map<string, StatutoryCategory[]>;
 
 export function statutoryOverrideKey(name: string): string {
   return normaliseText(name).toLowerCase();
@@ -116,9 +118,53 @@ export function statutoryOverrideMap(
   const map: StatutoryOverrides = new Map();
   for (const row of rows ?? []) {
     const k = statutoryOverrideKey(row?.account_name ?? "");
-    if (k) map.set(k, row.category);
+    if (!k || !row?.category) continue;
+    const existing = map.get(k);
+    if (existing) {
+      if (!existing.includes(row.category)) existing.push(row.category);
+    } else {
+      map.set(k, [row.category]);
+    }
   }
   return map;
+}
+
+/**
+ * What a stored override resolves to.
+ *  - `null`          nobody has set this account; fall through to Xero and names
+ *  - `"none"`        deliberately not statutory; settled, never "unrecognised"
+ *  - a category      exactly one thing
+ *  - `"ato-combined"` GST and PAYG withholding on one account; the balance is a
+ *                     single amount owed to the ATO and is never apportioned
+ *  - `"conflict"`    superannuation ticked alongside an ATO category. Super is
+ *                     owed to employees' funds, not the ATO, so the balance
+ *                     cannot honestly be presented as either. The panel does not
+ *                     allow this combination; if one exists the line is reported
+ *                     as unidentified rather than mislabelled.
+ */
+export type StatutoryOverrideResolution =
+  | null
+  | "none"
+  | "conflict"
+  | Exclude<TaxLineCategory, "other-tax">
+  | "ato-combined";
+
+export function resolveStatutoryOverride(
+  name: string,
+  overrides?: StatutoryOverrides,
+): StatutoryOverrideResolution {
+  const set = overrides?.get(statutoryOverrideKey(name));
+  if (!set || set.length === 0) return null;
+  if (set.includes("none")) return "none";
+  const hasSuper = set.includes("super");
+  const hasGst = set.includes("gst");
+  const hasPayg = set.includes("payg");
+  if (hasSuper && (hasGst || hasPayg)) return "conflict";
+  if (hasSuper) return "super";
+  if (hasGst && hasPayg) return "ato-combined";
+  if (hasGst) return "gst";
+  if (hasPayg) return "payg";
+  return null;
 }
 
 /**
@@ -129,7 +175,7 @@ export function statutoryOverrideMap(
  * Resolution order, and it lives here rather than in any caller so the monthly
  * report and the audit rule can never diverge:
  *   1. the account must be an active liability (when metadata is supplied)
- *   2. a stored per-client override, if one exists for this account name
+ *   2. the stored per-client override set, if one exists for this account name
  *   3. Xero's SystemAccount=GST
  *   4. name matching
  * A name match is only ever a fallback; it is never written back as an
@@ -143,8 +189,10 @@ export function classifyTaxLine(
 ): TaxLineCategory | null {
   if (account && !isActiveLiability(account)) return null;
 
-  const override = overrides?.get(statutoryOverrideKey(name));
-  if (override) return override === "none" ? null : override;
+  const override = resolveStatutoryOverride(name, overrides);
+  if (override === "none" || override === "conflict") return null;
+  if (override) return override;
+
 
   if (account && normaliseText(account.SystemAccount).toUpperCase() === "GST") return "gst";
 
