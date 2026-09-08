@@ -57,7 +57,7 @@ export function PnlWidget({
   const priorToStr = toISO(prior.to);
   const priorLabel = `${format(prior.from, "d MMM yyyy")} – ${format(prior.to, "d MMM yyyy")}`;
 
-  const { data, isLoading, isFetching, error, refetch, dataUpdatedAt } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-pnl", tenantId, fromStr, toStr, priorFromStr, priorToStr, basis],
     queryFn: async () => {
       const current = await fetchPnl({ data: { tenantId, fromDate: fromStr, toDate: toStr, widget: "pnl", basis } });

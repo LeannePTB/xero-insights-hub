@@ -41,7 +41,7 @@ export function CashflowWidget({
   const fromStr = toISO(fromDate);
   const toStr = toISO(toDate);
 
-  const { data, isLoading, isFetching, error, refetch, dataUpdatedAt } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ["xero-cashflow", tenantId, fromStr, toStr],
     queryFn: () => fetchCashflow({ data: { tenantId, fromDate: fromStr, toDate: toStr } }),
     enabled: shouldLoad,

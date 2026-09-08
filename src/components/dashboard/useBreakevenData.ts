@@ -158,7 +158,9 @@ export function useBreakevenData({
     isFetching: pnlQ.isFetching,
     error: pnlQ.error,
     refetch: pnlQ.refetch,
-    updatedAt: pnlQ.dataUpdatedAt,
+    // Deliberately NOT exposed: React Query's `dataUpdatedAt`. Freshness comes
+    // from the provenance the server returns on `data.source`, never from when
+    // our own query happened to run.
     data,
     income,
     cogs,
