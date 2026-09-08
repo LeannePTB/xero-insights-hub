@@ -137,40 +137,50 @@ export function GstReconciliationWidget({
             Activity statement — GST (indicative)
           </h3>
           <p className="text-xs text-muted-foreground">
-            {data
-              ? `${format(new Date(`${data.periodFrom}T00:00:00`), "d MMM")} – ${format(
-                  new Date(`${data.periodTo}T00:00:00`),
-                  "d MMM yyyy",
-                )}`
-              : `${format(new Date(`${selected.from}T00:00:00`), "d MMM")} – ${format(
-                  new Date(`${selected.to}T00:00:00`),
-                  "d MMM yyyy",
-                )}`}{" "}
+            {notRegistered
+              ? "Goods and services tax"
+              : data
+                ? `${format(new Date(`${data.periodFrom}T00:00:00`), "d MMM")} – ${format(
+                    new Date(`${data.periodTo}T00:00:00`),
+                    "d MMM yyyy",
+                  )}`
+                : `${format(new Date(`${selected.from}T00:00:00`), "d MMM")} – ${format(
+                    new Date(`${selected.to}T00:00:00`),
+                    "d MMM yyyy",
+                  )}`}{" "}
             · a review aid, not a lodgement figure
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Select value={periodValue} onValueChange={setPeriodValue}>
-            <SelectTrigger className="h-8 w-[260px] text-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map((o) => (
-                <SelectItem key={o.value} value={o.value}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {data?.canRecalculate && (
-            <Button variant="ghost" size="sm" onClick={recalculate} disabled={recalculating} title="Recalculate">
-              <RefreshCw className={`h-4 w-4 ${recalculating ? "animate-spin" : ""}`} />
-            </Button>
-          )}
-        </div>
+        {!notRegistered && (
+          <div className="flex items-center gap-2">
+            <Select value={periodValue} onValueChange={setPeriodValue}>
+              <SelectTrigger className="h-8 w-[260px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {options.map((o) => (
+                  <SelectItem key={o.value} value={o.value}>
+                    {o.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {data?.canRecalculate && (
+              <Button variant="ghost" size="sm" onClick={recalculate} disabled={recalculating} title="Recalculate">
+                <RefreshCw className={`h-4 w-4 ${recalculating ? "animate-spin" : ""}`} />
+              </Button>
+            )}
+          </div>
+        )}
       </div>
 
-      {q.isLoading || recalculating ? (
+      {notRegistered ? (
+        <p className="mt-6 text-sm text-muted-foreground">
+          This client is not registered for GST, so there is no activity statement period to show.
+          If that changes, set the new cycle on the client settings page under “GST (business
+          activity statement)”.
+        </p>
+      ) : q.isLoading || recalculating ? (
         <div className="mt-6 flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Working out this period's GST…
         </div>
