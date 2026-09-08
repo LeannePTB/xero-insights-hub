@@ -87,11 +87,34 @@ export const runXeroAudit = createServerFn({ method: "POST" })
       const creditNotes = (creditNotesRes?.CreditNotes ?? []) as any[];
       const payments = (paymentsRes?.Payments ?? []) as any[];
 
+      // Document totals for the overpayment test. Only documents inside a
+      // flagged cluster are priced, in batches of 100 (Xero's IDs= ceiling) —
+      // roughly one extra call per audit. A failed batch resolves to nothing,
+      // and the rule then emits nothing for those documents.
+      const fetchDocTotals = async (ids: string[]) => {
+        const map = new Map<string, any>();
+        const res = await xeroGet<any>(conn, "Invoices", { IDs: ids.join(","), page: "1" });
+        for (const inv of (res?.Invoices ?? []) as any[]) {
+          const total = Number(inv?.Total);
+          if (!inv?.InvoiceID || !Number.isFinite(total)) continue;
+          map.set(inv.InvoiceID, {
+            total,
+            amountPaid: Number.isFinite(Number(inv?.AmountPaid)) ? Number(inv.AmountPaid) : null,
+            amountCredited: Number.isFinite(Number(inv?.AmountCredited))
+              ? Number(inv.AmountCredited)
+              : null,
+            invoiceNumber: inv?.InvoiceNumber ?? "",
+            type: (inv?.Type ?? "").toUpperCase(),
+          });
+        }
+        return map;
+      };
+
       const findings = [
         ...ruleCoaHygiene(accounts, shortCode),
         ...ruleBank(accounts, shortCode),
         ...ruleArAp(invoices, creditNotes, shortCode),
-        ...rulePayments(payments, shortCode),
+        ...(await rulePayments(payments, shortCode, fetchDocTotals)),
         ...ruleUnreconciledPayments(payments),
         ...ruleStatutoryTrace(invoices, accounts, shortCode),
       ];
