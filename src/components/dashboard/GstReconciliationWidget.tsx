@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { ReconAgeNotice } from "@/components/dashboard/ReconAgeNotice";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
 import { getGstReconciliation, type GstResponse } from "@/lib/xero/gst.functions";
 import { money as fmt, gstPeriodOptions } from "@/components/dashboard/recon-periods";
@@ -299,6 +300,11 @@ export function GstReconciliationWidget({
                       {format(new Date(data.generatedAt), "d MMM yyyy, h:mm a")}
                     </p>
                   )}
+                  <ReconAgeNotice
+                    generatedAt={data.generatedAt}
+                    fromSnapshot={data.fromSnapshot}
+                    canRecalculate={data.canRecalculate}
+                  />
                 </div>
               )}
             </div>
