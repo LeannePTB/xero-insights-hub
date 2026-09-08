@@ -27,7 +27,12 @@ export type ConsolidationGroupsView = {
   clients: GroupClient[];
 };
 
-async function assertFirmAccess(supabase: any, userId: string, firmId: string) {
+async function assertFirmAccess(
+  supabase: any,
+  userId: string,
+  firmId: string,
+  opts?: { allowSupportRead?: boolean },
+) {
   const { data: member } = await supabase
     .from("firm_members")
     .select("id")
@@ -36,14 +41,17 @@ async function assertFirmAccess(supabase: any, userId: string, firmId: string) {
     .eq("status", "active")
     .maybeSingle();
   if (!member) {
-    const { data: superRow } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "super_admin")
-      .maybeSingle();
-    if (!superRow) throw new Error("You don't have access to this organisation.");
+    // Invariant 3: super_admin alone grants nothing. Active membership decides.
+    // Read-only surfaces may additionally be reached through a live Path B
+    // support grant, resolved by the database rule (user_can_access_firm).
+    let allowed = false;
+    if (opts?.allowSupportRead) {
+      const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+      allowed = await platformStaffCanAccessFirm(userId, firmId);
+    }
+    if (!allowed) throw new Error("You don't have access to this organisation.");
   }
+
   // Consolidation groups are part of the organisation-level consolidation
   // feature — the plan decides. Fails closed.
   const { assertFirmWidget } = await import("@/lib/widget-access.server");
