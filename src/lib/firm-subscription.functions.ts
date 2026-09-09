@@ -65,9 +65,6 @@ async function resolveAccess(supabase: any, userId: string, firmId: string): Pro
   };
 }
 
-function assertAccess(access: Access) {
-  if (!access.isMember && !access.isSuperAdmin) throw new Error("Forbidden");
-}
 
 /** Plan, status and available plan levels for one organisation. */
 export const getFirmSubscription = createServerFn({ method: "POST" })
@@ -75,7 +72,15 @@ export const getFirmSubscription = createServerFn({ method: "POST" })
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<FirmSubscriptionView> => {
     const access = await resolveAccess(context.supabase, context.userId, data.firmId);
-    assertAccess(access);
+    // Invariant 3: super_admin alone grants nothing. Active membership decides.
+    // A read may also be reached through a live Path B support grant (read-only),
+    // resolved by the database rule via platformStaffCanAccessFirm.
+    let hasSupportGrant = false;
+    if (!access.isMember) {
+      const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+      hasSupportGrant = await platformStaffCanAccessFirm(context.userId, data.firmId);
+      if (!hasSupportGrant) throw new Error("Forbidden");
+    }
 
     const db: any = access.isMember
       ? context.supabase
