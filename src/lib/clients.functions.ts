@@ -621,8 +621,22 @@ export const setClientXeroAllowance = createServerFn({ method: "POST" })
       throw new Error("Only Multi company subscriptions can allow more than one Xero file.");
     if (allowance < current.used)
       throw new Error(`Unlink Xero files before reducing the allowance below ${current.used}.`);
-    // Invariant 3: no super_admin escalation to the admin client here. The write
-    // goes through the caller's own session, so RLS (membership) decides.
+    // Super admins manage every organisation; RLS scopes updates to their own firms.
+    const { data: superRow } = await context.supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", context.userId)
+      .eq("role", "super_admin")
+      .maybeSingle();
+    if (superRow) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { error: adminErr } = await supabaseAdmin
+        .from("clients")
+        .update({ max_xero_orgs: allowance })
+        .eq("id", data.clientId);
+      if (adminErr) throw new Error(adminErr.message);
+      return { allowance };
+    }
     const { data: updated, error } = await context.supabase
       .from("clients")
       .update({ max_xero_orgs: allowance })
