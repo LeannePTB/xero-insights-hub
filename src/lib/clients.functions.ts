@@ -292,15 +292,8 @@ export const createClient = createServerFn({ method: "POST" })
         .eq("firm_id", firmId)
         .eq("status", "active")
         .maybeSingle();
-      if (!membership) {
-        const { data: superRow } = await context.supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", context.userId)
-          .eq("role", "super_admin")
-          .maybeSingle();
-        if (!superRow) throw new Error("You are not a member of that business.");
-      }
+      // Invariant 3: super_admin alone grants nothing. Membership decides.
+      if (!membership) throw new Error("You are not a member of that business.");
     } else {
       const { data: membership } = await context.supabase
         .from("firm_members")

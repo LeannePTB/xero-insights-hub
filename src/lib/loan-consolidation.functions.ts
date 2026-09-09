@@ -551,6 +551,7 @@ async function resolveLoanGroup(
   supabase: any,
   userId: string,
   groupId: string,
+  opts?: { allowSupportRead?: boolean },
 ): Promise<ResolvedLoanGroup> {
   const supabaseAdmin = await getSupabaseAdmin();
   const { data: group } = await supabaseAdmin
@@ -560,10 +561,16 @@ async function resolveLoanGroup(
     .maybeSingle();
   if (!group) throw new Error("Consolidation group not found.");
 
-  const allowed =
-    Boolean(await firmMemberRole(supabase, userId, (group as any).firm_id)) ||
-    (await isSuperAdminUser(supabase, userId));
+  // Invariant 3: super_admin alone grants nothing. Active membership decides.
+  // Read-only surfaces may additionally be reached through a live Path B
+  // support grant, resolved by the database rule (user_can_access_firm).
+  let allowed = Boolean(await firmMemberRole(supabase, userId, (group as any).firm_id));
+  if (!allowed && opts?.allowSupportRead) {
+    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+    allowed = await platformStaffCanAccessFirm(userId, (group as any).firm_id);
+  }
   if (!allowed) throw new Error("You don't have access to this organisation.");
+
 
   // The organisation's plan must include loan consolidation (fails closed).
   const { assertFirmWidget } = await import("@/lib/widget-access.server");
@@ -617,7 +624,7 @@ export const listGroupLoanFiles = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { groupId: string }) => i)
   .handler(async ({ data, context }) => {
-    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
     const supabaseAdmin = await getSupabaseAdmin();
     const tenantIds = [...group.tenantNameById.keys()];
     const { data: rows } = tenantIds.length
@@ -668,7 +675,7 @@ export const getGroupLoanReconciliation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string }) => i)
   .handler(async ({ data, context }) => {
-    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
     return runGroupRecon(group, data.tenantId ?? null, data.asAt);
   });
 
@@ -676,7 +683,7 @@ export const getGroupLoanMismatchDetail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { groupId: string; rowId: string; asAt: string }) => i)
   .handler(async ({ data, context }) => {
-    await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
     const supabaseAdmin = await getSupabaseAdmin();
     const { runLoanMismatchDetail } = await import("./loan-mismatch.server");
     return runLoanMismatchDetail({ supabase: supabaseAdmin, rowId: data.rowId, asAt: data.asAt });
@@ -737,7 +744,7 @@ export const downloadGroupLoanReconciliation = createServerFn({ method: "POST" }
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string; format: "pdf" | "xlsx" }) => i)
   .handler(async ({ data, context }) => {
-    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
     const recon = await runGroupRecon(group, data.tenantId ?? null, data.asAt);
     const sections = toExportSections(recon);
     const all = !data.tenantId || data.tenantId === ALL_FILES;
@@ -781,7 +788,7 @@ export const listGroupLoanSnapshots = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { groupId: string }) => i)
   .handler(async ({ data, context }) => {
-    await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
     const supabaseAdmin = await getSupabaseAdmin();
     const { data: rows } = await supabaseAdmin
       .from("loan_consolidation_snapshots")
@@ -803,7 +810,7 @@ export const getGroupLoanSnapshot = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { groupId: string; snapshotId: string }) => i)
   .handler(async ({ data, context }) => {
-    await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
     const supabaseAdmin = await getSupabaseAdmin();
     const { data: row } = await supabaseAdmin
       .from("loan_consolidation_snapshots")
@@ -842,11 +849,10 @@ export const autoSetupGroupLoanAccounts = createServerFn({ method: "POST" })
   .inputValidator((i: { groupId: string; apply?: boolean }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
-    if (!(await isSuperAdminUser(context.supabase, context.userId))) {
-      const role = await firmMemberRole(context.supabase, context.userId, group.firmId);
-      if (!role) {
-        throw new Error("Only the organisation's members can set up loan accounts.");
-      }
+    // Writes are membership-only: support access is read-only (invariant 3, S7).
+    const role = await firmMemberRole(context.supabase, context.userId, group.firmId);
+    if (!role) {
+      throw new Error("Only the organisation's members can set up loan accounts.");
     }
 
     const { autoSetupLoanAccounts } = await import("./loan-autosetup.server");
@@ -911,7 +917,7 @@ export const listGroupLoanPairings = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { groupId: string }) => i)
   .handler(async ({ data, context }) => {
-    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
     const supabaseAdmin = await getSupabaseAdmin();
     const { data: rows } = group.clientIds.length
       ? await supabaseAdmin
