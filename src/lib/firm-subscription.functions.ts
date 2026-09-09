@@ -65,9 +65,6 @@ async function resolveAccess(supabase: any, userId: string, firmId: string): Pro
   };
 }
 
-function assertAccess(access: Access) {
-  if (!access.isMember && !access.isSuperAdmin) throw new Error("Forbidden");
-}
 
 /** Plan, status and available plan levels for one organisation. */
 export const getFirmSubscription = createServerFn({ method: "POST" })
