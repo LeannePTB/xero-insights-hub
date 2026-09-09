@@ -1,113 +1,146 @@
-# Replace role checks with access checks on write paths
+# Make the app ask the database, not re-decide (invariant 7)
 
-`assertAdvisor` asks *what role do you hold*, never *what may you touch*. Any user holding `advisor`, `super_admin`, `firm_owner` or `firm_staff` — that is, essentially every staff account in every organisation — passes it, and the function then writes with `supabaseAdmin`, which bypasses RLS. The caller-supplied `clientId` / `firmId` / `tier` is used only as a filter on the write, exactly the shape invariant 4 forbids.
+Plan only. Nothing below is implemented yet. Verified this turn by reading the helper
+source and dumping the live function definitions and EXECUTE grants.
 
-Everything below was read this turn from the named files and from the database catalogue.
+## 1. Inventory — helper vs its database equivalent
 
-## 1. The answer you care about most: which writes reach other organisations' clients
+| # | Helper (file) | What it decides | Database equivalent |
+|---|---|---|---|
+| 1 | `userCanManageClient` (`src/lib/xero/client-orgs.server.ts:59`) | Client owner OR active member of the client's organisation | `app_private.user_can_manage_client` |
+| 2 | `canManageClient` (`src/lib/loan-consolidation.functions.ts:154`) | Plan gate + active member, else super_admin **with** live support grant | `app_private.user_can_manage_client` (plan gate has no equivalent) |
+| 3 | `canReadClient` (`loan-consolidation.functions.ts:167`) | manage OR a `client_access` row | `app_private.user_can_read_client` |
+| 4 | `firmMemberRole` (`loan-consolidation.functions.ts:103`) | Active membership role string | `app_private.has_firm_access` + `app_private.is_firm_owner` (no role-returning equivalent) |
+| 5 | `isSuperAdminUser` (`loan-consolidation.functions.ts:120`) | Holds `super_admin` | `app_private.is_super_admin` |
+| 6 | `hasClientAccess` (`loan-consolidation.functions.ts:130`) | A `client_access` row | `app_private.has_client_access` |
+| 7 | `assertFirmAccess` (`src/lib/consolidation-groups.functions.ts:30`) | Active member, or support grant on read; then plan gate | `public.firm_access_path` (returns `member` / `support_grant` / `none`) |
+| 8 | `resolveAccess` + `assertAccess` (`src/lib/firm-subscription.functions.ts:44`) | Owner / member / super_admin, and **super_admin alone passes** | `public.firm_access_path` + `app_private.is_firm_owner` |
+| 9 | `getEffectiveTier` / `assertWidgetAccess` (`src/lib/xero/access.server.ts`) | Tenant → client → membership → tier ranking → widget list | `app_private.user_can_access_tenant`, `public.client_allowed_widgets`, `public.client_can_use_widget` |
+| 10 | `platformStaffCanAccessFirm`, `canAccessClient` (`src/lib/support-access.server.ts`) | Firm / client access | Already thin wrappers over `public.user_can_access_firm` / `user_can_access_client` — the reference shape |
+| 11 | `canManageClientNotes` (`src/lib/notes-access.server.ts`) | Who may flag a note for the report | Calls `user_can_access_firm` already |
+| 12 | `assertTenantBelongsToClient` (`src/lib/tenant-ownership.server.ts`) | Tenant belongs to this client | No equivalent — ownership proof, not access. Leave. |
 
-Three, all via `supabaseAdmin` after nothing but a role check:
+## 2. Where they differ — the part that matters
 
-- **`saveClientTierWidgets`** (`tier-config.functions.ts:127`) — writes/deletes `tier_widget_config` rows for **any `clientId`**, in any organisation.
-- **`saveClientWidgets`** (`tier-config.functions.ts:575`) — updates `clients.dashboard_widgets` for **any `clientId`**.
-- **`uploadStatementLines`** and **`deleteUpload`** (`unreconciled.functions.ts:139`, `:236`) — insert `unreconciled_uploads` / `unreconciled_lines` against **any `clientId`**, and delete **any `uploadId`** (no client resolution at all). Its local `assertAdvisor` is narrower — literally the `advisor` role only — but still not tied to the client.
+**A. `userCanManageClient` is stricter than `user_can_manage_client`, deliberately.**
+The database function also grants when the caller is `super_admin` **and** holds a live
+support grant. That is a *read-only* Path B grant appearing inside a function named
+"manage", used by `disconnectXero`, file moves and allowance writes. The TypeScript is
+the correct behaviour for writes; the database function is the wider one. **Do not
+swap this helper for that function.** Write paths should move to
+`public.assert_client_write_access` (owner OR active member, no super_admin, no support
+grant) — which matches today's TypeScript exactly.
 
-`saveFirmDefaultWidgets` (`tier-config.functions.ts:684`) reaches **any organisation and all of its clients** for a super admin, because its membership check is bypassed by an explicit `isSuper` branch; for everyone else the membership check holds.
+**B. `resolveAccess` (firm subscription) is a live cross-organisation bypass — new.**
+`assertAccess` passes on bare `super_admin`, and the handler then switches to
+`supabaseAdmin` for non-members (`firm-subscription.functions.ts:80-82`), reading a
+firm's name, plan, status and client count without membership or a support grant.
+This is invariant 3, organisation data, not Path C metadata. It is a fourteenth
+instance of the same fault, found while writing this plan. It needs its own change.
 
-## 2. Per-function inventory
+**C. `canManageClient` (loan) already matches the database limb-for-limb**, including
+the support-grant limb — it is the closest to correct in the codebase. It adds a plan
+gate the database access rule does not have; that stays.
 
-### `src/lib/tier-config.functions.ts`
+**D. `canReadClient` omits one limb the database has.** `user_can_read_client` also
+accepts active membership of the client's organisation directly; the TypeScript reaches
+that only via `canManageClient`, which is gated on the plan first. Net effect: a member
+of an organisation whose plan lacks loan consolidation is refused. That is intended
+(plan gate), so the difference is safe but must be preserved when swapping.
 
-| Function | Writes | Reach | Current gate | Can write to an unrelated org/client today? |
-|---|---|---|---|---|
-| `savePlatformTierWidgets` :86 | `tier_widget_config` platform row (`client_id IS NULL AND firm_id IS NULL`) | Platform-wide, every organisation without its own row | `assertAdvisor` | Yes — any `firm_staff` in any organisation can rewrite the platform default |
-| `saveClientTierWidgets` :127 | `tier_widget_config` client row (insert/update/delete) | Any client | `assertAdvisor` | **Yes** |
-| `setTierEnabled` :377 | `tier_settings` upsert | Platform-wide tier kill switch | `assertAdvisor` | Yes — platform row, any staff |
-| `saveClientWidgets` :575 | `clients.dashboard_widgets` | Any client | `assertAdvisor` | **Yes** |
-| `saveFirmDefaultWidgets` :684 | `firms.default_widgets` + `clients.dashboard_widgets` for every client in the organisation | Any organisation, for super admins | `assertAdvisor`, then membership unless `super_admin` | Yes for a super admin; no for others |
-| `resetOrgTierToPlatformDefault` :306 | via `public.reset_org_tier_widgets` | One organisation, one tier | RPC: `app_private.has_firm_access` | No — correct today |
-| `setOrgWidget` :338 | via `public.set_org_widget_enabled` | One organisation | RPC: membership | No — correct today |
-| `setClientWidget` :799 | via `public.set_client_widget_enabled` | One client | RPC | No — gate lives in the database |
-| `listTierConfig`, `getEffectiveWidgets`, `getOrgWidgetMatrix`, `getFirmPlanSummary`, `getClientWidgets`, `getClientWidgetMatrix`, `getUpgradeOptions`, `listTierSettings` | none | — | caller session / RLS | reads only, out of scope |
-| `listOrgTierOverrides` :270 | none, but reads every organisation's override list with `supabaseAdmin` behind `assertAdvisor` | Platform metadata | `assertAdvisor` | Read-only; see §6 |
+**E. `canManageClientNotes` is wider than its comment claims.** It calls
+`user_can_access_firm`, which includes live support grants — so a read-only Path B
+grantee could flag a note into the management report. A write reachable through a
+read-only grant. Flagged; not part of this work.
 
-Quoted gate, identical in every case above:
+**F. `getEffectiveTier` reimplements the most.** Tenant→firm resolution, membership,
+`client_access` tier ranking and the widget deny-list all live in TypeScript while the
+database has `user_can_access_tenant` and `client_allowed_widgets`. It also grants
+`investigate` to any member, which no database function says. Highest-value target,
+highest risk to cards — last.
 
-```ts
-async function assertAdvisor(supabase: any, userId: string) {
-  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId)
-    .in("role", ["advisor", "super_admin", "firm_owner", "firm_staff"]);
-  if (!data || data.length === 0) throw new Error("Advisor only.");
-}
-```
+**G. `firmMemberRole` and `isSuperAdminUser` agree with the database** (both filter
+`status = 'active'`; `is_super_admin` is the same query). No behavioural gap.
 
-and `saveFirmDefaultWidgets`'s extra check, which is the app restating a database rule and then punching a hole in it:
+## 3. What the application can actually call today
 
-```ts
-const isSuper = (roles ?? []).some((r: any) => r.role === "super_admin");
-if (!isSuper) { /* firm_members lookup */ if (!member) throw new Error("Not a member of this organisation."); }
-```
+Everything in `app_private` is unreachable over the API — PostgREST exposes `public`
+only, for `authenticated` and `service_role` alike, whatever the EXECUTE grant says.
 
-### `src/lib/billing.functions.ts`
+Reachable now:
+- `public.user_can_access_firm`, `public.user_can_access_client` — `authenticated` + `service_role`
+- `public.assert_client_write_access(_client_id)` — `authenticated`; uses `auth.uid()`, so it must be called on `context.supabase`, never `supabaseAdmin`
+- `public.client_allowed_widgets`, `client_can_use_widget`, `firm_allowed_widgets`, `firm_can_use_widget` — `authenticated`
+- `public.firm_access_path(_user_id, _firm_id)` — **`service_role` only**; call it through `supabaseAdmin`. This is the one that distinguishes `member` from `support_grant`, which is exactly what the read/write split needs.
 
-`setClientComp` :91 and `setClientTrial` :150 write `client_subscriptions` for any client via `supabaseAdmin`, gated by `assertSuperAdmin`. That is a bare role check reaching client rows, but §8 of the spec makes comps and trials a deliberate super-admin revenue decision, and both write audit rows. **No change proposed** — flagged only. `setClientDashboardTier` :225 writes through `context.supabase`, so RLS decides; correct. `setAllClientTiers` :295 delegates to the membership-gated RPC; correct.
+The `_user_id` parameter is honoured only when `auth.uid()` is null (service_role);
+under a user session the functions ignore a foreign `_user_id` and return false. So
+`supabaseAdmin` + explicit `_user_id`, or `context.supabase` + own id — never mixed.
 
-### `src/lib/admin.functions.ts`
+**No new `public` wrappers are proposed.** `firm_access_path` and
+`assert_client_write_access` already cover every case in the sequence below. If step 5
+later needs a tenant-level check, `app_private.user_can_access_tenant` would need a
+wrapper — that decision is deferred, not assumed.
 
-Everything is `assertSuperAdmin` over organisation *metadata* — names, members, subscriptions, audit, password resets. That is Path C and legitimately role-based. **No change proposed.**
+## 4. Cost
 
-### `src/lib/clients.functions.ts`
+Each swap replaces one or two PostgREST round trips with one RPC, so most steps are
+neutral or slightly cheaper. Two places are not:
 
-Writes here use `context.supabase` (RLS) or resolve access first, with super-admin branches falling back to `supabaseAdmin` for `deleteClient` :393, `setClientXeroAllowance` :509, `createClient` :272, `inviteClientViewer` :654, `createClientViewerWithPassword` :722. These are role-gated super-admin escalations over client rows, of the same family as invariant 3, but they are pre-existing platform-operations paths with their own shapes. **Out of scope for this change; listed as a follow-up item, not planned here.**
+- `canReadClient` / `canManageClient` run once per loan-consolidation server function,
+  and the loan pages call several in sequence — the plan gate already costs two RPCs
+  there.
+- `assertWidgetAccess` runs per widget on a dashboard render.
 
-### `src/lib/unreconciled.functions.ts`
+Mitigation: a request-scoped memo (a `Map` keyed `userId:firmId` / `userId:clientId`,
+created per server-function invocation, never module-level and never persisted) around
+the access RPCs only. Nothing cached across requests, nothing in the JWT or
+localStorage — invariant 6. If the memo adds complexity where the call happens once,
+skip it.
 
-`uploadStatementLines` and `deleteUpload` as described in §1. `assertClientAccess` (used by the read paths) also grants any `advisor` blanket access — a read problem, listed as a question below.
+## 5. Sequence — reversible, testable, riskiest last
 
-## 3. The correct gate for each
+Each step is one commit, one file or one helper, with a typecheck and a manual pass over
+the affected screen.
 
-- Platform rows (`savePlatformTierWidgets`, `setTierEnabled`) — Path C, super admin. `app_private.me_is_super_admin()` exists and is the spec's named function for this.
-- Organisation rows (`saveFirmDefaultWidgets`) — `app_private.has_firm_access`. Membership only; support grants are read-only per §7.
-- Client rows (`saveClientTierWidgets`, `saveClientWidgets`, `uploadStatementLines`, `deleteUpload`) — manage-level. The spec names `app_private.user_can_manage_client`; see the caveat in the questions section.
+1. **`assertFirmAccess` → `firm_access_path`.** Smallest, self-contained, four callers.
+   Breakage would show as "You don't have access to this organisation" on the
+   consolidation groups screen.
+2. **`hasClientAccess`, `firmMemberRole`, `isSuperAdminUser`** — leave the first two,
+   remove `isSuperAdminUser` if it ends up unused after step 3. No behaviour change.
+3. **`canReadClient` / `canManageClient` → `user_can_read_client` (via a `public`-reachable
+   path) + `firm_access_path`, keeping the plan gate in front.** Breakage shows as loan
+   consolidation cards refusing to load for members, or DRTABT's cross-client pairings
+   failing.
+4. **Write paths off `userCanManageClient` → `assert_client_write_access`.** Affects
+   `disconnectXero`, file linking and moving, allowance writes. Breakage is loud and
+   immediate: "NO_ACCESS" on disconnect or link. Behaviour is identical to today's
+   TypeScript by inspection, but this is the destructive one, so it goes after 1-3.
+5. **`getEffectiveTier` / `assertWidgetAccess`.** Last. Touches which cards render.
+   Not started until 1-4 are live and quiet; would need a per-client before/after
+   comparison of visible widgets for all twelve clients before it lands.
 
-No existing public RPC covers these writes. `public.user_can_access_firm` is the wrong function — it admits Path B support grants. Each step therefore adds one small `SECURITY DEFINER` function in the shape of `public.reset_org_tier_widgets` (read `auth.uid()` internally, `RAISE EXCEPTION 'NO_ACCESS'`, do the write, write an audit row), and the TypeScript becomes a single `rpc()` call with no local check and no `supabaseAdmin`.
+`resolveAccess` (finding B) is a separate security fix, not part of this refactor, and
+should be decided before or alongside step 1 — it is a live hole, not drift.
 
-## 4. Effect on super admins, screen by screen
+## 6. What not to do
 
-- **Platform tier-catalogue screen** (`savePlatformTierWidgets`, `setTierEnabled`): today any advisor or organisation staff member can save it. After the change it is super admin only. If a non-super-admin Positive Traction account currently uses that screen, it will stop working — that is the one behaviour change to confirm before step 1 is applied. The screen should also hide the controls for non-super-admins rather than fail on save.
-- **Organisation card defaults** (`saveFirmDefaultWidgets`): a super admin who is *not* a member of the organisation loses the ability to save. Per §3 the fix is a `firm_members` row (Path A), not a bypass. Positive Traction is already a member of the organisations it set up, so the expected impact is nil, but this needs confirming against the member lists first.
-- **Client card lists** (`saveClientTierWidgets`, `saveClientWidgets`): unchanged for members and for super admins holding an active support grant (via `user_can_manage_client`); staff of unrelated organisations lose access they should never have had.
-- **Statement uploads**: `advisor`-role holders lose the ability to upload against clients they have no relationship with.
+- **Do not replace `userCanManageClient` with `user_can_manage_client`.** The database
+  function admits support grants into a write path; that would widen access.
+- **Do not remove the plan gates** in loan consolidation and consolidation groups. The
+  database access functions decide access, not entitlement; those are separate rules
+  (§8) and the plan gate has no access equivalent.
+- **Do not touch `assertTenantBelongsToClient`.** It proves ownership of a tenant by a
+  client, which no database function does.
+- **Do not change `notes-access.server.ts`** in this work — finding E is a separate
+  decision about whether report flagging is a write.
+- **Do not change `setClientXeroAllowance`** — its escalation is a recorded decision.
+- **Do not rewrite any database function.** They are the reference.
 
-## 5. Should `assertAdvisor` survive?
+## Constraints check
 
-No. Every remaining caller is either a write (replaced by a database gate) or `listOrgTierOverrides`, a platform-metadata read that belongs on the super-admin check instead. The plan deletes both copies at the end. `assertSuperAdmin` in `billing.functions.ts` and `admin.functions.ts` **does** survive: those are Path C platform operations where the role *is* the authorisation, and the spec says so.
-
-## 6. Write-access problems that do not fit the four categories
-
-1. **`deleteUpload` takes an `uploadId` and never resolves a client.** Even a correct client gate has to derive the client from the upload row inside the database function.
-2. **`listOrgTierOverrides`** is a read, but it discloses every organisation's name and override state to any advisor or organisation staff member. Path C metadata behind a role that is not platform-scoped.
-3. **`saveFirmDefaultWidgets` loops over clients issuing one `update` per client** with no transaction. A partial failure leaves the organisation half-applied. Moving it into a database function fixes this as a side effect.
-4. **`assertClientAccess` in `unreconciled.functions.ts`** returns early for anyone holding the `advisor` role — blanket read access to any client's statement lines.
-
-## Steps — each separately reversible
-
-Each step is one migration adding one function, plus the matching call-site swap. No step changes a table, column, RLS policy, trigger, entitlement or plan limit. Reverting a step means reverting one migration and one file edit.
-
-1. `public.set_platform_tier_widgets(_tier text, _excluded text[])` — gate `app_private.me_is_super_admin()`, audit row. Point `savePlatformTierWidgets` at it. *(Confirm the screen's audience first — see §4.)*
-2. `public.set_tier_enabled(_tier text, _enabled boolean)` — same gate. Point `setTierEnabled` at it.
-3. `public.set_client_tier_widgets(_client_id uuid, _tier text, _excluded text[] , _clear boolean)` — client manage gate, keeps the existing plan-tier validation inside the function. Point `saveClientTierWidgets` at it.
-4. `public.set_client_dashboard_widgets(_client_id uuid, _widgets text[])` — client manage gate. Point `saveClientWidgets` at it.
-5. `public.set_firm_default_widgets(_firm_id uuid, _widgets text[])` — `app_private.has_firm_access`, applies to the organisation's clients in one statement, audit row. Point `saveFirmDefaultWidgets` at it and delete the local membership check *and* its super-admin bypass.
-6. `public.record_statement_upload(...)` and `public.delete_statement_upload(_upload_id uuid)` — client manage gate, the delete resolving the client from the upload row. Point `uploadStatementLines` / `deleteUpload` at them.
-7. Move `listOrgTierOverrides` onto the super-admin check, then delete `assertAdvisor` from both files.
-
-After every step: restate which §0 invariants it touches and why they hold.
-
-## Questions for you
-
-1. **`user_can_manage_client` admits support grants.** It returns true when `is_super_admin(_user_id) AND platform_staff_can_access_firm(...)` — that is Path B, and §7 makes Path B read-only. For the client *write* gates in steps 3, 4 and 6, do you want `user_can_manage_client` as the spec names it, or a membership-only variant (`clients.owner_user_id = uid OR has_firm_access(uid, clients.firm_id)`)? I have not chosen.
-2. **Step 1's audience.** Is the platform tier-catalogue screen used by anyone who is not a `super_admin`? If yes, tightening it breaks their screen.
-3. **Step 5's audience.** Are there organisations where a Positive Traction super admin edits the default card list without being a member? If so, the fix is a membership row, but I want to know before the gate lands.
-4. **`assertClientAccess`'s blanket `advisor` read** (§6.4) — same class of problem, but a read. In scope for a later change, or leave it?
-5. **`clients.functions.ts` super-admin `supabaseAdmin` branches** — separate piece of work, or fold into this one?
+No RLS policy, trigger, grant, table or column change is proposed. `firm_access_path`
+is already granted to `service_role`; nothing needs a new grant. No step changes what
+any current account can do: all three staff are active members of all four
+organisations, and the only helper whose swap could widen access (A) is explicitly
+excluded.
