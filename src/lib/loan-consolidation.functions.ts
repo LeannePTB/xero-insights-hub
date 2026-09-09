@@ -551,6 +551,7 @@ async function resolveLoanGroup(
   supabase: any,
   userId: string,
   groupId: string,
+  opts?: { allowSupportRead?: boolean },
 ): Promise<ResolvedLoanGroup> {
   const supabaseAdmin = await getSupabaseAdmin();
   const { data: group } = await supabaseAdmin
@@ -560,10 +561,16 @@ async function resolveLoanGroup(
     .maybeSingle();
   if (!group) throw new Error("Consolidation group not found.");
 
-  const allowed =
-    Boolean(await firmMemberRole(supabase, userId, (group as any).firm_id)) ||
-    (await isSuperAdminUser(supabase, userId));
+  // Invariant 3: super_admin alone grants nothing. Active membership decides.
+  // Read-only surfaces may additionally be reached through a live Path B
+  // support grant, resolved by the database rule (user_can_access_firm).
+  let allowed = Boolean(await firmMemberRole(supabase, userId, (group as any).firm_id));
+  if (!allowed && opts?.allowSupportRead) {
+    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+    allowed = await platformStaffCanAccessFirm(userId, (group as any).firm_id);
+  }
   if (!allowed) throw new Error("You don't have access to this organisation.");
+
 
   // The organisation's plan must include loan consolidation (fails closed).
   const { assertFirmWidget } = await import("@/lib/widget-access.server");
