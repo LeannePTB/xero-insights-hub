@@ -152,6 +152,26 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/branding.server.ts",
   "src/lib/reports/report-pdf.server.ts",
   "src/lib/reports/monthly-report-context.server.ts",
+
+  // Batch 5 — the leftovers, and the end of the exemptions.
+  //
+  // "Sign in with Xero" moved to `src/lib/xero/signin.functions.ts` and the
+  // sign-in logger to `src/lib/login-log-write.functions.ts`, so those two
+  // system contexts no longer sit in front of authorised code. Both stay in
+  // the admin-client register as system contexts.
+  "src/lib/xero/connections.functions.ts",
+  "src/lib/xero/client-orgs.server.ts",
+  "src/lib/xero/onboard.server.ts",
+  "src/lib/xero/search.functions.ts",
+  "src/lib/access.functions.ts",
+  "src/lib/billing.functions.ts",
+  "src/lib/firm-subscription.functions.ts",
+  "src/lib/login-log.functions.ts",
+  "src/lib/plan-tiers.server.ts",
+  "src/lib/roles.functions.ts",
+  "src/lib/subscription-state.server.ts",
+  "src/lib/subscription-state.functions.ts",
+  "src/lib/support-access.functions.ts",
 ];
 
 
