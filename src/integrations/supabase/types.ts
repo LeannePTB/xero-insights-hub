@@ -1916,6 +1916,21 @@ export type Database = {
           },
         ]
       }
+      user_presence: {
+        Row: {
+          last_seen_at: string
+          user_id: string
+        }
+        Insert: {
+          last_seen_at?: string
+          user_id: string
+        }
+        Update: {
+          last_seen_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2515,6 +2530,17 @@ export type Database = {
         }
         Returns: undefined
       }
+      online_users: {
+        Args: { _window_minutes?: number }
+        Returns: {
+          display_name: string
+          email: string
+          has_mfa: boolean
+          is_super_admin: boolean
+          last_seen_at: string
+          user_id: string
+        }[]
+      }
       org_addon_widgets: { Args: never; Returns: string[] }
       prune_xero_snapshot_runs: {
         Args: { _abandoned_hours?: number; _retention_days?: number }
@@ -2541,6 +2567,7 @@ export type Database = {
         Args: { _firm_id: string; _tier: string }
         Returns: undefined
       }
+      security_posture: { Args: never; Returns: Json }
       set_all_client_tiers: {
         Args: {
           _firm_id: string
