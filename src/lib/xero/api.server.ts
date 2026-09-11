@@ -135,16 +135,16 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
       }
     }
     const lower = body.toLowerCase();
-    if (
-      lower.includes("invalid_grant") ||
-      lower.includes("invalid_client") ||
-      lower.includes("unauthorized_client") ||
-      res.status === 400 ||
-      res.status === 401
-    ) {
-      console.error(`[xero] refresh failed for tenant ${conn.tenant_id}: ${res.status} ${body}`);
-      // Xero issues tokens at the user level — a failed refresh invalidates
-      // every linked org. Surface that to the UI via the status column.
+    // Only a DEFINITIVE revocation may change a row's status. `invalid_grant`
+    // is Xero's answer when the refresh token has been revoked or replaced —
+    // typically because the business owner removed us in Xero. A bare 400/401,
+    // a 429 or a 5xx can be transient, so those leave every row exactly as it
+    // is (fail closed on the data, never on the status).
+    if (lower.includes("invalid_grant")) {
+      console.error(`[xero] refresh rejected for tenant ${conn.tenant_id}: ${res.status}`);
+      // Xero issues tokens at the user level — a revoked grant invalidates
+      // every organisation on that Xero login. Surface it via the status
+      // column. No client data, snapshot or report is touched.
       await (supabaseAdmin as any)
         .from("xero_connections")
         .update({
@@ -152,25 +152,29 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
           disconnected_at: new Date().toISOString(),
           // Distinguishes this cause from a tenant dropped out of the consent;
           // the authorisation reconcile must never revive these rows.
-          disconnected_reason: "refresh_token_rejected",
+          disconnected_reason: "grant_revoked",
         })
-        .eq("user_id", conn.user_id);
+        .eq("user_id", conn.user_id)
+        .neq("status", "disconnected");
 
       const { writeAudit } = await import("@/lib/audit.server");
       await writeAudit({
         actorUserId: conn.user_id,
-        action: "xero_reconnect_required",
+        firmId: conn.firm_id ?? null,
+        action: "xero_authorisation_lost",
         targetType: "xero_connection",
         targetId: conn.tenant_id,
-        meta: { status: res.status, reason: "refresh_token_rejected" },
+        meta: { status: res.status, reason: "grant_revoked", source: "token_refresh" },
       });
       throw new Error(
         "Xero reconnect required: this organisation needs to be reconnected before data can load.",
       );
     }
 
-    throw new Error(`Xero token refresh failed: ${res.status} ${body}`);
+    console.error(`[xero] refresh failed for tenant ${conn.tenant_id}: ${res.status}`);
+    throw new Error(`Xero token refresh failed: ${res.status}`);
   }
+
   const t = (await res.json()) as {
     access_token: string;
     refresh_token: string;
