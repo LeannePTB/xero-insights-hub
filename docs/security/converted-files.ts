@@ -78,6 +78,14 @@ export const REGISTERED_DB_AUTH_WRAPPERS = [
   "canAccessClient",
   "platformStaffCanAccessFirm",
   "userCanManageClient",
+  // Batch 3 — the single super-admin and advisor checks.
+  "assertSuperAdminDb",
+  "meIsSuperAdmin",
+  "assertAdvisor",
+] as const;
+
+  "platformStaffCanAccessFirm",
+  "userCanManageClient",
 ] as const;
 
 /** Batch 1 — the Xero read gate and everything that authorised through it. */
