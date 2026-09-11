@@ -2616,6 +2616,10 @@ export type Database = {
         Args: { _excluded: string[]; _tier: string }
         Returns: undefined
       }
+      set_profile_display_name_admin: {
+        Args: { _display_name: string; _target_user_id: string }
+        Returns: string
+      }
       set_tier_enabled: {
         Args: { _enabled: boolean; _tier: string }
         Returns: undefined
