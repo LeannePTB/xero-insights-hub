@@ -153,6 +153,11 @@ function FirmPage() {
               </Button>
             )}
             <Button variant="outline" size="sm" asChild>
+              <Link to="/firms/$firmId/people" params={{ firmId }}>
+                <Users className="mr-1 h-4 w-4" /> People
+              </Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
               <Link to="/firms/$firmId/settings" params={{ firmId }}>
                 <Settings className="mr-1 h-4 w-4" /> Organisation Settings
               </Link>

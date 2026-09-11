@@ -42,6 +42,7 @@ import { Route as ApiPublicXeroSnapshotRefreshRouteImport } from './routes/api/p
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
 import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
+import { Route as AuthenticatedFirmsFirmIdPeopleRouteImport } from './routes/_authenticated/firms.$firmId.people'
 import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
 import { Route as AuthenticatedFirmsFirmIdConsolidationsRouteImport } from './routes/_authenticated/firms.$firmId.consolidations'
 import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
@@ -236,6 +237,12 @@ const AuthenticatedFirmsFirmIdSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
   } as any)
+const AuthenticatedFirmsFirmIdPeopleRoute =
+  AuthenticatedFirmsFirmIdPeopleRouteImport.update({
+    id: '/people',
+    path: '/people',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
 const AuthenticatedFirmsFirmIdLoansRoute =
   AuthenticatedFirmsFirmIdLoansRouteImport.update({
     id: '/loans',
@@ -364,6 +371,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
+  '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -411,6 +419,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
+  '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -463,6 +472,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/unreconciled': typeof AuthenticatedClientsClientIdUnreconciledRoute
   '/_authenticated/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
+  '/_authenticated/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/_authenticated/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -515,6 +525,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/unreconciled'
     | '/firms/$firmId/consolidations'
     | '/firms/$firmId/loans'
+    | '/firms/$firmId/people'
     | '/firms/$firmId/settings'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
@@ -562,6 +573,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/settings'
     | '/clients/$clientId/unreconciled'
     | '/firms/$firmId/consolidations'
+    | '/firms/$firmId/people'
     | '/firms/$firmId/settings'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
@@ -613,6 +625,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/unreconciled'
     | '/_authenticated/firms/$firmId/consolidations'
     | '/_authenticated/firms/$firmId/loans'
+    | '/_authenticated/firms/$firmId/people'
     | '/_authenticated/firms/$firmId/settings'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
@@ -888,6 +901,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdRoute
     }
+    '/_authenticated/firms/$firmId/people': {
+      id: '/_authenticated/firms/$firmId/people'
+      path: '/people'
+      fullPath: '/firms/$firmId/people'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdPeopleRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
     '/_authenticated/firms/$firmId/loans': {
       id: '/_authenticated/firms/$firmId/loans'
       path: '/loans'
@@ -1044,6 +1064,7 @@ const AuthenticatedFirmsFirmIdLoansRouteWithChildren =
 interface AuthenticatedFirmsFirmIdRouteChildren {
   AuthenticatedFirmsFirmIdConsolidationsRoute: typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   AuthenticatedFirmsFirmIdLoansRoute: typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
+  AuthenticatedFirmsFirmIdPeopleRoute: typeof AuthenticatedFirmsFirmIdPeopleRoute
   AuthenticatedFirmsFirmIdSettingsRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
   AuthenticatedFirmsFirmIdIndexRoute: typeof AuthenticatedFirmsFirmIdIndexRoute
   AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute: typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
@@ -1055,6 +1076,7 @@ const AuthenticatedFirmsFirmIdRouteChildren: AuthenticatedFirmsFirmIdRouteChildr
       AuthenticatedFirmsFirmIdConsolidationsRoute,
     AuthenticatedFirmsFirmIdLoansRoute:
       AuthenticatedFirmsFirmIdLoansRouteWithChildren,
+    AuthenticatedFirmsFirmIdPeopleRoute: AuthenticatedFirmsFirmIdPeopleRoute,
     AuthenticatedFirmsFirmIdSettingsRoute:
       AuthenticatedFirmsFirmIdSettingsRoute,
     AuthenticatedFirmsFirmIdIndexRoute: AuthenticatedFirmsFirmIdIndexRoute,
