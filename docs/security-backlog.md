@@ -187,3 +187,26 @@ This list records what has been looked at, not what exists. Absence from it is n
 ## Xero scope availability (recorded 8 Sep 2026)
 
 **`accounting.journals.read` is NOT available to this app.** It does not appear on the app's entitled scope list; Xero rejects the authorise request with `invalid_scope` when it is included. Do not request it again. Any period-derived figure (e.g. PAYG withheld from journal lines) must come from payroll scopes (`payroll.payruns.read`, `payroll.payslip.read`, `payroll.employees.read`, `payroll.settings.read` — added 8 Sep 2026) or from transaction data, never from `Journals`. This cost two failed attempts on 8 Sep 2026 (one live outage of the connect flow) before being established.
+
+## Phase 5 steps 1–4 — Xero connection lifecycle (done 11 Sep 2026)
+
+- Disconnect revokes at Xero first and fails closed; the row is marked
+  `disconnected` instead of deleted, so `client_xero_orgs` (ON DELETE CASCADE)
+  keeps the client-to-Xero-file link and a later reconnect restores the same
+  file to the same client. Success and failure both write an audit row.
+- Who may disconnect is decided in the database by
+  `public.user_can_disconnect_xero_connection` — membership or client-write
+  only. A support grant, a client viewer, another organisation's member and a
+  bare super admin are all refused.
+- A disconnected Xero file no longer counts toward the client's Xero file
+  limit: `app_private.client_xero_files_used` is shared by both client
+  allowance triggers and by `getClientOrgAllowance` via
+  `public.client_xero_files_used`.
+- Reconnect updates only the reconnecting person's row; a person reconnecting a
+  file a colleague authorised gets their own row rather than overwriting the
+  colleague's tokens.
+- Token refresh: only a definitive `invalid_grant` marks rows disconnected
+  (`grant_revoked`). Transient failures change no status, and a successful
+  refresh never revives a row disconnected on purpose.
+- STILL OPEN: Phase 5 step 5 (orphan prevention at the creation path and the
+  `firm_id NOT NULL` constraint) is held for separate owner review.
