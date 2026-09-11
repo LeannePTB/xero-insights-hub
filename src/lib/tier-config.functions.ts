@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { listVerifiedAuthUsers } from "@/lib/auth-users.server";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { ALL_TIERS, ALL_WIDGETS, DEFAULT_TIER_WIDGETS, defaultWidgetsFor, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
@@ -488,12 +489,8 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
         .maybeSingle();
       const ownerId = (firm as any)?.owner_user_id as string | undefined;
       if (ownerId) {
-        const { data: profile } = await supabaseAdmin
-          .from("profiles")
-          .select("email")
-          .eq("id", ownerId)
-          .maybeSingle();
-        contactEmail = (profile as any)?.email ?? null;
+        const authUsers = await listVerifiedAuthUsers(supabaseAdmin as any);
+        contactEmail = authUsers.find((user) => user.id === ownerId)?.email ?? null;
       }
     }
 

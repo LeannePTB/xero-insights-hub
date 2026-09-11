@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { siteUrl } from "@/lib/site-origin";
+import { listVerifiedAuthUsers } from "@/lib/auth-users.server";
 
 async function assertSuperAdmin(supabase: any, _userId: string) {
   const { data, error } = await supabase
@@ -120,9 +121,11 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
 
     const userIds = (members ?? []).map((m) => m.user_id);
     const { data: profiles } = userIds.length
-      ? await supabaseAdmin.from("profiles").select("id, email, display_name").in("id", userIds)
+      ? await supabaseAdmin.from("profiles").select("id, display_name").in("id", userIds)
       : { data: [] as any[] };
     const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
+    const authUsers = await listVerifiedAuthUsers(supabaseAdmin as any);
+    const emailById = new Map(authUsers.map((user) => [user.id, user.email]));
 
     // Pull last_sign_in_at for each member
     const membersWithAuth = await Promise.all(
@@ -133,7 +136,7 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
           user_id: m.user_id,
           role: m.role,
           created_at: m.created_at,
-          email: profileMap.get(m.user_id)?.email ?? u?.user?.email ?? null,
+          email: emailById.get(m.user_id) ?? u?.user?.email ?? null,
           display_name: profileMap.get(m.user_id)?.display_name ?? null,
           last_sign_in_at: u?.user?.last_sign_in_at ?? null,
           email_confirmed_at: u?.user?.email_confirmed_at ?? null,

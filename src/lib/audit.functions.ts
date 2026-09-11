@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { listVerifiedAuthUsers } from "@/lib/auth-users.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -216,11 +217,11 @@ export const exportAuditLogCsv = createServerFn({ method: "POST" })
     );
     let emails = new Map<string, string | null>();
     if (actorIds.length) {
-      const { data: profiles } = await (supabaseAdmin as any)
-        .from("profiles")
-        .select("id, email")
-        .in("id", actorIds);
-      emails = new Map((profiles ?? []).map((p: any) => [p.id, p.email]));
+      const authUsers = await listVerifiedAuthUsers(supabaseAdmin as any);
+      const actorSet = new Set(actorIds);
+      emails = new Map(
+        authUsers.filter((user) => actorSet.has(user.id)).map((user) => [user.id, user.email]),
+      );
     }
 
     const header = [
