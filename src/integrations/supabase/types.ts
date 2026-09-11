@@ -2579,6 +2579,17 @@ export type Database = {
         Returns: boolean
       }
       firm_has_consolidation: { Args: { _firm_id: string }; Returns: boolean }
+      firm_member_invites: {
+        Args: { _firm_id: string }
+        Returns: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          role: Database["public"]["Enums"]["firm_member_role"]
+        }[]
+      }
       firm_plan_limits: {
         Args: { _firm_id: string }
         Returns: {
@@ -2715,6 +2726,7 @@ export type Database = {
         Returns: undefined
       }
       revoke_client_access: { Args: { _id: string }; Returns: undefined }
+      revoke_firm_member_invite: { Args: { _id: string }; Returns: undefined }
       security_posture: { Args: never; Returns: Json }
       set_all_client_tiers: {
         Args: {

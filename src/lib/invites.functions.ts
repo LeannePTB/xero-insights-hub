@@ -293,7 +293,13 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertSuperAdminDb(context.supabase);
     const email = validateEmail(data.email);
-    if (data.role !== "owner" && data.role !== "staff") throw new Error("Invalid role.");
+    if (data.role !== "staff") {
+      // Spec §4: ownership of an existing organisation only ever moves through
+      // public.transfer_organisation_ownership, never by accepting an invite.
+      throw new Error(
+        "An invitation to an existing organisation can only be for staff. To change who owns it, use Hand over ownership on the organisation settings page.",
+      );
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const token = randomBytes(32).toString("hex");
@@ -437,14 +443,50 @@ export const acceptInvite = createServerFn({ method: "POST" })
     if (mErr && !/duplicate/i.test(mErr.message)) throw new Error(mErr.message);
 
 
-    // If owner: ensure firms.owner_user_id is set; allow business name rename.
+    // An owner invite only ever belongs to the organisation-creation flow, where
+    // the organisation has no owner yet. Accepting an invite must never replace a
+    // sitting owner: that only happens through
+    // public.transfer_organisation_ownership (Spec §4).
     if (invite.role === "owner") {
-      const patch: Record<string, any> = { owner_user_id: userId };
+      const { data: firmRow } = await (supabaseAdmin as any)
+        .from("firms")
+        .select("owner_user_id")
+        .eq("id", invite.firm_id)
+        .maybeSingle();
+      const currentOwner = firmRow?.owner_user_id ?? null;
+
+      const patch: Record<string, any> = {};
       const businessName = (data.businessName ?? "").trim();
       if (businessName.length >= 2 && businessName.length <= 120) {
         patch.name = businessName;
       }
-      await (supabaseAdmin as any).from("firms").update(patch).eq("id", invite.firm_id);
+
+      if (currentOwner === null) {
+        patch.owner_user_id = userId;
+      } else if (currentOwner !== userId) {
+        await logAudit("firm_invite_owner_set_refused", "firm", invite.firm_id, userId, {
+          firm_id: invite.firm_id,
+          email: invite.email,
+          current_owner_user_id: currentOwner,
+        });
+      }
+
+      if (Object.keys(patch).length > 0) {
+        const { error: upErr } = await (supabaseAdmin as any)
+          .from("firms")
+          .update(patch)
+          .eq("id", invite.firm_id);
+        if (upErr) throw new Error(upErr.message);
+      }
+
+      if (patch.owner_user_id) {
+        await logAudit("firm_owner_set_on_invite_accept", "firm", invite.firm_id, userId, {
+          firm_id: invite.firm_id,
+          email: invite.email,
+          owner_user_id: userId,
+          previous_owner_user_id: null,
+        });
+      }
     }
 
     // Mark invite accepted.
@@ -456,4 +498,55 @@ export const acceptInvite = createServerFn({ method: "POST" })
     });
 
     return { ok: true, email: invite.email };
+  });
+
+export type PendingFirmInvite = {
+  id: string;
+  email: string;
+  role: "owner" | "staff";
+  expiresAt: string;
+  createdAt: string;
+};
+
+/**
+ * Pending member invitations for one organisation. Super admin only — the rule
+ * and the audience check live in public.firm_member_invites, not here.
+ */
+export const listFirmMemberInvites = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { firmId: string }) => i)
+  .handler(async ({ data, context }): Promise<{ invites: PendingFirmInvite[] }> => {
+    const { data: rows, error } = await (context.supabase as any).rpc("firm_member_invites", {
+      _firm_id: data.firmId,
+    });
+    if (error) {
+      if (/NOT_PERMITTED/i.test(error.message)) return { invites: [] };
+      throw new Error(error.message);
+    }
+    return {
+      invites: ((rows ?? []) as any[]).map((r) => ({
+        id: r.id,
+        email: r.email,
+        role: r.role,
+        expiresAt: r.expires_at,
+        createdAt: r.created_at,
+      })),
+    };
+  });
+
+/** Cancel a pending member invitation. Super admin only, audited in the database. */
+export const revokeFirmMemberInvite = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { id: string }) => i)
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("revoke_firm_member_invite", {
+      _id: data.id,
+    });
+    if (error) {
+      if (/NOT_PERMITTED/i.test(error.message)) throw new Error("You cannot cancel this invitation.");
+      if (/INVITE_NOT_FOUND/i.test(error.message)) throw new Error("That invitation no longer exists.");
+      if (/ALREADY_ACCEPTED/i.test(error.message)) throw new Error("That invitation has already been used.");
+      throw new Error(error.message);
+    }
+    return { ok: true };
   });

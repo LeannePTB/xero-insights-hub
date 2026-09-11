@@ -764,6 +764,36 @@ export const MATRIX: MatrixRow[] = [
     layers: ["live"],
     note: "branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant.",
   },
+  // ------------------------------------------- invitations and ownership (People)
+  {
+    role: "super_admin_no_membership",
+    resource: "server fn: invite an owner to an existing organisation",
+    operation: "execute",
+    expect: "deny",
+    rule: "Spec §4 — ownership only moves through transfer_organisation_ownership",
+    layers: ["live"],
+    note:
+      "adminInviteFirmMember accepts role 'staff' only; an owner invitation to an existing organisation is refused with a pointer to ownership transfer.",
+  },
+  {
+    role: "anonymous",
+    resource: "server fn: accept an owner invite while the organisation already has an owner",
+    operation: "execute",
+    expect: "deny",
+    rule: "Spec §4 — accepting an invite never replaces a sitting owner",
+    layers: ["live"],
+    note:
+      "acceptInvite sets firms.owner_user_id only while it is null (the organisation-creation flow) and writes an audit row when it does; otherwise the person joins as a member and ownership is untouched.",
+  },
+  {
+    role: "org_owner",
+    resource: "server fn: list pending member invitations",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK section 2 path C — invitations stay platform metadata; inviting is super admin only",
+    layers: ["live"],
+    note: "public.firm_member_invites requires aal2 + super admin; the People section hides the forms for everyone else.",
+  },
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);

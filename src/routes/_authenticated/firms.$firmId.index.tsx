@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Layers, Loader2, Settings } from "lucide-react";
+import { ArrowLeft, Layers, Loader2, Settings, Users } from "lucide-react";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
@@ -152,6 +152,11 @@ function FirmPage() {
                 </Link>
               </Button>
             )}
+            <Button variant="outline" size="sm" asChild>
+              <Link to="/firms/$firmId/people" params={{ firmId }}>
+                <Users className="mr-1 h-4 w-4" /> People
+              </Link>
+            </Button>
             <Button variant="outline" size="sm" asChild>
               <Link to="/firms/$firmId/settings" params={{ firmId }}>
                 <Settings className="mr-1 h-4 w-4" /> Organisation Settings
