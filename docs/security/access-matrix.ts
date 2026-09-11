@@ -351,10 +351,18 @@ export const MATRIX: MatrixRow[] = [
     ["support_grant_active"],
     ["client_subscriptions"],
     WRITES,
-    "allow",
-    "Spec §8 — admitted by the super_admin billing policy, not by the grant",
+    "deny",
+    "PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row)",
     ["pglite", "live"],
+    {
+      knownFailure: {
+        backlog: 28,
+        note:
+          "Admitted by 'super admins manage client subscriptions' (every grantee is a super admin) and by 'staff manage client subscriptions' (platform_staff_can_access_firm). No audit row is written. Fixed in Phase 3.",
+      },
+    },
   ),
+
 
   // --------------------------------------------------------- client viewer
   ...rows(["client_viewer"], ["clients", "client_notes"], ["read"], "allow", "Spec §3 client viewer", [
