@@ -131,16 +131,18 @@ describe("2. every supabaseAdmin use is registered and verified", () => {
 
 describe("3. identity and recipient decisions never use profiles.email", () => {
   /**
-   * KNOWN FAILURE — backlog 22. These six sites read profiles.email purely as a
+   * KNOWN FAILURE — backlog 22. These sites read profiles.email purely as a
    * display fallback when display_name is null. The verified email must come
    * from auth.users instead. Recorded, reported every run, never a pass.
    * A profiles.email read in any OTHER file fails the build.
+   *
+   * Phase 4 batch 4 closed the three report sites
+   * (monthly-report-context.server.ts, monthly-report.server.ts,
+   * report-verdict.server.ts): a report byline is now the display name only,
+   * so no sign-in email can reach a client-facing report.
    */
   const KNOWN_PROFILES_EMAIL_READS = [
     "src/lib/clients.functions.ts",
-    "src/lib/reports/monthly-report-context.server.ts",
-    "src/lib/reports/monthly-report.server.ts",
-    "src/lib/reports/report-verdict.server.ts",
     "src/lib/support-access.functions.ts",
     "src/lib/xero/orphan-connections.functions.ts",
   ];

@@ -791,13 +791,15 @@ export async function computeMonthlyReport(opts: {
     const ids = Array.from(new Set((rows ?? []).map((r: any) => r.author_id).filter(Boolean)));
     let names = new Map<string, string>();
     if (ids.length) {
+      // Display name only — never a sign-in email. This label is printed in a
+      // report that goes to the client (Spec §10 / backlog 22).
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: profiles } = await supabaseAdmin
         .from("profiles")
-        .select("id, display_name, email")
+        .select("id, display_name")
         .in("id", ids as string[]);
       names = new Map(
-        (profiles ?? []).map((p: any) => [p.id, p.display_name ?? p.email ?? "Unknown"]),
+        (profiles ?? []).map((p: any) => [p.id, p.display_name ?? "Positive Traction"]),
       );
     }
     notes = (rows ?? []).map((r: any) => ({

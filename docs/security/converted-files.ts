@@ -138,6 +138,19 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/xero/orphan-connections.functions.ts",
   "src/lib/xero-assessment.functions.ts",
   "src/lib/audit.functions.ts",
+
+  // Batch 4 — reports, email and branding.
+  //
+  // Not listed, and left in the admin-client register instead, because their
+  // first service-role use is a system context the file-ordering guard cannot
+  // express: `src/lib/reports/report-delivery.server.ts` (recipient token flow
+  // for people with no account), `src/lib/email/send.server.ts` (queue),
+  // `src/lib/reports/monthly-report.server.ts` and
+  // `src/lib/reports/report-verdict.server.ts` (called only from the report
+  // builder, after resolveReportContext has authorised the caller).
+  "src/lib/branding.server.ts",
+  "src/lib/reports/report-pdf.server.ts",
+  "src/lib/reports/monthly-report-context.server.ts",
 ];
 
 

@@ -90,12 +90,15 @@ export async function listReportsForClient(supabase: any, clientId: string) {
   const ids = Array.from(new Set((data ?? []).map((r: any) => r.generated_by).filter(Boolean)));
   let names = new Map<string, string>();
   if (ids.length) {
+    // Display name only. An email address never stands in for a name here
+    // (Spec §10 / backlog 22): a person's sign-in email is not display data,
+    // and this list is shown next to reports we send on to clients.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
-      .select("id, display_name, email")
+      .select("id, display_name")
       .in("id", ids as string[]);
-    names = new Map((profiles ?? []).map((p: any) => [p.id, p.display_name ?? p.email ?? "Unknown"]));
+    names = new Map((profiles ?? []).map((p: any) => [p.id, p.display_name ?? "Unknown"]));
   }
   return (data ?? []).map((r: any) => ({
     ...r,
