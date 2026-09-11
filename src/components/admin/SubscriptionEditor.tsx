@@ -105,8 +105,14 @@ export function SubscriptionEditor({
   const selectedLevel = levels.find((l) => l.key === tier);
 
   const mut = useMutation({
-    mutationFn: () =>
-      updateFn({
+    mutationFn: () => {
+      // Always free is only sent when it actually changed, and never without a
+      // reason: the change is audited and the reason is stored with it.
+      const alwaysFreeChanged = alwaysFree !== !!isAlwaysFree;
+      if (alwaysFreeChanged && alwaysFreeReason.trim().length < 3) {
+        throw new Error("Give a reason (at least 3 characters) for changing always free.");
+      }
+      return updateFn({
         data: {
           firmId,
           tier,
@@ -114,10 +120,13 @@ export function SubscriptionEditor({
           trial_ends_at: trialEnds ? new Date(trialEnds).toISOString() : null,
           current_period_end: periodEnd ? new Date(periodEnd).toISOString() : null,
           cancel_at_period_end: cancelEnd,
-          is_always_free: alwaysFree,
+          ...(alwaysFreeChanged
+            ? { is_always_free: alwaysFree, always_free_reason: alwaysFreeReason.trim() }
+            : {}),
           client_limit_override: limitOverride.trim() === "" ? null : Math.max(0, Number(limitOverride)),
         },
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success("Subscription updated");
       onChanged();
