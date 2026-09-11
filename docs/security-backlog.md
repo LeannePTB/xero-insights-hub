@@ -44,6 +44,27 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 19. **Bulk dashboard tiers — closed 7 Sep 2026.** `public.set_all_client_tiers` now gates on `app_private.is_super_admin(auth.uid())` instead of `app_private.has_firm_access`; every other line (plan `allowed_tiers` check, rows written, audit row) is unchanged. All 12 active `firm_members` rows belong to users who hold `super_admin`, so no current behaviour changed. **Related, unchanged and reported to the owner:** `setClientDashboardTier` (`src/lib/billing.functions.ts`) writes `client_subscriptions.dashboard_tier` through the caller's session, gated by the `staff manage client subscriptions` RLS policy (`platform_staff_can_access_firm`) or `super admins manage client subscriptions`. That path is *not* super-admin only and also admits a live support grant; a decision is pending.
 20. **Awaiting owner decision (raised 11 Sep 2026, with the Phase 1 MFA change).** (a) Should the two aal1 server functions `logAuthEvent` and `logLogin` be timeboxed or additionally rate limited? A Xero-minted aal1 session can call both; they only write audit/login rows and return `{ok:true}`. (b) One of the three super admins has no verified TOTP factor; after this change no aal1 session reaches any data, so that account enrols at next sign-in via `/auth/mfa-enroll` (Supabase Auth only, unaffected by the new guards). Confirm this is understood before it next signs in. (c) The tier/plan configuration tables were left outside the aal2 policy pending the separate tier-catalogue decision.
 
+## Phase 1b — Security posture card (done 11 Sep 2026)
+
+A compact **Security** card at the bottom of the admin sidebar shows live posture: shield icon,
+status word, pass/review/action counts, online-user chips (green = verified second factor,
+amber = none), a re-run button, and a link to `/admin/security`. Collapsed, it is the shield
+alone with a tooltip carrying the same summary.
+
+Every status is computed at request time by `public.security_posture()` — SECURITY DEFINER,
+`SET search_path = ''`, whose first two statements are `app_private.assert_aal2()` and
+`app_private.me_is_super_admin()`. Nothing is hard-coded; each of the 14 checks returns its own
+evidence string. `/admin/security` renders the same function's output, so the two surfaces cannot
+drift. Presence lives in `public.user_presence` (user id + last seen only); RLS lets a person read
+and write their own row only, plus the restrictive aal2 guard, and the card reads other users
+through `public.online_users()` under the same super-admin + aal2 guard. No Realtime publication
+was added.
+
+Two checks currently report **Action** honestly: `support_write` (backlog item 18 —
+`app_private.user_can_manage_client` still admits a support grant) and `user_mfa`/`admin_mfa`
+depending on enrolment. Verified: with an aal1 session both new functions return
+`42501 MFA_REQUIRED`; anonymously `permission denied for function security_posture`.
+
 ## Deliberate exceptions and pending decisions (owner-decided 9 Sep 2026)
 
 - **`setClientXeroAllowance` super-admin escalation — DELIBERATE EXCEPTION to invariant 3, do not "fix".** In `src/lib/clients.functions.ts`, a super admin updates `clients.max_xero_orgs` through `supabaseAdmin` after the membership path fails. This is by decision, not oversight: the only write policy on `clients` is `app_private.is_firm_owner`, and two of the three Positive Traction staff hold `role='staff'` (not owner) in three of the four organisations — removing the escalation would lock them out of setting a client's Xero file allowance, which they need. **Known consequence:** any super admin can change the allowance on any organisation, including one they are not a member of. Acceptable while every super admin is Positive Traction staff; **revisit before any outside firm is onboarded.**
