@@ -43,8 +43,9 @@ type ResolvedGroup = {
 };
 
 async function resolveGroup(supabase: any, userId: string, groupId: string): Promise<ResolvedGroup> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: group } = await supabaseAdmin
+  // Read the group through the caller's own session first (RLS applies), so
+  // nothing privileged happens before the organisation rule has been asked.
+  const { data: group } = await supabase
     .from("consolidation_groups")
     .select("id, firm_id, name")
     .eq("id", groupId)
@@ -67,6 +68,7 @@ async function resolveGroup(supabase: any, userId: string, groupId: string): Pro
   await assertFirmWidget(supabase, group.firm_id, "loan_consolidation");
 
 
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: members } = await supabaseAdmin
     .from("consolidation_group_members")
     .select("client_id")
