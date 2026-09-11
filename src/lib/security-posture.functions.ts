@@ -30,6 +30,81 @@ export type OnlineUser = {
 };
 
 /**
+ * Checks the database cannot see, merged into the SAME list so the sidebar and
+ * /admin/security always show identical results. Server-side only; nothing here
+ * returns a secret value, only whether it is present and usable.
+ */
+async function serverConfigChecks(): Promise<PostureCheck[]> {
+  const out: PostureCheck[] = [];
+
+  // Token encryption key — proven by a real round trip, never echoed.
+  try {
+    const { encryptToken, decryptToken } = await import("@/lib/crypto.server");
+    const probe = "posture-probe";
+    const ok = decryptToken(encryptToken(probe)) === probe;
+    out.push({
+      id: "token_enc_key",
+      title: "Xero token encryption key is usable",
+      status: ok ? "ok" : "action",
+      detail: ok
+        ? "The server holds a working key for encrypting Xero tokens at rest."
+        : "The encryption key is present but did not round-trip.",
+      evidence: "AES-256-GCM encrypt/decrypt round trip performed on the server",
+    });
+  } catch {
+    out.push({
+      id: "token_enc_key",
+      title: "Xero token encryption key is usable",
+      status: "action",
+      detail: "No usable token encryption key is configured on the server.",
+      evidence: "TOKEN_ENC_KEY missing or the wrong length (round trip failed)",
+    });
+  }
+
+  // TLS / HSTS — verified against the canonical public origin.
+  const { siteOrigin } = await import("@/lib/site-origin");
+  const origin = siteOrigin();
+  try {
+    const res = await fetch(origin, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(5000),
+    });
+    const hsts = res.headers.get("strict-transport-security");
+    const https = origin.startsWith("https://");
+    out.push({
+      id: "tls_hsts",
+      title: "HTTPS with HSTS",
+      status: https && hsts ? "ok" : "warn",
+      detail:
+        https && hsts
+          ? "The public site is served over HTTPS and sends a strict transport header."
+          : `Not verified — confirm manually at ${origin} (response headers must include strict-transport-security).`,
+      evidence: `HEAD ${origin} → ${res.status}; strict-transport-security: ${hsts ?? "absent"}`,
+    });
+  } catch {
+    out.push({
+      id: "tls_hsts",
+      title: "HTTPS with HSTS",
+      status: "warn",
+      detail: `Not verified — confirm manually at ${origin} (response headers must include strict-transport-security).`,
+      evidence: "The server could not reach the public origin to read its headers",
+    });
+  }
+
+  // Leaked-password protection is an auth provider setting the app cannot read.
+  out.push({
+    id: "hibp",
+    title: "Leaked password protection",
+    status: "warn",
+    detail:
+      "Not verified — confirm manually in the backend authentication settings, under password protection (Have I Been Pwned).",
+    evidence: "No server-readable source for this setting",
+  });
+
+  return out;
+}
+
+/**
  * Single source of truth for the posture checks: `public.security_posture()`
  * is SECURITY DEFINER and asserts aal2 + `app_private.me_is_super_admin()`
  * as its first statements, so authorisation lives in the database (rule 6).
@@ -40,7 +115,10 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<PostureResult> => {
     const { data, error } = await (context.supabase as any).rpc("security_posture");
     if (error) throw new Error("Security posture unavailable");
-    const checks: PostureCheck[] = (data?.checks ?? []) as PostureCheck[];
+    const checks: PostureCheck[] = [
+      ...((data?.checks ?? []) as PostureCheck[]),
+      ...(await serverConfigChecks()),
+    ];
     return {
       generatedAt: (data?.generated_at as string) ?? new Date().toISOString(),
       checks,
