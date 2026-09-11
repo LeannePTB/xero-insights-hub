@@ -11,6 +11,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { BrandMark } from "@/components/BrandMark";
+import { SecurityStatusCard } from "@/components/admin/SecurityStatusCard";
 import {
   Building2,
   Layers,
