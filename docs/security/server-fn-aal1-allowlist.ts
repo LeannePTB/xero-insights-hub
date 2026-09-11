@@ -32,7 +32,7 @@ export const AAL1_ALLOWLIST: Aal1Exception[] = [
       "requireSupabaseAuth (verified token). Event name checked against a fixed allow-list; actor and email are taken from context.userId/context.claims, never from caller input. Rate limited per user. Writes only audit_log.",
   },
   {
-    file: "src/lib/login-log.functions.ts",
+    file: "src/lib/login-log-write.functions.ts",
     fn: "logLogin",
     kind: "aal1-logger",
     reason: "Fires at sign-in, before MFA, so it can never require aal2.",
@@ -40,15 +40,8 @@ export const AAL1_ALLOWLIST: Aal1Exception[] = [
       "requireSupabaseAuth (verified token). user_id/email from the token; ip/user_agent from request headers; no caller-supplied field is trusted. Rate limited per user. Writes only login_events.",
   },
 
-  // --------------------------------------------- unauthenticated functions (7)
-  {
-    file: "src/lib/api/example.functions.ts",
-    fn: "getGreeting",
-    kind: "unauthenticated",
-    reason: "Template sample endpoint, echoes a greeting. Not a product feature.",
-    containment:
-      "Touches no database and no secret. BACKLOG: delete it — tracked in docs/security-backlog.md.",
-  },
+  // --------------------------------------------- unauthenticated functions (6)
+  // The template sample endpoint getGreeting was deleted (backlog 23).
   {
     file: "src/lib/audit.functions.ts",
     fn: "logFailedSignIn",
@@ -89,7 +82,7 @@ export const AAL1_ALLOWLIST: Aal1Exception[] = [
       "Token plus recipient email must both match; revocation and expiry checked; opens are recorded. Rate limited by IP and token.",
   },
   {
-    file: "src/lib/xero/connections.functions.ts",
+    file: "src/lib/xero/signin.functions.ts",
     fn: "startXeroSignIn",
     kind: "unauthenticated",
     reason: "Called from /auth before any session exists.",
