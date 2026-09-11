@@ -21,51 +21,42 @@ export const listOrganisationMembers = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<OrganisationMembersView> => {
-    const { data: mine, error } = await context.supabase
-      .from("firm_members")
-      .select("role, status")
-      .eq("firm_id", data.firmId)
-      .eq("user_id", context.userId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!mine || mine.status !== "active") {
-      return { members: [], currentOwnerUserId: null, isOwner: false, meUserId: context.userId };
+    // Membership, and the emails shown, come from the database
+    // (`public.organisation_members` re-checks aal2 + active membership and
+    // reads the verified auth.users email, not a self-chosen profile field).
+    const { data: rows, error } = await (context.supabase as any).rpc("organisation_members", {
+      _firm_id: data.firmId,
+    });
+    if (error) {
+      if (/not a member/i.test(error.message)) {
+        return { members: [], currentOwnerUserId: null, isOwner: false, meUserId: context.userId };
+      }
+      throw new Error(error.message);
     }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const admin: any = supabaseAdmin;
-    const [{ data: rows }, { data: firm }] = await Promise.all([
-      admin
-        .from("firm_members")
-        .select("user_id, role, status")
-        .eq("firm_id", data.firmId)
-        .eq("status", "active"),
-      admin.from("firms").select("owner_user_id").eq("id", data.firmId).maybeSingle(),
-    ]);
-
-    const ids = ((rows ?? []) as any[]).map((r) => r.user_id);
-    const { data: profiles } = ids.length
-      ? await admin.from("profiles").select("id, email, display_name").in("id", ids)
-      : { data: [] as any[] };
-    const byId = new Map<string, any>();
-    for (const p of (profiles ?? []) as any[]) byId.set(p.id, p);
 
     const members: OrganisationMember[] = ((rows ?? []) as any[]).map((r) => ({
       userId: r.user_id,
-      email: byId.get(r.user_id)?.email ?? null,
-      displayName: byId.get(r.user_id)?.display_name ?? null,
+      email: r.email ?? null,
+      displayName: r.display_name ?? null,
       role: r.role,
       status: r.status,
     }));
     members.sort((a, b) => (a.role === b.role ? 0 : a.role === "owner" ? -1 : 1));
 
+    const { data: firm } = await context.supabase
+      .from("firms")
+      .select("owner_user_id")
+      .eq("id", data.firmId)
+      .maybeSingle();
+
     return {
       members,
       currentOwnerUserId: (firm as any)?.owner_user_id ?? null,
-      isOwner: mine.role === "owner",
+      isOwner: members.some((m) => m.userId === context.userId && m.role === "owner"),
       meUserId: context.userId,
     };
   });
+
 
 function explainTransferError(message: string): string {
   if (/NOT_ORG_OWNER/i.test(message)) {
