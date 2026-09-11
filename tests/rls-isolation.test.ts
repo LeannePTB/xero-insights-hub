@@ -119,7 +119,10 @@ beforeAll(async () => {
       ('sa', '${USER_1}', '${ORG_A}', now() + interval '1 hour', 'connect'),
       ('sb', '${USER_B}', '${ORG_B}', now() + interval '1 hour', 'connect');
   `);
-});
+// The fixture keeps growing; loading it alongside the other suites can take
+// longer than vitest's 10s default hook timeout.
+}, 60_000);
+
 
 describe("cross-organisation isolation", () => {
   for (const [table, orgBRows] of Object.entries(ORG_B_ROW_PREDICATE)) {
