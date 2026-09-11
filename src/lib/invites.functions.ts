@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { findVerifiedAuthUserByEmail } from "@/lib/auth-users.server";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 import { randomBytes, createHash } from "crypto";
 import { siteUrl } from "@/lib/site-origin";
 
@@ -8,16 +9,6 @@ function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-async function assertSuperAdmin(supabase: any, _userId: string) {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", _userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden");
-}
 
 async function logAudit(action: string, targetType: string, targetId: string, actorUserId: string | null, meta: Record<string, any>) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

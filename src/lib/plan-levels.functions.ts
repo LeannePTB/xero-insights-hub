@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 
 export type PlanScope = "firm" | "dashboard";
 
@@ -37,16 +38,6 @@ export const listPlanLevels = createServerFn({ method: "GET" })
     return { levels: (data ?? []) as PlanLevel[] };
   });
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Super admins only.");
-}
 
 export const savePlanLevel = createServerFn({ method: "POST" })
   .middleware([requireAal2])

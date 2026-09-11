@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { listVerifiedAuthUsers } from "@/lib/auth-users.server";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { writeAudit } from "@/lib/audit.server";
 
@@ -88,16 +89,6 @@ export const logFailedSignIn = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden");
-}
 
 export type AuditAnomaly = {
   id: string;
@@ -111,7 +102,7 @@ export type AuditAnomaly = {
 export const getAuditAnomalies = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
@@ -200,7 +191,7 @@ export const exportAuditLogCsv = createServerFn({ method: "POST" })
     days: Math.min(Math.max(Math.trunc(i?.days ?? 90), 1), 1095),
   }))
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
 
@@ -272,7 +263,7 @@ export const exportAuditLogCsv = createServerFn({ method: "POST" })
 export const getRetentionStatus = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: settings } = await (supabaseAdmin as any)

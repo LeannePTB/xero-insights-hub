@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 
 export type SecurityContact = {
   company_legal_name: string | null;
@@ -33,16 +34,6 @@ const EMPTY_CONTACT: SecurityContact = {
   assessment_date: null,
 };
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden");
-}
 
 export const getSecurityPosture = createServerFn({ method: "GET" })
   .middleware([requireAal2])
