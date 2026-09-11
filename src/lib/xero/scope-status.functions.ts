@@ -12,7 +12,7 @@ export type XeroScopeStatus = {
 
 /**
  * Lists every Xero connection the caller can see (RLS decides — this reads
- * through the caller's session, never supabaseAdmin) along with the required
+ * through the caller's session, never the service role) along with the required
  * scopes that connection is missing. The missing-scope calculation lives in
  * `public.xero_missing_scopes(uuid)`; we never recompute it here.
  */

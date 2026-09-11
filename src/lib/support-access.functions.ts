@@ -52,66 +52,51 @@ function statusOf(row: any): SupportGrantStatus {
   return row.granted ? "active" : "pending";
 }
 
+/**
+ * Support-access state for one organisation.
+ *
+ * Both reads are caller-scoped database functions:
+ *   public.firm_support_grants(firm)        — the grant rows, visible to the
+ *       organisation's owner, its active members, the named person, or a
+ *       super admin (request metadata only, never client data).
+ *   public.firm_support_viewer_state(firm)  — the caller's own relationship to
+ *       the organisation, including public.user_can_access_firm.
+ * Names are display names; the verified sign-in email comes from auth.users
+ * inside the database function, never from the profiles table.
+ */
 export const getSupportAccess = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<SupportAccessState> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
-
-    const [{ data: firm }, { data: rows }, { data: roles }, { data: member }] = await Promise.all([
-      (supabaseAdmin as any).from("firms").select("id, owner_user_id").eq("id", data.firmId).maybeSingle(),
-      (supabaseAdmin as any)
-        .from("firm_support_access")
-        .select(
-          "id, granted, granted_at, revoked_at, granted_by, note, reason, expires_at, grantee_user_id, created_at",
-        )
-        .eq("firm_id", data.firmId)
-        .order("created_at", { ascending: false }),
-      (supabaseAdmin as any).from("user_roles").select("role").eq("user_id", context.userId),
-      (supabaseAdmin as any)
-        .from("firm_members")
-        .select("user_id, status")
-        .eq("firm_id", data.firmId)
-        .eq("user_id", context.userId)
-        .eq("status", "active")
-        .maybeSingle(),
-    ]);
-    if (!firm) throw new Error("Organisation not found.");
+    const [{ data: rows, error: rowsError }, { data: viewerRows, error: viewerError }] =
+      await Promise.all([
+        (context.supabase as any).rpc("firm_support_grants", { _firm_id: data.firmId }),
+        (context.supabase as any).rpc("firm_support_viewer_state", { _firm_id: data.firmId }),
+      ]);
+    if (rowsError) throw new Error(rowsError.message);
+    if (viewerError) throw new Error(viewerError.message);
+    const viewer: any = (Array.isArray(viewerRows) ? viewerRows[0] : viewerRows) ?? {};
 
     const list = (rows ?? []) as any[];
-    const ids = Array.from(
-      new Set(list.flatMap((r) => [r.grantee_user_id, r.granted_by]).filter(Boolean)),
-    ) as string[];
-    const nameById = new Map<string, string>();
-    if (ids.length) {
-      const { data: profiles } = await (supabaseAdmin as any)
-        .from("profiles")
-        .select("id, display_name, email")
-        .in("id", ids);
-      for (const p of (profiles ?? []) as any[]) {
-        nameById.set(p.id, p.display_name ?? p.email ?? "");
-      }
-    }
-
     const grants: SupportGrant[] = list.map((r) => ({
       id: r.id as string,
       granteeUserId: r.grantee_user_id as string,
-      granteeName: nameById.get(r.grantee_user_id) || null,
+      granteeName: (r.grantee_name as string | null) || (r.grantee_email as string | null) || null,
       status: statusOf(r),
       expiresAt: r.expires_at as string,
       grantedAt: (r.granted_at as string | null) ?? null,
       revokedAt: (r.revoked_at as string | null) ?? null,
-      grantedByName: r.granted_by ? nameById.get(r.granted_by) || null : null,
+      grantedByName: r.granted_by
+        ? (r.granted_by_name as string | null) || (r.granted_by_email as string | null) || null
+        : null,
       reason: (r.reason as string | null) ?? null,
       note: (r.note as string | null) ?? null,
       isMine: r.grantee_user_id === context.userId,
     }));
 
-    const roleList = ((roles ?? []) as any[]).map((r) => r.role);
-    const isSuperAdmin = roleList.includes("super_admin");
-    const isPlatformStaff = isSuperAdmin || roleList.includes("advisor");
-    const isOwner = firm.owner_user_id === context.userId;
+    const isSuperAdmin = !!viewer.is_super_admin;
+    const isOwner = !!viewer.is_owner;
+    const isMember = !!viewer.is_member;
     const activeGrant = grants.find((g) => g.status === "active") ?? null;
     const myGrant =
       grants.find((g) => g.isMine && (g.status === "active" || g.status === "pending")) ?? null;
@@ -126,12 +111,12 @@ export const getSupportAccess = createServerFn({ method: "POST" })
       grants,
       // A super admin must never be able to approve their own access.
       canManage: isOwner,
-      canRequest: isSuperAdmin && !isOwner && !member && !myGrant,
+      canRequest: isSuperAdmin && !isOwner && !isMember && !myGrant,
       myGrant,
       viewerIsSuperAdmin: isSuperAdmin,
-      viewerIsMember: !!member,
-      viewerIsPlatformStaff: isPlatformStaff,
-      viewerHasClientData: await platformStaffCanAccessFirm(context.userId, data.firmId),
+      viewerIsMember: isMember,
+      viewerIsPlatformStaff: !!viewer.is_platform_staff,
+      viewerHasClientData: !!viewer.has_client_data,
     };
   });
 

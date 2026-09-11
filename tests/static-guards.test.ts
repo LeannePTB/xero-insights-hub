@@ -141,11 +141,8 @@ describe("3. identity and recipient decisions never use profiles.email", () => {
    * report-verdict.server.ts): a report byline is now the display name only,
    * so no sign-in email can reach a client-facing report.
    */
-  const KNOWN_PROFILES_EMAIL_READS = [
-    "src/lib/clients.functions.ts",
-    "src/lib/support-access.functions.ts",
-    "src/lib/xero/orphan-connections.functions.ts",
-  ];
+  const KNOWN_PROFILES_EMAIL_READS: string[] = [];
+  // Phase 4 batch 5 closed backlog 22: no source file reads profiles.email.
 
   it("has no profiles.email read outside the recorded known failures", () => {
     const hits: string[] = [];
@@ -156,7 +153,7 @@ describe("3. identity and recipient decisions never use profiles.email", () => {
           hits.push(`${path}:${i + 1} — ${line.trim()}`);
       });
     }
-    console.warn(report("KNOWN FAILURE (backlog 22) profiles.email display fallbacks:", hits));
+    // Backlog 22 is closed: any hit is now a hard failure.
     const unexpected = hits.filter((h) => !KNOWN_PROFILES_EMAIL_READS.some((f) => h.startsWith(f)));
     expect(unexpected, report("New profiles.email reads — use the verified auth.users email:", unexpected)).toEqual(
       [],
@@ -188,7 +185,23 @@ describe("5. the readable access matrix matches its source of truth", () => {
 });
 
 describe("6. converted files decide nothing themselves (Phase 4, per batch)", () => {
-  const ACCESS_TABLES = /from\(\s*["'](user_roles|firm_members|client_access|firm_support_access)["']/;
+  /**
+   * A READ of an access table is an access decision. A write through the
+   * caller's own session (a support request, an owner approving one) is the
+   * caller exercising a policy, not a decision made here — row-level security
+   * still decides whether it is allowed.
+   */
+  const ACCESS_TABLE_READS = (text: string): number[] => {
+    const lines: number[] = [];
+    const re = /from\(\s*["'](?:user_roles|firm_members|client_access|firm_support_access)["']\s*\)/g;
+    for (const m of text.matchAll(re)) {
+      const after = text.slice(m.index! + m[0].length, m.index! + m[0].length + 60);
+      const next = after.match(/\.\s*([a-zA-Z]+)\s*\(/);
+      if (next?.[1] !== "select") continue;
+      lines.push(text.slice(0, m.index!).split("\n").length);
+    }
+    return lines;
+  };
 
   it("lists only files that exist", () => {
     const missing = CONVERTED_FILES.filter((f) => !FILES.some((x) => x.path === f));
@@ -200,9 +213,10 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
     for (const path of CONVERTED_FILES) {
       const f = FILES.find((x) => x.path === path);
       if (!f) continue;
-      f.text.split("\n").forEach((line, i) => {
-        if (ACCESS_TABLES.test(line)) offenders.push(`${path}:${i + 1} — ${line.trim()}`);
-      });
+      const lines = f.text.split("\n");
+      for (const n of ACCESS_TABLE_READS(f.text)) {
+        offenders.push(`${path}:${n} — ${(lines[n - 1] ?? "").trim()}`);
+      }
     }
     expect(
       offenders,
@@ -214,10 +228,19 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
   const stripComments = (t: string) =>
     t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-  it("never reaches supabaseAdmin in a converted file without a registered DB authorisation call", () => {
+  const isEntryPoint = (path: string) =>
+    /\.functions\.tsx?$/.test(path) || path.startsWith("src/routes/");
+
+  /**
+   * Entry points — the files a browser can actually call. Phase 4 final form:
+   * no exemption list. A privileged step must follow a registered database
+   * authorisation call in the same file.
+   */
+  it("never reaches supabaseAdmin in a converted entry point without a registered DB authorisation call", () => {
     const offenders: string[] = [];
     const names = [...REGISTERED_DB_AUTH_CALLS, ...REGISTERED_DB_AUTH_WRAPPERS];
     for (const path of CONVERTED_FILES) {
+      if (!isEntryPoint(path)) continue;
       const f = FILES.find((x) => x.path === path);
       if (!f) continue;
       const code = stripComments(f.text);
@@ -235,6 +258,42 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
     expect(offenders, report("Unauthorised privileged access in a converted file:", offenders)).toEqual(
       [],
     );
+  });
+
+  /**
+   * Helper modules (`*.server.ts`) are not callable from a browser: they only
+   * run when an entry point calls them. Ordering inside the module says
+   * nothing, so the rule is structural instead, and it is checked rather than
+   * exempted: a converted helper module may not be an entry point itself, may
+   * not decide access (rule above), and every entry point that imports it must
+   * itself be converted — so the caller is always held to the ordering rule.
+   */
+  it("keeps converted helper modules callable only from converted entry points", () => {
+    const offenders: string[] = [];
+    const helpers = CONVERTED_FILES.filter((p) => !isEntryPoint(p));
+    for (const path of helpers) {
+      const f = FILES.find((x) => x.path === path);
+      if (!f) continue;
+      if (/createServerFn\(/.test(stripComments(f.text)))
+        offenders.push(`${path} — a helper module must not declare a server function`);
+
+      const specifier = path.replace(/^src\//, "@/").replace(/\.tsx?$/, "");
+      for (const other of FILES) {
+        if (other.path === path) continue;
+        if (!isEntryPoint(other.path)) continue;
+        // Public API routes are registered system contexts, not user paths.
+        if (other.path.startsWith("src/routes/api/public/")) continue;
+        if (!other.text.includes(specifier)) continue;
+        if (!CONVERTED_FILES.includes(other.path))
+          offenders.push(
+            `${other.path} imports converted helper ${path} — convert the entry point too`,
+          );
+      }
+    }
+    expect(
+      offenders,
+      report("Converted helper module reached from an unconverted entry point:", offenders),
+    ).toEqual([]);
   });
 });
 

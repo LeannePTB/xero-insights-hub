@@ -55,6 +55,14 @@ export const REGISTERED_DB_AUTH_CALLS = [
   "organisation_members",
   "admin_firm_members",
   "plan_level_usage_count",
+  // Phase 4 batch 5 — the caller's own roles, memberships and viewer grants,
+  // and support-access state. Caller-scoped (auth.uid()), aal2-guarded,
+  // EXECUTE revoked from PUBLIC/anon.
+  "my_roles",
+  "my_firm_memberships",
+  "my_client_access",
+  "firm_support_grants",
+  "firm_support_viewer_state",
 ] as const;
 
 
@@ -108,13 +116,6 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/statutory-accounts.functions.ts",
 
   // Batch 2 — client data reads and writes.
-  //
-  // `src/lib/xero/client-orgs.server.ts`, `src/lib/xero/onboard.server.ts` and
-  // `src/lib/xero/connections.functions.ts` had their access decisions moved to
-  // the database in this batch too, but they are not listed here: the first
-  // service-role use in each is a module-level import or the unauthenticated
-  // "Sign in with Xero" flow, which the file-ordering guard cannot express.
-  // They stay in the admin-client register instead.
   "src/lib/clients.functions.ts",
   "src/lib/loan-consolidation.functions.ts",
   "src/lib/consolidation-groups.functions.ts",
@@ -151,6 +152,29 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/branding.server.ts",
   "src/lib/reports/report-pdf.server.ts",
   "src/lib/reports/monthly-report-context.server.ts",
+
+  // Batch 5 — the leftovers, and the end of the exemptions.
+  //
+  // "Sign in with Xero" moved to `src/lib/xero/signin.functions.ts` and the
+  // sign-in logger to `src/lib/login-log-write.functions.ts`, so those two
+  // system contexts no longer sit in front of authorised code. Both stay in
+  // the admin-client register as system contexts.
+  "src/lib/xero/connections.functions.ts",
+  "src/lib/xero/client-orgs.server.ts",
+  "src/lib/xero/onboard.server.ts",
+  "src/lib/xero/search.functions.ts",
+  "src/lib/access.functions.ts",
+  "src/lib/billing.functions.ts",
+  "src/lib/firm-subscription.functions.ts",
+  "src/lib/login-log.functions.ts",
+  "src/lib/plan-tiers.server.ts",
+  "src/lib/roles.functions.ts",
+  "src/lib/subscription-state.server.ts",
+  "src/lib/subscription-state.functions.ts",
+  "src/lib/support-access.functions.ts",
+  "src/lib/consolidations.functions.ts",
+  "src/lib/widget-access.functions.ts",
+  "src/lib/plan-tiers.functions.ts",
 ];
 
 

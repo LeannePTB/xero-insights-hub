@@ -2613,6 +2613,35 @@ export type Database = {
           status: string
         }[]
       }
+      firm_support_grants: {
+        Args: { _firm_id: string }
+        Returns: {
+          created_at: string
+          expires_at: string
+          granted: boolean
+          granted_at: string
+          granted_by: string
+          granted_by_email: string
+          granted_by_name: string
+          grantee_email: string
+          grantee_name: string
+          grantee_user_id: string
+          id: string
+          note: string
+          reason: string
+          revoked_at: string
+        }[]
+      }
+      firm_support_viewer_state: {
+        Args: { _firm_id: string }
+        Returns: {
+          has_client_data: boolean
+          is_member: boolean
+          is_owner: boolean
+          is_platform_staff: boolean
+          is_super_admin: boolean
+        }[]
+      }
       get_mfa_posture_counts: {
         Args: never
         Returns: {
@@ -2660,12 +2689,30 @@ export type Database = {
         }
         Returns: undefined
       }
+      my_client_access: {
+        Args: never
+        Returns: {
+          client_id: string
+          client_name: string
+          id: string
+          tier: string
+        }[]
+      }
       my_firm_ids: {
         Args: never
         Returns: {
           firm_id: string
         }[]
       }
+      my_firm_memberships: {
+        Args: never
+        Returns: {
+          created_at: string
+          firm_id: string
+          role: string
+        }[]
+      }
+      my_roles: { Args: never; Returns: string[] }
       online_users: {
         Args: { _window_minutes?: number }
         Returns: {
