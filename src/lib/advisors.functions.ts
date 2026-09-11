@@ -10,6 +10,10 @@ export const PRIMARY_ADVISOR_USER_ID = "57d544ad-db50-4330-9b12-bcffdf4c6065";
  * Who may manage advisors is decided by the database (aal2 + advisor role) in
  * every function below; nothing here reads `user_roles` to make that call.
  */
+async function assertAdvisor(supabase: any) {
+  const { error } = await supabase.rpc("assert_advisor");
+  if (error) throw new Error(error.message);
+}
 
 export const listAdvisors = createServerFn({ method: "GET" })
   .middleware([requireAal2])
@@ -61,7 +65,7 @@ export const inviteAdvisor = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { email: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const email = data.email.trim().toLowerCase();
     if (!email.includes("@")) throw new Error("Please enter a valid email address.");
 
@@ -107,7 +111,7 @@ export const createAdvisorWithPassword = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { email: string; password: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const email = data.email.trim().toLowerCase();
     if (!email.includes("@") || email.length > 254) throw new Error("Please enter a valid email address.");
     validatePassword(data.password);
@@ -179,7 +183,7 @@ export const sendAdvisorPasswordReset = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: u, error } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
     if (error || !u?.user?.email) throw new Error("User not found");
@@ -195,7 +199,7 @@ export const setAdvisorPassword = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string; newPassword: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     validatePassword(data.newPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: u, error: gErr } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
@@ -212,7 +216,7 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     if (data.userId === PRIMARY_ADVISOR_USER_ID) {
       throw new Error("The primary advisor account can't be removed.");
     }
@@ -285,7 +289,7 @@ export const generateAdvisorInviteLink = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: u, error: getErr } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
     if (getErr || !u?.user?.email) throw new Error("User not found");
@@ -306,7 +310,7 @@ export const resendAdvisorInvite = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const res = await resendInviteForUser(supabaseAdmin, data.userId);
     if (!res.ok) throw new Error(res.reason);
@@ -316,7 +320,7 @@ export const resendAdvisorInvite = createServerFn({ method: "POST" })
 export const resendAllPendingAdvisorInvites = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: rows } = await supabaseAdmin
@@ -338,7 +342,7 @@ export const resendAllPendingAdvisorInvites = createServerFn({ method: "POST" })
 export const listPendingAdvisors = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: rows } = await supabaseAdmin
       .from("user_roles")
