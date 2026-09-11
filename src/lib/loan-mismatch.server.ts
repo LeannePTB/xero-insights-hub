@@ -92,7 +92,7 @@ async function loadSide(opts: {
 }
 
 export async function runLoanMismatchDetail(input: {
-  supabase: any; // supabaseAdmin — access is gated by the caller
+  supabase: any; // service-role client — access is gated by the caller
   rowId: string;
   asAt: string;
 }): Promise<MismatchDetail> {

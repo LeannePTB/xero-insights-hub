@@ -33,17 +33,15 @@ async function assertFirmAccess(
   firmId: string,
   opts?: { allowSupportRead?: boolean },
 ) {
-  const { data: member } = await supabase
-    .from("firm_members")
-    .select("id")
-    .eq("firm_id", firmId)
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .maybeSingle();
-  if (!member) {
-    // Invariant 3: super_admin alone grants nothing. Active membership decides.
-    // Read-only surfaces may additionally be reached through a live Path B
-    // support grant, resolved by the database rule (user_can_access_firm).
+  // Invariant 3: super_admin alone grants nothing. Active membership decides,
+  // and the rule lives in the database (public.user_can_write_firm — membership
+  // only). Read-only surfaces may additionally be reached through a live Path B
+  // support grant, resolved by public.user_can_access_firm.
+  const { data: isMember } = await supabase.rpc("user_can_write_firm", {
+    _user_id: userId,
+    _firm_id: firmId,
+  });
+  if (isMember !== true) {
     let allowed = false;
     if (opts?.allowSupportRead) {
       const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
@@ -51,6 +49,7 @@ async function assertFirmAccess(
     }
     if (!allowed) throw new Error("You don't have access to this organisation.");
   }
+
 
   // Consolidation groups are part of the organisation-level consolidation
   // feature — the plan decides. Fails closed.
@@ -221,10 +220,10 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
     const firmId = await firmIdForGroup(supabaseAdmin, data.groupId);
     await assertFirmAccess(context.supabase, context.userId, firmId, { allowSupportRead: true });
 
-    const [{ data: group }, { data: members }, { data: roles }] = await Promise.all([
+    const [{ data: group }, { data: members }, { data: isSuperAdminRaw }] = await Promise.all([
       supabaseAdmin.from("consolidation_groups").select("id, name").eq("id", data.groupId).maybeSingle(),
       supabaseAdmin.from("consolidation_group_members").select("client_id").eq("group_id", data.groupId),
-      context.supabase.from("user_roles").select("role").eq("user_id", context.userId),
+      (context.supabase as any).rpc("me_is_super_admin"),
     ]);
     const clientIds = ((members ?? []) as any[]).map((m) => m.client_id as string);
     const { data: clients } = clientIds.length
@@ -235,14 +234,13 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
           .order("name")
       : { data: [] as any[] };
 
-    const isSuperAdmin = Boolean((roles ?? []).some((r: any) => r.role === "super_admin"));
-    const { data: member } = await context.supabase
-      .from("firm_members")
-      .select("id")
-      .eq("firm_id", firmId)
-      .eq("user_id", context.userId)
-      .eq("status", "active")
-      .maybeSingle();
+    const isSuperAdmin = isSuperAdminRaw === true;
+    // Membership is decided by the database (public.user_can_write_firm).
+    const { data: memberRaw } = await (context.supabase as any).rpc("user_can_write_firm", {
+      _user_id: context.userId,
+      _firm_id: firmId,
+    });
+    const member = memberRaw === true;
     const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
     const grantActive =
       isSuperAdmin && !member ? await platformStaffCanAccessFirm(context.userId, firmId) : false;
@@ -253,7 +251,8 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
       name: ((group as any)?.name as string) ?? "Group",
       // Figures come from membership of this organisation. Platform staff see
       // them only while the organisation has granted support access.
-      canSeeFigures: Boolean(member) ? true : isSuperAdmin ? grantActive : true,
+      canSeeFigures: member ? true : isSuperAdmin ? grantActive : true,
+
 
 
       clients: ((clients ?? []) as any[]).map((c) => ({

@@ -33,7 +33,18 @@ export const REGISTERED_DB_AUTH_CALLS = [
   "firm_allowed_widgets",
   "firm_can_use_widget",
   "me_is_super_admin",
+  // Phase 4 batch 2 — caller-scoped, aal2-guarded, EXECUTE revoked from
+  // PUBLIC/anon. Each one decides the caller's access inside the database.
+  "my_firm_ids",
+  "me_has_role",
+  "client_viewers",
+  "client_for_access",
+  "client_access_tiers",
+  "grant_client_access",
+  "set_client_access_tier",
+  "revoke_client_access",
 ] as const;
+
 
 /**
  * Thin TypeScript wrappers that do nothing but call one of the functions
@@ -76,4 +87,20 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/xero/accounts.functions.ts",
   "src/lib/cost-classification.functions.ts",
   "src/lib/statutory-accounts.functions.ts",
+
+  // Batch 2 — client data reads and writes.
+  //
+  // `src/lib/xero/client-orgs.server.ts`, `src/lib/xero/onboard.server.ts` and
+  // `src/lib/xero/connections.functions.ts` had their access decisions moved to
+  // the database in this batch too, but they are not listed here: the first
+  // service-role use in each is a module-level import or the unauthenticated
+  // "Sign in with Xero" flow, which the file-ordering guard cannot express.
+  // They stay in the admin-client register instead.
+  "src/lib/clients.functions.ts",
+  "src/lib/loan-consolidation.functions.ts",
+  "src/lib/consolidation-groups.functions.ts",
+  "src/lib/loan-autosetup.server.ts",
+  "src/lib/loan-recon.server.ts",
+  "src/lib/loan-mismatch.server.ts",
 ];
+

@@ -53,15 +53,13 @@ export async function getFirmClientCapacity(firmId: string): Promise<FirmClientC
  * more client. Invariant 3: super_admin grants nothing on its own.
  */
 export async function assertFirmCanAddClient(firmId: string, userId: string) {
-  const { data: membership } = await supabaseAdmin
-    .from("firm_members")
-    .select("id")
-    .eq("firm_id", firmId)
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-  if (!membership) throw new Error("You are not a member of that business.");
+  // The membership rule lives in the database (public.user_can_write_firm —
+  // active membership only, never a support grant).
+  const { canWriteFirm } = await import("@/lib/support-access.server");
+  if (!(await canWriteFirm(userId, firmId))) {
+    throw new Error("You are not a member of that business.");
+  }
+
 
   const capacity = await getFirmClientCapacity(firmId);
   if (capacity.remaining < 1) {
