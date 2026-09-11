@@ -69,7 +69,7 @@ function normalizeAccountIdentity(value: string) {
 }
 
 export async function runLoanReconciliation(input: {
-  supabase: any; // supabaseAdmin — access is gated by the caller
+  supabase: any; // service-role client — access is gated by the caller
   /** One client for the per-client view, many for a consolidation group. */
   clientIds: string[];
   tenantIds: string[] | null;

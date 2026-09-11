@@ -2466,6 +2466,7 @@ export type Database = {
         }
         Returns: string
       }
+      client_access_tiers: { Args: { _client_id: string }; Returns: string[] }
       client_allowed_widgets: {
         Args: { _client_id: string }
         Returns: string[]
@@ -2483,12 +2484,24 @@ export type Database = {
           tier: Database["public"]["Enums"]["dashboard_tier"]
         }[]
       }
+      client_for_access: { Args: { _id: string }; Returns: string }
       client_for_tenant: { Args: { _tenant_id: string }; Returns: string }
       client_removal_impact: {
         Args: { _client_id: string }
         Returns: {
           group_count: number
           referencing_clients: string[]
+        }[]
+      }
+      client_viewers: {
+        Args: { _client_id: string }
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          tier: string
+          user_id: string
         }[]
       }
       delete_client_report: {
@@ -2561,6 +2574,10 @@ export type Database = {
           total_staff: number
         }[]
       }
+      grant_client_access: {
+        Args: { _client_id: string; _tier: string; _user_id: string }
+        Returns: undefined
+      }
       log_xero_api_error: {
         Args: {
           _connection_id: string
@@ -2573,6 +2590,11 @@ export type Database = {
         }
         Returns: undefined
       }
+      me_has_role: {
+        Args: { _role: Database["public"]["Enums"]["app_role"] }
+        Returns: boolean
+      }
+      me_is_super_admin: { Args: never; Returns: boolean }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -2589,6 +2611,12 @@ export type Database = {
           _target_client_id: string
         }
         Returns: undefined
+      }
+      my_firm_ids: {
+        Args: never
+        Returns: {
+          firm_id: string
+        }[]
       }
       online_users: {
         Args: { _window_minutes?: number }
@@ -2638,6 +2666,7 @@ export type Database = {
         Args: { _firm_id: string; _tier: string }
         Returns: undefined
       }
+      revoke_client_access: { Args: { _id: string }; Returns: undefined }
       security_posture: { Args: never; Returns: Json }
       set_all_client_tiers: {
         Args: {
@@ -2651,6 +2680,10 @@ export type Database = {
           skipped_billed: number
           unchanged: number
         }[]
+      }
+      set_client_access_tier: {
+        Args: { _id: string; _tier: string }
+        Returns: undefined
       }
       set_client_comp: {
         Args: { _client_id: string; _comped: boolean; _reason: string }
@@ -2751,6 +2784,7 @@ export type Database = {
         Returns: boolean
       }
       user_can_access_tenant: { Args: { _tenant_id: string }; Returns: boolean }
+      user_can_read_client: { Args: { _client_id: string }; Returns: boolean }
       user_can_write_client: {
         Args: { _client_id: string; _user_id: string }
         Returns: boolean

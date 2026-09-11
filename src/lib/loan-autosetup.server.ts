@@ -47,7 +47,7 @@ function refScore(accountName: string, companyName: string): number {
 const LOANISH = /(loan|inter\s*co|intercompany|advance|related\s*part)/i;
 
 export async function autoSetupLoanAccounts(input: {
-  supabase: any; // supabaseAdmin — caller has already authorised
+  supabase: any; // service-role client — caller has already authorised
   clients: { clientId: string; clientName: string; tenantIds: string[] }[];
   tenantNameById: Record<string, string>;
   apply: boolean;

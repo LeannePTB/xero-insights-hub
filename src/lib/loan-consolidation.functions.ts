@@ -100,42 +100,25 @@ async function clientFirmId(supabase: any, clientId: string): Promise<string | n
   return data?.firm_id ?? null;
 }
 
-async function firmMemberRole(
+/**
+ * Active membership of the organisation. The rule lives in the database
+ * (public.user_can_write_firm — membership only, never a support grant), so
+ * there is no membership lookup here.
+ */
+async function firmMemberActive(
   supabase: any,
   userId: string,
   firmId: string | null,
-): Promise<string | null> {
-  if (!firmId) return null;
-  const { data } = await supabase
-    .from("firm_members")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("firm_id", firmId)
-    .eq("status", "active")
-    .maybeSingle();
-  return (data?.role as string | undefined) ?? null;
+): Promise<boolean> {
+  if (!firmId) return false;
+  const { data, error } = await supabase.rpc("user_can_write_firm", {
+    _user_id: userId,
+    _firm_id: firmId,
+  });
+  if (error) return false;
+  return data === true;
 }
 
-/** Only the platform super admin crosses organisation boundaries. */
-async function isSuperAdminUser(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  return Boolean(data);
-}
-
-async function hasClientAccess(supabase: any, userId: string, clientId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from("client_access")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("client_id", clientId)
-    .maybeSingle();
-  return !!data;
-}
 
 /**
  * Loan consolidation is an organisation-level feature that can also surface as
@@ -167,7 +150,10 @@ async function canManageClient(supabase: any, userId: string, clientId: string):
 async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
   if (await canManageClient(supabase, userId, clientId)) return true;
   if (!(await loanFeatureAllowed(supabase, clientId))) return false;
-  if (await hasClientAccess(supabase, userId, clientId)) return true;
+  // Client viewer, member or owner — all decided by public.user_can_read_client.
+  const { data: canRead } = await supabase.rpc("user_can_read_client", { _client_id: clientId });
+  if (canRead === true) return true;
+
   const firmId = await clientFirmId(supabase, clientId);
   if (!firmId) return false;
   const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
@@ -568,7 +554,7 @@ async function resolveLoanGroup(
   // Invariant 3: super_admin alone grants nothing. Active membership decides.
   // Read-only surfaces may additionally be reached through a live Path B
   // support grant, resolved by the database rule (user_can_access_firm).
-  let allowed = Boolean(await firmMemberRole(supabase, userId, (group as any).firm_id));
+  let allowed = await firmMemberActive(supabase, userId, (group as any).firm_id);
   if (!allowed && opts?.allowSupportRead) {
     const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
     allowed = await platformStaffCanAccessFirm(userId, (group as any).firm_id);
@@ -854,10 +840,11 @@ export const autoSetupGroupLoanAccounts = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
     // Writes are membership-only: support access is read-only (invariant 3, S7).
-    const role = await firmMemberRole(context.supabase, context.userId, group.firmId);
-    if (!role) {
+    const isMember = await firmMemberActive(context.supabase, context.userId, group.firmId);
+    if (!isMember) {
       throw new Error("Only the organisation's members can set up loan accounts.");
     }
+
 
     const { autoSetupLoanAccounts } = await import("./loan-autosetup.server");
     const supabaseAdmin = await getSupabaseAdmin();

@@ -17,7 +17,9 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
     { data: levels },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("max_xero_orgs").eq("id", clientId).maybeSingle(),
-    supabaseAdmin.from("client_access").select("tier").eq("client_id", clientId),
+    // Granted tiers come from the database helper, so this file holds no
+    // access-table read of its own (rule 6).
+    (supabaseAdmin as any).rpc("client_access_tiers", { _client_id: clientId }),
     supabaseAdmin
       .from("client_xero_orgs")
       .select("id", { count: "exact", head: true })
@@ -33,6 +35,7 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
   if (countError) throw new Error(countError.message);
   if (!client) throw new Error("Client subscription not found.");
 
+
   // Multi-file support comes from the tier catalogue, so new tiers can allow it too.
   const byKey = new Map<
     string,
@@ -43,13 +46,15 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
   let tierLimit = 1;
   let sourceLabel: string | null = null;
   for (const row of (access ?? []) as any[]) {
-    const level = byKey.get(row.tier);
+    const tier: string = typeof row === "string" ? row : row.tier;
+    const level = byKey.get(tier);
     if (level?.allows_multi_org) isMulti = true;
     if (level && (level.xero_org_limit ?? 1) >= tierLimit) {
       tierLimit = Math.max(tierLimit, level.xero_org_limit ?? 1);
-      sourceLabel = level.label ?? row.tier;
+      sourceLabel = level.label ?? tier;
     }
   }
+
 
   const allowance = isMulti ? Math.max(1, client.max_xero_orgs, tierLimit) : 1;
   const used = count ?? 0;
@@ -187,15 +192,8 @@ export type SelectableConnection = {
   linkedToThisClient: boolean;
 };
 
-export async function isSuperAdmin(userId: string): Promise<boolean> {
-  const { data } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  return Boolean(data);
-}
+
+
 
 /**
  * Candidates for linking to a client subscription.

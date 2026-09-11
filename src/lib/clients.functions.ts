@@ -14,20 +14,21 @@ export const listClients = createServerFn({ method: "POST" })
   .inputValidator((i: { firmId?: string } | undefined) => i ?? {})
   .handler(async ({ data, context }) => {
     // Determine the firm scope. Invariant 3: a global role is never a shortcut
-    // into an organisation's client list — active membership decides for everyone.
+    // into an organisation's client list — active membership decides for
+    // everyone, and the membership list itself comes from the database
+    // (public.my_firm_ids), never from a lookup here.
     let firmId: string | null = data?.firmId ?? null;
     {
-      const { data: memberships } = await context.supabase
-        .from("firm_members")
-        .select("firm_id")
-        .eq("user_id", context.userId)
-        .eq("status", "active")
-        .order("created_at", { ascending: true });
-      const myFirms = ((memberships ?? []) as any[]).map((m) => m.firm_id as string);
+      const { data: mine, error: mineErr } = await (context.supabase as any).rpc("my_firm_ids");
+      if (mineErr) throw new Error(mineErr.message);
+      const myFirms = ((mine ?? []) as any[]).map((m) =>
+        typeof m === "string" ? m : (m.firm_id as string),
+      );
       if (firmId && !myFirms.includes(firmId)) throw new Error("Not a member of that business.");
       firmId = firmId ?? myFirms[0] ?? null;
       if (!firmId) return { clients: [] };
     }
+
 
 
     // Reads always go through the caller's session, so RLS scopes them to the
@@ -149,16 +150,14 @@ export const getClient = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (client) return { client: client as any };
 
-    // Platform admins can open clients in organisations they're not a member of.
-    const { data: roleRows } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId);
-    const isSuper = !!roleRows?.some((r: any) => r.role === "super_admin");
-    if (isSuper) {
-      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Platform admins can open clients in organisations they're not a member of,
+    // but only through a live support grant — both questions are answered by the
+    // database (public.me_is_super_admin, then user_can_access_client).
+    const { data: isSuper } = await (context.supabase as any).rpc("me_is_super_admin");
+    if (isSuper === true) {
       const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
       await assertClientDataAccessForClient(context.userId, data.clientId);
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: adminClient } = await supabaseAdmin
         .from("clients")
         .select(SELECT)
@@ -166,6 +165,7 @@ export const getClient = createServerFn({ method: "POST" })
         .maybeSingle();
       if (adminClient) return { client: adminClient as any };
     }
+
 
     throw new Error("Client not found.");
   });
@@ -283,29 +283,24 @@ export const createClient = createServerFn({ method: "POST" })
         "Only the Multi company tier can link more than one Xero organisation. Create the client with one org, then grant a viewer the Multi company tier to link more.",
       );
     }
-    // Resolve target firm: explicit firmId (must be a member) OR caller's first firm.
+    // Resolve target firm: explicit firmId (must be a member) OR caller's first
+    // firm. Invariant 3: super_admin alone grants nothing — membership decides,
+    // and the database answers both questions (rule 6).
     let firmId: string | null = data.firmId ?? null;
     if (firmId) {
-      const { data: membership } = await context.supabase
-        .from("firm_members")
-        .select("firm_id")
-        .eq("user_id", context.userId)
-        .eq("firm_id", firmId)
-        .eq("status", "active")
-        .maybeSingle();
-      // Invariant 3: super_admin alone grants nothing. Membership decides.
-      if (!membership) throw new Error("You are not a member of that business.");
+      const { data: canWrite, error: writeErr } = await (context.supabase as any).rpc(
+        "user_can_write_firm",
+        { _user_id: context.userId, _firm_id: firmId },
+      );
+      if (writeErr) throw new Error(writeErr.message);
+      if (canWrite !== true) throw new Error("You are not a member of that business.");
     } else {
-      const { data: membership } = await context.supabase
-        .from("firm_members")
-        .select("firm_id")
-        .eq("user_id", context.userId)
-        .eq("status", "active")
-        .order("created_at", { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      firmId = membership?.firm_id ?? null;
+      const { data: mine, error: mineErr } = await (context.supabase as any).rpc("my_firm_ids");
+      if (mineErr) throw new Error(mineErr.message);
+      const first = ((mine ?? []) as any[])[0];
+      firmId = first ? (typeof first === "string" ? first : (first.firm_id as string)) : null;
     }
+
 
     if (!firmId) throw new Error("No business associated with your account.");
 
@@ -622,14 +617,12 @@ export const setClientXeroAllowance = createServerFn({ method: "POST" })
       throw new Error("Only Multi company subscriptions can allow more than one Xero file.");
     if (allowance < current.used)
       throw new Error(`Unlink Xero files before reducing the allowance below ${current.used}.`);
-    // Super admins manage every organisation; RLS scopes updates to their own firms.
-    const { data: superRow } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "super_admin")
-      .maybeSingle();
-    if (superRow) {
+    // Documented exception: platform admins manage every organisation's Xero
+    // allowance. Whether the caller is one is answered by the database
+    // (public.me_is_super_admin), never by a role lookup here, and write access
+    // to the client was already proved above.
+    const { data: isSuper } = await (context.supabase as any).rpc("me_is_super_admin");
+    if (isSuper === true) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { error: adminErr } = await supabaseAdmin
         .from("clients")
@@ -638,6 +631,7 @@ export const setClientXeroAllowance = createServerFn({ method: "POST" })
       if (adminErr) throw new Error(adminErr.message);
       return { allowance };
     }
+
     const { data: updated, error } = await context.supabase
       .from("clients")
       .update({ max_xero_orgs: allowance })
@@ -693,30 +687,23 @@ export const listClientAccess = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
-    // RLS: only advisors can SELECT access rows other than their own
-    const { data: rows, error } = await context.supabase
-      .from("client_access")
-      .select("id, user_id, tier, created_at")
-      .eq("client_id", data.clientId);
+    // The access list, its audience check and the verified email all come from
+    // one database function (public.client_viewers) — no access-table read and
+    // no service-role client here.
+    const { data: rows, error } = await (context.supabase as any).rpc("client_viewers", {
+      _client_id: data.clientId,
+    });
     if (error) throw new Error(error.message);
     if (!rows || rows.length === 0) return { access: [] };
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: profiles } = await supabaseAdmin
-      .from("profiles")
-      .select("id, display_name")
-      .in(
-        "id",
-        rows.map((r) => r.user_id),
-      );
-    const map = new Map((profiles ?? []).map((p) => [p.id, p]));
-    const authUsers = await listVerifiedAuthUsers(supabaseAdmin as any);
-    const emailById = new Map(authUsers.map((user) => [user.id, user.email]));
     return {
-      access: rows.map((r) => ({
-        ...r,
-        email: emailById.get(r.user_id) ?? null,
-        display_name: map.get(r.user_id)?.display_name ?? null,
+      access: (rows as any[]).map((r) => ({
+        id: r.id,
+        user_id: r.user_id,
+        tier: r.tier,
+        created_at: r.created_at,
+        email: r.email ?? null,
+        display_name: r.display_name ?? null,
       })),
     };
   });
@@ -725,21 +712,23 @@ export const updateClientAccessTier = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { id: string; tier: DashboardTier }) => i)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
-      .from("client_access")
-      .select("client_id")
-      .eq("id", data.id)
-      .maybeSingle();
-    if (row?.client_id) {
+    // Unchanged behaviour: the tier must still be inside the client's plan.
+    // The row -> client lookup is a database function, not a table read.
+    const { data: clientId, error: lookupErr } = await (context.supabase as any).rpc(
+      "client_for_access",
+      { _id: data.id },
+    );
+    if (lookupErr) throw new Error(lookupErr.message);
+    if (clientId) {
       const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-      await assertTierInPlanForClient(context.userId, row.client_id, data.tier);
+      await assertTierInPlanForClient(context.userId, clientId as string, data.tier);
     }
-    const { error } = await context.supabase
-      .from("client_access")
-      .update({ tier: data.tier })
-      .eq("id", data.id);
+    const { error } = await (context.supabase as any).rpc("set_client_access_tier", {
+      _id: data.id,
+      _tier: data.tier,
+    });
     if (error) throw new Error(error.message);
+
     return { ok: true };
   });
 
@@ -747,10 +736,13 @@ export const revokeClientAccess = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase.from("client_access").delete().eq("id", data.id);
+    const { error } = await (context.supabase as any).rpc("revoke_client_access", {
+      _id: data.id,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 export const inviteClientViewer = createServerFn({ method: "POST" })
   .middleware([requireAal2])
@@ -759,19 +751,25 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
     const email = data.email.trim().toLowerCase();
     if (!email.includes("@")) throw new Error("Please enter a valid email address.");
 
-    // Advisor auth check: RLS on clients prevents non-advisors from reading any client they don't access.
-    // But we want to make sure caller is advisor specifically.
-    const { data: advisorRoles } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "advisor");
-    if (!advisorRoles || advisorRoles.length === 0) {
+    // Only advisors invite viewers. The role lookup lives in the database
+    // (public.me_has_role), never in a table read here.
+    const { data: isAdvisor } = await (context.supabase as any).rpc("me_has_role", {
+      _role: "advisor",
+    });
+    if (isAdvisor !== true) {
       throw new Error("Only advisors can invite client viewers.");
     }
 
     const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
     await assertTierInPlanForClient(context.userId, data.clientId, data.tier);
+
+    // Prove write access to this client BEFORE any privileged step (rule 7).
+    const { data: canWrite, error: canErr } = await (context.supabase as any).rpc(
+      "user_can_write_client",
+      { _user_id: context.userId, _client_id: data.clientId },
+    );
+    if (canErr) throw new Error(canErr.message);
+    if (canWrite !== true) throw new Error("You cannot manage access for this client.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -790,22 +788,15 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
       if (!userId) throw new Error("Could not create invite.");
     }
 
-    // Ensure viewer role (handle_new_user already inserts this for fresh users)
-    await (supabaseAdmin as any)
-      .from("user_roles")
-      .upsert(
-        { user_id: userId, role: "client_viewer" },
-        { onConflict: "user_id,role", ignoreDuplicates: true },
-      );
-
-    // Grant client access
-    const { error } = await (supabaseAdmin as any)
-      .from("client_access")
-      .upsert(
-        { client_id: data.clientId, user_id: userId, tier: data.tier },
-        { onConflict: "client_id,user_id" },
-      );
+    // Viewer role and client access are granted together by the database
+    // function, which re-checks the caller's write access.
+    const { error } = await (context.supabase as any).rpc("grant_client_access", {
+      _client_id: data.clientId,
+      _user_id: userId,
+      _tier: data.tier,
+    });
     if (error) throw new Error(error.message);
+
     return { ok: true, invited: !existing };
   });
 
@@ -827,17 +818,25 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
       throw new Error("Please enter a valid email address.");
     validateViewerPassword(data.password);
 
-    const { data: advisorRoles } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "advisor");
-    if (!advisorRoles || advisorRoles.length === 0) {
+    const { data: isAdvisor } = await (context.supabase as any).rpc("me_has_role", {
+      _role: "advisor",
+    });
+    if (isAdvisor !== true) {
       throw new Error("Only advisors can create client viewers.");
     }
 
     const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
     await assertTierInPlanForClient(context.userId, data.clientId, data.tier);
+
+    // Write authorisation for the grant itself lives in the database
+    // (public.grant_client_access). Prove it BEFORE the privileged auth.admin
+    // step so no account is created for a client the caller cannot manage.
+    const { data: canWrite, error: canErr } = await (context.supabase as any).rpc(
+      "user_can_write_client",
+      { _user_id: context.userId, _client_id: data.clientId },
+    );
+    if (canErr) throw new Error(canErr.message);
+    if (canWrite !== true) throw new Error("You cannot manage access for this client.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -853,20 +852,13 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
     const userId = created?.user?.id;
     if (!userId) throw new Error("Could not create account.");
 
-    await (supabaseAdmin as any)
-      .from("user_roles")
-      .upsert(
-        { user_id: userId, role: "client_viewer" },
-        { onConflict: "user_id,role", ignoreDuplicates: true },
-      );
-
-    const { error: aErr } = await (supabaseAdmin as any)
-      .from("client_access")
-      .upsert(
-        { client_id: data.clientId, user_id: userId, tier: data.tier },
-        { onConflict: "client_id,user_id" },
-      );
+    const { error: aErr } = await (context.supabase as any).rpc("grant_client_access", {
+      _client_id: data.clientId,
+      _user_id: userId,
+      _tier: data.tier,
+    });
     if (aErr) throw new Error(aErr.message);
+
 
     return { ok: true, email };
   });
