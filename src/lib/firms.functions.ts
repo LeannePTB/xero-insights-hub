@@ -43,7 +43,7 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
       (supabaseAdmin as any).from("subscriptions").select("firm_id, tier, status, trial_ends_at, current_period_end, client_limit_override").in("firm_id", firmIds),
       (supabaseAdmin as any).from("clients").select("firm_id").in("firm_id", firmIds),
       (supabaseAdmin as any).from("firms").select("id, is_always_free").in("id", firmIds),
-      (supabaseAdmin as any).from("firm_members").select("firm_id").eq("user_id", context.userId).eq("status", "active"),
+      (context.supabase as any).rpc("my_firm_ids"),
     ]);
     const { data: planRows } = await (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
     const catalogue = firmLimitCatalogue(planRows);
@@ -54,7 +54,7 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
     for (const c of clients ?? []) countByFirm.set(c.firm_id, (countByFirm.get(c.firm_id) ?? 0) + 1);
     const freeByFirm = new Map<string, boolean>();
     for (const f of firmMeta ?? []) freeByFirm.set(f.id, !!f.is_always_free);
-    const ownFirmIds = new Set<string>((myMembership ?? []).map((m: any) => m.firm_id));
+    const ownFirmIds = new Set<string>(((myMembership ?? []) as any[]).map((m) => m.firm_id));
 
     const cards: FirmOverviewCard[] = (firms ?? []).map((f: any) => {
       const sub = subByFirm.get(f.id);
@@ -89,16 +89,17 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
 export const listMyFirms = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }): Promise<{ firms: FirmOverviewCard[] }> => {
-    const { data, error } = await context.supabase
-      .from("firm_members")
-      .select("firm_id, firms(id, name)")
-      .eq("user_id", context.userId)
-      .eq("status", "active");
+    // Which organisations the caller belongs to is a database decision.
+    const { data: mine, error } = await (context.supabase as any).rpc("my_firm_ids");
     if (error) throw new Error(error.message);
-    const firms = ((data ?? []) as any[])
-      .map((r) => r.firms)
-      .filter(Boolean)
-      .map((f: any) => ({ id: f.id as string, name: f.name as string }));
+    const myIds = ((mine ?? []) as any[]).map((r) => r.firm_id as string);
+    if (myIds.length === 0) return { firms: [] };
+    const { data: firmRows, error: fErr } = await context.supabase
+      .from("firms")
+      .select("id, name")
+      .in("id", myIds);
+    if (fErr) throw new Error(fErr.message);
+    const firms = ((firmRows ?? []) as any[]).map((f) => ({ id: f.id as string, name: f.name as string }));
     if (firms.length === 0) return { firms: [] };
 
     const firmIds = firms.map((f) => f.id);
@@ -148,23 +149,21 @@ export const getMyFirm = createServerFn({ method: "POST" })
     firm: { id: string; name: string };
     plan: FirmOverviewCard;
   }> => {
-    const { data: membership } = await context.supabase
-      .from("firm_members")
-      .select("firm_id")
-      .eq("user_id", context.userId)
-      .eq("firm_id", data.firmId)
-      .eq("status", "active")
-      .maybeSingle();
+    // Membership is a database decision (`user_can_write_firm` = active member).
+    const { data: isMember, error: mErr } = await (context.supabase as any).rpc("user_can_write_firm", {
+      _user_id: context.userId,
+      _firm_id: data.firmId,
+    });
+    if (mErr) throw new Error(mErr.message);
     let db: any = context.supabase;
-    if (!membership) {
-      // Super admins manage every subscription, including ones they don't belong to.
-      const { data: superRow } = await context.supabase
-        .from("user_roles")
-        .select("role")
-        .eq("user_id", context.userId)
-        .eq("role", "super_admin")
-        .maybeSingle();
-      if (!superRow) throw new Error("Forbidden");
+    if (isMember !== true) {
+      // Path C: a super admin who is not a member may still open an
+      // organisation's billing page. This reads the client COUNT for that
+      // organisation, which is metadata, not client or Xero data.
+      // Flagged in the batch 3 report; behaviour deliberately unchanged.
+      const { data: isSuper, error: sErr } = await (context.supabase as any).rpc("me_is_super_admin");
+      if (sErr) throw new Error(sErr.message);
+      if (isSuper !== true) throw new Error("Forbidden");
       db = (await import("@/integrations/supabase/client.server")).supabaseAdmin;
     }
     const [{ data: firm, error }, { data: sub }, { count: clientCount }] = await Promise.all([
