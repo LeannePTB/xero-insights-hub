@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1259**. Known failures: **24**.
+Rows: **1262**. Known failures: **21**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -12,9 +12,6 @@ the suites report it every run with its backlog number and never count it as a p
 
 | Backlog | Role | Resource | Operation | Why it fails |
 | --- | --- | --- | --- | --- |
-| 27 | Super admin with NO membership | firms | update | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
-| 27 | Support-grant holder, grant expired | firms | update | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
-| 27 | Support-grant holder, grant revoked | firms | update | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
 | 28 | Super admin with NO membership | client_subscriptions | insert | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
 | 28 | Super admin with NO membership | client_subscriptions | update | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
 | 28 | Super admin with NO membership | client_subscriptions | delete | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
@@ -34,7 +31,7 @@ the suites report it every run with its backlog number and never count it as a p
 | 29 | Super admin with NO membership | xero_assessment_contact | insert | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
 | 29 | Super admin with NO membership | xero_assessment_contact | update | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
 | 29 | Super admin with NO membership | xero_assessment_contact | delete | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
-| 29 | Super admin with NO membership | signup_requests | update | 'super_admin updates signup_requests' is on is_super_admin alone, targets role public rather than authenticated, and writes no audit row. |
+| 29 | Super admin with NO membership | signup_requests | update | 'super_admin updates signup_requests' is on is_super_admin alone and writes no audit row (re-targeted from role public to authenticated on 11 Sep 2026). |
 | 18 | Support-grant holder, active, non-member organisation | server fn: write client data | execute | Shared gate app_private.user_can_manage_client still admits the support path. |
 
 ## Anonymous (no session)
@@ -749,7 +746,7 @@ the suites report it every run with its backlog number and never count it as a p
 | scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
-| firms | update | DENY **KNOWN FAILURE (backlog 27)** | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free never on a client organisation) | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
+| firms | update | DENY | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row) |  |
 | firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
@@ -791,7 +788,7 @@ the suites report it every run with its backlog number and never count it as a p
 | xero_assessment_contact | insert | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform configuration changes must leave an audit row) | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
 | xero_assessment_contact | update | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform configuration changes must leave an audit row) | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
 | xero_assessment_contact | delete | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform configuration changes must leave an audit row) | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
-| signup_requests | update | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform metadata changes must leave an audit row) | 'super_admin updates signup_requests' is on is_super_admin alone, targets role public rather than authenticated, and writes no audit row. |
+| signup_requests | update | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform metadata changes must leave an audit row) | 'super_admin updates signup_requests' is on is_super_admin alone and writes no audit row (re-targeted from role public to authenticated on 11 Sep 2026). |
 | public.online_users() | execute | ALLOW | pglite, live | PK 2 path C metadata |  |
 | public.set_all_client_tiers() | execute | DENY | live | PK 3 — needs the organisation's data, super admin alone is not access | Backlog 19 records that this now gates on is_super_admin; revisit when the shared gate rule is decided. |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
@@ -886,7 +883,7 @@ the suites report it every run with its backlog number and never count it as a p
 | scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
-| firms | update | DENY **KNOWN FAILURE (backlog 27)** | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free never on a client organisation) | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
+| firms | update | DENY | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row) |  |
 | firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
@@ -983,7 +980,7 @@ the suites report it every run with its backlog number and never count it as a p
 | scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
-| firms | update | DENY **KNOWN FAILURE (backlog 27)** | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free never on a client organisation) | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
+| firms | update | DENY | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row) |  |
 | firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
@@ -998,6 +995,7 @@ the suites report it every run with its backlog number and never count it as a p
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
 | clients | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
@@ -1105,6 +1103,7 @@ the suites report it every run with its backlog number and never count it as a p
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
 | clients | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
@@ -1223,6 +1222,41 @@ the suites report it every run with its backlog number and never count it as a p
 | public.set_profile_display_name_admin() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
 | public.security_posture() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
 
+## Client viewer (client_access on one client)
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
+| clients | read | ALLOW | pglite, live | Spec §3 client viewer |  |
+| client_notes | read | ALLOW | pglite, live | Spec §3 client viewer |  |
+| firms | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
+| firm_members | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
+| audit_log | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
+| subscriptions | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
+| clients | insert | DENY | pglite, live | Spec §3 |  |
+| clients | update | DENY | pglite, live | Spec §3 |  |
+| clients | delete | DENY | pglite, live | Spec §3 |  |
+| client_access | insert | DENY | pglite, live | Spec §3 |  |
+| client_access | update | DENY | pglite, live | Spec §3 |  |
+| client_access | delete | DENY | pglite, live | Spec §3 |  |
+| xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
+| xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
+| audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| audit_log | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| audit_log | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| login_events | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| login_events | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| login_events | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| plan_levels | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| plan_levels | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| plan_levels | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| tier_settings | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| tier_settings | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+
 ## Support-grant holder, active, non-member organisation
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
@@ -1325,40 +1359,6 @@ the suites report it every run with its backlog number and never count it as a p
 | xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | server fn: write client data | execute | DENY **KNOWN FAILURE (backlog 18)** | live | PK 5 (support grants are READ-ONLY) | Shared gate app_private.user_can_manage_client still admits the support path. |
-
-## Client viewer (client_access on one client)
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| clients | read | ALLOW | pglite, live | Spec §3 client viewer |  |
-| client_notes | read | ALLOW | pglite, live | Spec §3 client viewer |  |
-| firms | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
-| firm_members | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
-| audit_log | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
-| subscriptions | read | DENY | pglite, live | Spec §3 client viewer sees only that client |  |
-| clients | insert | DENY | pglite, live | Spec §3 |  |
-| clients | update | DENY | pglite, live | Spec §3 |  |
-| clients | delete | DENY | pglite, live | Spec §3 |  |
-| client_access | insert | DENY | pglite, live | Spec §3 |  |
-| client_access | update | DENY | pglite, live | Spec §3 |  |
-| client_access | delete | DENY | pglite, live | Spec §3 |  |
-| xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
-| xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
-| audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| audit_log | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| audit_log | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| login_events | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| login_events | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| login_events | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| plan_levels | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| plan_levels | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| plan_levels | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| tier_settings | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| tier_settings | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 
 ## Super admin approving their own support grant
 
