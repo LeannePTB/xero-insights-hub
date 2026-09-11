@@ -2432,6 +2432,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_set_self_firm_membership: {
+        Args: { _firm_id: string; _join: boolean }
+        Returns: boolean
+      }
       assert_client_write_access: {
         Args: { _client_id: string }
         Returns: undefined
