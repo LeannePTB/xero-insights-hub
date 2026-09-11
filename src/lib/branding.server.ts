@@ -3,7 +3,9 @@
 // Invariants (Access Control Spec §0): the firm id / client id in the request
 // is a FILTER — the grant comes from public.user_can_access_client /
 // platformStaffCanAccessFirm. Only organisation staff may change branding; a
-// client viewer may not. Uploads land in the private `client-reports` bucket
+// client viewer may not, and a support grant is read-only (security rule 5):
+// every write gate below is public.user_can_write_firm / user_can_write_client.
+// Uploads land in the private `client-reports` bucket
 // and are only ever read back through a short-lived signed URL.
 
 const BUCKET = "client-reports";
@@ -21,11 +23,30 @@ function decodeBase64(b64: string): Uint8Array {
   return out;
 }
 
+/** READ gate: active member OR an approved read-only support grant. */
 async function assertOrganisationStaff(userId: string, firmId: string) {
   const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
   if (!(await platformStaffCanAccessFirm(userId, firmId))) {
-    throw new Error("Only organisation members may change branding.");
+    throw new Error("Only organisation members may see this branding.");
   }
+}
+
+/**
+ * WRITE gate. Security rule 5: support grants are read-only, so branding
+ * changes require active membership. The rule lives in
+ * public.user_can_write_firm; this only calls it.
+ */
+async function assertOrganisationWriter(userId: string, firmId: string) {
+  const { canWriteFirm } = await import("@/lib/support-access.server");
+  if (!(await canWriteFirm(userId, firmId))) {
+    throw new Error("Only organisation members may change branding. Support access is read-only.");
+  }
+}
+
+/** WRITE gate for client-scoped branding. Never admits a support grant. */
+async function assertClientWriter(userId: string, clientId: string) {
+  const { assertClientWriteAccess } = await import("@/lib/support-access.server");
+  await assertClientWriteAccess(userId, clientId);
 }
 
 async function upload(path: string, bytes: Uint8Array, contentType: string) {
@@ -52,7 +73,7 @@ export async function setOrganisationLogo(opts: {
   fileBase64: string;
   contentType: string;
 }) {
-  await assertOrganisationStaff(opts.userId, opts.firmId);
+  await assertOrganisationWriter(opts.userId, opts.firmId);
   const { bytes, ext } = validate(opts.fileBase64, opts.contentType);
   const path = `branding/organisation/${opts.firmId}/logo-${Date.now()}.${ext}`;
   await upload(path, bytes, opts.contentType);
@@ -83,8 +104,7 @@ export async function setClientLogo(opts: {
   fileBase64: string;
   contentType: string;
 }) {
-  const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
-  await assertClientDataAccessForClient(opts.userId, opts.clientId);
+  await assertClientWriter(opts.userId, opts.clientId);
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: client } = await (supabaseAdmin as any)
@@ -93,7 +113,6 @@ export async function setClientLogo(opts: {
     .eq("id", opts.clientId)
     .maybeSingle();
   if (!client) throw new Error("Client not found.");
-  await assertOrganisationStaff(opts.userId, (client as any).firm_id);
 
   const { bytes, ext } = validate(opts.fileBase64, opts.contentType);
   // The leading client id is required by the storage read policy.
@@ -151,7 +170,7 @@ export async function getClientLogo(userId: string, clientId: string) {
 }
 
 export async function clearOrganisationLogo(userId: string, firmId: string) {
-  await assertOrganisationStaff(userId, firmId);
+  await assertOrganisationWriter(userId, firmId);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await (supabaseAdmin as any)
     .from("firms")
@@ -173,8 +192,7 @@ export async function clearOrganisationLogo(userId: string, firmId: string) {
 }
 
 export async function clearClientLogo(userId: string, clientId: string) {
-  const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
-  await assertClientDataAccessForClient(userId, clientId);
+  await assertClientWriter(userId, clientId);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: client } = await (supabaseAdmin as any)
     .from("clients")
@@ -182,11 +200,20 @@ export async function clearClientLogo(userId: string, clientId: string) {
     .eq("id", clientId)
     .maybeSingle();
   if (!client) throw new Error("Client not found.");
-  await assertOrganisationStaff(userId, (client as any).firm_id);
   const { error } = await (supabaseAdmin as any)
     .from("clients")
     .update({ logo_path: null })
     .eq("id", clientId);
   if (error) throw new Error(error.message);
+
+  const { writeAudit } = await import("@/lib/audit.server");
+  await writeAudit({
+    actorUserId: userId,
+    firmId: (client as any).firm_id,
+    action: "client_logo_cleared",
+    targetType: "clients",
+    targetId: clientId,
+    meta: {},
+  });
   return { path: null, url: null };
 }
