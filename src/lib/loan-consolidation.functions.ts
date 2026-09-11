@@ -151,23 +151,27 @@ async function loanFeatureAllowed(supabase: any, clientId: string): Promise<bool
   return firmCanUseWidget(supabase, firmId, "loan_consolidation");
 }
 
+/**
+ * WRITE gate. Security rule 5: a support grant is read-only, so setting up or
+ * changing loan accounts needs an active membership (or client ownership).
+ * The rule lives in public.user_can_write_client.
+ */
 async function canManageClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
   if (!(await loanFeatureAllowed(supabase, clientId))) return false;
-  const firmId = await clientFirmId(supabase, clientId);
-  if (Boolean(await firmMemberRole(supabase, userId, firmId))) return true;
-  if (await isSuperAdminUser(supabase, userId)) {
-    // Platform staff need an active support-access grant to reach client figures.
-    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
-    return platformStaffCanAccessFirm(userId, firmId);
-  }
-  return false;
+  const { canWriteClient } = await import("@/lib/support-access.server");
+  return canWriteClient(userId, clientId);
 }
 
 
+/** READ gate: membership, client viewer, or an approved read-only support grant. */
 async function canReadClient(supabase: any, userId: string, clientId: string): Promise<boolean> {
   if (await canManageClient(supabase, userId, clientId)) return true;
   if (!(await loanFeatureAllowed(supabase, clientId))) return false;
-  return hasClientAccess(supabase, userId, clientId);
+  if (await hasClientAccess(supabase, userId, clientId)) return true;
+  const firmId = await clientFirmId(supabase, clientId);
+  if (!firmId) return false;
+  const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+  return platformStaffCanAccessFirm(userId, firmId);
 }
 
 

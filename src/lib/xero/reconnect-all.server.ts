@@ -72,8 +72,9 @@ export async function startFirmReconnectAll(
     );
   }
 
-  const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
-  if (!(await platformStaffCanAccessFirm(userId, firmId))) {
+  // WRITE path (rule 5: support grants are read-only) — membership only.
+  const { canWriteFirm } = await import("@/lib/support-access.server");
+  if (!(await canWriteFirm(userId, firmId))) {
     throw new Error("You cannot manage this organisation's Xero connections.");
   }
 

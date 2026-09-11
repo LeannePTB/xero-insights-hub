@@ -12,12 +12,14 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 //      (the audit spans a whole Xero file, so an invited client viewer is
 //      refused, exactly as with transaction search)
 //   3. public.client_can_use_widget(_, 'xero_audit') — is the card in the plan
-// A platform role on its own grants nothing.
+// A platform role on its own grants nothing, and a support grant is
+// read-only: write surfaces pass { write: true } and require membership.
 
 async function assertAuditAccess(
   supabase: any,
   userId: string,
   tenantId: string,
+  opts?: { write?: boolean },
 ): Promise<{ clientId: string; firmId: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: link } = await (supabaseAdmin as any)
@@ -32,11 +34,17 @@ async function assertAuditAccess(
     throw new Error("That Xero organisation is not linked to a client.");
   }
 
-  const { assertClientDataAccessForClient, assertClientDataAccessForFirm } = await import(
-    "@/lib/support-access.server"
-  );
-  await assertClientDataAccessForClient(userId, clientId);
-  await assertClientDataAccessForFirm(userId, firmId);
+  const { assertClientDataAccessForClient, assertClientDataAccessForFirm, assertClientWriteAccess } =
+    await import("@/lib/support-access.server");
+  if (opts?.write) {
+    // Security rule 5: support grants are read-only. Running an audit and
+    // snoozing, resolving or clearing findings are writes, so an active
+    // membership is required (public.user_can_write_client).
+    await assertClientWriteAccess(userId, clientId);
+  } else {
+    await assertClientDataAccessForClient(userId, clientId);
+    await assertClientDataAccessForFirm(userId, firmId);
+  }
 
   const { assertClientWidget } = await import("@/lib/widget-access.server");
   await assertClientWidget(supabase, clientId, "xero_audit");
@@ -52,6 +60,7 @@ export const runXeroAudit = createServerFn({ method: "POST" })
       context.supabase,
       context.userId,
       data.tenantId,
+      { write: true },
     );
     const { tenantId } = data;
     const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
@@ -229,6 +238,7 @@ export const snoozeFinding = createServerFn({ method: "POST" })
       context.supabase,
       context.userId,
       data.tenantId,
+      { write: true },
     );
     const { getConnectionByTenant } = await import("@/lib/xero/api.server");
     await getConnectionByTenant(data.tenantId);
@@ -262,6 +272,7 @@ export const resolveFinding = createServerFn({ method: "POST" })
       context.supabase,
       context.userId,
       data.tenantId,
+      { write: true },
     );
     const { getConnectionByTenant } = await import("@/lib/xero/api.server");
     await getConnectionByTenant(data.tenantId);
@@ -290,6 +301,7 @@ export const unsnoozeFinding = createServerFn({ method: "POST" })
       context.supabase,
       context.userId,
       data.tenantId,
+      { write: true },
     );
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await (supabaseAdmin as any)

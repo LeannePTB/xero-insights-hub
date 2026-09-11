@@ -37,12 +37,32 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 
 27. **A bare super admin can take ownership of any organisation by direct REST call (opened 11 Sep 2026, Phase 2 review; fixed in Phase 2 part B).** Verified live: policy `super_admin updates firms` is `FOR UPDATE` on `app_private.is_super_admin(auth.uid())` alone, `authenticated` holds table-level UPDATE on `public.firms` with no column grants, and the only trigger is `firms_set_updated_at`. So an aal2 super admin with no membership can set `firms.owner_user_id` to themselves — which `app_private.is_org_owner` reads as ownership, letting them then approve their own support grant (Spec §7 forbids this) — or set `is_always_free` on a client organisation (Spec §4 forbids this), leaving no audit row. Breaks invariant 3 and Spec §4. Read-only check of history: all four organisations have the same `owner_user_id`, `audit_log` holds no ownership action for any of them, and every `updated_at` matches a rename/logo/subscription edit already in the audit log — no evidence of use, and no audit trail that could prove otherwise. **CLOSED 11 Sep 2026 (Phase 2 part B).** `super_admin updates firms` was dropped; INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER were revoked from `authenticated` on `public.firms` (it now holds SELECT only); the remaining `firms` and `signup_requests` policies were re-targeted from role `public` to `authenticated`; and `public.set_firm_always_free(_firm_id, _value, _reason)` is now the only path to the flag — aal2 + super admin, a reason of 3+ characters, an audit row, and TRUE permitted only on the practice organisation recorded in `app_private.platform_settings`. New posture check `always_free` reports an Action if any other organisation carries the flag. Residual: `authenticated` still holds MAINTAIN on `public.firms` (VACUUM/ANALYZE only, no row access) — cleaned up with the Phase 7 grant sweep (item 24).
 
-28. **Bare super-admin and support-grant writes to `client_subscriptions` are unaudited (opened 11 Sep 2026, Phase 2 review; fix in Phase 3).** `super admins manage client subscriptions` is `FOR ALL` on `is_super_admin(auth.uid())`; `staff manage client subscriptions` is `FOR ALL` on `platform_staff_can_access_firm`, so an active support grant is admitted too, against PK 5. The only trigger is `client_subscriptions_set_updated_at`. Spec §8 requires a comp to carry a reason and write an audit row; a direct REST write carries neither. Reads stay legitimate billing metadata.
+28. **Bare super-admin and support-grant writes to `client_subscriptions` are unaudited (opened 11 Sep 2026, Phase 2 review; fix in Phase 3).** `super admins manage client subscriptions` is `FOR ALL` on `is_super_admin(auth.uid())`; `staff manage client subscriptions` is `FOR ALL` on `platform_staff_can_access_firm`, so an active support grant was admitted too, against PK 5. Phase 3a dropped `staff manage client subscriptions`; the bare-super-admin `FOR ALL` policy and the missing audit row remain open for Phase 3b. The only trigger is `client_subscriptions_set_updated_at`. Spec §8 requires a comp to carry a reason and write an audit row; a direct REST write carries neither. Reads stay legitimate billing metadata.
 
 29. **Path C writes leave no audit trail (opened 11 Sep 2026, Phase 2 review; fix in Phase 3 as one class).** Verified live, these permissive write policies depend only on `is_super_admin` / `me_is_super_admin`: `user_roles` (`FOR ALL`), `plan_levels` (`FOR ALL`), `signup_requests` (`FOR UPDATE`), `xero_assessment_contact` (`FOR ALL`), plus `client_subscriptions` (item 28). The powers themselves are legitimate Path C, but Spec §9 requires role changes to be audited and Spec §8 requires comps to carry a reason. Trigger audit (read-only): `user_roles` has `audit_user_roles_change`, but only `AFTER INSERT OR DELETE` — a role UPDATE is unrecorded; `plan_levels`, `signup_requests` and `xero_assessment_contact` carry `tg_set_updated_at` only. Fix the whole class in one change — database audit triggers or audited definer functions — not table by table. `signup_requests` was re-targeted from role `public` to `authenticated` in Phase 2 part B (11 Sep 2026); the missing audit row remains open.
 
 
-**Backlog 18, partial result (recorded 11 Sep 2026, Phase 2 matrix run).** The RLS half is no longer reproducible: the nine tables that used to carry `FOR ALL` policies built on `app_private.user_can_manage_client` now carry per-command policies whose write halves use membership-only `EXISTS` checks, and the matrix suite proves an active support grant is denied insert, update and delete on all of them. What remains of item 18 is the shared gate itself — `app_private.user_can_manage_client` still admits `is_super_admin AND platform_staff_can_access_firm` — reachable through `app_private.move_xero_file_to_client` and the server-function write path. Those rows stay marked as known failures and are proved by the live suite in Phase 2 part 3. Item 18 is NOT closed.
+**Backlog 18 — CLOSED 11 Sep 2026 (Phase 3a).** The read/write split now exists in the database:
+`app_private.user_can_write_client` (client owner or active membership, never a support grant) is the
+write helper, wrapped for server code by aal2-guarded `public.user_can_write_client` and
+`public.user_can_write_firm`; `app_private.user_can_manage_client` is documented as the READ helper and
+is used by read policies only. `app_private.move_xero_file_to_client` uses the write helper, the
+support-grant write policy on `client_subscriptions` (`staff manage client subscriptions`) was dropped,
+and every server-function write path calls a database write check. The `support_write` posture check
+was rewritten to scan all permissive write policies and every writing SECURITY DEFINER function
+(comments stripped); it reports zero support-admitting write paths.
+
+**Backlog 32 — CLOSED 11 Sep 2026 (Phase 3a).** Confirmed live before the fix: `branding.server.ts`
+authorised branding writes with `platformStaffCanAccessFirm`, which admits a support grant, and
+`clearClientLogo` wrote no audit row. Branding writes now call `public.user_can_write_firm` /
+`public.user_can_write_client`; branding reads still allow a grant; clearing a client logo writes a
+`client_logo_cleared` audit row.
+
+**Backlog 25 — mostly closed 11 Sep 2026 (Phase 3a).** An active support grant may now read `clients`
+and `client_statutory_accounts` through two new SELECT policies (owner approved). `report_cache` and
+`scenario_exclusions` were deliberately left unchanged and remain deny.
+
+**Backlog 18, partial result (recorded 11 Sep 2026, Phase 2 matrix run) — superseded by the entry above.** The RLS half is no longer reproducible: the nine tables that used to carry `FOR ALL` policies built on `app_private.user_can_manage_client` now carry per-command policies whose write halves use membership-only `EXISTS` checks, and the matrix suite proves an active support grant is denied insert, update and delete on all of them. What remains of item 18 is the shared gate itself — `app_private.user_can_manage_client` still admits `is_super_admin AND platform_staff_can_access_firm` — reachable through `app_private.move_xero_file_to_client` and the server-function write path. Those rows stay marked as known failures and are proved by the live suite in Phase 2 part 3. Item 18 is NOT closed.
 
 
 
@@ -88,7 +108,8 @@ Phase 2 proves the access model; it fixes no access rule. Delivered so far:
   unauthenticated server functions, each with a reason and what contains it.
 - `docs/security/admin-client-register.md` — every one of the 58 files using `supabaseAdmin`,
   verified by reading the call path, not labelled. Rule 7 violations are recorded as known failures
-  under backlog item 21.
+  under backlog item 21. `src/lib/notes-access.server.ts` left the register in Phase 3a: it no longer
+  uses `supabaseAdmin` at all, it calls `public.user_can_write_client`.
 - `tests/static-guards.test.ts` — fails the build on a server function without `requireAal2`, an
   unregistered `supabaseAdmin` use, a new `profiles.email` read, a non-literal middleware list, or a
   `tenantId` read from a request.

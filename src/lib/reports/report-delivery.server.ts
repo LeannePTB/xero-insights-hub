@@ -34,8 +34,17 @@ function isEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-/** Staff-side guard: the caller may manage this report's client. */
-async function authoriseStaffForReport(supabase: any, userId: string, reportId: string) {
+/**
+ * Staff-side guard. `write` is the default: report changes require active
+ * membership (security rule 5 — support grants are read-only). Pass
+ * `{ write: false }` for read-only surfaces, which a support grant may reach.
+ */
+async function authoriseStaffForReport(
+  supabase: any,
+  userId: string,
+  reportId: string,
+  opts?: { write?: boolean },
+) {
   const { data: report, error } = await supabase
     .from("client_reports")
     .select(
@@ -46,12 +55,20 @@ async function authoriseStaffForReport(supabase: any, userId: string, reportId: 
   if (error) throw new Error(error.message);
   if (!report) throw new Error("Report not found.");
 
-  const { assertClientDataAccessForClient, platformStaffCanAccessFirm } = await import(
-    "@/lib/support-access.server"
-  );
-  await assertClientDataAccessForClient(userId, report.client_id);
-  if (!(await platformStaffCanAccessFirm(userId, report.firm_id))) {
-    throw new Error("Only organisation members may manage this report.");
+  const write = opts?.write !== false;
+  const { assertClientDataAccessForClient, platformStaffCanAccessFirm, canWriteFirm } =
+    await import("@/lib/support-access.server");
+  if (write) {
+    if (!(await canWriteFirm(userId, report.firm_id))) {
+      throw new Error(
+        "Only organisation members may change this report. Support access is read-only.",
+      );
+    }
+  } else {
+    await assertClientDataAccessForClient(userId, report.client_id);
+    if (!(await platformStaffCanAccessFirm(userId, report.firm_id))) {
+      throw new Error("Only organisation members may see this report.");
+    }
   }
   return report as {
     id: string;
@@ -71,7 +88,7 @@ async function authoriseStaffForReport(supabase: any, userId: string, reportId: 
 
 /** Live recipients (not revoked) for a report. */
 export async function listRecipients(supabase: any, userId: string, reportId: string) {
-  await authoriseStaffForReport(supabase, userId, reportId);
+  await authoriseStaffForReport(supabase, userId, reportId, { write: false });
   const { data, error } = await supabase
     .from("report_recipients")
     .select(

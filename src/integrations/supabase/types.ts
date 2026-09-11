@@ -2712,6 +2712,14 @@ export type Database = {
         Args: { _firm_id: string; _user_id: string }
         Returns: boolean
       }
+      user_can_write_client: {
+        Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_write_firm: {
+        Args: { _firm_id: string; _user_id: string }
+        Returns: boolean
+      }
       xero_missing_scopes: {
         Args: { _connection_id: string }
         Returns: string[]

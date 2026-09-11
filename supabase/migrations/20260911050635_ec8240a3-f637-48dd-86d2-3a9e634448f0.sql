@@ -1,0 +1,327 @@
+CREATE OR REPLACE FUNCTION public.security_posture()
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  checks jsonb := '[]'::jsonb;
+  n int; n2 int; n3 int; ev text; ev2 text; ev3 text;
+  guards jsonb;
+  retention_days int;
+begin
+  perform app_private.assert_aal2();
+  if not app_private.me_is_super_admin() then
+    raise exception 'FORBIDDEN' using errcode = 'insufficient_privilege';
+  end if;
+
+  select count(*), coalesce(string_agg(tbl, ', '), '') into n, ev
+  from (
+    select c.relname::text tbl
+    from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname = 'public' and c.relkind = 'r'
+      and c.relname not in ('plan_levels','tier_settings')
+      and (has_table_privilege('authenticated', c.oid, 'SELECT')
+        or has_table_privilege('authenticated', c.oid, 'INSERT')
+        or has_table_privilege('authenticated', c.oid, 'UPDATE')
+        or has_table_privilege('authenticated', c.oid, 'DELETE'))
+      and not exists (select 1 from pg_policies p
+                      where p.schemaname='public' and p.tablename=c.relname
+                        and p.policyname='mfa_aal2_required')
+  ) q;
+  checks := checks || jsonb_build_object(
+    'id','aal2_tables','title','Two-factor required on every data table',
+    'status', case when n = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 then 'All in-scope tables carry the restrictive aal2 policy.'
+                   else n || ' table(s) missing the aal2 policy.' end,
+    'evidence', case when n = 0
+      then (select count(*)::text || ' tables with mfa_aal2_required'
+            from pg_policies where schemaname='public' and policyname='mfa_aal2_required')
+      else ev end);
+
+  -- xero_required_scopes excluded: returns a fixed constant list, reads no table.
+  select jsonb_agg(jsonb_build_object('fn', fn, 'pattern', pat) order by pat, fn),
+         count(*) filter (where pat = 'none')
+    into guards, n
+  from (
+    select p.proname::text fn,
+           coalesce((regexp_match(p.prosrc,
+             '(assert_aal2|is_aal2)'))[1],
+             'none') pat
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+    where ns.nspname = 'public' and p.prosecdef
+      and p.proname <> 'xero_required_scopes'
+      and has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  ) q;
+  checks := checks || jsonb_build_object(
+    'id','definer_guards','title','Guarded SECURITY DEFINER functions',
+    'status', case when n = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 then 'Every definer function signed-in users can call references the aal2 guard.'
+                   else n || ' callable definer function(s) do not reference app_private.assert_aal2()/is_aal2().' end,
+    'evidence', 'Text heuristic only: pg_proc.prosrc is searched for assert_aal2 or is_aal2, it is not proof the guard runs on every path (a bare auth.uid() mention can still return rows when auth.uid() is null). '
+                || coalesce(jsonb_array_length(guards),0) || ' function(s) scanned; xero_required_scopes excluded (constant list).',
+    'matches', coalesce(guards, '[]'::jsonb));
+
+  -- Excess default grants. Supabase grants every privilege to anon and
+  -- authenticated on a newly created public table; RLS then hides the rows but
+  -- the privilege itself should never have been there. Reported, not revoked:
+  -- cleaning these up is Phase 7 (backlog item 24).
+  select count(*), coalesce(string_agg(tbl, ', ' order by tbl), '') into n, ev
+  from (
+    select c.relname::text tbl
+    from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname='public' and c.relkind='r'
+      and exists (
+        select 1 from unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p
+        where has_table_privilege('anon', c.oid, p))
+  ) q;
+  select count(*), coalesce(string_agg(tbl, ', ' order by tbl), '') into n2, ev2
+  from (
+    select c.relname::text tbl
+    from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+    where ns.nspname='public' and c.relkind='r'
+      and has_table_privilege('authenticated', c.oid, 'TRUNCATE')
+  ) q;
+  select count(*), coalesce(string_agg(item, ', ' order by item), '') into n3, ev3
+  from (
+    select distinct c.relname::text || ' (' || p || ')' as item
+    from pg_class c
+    join pg_namespace ns on ns.oid = c.relnamespace
+    cross join unnest(array['INSERT','UPDATE','DELETE']) p
+    where ns.nspname='public' and c.relkind='r'
+      and has_table_privilege('authenticated', c.oid, p)
+      and not exists (
+        select 1 from pg_policies pol
+        where pol.schemaname='public' and pol.tablename=c.relname
+          and pol.permissive='PERMISSIVE'
+          and pol.cmd in (p, 'ALL')
+          and ('authenticated' = any(pol.roles) or 'public' = any(pol.roles)))
+  ) q;
+  checks := checks || jsonb_build_object(
+    'id','excess_grants','title','No excess default table privileges',
+    'status', case when n > 0 then 'action' when n2 + n3 > 0 then 'warn' else 'ok' end,
+    'detail', case when n + n2 + n3 = 0
+                   then 'No public table carries a privilege beyond what its policies need.'
+                   else n || ' table(s) grant a privilege to anon; '
+                        || n2 || ' grant TRUNCATE to signed-in users; '
+                        || n3 || ' table/command pair(s) grant a write with no matching permissive policy. '
+                        || 'Supabase grants these by default on table creation; cleaning them up is Phase 7 (backlog 24).' end,
+    'evidence', 'anon: ' || coalesce(nullif(ev,''),'none')
+                || ' | authenticated TRUNCATE: ' || coalesce(nullif(ev2,''),'none')
+                || ' | ungoverned writes: ' || coalesce(nullif(ev3,''),'none'));
+
+  -- PKCE: every recent Xero authorisation request must carry a code verifier.
+  select count(*) filter (where code_verifier is null or length(code_verifier) < 43),
+         count(*)
+    into n, n2
+  from public.xero_oauth_states
+  where created_at > now() - interval '90 days';
+  checks := checks || jsonb_build_object(
+    'id','xero_pkce','title','Xero sign-in uses PKCE',
+    'status', case when n2 = 0 then 'warn' when n = 0 then 'ok' else 'action' end,
+    'detail', case when n2 = 0 then 'Not verified — no Xero authorisation started in the last 90 days to check.'
+                   when n = 0 then 'Every recent Xero authorisation carried a PKCE code verifier.'
+                   else n || ' of ' || n2 || ' recent authorisation(s) had no usable code verifier.' end,
+    'evidence', n2 || ' xero_oauth_states rows in the last 90 days, ' || n || ' without a code_verifier of 43+ characters');
+
+  select count(*) into n from auth.users u
+  where u.deleted_at is null
+    and not exists (select 1 from auth.mfa_factors f where f.user_id = u.id and f.status='verified');
+  select count(*) into n2 from auth.users where deleted_at is null;
+  checks := checks || jsonb_build_object(
+    'id','user_mfa','title','Everyone has a second factor',
+    'status', case when n = 0 then 'ok' else 'warn' end,
+    'detail', (n2 - n) || ' of ' || n2 || ' people have a verified factor.',
+    'evidence', n || ' without a verified TOTP factor (auth.mfa_factors)');
+
+  select count(*) into n from public.user_roles r
+  where r.role = 'super_admin'
+    and not exists (select 1 from auth.mfa_factors f where f.user_id = r.user_id and f.status='verified');
+  checks := checks || jsonb_build_object(
+    'id','admin_mfa','title','Super admins have a second factor',
+    'status', case when n = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 then 'Every super admin holds a verified factor.'
+                   else n || ' super admin(s) without a verified factor.' end,
+    'evidence', n || ' of ' || (select count(*) from public.user_roles where role='super_admin') || ' super admins unenrolled');
+
+  select count(*), coalesce(string_agg(relname::text, ', '), '') into n, ev
+  from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+  where ns.nspname='public' and c.relkind='r' and not c.relrowsecurity;
+  checks := checks || jsonb_build_object(
+    'id','rls_enabled','title','Row level security on every table',
+    'status', case when n = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 then 'All public tables have RLS enabled.' else n || ' table(s) without RLS.' end,
+    'evidence', case when n = 0 then 'pg_class.relrowsecurity true for all public tables' else ev end);
+
+  select count(*), coalesce(string_agg(tbl, ', '), '') into n, ev
+  from (
+    select c.relname::text tbl from pg_class c join pg_namespace ns on ns.oid=c.relnamespace
+    where ns.nspname='public' and c.relkind='r'
+      and (has_table_privilege('anon', c.oid,'SELECT') or has_table_privilege('anon', c.oid,'INSERT')
+        or has_table_privilege('anon', c.oid,'UPDATE') or has_table_privilege('anon', c.oid,'DELETE'))
+  ) q;
+  checks := checks || jsonb_build_object(
+    'id','anon_grants','title','No anonymous table privileges',
+    'status', case when n = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 then 'The anonymous role holds no privilege on any public table.'
+                   else n || ' table(s) grant privileges to anon.' end,
+    'evidence', case when n = 0 then 'has_table_privilege(anon, ...) false everywhere' else ev end);
+
+  -- service_role-only policies excluded: that role bypasses RLS by design.
+  select count(*), coalesce(string_agg(tablename || '.' || policyname, ', '), '') into n, ev
+  from pg_policies
+  where schemaname='public' and coalesce(qual,'') = 'true'
+    and tablename not in ('plan_levels','tier_settings')
+    and not (roles::text[] <@ array['service_role']);
+  checks := checks || jsonb_build_object(
+    'id','using_true','title','No blanket USING (true) policy',
+    'status', case when n = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 then 'No data-table policy is unconditional for signed-in users.'
+                   else n || ' unconditional policy(ies).' end,
+    'evidence', case when n = 0 then 'pg_policies.qual scanned; service_role-only policies excluded' else ev end);
+
+  -- Security rule 5: support grants are read-only. This inspects the actual
+  -- write paths, not one helper: (a) every permissive INSERT/UPDATE/DELETE/ALL
+  -- policy whose expression admits a support-admitting helper, and (b) every
+  -- SECURITY DEFINER function that writes and admits one. Comment lines are
+  -- stripped from function sources first, so a warning comment naming a read
+  -- helper is not counted.
+  select count(*), coalesce(string_agg(item, ', ' order by item), '') into n, ev
+  from (
+    select p.tablename || '.' || p.policyname as item
+    from pg_policies p
+    where p.schemaname='public' and p.permissive='PERMISSIVE'
+      and p.cmd in ('INSERT','UPDATE','DELETE','ALL')
+      and not (p.roles::text[] <@ array['service_role'])
+      and coalesce(p.qual,'') || ' ' || coalesce(p.with_check,'')
+          ~ '(platform_staff_can_access_firm|firm_support_access_active|user_can_manage_client|user_can_access_firm|user_can_access_client)'
+    union all
+    select 'function ' || ns.nspname || '.' || pr.proname
+    from pg_proc pr
+    join pg_namespace ns on ns.oid = pr.pronamespace
+    cross join lateral (select regexp_replace(pr.prosrc, '--[^\n]*', '', 'g') as code) c
+    where ns.nspname in ('public','app_private') and pr.prosecdef
+      and pr.proname not in ('user_can_access_firm','user_can_access_client','user_can_manage_client',
+                             'user_can_read_client','platform_staff_can_access_firm',
+                             'firm_support_access_active','security_posture')
+      and c.code ~* '(insert into |update |delete from )'
+      and c.code ~ '(platform_staff_can_access_firm|firm_support_access_active|user_can_manage_client|user_can_access_firm|user_can_access_client)'
+  ) q;
+  checks := checks || jsonb_build_object(
+    'id','support_write','title','Support grants are read-only',
+    'status', case when n = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 then 'No write policy or write function admits a support grant.'
+                   else n || ' write path(s) admit a support grant.' end,
+    'evidence', case when n = 0
+      then 'All permissive write policies and every SECURITY DEFINER function that writes were scanned for support-admitting helpers; none matched.'
+      else ev end);
+
+  select count(*), coalesce(string_agg(coalesce(f.name,'?') || ' → ' || coalesce(u.email,'?'), ', '), '') into n, ev
+  from public.firm_support_access sa
+  left join public.firms f on f.id = sa.firm_id
+  left join auth.users u on u.id = sa.grantee_user_id
+  where sa.granted and sa.revoked_at is null and sa.expires_at > now();
+  checks := checks || jsonb_build_object(
+    'id','support_grants','title','Active support grants',
+    'status', case when n = 0 then 'ok' else 'warn' end,
+    'detail', case when n = 0 then 'No organisation is under a support grant.' else n || ' active grant(s).' end,
+    'evidence', case when n = 0 then 'firm_support_access: 0 granted, unrevoked, unexpired' else ev end);
+
+  select count(*) into n from public.xero_connections where firm_id is null;
+  checks := checks || jsonb_build_object(
+    'id','xero_orphans','title','Every Xero connection belongs to an organisation',
+    'status', case when n = 0 then 'ok' else 'warn' end,
+    'detail', case when n = 0 then 'No orphaned connections.' else n || ' connection(s) with no organisation.' end,
+    'evidence', n || ' rows in xero_connections with firm_id is null');
+
+  select count(*) into n from public.xero_connections
+  where status = 'connected' and expires_at < now() - interval '1 day';
+  checks := checks || jsonb_build_object(
+    'id','xero_tokens','title','Connected Xero files are refreshing',
+    'status', case when n = 0 then 'ok' else 'warn' end,
+    'detail', case when n = 0 then 'No connected file has a stale token.'
+                   else n || ' connected file(s) with a token expired over a day ago.' end,
+    'evidence', n || ' rows: status=connected and expires_at older than 24h');
+
+  select count(*) into n from information_schema.columns
+  where table_schema='public' and table_name='xero_connections'
+    and column_name in ('access_token','refresh_token');
+  select count(*) into n2 from public.xero_connections
+  where status='connected' and (access_token_enc is null or refresh_token_enc is null);
+  checks := checks || jsonb_build_object(
+    'id','token_storage','title','Xero tokens stored encrypted only',
+    'status', case when n = 0 and n2 = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 and n2 = 0 then 'All stored tokens are in the encrypted columns.'
+                   else n || ' plaintext column(s), ' || n2 || ' connected file(s) missing an encrypted token.' end,
+    'evidence', 'information_schema.columns + xero_connections null check');
+
+  select coalesce(max(audit_retention_days), 730) into retention_days from public.security_settings;
+  select count(*) into n from public.audit_log where at < now() - (retention_days || ' days')::interval;
+  checks := checks || jsonb_build_object(
+    'id','audit_retention','title','Audit log within retention',
+    'status', case when n = 0 then 'ok' else 'warn' end,
+    'detail', case when n = 0 then 'No audit rows past the ' || retention_days || '-day retention.'
+                   else n || ' audit row(s) past the ' || retention_days || '-day retention.' end,
+    'evidence', n || ' rows older than ' || retention_days || ' days');
+
+  select count(*) into n from pg_policies
+  where schemaname='public' and tablename='audit_log'
+    and permissive='PERMISSIVE'
+    and cmd in ('INSERT','UPDATE','DELETE','ALL')
+    and ('authenticated' = any(roles) or 'public' = any(roles));
+  select count(*) into n2
+  from unnest(array['INSERT','UPDATE','DELETE','TRUNCATE']) privilege
+  where has_table_privilege('authenticated', 'public.audit_log', privilege);
+  checks := checks || jsonb_build_object(
+    'id','audit_append_only','title','Audit log is append-only',
+    'status', case when n = 0 and n2 = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 and n2 = 0 then 'Signed-in users hold no write privilege or write policy on the audit log.'
+                   else 'Signed-in users can write to the audit log.' end,
+    'evidence', n || ' write policies, ' || n2 || ' write grants for authenticated');
+
+
+  -- The always-free flag belongs to the practice organisation only (Spec §4).
+  select count(*), coalesce(string_agg(name, ', '), '') into n, ev
+  from public.firms
+  where is_always_free and id <> app_private.practice_firm_id();
+  checks := checks || jsonb_build_object(
+    'id','always_free','title','Always-free flag on the practice organisation only',
+    'status', case when n = 0 then 'ok' else 'action' end,
+    'detail', case when n = 0 then 'Only the practice organisation is marked always free.'
+                   else n || ' client organisation(s) marked always free.' end,
+    'evidence', case when n = 0 then 'public.firms: is_always_free true only for the recorded practice organisation'
+                     else ev end);
+
+
+  checks := checks || (
+    select case when r.id is null then
+      jsonb_build_object(
+        'id','access_tests','title','Access tests',
+        'status','warn',
+        'detail','Never run. Run the access tests to prove the access matrix still holds.',
+        'evidence','public.security_test_runs is empty')
+    else
+      jsonb_build_object(
+        'id','access_tests','title','Access tests',
+        'status', case when r.failed > 0 or not r.fingerprint_match then 'action'
+                       when r.ran_at < now() - interval '7 days' then 'warn'
+                       else 'ok' end,
+        'detail', case when r.failed > 0 then r.failed || ' unexpected failure(s) in the last run.'
+                       when not r.fingerprint_match then 'The test fixture no longer matches the live database.'
+                       when r.ran_at < now() - interval '7 days'
+                         then 'Last run was more than 7 days ago.'
+                       else r.passed || ' checks passed, no unexpected failures.' end,
+        'evidence', 'Last run ' || to_char(r.ran_at, 'YYYY-MM-DD HH24:MI') || ' UTC, layer ' || r.layer
+                    || ', ' || r.passed || ' passed, ' || r.failed || ' failed, '
+                    || jsonb_array_length(r.known_failures) || ' known failure(s) carried.',
+        'matches', r.known_failures)
+    end
+    from (select 1) x
+    left join lateral (
+      select * from public.security_test_runs order by ran_at desc limit 1
+    ) r on true
+  );
+
+  return jsonb_build_object('generated_at', now(), 'checks', checks);
+end;
+$function$;

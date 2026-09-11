@@ -60,3 +60,48 @@ export async function assertClientDataAccessForClient(userId: string, clientId: 
     throw new Error(SUPPORT_ACCESS_DENIED);
   }
 }
+
+// ---------------------------------------------------------------------------
+// WRITE checks. Support grants are read-only (security rule 5), so these never
+// admit one. The rule lives in the database
+// (public.user_can_write_firm / public.user_can_write_client); these are thin
+// wrappers. Never reimplement it here.
+
+export const WRITE_ACCESS_DENIED =
+  "You need to be a member of this organisation to change its data. Support access is read-only.";
+
+/** Active membership of the organisation. Never a support grant. Fails closed. */
+export async function canWriteFirm(
+  userId: string,
+  firmId: string | null | undefined,
+): Promise<boolean> {
+  if (!firmId) return false;
+  const { data, error } = await (supabaseAdmin as any).rpc("user_can_write_firm", {
+    _user_id: userId,
+    _firm_id: firmId,
+  });
+  if (error) return false;
+  return data === true;
+}
+
+export async function assertFirmWriteAccess(userId: string, firmId: string | null | undefined) {
+  if (!(await canWriteFirm(userId, firmId))) throw new Error(WRITE_ACCESS_DENIED);
+}
+
+/** Client owner or active member of the client's organisation. Never a support grant. */
+export async function canWriteClient(
+  userId: string,
+  clientId: string | null | undefined,
+): Promise<boolean> {
+  if (!clientId) return false;
+  const { data, error } = await (supabaseAdmin as any).rpc("user_can_write_client", {
+    _user_id: userId,
+    _client_id: clientId,
+  });
+  if (error) return false;
+  return data === true;
+}
+
+export async function assertClientWriteAccess(userId: string, clientId: string | null | undefined) {
+  if (!(await canWriteClient(userId, clientId))) throw new Error(WRITE_ACCESS_DENIED);
+}
