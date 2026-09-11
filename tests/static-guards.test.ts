@@ -179,3 +179,48 @@ describe("5. the readable access matrix matches its source of truth", () => {
     expect(md).toContain(`Rows: **${MATRIX.length}**`);
   });
 });
+
+describe("6. converted files decide nothing themselves (Phase 4, per batch)", () => {
+  const ACCESS_TABLES = /from\(\s*["'](user_roles|firm_members|client_access|firm_support_access)["']/;
+
+  it("lists only files that exist", () => {
+    const missing = CONVERTED_FILES.filter((f) => !FILES.some((x) => x.path === f));
+    expect(missing, report("Converted-file entries with no file:", missing)).toEqual([]);
+  });
+
+  it("has no direct read of an access table in a converted file", () => {
+    const offenders: string[] = [];
+    for (const path of CONVERTED_FILES) {
+      const f = FILES.find((x) => x.path === path);
+      if (!f) continue;
+      f.text.split("\n").forEach((line, i) => {
+        if (ACCESS_TABLES.test(line)) offenders.push(`${path}:${i + 1} — ${line.trim()}`);
+      });
+    }
+    expect(
+      offenders,
+      report("Converted file decides access itself — call the database function instead:", offenders),
+    ).toEqual([]);
+  });
+
+  it("never reaches supabaseAdmin in a converted file without a registered DB authorisation call", () => {
+    const offenders: string[] = [];
+    for (const path of CONVERTED_FILES) {
+      const f = FILES.find((x) => x.path === path);
+      if (!f || !/\bsupabaseAdmin\b/.test(f.text)) continue;
+      const firstAuth = Math.min(
+        ...REGISTERED_DB_AUTH_CALLS.map((c) => {
+          const i = f.text.indexOf(c);
+          return i < 0 ? Number.POSITIVE_INFINITY : i;
+        }),
+      );
+      const firstAdmin = f.text.search(/\bsupabaseAdmin\b/);
+      if (!Number.isFinite(firstAuth) || firstAdmin < firstAuth)
+        offenders.push(`${path} — supabaseAdmin is not preceded by a registered DB authorisation call`);
+    }
+    expect(offenders, report("Unauthorised privileged access in a converted file:", offenders)).toEqual(
+      [],
+    );
+  });
+});
+
