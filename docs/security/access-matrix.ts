@@ -257,11 +257,8 @@ export const MATRIX: MatrixRow[] = [
     "Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither)",
     ["pglite", "live"],
     {
-      knownFailure: {
-        backlog: 28,
-        note:
-          "Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3.",
-      },
+      note:
+        "Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change.",
     },
   ),
 
@@ -363,11 +360,8 @@ export const MATRIX: MatrixRow[] = [
     "PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row)",
     ["pglite", "live"],
     {
-      knownFailure: {
-        backlog: 28,
-        note:
-          "Phase 3a dropped 'staff manage client subscriptions' (the support-grant write policy). Still admitted by 'super admins manage client subscriptions', because every support grantee is a super admin, and no audit row is written. Fixed in Phase 3b.",
-      },
+      note:
+        "Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write.",
     },
   ),
 
@@ -484,44 +478,36 @@ export const MATRIX: MatrixRow[] = [
     ["super_admin_no_membership"],
     ["user_roles"],
     ["update"],
-    "deny",
-    "Spec §9 (role changes must be audited; the trigger covers insert and delete only)",
+    "allow",
+    "PK 2 path C; Spec §9 (role changes are audited)",
     ["pglite", "live"],
     {
-      knownFailure: {
-        backlog: 29,
-        note: "'super admins manage roles' is FOR ALL on me_is_super_admin(); an UPDATE leaves no audit row.",
-      },
+      note:
+        "Phase 3b closed backlog 29 for this table: the generic AFTER trigger audit_change on user_roles records insert, update and delete with the actor and the changed columns, replacing audit_user_roles_change.",
     },
   ),
   ...rows(
     ["super_admin_no_membership"],
     ["plan_levels", "xero_assessment_contact"],
     WRITES,
-    "deny",
-    "Spec §9 (platform configuration changes must leave an audit row)",
+    "allow",
+    "PK 2 path C; Spec §9 (platform configuration changes leave an audit row)",
     ["pglite", "live"],
     {
-      knownFailure: {
-        backlog: 29,
-        note: "FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded.",
-      },
+      note:
+        "Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns.",
     },
   ),
   ...rows(
     ["super_admin_no_membership"],
     ["signup_requests"],
     ["update"],
-    "deny",
-    "Spec §9 (platform metadata changes must leave an audit row)",
+    "allow",
+    "PK 2 path C; Spec §9 (platform metadata changes leave an audit row)",
     ["pglite", "live"],
     {
-      knownFailure: {
-        backlog: 29,
-        note:
-          "'super_admin updates signup_requests' is on is_super_admin alone and writes no audit row (re-targeted from role public to authenticated on 11 Sep 2026).",
-
-      },
+      note:
+        "Phase 3b closed backlog 29: trigger audit_change on signup_requests records the actor and the changed columns.",
     },
   ),
 
