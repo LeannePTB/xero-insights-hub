@@ -66,9 +66,9 @@ export function AdminSidebar() {
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
-          </SidebarGroupContent>
+        </SidebarGroupContent>
         </SidebarGroup>
-        <SidebarGroup className="mt-auto">
+        <SidebarGroup>
           <SecurityStatusCard />
         </SidebarGroup>
       </SidebarContent>
