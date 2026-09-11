@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { ALL_TIERS, type DashboardTier } from "@/lib/tiers";
+import { z } from "zod";
 
 // Entitlement (what a client may see) is deliberately separate from access
 // control (who may see the client). Nothing in this file widens visibility.
@@ -90,199 +91,66 @@ async function firmIdFor(clientId: string) {
  */
 export const setClientComp = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { clientId: string; comped: boolean; reason: string }) => i)
+  .inputValidator((i: { clientId: string; comped: boolean; reason: string }) => ({
+    clientId: z.string().uuid().parse(i.clientId),
+    comped: z.boolean().parse(i.comped),
+    reason: z.string().trim().min(3).max(500).parse(i.reason),
+  }))
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
-    const reason = (data.reason ?? "").trim();
-    if (reason.length < 3) throw new Error("A short reason is required.");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const before = await currentSub(data.clientId);
-
-    const next = data.comped
-      ? {
-          client_id: data.clientId,
-          subscription_type: "free_forever",
-          status: "free_forever",
-          dashboard_tier: "basic",
-          plan_name: "Standard (comped)",
-          trial_end: null,
-          comp_reason: reason,
-          comped_by: context.userId,
-          comped_at: new Date().toISOString(),
-        }
-      : {
-          client_id: data.clientId,
-          subscription_type: "paid",
-          status: "cancelled",
-          dashboard_tier: before?.dashboard_tier ?? "basic",
-          plan_name: before?.plan_name ?? null,
-          comp_reason: reason,
-          comped_by: context.userId,
-          comped_at: null,
-        };
-
-    const { error } = await (supabaseAdmin as any)
-      .from("client_subscriptions")
-      .upsert(next, { onConflict: "client_id" });
-    if (error) throw new Error(error.message);
-
-    const { writeAudit } = await import("@/lib/audit.server");
-    await writeAudit({
-      actorUserId: context.userId,
-      firmId: await firmIdFor(data.clientId),
-      action: data.comped ? "client_comp_granted" : "client_comp_removed",
-      targetType: "client",
-      targetId: data.clientId,
-      meta: {
-        reason,
-        previous: before
-          ? { type: before.subscription_type, status: before.status, tier: before.dashboard_tier }
-          : null,
-        next: { type: next.subscription_type, status: next.status, tier: next.dashboard_tier },
-      },
+    // Super admin, reason and audit row are all enforced by the database
+    // (public.set_client_comp). Nothing is decided here.
+    const { error } = await (context.supabase as any).rpc("set_client_comp", {
+      _client_id: data.clientId,
+      _comped: data.comped,
+      _reason: data.reason,
     });
-
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
 /** Start or end a trial of a higher dashboard. Super admin only, audited. */
 export const setClientTrial = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator(
-    (i: { clientId: string; tier: DashboardTier | null; days?: number; reason: string }) => i,
-  )
+  .inputValidator((i: { clientId: string; tier: DashboardTier | null; days?: number; reason: string }) => ({
+    clientId: z.string().uuid().parse(i.clientId),
+    tier: i.tier == null ? null : (z.enum(ALL_TIERS as unknown as [string, ...string[]]).parse(i.tier) as DashboardTier),
+    days: i.days == null ? null : z.number().int().min(1).max(120).parse(i.days),
+    reason: z.string().trim().min(3).max(500).parse(i.reason),
+  }))
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
-    const reason = (data.reason ?? "").trim();
-    if (reason.length < 3) throw new Error("A short reason is required.");
-    if (data.tier && !(ALL_TIERS as string[]).includes(data.tier)) {
-      throw new Error("Unknown dashboard level.");
-    }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const before = await currentSub(data.clientId);
-
-    const days = Math.min(Math.max(data.days ?? 30, 1), 120);
-    const trialEnd = data.tier
-      ? new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
-      : null;
-
-    const next = data.tier
-      ? {
-          client_id: data.clientId,
-          subscription_type: "trial",
-          status: "trialing",
-          dashboard_tier: data.tier,
-          trial_end: trialEnd,
-          plan_name: before?.plan_name ?? null,
-        }
-      : {
-          client_id: data.clientId,
-          subscription_type: "paid",
-          status: "cancelled",
-          dashboard_tier: "basic",
-          trial_end: null,
-          plan_name: before?.plan_name ?? null,
-        };
-
-    const { error } = await (supabaseAdmin as any)
-      .from("client_subscriptions")
-      .upsert(next, { onConflict: "client_id" });
-    if (error) throw new Error(error.message);
-
-    const { writeAudit } = await import("@/lib/audit.server");
-    await writeAudit({
-      actorUserId: context.userId,
-      firmId: await firmIdFor(data.clientId),
-      action: data.tier ? "client_trial_started" : "client_trial_ended",
-      targetType: "client",
-      targetId: data.clientId,
-      meta: {
-        reason,
-        previous: before
-          ? {
-              type: before.subscription_type,
-              status: before.status,
-              tier: before.dashboard_tier,
-              trial_end: before.trial_end,
-            }
-          : null,
-        next: { type: next.subscription_type, status: next.status, tier: next.dashboard_tier, trial_end: trialEnd },
-      },
+    const { data: trialEnd, error } = await (context.supabase as any).rpc("set_client_trial", {
+      _client_id: data.clientId,
+      _tier: data.tier,
+      _days: data.days ?? 30,
+      _reason: data.reason,
     });
-
-    return { ok: true, trialEnd };
+    if (error) throw new Error(error.message);
+    return { ok: true, trialEnd: (trialEnd as string | null) ?? null };
   });
 
 /**
  * Set a client's dashboard tier (Standard / Advisory / Multi company).
  *
- * Written through the caller's session so RLS decides who may change it —
- * organisation staff for their own clients, plus super admins. Absence of a
- * row correctly means Standard, so we never create one just to store `basic`.
+ * The rule lives in public.set_client_dashboard_tier: organisation members with
+ * write access to the client, or a super admin, aal2, audited. Support grants
+ * are read-only and never admitted. Absence of a row correctly means Standard,
+ * so no row is created just to store `basic`.
  */
 export const setClientDashboardTier = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { clientId: string; tier: DashboardTier; reason?: string }) => i)
+  .inputValidator((i: { clientId: string; tier: DashboardTier; reason?: string }) => ({
+    clientId: z.string().uuid().parse(i.clientId),
+    tier: z.enum(ALL_TIERS as unknown as [string, ...string[]]).parse(i.tier) as DashboardTier,
+    reason: i.reason == null ? null : z.string().trim().max(500).parse(i.reason),
+  }))
   .handler(async ({ data, context }) => {
-    if (!(ALL_TIERS as string[]).includes(data.tier)) throw new Error("Unknown dashboard tier.");
-    const reason = (data.reason ?? "").trim();
-
-    const supabase = context.supabase as any;
-    const { data: before } = await supabase
-      .from("client_subscriptions")
-      .select("id, subscription_type, status, dashboard_tier")
-      .eq("client_id", data.clientId)
-      .maybeSingle();
-
-    if (!before && data.tier === "basic") {
-      // Nothing to store: no row already resolves to Standard.
-      return { ok: true, tier: "basic" as const };
-    }
-
-    if (before) {
-      const { error } = await supabase
-        .from("client_subscriptions")
-        .update({ dashboard_tier: data.tier })
-        .eq("client_id", data.clientId);
-      if (error) throw new Error(error.message);
-    } else {
-      // No Stripe subscription exists behind an assigned tier, so record the
-      // truth: the client has this dashboard at no charge.
-      const { error } = await supabase.from("client_subscriptions").insert({
-        client_id: data.clientId,
-        dashboard_tier: data.tier,
-        subscription_type: "free_forever",
-        status: "active",
-        comp_reason: reason || "Dashboard tier assigned by the organisation",
-        comped_by: context.userId,
-        comped_at: new Date().toISOString(),
-      });
-      if (error) throw new Error(error.message);
-    }
-
-    const { data: client } = await supabase
-      .from("clients")
-      .select("firm_id")
-      .eq("id", data.clientId)
-      .maybeSingle();
-
-    const { writeAudit } = await import("@/lib/audit.server");
-    await writeAudit({
-      actorUserId: context.userId,
-      firmId: (client?.firm_id as string | null) ?? null,
-      action: "client_dashboard_tier_changed",
-      targetType: "client",
-      targetId: data.clientId,
-      meta: {
-        reason: reason || null,
-        from: before?.dashboard_tier ?? null,
-        to: data.tier,
-      },
+    const { data: tier, error } = await (context.supabase as any).rpc("set_client_dashboard_tier", {
+      _client_id: data.clientId,
+      _tier: data.tier,
+      _reason: data.reason,
     });
-
-    return { ok: true, tier: data.tier };
+    if (error) throw new Error(error.message);
+    return { ok: true, tier: (tier as DashboardTier) ?? data.tier };
   });
 
 /**
