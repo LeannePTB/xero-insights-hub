@@ -51,6 +51,7 @@ export function SubscriptionEditor({
   const [periodEnd, setPeriodEnd] = useState<string>(toDateInput(subscription?.current_period_end));
   const [cancelEnd, setCancelEnd] = useState<boolean>(!!subscription?.cancel_at_period_end);
   const [alwaysFree, setAlwaysFree] = useState<boolean>(!!isAlwaysFree);
+  const [alwaysFreeReason, setAlwaysFreeReason] = useState<string>("");
   const [limitOverride, setLimitOverride] = useState<string>(
     subscription?.client_limit_override != null ? String(subscription.client_limit_override) : "",
   );
