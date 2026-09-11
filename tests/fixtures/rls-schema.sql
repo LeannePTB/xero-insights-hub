@@ -1148,6 +1148,20 @@ AS $function$
   ), '{}'::text[])
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.client_xero_files_used(_client_id uuid, _exclude_link_id uuid DEFAULT NULL::uuid)
+ RETURNS integer
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select count(*)::integer
+  from public.client_xero_orgs cxo
+  join public.xero_connections xc on xc.id = cxo.xero_connection_id
+  where cxo.client_id = _client_id
+    and (_exclude_link_id is null or cxo.id <> _exclude_link_id)
+    and coalesce(xc.status, 'connected') <> 'disconnected'
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2261,4 +2275,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 9e8aad01a07f3e4f652089372081da4b185b2d86f2ef366943933c6d8e31fba8
+-- catalogue-fingerprint: 556ce2de89be4283abaca0199084bef9f6fce47467db8bdde63ebfa2907d432f
