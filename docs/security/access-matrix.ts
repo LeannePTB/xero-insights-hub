@@ -457,6 +457,66 @@ export const MATRIX: MatrixRow[] = [
     ["pglite"],
   ),
 
+  // Path C writes: legitimate super-admin powers, but Spec §8 and §9 require a
+  // reason and an audit row, and a direct REST write leaves neither. Verified
+  // live 11 Sep 2026: the only trigger on plan_levels, signup_requests and
+  // xero_assessment_contact is tg_set_updated_at; user_roles has
+  // audit_user_roles_change, but only AFTER INSERT OR DELETE — not UPDATE.
+  // Phase 3 fixes the whole class in one change (audit triggers or audited
+  // definer functions), not table by table.
+  ...rows(
+    ["super_admin_no_membership"],
+    ["user_roles"],
+    ["insert", "delete"],
+    "allow",
+    "PK 2 path C; Spec §9 (audited by audit_user_roles_change)",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["super_admin_no_membership"],
+    ["user_roles"],
+    ["update"],
+    "deny",
+    "Spec §9 (role changes must be audited; the trigger covers insert and delete only)",
+    ["pglite", "live"],
+    {
+      knownFailure: {
+        backlog: 29,
+        note: "'super admins manage roles' is FOR ALL on me_is_super_admin(); an UPDATE leaves no audit row.",
+      },
+    },
+  ),
+  ...rows(
+    ["super_admin_no_membership"],
+    ["plan_levels", "xero_assessment_contact"],
+    WRITES,
+    "deny",
+    "Spec §9 (platform configuration changes must leave an audit row)",
+    ["pglite", "live"],
+    {
+      knownFailure: {
+        backlog: 29,
+        note: "FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded.",
+      },
+    },
+  ),
+  ...rows(
+    ["super_admin_no_membership"],
+    ["signup_requests"],
+    ["update"],
+    "deny",
+    "Spec §9 (platform metadata changes must leave an audit row)",
+    ["pglite", "live"],
+    {
+      knownFailure: {
+        backlog: 29,
+        note:
+          "'super_admin updates signup_requests' is on is_super_admin alone, targets role public rather than authenticated, and writes no audit row.",
+      },
+    },
+  ),
+
+
 
   // ---------------------------------------------------------------- profiles
   {
