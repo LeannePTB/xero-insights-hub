@@ -204,18 +204,25 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
     ).toEqual([]);
   });
 
+  /** Comments are prose, not behaviour — judge the code only. */
+  const stripComments = (t: string) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
   it("never reaches supabaseAdmin in a converted file without a registered DB authorisation call", () => {
     const offenders: string[] = [];
+    const names = [...REGISTERED_DB_AUTH_CALLS, ...REGISTERED_DB_AUTH_WRAPPERS];
     for (const path of CONVERTED_FILES) {
       const f = FILES.find((x) => x.path === path);
-      if (!f || !/\bsupabaseAdmin\b/.test(f.text)) continue;
+      if (!f) continue;
+      const code = stripComments(f.text);
+      if (!/\bsupabaseAdmin\b/.test(code)) continue;
       const firstAuth = Math.min(
-        ...REGISTERED_DB_AUTH_CALLS.map((c) => {
-          const i = f.text.indexOf(c);
+        ...names.map((c) => {
+          const i = code.indexOf(c);
           return i < 0 ? Number.POSITIVE_INFINITY : i;
         }),
       );
-      const firstAdmin = f.text.search(/\bsupabaseAdmin\b/);
+      const firstAdmin = code.search(/\bsupabaseAdmin\b/);
       if (!Number.isFinite(firstAuth) || firstAdmin < firstAuth)
         offenders.push(`${path} — supabaseAdmin is not preceded by a registered DB authorisation call`);
     }
