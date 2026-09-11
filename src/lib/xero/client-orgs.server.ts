@@ -58,7 +58,7 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
 
 
   const allowance = isMulti ? Math.max(1, client.max_xero_orgs, tierLimit) : 1;
-  const used = count ?? 0;
+  const used = typeof usedCount === "number" ? usedCount : 0;
   return { allowance, used, isMulti, remaining: Math.max(0, allowance - used), sourceLabel };
 }
 
