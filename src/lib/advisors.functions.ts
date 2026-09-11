@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { siteUrl } from "@/lib/site-origin";
 
 export const PRIMARY_ADVISOR_USER_ID = "57d544ad-db50-4330-9b12-bcffdf4c6065";
@@ -15,7 +15,7 @@ async function assertAdvisor(supabase: any, userId: string) {
 }
 
 export const listAdvisors = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertAdvisor(context.supabase, context.userId);
 
@@ -55,7 +55,7 @@ export const listAdvisors = createServerFn({ method: "GET" })
   });
 
 export const setAdvisorSuperAdmin = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string; makeSuperAdmin: boolean }) => i)
   .handler(async ({ data, context }) => {
     // Only an existing super admin may grant or revoke super admin.
@@ -97,7 +97,7 @@ export const setAdvisorSuperAdmin = createServerFn({ method: "POST" })
 
 
 export const inviteAdvisor = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { email: string }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase, context.userId);
@@ -147,7 +147,7 @@ function validatePassword(pw: string) {
 }
 
 export const createAdvisorWithPassword = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { email: string; password: string }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase, context.userId);
@@ -188,7 +188,7 @@ export const createAdvisorWithPassword = createServerFn({ method: "POST" })
   });
 
 export const changeMyPassword = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { currentPassword: string; newPassword: string }) => i)
   .handler(async ({ data, context }) => {
     validatePassword(data.newPassword);
@@ -223,7 +223,7 @@ export const changeMyPassword = createServerFn({ method: "POST" })
   });
 
 export const sendAdvisorPasswordReset = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase, context.userId);
@@ -239,7 +239,7 @@ export const sendAdvisorPasswordReset = createServerFn({ method: "POST" })
   });
 
 export const setAdvisorPassword = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string; newPassword: string }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase, context.userId);
@@ -256,7 +256,7 @@ export const setAdvisorPassword = createServerFn({ method: "POST" })
 
 
 export const revokeAdvisor = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase, context.userId);
@@ -329,7 +329,7 @@ async function resendInviteForUser(supabaseAdmin: any, userId: string) {
 }
 
 export const generateAdvisorInviteLink = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase, context.userId);
@@ -350,7 +350,7 @@ export const generateAdvisorInviteLink = createServerFn({ method: "POST" })
   });
 
 export const resendAdvisorInvite = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase, context.userId);
@@ -361,7 +361,7 @@ export const resendAdvisorInvite = createServerFn({ method: "POST" })
   });
 
 export const resendAllPendingAdvisorInvites = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertAdvisor(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -383,7 +383,7 @@ export const resendAllPendingAdvisorInvites = createServerFn({ method: "POST" })
   });
 
 export const listPendingAdvisors = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertAdvisor(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

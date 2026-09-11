@@ -7,13 +7,13 @@
 // Staff-only. Nothing here is rendered on a client-facing surface.
 
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import type { Verdict } from "./rules.server";
 
 export type { Verdict, Finding, RuleSeverity } from "./rules.server";
 
 export const listClientVerdicts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { firmId?: string; clientIds: string[] }) => input)
   .handler(async ({ data, context }): Promise<{ verdicts: Record<string, Verdict> }> => {
     const clientIds = Array.from(new Set(data.clientIds ?? [])).slice(0, 500);

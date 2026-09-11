@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type SearchHit = {
   tenantId: string;
@@ -81,7 +81,7 @@ async function firmIdForClient(clientId: string): Promise<string> {
  * Returns whether this caller may use organisation-wide transaction search.
  */
 export const canSearchOrganisationTransactions = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string }) => input)
   .handler(async ({ data, context }) => {
     try {
@@ -109,7 +109,7 @@ export const canSearchOrganisationTransactions = createServerFn({ method: "POST"
   });
 
 export const searchClientTransactions = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: {
       clientId: string;

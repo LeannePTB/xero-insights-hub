@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { siteUrl } from "@/lib/site-origin";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import {
   ALL_TIERS,
   DEFAULT_TIER_WIDGETS,
@@ -9,7 +9,7 @@ import {
 } from "@/lib/tiers";
 
 export const listClients = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId?: string } | undefined) => i ?? {})
   .handler(async ({ data, context }) => {
     // Determine the firm scope. Invariant 3: a global role is never a shortcut
@@ -124,7 +124,7 @@ export const listClients = createServerFn({ method: "POST" })
   });
 
 export const getClient = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     // This feeds the client settings page, which reports Xero connectivity.
@@ -170,7 +170,7 @@ export const getClient = createServerFn({ method: "POST" })
   });
 
 export const listClientNotes = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase
@@ -207,7 +207,7 @@ export const listClientNotes = createServerFn({ method: "POST" })
   });
 
 export const addClientNote = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; body: string; includeInReport?: boolean }) => i)
   .handler(async ({ data, context }) => {
     const body = data.body.trim();
@@ -233,7 +233,7 @@ export const addClientNote = createServerFn({ method: "POST" })
   });
 
 export const updateClientNote = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { noteId: string; body: string; includeInReport?: boolean }) => i)
   .handler(async ({ data, context }) => {
     const body = data.body.trim();
@@ -263,7 +263,7 @@ export const updateClientNote = createServerFn({ method: "POST" })
   });
 
 export const deleteClientNote = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { noteId: string }) => i)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("client_notes").delete().eq("id", data.noteId);
@@ -272,7 +272,7 @@ export const deleteClientNote = createServerFn({ method: "POST" })
   });
 
 export const createClient = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { name: string; xeroConnectionIds: string[]; firmId?: string }) => i)
   .handler(async ({ data, context }) => {
     const name = data.name.trim();
@@ -388,7 +388,7 @@ export const createClient = createServerFn({ method: "POST" })
   });
 
 export const deleteClient = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; disconnectXeroFiles?: boolean }) => i)
   .handler(async ({ data, context }) => {
     // Authorisation for the removal itself lives in the database routine
@@ -486,7 +486,7 @@ export const deleteClient = createServerFn({ method: "POST" })
  * gate as the removal itself; the rule lives in the database.
  */
 export const getClientRemovalImpact = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await (context.supabase as any).rpc("client_removal_impact", {
@@ -502,7 +502,7 @@ export const getClientRemovalImpact = createServerFn({ method: "POST" })
 
 
 export const renameClient = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; name: string }) => i)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
@@ -514,7 +514,7 @@ export const renameClient = createServerFn({ method: "POST" })
   });
 
 export const updateClientReportBasis = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; basis: "accrual" | "cash" }) => i)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
@@ -532,7 +532,7 @@ export const updateClientReportBasis = createServerFn({ method: "POST" })
  * basis these are ATO obligations, so a change is recorded in the audit log.
  */
 export const updateClientLodgementCycles = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (i: {
       clientId: string;
@@ -568,7 +568,7 @@ export const updateClientLodgementCycles = createServerFn({ method: "POST" })
   });
 
 export const attachXeroOrg = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; xeroConnectionId: string }) => i)
   .handler(async ({ data, context }) => {
     const {
@@ -605,7 +605,7 @@ export const attachXeroOrg = createServerFn({ method: "POST" })
   });
 
 export const setClientXeroAllowance = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; allowance: number }) => i)
   .handler(async ({ data, context }) => {
     const allowance = Math.floor(data.allowance);
@@ -650,7 +650,7 @@ export const setClientXeroAllowance = createServerFn({ method: "POST" })
   });
 
 export const detachXeroOrg = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -689,7 +689,7 @@ export const detachXeroOrg = createServerFn({ method: "POST" })
   });
 
 export const listClientAccess = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     // RLS: only advisors can SELECT access rows other than their own
@@ -719,7 +719,7 @@ export const listClientAccess = createServerFn({ method: "POST" })
   });
 
 export const updateClientAccessTier = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { id: string; tier: DashboardTier }) => i)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -741,7 +741,7 @@ export const updateClientAccessTier = createServerFn({ method: "POST" })
   });
 
 export const revokeClientAccess = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase.from("client_access").delete().eq("id", data.id);
@@ -750,7 +750,7 @@ export const revokeClientAccess = createServerFn({ method: "POST" })
   });
 
 export const inviteClientViewer = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; email: string; tier: DashboardTier }) => i)
   .handler(async ({ data, context }) => {
     const email = data.email.trim().toLowerCase();
@@ -818,7 +818,7 @@ function validateViewerPassword(pw: string) {
 }
 
 export const createClientViewerWithPassword = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (i: { clientId: string; email: string; password: string; tier: DashboardTier }) => i,
   )

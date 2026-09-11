@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 // Server functions for the Xero file audit.
 //
@@ -45,7 +45,7 @@ async function assertAuditAccess(
 }
 
 export const runXeroAudit = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((d: unknown) => z.object({ tenantId: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
     const { clientId: auditClientId } = await assertAuditAccess(
@@ -182,7 +182,7 @@ export const runXeroAudit = createServerFn({ method: "POST" })
   });
 
 export const getLatestAudit = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((d: unknown) => z.object({ tenantId: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
     const { clientId: auditClientId } = await assertAuditAccess(
@@ -215,7 +215,7 @@ export const getLatestAudit = createServerFn({ method: "POST" })
   });
 
 export const snoozeFinding = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((d: unknown) =>
     z.object({
       tenantId: z.string().min(1),
@@ -248,7 +248,7 @@ export const snoozeFinding = createServerFn({ method: "POST" })
   });
 
 export const resolveFinding = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((d: unknown) =>
     z.object({
       tenantId: z.string().min(1),
@@ -283,7 +283,7 @@ export const resolveFinding = createServerFn({ method: "POST" })
   });
 
 export const unsnoozeFinding = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((d: unknown) => z.object({ tenantId: z.string().min(1), findingKey: z.string().min(1) }).parse(d))
   .handler(async ({ data, context }) => {
     const { clientId: auditClientId } = await assertAuditAccess(

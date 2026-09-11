@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type AgeingBucket = {
   label: string;
@@ -43,7 +43,7 @@ function parseXeroDate(s?: string): Date | null {
 }
 
 export const getAgedPayables = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     const { assertWidgetAccess } = await import("./access.server");
@@ -116,7 +116,7 @@ export type PayableInvoice = {
 };
 
 export const getPayablesList = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     const { assertWidgetAccess } = await import("./access.server");

@@ -1,6 +1,6 @@
 import { liveSource, mergeSources, type SnapshotSource } from "./snapshot-source";
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 type XeroReportRow = {
   RowType: "Header" | "Section" | "Row" | "SummaryRow";
@@ -88,7 +88,7 @@ function summarise(report: any): PnlReport {
 }
 
 export const getProfitAndLoss = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: {
       tenantId: string;
@@ -154,7 +154,7 @@ function isoDayBefore(dateStr: string): string {
 }
 
 export const getTaxLiabilities = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: { tenantId: string; date?: string; fromDate?: string; mode?: "balance" | "movement" }) => input,
   )
@@ -251,7 +251,7 @@ export type SuperannuationPosition =
     };
 
 export const getSuperannuationPosition = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string; clientId?: string }) => input)
   .handler(async ({ data, context }): Promise<SuperannuationPosition & { source: SnapshotSource }> => {
     const { assertWidgetAccess } = await import("./access.server");
@@ -369,7 +369,7 @@ export type PaygWithholdingPosition =
     };
 
 export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string; clientId?: string; months?: number }) => input)
   .handler(async ({ data, context }): Promise<PaygWithholdingPosition & { source: SnapshotSource }> => {
     const { assertWidgetAccess } = await import("./access.server");

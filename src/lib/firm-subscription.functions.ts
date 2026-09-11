@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { clientLimitFor, firmLimitCatalogue } from "@/lib/firmPlans";
 
 export type FirmSubscriptionRow = {
@@ -68,7 +68,7 @@ async function resolveAccess(supabase: any, userId: string, firmId: string): Pro
 
 /** Plan, status and available plan levels for one organisation. */
 export const getFirmSubscription = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<FirmSubscriptionView> => {
     const access = await resolveAccess(context.supabase, context.userId, data.firmId);
@@ -153,7 +153,7 @@ export const getFirmSubscription = createServerFn({ method: "POST" })
 
 /** Super admin switches the organisation onto another plan level. */
 export const changeFirmPlan = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; planKey: string }) => i)
   .handler(async ({ data, context }): Promise<{ ok: true; tier: string }> => {
     // Authorisation, limits, status preservation and the audit row all live in
@@ -175,7 +175,7 @@ export const changeFirmPlan = createServerFn({ method: "POST" })
 
 /** Owner (or super admin) cancels at period end, or resumes a pending cancellation. */
 export const setFirmCancellation = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; cancel: boolean }) => i)
   .handler(async ({ data, context }): Promise<{ ok: true; endsAt: string | null }> => {
     const access = await resolveAccess(context.supabase, context.userId, data.firmId);

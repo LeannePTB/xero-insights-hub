@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 /**
  * Drill-down for Xero API call failures recorded in audit_log.
@@ -22,7 +22,7 @@ export type XeroErrorGroup = {
 };
 
 export const listXeroApiErrors = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { days?: number; firmId?: string | null }) => ({
     days: i?.days === 30 ? 30 : 7,
     firmId: typeof i?.firmId === "string" && i.firmId ? i.firmId : null,

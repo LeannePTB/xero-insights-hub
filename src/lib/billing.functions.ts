@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { ALL_TIERS, type DashboardTier } from "@/lib/tiers";
 
 // Entitlement (what a client may see) is deliberately separate from access
@@ -33,7 +33,7 @@ async function assertSuperAdmin(supabase: any, userId: string) {
 
 /** Effective entitlement plus, for staff only, the billing record behind it. */
 export const getClientBilling = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     const { clientEntitlement } = await import("@/lib/entitlement.server");
@@ -89,7 +89,7 @@ async function firmIdFor(clientId: string) {
  * revenue decision.
  */
 export const setClientComp = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; comped: boolean; reason: string }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -148,7 +148,7 @@ export const setClientComp = createServerFn({ method: "POST" })
 
 /** Start or end a trial of a higher dashboard. Super admin only, audited. */
 export const setClientTrial = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (i: { clientId: string; tier: DashboardTier | null; days?: number; reason: string }) => i,
   )
@@ -223,7 +223,7 @@ export const setClientTrial = createServerFn({ method: "POST" })
  * row correctly means Standard, so we never create one just to store `basic`.
  */
 export const setClientDashboardTier = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tier: DashboardTier; reason?: string }) => i)
   .handler(async ({ data, context }) => {
     if (!(ALL_TIERS as string[]).includes(data.tier)) throw new Error("Unknown dashboard tier.");
@@ -293,7 +293,7 @@ export const setClientDashboardTier = createServerFn({ method: "POST" })
  * running as the caller, never as service_role.
  */
 export const setAllClientTiers = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (i: { firmId: string; tier: DashboardTier; includeBilled?: boolean; reason: string }) => i,
   )

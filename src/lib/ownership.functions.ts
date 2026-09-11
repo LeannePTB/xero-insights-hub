@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type OrganisationMember = {
   userId: string;
@@ -18,7 +18,7 @@ export type OrganisationMembersView = {
 
 /** Active members of one organisation. Visible to its own members only. */
 export const listOrganisationMembers = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<OrganisationMembersView> => {
     const { data: mine, error } = await context.supabase
@@ -86,7 +86,7 @@ function explainTransferError(message: string): string {
  * database function — this is a thin call through to it.
  */
 export const transferOrganisationOwnership = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; newOwnerUserId: string; keepPreviousAsStaff?: boolean }) => i)
   .handler(async ({ data, context }): Promise<{ ok: true }> => {
     const { error } = await (context.supabase as any).rpc("transfer_organisation_ownership", {

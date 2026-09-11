@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { readSubscriptionStates, staffFirmIdsFor } from "@/lib/subscription-state.server";
 import type { SubscriptionState } from "@/lib/subscription-state";
 
@@ -7,7 +7,7 @@ export type { SubscriptionState };
 
 /** Expiry state for a set of organisations the caller is authorised to see. */
 export const listSubscriptionStates = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmIds: string[] }) => i)
   .handler(async ({ data, context }) => {
     const states = await readSubscriptionStates(
@@ -20,7 +20,7 @@ export const listSubscriptionStates = createServerFn({ method: "POST" })
 
 /** Expiry state for one organisation. */
 export const getSubscriptionState = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }) => {
     const states = await readSubscriptionStates(context.supabase, context.userId, [data.firmId]);
@@ -32,7 +32,7 @@ export const getSubscriptionState = createServerFn({ method: "POST" })
  * An invited client viewer gets null — they never see subscription notices.
  */
 export const getClientSubscriptionState = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     const { data: client } = await context.supabase
@@ -52,7 +52,7 @@ export const getClientSubscriptionState = createServerFn({ method: "POST" })
 
 /** Organisations the caller works in that are ending soon or already lapsed. */
 export const listExpiringOrganisations = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     const { listExpiringForStaff } = await import("@/lib/subscription-state.server");
     return await listExpiringForStaff(context.supabase, context.userId);

@@ -1,10 +1,10 @@
 // Thin wrapper: server-function declarations only. All runtime logic lives in
 // monthly-report.server.ts / monthly-report-context.server.ts.
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export const generateMonthlyReport = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; periodEnd: string; tenantId?: string | null }) => input)
   .handler(async ({ data, context }) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(data.periodEnd)) throw new Error("Choose a period end.");
@@ -45,7 +45,7 @@ export const generateMonthlyReport = createServerFn({ method: "POST" })
   });
 
 export const listMonthlyReports = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string }) => input)
   .handler(async ({ data, context }) => {
     const { listReportsForClient } = await import("./monthly-report-context.server");
@@ -54,7 +54,7 @@ export const listMonthlyReports = createServerFn({ method: "POST" })
 
 /** Opens a stored report. Returns the STORED payload — never a fresh computation. */
 export const getStoredMonthlyReport = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { reportId: string }) => input)
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase

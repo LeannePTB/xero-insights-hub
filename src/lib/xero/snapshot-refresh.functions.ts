@@ -8,10 +8,10 @@
 // GRANT (invariant 4) — the caller must already be entitled to that tenant.
 
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export const refreshXeroSnapshots = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     const { assertWidgetAccess } = await import("./access.server");

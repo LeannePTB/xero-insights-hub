@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 /** Tier keys the client's organisation plan includes. `null` = unrestricted. */
 export const getAllowedTiersForClient = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data }): Promise<{ allowed: string[] | null }> => {
     const { allowedTiersForClient } = await import("@/lib/plan-tiers.server");
@@ -12,7 +12,7 @@ export const getAllowedTiersForClient = createServerFn({ method: "POST" })
 
 /** Tier keys an organisation's plan includes. `null` = unrestricted. */
 export const getAllowedTiersForFirm = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data }): Promise<{ allowed: string[] | null }> => {
     const { allowedTiersForFirm } = await import("@/lib/plan-tiers.server");

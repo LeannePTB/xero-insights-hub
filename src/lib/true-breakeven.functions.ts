@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type TrueBreakevenInputs = {
   loan_principal: number;
@@ -24,7 +24,7 @@ const DEFAULTS: TrueBreakevenInputs = {
 };
 
 export const getTrueBreakevenInputs = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
@@ -54,7 +54,7 @@ export const getTrueBreakevenInputs = createServerFn({ method: "POST" })
   });
 
 export const upsertTrueBreakevenInputs = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: {
       clientId: string;

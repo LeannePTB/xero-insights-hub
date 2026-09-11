@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { randomBytes, createHash } from "crypto";
 import { siteUrl } from "@/lib/site-origin";
 
@@ -48,7 +48,7 @@ function validateEmail(email: string) {
  * or an invite link/email (invite mode).
  */
 export const adminCreateOrganisation = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (i: {
       name: string;
@@ -231,7 +231,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
  * Firm gets a placeholder name; owner sets the real business name on signup.
  */
 export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { email: string; businessName?: string | null }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -300,7 +300,7 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
  * Super-admin: invite an additional member to an existing firm.
  */
 export const adminInviteFirmMember = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; email: string; role: "owner" | "staff" }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);

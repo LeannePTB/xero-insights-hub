@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { randomBytes, createHash } from "crypto";
 import { xeroIdentityScopeString } from "@/lib/xero/scopes";
 import { xeroCallbackUrl, assertAppOrigin } from "@/lib/site-origin";
@@ -55,7 +55,7 @@ export const startXeroSignIn = createServerFn({ method: "POST" })
   });
 
 export const listXeroConnections = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("xero_connections")
@@ -89,7 +89,7 @@ export const listXeroConnections = createServerFn({ method: "GET" })
  * rather than hard-coded AUD — required for Xero certification data integrity.
  */
 export const getTenantCurrency = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
@@ -127,7 +127,7 @@ export const getTenantCurrency = createServerFn({ method: "POST" })
   });
 
 export const checkXeroConnection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data }) => {
     const { getConnectionByTenant } = await import("@/lib/xero/api.server");
@@ -147,7 +147,7 @@ export const checkXeroConnection = createServerFn({ method: "POST" })
   });
 
 export const startXeroConnect = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: {
       origin: string;
@@ -273,7 +273,7 @@ export const startXeroConnect = createServerFn({ method: "POST" })
  * subscription automatically from the Xero organisation name on callback.
  */
 export const startXeroOnboardConnect = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: {
       origin: string;
@@ -350,7 +350,7 @@ export const startXeroOnboardConnect = createServerFn({ method: "POST" })
 
 
 export const listClientXeroOptions = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; state?: string }) => input)
   .handler(async ({ data, context }) => {
     const { userCanManageClient, getClientOrgAllowance, getSelectableConnectionsForClient } =
@@ -378,7 +378,7 @@ export const listClientXeroOptions = createServerFn({ method: "POST" })
   });
 
 export const linkClientXeroOptions = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; state: string; connectionIds: string[] }) => input)
   .handler(async ({ data, context }) => {
     const uniqueIds = [...new Set(data.connectionIds)];
@@ -450,7 +450,7 @@ export const linkClientXeroOptions = createServerFn({ method: "POST" })
  * them everywhere) and a free slot in the target's file allowance.
  */
 export const moveXeroFileToClient = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; connectionId: string }) => input)
   .handler(async ({ data, context }) => {
     const { userCanManageClient, getClientOrgAllowance, getClientFirmId } =
@@ -516,7 +516,7 @@ export const moveXeroFileToClient = createServerFn({ method: "POST" })
 
 
 export const disconnectXero = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     // Look up the connection row so we can check who is asking and which
@@ -583,7 +583,7 @@ export const disconnectXero = createServerFn({ method: "POST" })
  * authorisation, flagging which can become new client subscriptions.
  */
 export const listOnboardCandidates = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { firmId: string; state: string }) => input)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -647,7 +647,7 @@ export const listOnboardCandidates = createServerFn({ method: "POST" })
 
 /** Create client subscriptions only for the Xero organisations the user picked. */
 export const createClientsFromSelectedTenants = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { firmId: string; state: string; tenantIds: string[] }) => input)
   .handler(async ({ data, context }) => {
     const uniqueIds = [...new Set(data.tenantIds)];

@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { writeAudit } from "@/lib/audit.server";
 
@@ -22,6 +23,9 @@ const AUTH_ACTIONS = [
 ] as const;
 export type AuthAuditAction = (typeof AUTH_ACTIONS)[number];
 
+// Deliberate aal1 exception: this records the sign-in and MFA lifecycle
+// itself, which happens before a second factor can exist. Write-only, no
+// caller-supplied identifiers, returns no data.
 export const logAuthEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { action: AuthAuditAction }) => {
@@ -93,7 +97,7 @@ export type AuditAnomaly = {
 
 /** Counters an auditor (and we) watch for suspicious activity. */
 export const getAuditAnomalies = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -179,7 +183,7 @@ function csvCell(v: unknown): string {
 
 /** Super-admin CSV export of the audit trail for auditors. */
 export const exportAuditLogCsv = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { days?: number }) => ({
     days: Math.min(Math.max(Math.trunc(i?.days ?? 90), 1), 1095),
   }))
@@ -254,7 +258,7 @@ export const exportAuditLogCsv = createServerFn({ method: "POST" })
 
 /** Retention configuration + how many rows are past it. */
 export const getRetentionStatus = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

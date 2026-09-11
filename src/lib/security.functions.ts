@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type SecurityContact = {
   company_legal_name: string | null;
@@ -45,7 +45,7 @@ async function assertSuperAdmin(supabase: any, userId: string) {
 }
 
 export const getSecurityPosture = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -102,7 +102,7 @@ export const getSecurityPosture = createServerFn({ method: "GET" })
   });
 
 export const purgeOldAuditLog = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -116,7 +116,7 @@ export const purgeOldAuditLog = createServerFn({ method: "POST" })
   });
 
 export const resetUserMfa = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -152,14 +152,14 @@ const POLICY_DOCS = [
 ] as const;
 
 export const listSecurityDocs = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     return { docs: POLICY_DOCS.map((slug) => ({ slug, url: `/api/public/docs/security/${slug}.md` })) };
   });
 
 export const getSecurityContact = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }): Promise<SecurityContact> => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -190,7 +190,7 @@ export const getSecurityContact = createServerFn({ method: "GET" })
   });
 
 export const saveSecurityContact = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: Partial<SecurityContact>) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);

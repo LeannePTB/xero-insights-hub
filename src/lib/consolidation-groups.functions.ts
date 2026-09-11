@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 // Only the platform super admin crosses organisation boundaries.
 
@@ -66,7 +66,7 @@ async function firmIdForGroup(admin: any, groupId: string): Promise<string> {
 }
 
 export const listConsolidationGroups = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<ConsolidationGroupsView> => {
     await assertFirmAccess(context.supabase, context.userId, data.firmId, { allowSupportRead: true });
@@ -135,7 +135,7 @@ export const listConsolidationGroups = createServerFn({ method: "POST" })
   });
 
 export const saveConsolidationGroup = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; groupId?: string; name: string; clientIds: string[] }) => i)
   .handler(async ({ data, context }) => {
     await assertFirmAccess(context.supabase, context.userId, data.firmId);
@@ -202,7 +202,7 @@ export const saveConsolidationGroup = createServerFn({ method: "POST" })
   });
 
 export const deleteConsolidationGroup = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string }) => i)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -214,7 +214,7 @@ export const deleteConsolidationGroup = createServerFn({ method: "POST" })
   });
 
 export const getConsolidationGroup = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string }) => i)
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import type { GstResult } from "./gst.server";
 import type { SnapshotMeta } from "./recon-snapshot.server";
 
@@ -38,7 +38,7 @@ function validate(i: Input): Input {
 }
 
 export const getGstReconciliation = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(validate)
   .handler(async ({ data, context }): Promise<GstResponse> => {
     const { runReconciliation } = await import("./recon-snapshot.server");

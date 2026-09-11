@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 const contactSchema = z.object({
   legal_name: z.string().max(200).nullish(),
@@ -32,7 +32,7 @@ async function assertSuperAdmin(supabase: any, userId: string) {
 }
 
 export const getAssessmentContact = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }): Promise<XeroAssessmentContact> => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { data, error } = await context.supabase
@@ -45,7 +45,7 @@ export const getAssessmentContact = createServerFn({ method: "GET" })
   });
 
 export const saveAssessmentContact = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((d: unknown) => contactSchema.parse(d))
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);

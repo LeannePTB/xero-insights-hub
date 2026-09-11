@@ -13,7 +13,7 @@
  */
 
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 async function assertSuperAdmin(supabase: any, userId: string) {
   const { data, error } = await supabase
@@ -36,7 +36,7 @@ export type OrphanXeroConnection = {
 };
 
 export const listOrphanXeroConnections = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }): Promise<OrphanXeroConnection[]> => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -84,7 +84,7 @@ export const listOrphanXeroConnections = createServerFn({ method: "GET" })
   });
 
 export const assignOrphanXeroConnection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { connectionId: string; firmId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -127,7 +127,7 @@ export const assignOrphanXeroConnection = createServerFn({ method: "POST" })
   });
 
 export const disconnectOrphanXeroConnection = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { connectionId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);

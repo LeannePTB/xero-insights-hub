@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import type { AccountRef } from "@/lib/cost-classification";
 
 /**
@@ -9,7 +9,7 @@ import type { AccountRef } from "@/lib/cost-classification";
  * grants.
  */
 export const getExpenseAccounts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; tenantId: string }) => input)
   .handler(async ({ data, context }): Promise<{ accounts: AccountRef[] }> => {
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");

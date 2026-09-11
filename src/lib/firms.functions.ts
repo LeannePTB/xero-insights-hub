@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { clientLimitFor, firmLimitCatalogue } from "@/lib/firmPlans";
 
 
@@ -34,7 +34,7 @@ async function assertSuperAdmin(supabase: any, userId: string) {
  * or any other per-client data.
  */
 export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }): Promise<{ firms: FirmOverviewCard[] }> => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -96,7 +96,7 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
  * Powers the top-level organisations grid and scopes "add client" to a firm.
  */
 export const listMyFirms = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }): Promise<{ firms: FirmOverviewCard[] }> => {
     const { data, error } = await context.supabase
       .from("firm_members")
@@ -151,7 +151,7 @@ export const listMyFirms = createServerFn({ method: "GET" })
  * Returns one firm by id. Requires the caller to be a member of that firm.
  */
 export const getMyFirm = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<{
     firm: { id: string; name: string };

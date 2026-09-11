@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 /**
  * Server-side gate for the Company Consolidations page.
@@ -10,7 +10,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * (`firm_can_use_widget`) rather than reimplemented here. Fails closed.
  */
 export const getConsolidationsAccess = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(
     async ({
