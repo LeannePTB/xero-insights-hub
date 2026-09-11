@@ -56,10 +56,10 @@ export const listOrphanXeroConnections = createServerFn({ method: "GET" })
     const userIds = [...new Set(rows.map((r) => r.user_id).filter(Boolean))];
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
-      .select("id, email, display_name")
+      .select("id, display_name")
       .in("id", userIds.length ? userIds : ["00000000-0000-0000-0000-000000000000"]);
     const who = new Map(
-      (profiles ?? []).map((p: any) => [p.id, p.display_name || p.email || null]),
+      (profiles ?? []).map((p: any) => [p.id, p.display_name || null]),
     );
 
     return rows

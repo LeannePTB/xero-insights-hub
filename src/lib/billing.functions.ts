@@ -41,17 +41,13 @@ export const getClientBilling = createServerFn({ method: "POST" })
       .eq("client_id", data.clientId)
       .maybeSingle();
 
-    const { data: roleRow } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "super_admin")
-      .maybeSingle();
+    // public.me_is_super_admin() — the one database implementation of the rule.
+    const { data: isSuperAdmin } = await (context.supabase as any).rpc("me_is_super_admin");
 
     return {
       entitlement,
       subscription: (sub ?? null) as SubRow | null,
-      isSuperAdmin: Boolean(roleRow),
+      isSuperAdmin: Boolean(isSuperAdmin),
     };
   });
 

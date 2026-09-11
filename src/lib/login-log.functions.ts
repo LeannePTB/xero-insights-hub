@@ -42,13 +42,12 @@ export const listLoginEvents = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { limit?: number }) => i)
   .handler(async ({ data, context }) => {
-    // Authorize: advisors only
-    const { data: roles } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "advisor");
-    if (!roles || roles.length === 0) {
+    // Authorise: advisors only, decided by public.me_has_role through the
+    // caller's own session.
+    const { data: isAdvisor } = await (context.supabase as any).rpc("me_has_role", {
+      _role: "advisor",
+    });
+    if (!isAdvisor) {
       throw new Error("Only advisors can view login activity.");
     }
 

@@ -40,7 +40,6 @@ export async function getClientReportBasis(tenantId: string): Promise<"accrual" 
     .from("client_xero_orgs")
     .select("clients!inner(report_basis), xero_connections!inner(tenant_id)")
     .eq("xero_connections.tenant_id", tenantId)
-    .limit(1)
     .maybeSingle();
   const basis = cxo?.clients?.report_basis;
   return basis === "cash" ? "cash" : "accrual";

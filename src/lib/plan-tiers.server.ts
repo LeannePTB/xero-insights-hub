@@ -38,20 +38,16 @@ export async function allowedTiersForClient(clientId: string): Promise<string[] 
   return allowedTiersForFirm(client?.firm_id ?? null);
 }
 
-async function isSuperAdmin(userId: string) {
-  const { data } = await supabaseAdmin
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  return Boolean(data);
-}
-
-/** Throws unless the tier is in the organisation's plan (super admins may override). */
-export async function assertTierInPlanForClient(userId: string, clientId: string, tier: string) {
+/**
+ * Throws unless the tier is in the organisation's plan.
+ *
+ * Positive Traction may override, decided by public.me_is_super_admin()
+ * through the caller's own session — never by a lookup here.
+ */
+export async function assertTierInPlanForClient(supabase: any, clientId: string, tier: string) {
   const allowed = await allowedTiersForClient(clientId);
   if (!allowed || allowed.includes(tier)) return;
-  if (await isSuperAdmin(userId)) return;
+  const { data: isSuperAdmin } = await supabase.rpc("me_is_super_admin");
+  if (isSuperAdmin) return;
   throw new Error("That dashboard tier isn't included in this organisation's plan.");
 }

@@ -186,10 +186,10 @@ export const listClientNotes = createServerFn({ method: "POST" })
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: profiles } = await supabaseAdmin
         .from("profiles")
-        .select("id, display_name, email")
+        .select("id, display_name")
         .in("id", ids);
       authorMap = new Map(
-        (profiles ?? []).map((p: any) => [p.id, { display_name: p.display_name, email: p.email }]),
+        (profiles ?? []).map((p: any) => [p.id, { display_name: p.display_name }]),
       );
     }
     const { canManageClientNotes } = await import("@/lib/notes-access.server");
@@ -198,10 +198,7 @@ export const listClientNotes = createServerFn({ method: "POST" })
       canFlagForReport: canFlag,
       notes: (rows ?? []).map((r: any) => ({
         ...r,
-        author_name:
-          authorMap.get(r.author_id)?.display_name ??
-          authorMap.get(r.author_id)?.email ??
-          "Unknown",
+        author_name: authorMap.get(r.author_id)?.display_name ?? "Unknown",
         is_mine: r.author_id === context.userId,
       })),
     };
@@ -721,7 +718,7 @@ export const updateClientAccessTier = createServerFn({ method: "POST" })
     if (lookupErr) throw new Error(lookupErr.message);
     if (clientId) {
       const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-      await assertTierInPlanForClient(context.userId, clientId as string, data.tier);
+      await assertTierInPlanForClient(context.supabase, clientId as string, data.tier);
     }
     const { error } = await (context.supabase as any).rpc("set_client_access_tier", {
       _id: data.id,
@@ -761,7 +758,7 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
     }
 
     const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-    await assertTierInPlanForClient(context.userId, data.clientId, data.tier);
+    await assertTierInPlanForClient(context.supabase, data.clientId, data.tier);
 
     // Prove write access to this client BEFORE any privileged step (rule 7).
     const { data: canWrite, error: canErr } = await (context.supabase as any).rpc(
@@ -826,7 +823,7 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
     }
 
     const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-    await assertTierInPlanForClient(context.userId, data.clientId, data.tier);
+    await assertTierInPlanForClient(context.supabase, data.clientId, data.tier);
 
     // Write authorisation for the grant itself lives in the database
     // (public.grant_client_access). Prove it BEFORE the privileged auth.admin
