@@ -58,6 +58,35 @@ Authenticated profile writes are column-restricted to `display_name`; INSERT and
 19. **Bulk dashboard tiers — closed 7 Sep 2026.** `public.set_all_client_tiers` now gates on `app_private.is_super_admin(auth.uid())` instead of `app_private.has_firm_access`; every other line (plan `allowed_tiers` check, rows written, audit row) is unchanged. All 12 active `firm_members` rows belong to users who hold `super_admin`, so no current behaviour changed. **Related, unchanged and reported to the owner:** `setClientDashboardTier` (`src/lib/billing.functions.ts`) writes `client_subscriptions.dashboard_tier` through the caller's session, gated by the `staff manage client subscriptions` RLS policy (`platform_staff_can_access_firm`) or `super admins manage client subscriptions`. That path is *not* super-admin only and also admits a live support grant; a decision is pending.
 20. **Awaiting owner decision (raised 11 Sep 2026, with the Phase 1 MFA change).** (a) Should the two aal1 server functions `logAuthEvent` and `logLogin` be timeboxed or additionally rate limited? A Xero-minted aal1 session can call both; they only write audit/login rows and return `{ok:true}`. (b) One of the three super admins has no verified TOTP factor; after this change no aal1 session reaches any data, so that account enrols at next sign-in via `/auth/mfa-enroll` (Supabase Auth only, unaffected by the new guards). Confirm this is understood before it next signs in. (c) The tier/plan configuration tables were left outside the aal2 policy pending the separate tier-catalogue decision.
 
+## Phase 2 — Guardrails (started 11 Sep 2026)
+
+Phase 2 proves the access model; it fixes no access rule. Delivered so far:
+
+- `docs/security/access-matrix.ts` — the authoritative role × resource × operation matrix, every row
+  citing its rule. `docs/security/access-matrix.md` is generated from it and a test fails if it is
+  stale, so the readable document and the tests cannot disagree. Includes the expired grant, revoked
+  grant, super-admin self-approval and organisation-A-owner-reads-organisation-B cases.
+- `docs/security/server-fn-aal1-allowlist.ts` — the two approved aal1 loggers and the seven
+  unauthenticated server functions, each with a reason and what contains it.
+- `docs/security/admin-client-register.md` — every one of the 58 files using `supabaseAdmin`,
+  verified by reading the call path, not labelled. Rule 7 violations are recorded as known failures
+  under backlog item 21.
+- `tests/static-guards.test.ts` — fails the build on a server function without `requireAal2`, an
+  unregistered `supabaseAdmin` use, a new `profiles.email` read, a non-literal middleware list, or a
+  `tenantId` read from a request.
+- `public.security_test_runs` plus `public.record_access_test_run()` (aal2 + super admin, no writes
+  from a browser session), and an `access_tests` posture check (Action on unexpected failures or a
+  stale fixture fingerprint, Warn if never run or older than 7 days).
+- `definer_guards` tightened: it now requires `assert_aal2`/`is_aal2` specifically instead of any
+  caller mention. Verified after the change: 30 callable definer functions scanned,
+  0 without the guard, `xero_required_scopes` excluded (constant list).
+- `bun run security:check` runs the matrix staleness check and the whole vitest suite.
+
+Not yet built (next in this phase): the PGlite fixture's full auth mirror (`auth.uid()`, `auth.jwt()`,
+`auth.users`, `auth.mfa_factors`, role grants, BYPASSRLS definer owners) with the aal1 meta test, the
+matrix-driven PGlite suite, the live smoke suite with its isolated "ZZ Security Test Org" and
+per-role test accounts, and the "Run access tests" button on `/admin/security`.
+
 ## Phase 1b — Security posture card (done 11 Sep 2026, corrected same day)
 
 A compact **Security** card sits directly under the sidebar navigation: shield icon, an
