@@ -18,7 +18,6 @@ create role authenticated;
 create role service_role bypassrls;
 create schema if not exists auth;
 create schema if not exists app_private;
-create extension if not exists pgcrypto;
 
 create table auth.users(
   id uuid primary key,
