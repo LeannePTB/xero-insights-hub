@@ -111,7 +111,8 @@ select string_agg(stmt, E'\n' order by ord, k) from stmts;
 -- changes this value, so a stale fixture is detectable.
 select E'\n-- catalogue-fingerprint: ' || encode(digest(string_agg(sig, '|' order by sig), 'sha256'), 'hex')
 from (
-  select 'pol:' || c.relname || ':' || pol.polname || ':' || pol.polcmd || ':' || pol.polpermissive
+  select 'pol:' || c.relname || ':' || pol.polname || ':' || pol.polcmd::text
+         || ':' || pol.polpermissive::text
          || ':' || coalesce(pg_get_expr(pol.polqual, pol.polrelid), '')
          || ':' || coalesce(pg_get_expr(pol.polwithcheck, pol.polrelid), '') sig
     from pg_policy pol join pg_class c on c.oid = pol.polrelid
