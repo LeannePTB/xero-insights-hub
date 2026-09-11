@@ -210,21 +210,28 @@ export const MATRIX: MatrixRow[] = [
     note:
       "Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data.",
   }),
+  // Backlog 27 closed 11 Sep 2026 (Phase 2 part B): 'super_admin updates firms'
+  // dropped, and INSERT/UPDATE/DELETE/TRUNCATE revoked from authenticated on
+  // public.firms. The flag now moves only through public.set_firm_always_free
+  // (aal2 + super admin + reason + audit row, TRUE only on the practice
+  // organisation) and ownership only through transfer_organisation_ownership.
   ...rows(
     PLATFORM_ONLY_ROLES,
     ["firms"],
     ["update"],
     "deny",
-    "PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free never on a client organisation)",
+    "PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row)",
     ["pglite", "live"],
-    {
-      knownFailure: {
-        backlog: 27,
-        note:
-          "Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row.",
-      },
-    },
   ),
+  ...rows(
+    ["firm_owner", "firm_staff", "client_viewer"],
+    ["firms"],
+    ["update"],
+    "deny",
+    "Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write",
+    ["pglite", "live"],
+  ),
+
   ...rows(
     PLATFORM_ONLY_ROLES,
     ["firms", "firm_members"],
