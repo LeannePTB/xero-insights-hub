@@ -112,18 +112,18 @@ export const deletePlanLevel = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!level) throw new Error("Level not found.");
 
-    if (level.scope === "firm") {
-      const { count } = await (supabaseAdmin as any)
-        .from("subscriptions")
-        .select("id", { count: "exact", head: true })
-        .eq("tier", level.key);
-      if ((count ?? 0) > 0) throw new Error("This plan is in use by an organisation — move them first.");
-    } else {
-      const { count } = await (supabaseAdmin as any)
-        .from("client_access")
-        .select("id", { count: "exact", head: true })
-        .eq("tier", level.key);
-      if ((count ?? 0) > 0) throw new Error("This tier is in use by a client — move them first.");
+    // "Is this level still in use?" is counted by the database, which
+    // re-checks super admin itself and never exposes the rows.
+    const { data: inUse, error: useErr } = await (context.supabase as any).rpc("plan_level_usage_count", {
+      _id: data.id,
+    });
+    if (useErr) throw new Error(useErr.message);
+    if ((inUse ?? 0) > 0) {
+      throw new Error(
+        level.scope === "firm"
+          ? "This plan is in use by an organisation — move them first."
+          : "This tier is in use by a client — move them first.",
+      );
     }
 
     const { error } = await (supabaseAdmin as any).from("plan_levels").delete().eq("id", data.id);
