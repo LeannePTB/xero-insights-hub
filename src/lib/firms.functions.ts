@@ -36,7 +36,7 @@ async function assertSuperAdmin(supabase: any, userId: string) {
 export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }): Promise<{ firms: FirmOverviewCard[] }> => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: firms, error } = await (supabaseAdmin as any)

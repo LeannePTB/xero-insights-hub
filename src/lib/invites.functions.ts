@@ -65,7 +65,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     }) => i,
   )
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
 
     const name = (data.name ?? "").trim();
     if (name.length < 2 || name.length > 120) throw new Error("Please enter an organisation name.");
@@ -231,7 +231,7 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { email: string; businessName?: string | null }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const email = validateEmail(data.email);
     const placeholderName = (data.businessName?.trim() || email).slice(0, 120);
 
@@ -300,7 +300,7 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string; email: string; role: "owner" | "staff" }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const email = validateEmail(data.email);
     if (data.role !== "owner" && data.role !== "staff") throw new Error("Invalid role.");
 

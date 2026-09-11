@@ -38,7 +38,7 @@ export type OrphanXeroConnection = {
 export const listOrphanXeroConnections = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }): Promise<OrphanXeroConnection[]> => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Explicit column list — never select * from xero_connections.
@@ -87,7 +87,7 @@ export const assignOrphanXeroConnection = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { connectionId: string; firmId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: existing, error: readErr } = await supabaseAdmin
@@ -130,7 +130,7 @@ export const disconnectOrphanXeroConnection = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { connectionId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: existing, error: readErr } = await supabaseAdmin

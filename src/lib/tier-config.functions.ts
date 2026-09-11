@@ -98,7 +98,7 @@ export const savePlatformTierWidgets = createServerFn({ method: "POST" })
     // plan_levels.widgets, so a card nobody unticked can never be lost here.
     // Unticking is still expressed as an exclusion — the deny-list stays,
     // because organisation and client rows are built on it.
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: level } = await (supabaseAdmin as any)
@@ -274,7 +274,7 @@ export const getOrgWidgetMatrix = createServerFn({ method: "POST" })
 export const listOrgTierOverrides = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: rows, error } = await (supabaseAdmin as any)
