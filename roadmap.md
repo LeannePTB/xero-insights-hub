@@ -1,7 +1,9 @@
 # Roadmap
 
 - [ ] Replace role-check authorisation with access checks on write paths (plan in .lovable/plan.md awaiting approval; five open questions)
-- [ ] Phase 2 — Guardrails: access matrix, PGlite matrix suite, live smoke suite with dedicated test accounts, static guard tests, verified admin-client register, definer_guards tightening + access_tests posture check
+- [x] Phase 2 — Guardrails, part 1: access matrix (source of truth + generated document), aal1 allow-list, verified admin-client register, static guard tests, `security_test_runs` + `record_access_test_run()`, `access_tests` posture check, tightened `definer_guards`, `bun run security:check`
+- [ ] Phase 2 — Guardrails, part 2: PGlite fixture auth mirror (auth.uid/jwt/users/mfa_factors, role grants, BYPASSRLS definer owners) + aal1 meta test, matrix-driven PGlite suite
+- [ ] Phase 2 — Guardrails, part 3: live smoke suite (ZZ Security Test Org, per-role test accounts with TOTP secrets in project secrets, server-function calls, cleanup, exclusion from posture counts) and the "Run access tests" button on /admin/security
 - [x] Fix the firm-subscription super_admin bypass (`resolveAccess`/`assertAccess`)
 - [x] Add Allyce and Chantelle as staff of Autotek NSW and Bangkok On Darby (Path A membership)
 - [x] Phase 1 — enforce MFA (aal2) on the server: middleware wrapper, restrictive policies on all 49 in-scope tables, guards on 26 definer functions
