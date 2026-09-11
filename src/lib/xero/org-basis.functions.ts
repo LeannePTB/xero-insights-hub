@@ -12,7 +12,7 @@ export const getXeroSalesTaxBasis = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getEffectiveTier } = await import("./access.server");
     const { normaliseSalesTaxBasis } = await import("@/lib/report-basis");
-    const { isAdvisor, tier } = await getEffectiveTier(context.userId, data.tenantId);
+    const { isAdvisor, tier } = await getEffectiveTier(context.supabase, data.tenantId);
     if (!isAdvisor && !tier) throw new Error("You don't have access to this organisation.");
 
     const { getConnectionByTenant, xeroGet } = await import("./api.server");

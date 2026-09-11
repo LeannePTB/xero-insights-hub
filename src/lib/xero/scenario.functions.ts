@@ -209,7 +209,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ScenarioData> => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "cashflow_scenario");
+    await assertWidgetAccess(context.supabase, data.tenantId, "cashflow_scenario");
 
     const from = new Date(`${data.fromDate}T00:00:00`);
     const to = new Date(`${data.toDate}T00:00:00`);

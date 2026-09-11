@@ -106,7 +106,7 @@ export const getProfitAndLoss = createServerFn({ method: "POST" })
     // is still tested against this viewer's own entitlement. Break-Even is
     // authorised as Break-Even, so owning that card without the separate Profit
     // & Loss card still shows figures rather than an error.
-    await assertWidgetAccess(context.userId, data.tenantId, data.widget ?? "pnl");
+    await assertWidgetAccess(context.supabase, data.tenantId, data.widget ?? "pnl");
 
     const conn = await getConnectionByTenant(data.tenantId);
     const basis = data.basis ?? (await getClientReportBasis(data.tenantId));
@@ -163,7 +163,7 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
     const { assertWidgetAccess } = await import("./access.server");
     // This read feeds the cash-commitments section inside the Break-Even card,
     // which is the card the viewer is entitled to.
-    await assertWidgetAccess(context.userId, data.tenantId, "accounting_breakeven");
+    await assertWidgetAccess(context.supabase, data.tenantId, "accounting_breakeven");
     const conn = await getConnectionByTenant(data.tenantId);
     const mode = data.mode ?? "balance";
 
@@ -255,7 +255,7 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
   .inputValidator((input: { tenantId: string; clientId?: string }) => input)
   .handler(async ({ data, context }): Promise<SuperannuationPosition & { source: SnapshotSource }> => {
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "superannuation");
+    await assertWidgetAccess(context.supabase, data.tenantId, "superannuation");
 
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { getStatutoryOverrides } = await import("./statutory-overrides.server");
@@ -373,7 +373,7 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
   .inputValidator((input: { tenantId: string; clientId?: string; months?: number }) => input)
   .handler(async ({ data, context }): Promise<PaygWithholdingPosition & { source: SnapshotSource }> => {
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "payg_withholding");
+    await assertWidgetAccess(context.supabase, data.tenantId, "payg_withholding");
 
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { getStatutoryOverrides } = await import("./statutory-overrides.server");

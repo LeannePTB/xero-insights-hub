@@ -493,7 +493,7 @@ export const getBusinessHealthDetail = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<BusinessHealthDetail> => {
     const { getConnectionByTenant, xeroGet } = await import("./xero/api.server");
     const { assertWidgetAccess } = await import("./xero/access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "health");
+    await assertWidgetAccess(context.supabase, data.tenantId, "health");
     const conn = await getConnectionByTenant(data.tenantId);
 
     const today = new Date();

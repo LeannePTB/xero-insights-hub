@@ -17,7 +17,7 @@ export const getExpenseAccounts = createServerFn({ method: "POST" })
 
     // The client must actually own this Xero file (shared rule, invariant 4/7).
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
 
 
     // Cost classification feeds break-even, the cash-flow scenario and the

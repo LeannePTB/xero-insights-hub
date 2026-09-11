@@ -138,7 +138,7 @@ export const getCashflow = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "cashflow");
+    await assertWidgetAccess(context.supabase, data.tenantId, "cashflow");
     const conn = await getConnectionByTenant(data.tenantId);
 
     // 1) Current bank account balances
