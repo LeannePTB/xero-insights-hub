@@ -77,7 +77,6 @@ the check is TypeScript, but they are not open endpoints.
 | `src/lib/xero/recon-snapshot.server.ts` | `runReconciliation` | `KNOWN FAILURE (backlog 21)` | Raw `firm_members` gate. |
 | `src/lib/xero/snapshot-refresh.server.ts` | `refreshTenant` (manual) | `KNOWN FAILURE (backlog 21)` | Manual path gated by `assertWidgetAccess`. |
 | `src/lib/xero/snapshot-read.server.ts` | snapshot reads | `KNOWN FAILURE (backlog 21)` | Documented as relying on the caller's `assertWidgetAccess`. |
-| `src/lib/notes-access.server.ts` | `canManageClientNotes`, `assertCanManageClientNotes` | `KNOWN FAILURE (backlog 21)` | Raw table read rather than `user_can_access_client`. |
 | `src/lib/tenant-ownership.server.ts` | `assertTenantBelongsToClient` | `KNOWN FAILURE (backlog 21)` | A consistency check, not a caller-authorisation check; callers rely on it as though it were one. |
 | `src/lib/plan-tiers.server.ts` | `assertTierInPlanForClient` | `KNOWN FAILURE (backlog 21)` | Also carries the open owner decision recorded in the backlog (super admin setting a tier outside the plan). |
 | `src/lib/plan-levels.functions.ts` | plan catalogue admin handlers | `KNOWN FAILURE (backlog 21, unverified)` | Uses `supabaseAdmin`; gate not traced end to end in this pass. |
