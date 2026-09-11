@@ -2432,14 +2432,50 @@ export type Database = {
       }
     }
     Functions: {
+      admin_advisor_user_ids: {
+        Args: never
+        Returns: {
+          user_id: string
+        }[]
+      }
+      admin_firm_members: {
+        Args: { _firm_id: string }
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          role: string
+          status: string
+          user_id: string
+        }[]
+      }
+      admin_grant_advisor: { Args: { _user_id: string }; Returns: undefined }
+      admin_list_advisors: {
+        Args: never
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          is_super_admin: boolean
+          user_id: string
+        }[]
+      }
+      admin_remove_advisor: { Args: { _user_id: string }; Returns: undefined }
       admin_set_self_firm_membership: {
         Args: { _firm_id: string; _join: boolean }
+        Returns: boolean
+      }
+      admin_set_super_admin: {
+        Args: { _make: boolean; _user_id: string }
         Returns: boolean
       }
       assert_client_write_access: {
         Args: { _client_id: string }
         Returns: undefined
       }
+      assert_super_admin: { Args: never; Returns: undefined }
       assert_tenant_belongs_to_client: {
         Args: { _client_id: string; _tenant_id: string }
         Returns: boolean
@@ -2630,6 +2666,17 @@ export type Database = {
         }[]
       }
       org_addon_widgets: { Args: never; Returns: string[] }
+      organisation_members: {
+        Args: { _firm_id: string }
+        Returns: {
+          display_name: string
+          email: string
+          role: string
+          status: string
+          user_id: string
+        }[]
+      }
+      plan_level_usage_count: { Args: { _id: string }; Returns: number }
       prune_xero_snapshot_runs: {
         Args: { _abandoned_hours?: number; _retention_days?: number }
         Returns: number
