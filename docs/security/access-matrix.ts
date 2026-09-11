@@ -326,6 +326,99 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
   ),
 
+  // --------------------------------------------------------- client viewer
+  ...rows(["client_viewer"], ["clients", "client_notes"], ["read"], "allow", "Spec §3 client viewer", [
+    "pglite",
+    "live",
+  ]),
+  ...rows(
+    ["client_viewer"],
+    ["firms", "firm_members", "audit_log", "subscriptions"],
+    ["read"],
+    "deny",
+    "Spec §3 client viewer sees only that client",
+    ["pglite", "live"],
+  ),
+  ...rows(["client_viewer"], ["clients", "client_access"], WRITES, "deny", "Spec §3", ["pglite", "live"]),
+
+  // ------------------------------------------------------------ Xero tokens
+  ...rows(
+    [
+      "org_owner",
+      "org_staff",
+      "support_grant_active",
+      "super_admin_no_membership",
+      "client_viewer",
+      "anonymous",
+    ],
+    ["xero_connections.access_token_enc", "xero_connections.refresh_token_enc"],
+    ["read"],
+    "deny",
+    "PK 8; Spec §10 (no column grant; privilege check precedes RLS)",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff"],
+    ["xero_connections (non-token columns)"],
+    ["read"],
+    "allow",
+    "Spec §10",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["other_org_member", "anonymous", "aal1_member"],
+    ["xero_connections (non-token columns)"],
+    ["read"],
+    "deny",
+    "PK 3, PK 4",
+    ["pglite", "live"],
+  ),
+
+  // ---------------------------------------------------------- append-only
+  ...rows(
+    ["org_owner", "org_staff", "client_viewer", "support_grant_active", "super_admin_no_membership"],
+    APPEND_ONLY_TABLES,
+    WRITES,
+    "deny",
+    "PK 10; Spec §9 (append-only)",
+    ["pglite", "live"],
+  ),
+  {
+    role: "org_owner",
+    resource: "audit_log",
+    operation: "read",
+    expect: "deny",
+    rule: "Backlog 26 — Spec §3 promises the organisation its own audit rows; only super_admin can read today",
+    layers: ["pglite", "live"],
+    note: "Fails closed, so it is a gap rather than an incident. Recorded, not fixed in Phase 2.",
+  },
+
+  // -------------------------------------------------- Path C platform metadata
+  ...rows(
+    ["super_admin_no_membership"],
+    PATH_C_METADATA,
+    ["read"],
+    "allow",
+    "PK 2 path C (metadata only, never Xero financial data)",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["super_admin_no_membership"],
+    ["xero_snapshots", "client_reports", "report_cache", "reconciliation_snapshots"],
+    ["read"],
+    "deny",
+    "PK 3 (super_admin grants ZERO client data on its own)",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["org_staff", "client_viewer", "other_org_member"],
+    ["plan_levels", "tier_settings"],
+    WRITES,
+    "deny",
+    "Spec §5 (plan catalogue is platform-owned)",
+    ["pglite"],
+  ),
+
 
   // ---------------------------------------------------------------- profiles
   {
