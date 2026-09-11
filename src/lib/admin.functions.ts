@@ -131,8 +131,9 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
           user_id: m.user_id,
           role: m.role,
           created_at: m.created_at,
-          email: emailById.get(m.user_id) ?? u?.user?.email ?? null,
-          display_name: profileMap.get(m.user_id)?.display_name ?? null,
+          email: m.email ?? u?.user?.email ?? null,
+          display_name: m.display_name ?? null,
+
           last_sign_in_at: u?.user?.last_sign_in_at ?? null,
           email_confirmed_at: u?.user?.email_confirmed_at ?? null,
         };
