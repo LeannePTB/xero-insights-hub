@@ -101,5 +101,5 @@ export async function computeFirmAccess(supabase: any): Promise<FirmAccessState>
 export const getMyFirmAccess = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }): Promise<FirmAccessState> => {
-    return computeFirmAccess(context.userId);
+    return computeFirmAccess(context.supabase);
   });

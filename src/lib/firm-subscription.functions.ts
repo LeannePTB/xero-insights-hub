@@ -41,27 +41,24 @@ type Access = {
   isSuperAdmin: boolean;
 };
 
-async function resolveAccess(supabase: any, userId: string, firmId: string): Promise<Access> {
-  const [{ data: membership }, { data: superRow }] = await Promise.all([
-    supabase
-      .from("firm_members")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("firm_id", firmId)
-      .eq("status", "active")
-      .maybeSingle(),
-
-    supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", userId)
-      .eq("role", "super_admin")
-      .maybeSingle(),
+/**
+ * Who the caller is for this organisation, from caller-scoped database
+ * functions only: public.my_firm_memberships() and public.me_is_super_admin().
+ * super_admin on its own still grants nothing — the handler below requires
+ * membership or a live read-only support grant.
+ */
+async function resolveAccess(supabase: any, firmId: string): Promise<Access> {
+  const [{ data: memberships }, { data: superAdmin }] = await Promise.all([
+    supabase.rpc("my_firm_memberships"),
+    supabase.rpc("me_is_super_admin"),
   ]);
+  const membership = ((memberships ?? []) as Array<{ firm_id: string; role: string }>).find(
+    (m) => m.firm_id === firmId,
+  );
   return {
     isOwner: membership?.role === "owner",
     isMember: !!membership,
-    isSuperAdmin: !!superRow,
+    isSuperAdmin: !!superAdmin,
   };
 }
 
