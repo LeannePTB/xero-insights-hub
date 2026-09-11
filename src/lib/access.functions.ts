@@ -29,22 +29,18 @@ export type FirmAccessState =
 /**
  * Plain helper so other server fns can reuse the access check without
  * going through the createServerFn RPC boundary.
+ *
+ * The organisation is resolved by public.my_firm_memberships() through the
+ * caller's own session — this file never looks up firm_members itself. The
+ * plan and subscription rows read afterwards are billing metadata for the
+ * organisation the caller is already a member of.
  */
-export async function computeFirmAccess(userId: string): Promise<FirmAccessState> {
+export async function computeFirmAccess(supabase: any): Promise<FirmAccessState> {
+  const { data: memberships } = await supabase.rpc("my_firm_memberships");
+  const firmId = ((memberships ?? []) as Array<{ firm_id: string }>)[0]?.firm_id ?? null;
+  if (!firmId) return { state: "no_firm" };
+
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  const { data: membership } = await (supabaseAdmin as any)
-    .from("firm_members")
-    .select("firm_id, role")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .order("created_at", { ascending: true })
-    .limit(1)
-    .maybeSingle();
-
-  if (!membership?.firm_id) return { state: "no_firm" };
-  const firmId = membership.firm_id as string;
-
   const { data: firm } = await (supabaseAdmin as any)
     .from("firms").select("id, name, is_always_free").eq("id", firmId).maybeSingle();
   if (!firm) return { state: "no_firm" };
