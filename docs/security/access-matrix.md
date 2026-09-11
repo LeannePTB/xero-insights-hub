@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1266**. Known failures: **0**.
+Rows: **1279**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -223,6 +223,8 @@ None.
 | public.security_posture() | execute | DENY | pglite, live | PK 2 (assert_aal2 guard is the first statement) |  |
 | public.online_users() | execute | DENY | pglite, live | PK 2 (assert_aal2 guard is the first statement) |  |
 | public.set_profile_display_name_admin() | execute | DENY | pglite, live | PK 2 (assert_aal2 guard is the first statement) |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: write client data | execute | DENY | live | PK 2 (requireAal2) |  |
@@ -332,6 +334,8 @@ None.
 | tier_settings | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | tier_settings | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
@@ -434,6 +438,7 @@ None.
 | scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 
 ## Member with status = suspended
 
@@ -531,6 +536,7 @@ None.
 | scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
@@ -633,6 +639,7 @@ None.
 | scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
@@ -770,6 +777,8 @@ None.
 | signup_requests | update | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform metadata changes leave an audit row) | Phase 3b closed backlog 29: trigger audit_change on signup_requests records the actor and the changed columns. |
 | public.online_users() | execute | ALLOW | pglite, live | PK 2 path C metadata |  |
 | public.set_all_client_tiers() | execute | DENY | live | PK 3 — needs the organisation's data, super admin alone is not access | Backlog 19 records that this now gates on is_super_admin; revisit when the shared gate rule is decided. |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
@@ -1075,6 +1084,8 @@ None.
 | xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | audit_log | read | DENY | pglite, live | Backlog 26 — Spec §3 promises the organisation its own audit rows; only super_admin can read today | Fails closed, so it is a gap rather than an incident. Recorded, not fixed in Phase 2. |
+| public.user_can_disconnect_xero_connection() | execute | ALLOW | live | Path A — membership, own organisation |  |
+| public.client_xero_files_used() | execute | ALLOW | live | Path A — membership; disconnected files do not consume the allowance | Phase 5: shared with the client allowance triggers, so a disconnected Xero file keeps its client link without counting toward the plan limit. |
 | server fn: list clients for an organisation | execute | ALLOW | live | PK 2 path A |  |
 | server fn: write client data | execute | ALLOW | live | PK 2 path A |  |
 | server fn: invite a member | execute | ALLOW | live | PK 2 path A |  |
@@ -1237,6 +1248,7 @@ None.
 | tier_settings | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | tier_settings | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1339,6 +1351,7 @@ None.
 | xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
 | server fn: change organisation or client branding | execute | DENY | live | PK 5 (support grants are READ-ONLY) | branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. |
 

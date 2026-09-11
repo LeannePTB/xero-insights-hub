@@ -13,17 +13,17 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
   const [
     { data: client, error: clientError },
     { data: access, error: accessError },
-    { count, error: countError },
+    { data: usedCount, error: countError },
     { data: levels },
   ] = await Promise.all([
     supabaseAdmin.from("clients").select("max_xero_orgs").eq("id", clientId).maybeSingle(),
     // Granted tiers come from the database helper, so this file holds no
     // access-table read of its own (rule 6).
     (supabaseAdmin as any).rpc("client_access_tiers", { _client_id: clientId }),
-    supabaseAdmin
-      .from("client_xero_orgs")
-      .select("id", { count: "exact", head: true })
-      .eq("client_id", clientId),
+    // One counter, in the database, shared with the allowance triggers: a
+    // disconnected Xero file keeps its client link but must NOT consume the
+    // allowance, or a client is capped on files they no longer use.
+    (supabaseAdmin as any).rpc("client_xero_files_used", { _client_id: clientId }),
     (supabaseAdmin as any)
       .from("plan_levels")
       .select("key, label, xero_org_limit, allows_multi_org")
@@ -34,6 +34,7 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
   if (accessError) throw new Error(accessError.message);
   if (countError) throw new Error(countError.message);
   if (!client) throw new Error("Client subscription not found.");
+
 
 
   // Multi-file support comes from the tier catalogue, so new tiers can allow it too.
@@ -57,7 +58,7 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
 
 
   const allowance = isMulti ? Math.max(1, client.max_xero_orgs, tierLimit) : 1;
-  const used = count ?? 0;
+  const used = typeof usedCount === "number" ? usedCount : 0;
   return { allowance, used, isMulti, remaining: Math.max(0, allowance - used), sourceLabel };
 }
 

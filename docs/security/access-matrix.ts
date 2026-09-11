@@ -704,6 +704,55 @@ export const MATRIX: MatrixRow[] = [
     note: "Backlog 19 records that this now gates on is_super_admin; revisit when the shared gate rule is decided.",
   },
 
+  // ------------------------------------------------- Xero disconnect (Phase 5)
+  ...rows(
+    [
+      "aal1_member",
+      "support_grant_active",
+      "client_viewer",
+      "other_org_member",
+      "org_a_owner_reading_org_b",
+      "super_admin_no_membership",
+      "suspended_member",
+      "removed_member",
+    ],
+    ["public.user_can_disconnect_xero_connection()"],
+    ["execute"],
+    "deny",
+    "PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4",
+    ["live"],
+    {
+      note: "Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id.",
+    },
+  ),
+  {
+    role: "org_owner",
+    resource: "public.user_can_disconnect_xero_connection()",
+    operation: "execute",
+    expect: "allow",
+    rule: "Path A — membership, own organisation",
+    layers: ["live"],
+  },
+  {
+    role: "org_owner",
+    resource: "public.client_xero_files_used()",
+    operation: "execute",
+    expect: "allow",
+    rule: "Path A — membership; disconnected files do not consume the allowance",
+    layers: ["live"],
+    note: "Phase 5: shared with the client allowance triggers, so a disconnected Xero file keeps its client link without counting toward the plan limit.",
+  },
+  ...rows(
+    ["aal1_member", "other_org_member", "super_admin_no_membership"],
+    ["public.client_xero_files_used()"],
+    ["execute"],
+    "deny",
+    "PK 2 (aal2), PK 3, PK 4",
+    ["live"],
+  ),
+
+
+
   // --------------------------------------------------------- server functions
   ...rows(
     ["other_org_member", "super_admin_no_membership", "suspended_member", "removed_member"],

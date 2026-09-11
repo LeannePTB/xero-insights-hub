@@ -14,6 +14,7 @@ The real remaining defects in that function:
 - it **hard-deletes** rows: `.delete().eq("tenant_id", …)` — every row for that Xero file, for every person and potentially another organisation's row, with no `firm_id` filter. A disconnect should mark one row disconnected, not delete rows.
 - the pre-check uses `.maybeSingle()` on `tenant_id`, which errors as soon as two people hold the same file.
 - authorisation is done in TypeScript (`userCanManageClient`, or `row.user_id === caller`) rather than through a database function — Phase 4 rulebook drift.
+- **`client_xero_orgs.xero_connection_id` is `ON DELETE CASCADE` (verified live).** So today's hard delete also destroys the client-to-Xero-file link. That is almost certainly the orphan factory: a disconnect drops the link, and the next connect writes a fresh row with nothing linking it to a client. Nothing else cascades off `xero_connections`: `xero_api_errors.xero_connection_id` is `ON DELETE SET NULL`, and snapshots/reports are keyed by `tenant_id`, not by connection id (verified live — those are the only two foreign keys referencing the table).
 
 **Problem 2 — no detection when the client revokes: MOSTLY FIXED, one real gap.**
 `src/lib/xero/authorised-tenants.server.ts` reconciles our rows against `GET /connections` nightly (via `snapshot-refresh.server.ts:361`), immediately after every callback, and lazily per screen with a database rate limit (`authorisation-freshness.server.ts`). It is fail-closed, writes `xero_authorisation_lost` / `xero_authorisation_restored`, and never deletes data. Gap: if the whole **token** is dead (client revoked the app, or the refresh token was rejected), `getConnection` throws, the user is counted as `usersSkipped`, and every row stays `connected` for ever. A definitive `invalid_grant` from Xero's token endpoint is indistinguishable from a timeout today.
@@ -36,7 +37,10 @@ Revoke first, verify with Xero's own list, then update **one** row:
 - replace the hard delete with `status = 'disconnected'`, `disconnected_at = now()`, `disconnected_reason = 'disconnected_by_advisor'` on the **single row id** resolved server-side, scoped to that organisation;
 - authorise through one new caller-scoped database function (`public.user_can_disconnect_xero_connection`) — aal2, `SET search_path`, revoked from `PUBLIC`/anon, membership or client-owner only, never a support grant;
 - Xero unreachable or refusing: the user sees "Xero didn't confirm the disconnect — nothing has changed. Please try again." The row stays connected (no pending state, no retry queue), and a `xero_disconnect_failed` audit row is written with the status and reason only — never a token.
-- data and snapshots are untouched by a disconnect.
+- **the `client_xero_orgs` link is KEPT.** Marking instead of deleting means the client-to-file link survives, so a later reconnect restores the same Xero file to the same client with no re-linking step and no orphan row.
+- data, snapshots and reports are untouched by a disconnect.
+
+**Disconnected files must not consume the plan allowance.** Verified live: the organisation-level triggers (`app_private.enforce_xero_org_limit`, `..._on_move`) and `public.firm_plan_limits` already exclude `status = 'disconnected'`. The **client-level** ones do not — `public.enforce_client_xero_org_allowance`, `public.enforce_client_max_xero_orgs` and `getClientOrgAllowance` count `client_xero_orgs` rows regardless of connection status. Because we now keep the link, that would cap clients on files they have already disconnected. Fixed in the same change with one shared counter (`app_private.client_xero_files_used`) used by both triggers and the app, plus test coverage.
 
 ## 4. Detecting revocation from the client's side
 
@@ -63,7 +67,7 @@ Fix at the source: the connect/onboard callback stops storing tenants that were 
 ## 8. Rollout order
 
 1. Documentation confirmation (§2) — no code. Owner reads the two answers.
-2. Disconnect fix: mark-not-delete, single row, database authorisation. Owner tests: disconnect one Xero file on a test client, confirm Xero's own Connected Apps list no longer shows it, confirm the row reads disconnected and the client's history still displays.
+2. Disconnect fix: mark-not-delete, single row, keep the client link, database authorisation. **Owner test uses Positive Traction's own Xero file — never a client's**, because all 12 clients are real. Steps: on Positive Traction's own client screen, disconnect its Xero file; in Xero, open Settings → Connected Apps and confirm Traction Advisory no longer lists that organisation; back in the app confirm the file shows disconnected, the client link is still shown, and existing figures still display. **To reconnect afterwards:** use "Reconnect Xero file" on that same screen (or the organisation's "Reconnect Xero files"), tick Positive Traction on Xero's consent screen, approve every permission, and confirm the file returns to Connected with its client link intact and no duplicate row.
 3. Reconnect scoping to the reconnecting person. Owner tests: reconnect one file and the bulk reconnect; confirm both still work and nothing else changed.
 4. `invalid_grant` detection. Owner tests: after a client disconnects the app inside Xero, the file shows disconnected within a day and no data disappears.
 5. Orphan prevention in the connect path, then (owner confirms first) the database constraint.
@@ -81,11 +85,17 @@ Steps 5 and 6 need explicit owner confirmation before running.
 | Bare super admin, not a member | disconnect | denied |
 | Any caller | read data from a `disconnected` connection | no data served |
 | Reconnecting person | reconnect | only their own row changes |
+| Client at its Xero file limit with one file disconnected | connect another file | allowed — disconnected files do not count |
+| Advisor | disconnect then reconnect | the client-to-file link survives; no orphan row |
 
-## 10. Owner decisions
+## 10. Owner decisions — ALL APPROVED 12 Sep 2026 as recommended
 
-1. **A connection the client revoked — keep or remove its data?** Recommendation: **keep everything**, mark the connection disconnected, show existing figures with their "as at" date and a banner. Financial history is the value; deletion is irreversible.
-2. **Existing duplicate rows — merge or leave?** Recommendation: **leave alone** — there are none, so a merge tool is unnecessary risk.
-3. **Is `firm_id` mandatory on new connection rows?** Recommendation: **yes**, enforced in the database.
-4. **Should the tidy-up screen (step 6) be built at all now?** Recommendation: **no** — zero orphans; revisit only if the count stops being zero.
-5. **What happens when the plan has no room for a Xero file mid-authorisation?** Recommendation: refuse it and tell the user, rather than storing it unassigned.
+1. Client-revoked connection: **keep all data and snapshots**, mark disconnected, show existing figures with their "as at" date.
+2. Existing duplicate rows: **leave alone** (there are none).
+3. `firm_id` mandatory on connection rows in the database: **yes** — deferred to step 5, reviewed separately.
+4. Tidy-up screen: **do not build**.
+5. Plan has no room mid-authorisation: **refuse the file and tell the user** — step 5.
+
+## Scope of this build
+
+Steps 1–4 only (documentation confirmation, disconnect fix, reconnect scoping, `invalid_grant` detection), plus the client-level allowance fix. **Step 5 (orphan prevention and the `firm_id` constraint) is NOT built** — the owner reviews it separately.

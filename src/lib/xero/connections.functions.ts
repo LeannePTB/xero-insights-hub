@@ -488,21 +488,27 @@ export const disconnectXero = createServerFn({ method: "POST" })
     // tenant to detach. Xero's own connection id is NOT stored — it is looked
     // up from GET /connections at the moment of the disconnect.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row, error: lookupErr } = await supabaseAdmin
+    const { data: rows, error: lookupErr } = await supabaseAdmin
       .from("xero_connections")
-      .select("id, tenant_id, tenant_name, user_id, client_xero_orgs(client_id)")
-      .eq("tenant_id", data.tenantId)
-      .maybeSingle();
+      .select("id, tenant_id, tenant_name, user_id, firm_id, status")
+      .eq("tenant_id", data.tenantId);
     if (lookupErr) throw new Error(lookupErr.message);
+    // A Xero file can carry one row per staff member. Prefer the caller's own
+    // row; otherwise take the first, and let the database decide whether they
+    // are allowed to disconnect it.
+    const row =
+      (rows ?? []).find((r: any) => r.user_id === context.userId) ?? (rows ?? [])[0] ?? null;
     if (!row) throw new Error("Xero connection not found.");
-    const linkedClientId = (row.client_xero_orgs as Array<{ client_id: string }> | null)?.[0]
-      ?.client_id;
-    if (linkedClientId) {
-      const { userCanManageClient } = await import("@/lib/xero/client-orgs.server");
-      if (!(await userCanManageClient(context.userId, linkedClientId)))
-        throw new Error("You cannot disconnect this Xero file.");
-    } else if (row.user_id !== context.userId)
-      throw new Error("You cannot disconnect this Xero file.");
+
+    // One rulebook: who may disconnect is decided in the database. Membership
+    // or client-write only — a support grant is read-only and a bare super
+    // admin gets nothing.
+    const { data: allowed, error: authErr } = await (supabaseAdmin as any).rpc(
+      "user_can_disconnect_xero_connection",
+      { _user_id: context.userId, _connection_id: row.id },
+    );
+    if (authErr) throw new Error("You cannot disconnect this Xero file.");
+    if (allowed !== true) throw new Error("You cannot disconnect this Xero file.");
 
     // Detach this ONE organisation at Xero. The refresh token is deliberately
     // left alone: it is per Xero user account and revoking it would drop every
@@ -511,20 +517,39 @@ export const disconnectXero = createServerFn({ method: "POST" })
     const outcome = await detachTenantFromXero(data.tenantId);
 
     if (outcome.result === "failed") {
-      // Fail closed: the local row stays, so the file still shows as connected
-      // and the owner can try again rather than being told it worked.
+      // Fail closed: the local row stays connected, so the owner can try again
+      // rather than being told it worked.
       await supabaseAdmin.from("audit_log").insert({
         actor_user_id: context.userId,
+        firm_id: row.firm_id ?? null,
         action: "xero_disconnect_failed",
         target_type: "xero_connection",
         target_id: row.tenant_id,
         meta: { tenant_name: row.tenant_name, reason: outcome.reason },
       });
-      throw new Error(`Xero did not disconnect this file. ${outcome.reason}`);
+      throw new Error(
+        `Xero didn't confirm the disconnect, so nothing has changed. Please try again. ${outcome.reason}`,
+      );
     }
+
+    // Mark, never delete. `client_xero_orgs.xero_connection_id` cascades on
+    // delete, so deleting the row would destroy the client-to-Xero-file link
+    // and leave the next authorisation as an unassigned connection. Keeping the
+    // row (and the link) means a later reconnect restores the same file to the
+    // same client, and the client's history and snapshots stay readable.
+    const { error } = await (supabaseAdmin as any)
+      .from("xero_connections")
+      .update({
+        status: "disconnected",
+        disconnected_at: new Date().toISOString(),
+        disconnected_reason: "disconnected_by_advisor",
+      })
+      .eq("id", row.id);
+    if (error) throw new Error(error.message);
 
     await supabaseAdmin.from("audit_log").insert({
       actor_user_id: context.userId,
+      firm_id: row.firm_id ?? null,
       action: "xero_disconnected",
       target_type: "xero_connection",
       target_id: row.tenant_id,
@@ -532,16 +557,13 @@ export const disconnectXero = createServerFn({ method: "POST" })
         tenant_name: row.tenant_name,
         outcome: outcome.result,
         other_files_still_connected: outcome.remaining,
+        other_rows_for_this_file: Math.max(0, (rows ?? []).length - 1),
       },
     });
 
-    const { error } = await supabaseAdmin
-      .from("xero_connections")
-      .delete()
-      .eq("tenant_id", data.tenantId);
-    if (error) throw new Error(error.message);
     return { ok: true, outcome: outcome.result, remaining: outcome.remaining };
   });
+
 
 /**
  * Onboard picker: list the Xero organisations returned by the last onboard

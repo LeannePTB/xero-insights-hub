@@ -2541,6 +2541,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      client_xero_files_used: { Args: { _client_id: string }; Returns: number }
       delete_client_report: {
         Args: { _reason?: string; _report_id: string }
         Returns: {
@@ -2891,6 +2892,10 @@ export type Database = {
         Returns: boolean
       }
       user_can_access_tenant: { Args: { _tenant_id: string }; Returns: boolean }
+      user_can_disconnect_xero_connection: {
+        Args: { _connection_id: string; _user_id: string }
+        Returns: boolean
+      }
       user_can_read_client: { Args: { _client_id: string }; Returns: boolean }
       user_can_write_client: {
         Args: { _client_id: string; _user_id: string }
