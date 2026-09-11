@@ -14,7 +14,7 @@ export const getMyContext = createServerFn({ method: "GET" })
       (context.supabase as any).rpc("my_roles"),
       (context.supabase as any).rpc("my_firm_memberships"),
     ]);
-    const roleNames = ((roles ?? []) as string[]) ?? [];
+    const roleNames = (roles ?? []) as string[];
     const hasAdvisorRole = roleNames.includes("advisor");
     const isSuperAdmin = roleNames.includes("super_admin");
     const isFirmOwner = roleNames.includes("firm_owner");
