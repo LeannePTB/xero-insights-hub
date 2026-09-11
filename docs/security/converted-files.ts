@@ -116,13 +116,6 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/statutory-accounts.functions.ts",
 
   // Batch 2 — client data reads and writes.
-  //
-  // `src/lib/xero/client-orgs.server.ts`, `src/lib/xero/onboard.server.ts` and
-  // `src/lib/xero/connections.functions.ts` had their access decisions moved to
-  // the database in this batch too, but they are not listed here: the first
-  // service-role use in each is a module-level import or the unauthenticated
-  // "Sign in with Xero" flow, which the file-ordering guard cannot express.
-  // They stay in the admin-client register instead.
   "src/lib/clients.functions.ts",
   "src/lib/loan-consolidation.functions.ts",
   "src/lib/consolidation-groups.functions.ts",
