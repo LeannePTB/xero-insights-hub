@@ -35,6 +35,27 @@ export const REGISTERED_DB_AUTH_CALLS = [
   "me_is_super_admin",
 ] as const;
 
+/**
+ * Thin TypeScript wrappers that do nothing but call one of the functions
+ * above. Counted as a database authorisation call by the guard.
+ */
+export const REGISTERED_DB_AUTH_WRAPPERS = [
+  "assertWidgetAccess",
+  "getEffectiveTier",
+  "assertTenantBelongsToClient",
+  "assertClientDataAccessForClient",
+  "assertClientDataAccessForFirm",
+  "assertClientWriteAccess",
+  "assertFirmWriteAccess",
+  "assertClientWidget",
+  "assertFirmWidget",
+  "canWriteClient",
+  "canWriteFirm",
+  "canAccessClient",
+  "platformStaffCanAccessFirm",
+  "userCanManageClient",
+] as const;
+
 /** Batch 1 — the Xero read gate and everything that authorised through it. */
 export const CONVERTED_FILES: string[] = [
   "src/lib/xero/access.server.ts",
