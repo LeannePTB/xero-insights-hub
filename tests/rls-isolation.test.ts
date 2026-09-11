@@ -48,7 +48,9 @@ let db: PGlite;
 async function asUser<T>(uid: string | null, fn: () => Promise<T>): Promise<T> {
   await db.exec("begin");
   await db.query(`select set_config('request.jwt.claims', $1, true)`, [
-    JSON.stringify({ sub: uid, role: "authenticated" }),
+    // aal2: every data table now carries the RESTRICTIVE mfa_aal2_required
+    // policy, so an aal1 claim would make every case below pass vacuously.
+    JSON.stringify({ sub: uid, role: "authenticated", aal: "aal2" }),
   ]);
   await db.exec("set local role authenticated");
   try {
@@ -140,10 +142,22 @@ describe("cross-organisation isolation", () => {
     });
   });
 
-  it("no policy under test is USING (true)", async () => {
-    const res = await db.query<{ n: number }>(
-      `select count(*)::int as n from pg_policy where pg_get_expr(polqual, polrelid) = 'true'`,
+  it("no policy on a data table is USING (true)", async () => {
+    // The only permitted USING (true) policies, all owner-recorded:
+    //  * plan_levels / tier_settings — the public plan and tier catalogue
+    //    (backlog: "Tier catalogue readable by any signed-in user", left as-is).
+    //  * rate_limit_buckets — service_role only; no browser role holds a grant.
+    const allowed = new Set([
+      "plan_levels:plan_levels_read",
+      "tier_settings:Authenticated can read tier settings",
+      "rate_limit_buckets:rate_limit_buckets service only",
+    ]);
+    const res = await db.query<{ sig: string }>(
+      `select c.relname || ':' || p.polname as sig
+         from pg_policy p join pg_class c on c.oid = p.polrelid
+        where pg_get_expr(p.polqual, p.polrelid) = 'true'`,
     );
-    expect(res.rows[0]!.n).toBe(0);
+    const unexpected = res.rows.map((r) => r.sig).filter((s) => !allowed.has(s));
+    expect(unexpected).toEqual([]);
   });
 });
