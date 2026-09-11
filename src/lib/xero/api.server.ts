@@ -197,14 +197,16 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
     .eq("user_id", conn.user_id);
   if (error) throw new Error(`Failed to save refreshed Xero tokens: ${error.message}`);
 
-  // A working token clears a *token* failure, but says nothing about whether a
-  // given tenant is still inside the consent. Rows disconnected because Xero
-  // no longer lists them stay disconnected until the reconcile sees them back.
+  // A working token clears a *token* failure and nothing else. A row that was
+  // deliberately disconnected by an advisor, dropped out of the consent, or
+  // revoked by the client stays disconnected — only the reconnect flow or the
+  // authorisation reconcile may bring those back.
   const { error: statusError } = await (supabaseAdmin as any)
     .from("xero_connections")
     .update({ status: "connected", disconnected_at: null, disconnected_reason: null })
     .eq("user_id", conn.user_id)
-    .or("disconnected_reason.is.null,disconnected_reason.neq.not_authorised");
+    .or("disconnected_reason.is.null,disconnected_reason.eq.refresh_token_rejected");
+
   if (statusError) throw new Error(`Failed to save refreshed Xero tokens: ${statusError.message}`);
 
 
