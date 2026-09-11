@@ -317,17 +317,17 @@ export const MATRIX: MatrixRow[] = [
   ),
 
   // ------------------------------------------------------- support grant (B)
-  // Read-only, and only where the read policy names the support path. Verified:
-  // `clients`, `client_statutory_accounts`, `report_cache` and
-  // `scenario_exclusions` do not, so a grant holder cannot read them. That
-  // fails closed (Spec §0.8) and is recorded as backlog 25, not fixed here.
+  // Read-only, and only where the read policy names the support path. Phase 3a
+  // added the support path to `clients` and `client_statutory_accounts` (owner
+  // approved, backlog 25). `report_cache` and `scenario_exclusions` still do
+  // not name it, which fails closed (Spec §0.8) and is left as it is.
   ...rows(
     ["support_grant_active"],
     [
       "firms",
       "firm_members",
       ...CLIENT_DATA_TABLES.filter(
-        (t) => !["clients", "client_statutory_accounts", "report_cache", "scenario_exclusions"].includes(t),
+        (t) => !["report_cache", "scenario_exclusions"].includes(t),
       ),
     ],
     ["read"],
@@ -337,10 +337,10 @@ export const MATRIX: MatrixRow[] = [
   ),
   ...rows(
     ["support_grant_active"],
-    ["clients", "client_statutory_accounts", "report_cache", "scenario_exclusions"],
+    ["report_cache", "scenario_exclusions"],
     ["read"],
     "deny",
-    "Backlog 25 — the read policy does not name the support path; fails closed",
+    "Backlog 25 (remainder) — the read policy does not name the support path; fails closed",
     ["pglite", "live"],
   ),
   ...rows(
@@ -352,7 +352,7 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
     {
       note:
-        "Proved at the RLS layer: the nine former FOR ALL policies are now per-command with membership-only EXISTS checks. The remaining half of backlog 18 is app_private.user_can_manage_client itself, still reachable through app_private.move_xero_file_to_client and the server-function path below.",
+        "Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client.",
     },
   ),
   ...rows(
@@ -366,7 +366,7 @@ export const MATRIX: MatrixRow[] = [
       knownFailure: {
         backlog: 28,
         note:
-          "Admitted by 'super admins manage client subscriptions' (every grantee is a super admin) and by 'staff manage client subscriptions' (platform_staff_can_access_firm). No audit row is written. Fixed in Phase 3.",
+          "Phase 3a dropped 'staff manage client subscriptions' (the support-grant write policy). Still admitted by 'super admins manage client subscriptions', because every support grantee is a super admin, and no audit row is written. Fixed in Phase 3b.",
       },
     },
   ),
@@ -766,10 +766,17 @@ export const MATRIX: MatrixRow[] = [
     expect: "deny",
     rule: "PK 5 (support grants are READ-ONLY)",
     layers: ["live"],
-    knownFailure: {
-      backlog: 18,
-      note: "Shared gate app_private.user_can_manage_client still admits the support path.",
-    },
+    note:
+      "Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant.",
+  },
+  {
+    role: "support_grant_active",
+    resource: "server fn: change organisation or client branding",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 5 (support grants are READ-ONLY)",
+    layers: ["live"],
+    note: "branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant.",
   },
 ];
 
