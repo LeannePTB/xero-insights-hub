@@ -87,17 +87,9 @@ export const inviteAdvisor = createServerFn({ method: "POST" })
       invited = true;
     }
 
-    // Grant advisor role (and remove any client_viewer role to avoid mixed state)
-    const { error } = await (supabaseAdmin as any)
-      .from("user_roles")
-      .upsert({ user_id: userId, role: "advisor" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+    // Role changes go through the database, which re-checks the caller.
+    const { error } = await (context.supabase as any).rpc("admin_grant_advisor", { _user_id: userId });
     if (error) throw new Error(error.message);
-
-    await (supabaseAdmin as any)
-      .from("user_roles")
-      .delete()
-      .eq("user_id", userId)
-      .eq("role", "client_viewer");
 
     return { ok: true, invited };
   });
@@ -130,16 +122,8 @@ export const createAdvisorWithPassword = createServerFn({ method: "POST" })
     const userId = created?.user?.id;
     if (!userId) throw new Error("Could not create account.");
 
-    const { error: rErr } = await (supabaseAdmin as any)
-      .from("user_roles")
-      .upsert({ user_id: userId, role: "advisor" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+    const { error: rErr } = await (context.supabase as any).rpc("admin_grant_advisor", { _user_id: userId });
     if (rErr) throw new Error(rErr.message);
-
-    await (supabaseAdmin as any)
-      .from("user_roles")
-      .delete()
-      .eq("user_id", userId)
-      .eq("role", "client_viewer");
 
     return { ok: true, email };
   });
@@ -222,25 +206,12 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Safety: make sure at least one other advisor remains
-    const { data: others } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "advisor")
-      .neq("user_id", data.userId);
-    if (!others || others.length === 0) {
-      throw new Error("At least one advisor must remain.");
-    }
-
-    // Remove all role rows for this user
-    const { error: roleErr } = await (supabaseAdmin as any)
-      .from("user_roles")
-      .delete()
-      .eq("user_id", data.userId);
+    // The database removes the roles and access grants, and enforces
+    // "at least one advisor must remain" itself.
+    const { error: roleErr } = await (context.supabase as any).rpc("admin_remove_advisor", {
+      _user_id: data.userId,
+    });
     if (roleErr) throw new Error(roleErr.message);
-
-    // Remove client_access grants
-    await (supabaseAdmin as any).from("client_access").delete().eq("user_id", data.userId);
 
     // Remove profile row
     await (supabaseAdmin as any).from("profiles").delete().eq("id", data.userId);
@@ -323,11 +294,9 @@ export const resendAllPendingAdvisorInvites = createServerFn({ method: "POST" })
     await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: rows } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "advisor");
-    const userIds = (rows ?? []).map((r: any) => r.user_id).filter((id: string) => id !== context.userId);
+    const { data: rows, error: rowsErr } = await (context.supabase as any).rpc("admin_advisor_user_ids");
+    if (rowsErr) throw new Error(rowsErr.message);
+    const userIds = ((rows ?? []) as any[]).map((r) => r.user_id).filter((id: string) => id !== context.userId);
 
     const resent: string[] = [];
     const skipped: { email?: string; reason: string }[] = [];
@@ -344,12 +313,10 @@ export const listPendingAdvisors = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "advisor");
+    const { data: rows, error: rowsErr } = await (context.supabase as any).rpc("admin_advisor_user_ids");
+    if (rowsErr) throw new Error(rowsErr.message);
     const pending: string[] = [];
-    for (const r of rows ?? []) {
+    for (const r of ((rows ?? []) as any[])) {
       const { data: u } = await supabaseAdmin.auth.admin.getUserById(r.user_id);
       if (u?.user && !u.user.last_sign_in_at) {
         pending.push(r.user_id);
