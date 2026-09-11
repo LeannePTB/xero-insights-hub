@@ -1069,6 +1069,52 @@ AS $function$
   ) end
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.audit_table_change()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  _old jsonb := case when tg_op = 'INSERT' then '{}'::jsonb else to_jsonb(old) end;
+  _new jsonb := case when tg_op = 'DELETE' then '{}'::jsonb else to_jsonb(new) end;
+  _changed jsonb := '{}'::jsonb;
+  _k text;
+  _firm uuid;
+  _rowid text;
+begin
+  for _k in
+    select key from jsonb_each(_old)
+    union
+    select key from jsonb_each(_new)
+  loop
+    if (_old -> _k) is distinct from (_new -> _k) then
+      _changed := _changed || jsonb_build_object(
+        _k, jsonb_build_object('from', _old -> _k, 'to', _new -> _k));
+    end if;
+  end loop;
+
+  _rowid := coalesce(_new ->> 'id', _old ->> 'id');
+  _firm := nullif(
+    coalesce(
+      _new ->> 'firm_id',
+      _old ->> 'firm_id',
+      case when tg_table_name = 'firms' then coalesce(_new ->> 'id', _old ->> 'id') end
+    ), '')::uuid;
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (
+    auth.uid(),
+    _firm,
+    'record_' || lower(tg_op),
+    tg_table_name,
+    _rowid,
+    jsonb_build_object('table', tg_table_name, 'op', tg_op, 'changed', _changed)
+  );
+  return null;
+end;
+$function$
+;
 alter table public.access_invites enable row level security;
 alter table public.audit_finding_snoozes enable row level security;
 alter table public.audit_findings enable row level security;
@@ -1272,13 +1318,9 @@ grant SELECT on table public.client_statutory_accounts to service_role;
 grant TRIGGER on table public.client_statutory_accounts to service_role;
 grant TRUNCATE on table public.client_statutory_accounts to service_role;
 grant UPDATE on table public.client_statutory_accounts to service_role;
-grant DELETE on table public.client_subscriptions to authenticated;
-grant INSERT on table public.client_subscriptions to authenticated;
 grant REFERENCES on table public.client_subscriptions to authenticated;
 grant SELECT on table public.client_subscriptions to authenticated;
 grant TRIGGER on table public.client_subscriptions to authenticated;
-grant TRUNCATE on table public.client_subscriptions to authenticated;
-grant UPDATE on table public.client_subscriptions to authenticated;
 grant DELETE on table public.client_subscriptions to service_role;
 grant INSERT on table public.client_subscriptions to service_role;
 grant REFERENCES on table public.client_subscriptions to service_role;
@@ -1934,7 +1976,6 @@ create policy "support grant reads statutory accounts" on public.client_statutor
   WHERE ((c.id = client_statutory_accounts.client_id) AND (c.firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id)))));
 create policy "managers read client subscriptions" on public.client_subscriptions as permissive for select to authenticated using ((app_private.user_can_manage_client(auth.uid(), client_id) OR app_private.is_super_admin(auth.uid())));
 create policy mfa_aal2_required on public.client_subscriptions as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "super admins manage client subscriptions" on public.client_subscriptions as permissive for all to authenticated using (app_private.is_super_admin(auth.uid())) with check (app_private.is_super_admin(auth.uid()));
 create policy "Manage true breakeven inputs by firm (delete)" on public.client_true_breakeven_inputs as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_true_breakeven_inputs.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -2133,5 +2174,12 @@ create policy "entitled users read snapshot runs" on public.xero_snapshot_runs a
 create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "entitled users read client snapshots" on public.xero_snapshots as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.client_subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.firms FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.plan_levels FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.signup_requests FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 64e0086037c95b55428598547264bf9eb0816958ce523044499f7ffc48e47d6d
+-- catalogue-fingerprint: abc66fe352613a4c9b4ee43279ce5855c15c36426dbb2f7d3930f8eb1d005434

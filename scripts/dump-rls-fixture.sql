@@ -56,6 +56,20 @@ stmts as (
   select 3, p.oid::text, pg_get_functiondef(p.oid) || ';'
     from fns f join pg_proc p on p.oid = f.oid
 
+  -- the generic audit trigger function and its attachments (backlog 29)
+  union all
+  select 3, 'trgfn:' || p.oid::text, pg_get_functiondef(p.oid) || ';'
+    from pg_proc p
+   where p.pronamespace = 'public'::regnamespace
+     and p.prorettype = 'trigger'::regtype
+     and p.proname = 'audit_table_change'
+
+  union all
+  select 8, tabs.t || '/' || tg.tgname, pg_get_triggerdef(tg.oid) || ';'
+    from tabs join pg_trigger tg on tg.tgrelid = tabs.oid and not tg.tgisinternal
+    join pg_proc p on p.oid = tg.tgfoid
+   where p.proname = 'audit_table_change'
+
   union all
   select 4, tabs.t, 'alter table public.' || quote_ident(tabs.t) || ' enable row level security;'
     from tabs
@@ -125,6 +139,10 @@ from (
   select 'colacl:' || c.relname || ':' || a.attname || ':' || a.attacl::text
     from pg_class c join pg_attribute a on a.attrelid = c.oid
    where c.relnamespace = 'public'::regnamespace and c.relkind = 'r' and a.attacl is not null
+  union all
+  select 'trg:' || c.relname || ':' || tg.tgname || ':' || pg_get_triggerdef(tg.oid)
+    from pg_trigger tg join pg_class c on c.oid = tg.tgrelid
+   where c.relnamespace = 'public'::regnamespace and not tg.tgisinternal
   union all
   select 'fn:' || ns.nspname || '.' || p.proname || ':' || md5(p.prosrc)
     from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace

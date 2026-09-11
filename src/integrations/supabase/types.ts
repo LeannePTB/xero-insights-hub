@@ -2432,6 +2432,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_set_self_firm_membership: {
+        Args: { _firm_id: string; _join: boolean }
+        Returns: boolean
+      }
       assert_client_write_access: {
         Args: { _client_id: string }
         Returns: undefined
@@ -2631,6 +2635,14 @@ export type Database = {
           unchanged: number
         }[]
       }
+      set_client_comp: {
+        Args: { _client_id: string; _comped: boolean; _reason: string }
+        Returns: boolean
+      }
+      set_client_dashboard_tier: {
+        Args: { _client_id: string; _reason: string; _tier: string }
+        Returns: string
+      }
       set_client_tier_widgets: {
         Args: {
           _clear: boolean
@@ -2639,6 +2651,15 @@ export type Database = {
           _tier: string
         }
         Returns: undefined
+      }
+      set_client_trial: {
+        Args: {
+          _client_id: string
+          _days: number
+          _reason: string
+          _tier: string
+        }
+        Returns: string
       }
       set_client_widget_enabled: {
         Args: { _client_id: string; _enabled: boolean; _widget: string }

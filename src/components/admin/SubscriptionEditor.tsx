@@ -51,6 +51,7 @@ export function SubscriptionEditor({
   const [periodEnd, setPeriodEnd] = useState<string>(toDateInput(subscription?.current_period_end));
   const [cancelEnd, setCancelEnd] = useState<boolean>(!!subscription?.cancel_at_period_end);
   const [alwaysFree, setAlwaysFree] = useState<boolean>(!!isAlwaysFree);
+  const [alwaysFreeReason, setAlwaysFreeReason] = useState<string>("");
   const [limitOverride, setLimitOverride] = useState<string>(
     subscription?.client_limit_override != null ? String(subscription.client_limit_override) : "",
   );
@@ -105,8 +106,14 @@ export function SubscriptionEditor({
   const selectedLevel = levels.find((l) => l.key === tier);
 
   const mut = useMutation({
-    mutationFn: () =>
-      updateFn({
+    mutationFn: () => {
+      // Always free is only sent when it actually changed, and never without a
+      // reason: the change is audited and the reason is stored with it.
+      const alwaysFreeChanged = alwaysFree !== !!isAlwaysFree;
+      if (alwaysFreeChanged && alwaysFreeReason.trim().length < 3) {
+        throw new Error("Give a reason (at least 3 characters) for changing always free.");
+      }
+      return updateFn({
         data: {
           firmId,
           tier,
@@ -114,10 +121,13 @@ export function SubscriptionEditor({
           trial_ends_at: trialEnds ? new Date(trialEnds).toISOString() : null,
           current_period_end: periodEnd ? new Date(periodEnd).toISOString() : null,
           cancel_at_period_end: cancelEnd,
-          is_always_free: alwaysFree,
+          ...(alwaysFreeChanged
+            ? { is_always_free: alwaysFree, always_free_reason: alwaysFreeReason.trim() }
+            : {}),
           client_limit_override: limitOverride.trim() === "" ? null : Math.max(0, Number(limitOverride)),
         },
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success("Subscription updated");
       onChanged();
@@ -170,6 +180,17 @@ export function SubscriptionEditor({
           </div>
           <Switch checked={alwaysFree} onCheckedChange={setAlwaysFree} />
         </div>
+        {alwaysFree !== !!isAlwaysFree && (
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Reason for changing always free</Label>
+            <Input
+              value={alwaysFreeReason}
+              maxLength={500}
+              placeholder="Why is this changing? Recorded in the audit log."
+              onChange={(e) => setAlwaysFreeReason(e.target.value)}
+            />
+          </div>
+        )}
         <div className="flex items-center justify-between rounded-md border p-3 md:col-span-2">
           <div className="pr-4">
             <p className="text-sm font-medium">Consolidation tools</p>

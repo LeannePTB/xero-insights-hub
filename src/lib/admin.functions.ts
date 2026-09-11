@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { siteUrl } from "@/lib/site-origin";
 import { listVerifiedAuthUsers } from "@/lib/auth-users.server";
@@ -231,8 +232,15 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
       current_period_end?: string | null;
       cancel_at_period_end?: boolean | null;
       is_always_free?: boolean | null;
+      always_free_reason?: string | null;
       client_limit_override?: number | null;
-    }) => i,
+    }) => ({
+      ...i,
+      always_free_reason:
+        i.always_free_reason == null
+          ? null
+          : z.string().trim().min(3).max(500).parse(i.always_free_reason),
+    }),
   )
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -268,10 +276,11 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
       // Only public.set_firm_always_free may change this flag: it re-checks aal2
       // and super admin, refuses TRUE on anything but the practice organisation,
       // and writes its own audit row (Spec §4).
+      if (!data.always_free_reason) throw new Error("A reason is required to change always free.");
       const { error } = await (context.supabase as any).rpc("set_firm_always_free", {
         _firm_id: data.firmId,
         _value: data.is_always_free,
-        _reason: "Changed from the organisation subscription editor",
+        _reason: data.always_free_reason,
       });
       if (error) throw new Error(error.message);
     }
@@ -290,35 +299,19 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
  */
 export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { firmId: string; join: boolean }) => i)
+  .inputValidator((i: { firmId: string; join: boolean }) =>
+    z.object({ firmId: z.string().uuid(), join: z.boolean() }).parse(i),
+  )
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    if (data.join) {
-      const { error } = await (supabaseAdmin as any)
-        .from("firm_members")
-        .upsert(
-          { firm_id: data.firmId, user_id: context.userId, role: "staff" },
-          { onConflict: "firm_id,user_id" },
-        );
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await (supabaseAdmin as any)
-        .from("firm_members")
-        .delete()
-        .eq("firm_id", data.firmId)
-        .eq("user_id", context.userId);
-      if (error) throw new Error(error.message);
-    }
-
-    await logAudit(
-      data.join ? "platform_staff_joined_firm" : "platform_staff_left_firm",
-      "firm",
-      data.firmId,
-      context.userId,
-      { firm_id: data.firmId },
-    );
+    // The rule lives in the database (backlog 30): aal2 + super admin, joining
+    // only while the organisation is still owned by Positive Traction, the row
+    // reactivated to 'active', and the audit row written there. Runs as the
+    // caller so nothing is decided here.
+    const { error } = await (context.supabase as any).rpc("admin_set_self_firm_membership", {
+      _firm_id: data.firmId,
+      _join: data.join,
+    });
+    if (error) throw new Error(error.message);
     return { ok: true, member: data.join };
   });
 
