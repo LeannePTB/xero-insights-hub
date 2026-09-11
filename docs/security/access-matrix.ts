@@ -721,7 +721,9 @@ export const MATRIX: MatrixRow[] = [
     "deny",
     "PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4",
     ["live"],
-    "Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id.",
+    {
+      note: "Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id.",
+    },
   ),
   {
     role: "org_owner",
