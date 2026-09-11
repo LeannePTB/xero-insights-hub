@@ -10,7 +10,7 @@ import { logFailedSignIn } from "@/lib/audit.functions";
 import { Loader2 } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
-import { startXeroSignIn } from "@/lib/xero/connections.functions";
+import { startXeroSignIn } from "@/lib/xero/signin.functions";
 import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
 

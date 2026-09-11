@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { randomBytes, createHash } from "crypto";
 import { xeroCallbackUrl, assertAppOrigin } from "@/lib/site-origin";
 
 function base64url(buf: Buffer) {
@@ -7,7 +8,6 @@ function base64url(buf: Buffer) {
 }
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
-const IDENTITY_SCOPES = xeroIdentityScopeString();
 
 // Sign In with Xero lives in ./signin.functions.ts — it is unauthenticated,
 // pre-session system context, kept out of this file so that every privileged
