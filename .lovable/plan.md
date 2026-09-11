@@ -1,146 +1,93 @@
-# Make the app ask the database, not re-decide (invariant 7)
+# Phase 1 — Enforce MFA (aal2) on the server
 
-Plan only. Nothing below is implemented yet. Verified this turn by reading the helper
-source and dumping the live function definitions and EXECUTE grants.
+Classification: SECURITY-RELEVANT (auth/MFA, RLS, SECURITY DEFINER functions, public routes).
 
-## 1. Inventory — helper vs its database equivalent
+## Verified today by read-only inspection
 
-| # | Helper (file) | What it decides | Database equivalent |
-|---|---|---|---|
-| 1 | `userCanManageClient` (`src/lib/xero/client-orgs.server.ts:59`) | Client owner OR active member of the client's organisation | `app_private.user_can_manage_client` |
-| 2 | `canManageClient` (`src/lib/loan-consolidation.functions.ts:154`) | Plan gate + active member, else super_admin **with** live support grant | `app_private.user_can_manage_client` (plan gate has no equivalent) |
-| 3 | `canReadClient` (`loan-consolidation.functions.ts:167`) | manage OR a `client_access` row | `app_private.user_can_read_client` |
-| 4 | `firmMemberRole` (`loan-consolidation.functions.ts:103`) | Active membership role string | `app_private.has_firm_access` + `app_private.is_firm_owner` (no role-returning equivalent) |
-| 5 | `isSuperAdminUser` (`loan-consolidation.functions.ts:120`) | Holds `super_admin` | `app_private.is_super_admin` |
-| 6 | `hasClientAccess` (`loan-consolidation.functions.ts:130`) | A `client_access` row | `app_private.has_client_access` |
-| 7 | `assertFirmAccess` (`src/lib/consolidation-groups.functions.ts:30`) | Active member, or support grant on read; then plan gate | `public.firm_access_path` (returns `member` / `support_grant` / `none`) |
-| 8 | `resolveAccess` + `assertAccess` (`src/lib/firm-subscription.functions.ts:44`) | Owner / member / super_admin, and **super_admin alone passes** | `public.firm_access_path` + `app_private.is_firm_owner` |
-| 9 | `getEffectiveTier` / `assertWidgetAccess` (`src/lib/xero/access.server.ts`) | Tenant → client → membership → tier ranking → widget list | `app_private.user_can_access_tenant`, `public.client_allowed_widgets`, `public.client_can_use_widget` |
-| 10 | `platformStaffCanAccessFirm`, `canAccessClient` (`src/lib/support-access.server.ts`) | Firm / client access | Already thin wrappers over `public.user_can_access_firm` / `user_can_access_client` — the reference shape |
-| 11 | `canManageClientNotes` (`src/lib/notes-access.server.ts`) | Who may flag a note for the report | Calls `user_can_access_firm` already |
-| 12 | `assertTenantBelongsToClient` (`src/lib/tenant-ownership.server.ts`) | Tenant belongs to this client | No equivalent — ownership proof, not access. Leave. |
+- `src/integrations/supabase/auth-middleware.ts` (marked auto-generated) validates the bearer token and reads `sub` only — no `aal` check.
+- aal is checked only in the browser: `src/routes/_authenticated/route.tsx`, `src/routes/auth.tsx`, `src/routes/auth_.mfa-verify.tsx`, `src/components/auth/MfaGate.tsx`.
+- 220 `createServerFn` definitions across 58 files; 213 use `.middleware([requireSupabaseAuth])`.
+- 52 RLS-enabled tables in `public`; no policy or function references `aal`.
+- 28 functions in `public` are EXECUTE-able by `authenticated` (26 SECURITY DEFINER); `app_private` helpers are also EXECUTE-able by `authenticated` but not exposed through the API.
+- 4 users, 2 with a verified TOTP factor; 3 super admins.
 
-## 2. Where they differ — the part that matters
+## 1. Server functions
 
-**A. `userCanManageClient` is stricter than `user_can_manage_client`, deliberately.**
-The database function also grants when the caller is `super_admin` **and** holds a live
-support grant. That is a *read-only* Path B grant appearing inside a function named
-"manage", used by `disconnectXero`, file moves and allowance writes. The TypeScript is
-the correct behaviour for writes; the database function is the wider one. **Do not
-swap this helper for that function.** Write paths should move to
-`public.assert_client_write_access` (owner OR active member, no super_admin, no support
-grant) — which matches today's TypeScript exactly.
+Do not edit the auto-generated middleware. Add `src/lib/auth/require-aal2.ts`:
 
-**B. `resolveAccess` (firm subscription) is a live cross-organisation bypass — new.**
-`assertAccess` passes on bare `super_admin`, and the handler then switches to
-`supabaseAdmin` for non-members (`firm-subscription.functions.ts:80-82`), reading a
-firm's name, plan, status and client count without membership or a support grant.
-This is invariant 3, organisation data, not Path C metadata. It is a fourteenth
-instance of the same fault, found while writing this plan. It needs its own change.
+- `requireAal2` — a function middleware declaring `.middleware([requireSupabaseAuth])` and asserting `context.claims.aal === 'aal2'`, otherwise throwing a generic `Unauthorized: multi-factor authentication required`. It re-exports the same context (`supabase`, `userId`, `claims`) so call sites need no other change.
+- Every `.middleware([requireSupabaseAuth])` becomes `.middleware([requireAal2])` — 213 sites in 56 files.
 
-**C. `canManageClient` (loan) already matches the database limb-for-limb**, including
-the support-grant limb — it is the closest to correct in the codebase. It adds a plan
-gate the database access rule does not have; that stays.
+Proving none are missed:
+- After the change, `rg "requireSupabaseAuth" src --glob '!src/integrations/**' --glob '!src/lib/auth/require-aal2.ts'` must return only the documented aal1 exceptions below.
+- A checked list of all 220 `createServerFn` definitions, each classified as aal2, deliberate aal1 (listed in section 3), or unauthenticated public/system.
+- Add the rule to `app_private.security_self_check()` scope notes and to the backlog checklist so new functions are caught in review.
 
-**D. `canReadClient` omits one limb the database has.** `user_can_read_client` also
-accepts active membership of the client's organisation directly; the TypeScript reaches
-that only via `canManageClient`, which is gated on the plan first. Net effect: a member
-of an organisation whose plan lacks loan consolidation is refused. That is intended
-(plan gate), so the difference is safe but must be preserved when swapping.
+Deliberate aal1 server-function exceptions (they exist to record the sign-in itself, before MFA can be reached):
+- `logAuthEvent` (`src/lib/audit.functions.ts`) — keeps `requireSupabaseAuth`, writes audit rows only.
+- `logLogin` (`src/lib/login-log.functions.ts`) — same reason.
+Both are write-only, take no caller-supplied identifiers that grant reads, and return nothing.
 
-**E. `canManageClientNotes` is wider than its comment claims.** It calls
-`user_can_access_firm`, which includes live support grants — so a read-only Path B
-grantee could flag a note into the management report. A write reachable through a
-read-only grant. Flagged; not part of this work.
+## 2. Database layer
 
-**F. `getEffectiveTier` reimplements the most.** Tenant→firm resolution, membership,
-`client_access` tier ranking and the widget deny-list all live in TypeScript while the
-database has `user_can_access_tenant` and `client_allowed_widgets`. It also grants
-`investigate` to any member, which no database function says. Highest-value target,
-highest risk to cards — last.
+- New `app_private.is_aal2()` — `stable`, `security invoker`, `set search_path = ''`, returning `coalesce(auth.jwt() ->> 'aal', '') = 'aal2'`. `revoke execute from public, anon`; grant to `authenticated`.
+- Add one **RESTRICTIVE** `FOR ALL TO authenticated USING (app_private.is_aal2()) WITH CHECK (app_private.is_aal2())` policy per data table. Restrictive policies intersect with existing permissive ones, so no current permission is widened and `service_role` (which bypasses RLS) is unaffected — the nightly job, webhooks, email queue and OAuth callback keep working.
 
-**G. `firmMemberRole` and `isSuperAdminUser` agree with the database** (both filter
-`status = 'active'`; `is_super_admin` is the same query). No behavioural gap.
+In scope (organisation, client, Xero, audit or personal data), all 40 of:
+`firms, firm_members, firm_support_access, clients, client_access, client_notes, client_reports, client_subscriptions, client_xero_orgs, client_cost_classifications, client_statutory_accounts, client_true_breakeven_inputs, consolidation_groups, consolidation_group_members, loan_consolidation_accounts, loan_consolidation_snapshots, reconciliation_snapshots, unreconciled_uploads, unreconciled_lines, scenario_exclusions, xero_connections, xero_snapshots, xero_snapshot_runs, xero_api_errors, xero_assessment_contact, audit_log, audit_runs, audit_findings, audit_finding_snoozes, login_events, billing_events, subscriptions, signup_requests, access_invites, report_recipients, report_cache, email_send_log, dashboard_configs, dashboard_card_order, profiles`.
 
-## 3. What the application can actually call today
+Deliberately excluded, with reason:
+- `plan_levels`, `tier_settings`, `tier_widget_config` — platform configuration the dashboard needs to render; recorded earlier as configuration, not tenant data. (Card rendering happens only behind aal2 anyway; excluded to avoid coupling this phase to the tier-catalogue decision.)
+- `xero_oauth_states`, `rate_limit_buckets`, `email_send_state`, `suppressed_emails`, `email_unsubscribe_tokens`, `security_settings`, `security_contact_details` — reached only by service-role system paths; adding a restrictive authenticated policy changes nothing, so leaving them out keeps the migration minimal. Confirmed by checking their existing policies before the migration.
 
-Everything in `app_private` is unreachable over the API — PostgREST exposes `public`
-only, for `authenticated` and `service_role` alike, whatever the EXECUTE grant says.
+`profiles` is in scope but verified first: if any pre-aal2 screen reads it, the restrictive policy is applied with a documented exception instead.
 
-Reachable now:
-- `public.user_can_access_firm`, `public.user_can_access_client` — `authenticated` + `service_role`
-- `public.assert_client_write_access(_client_id)` — `authenticated`; uses `auth.uid()`, so it must be called on `context.supabase`, never `supabaseAdmin`
-- `public.client_allowed_widgets`, `client_can_use_widget`, `firm_allowed_widgets`, `firm_can_use_widget` — `authenticated`
-- `public.firm_access_path(_user_id, _firm_id)` — **`service_role` only**; call it through `supabaseAdmin`. This is the one that distinguishes `member` from `support_grant`, which is exactly what the read/write split needs.
+SECURITY DEFINER functions: add `if not app_private.is_aal2() then raise exception 'multi-factor authentication required'; end if;` as the first statement of every `public` function EXECUTE-able by `authenticated` that touches organisation or client data — `assert_client_write_access, change_firm_plan, client_allowed_widgets, client_can_use_widget, client_entitlement, client_removal_impact, delete_client_report, delete_statement_upload, firm_allowed_widgets, firm_can_use_widget, firm_has_consolidation, firm_plan_limits, firm_subscription_state, remove_client, reset_org_tier_widgets, set_all_client_tiers, set_client_tier_widgets, set_client_widget_enabled, set_firm_default_widgets, set_org_widget_enabled, set_platform_tier_widgets, set_tier_enabled, transfer_organisation_ownership, user_can_access_client, user_can_access_firm`. Excluded: `xero_required_scopes`, `xero_missing_scopes` (static scope constants), `org_addon_widgets` (invoker, no definer bypass). `app_private` helpers get no guard of their own — they are not API-reachable and are called from inside guarded policies/functions; guarding them would break service-role system paths.
 
-The `_user_id` parameter is honoured only when `auth.uid()` is null (service_role);
-under a user session the functions ignore a foreign `_user_id` and return false. So
-`supabaseAdmin` + explicit `_user_id`, or `context.supabase` + own id — never mixed.
+Migration is one file, additive, no table/column/grant/trigger changes beyond the new function and the restrictive policies.
 
-**No new `public` wrappers are proposed.** `firm_access_path` and
-`assert_client_write_access` already cover every case in the sequence below. If step 5
-later needs a tenant-level check, `app_private.user_can_access_tenant` would need a
-wrapper — that decision is deferred, not assumed.
+## 3. Flows that legitimately run before aal2
 
-## 4. Cost
+| Flow | Touches | Why it keeps working |
+| --- | --- | --- |
+| Email/password sign-in | Supabase Auth only, then `logAuthEvent` / `logLogin` | Auth is outside our RLS; both loggers stay aal1 |
+| Failed sign-in logging | `logFailedSignIn` (already unauthenticated, admin client) | Unchanged |
+| Sign in with Xero | `src/routes/api/public/xero/callback.ts`, service role | Service role bypasses RLS; mints an aal1 session that then hits the same enrol/verify gate |
+| MFA enrolment / verification | `auth_.mfa-enroll.tsx`, `auth_.mfa-verify.tsx`, `MfaGate.tsx`, Supabase Auth API | No app table or definer function touched |
+| Invite acceptance (`signup.$token`) | `getInvitePublic`, `acceptInvite` — no auth middleware, admin client | Unchanged |
+| `set-password`, password recovery | Supabase Auth | Unchanged |
+| Public report link (`report.$token`) | `describeReportLink`, `openReportLink` — no auth middleware, admin client | Unchanged |
+| Unsubscribe | `unsubscribe.tsx`, token tables via service role | Excluded tables; unchanged |
+| Xero OAuth callback, Stripe webhook, cron snapshot refresh, email queue | `src/routes/api/public/*`, `pg_cron`, service role | Service role bypasses RLS and definer guards are only reached by `authenticated` calls — verified per path before merge |
 
-Each swap replaces one or two PostgREST round trips with one RPC, so most steps are
-neutral or slightly cheaper. Two places are not:
+Each row is re-verified by reading the file and confirming the client it uses before the migration is written.
 
-- `canReadClient` / `canManageClient` run once per loan-consolidation server function,
-  and the loan pages call several in sequence — the plan gate already costs two RPCs
-  there.
-- `assertWidgetAccess` runs per widget on a dashboard render.
+## 4. Lockout safety
 
-Mitigation: a request-scoped memo (a `Map` keyed `userId:firmId` / `userId:clientId`,
-created per server-function invocation, never module-level and never persisted) around
-the access RPCs only. Nothing cached across requests, nothing in the JWT or
-localStorage — invariant 6. If the memo adds complexity where the call happens once,
-skip it.
+- The super admin without a verified factor already lands on `/auth/mfa-enroll` at next sign-in; enrolment is Supabase Auth only, so the new database guard does not block it. They enrol, reach aal2, and continue.
+- No path can lock out every owner: two accounts already hold verified factors, and enrolment is always available to anyone who can sign in.
+- MFA reset stays possible through the backend users administration surface (service role), which is unaffected by these changes. No app-side reset function is added in this phase.
+- Rollout order: server middleware first, database second, so a problem is visible before the harder-to-reverse layer lands. Each is a separate, individually revertible change.
 
-## 5. Sequence — reversible, testable, riskiest last
+## 5. Verification after implementation
 
-Each step is one commit, one file or one helper, with a typecheck and a manual pass over
-the affected screen.
+Run, not assert:
+- (a) Mint an aal1 session for a test user and call two representative server functions (`getClients`, `getMyContext`) — expect the aal2 error, no data.
+- (b) With the same aal1 token against PostgREST directly: `select` on `clients`, `firms`, `xero_connections`, `audit_log` returns zero rows; `rpc/user_can_access_firm` and `rpc/assert_client_write_access` raise the MFA exception.
+- (c) With an aal2 session: the same reads return exactly the rows they return today (row-count comparison captured before and after), and a client page, loan consolidation, and the admin organisation overview render unchanged.
+- Supabase linter / security scan: no new findings.
+- `select count(*) from pg_policies where schemaname='public' and permissive='RESTRICTIVE'` matches the table list.
+- `bunx tsgo --noEmit -p tsconfig.json` clean.
 
-1. **`assertFirmAccess` → `firm_access_path`.** Smallest, self-contained, four callers.
-   Breakage would show as "You don't have access to this organisation" on the
-   consolidation groups screen.
-2. **`hasClientAccess`, `firmMemberRole`, `isSuperAdminUser`** — leave the first two,
-   remove `isSuperAdminUser` if it ends up unused after step 3. No behaviour change.
-3. **`canReadClient` / `canManageClient` → `user_can_read_client` (via a `public`-reachable
-   path) + `firm_access_path`, keeping the plan gate in front.** Breakage shows as loan
-   consolidation cards refusing to load for members, or DRTABT's cross-client pairings
-   failing.
-4. **Write paths off `userCanManageClient` → `assert_client_write_access`.** Affects
-   `disconnectXero`, file linking and moving, allowance writes. Breakage is loud and
-   immediate: "NO_ACCESS" on disconnect or link. Behaviour is identical to today's
-   TypeScript by inspection, but this is the destructive one, so it goes after 1-3.
-5. **`getEffectiveTier` / `assertWidgetAccess`.** Last. Touches which cards render.
-   Not started until 1-4 are live and quiet; would need a per-client before/after
-   comparison of visible widgets for all twelve clients before it lands.
+## 6. Docs
 
-`resolveAccess` (finding B) is a separate security fix, not part of this refactor, and
-should be decided before or alongside step 1 — it is a live hole, not drift.
+- `docs/security/access-control.md` — correct the MFA section to state, accurately, that aal2 is enforced in the middleware and in RESTRICTIVE policies plus definer guards, and list the aal1 exceptions.
+- `docs/security/access-control-spec.md` — add the aal2 rule to the invariants section.
+- `docs/security-backlog.md` — open the Phase 1 item, close it on completion with the verification evidence, and record the excluded tables and the two aal1 server functions as decisions.
 
-## 6. What not to do
+## 7. Needs an owner decision (Security Gate §4)
 
-- **Do not replace `userCanManageClient` with `user_can_manage_client`.** The database
-  function admits support grants into a write path; that would widen access.
-- **Do not remove the plan gates** in loan consolidation and consolidation groups. The
-  database access functions decide access, not entitlement; those are separate rules
-  (§8) and the plan gate has no access equivalent.
-- **Do not touch `assertTenantBelongsToClient`.** It proves ownership of a tenant by a
-  client, which no database function does.
-- **Do not change `notes-access.server.ts`** in this work — finding E is a separate
-  decision about whether report flagging is a write.
-- **Do not change `setClientXeroAllowance`** — its escalation is a recorded decision.
-- **Do not rewrite any database function.** They are the reference.
-
-## Constraints check
-
-No RLS policy, trigger, grant, table or column change is proposed. `firm_access_path`
-is already granted to `service_role`; nothing needs a new grant. No step changes what
-any current account can do: all three staff are active members of all four
-organisations, and the only helper whose swap could widen access (A) is explicitly
-excluded.
+1. Keeping `logAuthEvent` and `logLogin` at aal1 — a documented exception to rule 2.
+2. Excluding the tier/plan configuration tables from the restrictive policy in this phase.
+3. Whether the aal1 exceptions should be timeboxed and audited, given a Xero-minted aal1 session can call them.
+4. Confirmation that the un-enrolled super admin will enrol at next sign-in, since after this change no aal1 session reaches any data.
