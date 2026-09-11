@@ -499,3 +499,54 @@ export const acceptInvite = createServerFn({ method: "POST" })
 
     return { ok: true, email: invite.email };
   });
+
+export type PendingFirmInvite = {
+  id: string;
+  email: string;
+  role: "owner" | "staff";
+  expiresAt: string;
+  createdAt: string;
+};
+
+/**
+ * Pending member invitations for one organisation. Super admin only — the rule
+ * and the audience check live in public.firm_member_invites, not here.
+ */
+export const listFirmMemberInvites = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { firmId: string }) => i)
+  .handler(async ({ data, context }): Promise<{ invites: PendingFirmInvite[] }> => {
+    const { data: rows, error } = await (context.supabase as any).rpc("firm_member_invites", {
+      _firm_id: data.firmId,
+    });
+    if (error) {
+      if (/NOT_PERMITTED/i.test(error.message)) return { invites: [] };
+      throw new Error(error.message);
+    }
+    return {
+      invites: ((rows ?? []) as any[]).map((r) => ({
+        id: r.id,
+        email: r.email,
+        role: r.role,
+        expiresAt: r.expires_at,
+        createdAt: r.created_at,
+      })),
+    };
+  });
+
+/** Cancel a pending member invitation. Super admin only, audited in the database. */
+export const revokeFirmMemberInvite = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { id: string }) => i)
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("revoke_firm_member_invite", {
+      _id: data.id,
+    });
+    if (error) {
+      if (/NOT_PERMITTED/i.test(error.message)) throw new Error("You cannot cancel this invitation.");
+      if (/INVITE_NOT_FOUND/i.test(error.message)) throw new Error("That invitation no longer exists.");
+      if (/ALREADY_ACCEPTED/i.test(error.message)) throw new Error("That invitation has already been used.");
+      throw new Error(error.message);
+    }
+    return { ok: true };
+  });
