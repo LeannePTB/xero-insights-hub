@@ -141,11 +141,8 @@ describe("3. identity and recipient decisions never use profiles.email", () => {
    * report-verdict.server.ts): a report byline is now the display name only,
    * so no sign-in email can reach a client-facing report.
    */
-  const KNOWN_PROFILES_EMAIL_READS = [
-    "src/lib/clients.functions.ts",
-    "src/lib/support-access.functions.ts",
-    "src/lib/xero/orphan-connections.functions.ts",
-  ];
+  const KNOWN_PROFILES_EMAIL_READS: string[] = [];
+  // Phase 4 batch 5 closed backlog 22: no source file reads profiles.email.
 
   it("has no profiles.email read outside the recorded known failures", () => {
     const hits: string[] = [];
@@ -156,7 +153,7 @@ describe("3. identity and recipient decisions never use profiles.email", () => {
           hits.push(`${path}:${i + 1} — ${line.trim()}`);
       });
     }
-    console.warn(report("KNOWN FAILURE (backlog 22) profiles.email display fallbacks:", hits));
+    // Backlog 22 is closed: any hit is now a hard failure.
     const unexpected = hits.filter((h) => !KNOWN_PROFILES_EMAIL_READS.some((f) => h.startsWith(f)));
     expect(unexpected, report("New profiles.email reads — use the verified auth.users email:", unexpected)).toEqual(
       [],

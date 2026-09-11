@@ -62,7 +62,7 @@ function statusOf(row: any): SupportGrantStatus {
  *   public.firm_support_viewer_state(firm)  — the caller's own relationship to
  *       the organisation, including public.user_can_access_firm.
  * Names are display names; the verified sign-in email comes from auth.users
- * inside the database function, never from profiles.email.
+ * inside the database function, never from the profiles table.
  */
 export const getSupportAccess = createServerFn({ method: "POST" })
   .middleware([requireAal2])
