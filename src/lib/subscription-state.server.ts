@@ -5,38 +5,34 @@
 
 import type { SubscriptionState } from "@/lib/subscription-state";
 
-async function isSuperAdmin(supabase: any, userId: string): Promise<boolean> {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
+/** public.me_is_super_admin() — the one database implementation of the rule. */
+async function isSuperAdmin(supabase: any): Promise<boolean> {
+  const { data } = await supabase.rpc("me_is_super_admin");
   return !!data;
+}
+
+/** The caller's own active memberships, from public.my_firm_memberships(). */
+async function myFirmIds(supabase: any): Promise<Set<string>> {
+  const { data } = await supabase.rpc("my_firm_memberships");
+  return new Set(((data ?? []) as Array<{ firm_id: string }>).map((m) => m.firm_id));
 }
 
 /** Which of these organisations the caller is actual staff of (members only). */
 export async function staffFirmIdsFor(
   supabase: any,
-  userId: string,
+  _userId: string,
   firmIds: string[],
 ): Promise<Set<string>> {
   const ids = Array.from(new Set(firmIds.filter(Boolean)));
   const out = new Set<string>();
   if (ids.length === 0) return out;
 
-  const { data } = await supabase
-    .from("firm_members")
-    .select("firm_id, status")
-    .eq("user_id", userId)
-    .in("firm_id", ids);
-  for (const row of (data ?? []) as Array<{ firm_id: string; status: string | null }>) {
-    if (!row.status || row.status === "active") out.add(row.firm_id);
-  }
+  const mine = await myFirmIds(supabase);
+  for (const id of ids) if (mine.has(id)) out.add(id);
 
   // Platform admins are staff for the purpose of showing plan notices. This is
   // billing metadata only — it grants no access to client or Xero data.
-  if (out.size < ids.length && (await isSuperAdmin(supabase, userId))) {
+  if (out.size < ids.length && (await isSuperAdmin(supabase))) {
     for (const id of ids) out.add(id);
   }
   return out;
