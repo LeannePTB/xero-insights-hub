@@ -23,7 +23,8 @@ export type PostureResult = {
 
 export type OnlineUser = {
   userId: string;
-  name: string;
+  displayName: string | null;
+  email: string | null;
   isSuperAdmin: boolean;
   hasMfa: boolean;
   lastSeenAt: string;
@@ -137,7 +138,8 @@ export const getOnlineUsers = createServerFn({ method: "GET" })
     if (error) throw new Error("Presence unavailable");
     return ((data ?? []) as any[]).map((r) => ({
       userId: r.user_id,
-      name: r.display_name || r.email || "Unknown",
+      displayName: r.display_name ?? null,
+      email: r.email ?? null,
       isSuperAdmin: !!r.is_super_admin,
       hasMfa: !!r.has_mfa,
       lastSeenAt: r.last_seen_at,

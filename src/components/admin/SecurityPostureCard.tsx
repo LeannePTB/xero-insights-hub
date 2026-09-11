@@ -90,7 +90,8 @@ export function SecurityPostureCard() {
                   {onlineList.map((u) => (
                     <OnlineChip
                       key={u.userId}
-                      name={u.name}
+                      displayName={u.displayName}
+                      email={u.email}
                       isSuperAdmin={u.isSuperAdmin}
                       hasMfa={u.hasMfa}
                       lastSeenAt={u.lastSeenAt}

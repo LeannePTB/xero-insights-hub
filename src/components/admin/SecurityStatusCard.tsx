@@ -6,6 +6,7 @@ import { useSidebar } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getSecurityChecks, getOnlineUsers } from "@/lib/security-posture.functions";
+import { isRealDisplayName } from "@/lib/profile-name";
 
 const REFRESH_MS = 60_000;
 
@@ -20,28 +21,35 @@ export function relativeMinutes(iso: string | undefined): string {
 }
 
 export function OnlineChip({
-  name,
+  displayName,
+  email,
   isSuperAdmin,
   hasMfa,
   lastSeenAt,
 }: {
-  name: string;
+  displayName: string | null;
+  email: string | null;
   isSuperAdmin: boolean;
   hasMfa: boolean;
   lastSeenAt: string;
 }) {
   const Icon = hasMfa ? ShieldCheck : ShieldX;
+  const hasName = isRealDisplayName(displayName);
+  const label = hasName ? displayName.trim() : "Name not set";
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]">
           <Icon className={`h-3 w-3 ${hasMfa ? "text-emerald-500" : "text-destructive"}`} />
-          <span className="max-w-[80px] truncate">{name}</span>
+          <span className={`max-w-[80px] truncate ${hasName ? "" : "text-muted-foreground"}`}>
+            {label}
+          </span>
         </span>
       </TooltipTrigger>
       <TooltipContent side="right">
         <div className="text-xs">
-          <div className="font-medium">{name}</div>
+          <div className={hasName ? "font-medium" : "font-medium text-muted-foreground"}>{label}</div>
+          <div className="text-muted-foreground">{email ?? "Verified email unavailable"}</div>
           <div className="text-muted-foreground">
             {isSuperAdmin ? "Super admin" : "Member"}
           </div>
@@ -178,7 +186,8 @@ export function SecurityStatusCard() {
           {onlineList.slice(0, 6).map((u) => (
             <OnlineChip
               key={u.userId}
-              name={u.name}
+              displayName={u.displayName}
+              email={u.email}
               isSuperAdmin={u.isSuperAdmin}
               hasMfa={u.hasMfa}
               lastSeenAt={u.lastSeenAt}

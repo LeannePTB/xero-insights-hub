@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { findVerifiedAuthUserByEmail, listVerifiedAuthUsers } from "@/lib/auth-users.server";
 import { siteUrl } from "@/lib/site-origin";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import {
@@ -703,16 +704,18 @@ export const listClientAccess = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: profiles } = await supabaseAdmin
       .from("profiles")
-      .select("id, email, display_name")
+      .select("id, display_name")
       .in(
         "id",
         rows.map((r) => r.user_id),
       );
     const map = new Map((profiles ?? []).map((p) => [p.id, p]));
+    const authUsers = await listVerifiedAuthUsers(supabaseAdmin as any);
+    const emailById = new Map(authUsers.map((user) => [user.id, user.email]));
     return {
       access: rows.map((r) => ({
         ...r,
-        email: map.get(r.user_id)?.email ?? null,
+        email: emailById.get(r.user_id) ?? null,
         display_name: map.get(r.user_id)?.display_name ?? null,
       })),
     };
@@ -772,13 +775,9 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Find existing user by profile email
-    const { data: existing } = await supabaseAdmin
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-    let userId = existing?.id as string | undefined;
+    // Identity is resolved from the verified authentication email, never mutable profile data.
+    const existing = await findVerifiedAuthUserByEmail(supabaseAdmin as any, email);
+    let userId = existing?.id;
 
     if (!userId) {
       const redirectTo = siteUrl("/auth");
@@ -842,12 +841,8 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: existing } = await supabaseAdmin
-      .from("profiles")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-    if (existing?.id) throw new Error("An account with this email already exists.");
+    const existing = await findVerifiedAuthUserByEmail(supabaseAdmin as any, email);
+    if (existing) throw new Error("An account with this email already exists.");
 
     const { data: created, error: cErr } = await (supabaseAdmin as any).auth.admin.createUser({
       email,

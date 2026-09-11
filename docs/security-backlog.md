@@ -20,6 +20,14 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 
 ## Open
 
+- **New-table grants rule.** Every new `public` table must explicitly revoke default privileges from `anon` and grant only the minimum privileges each allowed role needs; RLS is not a substitute for grant hygiene.
+- **Names are not collected by every public invite/signup path.** Leave `profiles.display_name` null when no real name was supplied; add name collection in a separate reviewed change.
+- **Display names are not identity.** A person can choose the same display name as someone else. Online tooltips and admin people lists must always pair the display name with the verified email from `auth.users`, never `profiles.email`.
+
+### Follow-up — profile names and posture accuracy (11 Sep 2026)
+
+Authenticated profile writes are column-restricted to `display_name`; INSERT and table-level UPDATE were revoked. New profiles no longer default the name to email. Admin name changes run through an aal2, super-admin database function and append `profile_name_changed`. Presence grants were reduced to no anonymous privileges and exactly SELECT/INSERT/UPDATE for authenticated users. The audit append-only posture check now counts only permissive public/authenticated write policies and checks actual INSERT/UPDATE/DELETE/TRUNCATE privileges. Verified account email is sourced from `auth.users` for identity lookups, online presence, and admin people lists.
+
 1. **`SECURITY DEFINER` functions — full triage done 7 Sep 2026, item stays open for two decisions.** All 70 definer functions in `public` and `app_private` were read line by line: 46 in `public`, 24 in `app_private`; 48 are EXECUTE-able by `authenticated` (was 49 before this pass). Fixed this pass: `public.client_allowed_widgets` gained the same caller guard its siblings already carry, and `app_private.get_tier_widgets` had EXECUTE revoked (no caller anywhere). Everything else is either guarded, super-admin-only, or unreachable by a signed-in session (no EXECUTE). Two triaged findings remain open and are listed as items 18 and 19; the linter warning class itself is by design — these functions are callable and refuse internally.
 
 2. ~~Two dead ALL-command policies on `xero_connections`~~ — **closed 6 Sep 2026**, see Closed above.

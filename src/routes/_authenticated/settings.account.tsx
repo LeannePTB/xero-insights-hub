@@ -1,8 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { changeMyPassword } from "@/lib/advisors.functions";
+import { getMyProfileName, updateMyProfileName } from "@/lib/profile.functions";
+import { displayNameSchema } from "@/lib/profile-name";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,13 +18,36 @@ export const Route = createFileRoute("/_authenticated/settings/account")({
 });
 
 function AccountSettings() {
+  const qc = useQueryClient();
   const changePwFn = useServerFn(changeMyPassword);
+  const getNameFn = useServerFn(getMyProfileName);
+  const updateNameFn = useServerFn(updateMyProfileName);
   const navigate = useNavigate();
 
   const [currentPassword, setCurrent] = useState("");
   const [newPassword, setNew] = useState("");
   const [confirm, setConfirm] = useState("");
   const [show, setShow] = useState(false);
+  const [displayName, setDisplayName] = useState("");
+  const nameQ = useQuery({
+    queryKey: ["my-profile-name"],
+    queryFn: async () => {
+      const result = await getNameFn();
+      setDisplayName(result.displayName);
+      return result;
+    },
+  });
+  const parsedName = displayNameSchema.safeParse(displayName);
+  const nameMut = useMutation({
+    mutationFn: () => updateNameFn({ data: displayName }),
+    onSuccess: async (result) => {
+      setDisplayName(result.displayName);
+      await qc.invalidateQueries({ queryKey: ["my-profile-name"] });
+      await qc.invalidateQueries({ queryKey: ["online-users"] });
+      toast.success("Name updated");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const valid =
     currentPassword.length >= 1 &&
@@ -65,6 +90,30 @@ function AccountSettings() {
             Update your sign-in details.
           </p>
         </div>
+
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] space-y-4">
+          <h2 className="font-display text-lg font-semibold">Your name</h2>
+          <div className="space-y-2">
+            <Label htmlFor="display-name">Display name</Label>
+            <Input
+              id="display-name"
+              value={displayName}
+              onChange={(event) => setDisplayName(event.target.value)}
+              maxLength={80}
+              disabled={nameQ.isLoading}
+            />
+            {!parsedName.success && displayName.length > 0 && (
+              <p className="text-xs text-destructive">{parsedName.error.issues[0]?.message}</p>
+            )}
+          </div>
+          <Button
+            onClick={() => nameMut.mutate()}
+            disabled={!parsedName.success || nameMut.isPending}
+          >
+            {nameMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save name
+          </Button>
+        </section>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] space-y-4">
           <h2 className="font-display text-lg font-semibold">Change password</h2>

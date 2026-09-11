@@ -16,6 +16,8 @@ import {
   setAdvisorSuperAdmin,
   PRIMARY_ADVISOR_USER_ID,
 } from "@/lib/advisors.functions";
+import { updateProfileNameAsAdmin } from "@/lib/profile.functions";
+import { displayNameSchema, isRealDisplayName } from "@/lib/profile-name";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,7 +29,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -54,6 +56,7 @@ function AdvisorSettings() {
   const sendResetFn = useServerFn(sendAdvisorPasswordReset);
   const setPwFn = useServerFn(setAdvisorPassword);
   const setSuperFn = useServerFn(setAdvisorSuperAdmin);
+  const setNameFn = useServerFn(updateProfileNameAsAdmin);
 
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
@@ -72,6 +75,8 @@ function AdvisorSettings() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [nameTarget, setNameTarget] = useState<{ userId: string; email: string | null } | null>(null);
+  const [editedName, setEditedName] = useState("");
   const [lastCreated, setLastCreated] = useState<{ email: string; password: string } | null>(null);
 
   const inviteMut = useMutation({
@@ -143,6 +148,20 @@ function AdvisorSettings() {
       qc.invalidateQueries({ queryKey: ["my-context"] });
     },
     onError: (e: any) => toast.error(e.message),
+  });
+  const nameMut = useMutation({
+    mutationFn: () => {
+      if (!nameTarget) throw new Error("Choose a person.");
+      return setNameFn({ data: { userId: nameTarget.userId, displayName: editedName } });
+    },
+    onSuccess: async () => {
+      setNameTarget(null);
+      setEditedName("");
+      await qc.invalidateQueries({ queryKey: ["advisors"] });
+      await qc.invalidateQueries({ queryKey: ["online-users"] });
+      toast.success("Name updated and recorded in the audit log");
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const [resetTarget, setResetTarget] = useState<{ userId: string; label: string } | null>(null);
@@ -329,7 +348,7 @@ function AdvisorSettings() {
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-medium">
-                          {a.display_name ?? a.email ?? a.user_id}
+                          {isRealDisplayName(a.display_name) ? a.display_name : "Name not set"}
                           {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
                           {isPrimary && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Primary</span>}
                           {a.is_super_admin && (
@@ -339,7 +358,7 @@ function AdvisorSettings() {
                           )}
                           {isPending && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">Pending invite</span>}
                         </p>
-                        {a.email && a.display_name && <p className="truncate text-xs text-muted-foreground">{a.email}</p>}
+                        <p className="truncate text-xs text-muted-foreground">{a.email ?? "Verified email unavailable"}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -364,6 +383,19 @@ function AdvisorSettings() {
                             <Send className="h-3.5 w-3.5" />
                           </Button>
                         </>
+                      )}
+                      {viewerIsSuperAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setNameTarget({ userId: a.user_id, email: a.email });
+                            setEditedName(isRealDisplayName(a.display_name) ? a.display_name : "");
+                          }}
+                          title="Edit name"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
                       )}
                       {viewerIsSuperAdmin && (
                         <Button
@@ -471,6 +503,39 @@ function AdvisorSettings() {
             >
               {setPwMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
               Set password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!nameTarget} onOpenChange={(open) => { if (!open) { setNameTarget(null); setEditedName(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit name</DialogTitle>
+            <DialogDescription>
+              Verified account email: <span className="font-medium text-foreground">{nameTarget?.email ?? "Unavailable"}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              value={editedName}
+              onChange={(event) => setEditedName(event.target.value)}
+              maxLength={80}
+              aria-label="Display name"
+            />
+            {!displayNameSchema.safeParse(editedName).success && editedName.length > 0 && (
+              <p className="text-xs text-destructive">
+                {displayNameSchema.safeParse(editedName).error?.issues[0]?.message}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setNameTarget(null); setEditedName(""); }}>Cancel</Button>
+            <Button
+              onClick={() => nameMut.mutate()}
+              disabled={!displayNameSchema.safeParse(editedName).success || nameMut.isPending}
+            >
+              {nameMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save name
             </Button>
           </DialogFooter>
         </DialogContent>
