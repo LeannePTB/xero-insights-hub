@@ -2635,6 +2635,14 @@ export type Database = {
           unchanged: number
         }[]
       }
+      set_client_comp: {
+        Args: { _client_id: string; _comped: boolean; _reason: string }
+        Returns: boolean
+      }
+      set_client_dashboard_tier: {
+        Args: { _client_id: string; _reason: string; _tier: string }
+        Returns: string
+      }
       set_client_tier_widgets: {
         Args: {
           _clear: boolean
@@ -2643,6 +2651,15 @@ export type Database = {
           _tier: string
         }
         Returns: undefined
+      }
+      set_client_trial: {
+        Args: {
+          _client_id: string
+          _days: number
+          _reason: string
+          _tier: string
+        }
+        Returns: string
       }
       set_client_widget_enabled: {
         Args: { _client_id: string; _enabled: boolean; _widget: string }
