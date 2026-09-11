@@ -77,11 +77,16 @@ describe("2. every supabaseAdmin use is registered and verified", () => {
   /** Register rows: | file | function | verdict | reason | */
   const registered = new Map<string, { fn: string; verdict: string }[]>();
   for (const line of registerText.split("\n")) {
-    const m = line.match(/^\|\s*`?(src\/[^`|\s]+)`?\s*\|\s*`?([^`|]+?)`?\s*\|\s*([^|]+?)\s*\|/);
+    const m = line.match(/^\|\s*`(src\/[^`]+)`\s*\|(.*)$/);
     if (!m) continue;
-    const [, file, fn, verdict] = m;
-    registered.set(file!, [...(registered.get(file!) ?? []), { fn: fn!.trim(), verdict: verdict!.trim() }]);
+    const file = m[1]!;
+    const cols = m[2]!.split("|").map((c) => c.trim());
+    registered.set(file, [
+      ...(registered.get(file) ?? []),
+      { fn: cols[0] ?? "", verdict: cols[1] ?? "" },
+    ]);
   }
+
 
   const usingAdmin = FILES.filter(({ text }) => /\bsupabaseAdmin\b/.test(text));
 
