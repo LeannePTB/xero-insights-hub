@@ -265,12 +265,17 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
     }
 
     if (data.is_always_free !== undefined && data.is_always_free !== null) {
-      const { error } = await (supabaseAdmin as any)
-        .from("firms")
-        .update({ is_always_free: data.is_always_free })
-        .eq("id", data.firmId);
+      // Only public.set_firm_always_free may change this flag: it re-checks aal2
+      // and super admin, refuses TRUE on anything but the practice organisation,
+      // and writes its own audit row (Spec §4).
+      const { error } = await (context.supabase as any).rpc("set_firm_always_free", {
+        _firm_id: data.firmId,
+        _value: data.is_always_free,
+        _reason: "Changed from the organisation subscription editor",
+      });
       if (error) throw new Error(error.message);
     }
+
 
     await logAudit("subscription_updated_by_admin", "firm", data.firmId, context.userId, {
       firm_id: data.firmId,

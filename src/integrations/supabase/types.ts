@@ -2647,6 +2647,10 @@ export type Database = {
           is_enabled: boolean
         }[]
       }
+      set_firm_always_free: {
+        Args: { _firm_id: string; _reason: string; _value: boolean }
+        Returns: boolean
+      }
       set_firm_default_widgets: {
         Args: { _firm_id: string; _widgets: string[] }
         Returns: number
