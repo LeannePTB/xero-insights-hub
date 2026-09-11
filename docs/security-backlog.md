@@ -28,6 +28,16 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 22. **`profiles.email` is still read as a display fallback (opened 11 Sep 2026).** Six sites (`clients.functions.ts`, `reports/monthly-report.server.ts`, `reports/monthly-report-context.server.ts`, `reports/report-verdict.server.ts`, `support-access.functions.ts`, `xero/orphan-connections.functions.ts`) fall back to `profiles.email` when `display_name` is null. The verified email must come from `auth.users`. `tests/static-guards.test.ts` fails on any new occurrence.
 23. **Delete the template endpoint (opened 11 Sep 2026).** `src/lib/api/example.functions.ts` exposes an unauthenticated `getGreeting`. It touches no data, but it should not ship.
 
+24. **Excess default grants on `public` tables (opened 11 Sep 2026, Phase 2; clean up in Phase 7).** Supabase grants `anon`/`authenticated` ALL privileges on every new table, so most tables still carry INSERT/UPDATE/DELETE/TRUNCATE for `authenticated` with no permissive policy for that command, and some carry privileges for `anon`. RLS denies the writes today, so this is grant hygiene rather than a live hole — the same mistake fixed on `user_presence` and `security_test_runs`. The new `excess_grants` check in `public.security_posture()` lists the affected tables and commands on every run. Do not re-grade its Warn/Action results before the cleanup lands.
+
+25. **An active support grant cannot read four of the client tables (opened 11 Sep 2026, Phase 2 matrix run).** Proved in the PGlite matrix suite: the read policies on `clients`, `client_statutory_accounts`, `report_cache` and `scenario_exclusions` do not name `app_private.platform_staff_can_access_firm`, so a holder of a valid Path B grant sees nothing on those tables — including the client list, which makes the grant close to unusable. This fails closed (Spec §0.8), so it is a gap, not an incident. Decide with the owner whether Path B is meant to cover the client list before changing any policy; nothing was changed in Phase 2.
+
+26. **An organisation cannot read its own audit rows (opened 11 Sep 2026, Phase 2 matrix run).** Spec §3 says an organisation sees its own `audit_log` rows; the only read policy on `audit_log` is `app_private.is_super_admin(auth.uid())`, so an organisation owner reads none. Fails closed. Either implement the organisation-scoped read policy or amend the spec.
+
+**Backlog 18, partial result (recorded 11 Sep 2026, Phase 2 matrix run).** The RLS half is no longer reproducible: the nine tables that used to carry `FOR ALL` policies built on `app_private.user_can_manage_client` now carry per-command policies whose write halves use membership-only `EXISTS` checks, and the matrix suite proves an active support grant is denied insert, update and delete on all of them. What remains of item 18 is the shared gate itself — `app_private.user_can_manage_client` still admits `is_super_admin AND platform_staff_can_access_firm` — reachable through `app_private.move_xero_file_to_client` and the server-function write path. Those rows stay marked as known failures and are proved by the live suite in Phase 2 part 3. Item 18 is NOT closed.
+
+
+
 
 
 ### Follow-up — profile names and posture accuracy (11 Sep 2026)
