@@ -1,26 +1,45 @@
-# Phase 3a — support grants are read-only everywhere
+# Phase 3b — super-admin powers bounded and audited
 
-Classification: SECURITY-RELEVANT (RLS, definer functions, server-function authorisation, support access).
-Invariants: 5 (support grants read-only), 6 (one rule, in the database), 3, 9.
+Classification: SECURITY-RELEVANT (roles, membership, RLS/grants, definer functions, billing).
+Precondition met: Phase 3a finished with 0 unexpected failures, fingerprint MATCH.
 
-## Verified current state (11 Sep 2026, live)
-- `app_private.user_can_manage_client` = client owner OR active membership OR (super admin AND active support grant). It is used only by READ policies plus `app_private.move_xero_file_to_client` and `app_private.user_can_read_client`.
-- All other client write policies are already membership/owner-only inline expressions.
-- One write policy admits a support grant: `staff manage client subscriptions` on `client_subscriptions` (`platform_staff_can_access_firm`). No member can write through it today (it needs super admin + grant).
-- Write definer functions `delete_client_report`, `set_client_widget_enabled`, `set_client_tier_widgets` are already membership-only. `move_xero_file_to_client` is not.
-- Server-side write paths that authorise through a support-admitting check: branding (organisation and client logo set/clear), report delivery (finalise, send, revoke, delete), monthly report draft save, Xero audit run and finding snooze/resolve/unsnooze, organisation Xero reconnect-all, loan-consolidation account writes, note report-flagging.
-- `clearClientLogo` writes no audit row.
+## 1. Backlog 30 — self-join (`adminSetSelfFirmMembership`)
+New `public.admin_set_self_firm_membership(_firm_id uuid, _join boolean)` — SECURITY DEFINER,
+`SET search_path`, `assert_aal2()` + `me_is_super_admin()` first, EXECUTE revoked from public/anon.
+Join allowed only while `firms.owner_user_id` holds `super_admin`; otherwise raise
+"This organisation has been handed over. Ask the owner for an invite, or request support access."
+Insert or reactivate the caller's own row with `status='active'`; audit row records previous status.
+Leaving deletes only the caller's own row, audited. Server function calls it via `context.supabase`.
+Live check: all four organisations are owned by a super admin, so no behaviour changes today.
 
-## Changes
-1. Migration:
-   - Add `app_private.user_can_write_client` (owner OR active membership) and aal2-guarded `public.user_can_write_client` / `public.user_can_write_firm` for server code.
-   - Keep `user_can_manage_client` as the documented READ helper (all read policies keep it, plus the new support read paths).
-   - `move_xero_file_to_client` uses the write helper for target and source.
-   - Drop `staff manage client subscriptions` (support-grant-only write path; removes no member write).
-   - Backlog 25: add the support path to the `clients` and `client_statutory_accounts` read policies only.
-   - Rewrite the `support_write` posture check to scan real write paths: write policies and the sources of write helpers/write functions.
-2. Server code: new `assertFirmWriteAccess` / `assertClientWriteAccess` helpers calling the database write functions; every write path above switches to them, reads keep support access. `clearClientLogo` writes an audit row. `userCanManageClient` in `xero/client-orgs.server.ts` becomes a call to the database write function.
-3. Matrix and docs: support-grant reads on `clients` / `client_statutory_accounts` become allow; add deny rows for support-grant branding writes; remove known-failure markers 18 and 32 once proven; regenerate the fixture and matrix; update the backlog.
+## 2. Backlog 28 — `client_subscriptions`
+Drop `super admins manage client subscriptions` (and confirm the support policy stays dropped),
+revoke INSERT/UPDATE/DELETE/TRUNCATE from `authenticated`, keep SELECT.
+Writes move to audited aal2 definer functions: `set_client_comp` (super admin, reason),
+`set_client_trial` (super admin, reason), `set_client_dashboard_tier` (client write access or
+super admin). `set_all_client_tiers` already audited. Stripe webhook writes as service_role
+(system context) and is now covered by the generic audit trigger.
+`subscriptions` has no write grant path for browsers already; every writer is service_role or the
+audited `change_firm_plan`; the generic trigger records the rest.
 
-## Stop condition
-No change may remove a write a member can perform today; member and client-viewer matrix rows must be identical before and after.
+## 3. Backlog 29 — one generic audit trigger
+`public.audit_table_change()` (definer, `SET search_path`) writes an `audit_log` row per row change:
+actor `auth.uid()` (null = system), table, row id, operation, changed columns old → new. Attached to
+`user_roles`, `plan_levels`, `signup_requests`, `xero_assessment_contact`, `client_subscriptions`,
+`subscriptions`, `firms`. Replaces the insert/delete-only `user_roles` trigger. Where an audited
+function already writes a richer row, both rows appear — documented.
+
+## 4. Backlog 31 — always-free
+`set_firm_always_free` refuses when `app_private.practice_firm_id()` is null and compares with
+`is distinct from`. Posture `always_free` reports Action when the practice setting is missing.
+The subscription editor asks for a reason (3–500 chars, Zod) when the flag changes; the server
+function passes it through instead of the fixed string.
+
+## 5. Matrix, docs, fixture
+Remove known failures 27–31 once proved; live-only rows keep the `live` layer with expected deny.
+Add PGlite rows proving the audit trigger writes a row per covered table. Regenerate the fixture,
+update the backlog and roadmap.
+
+## Stop conditions
+No current screen loses a legitimate write (staff tier changes keep working through the new
+function); no Stripe behaviour change.
