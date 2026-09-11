@@ -1,8 +1,10 @@
 import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyContext } from "@/lib/roles.functions";
+import { recordPresence } from "@/lib/security-posture.functions";
 import { AdminNavShell } from "@/components/admin/AdminNavShell";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -35,10 +37,42 @@ function ownsAdminMenu(pathname: string) {
   );
 }
 
+/**
+ * Every signed-in (aal2) person records a heartbeat, whatever their role, so
+ * the online list covers owners, staff and client viewers — not just admins.
+ * The server sets the time; the browser only says "I am here". Pauses while
+ * the tab is hidden and resumes on focus.
+ */
+function usePresenceHeartbeat() {
+  const beat = useServerFn(recordPresence);
+
+  useEffect(() => {
+    let stopped = false;
+    const ping = () => {
+      if (stopped || document.hidden) return;
+      void beat({}).catch(() => {});
+    };
+    ping();
+    const timer = setInterval(ping, 60_000);
+    const onVisible = () => {
+      if (!document.hidden) ping();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      stopped = true;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [beat]);
+}
+
 function AuthenticatedLayout() {
   const fetchCtx = useServerFn(getMyContext);
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  usePresenceHeartbeat();
 
   // Presentation only: the menu appears for platform super admins, decided by
   // the same server-side signal the admin screens use. Anyone else — including
