@@ -121,5 +121,23 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/loan-autosetup.server.ts",
   "src/lib/loan-recon.server.ts",
   "src/lib/loan-mismatch.server.ts",
+
+  // Batch 3 — super admin / Path C (platform metadata only).
+  //
+  // `src/lib/invites.functions.ts` is not listed: after the super-admin check
+  // it provisions a new organisation with the service role, and the same file
+  // also holds the pre-session invite acceptance, which is system context.
+  // It stays in the admin-client register instead.
+  "src/lib/admin.functions.ts",
+  "src/lib/advisors.functions.ts",
+  "src/lib/firms.functions.ts",
+  "src/lib/security.functions.ts",
+  "src/lib/plan-levels.functions.ts",
+  "src/lib/tier-config.functions.ts",
+  "src/lib/ownership.functions.ts",
+  "src/lib/xero/orphan-connections.functions.ts",
+  "src/lib/xero-assessment.functions.ts",
+  "src/lib/audit.functions.ts",
 ];
+
 
