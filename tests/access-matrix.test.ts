@@ -552,6 +552,7 @@ const label = (r: MatrixRow) => `${ROLE_LABELS[r.role]} · ${r.resource} · ${r.
 afterAll(() => {
   const liveOnly = results.filter((r) => r.outcome === "unsupported");
   const known = results.filter((r) => r.row.knownFailure && r.outcome !== "unsupported");
+  const knownPending = results.filter((r) => r.row.knownFailure && r.outcome === "unsupported");
   const tested = results.filter((r) => r.outcome !== "unsupported" && !r.row.knownFailure);
   const failed = tested.filter((r) => r.outcome !== r.row.expect);
 
@@ -571,7 +572,13 @@ afterAll(() => {
       ...(known.length
         ? [...new Set(known.map((r) => `  backlog ${r.row.knownFailure!.backlog}: ${r.row.knownFailure!.note}`))]
         : ["  none"]),
-      `  affected rows: ${known.length}`,
+      `  affected rows proved here: ${known.length}`,
+      ...(knownPending.length
+        ? [
+            "  known failures that only the live suite can prove (part 3):",
+            ...[...new Set(knownPending.map((r) => `    backlog ${r.row.knownFailure!.backlog}: ${r.row.resource}`))],
+          ]
+        : []),
       "",
       "LIVE-ONLY ROWS (part 3 — NOT counted as passes):",
       ...[...byResource.entries()].map(([res, n]) => `  ${res} × ${n}`),
