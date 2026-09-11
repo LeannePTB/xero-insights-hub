@@ -202,14 +202,29 @@ export const MATRIX: MatrixRow[] = [
     "PK 3 (super_admin alone is not access to client data)",
     ["pglite", "live"],
   ),
-  ...rows(PLATFORM_ONLY_ROLES, ["firms", "firm_members"], ["read"], "allow", "PK 2 path C; Spec §3", [
+  ...rows(PLATFORM_ONLY_ROLES, ["firms"], ["read"], "allow", "PK 2 path C; Spec §3 (organisation list)", [
     "pglite",
     "live",
   ]),
-  ...rows(PLATFORM_ONLY_ROLES, ["firms"], ["update"], "allow", "PK 2 path C (organisation metadata)", [
-    "pglite",
-    "live",
-  ]),
+  ...rows(PLATFORM_ONLY_ROLES, ["firm_members"], ["read"], "allow", "PK 2 path C; Spec §3", ["pglite", "live"], {
+    note:
+      "Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data.",
+  }),
+  ...rows(
+    PLATFORM_ONLY_ROLES,
+    ["firms"],
+    ["update"],
+    "deny",
+    "PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free never on a client organisation)",
+    ["pglite", "live"],
+    {
+      knownFailure: {
+        backlog: 27,
+        note:
+          "Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row.",
+      },
+    },
+  ),
   ...rows(
     PLATFORM_ONLY_ROLES,
     ["firms", "firm_members"],
@@ -221,12 +236,27 @@ export const MATRIX: MatrixRow[] = [
   ...rows(
     PLATFORM_ONLY_ROLES,
     ["client_subscriptions"],
-    ["read", ...WRITES],
+    ["read"],
     "allow",
-    "PK 2 path C; Spec §8 (comps and plan changes are super-admin only)",
+    "PK 2 path C; Spec §8 (billing metadata, not Xero financial data)",
     ["pglite", "live"],
-    { note: "Billing metadata, not Xero financial data. Every change writes an audit row." },
   ),
+  ...rows(
+    PLATFORM_ONLY_ROLES,
+    ["client_subscriptions"],
+    WRITES,
+    "deny",
+    "Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither)",
+    ["pglite", "live"],
+    {
+      knownFailure: {
+        backlog: 28,
+        note:
+          "Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3.",
+      },
+    },
+  ),
+
 
   // ------------------------------------------------------------ membership (A)
   ...rows(
