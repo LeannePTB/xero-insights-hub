@@ -1,25 +1,71 @@
 import { Link } from "@tanstack/react-router";
-import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Shield, ShieldAlert, ShieldCheck, RefreshCw, Loader2 } from "lucide-react";
+import { Shield, ShieldAlert, ShieldCheck, ShieldX, RefreshCw, Loader2 } from "lucide-react";
 import { useSidebar } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  getSecurityChecks,
-  getOnlineUsers,
-  recordPresence,
-} from "@/lib/security-posture.functions";
+import { getSecurityChecks, getOnlineUsers } from "@/lib/security-posture.functions";
 
 const REFRESH_MS = 60_000;
 
+export function relativeMinutes(iso: string | undefined): string {
+  if (!iso) return "just now";
+  const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (mins < 1) return "just now";
+  if (mins === 1) return "1 min ago";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  return hrs === 1 ? "1 hour ago" : `${hrs} hours ago`;
+}
+
+export function OnlineChip({
+  name,
+  isSuperAdmin,
+  hasMfa,
+  lastSeenAt,
+}: {
+  name: string;
+  isSuperAdmin: boolean;
+  hasMfa: boolean;
+  lastSeenAt: string;
+}) {
+  const Icon = hasMfa ? ShieldCheck : ShieldX;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]">
+          <Icon className={`h-3 w-3 ${hasMfa ? "text-emerald-500" : "text-destructive"}`} />
+          <span className="max-w-[80px] truncate">{name}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        <div className="text-xs">
+          <div className="font-medium">{name}</div>
+          <div className="text-muted-foreground">
+            {isSuperAdmin ? "Super admin" : "Member"}
+          </div>
+          <div className="text-muted-foreground">
+            {hasMfa ? "Second factor verified" : "No second factor"}
+          </div>
+          <div className="text-muted-foreground">Last active {relativeMinutes(lastSeenAt)}</div>
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/**
+ * Compact live posture summary. Presentation only: both queries are served by
+ * aal2 + super-admin database functions, so a non-super-admin simply gets an
+ * error and the card renders nothing.
+ */
 export function SecurityStatusCard() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
 
   const checksFn = useServerFn(getSecurityChecks);
   const onlineFn = useServerFn(getOnlineUsers);
-  const presenceFn = useServerFn(recordPresence);
 
   const posture = useQuery({
     queryKey: ["security-checks"],
@@ -35,13 +81,6 @@ export function SecurityStatusCard() {
     retry: false,
     enabled: !posture.isError,
   });
-
-  useEffect(() => {
-    if (posture.isError) return;
-    void presenceFn({});
-    const t = setInterval(() => void presenceFn({}), REFRESH_MS);
-    return () => clearInterval(t);
-  }, [presenceFn, posture.isError]);
 
   // Not a super admin (or not permitted): show nothing at all.
   if (posture.isError) return null;
@@ -59,20 +98,28 @@ export function SecurityStatusCard() {
           ? "text-emerald-500"
           : "text-muted-foreground";
 
-  const label =
+  const pill =
     status === "loading"
       ? "Checking…"
       : status === "action"
-        ? "Action needed"
+        ? "Action"
         : status === "warn"
-          ? "Review"
-          : "All clear";
+          ? "Warn"
+          : "All OK";
 
-  const summary = data
-    ? `${data.ok} pass · ${data.warn} review · ${data.action} action`
-    : "Running live checks…";
+  const pillTone =
+    status === "action"
+      ? "bg-destructive text-destructive-foreground"
+      : status === "warn"
+        ? "bg-amber-500 text-white"
+        : status === "ok"
+          ? "bg-emerald-600 text-white"
+          : "bg-muted text-muted-foreground";
 
   const onlineList = online.data ?? [];
+  const counts = data
+    ? `${data.ok} OK · ${data.warn} Warn · ${data.action} Action · ${onlineList.length} online`
+    : "Running live checks…";
 
   if (collapsed) {
     return (
@@ -85,9 +132,8 @@ export function SecurityStatusCard() {
           </TooltipTrigger>
           <TooltipContent side="right">
             <div className="text-xs">
-              <div className="font-medium">Security · {label}</div>
-              <div className="text-muted-foreground">{summary}</div>
-              <div className="text-muted-foreground">{onlineList.length} online now</div>
+              <div className="font-medium">Security · {pill}</div>
+              <div className="text-muted-foreground">{counts}</div>
             </div>
           </TooltipContent>
         </Tooltip>
@@ -96,11 +142,14 @@ export function SecurityStatusCard() {
   }
 
   return (
-    <div className="mx-2 mb-2 rounded-lg border bg-sidebar-accent/40 p-3 text-sidebar-foreground">
+    <div className="mx-2 mt-1 rounded-lg border bg-sidebar-accent/40 p-3 text-sidebar-foreground">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <Icon className={`h-4 w-4 shrink-0 ${tone}`} />
-          <span className="truncate text-xs font-medium">Security · {label}</span>
+          <span className="truncate text-xs font-medium">Security</span>
+          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${pillTone}`}>
+            {pill}
+          </span>
         </div>
         <button
           type="button"
@@ -119,43 +168,36 @@ export function SecurityStatusCard() {
         </button>
       </div>
 
-      <p className="mt-1 text-[11px] text-muted-foreground">{summary}</p>
+      <p className="mt-1 text-[11px] text-muted-foreground">{counts}</p>
+      <p className="text-[11px] text-muted-foreground">
+        Checked {relativeMinutes(data?.generatedAt)}
+      </p>
 
       {onlineList.length > 0 && (
         <div className="mt-2 flex flex-wrap gap-1">
-          {onlineList.slice(0, 4).map((u) => (
-            <Tooltip key={u.userId}>
-              <TooltipTrigger asChild>
-                <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]">
-                  <span
-                    className={`h-1.5 w-1.5 rounded-full ${u.hasMfa ? "bg-emerald-500" : "bg-amber-500"}`}
-                  />
-                  <span className="max-w-[80px] truncate">{u.name}</span>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <div className="text-xs">
-                  {u.name}
-                  {u.isSuperAdmin ? " · super admin" : ""}
-                  <div className="text-muted-foreground">
-                    {u.hasMfa ? "Second factor verified" : "No second factor"}
-                  </div>
-                </div>
-              </TooltipContent>
-            </Tooltip>
+          {onlineList.slice(0, 6).map((u) => (
+            <OnlineChip
+              key={u.userId}
+              name={u.name}
+              isSuperAdmin={u.isSuperAdmin}
+              hasMfa={u.hasMfa}
+              lastSeenAt={u.lastSeenAt}
+            />
           ))}
-          {onlineList.length > 4 && (
-            <span className="text-[10px] text-muted-foreground">+{onlineList.length - 4}</span>
+          {onlineList.length > 6 && (
+            <Link
+              to="/admin/security"
+              className="text-[10px] underline text-muted-foreground hover:text-foreground self-center"
+            >
+              +{onlineList.length - 6} more
+            </Link>
           )}
         </div>
       )}
 
-      <Link
-        to="/admin/security"
-        className="mt-2 inline-block text-[11px] underline text-muted-foreground hover:text-foreground"
-      >
-        Details
-      </Link>
+      <Button asChild size="sm" variant="outline" className="mt-3 h-7 w-full text-[11px]">
+        <Link to="/admin/security">View details</Link>
+      </Button>
     </div>
   );
 }

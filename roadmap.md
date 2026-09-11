@@ -5,3 +5,4 @@
 - [x] Add Allyce and Chantelle as staff of Autotek NSW and Bangkok On Darby (Path A membership)
 - [x] Phase 1 — enforce MFA (aal2) on the server: middleware wrapper, restrictive policies on all 49 in-scope tables, guards on 26 definer functions
 - [x] Phase 1b — Security posture card in the left sidebar (live checks, online chips, shared with /admin/security)
+- [x] Phase 1b corrections — presence for everyone, server-set last active, restored token/PKCE/TLS/HIBP checks, requested card design
