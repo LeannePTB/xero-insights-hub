@@ -24,6 +24,12 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 - **Names are not collected by every public invite/signup path.** Leave `profiles.display_name` null when no real name was supplied; add name collection in a separate reviewed change.
 - **Display names are not identity.** A person can choose the same display name as someone else. Online tooltips and admin people lists must always pair the display name with the verified email from `auth.users`, never `profiles.email`.
 
+21. **Authorisation is re-implemented in TypeScript before `supabaseAdmin` — systemic rule 7 violation (opened 11 Sep 2026, Phase 2 audit; fix in Phase 4).** Verified by reading each call path and recorded per file in `docs/security/admin-client-register.md`. The dominant pattern before a `supabaseAdmin` call is a hand-rolled check against `user_roles` / `firm_members` / `client_access` / `client_xero_orgs` rather than a database authorisation function (`user_can_access_firm`, `user_can_access_client`, `assert_client_write_access`, `client_entitlement`). The main offenders are `src/lib/xero/access.server.ts` (`assertWidgetAccess`, the dashboard gate every Xero widget inherits), `src/lib/widget-access.server.ts`, `src/lib/loan-consolidation.functions.ts` (`canManageClient`/`canReadClient`), `src/lib/clients.functions.ts`, `src/lib/xero/client-orgs.server.ts`, and six separate local copies of `assertSuperAdmin` (`admin`, `advisors`, `billing`, `firms`, `invites`, `security`, `xero/orphan-connections`). A typo in any one copy silently opens that surface. Sixteen further files use `supabaseAdmin` on paths this audit could not trace end to end; they are recorded fail-closed as `unverified` in the register and must be individually verified in Phase 4. **Checked and rejected as claims:** `getAuditAnomalies`/`exportAuditLogCsv`/`getRetentionStatus` and `listLoginEvents` do gate on a role first — the gate is TypeScript, not an open endpoint.
+22. **`profiles.email` is still read as a display fallback (opened 11 Sep 2026).** Six sites (`clients.functions.ts`, `reports/monthly-report.server.ts`, `reports/monthly-report-context.server.ts`, `reports/report-verdict.server.ts`, `support-access.functions.ts`, `xero/orphan-connections.functions.ts`) fall back to `profiles.email` when `display_name` is null. The verified email must come from `auth.users`. `tests/static-guards.test.ts` fails on any new occurrence.
+23. **Delete the template endpoint (opened 11 Sep 2026).** `src/lib/api/example.functions.ts` exposes an unauthenticated `getGreeting`. It touches no data, but it should not ship.
+
+
+
 ### Follow-up — profile names and posture accuracy (11 Sep 2026)
 
 Authenticated profile writes are column-restricted to `display_name`; INSERT and table-level UPDATE were revoked. New profiles no longer default the name to email. Admin name changes run through an aal2, super-admin database function and append `profile_name_changed`. Presence grants were reduced to no anonymous privileges and exactly SELECT/INSERT/UPDATE for authenticated users. The audit append-only posture check now counts only permissive public/authenticated write policies and checks actual INSERT/UPDATE/DELETE/TRUNCATE privileges. Verified account email is sourced from `auth.users` for identity lookups, online presence, and admin people lists.
@@ -51,6 +57,35 @@ Authenticated profile writes are column-restricted to `display_name`; INSERT and
 18. **Support grants can write — partially closed 7 Sep 2026.** `public.set_client_widget_enabled` and `public.delete_client_report` no longer call `app_private.user_can_manage_client`; both now inline the membership-only rule already used by `public.set_client_tier_widgets` and `public.assert_client_write_access` (caller owns the client, or `app_private.has_firm_access` on the client's organisation). No live grant existed at the time (`firm_support_access`: 0 granted, unrevoked, unexpired), so nothing changed in practice. **Still open:** `app_private.user_can_manage_client` itself still admits `is_super_admin AND platform_staff_can_access_firm`, and 14 RLS policies plus `app_private.move_xero_file_to_client` and `app_private.user_can_read_client` depend on it. Nine of those policies are `FOR ALL`, so a support grant can still write to `client_access`, `client_cost_classifications`, `client_notes`, `client_true_breakeven_inputs`, `client_xero_orgs`, `loan_consolidation_accounts`, `tier_widget_config`, `unreconciled_lines` and `unreconciled_uploads`, and `app_private.move_xero_file_to_client` is a write. Deciding the rule for the shared gate is the remaining work.
 19. **Bulk dashboard tiers — closed 7 Sep 2026.** `public.set_all_client_tiers` now gates on `app_private.is_super_admin(auth.uid())` instead of `app_private.has_firm_access`; every other line (plan `allowed_tiers` check, rows written, audit row) is unchanged. All 12 active `firm_members` rows belong to users who hold `super_admin`, so no current behaviour changed. **Related, unchanged and reported to the owner:** `setClientDashboardTier` (`src/lib/billing.functions.ts`) writes `client_subscriptions.dashboard_tier` through the caller's session, gated by the `staff manage client subscriptions` RLS policy (`platform_staff_can_access_firm`) or `super admins manage client subscriptions`. That path is *not* super-admin only and also admits a live support grant; a decision is pending.
 20. **Awaiting owner decision (raised 11 Sep 2026, with the Phase 1 MFA change).** (a) Should the two aal1 server functions `logAuthEvent` and `logLogin` be timeboxed or additionally rate limited? A Xero-minted aal1 session can call both; they only write audit/login rows and return `{ok:true}`. (b) One of the three super admins has no verified TOTP factor; after this change no aal1 session reaches any data, so that account enrols at next sign-in via `/auth/mfa-enroll` (Supabase Auth only, unaffected by the new guards). Confirm this is understood before it next signs in. (c) The tier/plan configuration tables were left outside the aal2 policy pending the separate tier-catalogue decision.
+
+## Phase 2 — Guardrails (started 11 Sep 2026)
+
+Phase 2 proves the access model; it fixes no access rule. Delivered so far:
+
+- `docs/security/access-matrix.ts` — the authoritative role × resource × operation matrix, every row
+  citing its rule. `docs/security/access-matrix.md` is generated from it and a test fails if it is
+  stale, so the readable document and the tests cannot disagree. Includes the expired grant, revoked
+  grant, super-admin self-approval and organisation-A-owner-reads-organisation-B cases.
+- `docs/security/server-fn-aal1-allowlist.ts` — the two approved aal1 loggers and the seven
+  unauthenticated server functions, each with a reason and what contains it.
+- `docs/security/admin-client-register.md` — every one of the 58 files using `supabaseAdmin`,
+  verified by reading the call path, not labelled. Rule 7 violations are recorded as known failures
+  under backlog item 21.
+- `tests/static-guards.test.ts` — fails the build on a server function without `requireAal2`, an
+  unregistered `supabaseAdmin` use, a new `profiles.email` read, a non-literal middleware list, or a
+  `tenantId` read from a request.
+- `public.security_test_runs` plus `public.record_access_test_run()` (aal2 + super admin, no writes
+  from a browser session), and an `access_tests` posture check (Action on unexpected failures or a
+  stale fixture fingerprint, Warn if never run or older than 7 days).
+- `definer_guards` tightened: it now requires `assert_aal2`/`is_aal2` specifically instead of any
+  caller mention. Verified after the change: 30 callable definer functions scanned,
+  0 without the guard, `xero_required_scopes` excluded (constant list).
+- `bun run security:check` runs the matrix staleness check and the whole vitest suite.
+
+Not yet built (next in this phase): the PGlite fixture's full auth mirror (`auth.uid()`, `auth.jwt()`,
+`auth.users`, `auth.mfa_factors`, role grants, BYPASSRLS definer owners) with the aal1 meta test, the
+matrix-driven PGlite suite, the live smoke suite with its isolated "ZZ Security Test Org" and
+per-role test accounts, and the "Run access tests" button on `/admin/security`.
 
 ## Phase 1b — Security posture card (done 11 Sep 2026, corrected same day)
 
