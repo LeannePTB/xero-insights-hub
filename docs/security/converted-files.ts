@@ -172,6 +172,9 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/subscription-state.server.ts",
   "src/lib/subscription-state.functions.ts",
   "src/lib/support-access.functions.ts",
+  "src/lib/consolidations.functions.ts",
+  "src/lib/widget-access.functions.ts",
+  "src/lib/plan-tiers.functions.ts",
 ];
 
 

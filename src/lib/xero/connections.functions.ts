@@ -63,6 +63,12 @@ export const getTenantCurrency = createServerFn({ method: "POST" })
     // currency (older rows), pull it from /Organisation now and cache.
     if (!currency) {
       try {
+        // public.client_for_tenant — the caller must be able to reach a client
+        // holding this Xero file before we cache anything against it.
+        const { data: clientId } = await (context.supabase as any).rpc("client_for_tenant", {
+          _tenant_id: data.tenantId,
+        });
+        if (!clientId) return { currency: "AUD" };
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
         const conn = await getConnectionByTenant(data.tenantId);

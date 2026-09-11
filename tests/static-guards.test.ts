@@ -188,7 +188,23 @@ describe("5. the readable access matrix matches its source of truth", () => {
 });
 
 describe("6. converted files decide nothing themselves (Phase 4, per batch)", () => {
-  const ACCESS_TABLES = /from\(\s*["'](user_roles|firm_members|client_access|firm_support_access)["']/;
+  /**
+   * A READ of an access table is an access decision. A write through the
+   * caller's own session (a support request, an owner approving one) is the
+   * caller exercising a policy, not a decision made here — row-level security
+   * still decides whether it is allowed.
+   */
+  const ACCESS_TABLE_READS = (text: string): number[] => {
+    const lines: number[] = [];
+    const re = /from\(\s*["'](?:user_roles|firm_members|client_access|firm_support_access)["']\s*\)/g;
+    for (const m of text.matchAll(re)) {
+      const after = text.slice(m.index! + m[0].length, m.index! + m[0].length + 60);
+      const next = after.match(/\.\s*([a-zA-Z]+)\s*\(/);
+      if (next?.[1] !== "select") continue;
+      lines.push(text.slice(0, m.index!).split("\n").length);
+    }
+    return lines;
+  };
 
   it("lists only files that exist", () => {
     const missing = CONVERTED_FILES.filter((f) => !FILES.some((x) => x.path === f));
@@ -200,9 +216,10 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
     for (const path of CONVERTED_FILES) {
       const f = FILES.find((x) => x.path === path);
       if (!f) continue;
-      f.text.split("\n").forEach((line, i) => {
-        if (ACCESS_TABLES.test(line)) offenders.push(`${path}:${i + 1} — ${line.trim()}`);
-      });
+      const lines = f.text.split("\n");
+      for (const n of ACCESS_TABLE_READS(f.text)) {
+        offenders.push(`${path}:${n} — ${(lines[n - 1] ?? "").trim()}`);
+      }
     }
     expect(
       offenders,
@@ -267,6 +284,8 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
       for (const other of FILES) {
         if (other.path === path) continue;
         if (!isEntryPoint(other.path)) continue;
+        // Public API routes are registered system contexts, not user paths.
+        if (other.path.startsWith("src/routes/api/public/")) continue;
         if (!other.text.includes(specifier)) continue;
         if (!CONVERTED_FILES.includes(other.path))
           offenders.push(
