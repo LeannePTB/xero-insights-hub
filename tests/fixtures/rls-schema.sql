@@ -1069,6 +1069,85 @@ AS $function$
   ) end
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.client_for_tenant(_tenant_id text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _n int; _client uuid;
+begin
+  select count(distinct cxo.client_id) into _n
+  from public.client_xero_orgs cxo
+  join public.xero_connections xc on xc.id = cxo.xero_connection_id
+  where xc.tenant_id = _tenant_id;
+
+  if coalesce(_n,0) = 0 then
+    return null;
+  elsif _n > 1 then
+    raise exception 'This Xero file is linked to more than one client.'
+      using errcode = 'raise_exception';
+  end if;
+
+  select distinct cxo.client_id into _client
+  from public.client_xero_orgs cxo
+  join public.xero_connections xc on xc.id = cxo.xero_connection_id
+  where xc.tenant_id = _tenant_id;
+  return _client;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.canonical_widget(_widget text)
+ RETURNS text
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public'
+AS $function$ select case when _widget = 'true_breakeven' then 'accounting_breakeven' else _widget end $function$
+;
+CREATE OR REPLACE FUNCTION app_private.tier_ceiling_widgets(_tier text)
+ RETURNS text[]
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(
+    nullif((select pl.widgets from public.plan_levels pl
+             where pl.scope = 'dashboard' and pl.key = _tier and pl.enabled), '{}'::text[]),
+    case _tier
+      when 'basic' then array['health','receivables','payables','pnl','notes','unreconciled']
+      else array['health','receivables','payables','pnl','notes','unreconciled','superannuation',
+                 'accounting_breakeven','true_breakeven','cashflow','cashflow_scenario','xero_audit',
+                 'loan_consolidation','gst_reconciliation','transaction_search']
+    end)
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.effective_widgets_for_client(_client_id uuid, _tier text)
+ RETURNS text[]
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  with fm as (select firm_id from public.clients where id = _client_id),
+  base as (
+    select coalesce(
+      (select twc.excluded_widgets from public.tier_widget_config twc
+        where twc.client_id is null and twc.firm_id = (select firm_id from fm) and twc.tier = _tier),
+      (select twc.excluded_widgets from public.tier_widget_config twc
+        where twc.client_id is null and twc.firm_id is null and twc.tier = _tier),
+      '{}'::text[]) as w
+  ),
+  excluded as (
+    select (select b.w from base b)
+        || coalesce((select twc.excluded_widgets from public.tier_widget_config twc
+                      where twc.client_id = _client_id and twc.tier = _tier), '{}'::text[]) as w
+  )
+  select coalesce(array(
+    select distinct x from unnest(app_private.tier_ceiling_widgets(_tier)) as x
+    except
+    select e from unnest((select ex.w from excluded ex)) as e
+  ), '{}'::text[])
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2182,4 +2261,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: abc66fe352613a4c9b4ee43279ce5855c15c36426dbb2f7d3930f8eb1d005434
+-- catalogue-fingerprint: ac5def918a5fed857335a558489f8fc52c413bc61c6299f12c1773c7d49d4fbc
