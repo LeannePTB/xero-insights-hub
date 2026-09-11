@@ -2471,6 +2471,7 @@ export type Database = {
         Args: { _make: boolean; _user_id: string }
         Returns: boolean
       }
+      assert_advisor: { Args: never; Returns: undefined }
       assert_client_write_access: {
         Args: { _client_id: string }
         Returns: undefined
