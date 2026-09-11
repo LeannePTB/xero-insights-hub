@@ -232,8 +232,15 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
       current_period_end?: string | null;
       cancel_at_period_end?: boolean | null;
       is_always_free?: boolean | null;
+      always_free_reason?: string | null;
       client_limit_override?: number | null;
-    }) => i,
+    }) => ({
+      ...i,
+      always_free_reason:
+        i.always_free_reason == null
+          ? null
+          : z.string().trim().min(3).max(500).parse(i.always_free_reason),
+    }),
   )
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
