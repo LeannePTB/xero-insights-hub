@@ -78,7 +78,10 @@ the check is TypeScript, but they are not open endpoints.
 | `src/lib/plan-tiers.server.ts` | `assertTierInPlanForClient` | `KNOWN FAILURE (backlog 21)` | Also carries the open owner decision recorded in the backlog (super admin setting a tier outside the plan). |
 | `src/lib/plan-levels.functions.ts` | plan catalogue admin handlers | `KNOWN FAILURE (backlog 21, unverified)` | Uses `supabaseAdmin`; gate not traced end to end in this pass. |
 | `src/lib/tier-config.functions.ts` | tier/widget configuration handlers | `KNOWN FAILURE (backlog 21, unverified)` | Same. |
-| `src/lib/ownership.functions.ts` | member list, ownership transfer | `KNOWN FAILURE (backlog 21, unverified)` | The transfer itself goes through `transfer_organisation_ownership`; the surrounding admin reads were not traced. |
+<!-- `src/lib/ownership.functions.ts` no longer uses the service role at all
+     (Phase 4 batch 3): the member list is `public.organisation_members` and the
+     transfer is `transfer_organisation_ownership`. Row removed. -->
+
 | `src/lib/firm-subscription.functions.ts` | subscription handlers | `KNOWN FAILURE (backlog 21, unverified)` | `resolveAccess` claims to delegate to the database; not confirmed line by line. |
 | `src/lib/subscription-state.server.ts` | subscription state reads | `KNOWN FAILURE (backlog 21, unverified)` | Not traced. |
 | `src/lib/support-access.functions.ts` | grant read helper | `KNOWN FAILURE (backlog 21, unverified)` | Mutations use `context.supabase`; the grant-state read at the file helper was not traced. |
