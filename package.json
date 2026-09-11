@@ -10,7 +10,9 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "test": "bun test src && vitest run tests"
+    "test": "bun test src && vitest run tests",
+    "access-matrix": "bun ./scripts/render-access-matrix.ts",
+    "security:check": "bun ./scripts/render-access-matrix.ts --check && vitest run tests"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
