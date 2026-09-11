@@ -102,21 +102,17 @@ export async function listExpiringForStaff(
   supabase: any,
   userId: string,
 ): Promise<{ organisations: Array<SubscriptionState & { name: string }> }> {
-  const superAdmin = await isSuperAdmin(supabase, userId);
+  const superAdmin = await isSuperAdmin(supabase);
 
   let firms: Array<{ id: string; name: string }> = [];
   if (superAdmin) {
+    // Path C, billing metadata only: the organisation list and its plan notices.
+    // No client or Xero data is read here.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await (supabaseAdmin as any).from("firms").select("id, name");
     firms = (data ?? []) as Array<{ id: string; name: string }>;
   } else {
-    const { data: memberships } = await supabase
-      .from("firm_members")
-      .select("firm_id, status")
-      .eq("user_id", userId);
-    const ids = ((memberships ?? []) as Array<{ firm_id: string; status: string | null }>)
-      .filter((m) => !m.status || m.status === "active")
-      .map((m) => m.firm_id);
+    const ids = Array.from(await myFirmIds(supabase));
     if (ids.length === 0) return { organisations: [] };
     const { data } = await supabase.from("firms").select("id, name").in("id", ids);
     firms = (data ?? []) as Array<{ id: string; name: string }>;
