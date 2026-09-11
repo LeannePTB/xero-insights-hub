@@ -16,7 +16,7 @@ export const listCostClassifications = createServerFn({ method: "POST" })
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
     await assertClientDataAccessForClient(context.userId, data.clientId);
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     const [rowsRes, clientRes] = await Promise.all([
       context.supabase
         .from("client_cost_classifications" as any)
@@ -52,7 +52,7 @@ export const setCostClassifications = createServerFn({ method: "POST" })
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
     await assertClientDataAccessForClient(context.userId, data.clientId);
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     if (data.entries.length === 0) return { ok: true };
     const payload = data.entries.map((e) => ({
       client_id: data.clientId,
@@ -95,7 +95,7 @@ export const removeCostClassifications = createServerFn({ method: "POST" })
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
     await assertClientDataAccessForClient(context.userId, data.clientId);
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     if (data.accountNames.length === 0) return { ok: true };
     const { error } = await context.supabase
       .from("client_cost_classifications" as any)

@@ -24,11 +24,11 @@ export type StatutoryAccountRow = {
  * The tenant id in the request is a FILTER, never a grant (invariant 4, §10).
  * One shared implementation lives in `@/lib/tenant-ownership.server`.
  */
-async function assertTenantBelongsToClient(clientId: string, tenantId: string) {
+async function assertTenantBelongsToClient(supabase: any, clientId: string, tenantId: string) {
   const { assertTenantBelongsToClient: assertOwned } = await import(
     "@/lib/tenant-ownership.server"
   );
-  await assertOwned(clientId, tenantId);
+  await assertOwned(supabase, clientId, tenantId);
 }
 
 
@@ -38,7 +38,7 @@ export const listStatutoryAccounts = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ rows: StatutoryAccountRow[] }> => {
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
     await assertClientDataAccessForClient(context.userId, data.clientId);
-    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
 
     const { getConnectionByTenant, xeroGet } = await import("@/lib/xero/api.server");
     const conn = await getConnectionByTenant(data.tenantId);
@@ -111,7 +111,7 @@ export const setStatutoryAccount = createServerFn({ method: "POST" })
     // The tenant id is a filter, not a grant: no row may be keyed to a Xero
     // file this client does not own, even though RLS already confines the write
     // to clients the caller can manage.
-    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
 
 
 

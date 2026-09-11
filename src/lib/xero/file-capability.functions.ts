@@ -14,7 +14,7 @@ export const getFileCapability = createServerFn({ method: "POST" })
   .inputValidator((input: { tenantId: string; clientId?: string }) => input)
   .handler(async ({ data, context }): Promise<FileCapability> => {
     const { getEffectiveTier } = await import("./access.server");
-    const { isAdvisor, tier } = await getEffectiveTier(context.userId, data.tenantId);
+    const { isAdvisor, tier } = await getEffectiveTier(context.supabase, data.tenantId);
     if (!isAdvisor && !tier) throw new Error("You don't have access to this organisation.");
 
     const { resolveFileCapability } = await import("./file-capability.server");

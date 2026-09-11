@@ -16,7 +16,7 @@ export const refreshXeroSnapshots = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { assertWidgetAccess } = await import("./access.server");
     // Throws unless this user may see this tenant's data at all.
-    await assertWidgetAccess(context.userId, data.tenantId, "health");
+    await assertWidgetAccess(context.supabase, data.tenantId, "health");
 
     const { MANUAL_REFRESH_MAX, MANUAL_REFRESH_WINDOW_SECONDS, TENANT_RUN_MAX, TENANT_RUN_WINDOW_SECONDS } =
       await import("./snapshot-keys");

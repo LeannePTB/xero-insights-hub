@@ -259,7 +259,7 @@ export const listLiabilityAccountsForTenant = createServerFn({ method: "POST" })
     }
     // The tenant id is a filter, not a grant: prove the file is this client's.
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     const { listAllAccounts } = await import("./xero/loan-xero.server");
     const accounts = await listAllAccounts(data.tenantId);
 
@@ -299,7 +299,7 @@ export const listSelectedAccounts = createServerFn({ method: "POST" })
     }
     if (data.tenantId) {
       const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-      await assertTenantBelongsToClient(data.clientId, data.tenantId);
+      await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     }
 
     const supabaseAdmin = await getSupabaseAdmin();
@@ -356,7 +356,7 @@ export const addLoanAccount = createServerFn({ method: "POST" })
       throw new Error("Only the organisation's owners and advisors can set up loan accounts.");
     }
     const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-    await assertTenantBelongsToClient(data.clientId, data.tenantId);
+    await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
 
     const { data: inserted, error } = await context.supabase
       .from("loan_consolidation_accounts")
@@ -484,7 +484,7 @@ export const getLoanReconciliation = createServerFn({ method: "POST" })
     }
     if (data.tenantId) {
       const { assertTenantBelongsToClient } = await import("@/lib/tenant-ownership.server");
-      await assertTenantBelongsToClient(data.clientId, data.tenantId);
+      await assertTenantBelongsToClient(context.supabase, data.clientId, data.tenantId);
     }
     const supabaseAdmin = await getSupabaseAdmin();
     const { runLoanReconciliation } = await import("./loan-recon.server");

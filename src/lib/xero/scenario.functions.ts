@@ -209,7 +209,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<ScenarioData> => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "cashflow_scenario");
+    await assertWidgetAccess(context.supabase, data.tenantId, "cashflow_scenario");
 
     const from = new Date(`${data.fromDate}T00:00:00`);
     const to = new Date(`${data.toDate}T00:00:00`);
@@ -375,24 +375,20 @@ export const getScenarioData = createServerFn({ method: "POST" })
  * super admins have no `client_access` row, so the table's RLS helper denies
  * their writes. Authorise explicitly, then write with the trusted client.
  */
-async function assertScenarioWriteAccess(userId: string, clientId: string) {
-  const { userCanManageClient } = await import("./client-orgs.server");
-  if (await userCanManageClient(userId, clientId)) return;
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: access } = await (supabaseAdmin as any)
-    .from("client_access")
-    .select("id")
-    .eq("user_id", userId)
-    .eq("client_id", clientId)
-    .maybeSingle();
-  if (!access) throw new Error("You cannot change this scenario.");
+async function assertScenarioWriteAccess(supabase: any, clientId: string) {
+  // One rulebook: public.user_can_write_client_scenario decides — organisation
+  // staff or the client's own viewer. A support grant is read-only (rule 5).
+  const { data, error } = await supabase.rpc("user_can_write_client_scenario", {
+    _client_id: clientId,
+  });
+  if (error || data !== true) throw new Error("You cannot change this scenario.");
 }
 
 export const setInvoiceExcluded = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string; xeroInvoiceId: string; excluded: boolean }) => i)
   .handler(async ({ data, context }) => {
-    await assertScenarioWriteAccess(context.userId, data.clientId);
+    await assertScenarioWriteAccess(context.supabase, data.clientId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const sb = supabaseAdmin as any;
     if (data.excluded) {
@@ -419,7 +415,7 @@ export const setInvoicesExcludedBulk = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string; xeroInvoiceIds: string[]; excluded: boolean }) => i)
   .handler(async ({ data, context }) => {
-    await assertScenarioWriteAccess(context.userId, data.clientId);
+    await assertScenarioWriteAccess(context.supabase, data.clientId);
     const ids = Array.from(new Set(data.xeroInvoiceIds.filter(Boolean)));
     if (ids.length === 0) return { ok: true, count: 0 };
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -446,7 +442,7 @@ export const resetScenario = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertScenarioWriteAccess(context.userId, data.clientId);
+    await assertScenarioWriteAccess(context.supabase, data.clientId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await (supabaseAdmin as any)
       .from("scenario_exclusions")

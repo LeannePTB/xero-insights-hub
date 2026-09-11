@@ -8,6 +8,11 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { AAL1_ALLOWLIST } from "../docs/security/server-fn-aal1-allowlist";
+import {
+  CONVERTED_FILES,
+  REGISTERED_DB_AUTH_CALLS,
+  REGISTERED_DB_AUTH_WRAPPERS,
+} from "../docs/security/converted-files";
 
 const ROOT = resolve(__dirname, "..");
 const SRC = join(ROOT, "src");
@@ -179,3 +184,55 @@ describe("5. the readable access matrix matches its source of truth", () => {
     expect(md).toContain(`Rows: **${MATRIX.length}**`);
   });
 });
+
+describe("6. converted files decide nothing themselves (Phase 4, per batch)", () => {
+  const ACCESS_TABLES = /from\(\s*["'](user_roles|firm_members|client_access|firm_support_access)["']/;
+
+  it("lists only files that exist", () => {
+    const missing = CONVERTED_FILES.filter((f) => !FILES.some((x) => x.path === f));
+    expect(missing, report("Converted-file entries with no file:", missing)).toEqual([]);
+  });
+
+  it("has no direct read of an access table in a converted file", () => {
+    const offenders: string[] = [];
+    for (const path of CONVERTED_FILES) {
+      const f = FILES.find((x) => x.path === path);
+      if (!f) continue;
+      f.text.split("\n").forEach((line, i) => {
+        if (ACCESS_TABLES.test(line)) offenders.push(`${path}:${i + 1} — ${line.trim()}`);
+      });
+    }
+    expect(
+      offenders,
+      report("Converted file decides access itself — call the database function instead:", offenders),
+    ).toEqual([]);
+  });
+
+  /** Comments are prose, not behaviour — judge the code only. */
+  const stripComments = (t: string) =>
+    t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+
+  it("never reaches supabaseAdmin in a converted file without a registered DB authorisation call", () => {
+    const offenders: string[] = [];
+    const names = [...REGISTERED_DB_AUTH_CALLS, ...REGISTERED_DB_AUTH_WRAPPERS];
+    for (const path of CONVERTED_FILES) {
+      const f = FILES.find((x) => x.path === path);
+      if (!f) continue;
+      const code = stripComments(f.text);
+      if (!/\bsupabaseAdmin\b/.test(code)) continue;
+      const firstAuth = Math.min(
+        ...names.map((c) => {
+          const i = code.indexOf(c);
+          return i < 0 ? Number.POSITIVE_INFINITY : i;
+        }),
+      );
+      const firstAdmin = code.search(/\bsupabaseAdmin\b/);
+      if (!Number.isFinite(firstAuth) || firstAdmin < firstAuth)
+        offenders.push(`${path} — supabaseAdmin is not preceded by a registered DB authorisation call`);
+    }
+    expect(offenders, report("Unauthorised privileged access in a converted file:", offenders)).toEqual(
+      [],
+    );
+  });
+});
+

@@ -47,7 +47,7 @@ export const getAgedPayables = createServerFn({ method: "POST" })
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "payables");
+    await assertWidgetAccess(context.supabase, data.tenantId, "payables");
     const { resolveOpenInvoices } = await import("./open-invoices.server");
     const { invoices, source } = await resolveOpenInvoices({
       supabase: context.supabase,
@@ -120,7 +120,7 @@ export const getPayablesList = createServerFn({ method: "POST" })
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     const { assertWidgetAccess } = await import("./access.server");
-    await assertWidgetAccess(context.userId, data.tenantId, "payables");
+    await assertWidgetAccess(context.supabase, data.tenantId, "payables");
     const { resolveOpenInvoices, resolveShortCode } = await import("./open-invoices.server");
     const { invoices, source } = await resolveOpenInvoices({
       supabase: context.supabase,

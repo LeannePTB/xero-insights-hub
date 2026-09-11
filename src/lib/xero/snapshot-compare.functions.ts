@@ -40,7 +40,7 @@ export const compareSnapshotVsLive = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<{ results: CompareResult[] }> => {
     const { assertWidgetAccess } = await import("./access.server");
     // Same gate the widgets use; a tenantId is a filter, never a grant.
-    await assertWidgetAccess(context.userId, data.tenantId, "receivables");
+    await assertWidgetAccess(context.supabase, data.tenantId, "receivables");
 
     const keys = data.reportKeys?.length
       ? data.reportKeys

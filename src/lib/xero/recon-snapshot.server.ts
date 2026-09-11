@@ -49,23 +49,13 @@ export async function runReconciliation<T extends { complete: boolean }>(opts: {
   //    worked out — so the ordinary membership rule (section 6: write =
   //    `has_firm_access`) is the right bar, not super-admin. Support grants are
   //    read-only, so they are deliberately excluded: this persists a snapshot.
-  const { data: clientRow } = await supabase
-    .from("clients")
-    .select("firm_id")
-    .eq("id", clientId)
-    .maybeSingle();
-  const firmId = (clientRow as any)?.firm_id ?? null;
-  let canRecalculate = false;
-  if (firmId) {
-    const { data: memberRow } = await supabase
-      .from("firm_members")
-      .select("user_id")
-      .eq("firm_id", firmId)
-      .eq("user_id", opts.userId)
-      .eq("status", "active")
-      .maybeSingle();
-    canRecalculate = !!memberRow;
-  }
+  // One rulebook: public.user_can_write_client — client owner or an active
+  // member of the client's organisation, never a support grant.
+  const { data: canWrite } = await supabase.rpc("user_can_write_client", {
+    _user_id: opts.userId,
+    _client_id: clientId,
+  });
+  const canRecalculate = canWrite === true;
   const recalculate = !!opts.recalculate && canRecalculate;
 
 
