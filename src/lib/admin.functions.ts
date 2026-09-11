@@ -290,35 +290,19 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
  */
 export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { firmId: string; join: boolean }) => i)
+  .inputValidator((i: { firmId: string; join: boolean }) =>
+    z.object({ firmId: z.string().uuid(), join: z.boolean() }).parse(i),
+  )
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    if (data.join) {
-      const { error } = await (supabaseAdmin as any)
-        .from("firm_members")
-        .upsert(
-          { firm_id: data.firmId, user_id: context.userId, role: "staff" },
-          { onConflict: "firm_id,user_id" },
-        );
-      if (error) throw new Error(error.message);
-    } else {
-      const { error } = await (supabaseAdmin as any)
-        .from("firm_members")
-        .delete()
-        .eq("firm_id", data.firmId)
-        .eq("user_id", context.userId);
-      if (error) throw new Error(error.message);
-    }
-
-    await logAudit(
-      data.join ? "platform_staff_joined_firm" : "platform_staff_left_firm",
-      "firm",
-      data.firmId,
-      context.userId,
-      { firm_id: data.firmId },
-    );
+    // The rule lives in the database (backlog 30): aal2 + super admin, joining
+    // only while the organisation is still owned by Positive Traction, the row
+    // reactivated to 'active', and the audit row written there. Runs as the
+    // caller so nothing is decided here.
+    const { error } = await (context.supabase as any).rpc("admin_set_self_firm_membership", {
+      _firm_id: data.firmId,
+      _join: data.join,
+    });
+    if (error) throw new Error(error.message);
     return { ok: true, member: data.join };
   });
 
