@@ -2440,6 +2440,14 @@ export type Database = {
         Args: { _client_id: string }
         Returns: undefined
       }
+      assert_tenant_belongs_to_client: {
+        Args: { _client_id: string; _tenant_id: string }
+        Returns: boolean
+      }
+      assert_widget_access: {
+        Args: { _tenant_id: string; _widget: string }
+        Returns: boolean
+      }
       change_firm_plan: {
         Args: { _firm_id: string; _plan_key: string }
         Returns: undefined
@@ -2475,6 +2483,7 @@ export type Database = {
           tier: Database["public"]["Enums"]["dashboard_tier"]
         }[]
       }
+      client_for_tenant: { Args: { _tenant_id: string }; Returns: string }
       client_removal_impact: {
         Args: { _client_id: string }
         Returns: {
@@ -2496,6 +2505,14 @@ export type Database = {
       delete_statement_upload: {
         Args: { _upload_id: string }
         Returns: undefined
+      }
+      effective_tier_for_tenant: {
+        Args: { _tenant_id: string }
+        Returns: {
+          client_id: string
+          is_staff: boolean
+          tier: string
+        }[]
       }
       email_queue_dispatch: { Args: never; Returns: undefined }
       enqueue_email: {
@@ -2733,8 +2750,13 @@ export type Database = {
         Args: { _firm_id: string; _user_id: string }
         Returns: boolean
       }
+      user_can_access_tenant: { Args: { _tenant_id: string }; Returns: boolean }
       user_can_write_client: {
         Args: { _client_id: string; _user_id: string }
+        Returns: boolean
+      }
+      user_can_write_client_scenario: {
+        Args: { _client_id: string }
         Returns: boolean
       }
       user_can_write_firm: {
