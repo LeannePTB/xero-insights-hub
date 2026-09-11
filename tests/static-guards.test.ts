@@ -120,7 +120,22 @@ describe("2. every supabaseAdmin use is registered and verified", () => {
 });
 
 describe("3. identity and recipient decisions never use profiles.email", () => {
-  it("lists every profiles.email read as a known failure with a backlog item", () => {
+  /**
+   * KNOWN FAILURE — backlog 21. These six sites read profiles.email purely as a
+   * display fallback when display_name is null. The verified email must come
+   * from auth.users instead. Recorded, reported every run, never a pass.
+   * A profiles.email read in any OTHER file fails the build.
+   */
+  const KNOWN_PROFILES_EMAIL_READS = [
+    "src/lib/clients.functions.ts",
+    "src/lib/reports/monthly-report-context.server.ts",
+    "src/lib/reports/monthly-report.server.ts",
+    "src/lib/reports/report-verdict.server.ts",
+    "src/lib/support-access.functions.ts",
+    "src/lib/xero/orphan-connections.functions.ts",
+  ];
+
+  it("has no profiles.email read outside the recorded known failures", () => {
     const hits: string[] = [];
     for (const { path, text } of FILES) {
       if (path.startsWith("src/integrations/supabase/")) continue;
@@ -129,13 +144,14 @@ describe("3. identity and recipient decisions never use profiles.email", () => {
           hits.push(`${path}:${i + 1} — ${line.trim()}`);
       });
     }
-    // Backlog: "verified email must come from auth.users, not profiles.email".
-    if (hits.length) console.warn(report("KNOWN FAILURE (backlog 21) profiles.email reads:", hits));
-    expect(hits.length, report("profiles.email reads (expected 5 known display fallbacks):", hits)).toBeLessThanOrEqual(
-      5,
+    console.warn(report("KNOWN FAILURE (backlog 21) profiles.email display fallbacks:", hits));
+    const unexpected = hits.filter((h) => !KNOWN_PROFILES_EMAIL_READS.some((f) => h.startsWith(f)));
+    expect(unexpected, report("New profiles.email reads — use the verified auth.users email:", unexpected)).toEqual(
+      [],
     );
   });
 });
+
 
 describe("4. tenant_id is never taken from the request", () => {
   it("has no server function reading tenantId from body, query string or header", () => {
