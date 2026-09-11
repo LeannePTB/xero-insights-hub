@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { findVerifiedAuthUserByEmail } from "@/lib/auth-users.server";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { randomBytes, createHash } from "crypto";
 import { siteUrl } from "@/lib/site-origin";
@@ -146,12 +147,8 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       }
 
       if (data.ownerMode === "password") {
-        const { data: existing } = await (supabaseAdmin as any)
-          .from("profiles")
-          .select("id")
-          .eq("email", email)
-          .maybeSingle();
-        if (existing?.id) throw new Error("An account with this email already exists.");
+        const existing = await findVerifiedAuthUserByEmail(supabaseAdmin as any, email);
+        if (existing) throw new Error("An account with this email already exists.");
 
         const displayName = (data.ownerName ?? "").trim().slice(0, 120) || email;
         const { data: created, error: cErr } = await (supabaseAdmin as any).auth.admin.createUser({
