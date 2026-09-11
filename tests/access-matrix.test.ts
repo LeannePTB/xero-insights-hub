@@ -350,7 +350,8 @@ async function asRole<T>(role: Role, fn: () => Promise<T>): Promise<T> {
 async function probe(sql: string): Promise<{ ok: boolean; rows: number; error?: string }> {
   try {
     const res = await db.query(sql);
-    return { ok: true, rows: res.affectedRows ?? res.rows.length };
+    // PGlite reports affectedRows = 0 for SELECT, so take whichever is meaningful.
+    return { ok: true, rows: Math.max(res.rows.length, res.affectedRows ?? 0) };
   } catch (e) {
     return { ok: false, rows: 0, error: (e as Error).message };
   }
