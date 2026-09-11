@@ -326,13 +326,15 @@ export async function loadMonthComment(
   const row = data[0];
   let author = "Positive Traction";
   if (row.author_id) {
+    // Display name only — never a sign-in email (Spec §10 / backlog 22). This
+    // byline is printed on page one of a report the client reads.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("display_name, email")
+      .select("display_name")
       .eq("id", row.author_id)
       .maybeSingle();
-    author = profile?.display_name ?? profile?.email ?? author;
+    author = profile?.display_name ?? author;
   }
   return { body: row.body, author, createdAt: row.created_at };
 }
