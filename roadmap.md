@@ -13,4 +13,4 @@
 - [x] Phase 1b — Security posture card in the left sidebar (live checks, online chips, shared with /admin/security)
 - [x] Phase 1b corrections — presence for everyone, server-set last active, restored token/PKCE/TLS/HIBP checks, requested card design
 - [x] Security posture follow-up — verified names, profile column grants, presence grants, and audit check
-- [ ] Phase 3a — support grants are read-only everywhere: split `user_can_manage_client` into read/write helpers, database write checks for server-function writes (backlog 18 + 32), audit row on client logo clear, support read on `clients`/`client_statutory_accounts` (backlog 25), rewrite the `support_write` posture check, matrix updates
+- [x] Phase 3a (done 11 Sep 2026) — support grants are read-only everywhere: split `user_can_manage_client` into read/write helpers, database write checks for server-function writes (backlog 18 + 32), audit row on client logo clear, support read on `clients`/`client_statutory_accounts` (backlog 25), rewrite the `support_write` posture check, matrix updates
