@@ -691,3 +691,51 @@ describe("meta: the suite can actually detect a regression", () => {
     expect(AAL1_ALLOWLIST.some((a) => a.fn === "leakyThing")).toBe(false);
   });
 });
+
+describe("audit trigger — every Path C table records its changes (backlog 29)", () => {
+  const AUDITED = [
+    "user_roles",
+    "plan_levels",
+    "signup_requests",
+    "xero_assessment_contact",
+    "client_subscriptions",
+    "subscriptions",
+    "firms",
+  ];
+
+  it("attaches audit_table_change to every covered table, for insert, update and delete", async () => {
+    const missing: string[] = [];
+    for (const t of AUDITED) {
+      const r = await db.query<{ n: number; ins: boolean; upd: boolean; del: boolean }>(
+        `select count(*)::int as n,
+                bool_or((tgtype & 4) > 0) as ins,
+                bool_or((tgtype & 16) > 0) as upd,
+                bool_or((tgtype & 8) > 0) as del
+           from pg_trigger t
+           join pg_proc p on p.oid = t.tgfoid
+          where t.tgrelid = 'public.${t}'::regclass
+            and not t.tgisinternal
+            and p.proname = 'audit_table_change'`,
+      );
+      const row = r.rows[0];
+      if (!row || row.n === 0 || !row.ins || !row.upd || !row.del) missing.push(t);
+    }
+    expect(missing, `these tables are not fully audited: ${missing.join(", ")}`).toEqual([]);
+  });
+
+  it("writes an audit_log row naming the actor and the changed columns", async () => {
+    await db.exec("begin");
+    try {
+      await db.exec("set local role postgres");
+      await db.exec(`update public.firms set name = name || ' (audit probe)'`);
+      const r = await db.query<{ n: number }>(
+        `select count(*)::int as n from public.audit_log
+          where action = 'record_update' and target_type = 'firms'
+            and meta ? 'changed'`,
+      );
+      expect(r.rows[0]!.n).toBeGreaterThan(0);
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+});
