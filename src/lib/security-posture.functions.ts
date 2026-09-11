@@ -9,6 +9,8 @@ export type PostureCheck = {
   status: PostureStatus;
   detail: string;
   evidence: string;
+  /** definer_guards only: which guard name matched in each callable function. */
+  matches?: { fn: string; pattern: string }[];
 };
 
 export type PostureResult = {
