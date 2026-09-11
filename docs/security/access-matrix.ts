@@ -224,13 +224,14 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
   ),
   ...rows(
-    ["firm_owner", "firm_staff", "client_viewer"],
+    ["org_owner", "org_staff", "client_viewer"],
     ["firms"],
     ["update"],
     "deny",
     "Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write",
     ["pglite", "live"],
   ),
+
 
   ...rows(
     PLATFORM_ONLY_ROLES,
