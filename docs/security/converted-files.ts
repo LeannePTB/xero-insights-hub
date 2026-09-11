@@ -43,7 +43,20 @@ export const REGISTERED_DB_AUTH_CALLS = [
   "grant_client_access",
   "set_client_access_tier",
   "revoke_client_access",
+  // Phase 4 batch 3 — super admin / Path C. Same rules: caller-scoped
+  // (auth.uid()), aal2-guarded, EXECUTE revoked from PUBLIC/anon.
+  "assert_super_admin",
+  "assert_advisor",
+  "admin_list_advisors",
+  "admin_advisor_user_ids",
+  "admin_set_super_admin",
+  "admin_grant_advisor",
+  "admin_remove_advisor",
+  "organisation_members",
+  "admin_firm_members",
+  "plan_level_usage_count",
 ] as const;
+
 
 
 /**
