@@ -68,7 +68,7 @@ export const getFirmSubscription = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<FirmSubscriptionView> => {
-    const access = await resolveAccess(context.supabase, context.userId, data.firmId);
+    const access = await resolveAccess(context.supabase, data.firmId);
     // Invariant 3: super_admin alone grants nothing. Active membership decides.
     // A read may also be reached through a live Path B support grant (read-only),
     // resolved by the database rule via platformStaffCanAccessFirm.
@@ -175,7 +175,7 @@ export const setFirmCancellation = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string; cancel: boolean }) => i)
   .handler(async ({ data, context }): Promise<{ ok: true; endsAt: string | null }> => {
-    const access = await resolveAccess(context.supabase, context.userId, data.firmId);
+    const access = await resolveAccess(context.supabase, data.firmId);
     if (!access.isOwner && !access.isSuperAdmin) {
       throw new Error("Only the organisation owner can cancel the subscription.");
     }
