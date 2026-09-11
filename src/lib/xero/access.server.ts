@@ -1,74 +1,41 @@
-// Server-only access checks. Only import from .functions.ts handlers (dynamic import).
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { DEFAULT_TIER_WIDGETS, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+// Server-only. THE Xero dashboard read gate — every card inherits it.
+//
+// Phase 4 (one rulebook): this file no longer decides anything. The rule has a
+// single implementation and it lives in the database:
+//   public.effective_tier_for_tenant(_tenant_id) — is the caller organisation
+//     staff for this Xero file, or a client viewer, and at what level
+//   public.assert_widget_access(_tenant_id, _widget) — access + entitlement
+//   public.client_for_tenant(_tenant_id) — the client that owns the file,
+//     resolved deterministically (it raises rather than guessing if a file were
+//     ever linked to two clients)
+// All three are caller-scoped (auth.uid()), aal2-guarded, and read through the
+// caller's own session — never supabaseAdmin. Never reimplement them here.
+
+import type { DashboardTier, WidgetKey } from "@/lib/tiers";
 
 export async function getEffectiveTier(
-  userId: string,
+  supabase: any,
   tenantId: string,
 ): Promise<{ isAdvisor: boolean; tier: DashboardTier | null; clientId: string | null }> {
-  // Resolve client_id + firm_id for this tenant.
-  const { data: cxo } = await (supabaseAdmin as any)
-    .from("client_xero_orgs")
-    .select("client_id, clients!inner(id, firm_id), xero_connections!inner(tenant_id)")
-    .eq("xero_connections.tenant_id", tenantId)
-    .limit(1)
-    .maybeSingle();
-  const clientId = (cxo?.client_id as string | undefined) ?? null;
-  const firmId = (cxo?.clients?.firm_id as string | undefined) ?? null;
-
-  // Access rules:
-  //  - super admins may reach client data ONLY when they belong to the firm or
-  //    the firm owner has switched support access on
-  //  - firm members (any role) see the firm's clients with full "investigate" tier
-  //  - users with an explicit client_access row see at their granted tier
-  //  - everyone else is denied
-  const { data: superRow } = await (supabaseAdmin as any)
-    .from("user_roles")
-    .select("user_id")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (superRow) {
-    const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
-    if (await platformStaffCanAccessFirm(userId, firmId)) {
-      return { isAdvisor: true, tier: "investigate", clientId };
-    }
-  }
-
-  if (firmId) {
-    const { data: member } = await (supabaseAdmin as any)
-      .from("firm_members")
-      .select("user_id")
-      .eq("user_id", userId)
-      .eq("firm_id", firmId)
-      .eq("status", "active")
-      .maybeSingle();
-    if (member) return { isAdvisor: true, tier: "investigate", clientId };
-  }
-
-
-
-
-  if (clientId) {
-    const { data: tierRows } = await (supabaseAdmin as any)
-      .from("client_access")
-      .select("tier")
-      .eq("user_id", userId)
-      .eq("client_id", clientId);
-    const rank: Record<string, number> = { investigate: 3, advisory: 2 };
-    let tier: DashboardTier | null = null;
-    let best = -1;
-    for (const r of (tierRows as Array<{ tier: DashboardTier }> | null) ?? []) {
-      const score = rank[r.tier] ?? 1;
-      if (score > best) { best = score; tier = r.tier; }
-    }
-    return { isAdvisor: false, tier, clientId };
-  }
-
-  return { isAdvisor: false, tier: null, clientId };
+  const { data, error } = await supabase.rpc("effective_tier_for_tenant", {
+    _tenant_id: tenantId,
+  });
+  if (error) throw new Error(error.message);
+  const row = Array.isArray(data) ? data[0] : data;
+  return {
+    isAdvisor: row?.is_staff === true,
+    tier: ((row?.tier as DashboardTier | null) ?? null) as DashboardTier | null,
+    clientId: (row?.client_id as string | null) ?? null,
+  };
 }
 
+/**
+ * Reporting basis for the Xero file's client. Not an access decision — callers
+ * run `assertWidgetAccess` first — so it reads with the service role to stay
+ * independent of the caller's own visibility.
+ */
 export async function getClientReportBasis(tenantId: string): Promise<"accrual" | "cash"> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: cxo } = await (supabaseAdmin as any)
     .from("client_xero_orgs")
     .select("clients!inner(report_basis), xero_connections!inner(tenant_id)")
@@ -79,42 +46,15 @@ export async function getClientReportBasis(tenantId: string): Promise<"accrual" 
   return basis === "cash" ? "cash" : "accrual";
 }
 
-async function effectiveWidgets(clientId: string | null, tier: DashboardTier): Promise<WidgetKey[]> {
-  if (!clientId) return DEFAULT_TIER_WIDGETS[tier];
-  // Deny-list model: plan ceiling for the tier, minus the organisation's
-  // exclusions (which replace the platform default) and the client's own.
-  const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } = await import(
-    "@/lib/widget-resolve.server"
-  );
-  const { data: client } = await (supabaseAdmin as any)
-    .from("clients")
-    .select("firm_id")
-    .eq("id", clientId)
-    .maybeSingle();
-  const firmId = (client?.firm_id as string | null | undefined) ?? null;
-  const ceilings = await tierCeilings(supabaseAdmin);
-  const index = new ExclusionIndex(await fetchExclusions(supabaseAdmin, { firmId, clientIds: [clientId] }));
-  return visibleWidgets(ceilingFor(ceilings, tier), index.effective(tier, { firmId, clientId }));
-}
-
-
+/** The one gate. Throws with the database's message when access is refused. */
 export async function assertWidgetAccess(
-  userId: string,
+  supabase: any,
   tenantId: string,
   widget: WidgetKey,
 ): Promise<void> {
-  const { isAdvisor, tier, clientId } = await getEffectiveTier(userId, tenantId);
-  if (!isAdvisor && !tier) throw new Error("You don't have access to this organisation.");
-  // Advisors are always allowed; gating only applies to viewers.
-  if (isAdvisor) return;
-  const { canonicalWidget } = await import("@/lib/tiers");
-  // Merged cards: a stored entitlement for a retired key (superannuation,
-  // true_breakeven) is the same entitlement as the card it now renders as.
-  // Resolving both sides through the one alias table keeps entitlement
-  // unchanged and stops a merge silently locking a card the client owns.
-  const widgets = (await effectiveWidgets(clientId, tier!)).map((w) => canonicalWidget(w));
-  if (!widgets.includes(canonicalWidget(widget))) {
-    throw new Error("This widget is not enabled for your dashboard.");
-  }
+  const { error } = await supabase.rpc("assert_widget_access", {
+    _tenant_id: tenantId,
+    _widget: widget,
+  });
+  if (error) throw new Error(error.message);
 }
-

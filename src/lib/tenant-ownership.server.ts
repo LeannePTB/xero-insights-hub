@@ -3,24 +3,18 @@
 // both a clientId and a tenantId must prove the Xero file actually belongs to
 // that client before the tenant id is used for anything.
 //
-// This is the only copy — do not inline a variant.
+// Phase 4: the proof itself lives in the database
+// (public.assert_tenant_belongs_to_client) — this is a thin wrapper and there
+// is no second copy.
 
-/**
- * Throws when `tenantId` is not linked to `clientId` via client_xero_orgs.
- * Read with the service role deliberately: this is an ownership proof, not a
- * visibility question, and it must not depend on the caller's own RLS view.
- */
-export async function assertTenantBelongsToClient(clientId: string, tenantId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: links, error } = await supabaseAdmin
-    .from("client_xero_orgs")
-    .select("xero_connections(tenant_id)")
-    .eq("client_id", clientId);
+export async function assertTenantBelongsToClient(
+  supabase: any,
+  clientId: string,
+  tenantId: string,
+) {
+  const { error } = await supabase.rpc("assert_tenant_belongs_to_client", {
+    _client_id: clientId,
+    _tenant_id: tenantId,
+  });
   if (error) throw new Error(error.message);
-  const permitted = new Set(
-    ((links ?? []) as any[]).map((l) => (l as any).xero_connections?.tenant_id).filter(Boolean) as string[],
-  );
-  if (!permitted.has(tenantId)) {
-    throw new Error("That Xero organisation does not belong to this client.");
-  }
 }
