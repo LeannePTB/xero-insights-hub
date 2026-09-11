@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1249**. Known failures: **1**.
+Rows: **1259**. Known failures: **24**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -12,6 +12,29 @@ the suites report it every run with its backlog number and never count it as a p
 
 | Backlog | Role | Resource | Operation | Why it fails |
 | --- | --- | --- | --- | --- |
+| 27 | Super admin with NO membership | firms | update | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
+| 27 | Support-grant holder, grant expired | firms | update | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
+| 27 | Support-grant holder, grant revoked | firms | update | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
+| 28 | Super admin with NO membership | client_subscriptions | insert | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| 28 | Super admin with NO membership | client_subscriptions | update | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| 28 | Super admin with NO membership | client_subscriptions | delete | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| 28 | Support-grant holder, grant expired | client_subscriptions | insert | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| 28 | Support-grant holder, grant expired | client_subscriptions | update | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| 28 | Support-grant holder, grant expired | client_subscriptions | delete | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| 28 | Support-grant holder, grant revoked | client_subscriptions | insert | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| 28 | Support-grant holder, grant revoked | client_subscriptions | update | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| 28 | Support-grant holder, grant revoked | client_subscriptions | delete | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| 28 | Support-grant holder, active, non-member organisation | client_subscriptions | insert | Admitted by 'super admins manage client subscriptions' (every grantee is a super admin) and by 'staff manage client subscriptions' (platform_staff_can_access_firm). No audit row is written. Fixed in Phase 3. |
+| 28 | Support-grant holder, active, non-member organisation | client_subscriptions | update | Admitted by 'super admins manage client subscriptions' (every grantee is a super admin) and by 'staff manage client subscriptions' (platform_staff_can_access_firm). No audit row is written. Fixed in Phase 3. |
+| 28 | Support-grant holder, active, non-member organisation | client_subscriptions | delete | Admitted by 'super admins manage client subscriptions' (every grantee is a super admin) and by 'staff manage client subscriptions' (platform_staff_can_access_firm). No audit row is written. Fixed in Phase 3. |
+| 29 | Super admin with NO membership | user_roles | update | 'super admins manage roles' is FOR ALL on me_is_super_admin(); an UPDATE leaves no audit row. |
+| 29 | Super admin with NO membership | plan_levels | insert | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| 29 | Super admin with NO membership | plan_levels | update | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| 29 | Super admin with NO membership | plan_levels | delete | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| 29 | Super admin with NO membership | xero_assessment_contact | insert | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| 29 | Super admin with NO membership | xero_assessment_contact | update | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| 29 | Super admin with NO membership | xero_assessment_contact | delete | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| 29 | Super admin with NO membership | signup_requests | update | 'super_admin updates signup_requests' is on is_super_admin alone, targets role public rather than authenticated, and writes no audit row. |
 | 18 | Support-grant holder, active, non-member organisation | server fn: write client data | execute | Shared gate app_private.user_can_manage_client still admits the support path. |
 
 ## Anonymous (no session)
@@ -724,17 +747,17 @@ the suites report it every run with its backlog number and never count it as a p
 | scenario_exclusions | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | scenario_exclusions | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 |  |
-| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 |  |
-| firms | update | ALLOW | pglite, live | PK 2 path C (organisation metadata) |  |
+| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
+| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
+| firms | update | DENY **KNOWN FAILURE (backlog 27)** | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free never on a client organisation) | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
 | firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firm_members | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
-| client_subscriptions | insert | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
-| client_subscriptions | update | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
-| client_subscriptions | delete | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
+| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (billing metadata, not Xero financial data) |  |
+| client_subscriptions | insert | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| client_subscriptions | update | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| client_subscriptions | delete | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
@@ -759,6 +782,16 @@ the suites report it every run with its backlog number and never count it as a p
 | client_reports | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
 | report_cache | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
 | reconciliation_snapshots | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
+| user_roles | insert | ALLOW | pglite, live | PK 2 path C; Spec §9 (audited by audit_user_roles_change) |  |
+| user_roles | delete | ALLOW | pglite, live | PK 2 path C; Spec §9 (audited by audit_user_roles_change) |  |
+| user_roles | update | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (role changes must be audited; the trigger covers insert and delete only) | 'super admins manage roles' is FOR ALL on me_is_super_admin(); an UPDATE leaves no audit row. |
+| plan_levels | insert | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform configuration changes must leave an audit row) | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| plan_levels | update | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform configuration changes must leave an audit row) | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| plan_levels | delete | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform configuration changes must leave an audit row) | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| xero_assessment_contact | insert | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform configuration changes must leave an audit row) | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| xero_assessment_contact | update | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform configuration changes must leave an audit row) | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| xero_assessment_contact | delete | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform configuration changes must leave an audit row) | FOR ALL policy on me_is_super_admin() with no audit trigger; direct REST writes are unrecorded. |
+| signup_requests | update | DENY **KNOWN FAILURE (backlog 29)** | pglite, live | Spec §9 (platform metadata changes must leave an audit row) | 'super_admin updates signup_requests' is on is_super_admin alone, targets role public rather than authenticated, and writes no audit row. |
 | public.online_users() | execute | ALLOW | pglite, live | PK 2 path C metadata |  |
 | public.set_all_client_tiers() | execute | DENY | live | PK 3 — needs the organisation's data, super admin alone is not access | Backlog 19 records that this now gates on is_super_admin; revisit when the shared gate rule is decided. |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
@@ -851,17 +884,17 @@ the suites report it every run with its backlog number and never count it as a p
 | scenario_exclusions | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | scenario_exclusions | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 |  |
-| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 |  |
-| firms | update | ALLOW | pglite, live | PK 2 path C (organisation metadata) |  |
+| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
+| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
+| firms | update | DENY **KNOWN FAILURE (backlog 27)** | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free never on a client organisation) | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
 | firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firm_members | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
-| client_subscriptions | insert | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
-| client_subscriptions | update | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
-| client_subscriptions | delete | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
+| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (billing metadata, not Xero financial data) |  |
+| client_subscriptions | insert | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| client_subscriptions | update | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| client_subscriptions | delete | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
 | firm_support_access (expired grant used for a read) | read | DENY | pglite, live | Spec §7 (max 72h, expires_at enforced) |  |
 
 ## Support-grant holder, grant revoked
@@ -948,17 +981,17 @@ the suites report it every run with its backlog number and never count it as a p
 | scenario_exclusions | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | scenario_exclusions | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 |  |
-| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 |  |
-| firms | update | ALLOW | pglite, live | PK 2 path C (organisation metadata) |  |
+| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
+| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
+| firms | update | DENY **KNOWN FAILURE (backlog 27)** | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free never on a client organisation) | Policy 'super_admin updates firms' plus table-level UPDATE for authenticated covers every column, so a bare super admin can set owner_user_id or is_always_free by direct REST call, with no audit row. |
 | firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
 | firm_members | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
-| client_subscriptions | insert | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
-| client_subscriptions | update | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
-| client_subscriptions | delete | ALLOW | pglite, live | PK 2 path C; Spec §8 (comps and plan changes are super-admin only) | Billing metadata, not Xero financial data. Every change writes an audit row. |
+| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (billing metadata, not Xero financial data) |  |
+| client_subscriptions | insert | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| client_subscriptions | update | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
+| client_subscriptions | delete | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Policy 'super admins manage client subscriptions' is FOR ALL on is_super_admin alone; the only trigger is client_subscriptions_set_updated_at. Fixed in Phase 3. |
 | firm_support_access (revoked grant used for a read) | read | DENY | pglite, live | Spec §7 (revoked_at) |  |
 
 ## Organisation owner (own organisation)
@@ -1277,9 +1310,9 @@ the suites report it every run with its backlog number and never count it as a p
 | scenario_exclusions | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are now per-command with membership-only EXISTS checks. The remaining half of backlog 18 is app_private.user_can_manage_client itself, still reachable through app_private.move_xero_file_to_client and the server-function path below. |
 | scenario_exclusions | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are now per-command with membership-only EXISTS checks. The remaining half of backlog 18 is app_private.user_can_manage_client itself, still reachable through app_private.move_xero_file_to_client and the server-function path below. |
 | scenario_exclusions | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are now per-command with membership-only EXISTS checks. The remaining half of backlog 18 is app_private.user_can_manage_client itself, still reachable through app_private.move_xero_file_to_client and the server-function path below. |
-| client_subscriptions | insert | ALLOW | pglite, live | Spec §8 — admitted by the super_admin billing policy, not by the grant |  |
-| client_subscriptions | update | ALLOW | pglite, live | Spec §8 — admitted by the super_admin billing policy, not by the grant |  |
-| client_subscriptions | delete | ALLOW | pglite, live | Spec §8 — admitted by the super_admin billing policy, not by the grant |  |
+| client_subscriptions | insert | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Admitted by 'super admins manage client subscriptions' (every grantee is a super admin) and by 'staff manage client subscriptions' (platform_staff_can_access_firm). No audit row is written. Fixed in Phase 3. |
+| client_subscriptions | update | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Admitted by 'super admins manage client subscriptions' (every grantee is a super admin) and by 'staff manage client subscriptions' (platform_staff_can_access_firm). No audit row is written. Fixed in Phase 3. |
+| client_subscriptions | delete | DENY **KNOWN FAILURE (backlog 28)** | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Admitted by 'super admins manage client subscriptions' (every grantee is a super admin) and by 'staff manage client subscriptions' (platform_staff_can_access_firm). No audit row is written. Fixed in Phase 3. |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
