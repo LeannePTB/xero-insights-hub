@@ -126,7 +126,7 @@ describe("2. every supabaseAdmin use is registered and verified", () => {
 
 describe("3. identity and recipient decisions never use profiles.email", () => {
   /**
-   * KNOWN FAILURE — backlog 21. These six sites read profiles.email purely as a
+   * KNOWN FAILURE — backlog 22. These six sites read profiles.email purely as a
    * display fallback when display_name is null. The verified email must come
    * from auth.users instead. Recorded, reported every run, never a pass.
    * A profiles.email read in any OTHER file fails the build.
@@ -149,7 +149,7 @@ describe("3. identity and recipient decisions never use profiles.email", () => {
           hits.push(`${path}:${i + 1} — ${line.trim()}`);
       });
     }
-    console.warn(report("KNOWN FAILURE (backlog 21) profiles.email display fallbacks:", hits));
+    console.warn(report("KNOWN FAILURE (backlog 22) profiles.email display fallbacks:", hits));
     const unexpected = hits.filter((h) => !KNOWN_PROFILES_EMAIL_READS.some((f) => h.startsWith(f)));
     expect(unexpected, report("New profiles.email reads — use the verified auth.users email:", unexpected)).toEqual(
       [],
