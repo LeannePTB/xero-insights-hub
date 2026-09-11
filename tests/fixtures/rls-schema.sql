@@ -1272,13 +1272,9 @@ grant SELECT on table public.client_statutory_accounts to service_role;
 grant TRIGGER on table public.client_statutory_accounts to service_role;
 grant TRUNCATE on table public.client_statutory_accounts to service_role;
 grant UPDATE on table public.client_statutory_accounts to service_role;
-grant DELETE on table public.client_subscriptions to authenticated;
-grant INSERT on table public.client_subscriptions to authenticated;
 grant REFERENCES on table public.client_subscriptions to authenticated;
 grant SELECT on table public.client_subscriptions to authenticated;
 grant TRIGGER on table public.client_subscriptions to authenticated;
-grant TRUNCATE on table public.client_subscriptions to authenticated;
-grant UPDATE on table public.client_subscriptions to authenticated;
 grant DELETE on table public.client_subscriptions to service_role;
 grant INSERT on table public.client_subscriptions to service_role;
 grant REFERENCES on table public.client_subscriptions to service_role;
@@ -1934,7 +1930,6 @@ create policy "support grant reads statutory accounts" on public.client_statutor
   WHERE ((c.id = client_statutory_accounts.client_id) AND (c.firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id)))));
 create policy "managers read client subscriptions" on public.client_subscriptions as permissive for select to authenticated using ((app_private.user_can_manage_client(auth.uid(), client_id) OR app_private.is_super_admin(auth.uid())));
 create policy mfa_aal2_required on public.client_subscriptions as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "super admins manage client subscriptions" on public.client_subscriptions as permissive for all to authenticated using (app_private.is_super_admin(auth.uid())) with check (app_private.is_super_admin(auth.uid()));
 create policy "Manage true breakeven inputs by firm (delete)" on public.client_true_breakeven_inputs as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_true_breakeven_inputs.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -2134,4 +2129,4 @@ create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for 
 create policy "entitled users read client snapshots" on public.xero_snapshots as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 
--- catalogue-fingerprint: 64e0086037c95b55428598547264bf9eb0816958ce523044499f7ffc48e47d6d
+-- catalogue-fingerprint: 4a4162d8b55f1ae95b2a9ef0d64e52480074c6922baaa3d44c64ed23b5104546
