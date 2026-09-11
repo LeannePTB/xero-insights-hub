@@ -130,7 +130,10 @@ function rows(
   return out;
 }
 
-/** Roles that must reach NOTHING with organisation, client, Xero or personal data. */
+/**
+ * Roles that must reach NOTHING with organisation, client, Xero or personal
+ * data, and that hold no platform role either.
+ */
 const NO_DATA_ROLES: Role[] = [
   "anonymous",
   "aal1_member",
@@ -138,10 +141,43 @@ const NO_DATA_ROLES: Role[] = [
   "org_a_owner_reading_org_b",
   "suspended_member",
   "removed_member",
+];
+
+/**
+ * Roles that hold `super_admin` but no membership of the organisation under
+ * test — including a support grantee whose grant has expired or been revoked,
+ * because every support grantee is a super admin (platform_staff_can_access_firm
+ * requires it). They reach Path C platform metadata and NOTHING else.
+ */
+const PLATFORM_ONLY_ROLES: Role[] = [
   "super_admin_no_membership",
   "support_grant_expired",
   "support_grant_revoked",
 ];
+
+/**
+ * Client-scoped tables that no browser session writes, whatever its membership:
+ * the rows are produced by SECURITY DEFINER functions or by service_role
+ * (snapshot refresh, report generation, reconciliation). Verified: the tables
+ * carry SELECT policies only.
+ */
+const SERVER_WRITTEN_TABLES = [
+  "client_reports",
+  "reconciliation_snapshots",
+  "xero_snapshots",
+  "xero_snapshot_runs",
+] as const;
+
+/** Client-scoped tables written only by the client viewer who owns the row. */
+const VIEWER_SCOPED_TABLES = ["scenario_exclusions"] as const;
+
+/** Tables a member manages directly through RLS (per-command firm policies). */
+const MEMBER_MANAGED_TABLES = CLIENT_DATA_TABLES.filter(
+  (t) =>
+    !(SERVER_WRITTEN_TABLES as readonly string[]).includes(t) &&
+    !(VIEWER_SCOPED_TABLES as readonly string[]).includes(t) &&
+    !["clients", "client_subscriptions", "report_cache"].includes(t),
+);
 
 export const MATRIX: MatrixRow[] = [
   // ---------------------------------------------------------------- deny-all
@@ -154,28 +190,108 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
   ),
 
+  // ------------------------------------------- platform role, no membership (C)
+  // Path C is metadata only. The organisation list and the membership list are
+  // named in Spec §3; client billing is named in Spec §8 (comps are super-admin
+  // only). Everything else with client or Xero data stays denied.
+  ...rows(
+    PLATFORM_ONLY_ROLES,
+    CLIENT_DATA_TABLES.filter((t) => t !== "client_subscriptions"),
+    ["read", ...WRITES],
+    "deny",
+    "PK 3 (super_admin alone is not access to client data)",
+    ["pglite", "live"],
+  ),
+  ...rows(PLATFORM_ONLY_ROLES, ["firms", "firm_members"], ["read"], "allow", "PK 2 path C; Spec §3", [
+    "pglite",
+    "live",
+  ]),
+  ...rows(PLATFORM_ONLY_ROLES, ["firms"], ["update"], "allow", "PK 2 path C (organisation metadata)", [
+    "pglite",
+    "live",
+  ]),
+  ...rows(
+    PLATFORM_ONLY_ROLES,
+    ["firms", "firm_members"],
+    ["insert", "delete"],
+    "deny",
+    "Spec §4 (creation and membership go through their own functions)",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    PLATFORM_ONLY_ROLES,
+    ["client_subscriptions"],
+    ["read", ...WRITES],
+    "allow",
+    "PK 2 path C; Spec §8 (comps and plan changes are super-admin only)",
+    ["pglite", "live"],
+    { note: "Billing metadata, not Xero financial data. Every change writes an audit row." },
+  ),
+
   // ------------------------------------------------------------ membership (A)
   ...rows(
     ["org_owner", "org_staff"],
-    ["firms", "firm_members", ...CLIENT_DATA_TABLES],
+    ["firms", "firm_members", ...CLIENT_DATA_TABLES.filter((t) => !["report_cache", "scenario_exclusions"].includes(t))],
     ["read"],
     "allow",
     "PK 2 path A; Spec §3",
     ["pglite", "live"],
   ),
+  // report_cache is per-user, not per-organisation: a member sees only their own rows.
+  { role: "org_owner", resource: "report_cache", operation: "read", expect: "allow", rule: "own cache rows", layers: ["pglite", "live"] },
+  { role: "org_staff", resource: "report_cache", operation: "read", expect: "deny", rule: "another member's cache rows", layers: ["pglite", "live"] },
+  ...rows(["org_owner"], ["report_cache"], WRITES, "allow", "own cache rows", ["pglite", "live"]),
+  ...rows(["org_staff"], ["report_cache"], WRITES, "deny", "another member's cache rows", ["pglite", "live"]),
+
+  // scenario_exclusions is written by the client viewer who owns the client.
   ...rows(
     ["org_owner", "org_staff"],
-    CLIENT_DATA_TABLES,
+    VIEWER_SCOPED_TABLES,
+    ["read", ...WRITES],
+    "deny",
+    "Spec §6 (client_access-scoped table)",
+    ["pglite", "live"],
+  ),
+
+  ...rows(["org_owner", "org_staff"], MEMBER_MANAGED_TABLES, WRITES, "allow", "PK 2 path A; Spec §6", [
+    "pglite",
+    "live",
+  ]),
+  // Only an organisation OWNER manages the client list itself.
+  ...rows(["org_owner"], ["clients"], WRITES, "allow", "Spec §6 (is_firm_owner)", ["pglite", "live"]),
+  ...rows(["org_staff"], ["clients"], WRITES, "deny", "Spec §6 (is_firm_owner only)", ["pglite", "live"]),
+  // Snapshots, reports and reconciliations are written by the server, never by a session.
+  ...rows(
+    ["org_owner", "org_staff"],
+    SERVER_WRITTEN_TABLES,
     WRITES,
-    "allow",
-    "PK 2 path A; Spec §6",
+    "deny",
+    "Spec §6 (written by definer functions / service_role only)",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff"],
+    ["client_subscriptions"],
+    WRITES,
+    "deny",
+    "Spec §8 (billing is platform-owned)",
     ["pglite", "live"],
   ),
 
   // ------------------------------------------------------- support grant (B)
+  // Read-only, and only where the read policy names the support path. Verified:
+  // `clients`, `client_statutory_accounts`, `report_cache` and
+  // `scenario_exclusions` do not, so a grant holder cannot read them. That
+  // fails closed (Spec §0.8) and is recorded as backlog 25, not fixed here.
   ...rows(
     ["support_grant_active"],
-    ["firms", "firm_members", ...CLIENT_DATA_TABLES],
+    [
+      "firms",
+      "firm_members",
+      ...CLIENT_DATA_TABLES.filter(
+        (t) => !["clients", "client_statutory_accounts", "report_cache", "scenario_exclusions"].includes(t),
+      ),
+    ],
     ["read"],
     "allow",
     "PK 2 path B; Spec §3, §7",
@@ -183,138 +299,33 @@ export const MATRIX: MatrixRow[] = [
   ),
   ...rows(
     ["support_grant_active"],
-    [
-      "client_access",
-      "client_cost_classifications",
-      "client_notes",
-      "client_true_breakeven_inputs",
-      "client_xero_orgs",
-      "loan_consolidation_accounts",
-      "tier_widget_config",
-      "unreconciled_lines",
-      "unreconciled_uploads",
-    ],
+    ["clients", "client_statutory_accounts", "report_cache", "scenario_exclusions"],
+    ["read"],
+    "deny",
+    "Backlog 25 — the read policy does not name the support path; fails closed",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["support_grant_active"],
+    CLIENT_DATA_TABLES.filter((t) => t !== "client_subscriptions"),
     WRITES,
     "deny",
     "PK 5 (support grants are READ-ONLY)",
     ["pglite", "live"],
     {
-      knownFailure: {
-        backlog: 18,
-        note:
-          "app_private.user_can_manage_client still admits is_super_admin AND platform_staff_can_access_firm; nine FOR ALL policies and app_private.move_xero_file_to_client depend on it, so an active support grant can still write.",
-      },
+      note:
+        "Proved at the RLS layer: the nine former FOR ALL policies are now per-command with membership-only EXISTS checks. The remaining half of backlog 18 is app_private.user_can_manage_client itself, still reachable through app_private.move_xero_file_to_client and the server-function path below.",
     },
   ),
   ...rows(
     ["support_grant_active"],
-    CLIENT_DATA_TABLES.filter(
-      (t) =>
-        ![
-          "client_access",
-          "client_cost_classifications",
-          "client_notes",
-          "client_true_breakeven_inputs",
-          "client_xero_orgs",
-          "loan_consolidation_accounts",
-          "tier_widget_config",
-          "unreconciled_lines",
-          "unreconciled_uploads",
-        ].includes(t),
-    ),
+    ["client_subscriptions"],
     WRITES,
-    "deny",
-    "PK 5 (support grants are READ-ONLY)",
-    ["pglite", "live"],
-  ),
-
-  // --------------------------------------------------------- client viewer
-  ...rows(["client_viewer"], ["clients", "client_notes"], ["read"], "allow", "Spec §3 client viewer", [
-    "pglite",
-    "live",
-  ]),
-  ...rows(
-    ["client_viewer"],
-    ["firms", "firm_members", "audit_log", "subscriptions"],
-    ["read"],
-    "deny",
-    "Spec §3 client viewer sees only that client",
-    ["pglite", "live"],
-  ),
-  ...rows(["client_viewer"], ["clients", "client_access"], WRITES, "deny", "Spec §3", ["pglite", "live"]),
-
-  // ------------------------------------------------------------ Xero tokens
-  ...rows(
-    [
-      "org_owner",
-      "org_staff",
-      "support_grant_active",
-      "super_admin_no_membership",
-      "client_viewer",
-      "anonymous",
-    ],
-    ["xero_connections.access_token_enc", "xero_connections.refresh_token_enc"],
-    ["read"],
-    "deny",
-    "PK 8; Spec §10 (no column grant; privilege check precedes RLS)",
-    ["pglite", "live"],
-  ),
-  ...rows(
-    ["org_owner", "org_staff"],
-    ["xero_connections (non-token columns)"],
-    ["read"],
     "allow",
-    "Spec §10",
-    ["pglite", "live"],
-  ),
-  ...rows(
-    ["other_org_member", "super_admin_no_membership", "anonymous", "aal1_member"],
-    ["xero_connections (non-token columns)"],
-    ["read"],
-    "deny",
-    "PK 3, PK 4",
+    "Spec §8 — admitted by the super_admin billing policy, not by the grant",
     ["pglite", "live"],
   ),
 
-  // ---------------------------------------------------------- append-only
-  ...rows(
-    ["org_owner", "org_staff", "client_viewer", "support_grant_active", "super_admin_no_membership"],
-    APPEND_ONLY_TABLES,
-    WRITES,
-    "deny",
-    "PK 10; Spec §9 (append-only)",
-    ["pglite", "live"],
-  ),
-  ...rows(["org_owner"], ["audit_log"], ["read"], "allow", "Spec §3 own organisation's audit rows", [
-    "pglite",
-    "live",
-  ]),
-
-  // -------------------------------------------------- Path C platform metadata
-  ...rows(
-    ["super_admin_no_membership"],
-    PATH_C_METADATA,
-    ["read"],
-    "allow",
-    "PK 2 path C (metadata only, never Xero financial data)",
-    ["pglite", "live"],
-  ),
-  ...rows(
-    ["super_admin_no_membership"],
-    ["xero_snapshots", "client_reports", "report_cache", "reconciliation_snapshots"],
-    ["read"],
-    "deny",
-    "PK 3 (super_admin grants ZERO client data on its own)",
-    ["pglite", "live"],
-  ),
-  ...rows(
-    ["org_staff", "client_viewer", "other_org_member"],
-    ["plan_levels", "tier_settings"],
-    WRITES,
-    "deny",
-    "Spec §5 (plan catalogue is platform-owned)",
-    ["pglite"],
-  ),
 
   // ---------------------------------------------------------------- profiles
   {
