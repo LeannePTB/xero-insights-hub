@@ -303,7 +303,7 @@ DECLARE
   v_source_firm_id uuid;
   v_target_firm_id uuid;
 BEGIN
-  IF NOT app_private.user_can_manage_client(_actor_user_id, _target_client_id) THEN RAISE EXCEPTION 'You cannot manage the target client subscription'; END IF;
+  IF NOT app_private.user_can_write_client(_actor_user_id, _target_client_id) THEN RAISE EXCEPTION 'You cannot manage the target client subscription'; END IF;
   SELECT cxo.client_id, c.firm_id INTO v_source_client_id, v_source_firm_id
   FROM public.client_xero_orgs cxo JOIN public.clients c ON c.id = cxo.client_id
   WHERE cxo.xero_connection_id = _connection_id FOR UPDATE OF cxo;
@@ -311,7 +311,7 @@ BEGIN
   IF v_source_client_id IS NULL THEN RAISE EXCEPTION 'That Xero file is no longer linked to another subscription'; END IF;
   IF v_source_client_id = _target_client_id THEN RAISE EXCEPTION 'That Xero file is already linked to this subscription'; END IF;
   IF v_source_firm_id IS DISTINCT FROM v_target_firm_id AND NOT app_private.is_super_admin(_actor_user_id) THEN RAISE EXCEPTION 'Only a platform admin can move a Xero file between organisations'; END IF;
-  IF NOT app_private.is_super_admin(_actor_user_id) AND NOT app_private.user_can_manage_client(_actor_user_id, v_source_client_id) THEN RAISE EXCEPTION 'You cannot manage the subscription that currently holds this Xero file'; END IF;
+  IF NOT app_private.is_super_admin(_actor_user_id) AND NOT app_private.user_can_write_client(_actor_user_id, v_source_client_id) THEN RAISE EXCEPTION 'You cannot manage the subscription that currently holds this Xero file'; END IF;
   DELETE FROM public.client_xero_orgs WHERE xero_connection_id = _connection_id;
   INSERT INTO public.client_xero_orgs (client_id, xero_connection_id) VALUES (_target_client_id, _connection_id);
   UPDATE public.xero_connections SET firm_id = v_target_firm_id WHERE id = _connection_id;
@@ -1051,6 +1051,22 @@ CREATE OR REPLACE FUNCTION app_private.practice_firm_id()
  SET search_path TO ''
 AS $function$
   select value::uuid from app_private.platform_settings where key = 'practice_firm_id'
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.user_can_write_client(_user_id uuid, _client_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select case when auth.uid() is not null and _user_id is distinct from auth.uid() then false else (
+    select exists (
+      select 1 from public.clients c
+      where c.id = _client_id
+        and (c.owner_user_id = _user_id
+             or (c.firm_id is not null and app_private.has_firm_access(_user_id, c.firm_id)))
+    )
+  ) end
 $function$
 ;
 alter table public.access_invites enable row level security;
@@ -1913,13 +1929,11 @@ create policy "Manage statutory accounts by firm" on public.client_statutory_acc
   WHERE ((c.id = client_statutory_accounts.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy "Viewers read statutory accounts" on public.client_statutory_accounts as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_statutory_accounts as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "support grant reads statutory accounts" on public.client_statutory_accounts as permissive for select to authenticated using ((EXISTS ( SELECT 1
+   FROM clients c
+  WHERE ((c.id = client_statutory_accounts.client_id) AND (c.firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id)))));
 create policy "managers read client subscriptions" on public.client_subscriptions as permissive for select to authenticated using ((app_private.user_can_manage_client(auth.uid(), client_id) OR app_private.is_super_admin(auth.uid())));
 create policy mfa_aal2_required on public.client_subscriptions as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "staff manage client subscriptions" on public.client_subscriptions as permissive for all to authenticated using ((EXISTS ( SELECT 1
-   FROM clients c
-  WHERE ((c.id = client_subscriptions.client_id) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id))))) with check ((EXISTS ( SELECT 1
-   FROM clients c
-  WHERE ((c.id = client_subscriptions.client_id) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id)))));
 create policy "super admins manage client subscriptions" on public.client_subscriptions as permissive for all to authenticated using (app_private.is_super_admin(auth.uid())) with check (app_private.is_super_admin(auth.uid()));
 create policy "Manage true breakeven inputs by firm (delete)" on public.client_true_breakeven_inputs as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
@@ -1952,6 +1966,7 @@ create policy "viewers read assigned client xero orgs" on public.client_xero_org
 create policy "firm members read firm clients" on public.clients as permissive for select to public using (((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy "firm owners manage firm clients" on public.clients as permissive for all to public using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id))) with check (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.clients as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "support grant reads firm clients" on public.clients as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), firm_id)));
 create policy "viewers read assigned clients" on public.clients as permissive for select to public using (app_private.has_client_access(auth.uid(), id));
 create policy "Firm people can manage consolidation group members" on public.consolidation_group_members as permissive for all to authenticated using ((EXISTS ( SELECT 1
    FROM consolidation_groups g
@@ -2119,4 +2134,4 @@ create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for 
 create policy "entitled users read client snapshots" on public.xero_snapshots as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 
--- catalogue-fingerprint: 046bf12e39ae502e815b36be5bb8911ba55b9b4ee37e595164ceb37e8d89fdc1
+-- catalogue-fingerprint: 64e0086037c95b55428598547264bf9eb0816958ce523044499f7ffc48e47d6d
