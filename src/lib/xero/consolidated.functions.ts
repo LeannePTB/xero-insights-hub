@@ -51,16 +51,16 @@ async function resolveGroup(supabase: any, userId: string, groupId: string): Pro
     .maybeSingle();
   if (!group) throw new Error("Consolidation group not found.");
 
-  const { data: member } = await supabase
-    .from("firm_members")
-    .select("id")
-    .eq("firm_id", group.firm_id)
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .maybeSingle();
-  // Invariant 3: active membership of the organisation decides. Being
-  // super_admin grants nothing on its own.
-  if (!member) throw new Error("You don't have access to this organisation.");
+  // Invariant 3 and rule 6: active membership of the organisation decides, and
+  // the rule has one implementation — public.user_can_write_firm (membership
+  // only, never a support grant, never bare super_admin).
+  const { data: isMember, error: memberErr } = await supabase.rpc("user_can_write_firm", {
+    _user_id: userId,
+    _firm_id: group.firm_id,
+  });
+  if (memberErr || isMember !== true) {
+    throw new Error("You don't have access to this organisation.");
+  }
 
   // Consolidated views are an organisation-level feature gated by the plan.
   const { assertFirmWidget } = await import("@/lib/widget-access.server");

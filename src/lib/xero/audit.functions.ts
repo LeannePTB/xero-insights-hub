@@ -21,15 +21,19 @@ async function assertAuditAccess(
   tenantId: string,
   opts?: { write?: boolean },
 ): Promise<{ clientId: string; firmId: string }> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: link } = await (supabaseAdmin as any)
-    .from("client_xero_orgs")
-    .select("client_id, clients!inner(id, firm_id), xero_connections!inner(tenant_id)")
-    .eq("xero_connections.tenant_id", tenantId)
-    .limit(1)
-    .maybeSingle();
-  const clientId = (link?.client_id as string | undefined) ?? null;
-  const firmId = (link?.clients?.firm_id as string | undefined) ?? null;
+  // The Xero file is resolved to its client in the database, deterministically
+  // (public.effective_tier_for_tenant raises rather than guessing if a file
+  // were ever linked to two clients). The tenant id stays a FILTER.
+  const { data: resolved, error: resolveErr } = await supabase.rpc("effective_tier_for_tenant", {
+    _tenant_id: tenantId,
+  });
+  if (resolveErr) throw new Error(resolveErr.message);
+  const row = Array.isArray(resolved) ? resolved[0] : resolved;
+  const clientId = (row?.client_id as string | undefined) ?? null;
+  const { data: firmRow } = clientId
+    ? await supabase.from("clients").select("firm_id").eq("id", clientId).maybeSingle()
+    : { data: null as any };
+  const firmId = (firmRow?.firm_id as string | undefined) ?? null;
   if (!clientId || !firmId) {
     throw new Error("That Xero organisation is not linked to a client.");
   }
