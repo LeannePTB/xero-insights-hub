@@ -1613,6 +1613,45 @@ export type Database = {
         }
         Relationships: []
       }
+      security_test_runs: {
+        Row: {
+          created_at: string
+          details: Json
+          failed: number
+          fingerprint_match: boolean
+          id: string
+          known_failures: Json
+          layer: string
+          passed: number
+          ran_at: string
+          ran_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          failed?: number
+          fingerprint_match?: boolean
+          id?: string
+          known_failures?: Json
+          layer: string
+          passed?: number
+          ran_at?: string
+          ran_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          failed?: number
+          fingerprint_match?: boolean
+          id?: string
+          known_failures?: Json
+          layer?: string
+          passed?: number
+          ran_at?: string
+          ran_by?: string | null
+        }
+        Relationships: []
+      }
       signup_requests: {
         Row: {
           contact_name: string
@@ -2554,6 +2593,17 @@ export type Database = {
           msg_id: number
           read_ct: number
         }[]
+      }
+      record_access_test_run: {
+        Args: {
+          _details?: Json
+          _failed: number
+          _fingerprint_match: boolean
+          _known_failures: Json
+          _layer: string
+          _passed: number
+        }
+        Returns: string
       }
       remove_client: {
         Args: { _client_id: string }
