@@ -55,6 +55,14 @@ export const REGISTERED_DB_AUTH_CALLS = [
   "organisation_members",
   "admin_firm_members",
   "plan_level_usage_count",
+  // Phase 4 batch 5 — the caller's own roles, memberships and viewer grants,
+  // and support-access state. Caller-scoped (auth.uid()), aal2-guarded,
+  // EXECUTE revoked from PUBLIC/anon.
+  "my_roles",
+  "my_firm_memberships",
+  "my_client_access",
+  "firm_support_grants",
+  "firm_support_viewer_state",
 ] as const;
 
 
