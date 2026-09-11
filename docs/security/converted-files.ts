@@ -84,9 +84,7 @@ export const REGISTERED_DB_AUTH_WRAPPERS = [
   "assertAdvisor",
 ] as const;
 
-  "platformStaffCanAccessFirm",
-  "userCanManageClient",
-] as const;
+
 
 /** Batch 1 — the Xero read gate and everything that authorised through it. */
 export const CONVERTED_FILES: string[] = [
