@@ -23,16 +23,27 @@ const AUTH_ACTIONS = [
 ] as const;
 export type AuthAuditAction = (typeof AUTH_ACTIONS)[number];
 
-// Deliberate aal1 exception: this records the sign-in and MFA lifecycle
-// itself, which happens before a second factor can exist. Write-only, no
-// caller-supplied identifiers, returns no data.
+// Deliberate aal1 exception, approved by the owner on these conditions
+// (Phase 1, 11 Sep 2026): the action is a fixed allow-list, the actor and
+// email come from the verified token and never from the request, no
+// caller-supplied free text reaches audit `meta`, and the endpoint is rate
+// limited per user. It records the sign-in and MFA lifecycle itself, which
+// happens before a second factor can exist. Write-only, returns no data.
 export const logAuthEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((i: { action: AuthAuditAction }) => {
     if (!AUTH_ACTIONS.includes(i?.action)) throw new Error("Unsupported auth event");
-    return i;
+    return { action: i.action };
   })
   .handler(async ({ data, context }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: allowed } = await (supabaseAdmin as any).rpc("check_rate_limit", {
+      _key: `auth_event:${context.userId}`,
+      _max: 30,
+      _window_seconds: 300,
+    });
+    if (allowed === false) return { ok: true };
+
     await writeAudit({
       actorUserId: context.userId,
       action: data.action,
