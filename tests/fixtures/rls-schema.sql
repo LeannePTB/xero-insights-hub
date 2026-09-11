@@ -1069,6 +1069,52 @@ AS $function$
   ) end
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.audit_table_change()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  _old jsonb := case when tg_op = 'INSERT' then '{}'::jsonb else to_jsonb(old) end;
+  _new jsonb := case when tg_op = 'DELETE' then '{}'::jsonb else to_jsonb(new) end;
+  _changed jsonb := '{}'::jsonb;
+  _k text;
+  _firm uuid;
+  _rowid text;
+begin
+  for _k in
+    select key from jsonb_each(_old)
+    union
+    select key from jsonb_each(_new)
+  loop
+    if (_old -> _k) is distinct from (_new -> _k) then
+      _changed := _changed || jsonb_build_object(
+        _k, jsonb_build_object('from', _old -> _k, 'to', _new -> _k));
+    end if;
+  end loop;
+
+  _rowid := coalesce(_new ->> 'id', _old ->> 'id');
+  _firm := nullif(
+    coalesce(
+      _new ->> 'firm_id',
+      _old ->> 'firm_id',
+      case when tg_table_name = 'firms' then coalesce(_new ->> 'id', _old ->> 'id') end
+    ), '')::uuid;
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (
+    auth.uid(),
+    _firm,
+    'record_' || lower(tg_op),
+    tg_table_name,
+    _rowid,
+    jsonb_build_object('table', tg_table_name, 'op', tg_op, 'changed', _changed)
+  );
+  return null;
+end;
+$function$
+;
 alter table public.access_invites enable row level security;
 alter table public.audit_finding_snoozes enable row level security;
 alter table public.audit_findings enable row level security;
@@ -2128,5 +2174,12 @@ create policy "entitled users read snapshot runs" on public.xero_snapshot_runs a
 create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "entitled users read client snapshots" on public.xero_snapshots as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.client_subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.firms FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.plan_levels FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.signup_requests FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 4a4162d8b55f1ae95b2a9ef0d64e52480074c6922baaa3d44c64ed23b5104546
+-- catalogue-fingerprint: abc66fe352613a4c9b4ee43279ce5855c15c36426dbb2f7d3930f8eb1d005434
