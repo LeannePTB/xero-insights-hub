@@ -158,7 +158,18 @@ export async function clearOrganisationLogo(userId: string, firmId: string) {
     .update({ logo_path: null })
     .eq("id", firmId);
   if (error) throw new Error(error.message);
+
+  const { writeAudit } = await import("@/lib/audit.server");
+  await writeAudit({
+    actorUserId: userId,
+    firmId,
+    action: "organisation_logo_cleared",
+    targetType: "firms",
+    targetId: firmId,
+    meta: {},
+  });
   return { path: null, url: null };
+
 }
 
 export async function clearClientLogo(userId: string, clientId: string) {
