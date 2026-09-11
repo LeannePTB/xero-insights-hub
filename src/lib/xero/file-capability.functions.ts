@@ -4,13 +4,13 @@
 // function. Everything runtime lives in `./file-capability.server`.
 
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import type { FileCapability } from "./file-capability.server";
 
 export type { FileCapability, CapabilityTri } from "./file-capability.server";
 
 export const getFileCapability = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string; clientId?: string }) => input)
   .handler(async ({ data, context }): Promise<FileCapability> => {
     const { getEffectiveTier } = await import("./access.server");

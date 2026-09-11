@@ -1,10 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import type { WidgetKey } from "@/lib/tiers";
 
 /** Widgets/features this organisation's plan permits (plan ∩ tier config). */
 export const getFirmAllowedWidgets = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }) => {
     const { firmAllowedWidgets } = await import("@/lib/widget-access.server");
@@ -14,7 +14,7 @@ export const getFirmAllowedWidgets = createServerFn({ method: "POST" })
 
 /** Widgets this client is entitled to (plan ∩ tier config, RLS-scoped). */
 export const getClientAllowedWidgets = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     const { clientAllowedWidgets } = await import("@/lib/widget-access.server");

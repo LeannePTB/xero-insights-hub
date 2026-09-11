@@ -6,7 +6,7 @@
 // (app_private.user_can_manage_client) is the single rule — there is no
 // TypeScript-side access check to drift from it (invariant 7).
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { classifyTaxLine, type StatutoryCategory } from "@/lib/xero/tax-lines";
 
 export type { StatutoryCategory };
@@ -33,7 +33,7 @@ async function assertTenantBelongsToClient(clientId: string, tenantId: string) {
 
 
 export const listStatutoryAccounts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; tenantId: string }) => input)
   .handler(async ({ data, context }): Promise<{ rows: StatutoryAccountRow[] }> => {
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
@@ -83,7 +83,7 @@ export const listStatutoryAccounts = createServerFn({ method: "POST" })
   });
 
 export const setStatutoryAccount = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: {
       clientId: string;

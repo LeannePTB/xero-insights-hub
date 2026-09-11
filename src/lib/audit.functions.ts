@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { writeAudit } from "@/lib/audit.server";
 
 function requestIp(): string | null {
@@ -23,7 +23,7 @@ const AUTH_ACTIONS = [
 export type AuthAuditAction = (typeof AUTH_ACTIONS)[number];
 
 export const logAuthEvent = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { action: AuthAuditAction }) => {
     if (!AUTH_ACTIONS.includes(i?.action)) throw new Error("Unsupported auth event");
     return i;
@@ -93,7 +93,7 @@ export type AuditAnomaly = {
 
 /** Counters an auditor (and we) watch for suspicious activity. */
 export const getAuditAnomalies = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -179,7 +179,7 @@ function csvCell(v: unknown): string {
 
 /** Super-admin CSV export of the audit trail for auditors. */
 export const exportAuditLogCsv = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { days?: number }) => ({
     days: Math.min(Math.max(Math.trunc(i?.days ?? 90), 1), 1095),
   }))
@@ -254,7 +254,7 @@ export const exportAuditLogCsv = createServerFn({ method: "POST" })
 
 /** Retention configuration + how many rows are past it. */
 export const getRetentionStatus = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

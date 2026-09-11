@@ -1,6 +1,6 @@
 import { liveSource, type SnapshotSource } from "./snapshot-source";
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type CashflowMonth = {
   label: string; // e.g. "Apr 2026"
@@ -133,7 +133,7 @@ function parseBankSummary(report: any): { received: number; spent: number } {
 }
 
 export const getCashflow = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string; fromDate: string; toDate: string }) => input)
   .handler(async ({ data, context }) => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");

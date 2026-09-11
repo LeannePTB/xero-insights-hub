@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type XeroScopeStatus = {
   connectionId: string;
@@ -17,7 +17,7 @@ export type XeroScopeStatus = {
  * `public.xero_missing_scopes(uuid)`; we never recompute it here.
  */
 export const listXeroScopeStatus = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("xero_connections")

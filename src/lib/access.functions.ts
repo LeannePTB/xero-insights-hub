@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export const TIER_LIMITS: Record<string, number> = {
   starter: 5,
@@ -103,7 +103,7 @@ export async function computeFirmAccess(userId: string): Promise<FirmAccessState
  * Used by the dashboard to render trial banners or a lock screen.
  */
 export const getMyFirmAccess = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }): Promise<FirmAccessState> => {
     return computeFirmAccess(context.userId);
   });

@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export const getCardOrder = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
@@ -16,7 +16,7 @@ export const getCardOrder = createServerFn({ method: "POST" })
   });
 
 export const saveCardOrder = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; order: string[] }) => i)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 /**
  * Read the Xero file's sales tax (GST) basis from `Organisation.SalesTaxBasis`.
@@ -7,7 +7,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
  * GST Reconciliation card. The tenant is checked against the caller's access.
  */
 export const getXeroSalesTaxBasis = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     const { getEffectiveTier } = await import("./access.server");

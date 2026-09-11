@@ -9,7 +9,7 @@
 // costs the same Xero calls the live path always cost.
 
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type FieldDiff = { field: string; snapshot: number | string; live: number | string };
 
@@ -35,7 +35,7 @@ function diffNumbers(
 }
 
 export const compareSnapshotVsLive = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string; reportKeys?: string[] }) => input)
   .handler(async ({ data, context }): Promise<{ results: CompareResult[] }> => {
     const { assertWidgetAccess } = await import("./access.server");

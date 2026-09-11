@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import type { DashboardTier } from "@/lib/tiers";
 
 // PHASE 2 SCAFFOLD — inert until the Stripe secrets are added.
@@ -29,7 +29,7 @@ async function assertCanBill(supabase: any, userId: string, clientId: string) {
  * stays `paid` throughout and Stripe steps the price up by itself.
  */
 export const createClientCheckout = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tier: DashboardTier; promotionCode?: string | null }) => i)
   .handler(async ({ data, context }) => {
     await assertCanBill(context.supabase, context.userId, data.clientId);
@@ -43,7 +43,7 @@ export const createClientCheckout = createServerFn({ method: "POST" })
 
 /** Opens the Stripe billing portal so a client can change or cancel. */
 export const openBillingPortal = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; returnUrl: string }) => i)
   .handler(async ({ data, context }) => {
     await assertCanBill(context.supabase, context.userId, data.clientId);

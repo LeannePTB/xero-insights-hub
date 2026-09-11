@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import type { AgeingBucket, AgedReceivables } from "@/lib/xero/receivables.functions";
 import type { AgeingBucket as PayableAgeingBucket, AgedPayables } from "@/lib/xero/payables.functions";
 
@@ -234,7 +234,7 @@ async function eliminationForGroup(
 }
 
 export const getConsolidatedReceivables = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string; asAt: string }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveGroup(context.supabase, context.userId, data.groupId);
@@ -291,7 +291,7 @@ export const getConsolidatedReceivables = createServerFn({ method: "POST" })
   });
 
 export const getConsolidatedPayables = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string; asAt: string }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveGroup(context.supabase, context.userId, data.groupId);

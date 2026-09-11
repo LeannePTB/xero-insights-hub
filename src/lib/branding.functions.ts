@@ -1,10 +1,10 @@
 // Thin wrapper: server-function declarations for report branding.
 // All runtime logic lives in branding.server.ts.
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export const getOrganisationLogoUrl = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { firmId: string }) => input)
   .handler(async ({ data, context }) => {
     const { getOrganisationLogo } = await import("./branding.server");
@@ -12,7 +12,7 @@ export const getOrganisationLogoUrl = createServerFn({ method: "POST" })
   });
 
 export const getClientLogoUrl = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string }) => input)
   .handler(async ({ data, context }) => {
     const { getClientLogo } = await import("./branding.server");
@@ -20,7 +20,7 @@ export const getClientLogoUrl = createServerFn({ method: "POST" })
   });
 
 export const uploadOrganisationLogo = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { firmId: string; fileBase64: string; contentType: string }) => input)
   .handler(async ({ data, context }) => {
     const { setOrganisationLogo } = await import("./branding.server");
@@ -34,7 +34,7 @@ export const uploadOrganisationLogo = createServerFn({ method: "POST" })
   });
 
 export const uploadClientLogo = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; fileBase64: string; contentType: string }) => input)
   .handler(async ({ data, context }) => {
     const { setClientLogo } = await import("./branding.server");
@@ -48,7 +48,7 @@ export const uploadClientLogo = createServerFn({ method: "POST" })
   });
 
 export const removeOrganisationLogo = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { firmId: string }) => input)
   .handler(async ({ data, context }) => {
     const { clearOrganisationLogo } = await import("./branding.server");
@@ -56,7 +56,7 @@ export const removeOrganisationLogo = createServerFn({ method: "POST" })
   });
 
 export const removeClientLogo = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string }) => input)
   .handler(async ({ data, context }) => {
     const { clearClientLogo } = await import("./branding.server");

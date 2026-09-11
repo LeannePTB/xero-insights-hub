@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 // ---------- CSV parsing ----------
 function parseCsvRow(line: string): string[] {
@@ -123,7 +123,7 @@ async function assertClientAccess(supabase: any, userId: string, clientId: strin
 
 // ---------- Server functions ----------
 export const uploadStatementLines = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; filename: string; csv: string }) => i)
   .handler(async ({ data, context }) => {
     // ADVISORY CHECK: the batched inserts below run as supabaseAdmin, which
@@ -175,7 +175,7 @@ export const uploadStatementLines = createServerFn({ method: "POST" })
   });
 
 export const getLatestStatement = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertClientAccess(context.supabase, context.userId, data.clientId);
@@ -203,7 +203,7 @@ export const getLatestStatement = createServerFn({ method: "POST" })
   });
 
 export const getStatementSummary = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertClientAccess(context.supabase, context.userId, data.clientId);
@@ -218,7 +218,7 @@ export const getStatementSummary = createServerFn({ method: "POST" })
   });
 
 export const updateLineComment = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { lineId: string; comment: string }) => i)
   .handler(async ({ data, context }) => {
     const comment = (data.comment ?? "").slice(0, 2000);
@@ -232,7 +232,7 @@ export const updateLineComment = createServerFn({ method: "POST" })
   });
 
 export const deleteUpload = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { uploadId: string }) => i)
   .handler(async ({ data, context }) => {
     // Authorisation, client resolution, delete and audit row all live in the

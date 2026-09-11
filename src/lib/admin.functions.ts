@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { siteUrl } from "@/lib/site-origin";
 
 async function assertSuperAdmin(supabase: any, _userId: string) {
@@ -30,7 +30,7 @@ function validatePassword(pw: string) {
 }
 
 export const adminRenameFirm = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; name: string }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -51,7 +51,7 @@ export const adminRenameFirm = createServerFn({ method: "POST" })
   });
 
 export const listFirmsAdmin = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { data, error } = await context.supabase
@@ -83,7 +83,7 @@ export const listFirmsAdmin = createServerFn({ method: "GET" })
 
 
 export const getFirmAuditAdmin = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { firmId: string }) => input)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -98,7 +98,7 @@ export const getFirmAuditAdmin = createServerFn({ method: "GET" })
   });
 
 export const getFirmDetailAdmin = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { firmId: string }) => input)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -152,7 +152,7 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
   });
 
 export const adminSendPasswordReset = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string; firmId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -174,7 +174,7 @@ export const adminSendPasswordReset = createServerFn({ method: "POST" })
   });
 
 export const adminSetUserPassword = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string; firmId: string; newPassword: string }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -191,7 +191,7 @@ export const adminSetUserPassword = createServerFn({ method: "POST" })
   });
 
 export const adminUpdateUserEmail = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { userId: string; firmId: string; newEmail: string }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -218,7 +218,7 @@ export const adminUpdateUserEmail = createServerFn({ method: "POST" })
   });
 
 export const adminUpdateSubscription = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (i: {
       firmId: string;
@@ -281,7 +281,7 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
  * Membership grants client-data access automatically (see support-access.server.ts).
  */
 export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; join: boolean }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
@@ -381,7 +381,7 @@ async function setSubscriptionFlag(
 }
 
 export const adminSetFirmConsolidation = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);

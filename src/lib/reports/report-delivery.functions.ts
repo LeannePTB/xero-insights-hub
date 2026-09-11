@@ -1,10 +1,10 @@
 // Thin wrapper: staff-side server-function declarations for report delivery.
 // All runtime logic lives in report-delivery.server.ts.
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export const finaliseMonthlyReport = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { reportId: string }) => input)
   .handler(async ({ data, context }) => {
     const { finaliseReport } = await import("./report-delivery.server");
@@ -12,7 +12,7 @@ export const finaliseMonthlyReport = createServerFn({ method: "POST" })
   });
 
 export const deleteMonthlyReport = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { reportId: string; reason?: string | null }) => input)
   .handler(async ({ data, context }) => {
     const { deleteReport } = await import("./report-delivery.server");
@@ -20,7 +20,7 @@ export const deleteMonthlyReport = createServerFn({ method: "POST" })
   });
 
 export const sendMonthlyReport = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: { reportId: string; emails: string[]; expiresInDays?: number | null }) => input,
   )
@@ -36,7 +36,7 @@ export const sendMonthlyReport = createServerFn({ method: "POST" })
   });
 
 export const listMonthlyReportRecipients = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { reportId: string }) => input)
   .handler(async ({ data, context }) => {
     const { listRecipients } = await import("./report-delivery.server");
@@ -44,7 +44,7 @@ export const listMonthlyReportRecipients = createServerFn({ method: "POST" })
   });
 
 export const revokeMonthlyReportRecipient = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { recipientId: string }) => input)
   .handler(async ({ data, context }) => {
     const { revokeRecipient } = await import("./report-delivery.server");

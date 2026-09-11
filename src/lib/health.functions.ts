@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import * as metrics from "@/lib/metrics/core";
 
 export type HealthBand = "strong" | "watch" | "urgent";
@@ -488,7 +488,7 @@ function scoreFromMetrics(weighted: { score: number; weight: number }[]): number
 }
 
 export const getBusinessHealthDetail = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { tenantId: string; clientId?: string; fromDate?: string; toDate?: string }) => input)
   .handler(async ({ data, context }): Promise<BusinessHealthDetail> => {
     const { getConnectionByTenant, xeroGet } = await import("./xero/api.server");

@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type PlanScope = "firm" | "dashboard";
 
@@ -26,7 +26,7 @@ const COLS =
 
 /** Readable by any signed-in user — powers plan/tier dropdowns everywhere. */
 export const listPlanLevels = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }): Promise<{ levels: PlanLevel[] }> => {
     const { data, error } = await (context.supabase as any)
       .from("plan_levels")
@@ -49,7 +49,7 @@ async function assertSuperAdmin(supabase: any, userId: string) {
 }
 
 export const savePlanLevel = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (i: {
       id?: string | null;
@@ -108,7 +108,7 @@ export const savePlanLevel = createServerFn({ method: "POST" })
   });
 
 export const deletePlanLevel = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context.supabase, context.userId);

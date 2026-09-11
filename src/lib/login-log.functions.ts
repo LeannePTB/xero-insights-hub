@@ -1,9 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export const logLogin = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     const ip =
       getRequestHeader("cf-connecting-ip") ??
@@ -26,7 +26,7 @@ export const logLogin = createServerFn({ method: "POST" })
   });
 
 export const listLoginEvents = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { limit?: number }) => i)
   .handler(async ({ data, context }) => {
     // Authorize: advisors only

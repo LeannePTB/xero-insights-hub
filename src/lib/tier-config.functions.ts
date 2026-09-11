@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 import { ALL_TIERS, ALL_WIDGETS, DEFAULT_TIER_WIDGETS, defaultWidgetsFor, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
 function sanitizeWidgets(widgets: string[]): WidgetKey[] {
@@ -20,7 +20,7 @@ async function assertSuperAdmin(supabase: any, userId: string) {
 // Returns the platform default card list plus, optionally, the list for one
 // client. Both are derived from the deny-list model: ceiling − exclusions.
 export const listTierConfig = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId?: string | null }) => i)
   .handler(async ({ data, context }) => {
     const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
@@ -88,7 +88,7 @@ async function exclusionsFor(
  * public.set_org_widget_enabled (see setOrgWidget); the two never share a path.
  */
 export const savePlatformTierWidgets = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { tier: DashboardTier; widgets: WidgetKey[] }) => i)
   .handler(async ({ data, context }) => {
     // A tick on a card the tier has never carried must ADD it to the tier's own
@@ -141,7 +141,7 @@ export const savePlatformTierWidgets = createServerFn({ method: "POST" })
  * falls back to the organisation row, then the platform default.
  */
 export const saveClientTierWidgets = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tier: DashboardTier; widgets: WidgetKey[] | null }) => i)
   .handler(async ({ data, context }) => {
     // Gate lives in the database: public.set_client_tier_widgets refuses anyone
@@ -181,7 +181,7 @@ export const saveClientTierWidgets = createServerFn({ method: "POST" })
 
 // Resolves the cards a client sees on a tier (ceiling − organisation/client exclusions).
 export const getEffectiveWidgets = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tier: DashboardTier }) => i)
   .handler(async ({ data, context }) => {
     const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
@@ -210,7 +210,7 @@ export const getEffectiveWidgets = createServerFn({ method: "POST" })
  * ceiling and which cards are currently excluded for this organisation.
  */
 export const getOrgWidgetMatrix = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }) => {
     const { tierCeilings, fetchExclusions, ExclusionIndex, visibleWidgets } =
@@ -271,7 +271,7 @@ export const getOrgWidgetMatrix = createServerFn({ method: "POST" })
  * moment an edit is made. No write, no entitlement change.
  */
 export const listOrgTierOverrides = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     await assertSuperAdmin(context.supabase, context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -312,7 +312,7 @@ export const listOrgTierOverrides = createServerFn({ method: "GET" })
  * entitlement, no policy.
  */
 export const resetOrgTierToPlatformDefault = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; tier: string }) => i)
   .handler(async ({ data, context }) => {
     // Authorisation, delete and audit row all live in the database RPC —
@@ -339,7 +339,7 @@ export const resetOrgTierToPlatformDefault = createServerFn({ method: "POST" })
  * its own audit row. Never write the table directly.
  */
 export const setOrgWidget = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; tier: string; widget: WidgetKey; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase.rpc("set_org_widget_enabled", {
@@ -362,7 +362,7 @@ export const setOrgWidget = createServerFn({ method: "POST" })
 
 // Global on/off per tier.
 export const listTierSettings = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .handler(async ({ context }) => {
     const { data, error } = await context.supabase
       .from("tier_settings")
@@ -374,7 +374,7 @@ export const listTierSettings = createServerFn({ method: "GET" })
   });
 
 export const setTierEnabled = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { tier: DashboardTier; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
     // Gate lives in the database: public.set_tier_enabled refuses anyone who
@@ -391,7 +391,7 @@ export const setTierEnabled = createServerFn({ method: "POST" })
 // the resolved widget list for each, and the firm contact email to request
 // the upgrade from. Used to render upsell rows on the client dashboard.
 export const getUpgradeOptions = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; currentTier: DashboardTier }) => i)
   .handler(async ({ data, context }) => {
     // tier_settings: enabled map
@@ -512,7 +512,7 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 
 export const getClientWidgets = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tierOverride?: DashboardTier | null }) => i)
   .handler(async ({ data, context }) => {
     const { clientAllowedWidgets } = await import("@/lib/widget-access.server");
@@ -564,7 +564,7 @@ export const getClientWidgets = createServerFn({ method: "POST" })
  * tiers, and the default card list new clients inherit.
  */
 export const getFirmPlanSummary = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }) => {
     const { data: sub } = await (context.supabase as any)
@@ -637,7 +637,7 @@ export const getFirmPlanSummary = createServerFn({ method: "POST" })
  * one back on does not override a client's own "off" setting.
  */
 export const saveFirmDefaultWidgets = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; widgets: WidgetKey[] }) => i)
   .handler(async ({ data, context }) => {
     // Sanitising stays here: ALL_WIDGETS is the application's list of known
@@ -669,7 +669,7 @@ export const saveFirmDefaultWidgets = createServerFn({ method: "POST" })
 // ---------------------------------------------------------------------------
 
 export const getClientWidgetMatrix = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex } =
@@ -711,7 +711,7 @@ export const getClientWidgetMatrix = createServerFn({ method: "POST" })
   });
 
 export const setClientWidget = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; widget: WidgetKey; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
     const { data: rows, error } = await context.supabase.rpc("set_client_widget_enabled", {

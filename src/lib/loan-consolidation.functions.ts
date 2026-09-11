@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 // ---- Client-safe DTO types (mirror the .server.ts engines) ----------------
 export type ReconRowSide = {
@@ -187,7 +187,7 @@ async function tenantNameMap(supabaseAdmin: any): Promise<Map<string, string>> {
 
 // ---- Tenant listing ---------------------------------------------------------
 export const listClientTenants = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
@@ -215,7 +215,7 @@ export const listClientTenants = createServerFn({ method: "POST" })
   });
 
 export const listClientTenantsWithAccounts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
@@ -247,7 +247,7 @@ export const listClientTenantsWithAccounts = createServerFn({ method: "POST" })
 
 // ---- Account selection / pairing ------------------------------------------
 export const listLiabilityAccountsForTenant = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tenantId: string }) => i)
   .handler(async ({ data, context }) => {
     if (!(await canManageClient(context.supabase, context.userId, data.clientId))) {
@@ -287,7 +287,7 @@ export const listLiabilityAccountsForTenant = createServerFn({ method: "POST" })
   });
 
 export const listSelectedAccounts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tenantId?: string | null }) => i)
   .handler(async ({ data, context }) => {
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
@@ -334,7 +334,7 @@ export const listSelectedAccounts = createServerFn({ method: "POST" })
   });
 
 export const addLoanAccount = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (i: {
       clientId: string;
@@ -373,7 +373,7 @@ export const addLoanAccount = createServerFn({ method: "POST" })
   });
 
 export const updateLoanAccount = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { id: string; direction: "payable" | "receivable"; sortOrder?: number }) => i)
   .handler(async ({ data, context }) => {
     const { data: row } = await context.supabase
@@ -394,7 +394,7 @@ export const updateLoanAccount = createServerFn({ method: "POST" })
   });
 
 export const pairLoanAccounts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { a: string; b: string }) => i)
   .handler(async ({ data, context }) => {
     const { data: rows } = await context.supabase
@@ -420,7 +420,7 @@ export const pairLoanAccounts = createServerFn({ method: "POST" })
   });
 
 export const unpairLoanAccount = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
     const { data: row } = await context.supabase
@@ -445,7 +445,7 @@ export const unpairLoanAccount = createServerFn({ method: "POST" })
   });
 
 export const deleteLoanAccount = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
     const { data: row } = await context.supabase
@@ -472,7 +472,7 @@ export const deleteLoanAccount = createServerFn({ method: "POST" })
 
 // ---- Reconciliation / drill-down -------------------------------------------
 export const getLoanReconciliation = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tenantId?: string | null; asAt: string }) => i)
   .handler(async ({ data, context }) => {
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
@@ -493,7 +493,7 @@ export const getLoanReconciliation = createServerFn({ method: "POST" })
   });
 
 export const getLoanMismatchDetail = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; rowId: string; asAt: string }) => i)
   .handler(async ({ data, context }) => {
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
@@ -621,7 +621,7 @@ async function resolveLoanGroup(
 
 /** Every Xero file in the group, with how many loan accounts are set up on it. */
 export const listGroupLoanFiles = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
@@ -672,7 +672,7 @@ async function runGroupRecon(group: ResolvedLoanGroup, tenantId: string | null, 
 }
 
 export const getGroupLoanReconciliation = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
@@ -680,7 +680,7 @@ export const getGroupLoanReconciliation = createServerFn({ method: "POST" })
   });
 
 export const getGroupLoanMismatchDetail = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string; rowId: string; asAt: string }) => i)
   .handler(async ({ data, context }) => {
     await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
@@ -741,7 +741,7 @@ function toExportSections(recon: any) {
 }
 
 export const downloadGroupLoanReconciliation = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string; format: "pdf" | "xlsx" }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
@@ -766,7 +766,7 @@ export const downloadGroupLoanReconciliation = createServerFn({ method: "POST" }
   });
 
 export const saveGroupLoanSnapshot = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
@@ -785,7 +785,7 @@ export const saveGroupLoanSnapshot = createServerFn({ method: "POST" })
   });
 
 export const listGroupLoanSnapshots = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string }) => i)
   .handler(async ({ data, context }) => {
     await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
@@ -807,7 +807,7 @@ export const listGroupLoanSnapshots = createServerFn({ method: "POST" })
   });
 
 export const getGroupLoanSnapshot = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string; snapshotId: string }) => i)
   .handler(async ({ data, context }) => {
     await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
@@ -829,7 +829,7 @@ export const getGroupLoanSnapshot = createServerFn({ method: "POST" })
   });
 
 export const deleteGroupLoanSnapshot = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string; snapshotId: string }) => i)
   .handler(async ({ data, context }) => {
     await resolveLoanGroup(context.supabase, context.userId, data.groupId);
@@ -845,7 +845,7 @@ export const deleteGroupLoanSnapshot = createServerFn({ method: "POST" })
 
 /** Suggest loan accounts + pairings for every file in the group, from Xero. */
 export const autoSetupGroupLoanAccounts = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string; apply?: boolean }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
@@ -871,7 +871,7 @@ export const autoSetupGroupLoanAccounts = createServerFn({ method: "POST" })
 
 /** Where a client's loan consolidation lives now: its organisation + group. */
 export const getLoanScreenTarget = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     if (!(await canReadClient(context.supabase, context.userId, data.clientId))) {
@@ -914,7 +914,7 @@ export type LoanPair = {
 
 /** Every two-sided loan pairing inside a consolidation group. */
 export const listGroupLoanPairings = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { groupId: string }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
@@ -980,7 +980,7 @@ type PairingSideInput = {
 
 /** Create (or replace) a pairing between two loan accounts, adding them if needed. */
 export const saveLoanPairing = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (i: { a: PairingSideInput; b: PairingSideInput; replaceIds?: string[] }) => i,
   )

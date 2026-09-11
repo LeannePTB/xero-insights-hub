@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type Classification = "fixed" | "variable" | "excluded";
 
@@ -10,7 +10,7 @@ export type CostClassificationRow = {
 };
 
 export const listCostClassifications = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; tenantId: string }) => input)
   .handler(async ({ data, context }) => {
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
@@ -40,7 +40,7 @@ export const listCostClassifications = createServerFn({ method: "POST" })
   });
 
 export const setCostClassifications = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: {
       clientId: string;
@@ -69,7 +69,7 @@ export const setCostClassifications = createServerFn({ method: "POST" })
   });
 
 export const setCostClassificationEnabled = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((input: { clientId: string; enabled: boolean }) => input)
   .handler(async ({ data, context }) => {
     const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
@@ -87,7 +87,7 @@ export const setCostClassificationEnabled = createServerFn({ method: "POST" })
  * in Xero — the panel surfaces them rather than orphaning them silently.
  */
 export const removeCostClassifications = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator(
     (input: { clientId: string; tenantId: string; accountNames: string[] }) => input,
   )

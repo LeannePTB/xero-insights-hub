@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type SupportGrantStatus = "pending" | "active" | "expired" | "revoked";
 
@@ -53,7 +53,7 @@ function statusOf(row: any): SupportGrantStatus {
 }
 
 export const getSupportAccess = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<SupportAccessState> => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -141,7 +141,7 @@ export const getSupportAccess = createServerFn({ method: "POST" })
  * caller's session so row-level security decides whether it's allowed.
  */
 export const requestSupportAccess = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { firmId: string; reason?: string }) => i)
   .handler(async ({ data, context }) => {
     const { error } = await (context.supabase as any).from("firm_support_access").insert({
@@ -168,7 +168,7 @@ export const requestSupportAccess = createServerFn({ method: "POST" })
  * row-level security through the caller's own session.
  */
 export const decideSupportAccess = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { grantId: string; approve: boolean; note?: string }) => i)
   .handler(async ({ data, context }) => {
     const patch = data.approve

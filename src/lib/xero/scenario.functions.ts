@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type ScenarioCustomer = { id: string; name: string };
 
@@ -204,7 +204,7 @@ function summarisePnl(lines: PnlLine[], months: string[]): ScenarioPnlMonth[] {
 
 /** Live Cashflow Scenario data straight from the connected Xero organisation. */
 export const getScenarioData = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tenantId: string; fromDate: string; toDate: string }) => i)
   .handler(async ({ data, context }): Promise<ScenarioData> => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
@@ -389,7 +389,7 @@ async function assertScenarioWriteAccess(userId: string, clientId: string) {
 }
 
 export const setInvoiceExcluded = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; xeroInvoiceId: string; excluded: boolean }) => i)
   .handler(async ({ data, context }) => {
     await assertScenarioWriteAccess(context.userId, data.clientId);
@@ -416,7 +416,7 @@ export const setInvoiceExcluded = createServerFn({ method: "POST" })
 
 // Bulk include/exclude a list of invoices (e.g. "assume nobody paid this month").
 export const setInvoicesExcludedBulk = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string; xeroInvoiceIds: string[]; excluded: boolean }) => i)
   .handler(async ({ data, context }) => {
     await assertScenarioWriteAccess(context.userId, data.clientId);
@@ -443,7 +443,7 @@ export const setInvoicesExcludedBulk = createServerFn({ method: "POST" })
 
 export const resetScenario = createServerFn({ method: "POST" })
 
-  .middleware([requireSupabaseAuth])
+  .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertScenarioWriteAccess(context.userId, data.clientId);
