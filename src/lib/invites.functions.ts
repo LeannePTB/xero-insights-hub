@@ -443,14 +443,50 @@ export const acceptInvite = createServerFn({ method: "POST" })
     if (mErr && !/duplicate/i.test(mErr.message)) throw new Error(mErr.message);
 
 
-    // If owner: ensure firms.owner_user_id is set; allow business name rename.
+    // An owner invite only ever belongs to the organisation-creation flow, where
+    // the organisation has no owner yet. Accepting an invite must never replace a
+    // sitting owner: that only happens through
+    // public.transfer_organisation_ownership (Spec §4).
     if (invite.role === "owner") {
-      const patch: Record<string, any> = { owner_user_id: userId };
+      const { data: firmRow } = await (supabaseAdmin as any)
+        .from("firms")
+        .select("owner_user_id")
+        .eq("id", invite.firm_id)
+        .maybeSingle();
+      const currentOwner = firmRow?.owner_user_id ?? null;
+
+      const patch: Record<string, any> = {};
       const businessName = (data.businessName ?? "").trim();
       if (businessName.length >= 2 && businessName.length <= 120) {
         patch.name = businessName;
       }
-      await (supabaseAdmin as any).from("firms").update(patch).eq("id", invite.firm_id);
+
+      if (currentOwner === null) {
+        patch.owner_user_id = userId;
+      } else if (currentOwner !== userId) {
+        await logAudit("firm_invite_owner_set_refused", "firm", invite.firm_id, userId, {
+          firm_id: invite.firm_id,
+          email: invite.email,
+          current_owner_user_id: currentOwner,
+        });
+      }
+
+      if (Object.keys(patch).length > 0) {
+        const { error: upErr } = await (supabaseAdmin as any)
+          .from("firms")
+          .update(patch)
+          .eq("id", invite.firm_id);
+        if (upErr) throw new Error(upErr.message);
+      }
+
+      if (patch.owner_user_id) {
+        await logAudit("firm_owner_set_on_invite_accept", "firm", invite.firm_id, userId, {
+          firm_id: invite.firm_id,
+          email: invite.email,
+          owner_user_id: userId,
+          previous_owner_user_id: null,
+        });
+      }
     }
 
     // Mark invite accepted.
