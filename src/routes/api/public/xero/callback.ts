@@ -363,8 +363,39 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               missedNames.push(tenant.tenantName ?? tenantId);
               continue;
             }
+            let refreshedIds = (refreshed ?? []).map((r: any) => r.id as string);
+            if (refreshedIds.length === 0) {
+              // This person has no row for a file that IS linked to this
+              // organisation (a colleague authorised it). Give them their own
+              // row rather than writing over the colleague's. The Xero file
+              // limit trigger already treats an existing tenant as not new.
+              const { data: inserted, error: insertRowErr } = await supabaseAdmin
+                .from("xero_connections")
+                .insert({
+                  user_id: userId,
+                  tenant_id: tenantId,
+                  tenant_name: tenant.tenantName,
+                  tenant_type: tenant.tenantType,
+                  access_token_enc: accessEnc,
+                  refresh_token_enc: refreshEnc,
+                  expires_at: expiresAt,
+                  scopes: tokens.scope,
+                  status: "connected",
+                  disconnected_at: null,
+                  disconnected_reason: null,
+                  firm_id: firmId,
+                })
+                .select("id");
+              if (insertRowErr) {
+                console.error("xero reconnect row insert failed", insertRowErr);
+                missedNames.push(tenant.tenantName ?? tenantId);
+                continue;
+              }
+              refreshedIds = (inserted ?? []).map((r: any) => r.id as string);
+            }
             refreshedNames.push(tenant.tenantName ?? tenantId);
-            refreshedConnectionIds.push(...(refreshed ?? []).map((r: any) => r.id as string));
+            refreshedConnectionIds.push(...refreshedIds);
+
             // One audit row per Xero file — the trail is per file, not per batch.
             await supabaseAdmin.from("audit_log").insert({
               actor_user_id: userId,
