@@ -64,19 +64,18 @@ the check is TypeScript, but they are not open endpoints.
 | `src/lib/loan-autosetup.server.ts` | auto-setup | `KNOWN FAILURE (backlog 21)` | Inherits the gate above. |
 | `src/lib/loan-recon.server.ts` | `runLoanReconciliation` | `KNOWN FAILURE (backlog 21)` | Inherits the gate above. |
 | `src/lib/loan-mismatch.server.ts` | `runLoanMismatchDetail` | `KNOWN FAILURE (backlog 21)` | Inherits the gate above. |
-| `src/lib/widget-access.server.ts` | `clientCanUseWidget`, `firmCanUseWidget` | `KNOWN FAILURE (backlog 21)` | Entitlement read re-implemented over raw tables instead of `client_entitlement`. |
-| `src/lib/xero/access.server.ts` | `assertWidgetAccess`, `getEffectiveTier` | `KNOWN FAILURE (backlog 21)` | The main dashboard gate, entirely TypeScript over `user_roles`/`firm_members`/`client_access`/`client_xero_orgs`. Every caller inherits this. |
+| `src/lib/widget-access.server.ts` | `clientCanUseWidget`, `firmCanUseWidget` | `exception — calls DB authorisation first` | **Phase 4 batch 1, verified.** No `supabaseAdmin` use at all: every call is `client_can_use_widget` / `firm_can_use_widget` / `client_allowed_widgets` through the caller's session. |
+| `src/lib/xero/access.server.ts` | `getClientReportBasis` | `exception — calls DB authorisation first` | **Phase 4 batch 1.** `assertWidgetAccess` / `getEffectiveTier` now call `public.assert_widget_access` / `public.effective_tier_for_tenant` through the caller's session and hold no rule. Only `getClientReportBasis` uses the service role, after the gate, and it reads a reporting-basis flag, not an access decision. |
 | `src/lib/xero/client-orgs.server.ts` | `userCanManageClient`, `getClientFirmId`, `isSuperAdmin` | `KNOWN FAILURE (backlog 21)` | Raw membership/role reads used as the authorisation gate. |
 | `src/lib/xero/onboard.server.ts` | `assertFirmCanAddClient`, `createClientsFromTenants` | `KNOWN FAILURE (backlog 21)` | Raw `firm_members` gate before client creation. Plan limits themselves are database triggers and are not re-implemented. |
 | `src/lib/xero/connections.functions.ts` | list/start/link/disconnect/create handlers and the pre-RPC reads in `moveXeroFileToClient` | `KNOWN FAILURE (backlog 21)` | Session/oauth-state ownership only. The mutation itself goes through `rpc("move_xero_file_to_client")`. |
-| `src/lib/xero/consolidated.functions.ts` | `getConsolidatedReceivables`, `getConsolidatedPayables` | `KNOWN FAILURE (backlog 21)` | Raw `firm_members` gate. |
-| `src/lib/xero/scenario.functions.ts` | `getScenarioData`, `setInvoiceExcluded`, `setInvoicesExcludedBulk`, `resetScenario` | `KNOWN FAILURE (backlog 21)` | `assertWidgetAccess` / raw `client_access` gate. |
+| `src/lib/xero/consolidated.functions.ts` | `getConsolidatedReceivables`, `getConsolidatedPayables` | `exception — calls DB authorisation first` | **Phase 4 batch 1.** The group is read through the caller's session, then `public.user_can_write_firm` (membership only) decides before any privileged read. |
+| `src/lib/xero/scenario.functions.ts` | `getScenarioData`, `setInvoiceExcluded`, `setInvoicesExcludedBulk`, `resetScenario` | `exception — calls DB authorisation first` | **Phase 4 batch 1.** Reads gate on `public.assert_widget_access`; writes gate on `public.user_can_write_client_scenario` (staff or the client's own viewer, never a support grant). |
 | `src/lib/xero/search.functions.ts` | `canSearchOrganisationTransactions`, `searchClientTransactions` | `KNOWN FAILURE (backlog 21)` | Raw `xero_connections`/`client_access` reads. |
 | `src/lib/xero/orphan-connections.functions.ts` | orphan list/assign/disconnect | `KNOWN FAILURE (backlog 21)` | Local `assertSuperAdmin` copy. |
-| `src/lib/xero/recon-snapshot.server.ts` | `runReconciliation` | `KNOWN FAILURE (backlog 21)` | Raw `firm_members` gate. |
-| `src/lib/xero/snapshot-refresh.server.ts` | `refreshTenant` (manual) | `KNOWN FAILURE (backlog 21)` | Manual path gated by `assertWidgetAccess`. |
-| `src/lib/xero/snapshot-read.server.ts` | snapshot reads | `KNOWN FAILURE (backlog 21)` | Documented as relying on the caller's `assertWidgetAccess`. |
-| `src/lib/tenant-ownership.server.ts` | `assertTenantBelongsToClient` | `KNOWN FAILURE (backlog 21)` | A consistency check, not a caller-authorisation check; callers rely on it as though it were one. |
+| `src/lib/xero/recon-snapshot.server.ts` | `runReconciliation` | `exception — calls DB authorisation first` | **Phase 4 batch 1.** Entitlement via `public.client_can_use_widget`; recalculation permission via `public.user_can_write_client`. |
+| `src/lib/xero/snapshot-refresh.server.ts` | `refreshTenant` (manual) | `exception — calls DB authorisation first` | **Phase 4 batch 1.** The manual path's `assertWidgetAccess` is now `public.assert_widget_access`. |
+| `src/lib/xero/snapshot-read.server.ts` | snapshot reads | `exception — calls DB authorisation first` | **Phase 4 batch 1.** Reads run through `context.supabase` under RLS, after the caller's `public.assert_widget_access`. |
 | `src/lib/plan-tiers.server.ts` | `assertTierInPlanForClient` | `KNOWN FAILURE (backlog 21)` | Also carries the open owner decision recorded in the backlog (super admin setting a tier outside the plan). |
 | `src/lib/plan-levels.functions.ts` | plan catalogue admin handlers | `KNOWN FAILURE (backlog 21, unverified)` | Uses `supabaseAdmin`; gate not traced end to end in this pass. |
 | `src/lib/tier-config.functions.ts` | tier/widget configuration handlers | `KNOWN FAILURE (backlog 21, unverified)` | Same. |
@@ -85,7 +84,7 @@ the check is TypeScript, but they are not open endpoints.
 | `src/lib/subscription-state.server.ts` | subscription state reads | `KNOWN FAILURE (backlog 21, unverified)` | Not traced. |
 | `src/lib/support-access.functions.ts` | grant read helper | `KNOWN FAILURE (backlog 21, unverified)` | Mutations use `context.supabase`; the grant-state read at the file helper was not traced. |
 | `src/lib/health.functions.ts` | health/verdict handlers | `KNOWN FAILURE (backlog 21, unverified)` | Multiple branches; not traced. |
-| `src/lib/xero/audit.functions.ts` | Xero audit reads | `KNOWN FAILURE (backlog 21, unverified)` | Not traced. |
+| `src/lib/xero/audit.functions.ts` | Xero audit handlers | `exception — calls DB authorisation first` | **Phase 4 batch 1, traced.** The Xero file is resolved to its client by `public.effective_tier_for_tenant`, then `public.user_can_access_client` / `user_can_access_firm` / `user_can_write_client` and `public.client_can_use_widget` run before any privileged read or write. |
 | `src/lib/xero/authorised-tenants.server.ts` | `reconcileAuthorisedTenants` | `KNOWN FAILURE (backlog 21, unverified)` | Called from both onboarding and reconciliation; caller not traced. |
 | `src/lib/xero/authorisation-freshness.server.ts` | freshness check | `KNOWN FAILURE (backlog 21, unverified)` | Not traced. |
 | `src/lib/xero/scope-status.functions.ts` | scope status | `KNOWN FAILURE (backlog 21, unverified)` | States it uses the caller's session; the `supabaseAdmin` reference in the file was not traced. |
