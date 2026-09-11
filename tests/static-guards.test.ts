@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { AAL1_ALLOWLIST } from "../docs/security/server-fn-aal1-allowlist";
+import { CONVERTED_FILES, REGISTERED_DB_AUTH_CALLS } from "../docs/security/converted-files";
 
 const ROOT = resolve(__dirname, "..");
 const SRC = join(ROOT, "src");
