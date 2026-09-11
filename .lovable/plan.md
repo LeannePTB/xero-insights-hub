@@ -1,64 +1,88 @@
-# Phase 2 of 7 — Guardrails (revised, owner-approved 11 Sep 2026)
+# Phase 2 part 2 — review corrections, plus the urgent ownership fix
 
-Classification: SECURITY-RELEVANT. This phase adds proof only. It repairs no access rule; anything currently wrong is recorded as a KNOWN FAILURE with a backlog number and reported every run.
+Classification: SECURITY-RELEVANT (RLS policies, table grants, super-admin powers, ownership).
 
-## Owner decisions (settled)
-- Both test layers: PGlite fast suite **and** a live smoke suite against the real system.
-- `definer_guards` exclusion list = `public.xero_required_scopes` only.
-- Runs recorded in `public.security_test_runs`, never `audit_log`.
-- `access_tests` posture check: Warn after 7 days.
+Part A is documentation and tests only. Part B is a real database change, planned here and applied as its own separate change.
 
-## 1. Access matrix — one source of truth
-- `docs/security/access-matrix.ts` — authoritative rows `{ role, resource, operation, expect, rule, knownFailure? }`.
-- `docs/security/access-matrix.md` — generated from the `.ts` by `scripts/render-access-matrix.ts`; a test fails if it is stale.
+## Re-verified live, 11 September 2026
 
-Roles: org owner; org staff; member of a different organisation; client viewer; support-grant holder (active); **support grant expired**; **support grant revoked**; super admin with no membership; **super admin approving their own support grant**; suspended member; removed member; aal1-only member; anonymous. Plus **organisation A's owner reading organisation B**.
+All four points below were read from the live catalogue this turn, not from memory.
 
-Resources: `firms`, `firm_members`, `clients`, every client-data table, `client_xero_orgs`, `xero_connections` non-token columns vs `access_token_enc`/`refresh_token_enc`, `xero_snapshots`, `client_notes`, `audit_log`, `subscriptions`/billing, Path C metadata, `user_presence`, `profiles` (own vs other; `display_name` vs `email`), every SECURITY DEFINER function EXECUTE-able by `authenticated`, and the named server functions.
+- `firms` policies: `super_admin updates firms` — `FOR UPDATE`, `USING` and `WITH CHECK` are `app_private.is_super_admin(auth.uid())` alone. Also `firm owners update own firm` (`is_firm_owner`), `super_admin reads firms`, `firm members read own firm`, and the restrictive `mfa_aal2_required`.
+- `firms` grants: `authenticated` holds SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER at table level. There are **no column-level grants**, so the UPDATE covers every column, `owner_user_id` and `is_always_free` included.
+- `firms` triggers: only `firms_set_updated_at`. No audit row is written by the database on any update.
+- `client_subscriptions`: `super admins manage client subscriptions` is `FOR ALL`, `USING`/`WITH CHECK` = `app_private.is_super_admin(auth.uid())`; `staff manage client subscriptions` is `FOR ALL` on `platform_staff_can_access_firm` (so an active support grant is admitted). Only trigger is `client_subscriptions_set_updated_at`. No audit row from the database.
 
-Operations: read / insert / update / delete, plus execute.
+So both escalations described in the review are real and reachable by a direct REST call from an aal2 super-admin session with no membership.
 
-## 2. Two test layers
+Two further facts, recorded but not acted on: the four `firms` policies target role `public`, not `authenticated` (Spec §6 says `to authenticated`), and no `firms` update path writes an audit row from the database layer.
 
-### (b) PGlite matrix suite — fast, runs after every change
-Extends the existing `tests/rls-isolation.test.ts` harness. The fixture must mirror Supabase auth faithfully:
-`auth.uid()`, `auth.jwt()`, `auth.users`, `auth.mfa_factors`, the `anon`/`authenticated`/`service_role` roles with real table and column grants, and definer functions owned by a BYPASSRLS role so `security definer` behaves as it does live.
-Meta test: an `aal1` claim is denied on a data table in the fixture, exactly as live.
-`scripts/dump-rls-fixture.sh` extended to dump all policies (not just SELECT), table + column grants, callable definer bodies, and a `-- catalogue-fingerprint:` line; a mismatch against the live catalogue is reported as stale.
+### Has it been used?
 
-### (a) Live smoke suite — proves the TypeScript paths PGlite cannot see
-- One flagged test organisation **"ZZ Security Test Org"** with one test client and dummy rows only. No Xero connection, so no Xero API call is reachable; authorisation is asserted to pass or fail before any Xero step.
-- One dedicated account per matrix role, strong random password, TOTP secret held only in project secrets, signing in for real aal1/aal2 sessions. Only the super-admin-without-membership account holds `super_admin`, and it holds no memberships.
-- Flags: `firms.is_test` and `profiles.is_test` (new boolean columns, default false). `online_users()`, the posture people counts and `admin_firm_overview` totals exclude flagged rows.
-- The suite calls the **server functions** in the matrix — list clients, read Xero data, write client data, invite, support request/approve, ownership transfer — not just PostgREST, because past bypasses were TypeScript paths using `supabaseAdmin`.
-- It touches only rows belonging to the test organisation and deletes anything it created at the end of each run.
-- The **Run access tests** button on `/admin/security` runs the live suite (PGlite cannot run in production).
-- `bun run security:check` authenticates for its recording step by signing in the dedicated **`security-runner`** test account (super-admin-without-membership) with its password + TOTP secret from project secrets, then calling `public.record_access_test_run(...)` through that aal2 session. That path is registered in the admin-client register.
+Read-only check of all four organisations: every one has `owner_user_id = 57d544ad…` (the same super admin), and `audit_log` holds **zero** rows for any owner/ownership action against any of them. `updated_at` values (8 Sep, 26 Aug, 26 Aug, 17 Aug) are all consistent with the rename, logo and subscription edits recorded in the audit log for those dates. There is no evidence of an ownership change through this path, but there is also no audit trail that could prove one either way — that absence is itself part of the finding.
 
-## 3. Known-failure baseline
-Exactly: backlog item 18 (`app_private.user_can_manage_client` still admits `is_super_admin AND platform_staff_can_access_firm`, so a support grant can write to nine `FOR ALL`-policied tables and through `app_private.move_xero_file_to_client`), plus every rule 7 violation found by the register audit in section 4, each named individually with its new backlog number. Nothing else is pre-blessed — any other failure is a regression today.
+## Part A — revert three matrix decisions (docs and tests only)
 
-## 4. Static guard tests (`tests/static-guards.test.ts`)
-1. Every `createServerFn` uses `requireAal2` unless listed in `docs/security/server-fn-aal1-allowlist.ts` with a reason (the two aal1 loggers and the unauthenticated functions).
-2. Every `supabaseAdmin` use in `src/` appears in `docs/security/admin-client-register.md`. The register is built by **verifying each site**, not labelling it: system context (OAuth callback, webhook, cron, email queue, audit/telemetry, token storage) or exception that calls a database authorisation function for the caller first. A user-initiated use that does neither is recorded as a KNOWN FAILURE with a new Phase 4 backlog item and reported as such — never counted as a pass.
-3. No `profiles.email` read used for an identity or recipient decision.
-4. No `tenantId` read from a request body, query string or header.
+1. **`firms` UPDATE by a bare super admin → KNOWN FAILURE, new backlog item 27.** Every PLATFORM_ONLY update row on `firms` in `docs/security/access-matrix.ts` is marked `knownFailure: 27` and expected to *fail*, so `bun run security:check` prints it in the KNOWN FAILURES block instead of passing it. Breaks invariant 3 and Spec §4. Bare super-admin **read** of `firms` stays allowed (Path C organisation list).
+2. **`client_subscriptions` INSERT/UPDATE/DELETE → KNOWN FAILURE, new backlog item 28**, covering both the `super_admin` rows and the `support_grant_active` rows admitted by the `staff manage client subscriptions` policy. The note "Every change writes an audit row" is deleted — it is false. Reads stay allowed as billing metadata. Fix scheduled for Phase 3.
+3. **`firm_members` read by a bare super admin** stays allowed, and gains an explicit note: owner-approved Path C platform metadata, membership list only, no financial data.
 
-## 5. Posture and gate wiring
-- `definer_guards`: require `app_private.assert_aal2()`/`is_aal2()` specifically; documented exclusion `public.xero_required_scopes`.
-- New `access_tests` check reading `public.security_test_runs` (`id, ran_at, ran_by, layer, passed, failed, known_failures jsonb, fingerprint_match`): Action on unexpected failures; Warn if never run or older than 7 days; OK otherwise; known failures listed with backlog numbers.
-- Super-admin-only "Run access tests" button on `/admin/security`, authorised in the database (`assert_aal2` + `me_is_super_admin()`), showing per-role results, last-run time and who ran it.
-- Agent command after every security-relevant change: **`bun run security:check`**. Pass = zero unexpected failures, fingerprint matches, known-failure set unchanged.
+Then regenerate `docs/security/access-matrix.md`, add items 27 and 28 to `docs/security-backlog.md`, and re-run `bun run security:check` — it must report these rows as known failures with their backlog numbers, and 0 unexpected failures.
 
-## 6. Project Knowledge section 3 — text for the owner to paste
-Replace "After editing" items 1 and 2 with:
-> 1. Run `bun run security:check`. Pass = zero unexpected failures, the access-matrix fixture fingerprint matches the live catalogue, and the known-failure list is unchanged. Then run `public.security_posture()` (the posture card's Re-run button shows the same result) plus the Supabase linter / security scan — no new findings.
-> 2. Known failures are listed in `docs/security/access-matrix.md` with backlog numbers. Never silence one; only the phase that fixes the rule removes its marker.
+## Part B — urgent fix for the ownership escalation (item 27)
+
+### Who legitimately updates `firms` today
+
+Every one of them runs server-side through `supabaseAdmin` (service_role), which is unaffected by grants to `authenticated`:
+
+| Column | Path | Caller check | Audit |
+|---|---|---|---|
+| `name` | `adminRenameFirm` (`src/lib/admin.functions.ts:46`) | aal2 + `assertSuperAdmin` | yes |
+| `name`, `owner_user_id` | `acceptInvite` (`src/lib/invites.functions.ts:456`) | invite token | yes |
+| `owner_user_id` | organisation creation (`invites.functions.ts:136`, `:174`) | aal2 + super admin | yes |
+| `logo_path` | `setOrganisationLogo` / `clearOrganisationLogo` (`src/lib/branding.server.ts:63`, `:158`) | `assertOrganisationStaff` | set: yes; clear: **no** |
+| `is_always_free` | `admin.functions.ts:270` | aal2 + `assertSuperAdmin` | yes (inside the subscription audit row) |
+| `default_widgets` | `public.set_firm_default_widgets` (definer) | active member, in-database | in-function |
+| `owner_user_id` | `public.transfer_organisation_ownership` (definer) | current owner, in-database | in-function |
+
+**No browser code updates `firms` at all** — `rg 'from("firms")'` across `src/components`, `src/routes` and `src/hooks` returns nothing. So the table-level UPDATE grant to `authenticated` serves no legitimate purpose.
+
+### Direction (recommended, simpler than the proposal)
+
+- Revoke INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER on `public.firms` from `anon` and `authenticated`. Grant SELECT only. **No column grants are needed**, because no legitimate browser path writes this table.
+- Drop the `super_admin updates firms` policy, and re-target the remaining `firms` policies to `authenticated` (they are on `public` today). Keep `firm owners update own firm` for now as defence in depth — with no UPDATE grant it cannot be reached; drop it in Phase 7 if the owner prefers.
+- `owner_user_id` changes: only `transfer_organisation_ownership` and the two organisation-creation/invite-acceptance paths, which run as service_role.
+- `is_always_free`: move `admin.functions.ts:270` behind a new definer function `public.set_firm_always_free(_firm_id, _value, _reason)` that asserts aal2 + `me_is_super_admin()`, **refuses any organisation that has clients or is not the practice's own**, and writes its own `audit_log` row. This is the only new function needed.
+- Add the missing audit row to `clearOrganisationLogo`.
+
+Nothing in the browser breaks: the only screens that edit an organisation (rename, logo, default cards, ownership transfer, plan/comp) already call server functions or definer RPCs.
+
+### Matrix rows added by Part B
+
+- bare super admin UPDATE `owner_user_id` on `firms` → denied (retires known failure 27)
+- bare super admin UPDATE `is_always_free` → denied
+- organisation owner UPDATE `name` / `logo_path` via the server function → allowed
+- `transfer_organisation_ownership` by the current owner → allowed; by a bare super admin → denied
+- `set_firm_always_free` on an organisation with clients → refused
+
+## Part C — recorded for part 3, not built now
+
+The sandbox database role cannot execute `public.security_posture()` (`permission denied for function`), so gate step 2 cannot be run by the agent today. In part 3, `bun run security:check` gains a step that calls `security_posture()` through the security-runner aal2 session and fails the run on any unexpected Action. Recorded in `roadmap.md` under part 3.
 
 ## Files and migrations
-Create: `docs/security/access-matrix.ts|.md`, `docs/security/admin-client-register.md`, `docs/security/server-fn-aal1-allowlist.ts`, `scripts/render-access-matrix.ts`, `tests/access-matrix.test.ts`, `tests/static-guards.test.ts`, `tests/live-smoke/*`, `src/lib/access-tests.functions.ts`, a Run-access-tests panel.
-Change: `scripts/dump-rls-fixture.sql|.sh`, `tests/fixtures/rls-schema.sql`, `package.json`, `src/routes/_authenticated/admin.security.tsx`, `docs/security-backlog.md`, `roadmap.md`.
-Migrations: (1) `security_test_runs` + `record_access_test_run()` + `security_posture()` changes; (2) `firms.is_test` / `profiles.is_test` flags and exclusion of flagged rows from `online_users()` and admin totals. No other policy, grant or access function is touched.
 
-## Verification of Phase 2 itself
-Inside the PGlite fixture only, and rolled back in the same transaction: drop one organisation-scoping policy, re-run a matrix case, assert the suite reports a failure. A second meta case feeds an in-memory `createServerFn` without `requireAal2` to the static guard and asserts it is flagged. No live data is read or written by either.
+**Part A (no migration):** `docs/security/access-matrix.ts`, regenerated `docs/security/access-matrix.md`, `docs/security-backlog.md` (items 27, 28), `roadmap.md` (part 3 note).
+
+**Part B (one migration, applied as a separate change):** revoke/grant on `public.firms`; drop `super_admin updates firms`; re-target `firms` policies to `authenticated`; create `public.set_firm_always_free(...)` with `assert_aal2` + super-admin guard, `SET search_path`, `REVOKE EXECUTE FROM PUBLIC, anon`. Code: `src/lib/admin.functions.ts` (call the new function), `src/lib/branding.server.ts` (audit row on logo clear), plus matrix and backlog updates.
+
+## Owner decisions needed
+
+1. **`is_always_free` rule.** Recommend: refuse it on any organisation that has clients, so it can only ever apply to the practice's own organisation. Confirm that matches intent.
+2. **Keep or drop `firm owners update own firm`.** Recommend keeping it, unreachable, until Phase 7 — dropping it is a behaviour change we cannot fully test until the live suite exists.
+3. **Part B timing.** Recommend applying it immediately after Part A, before part 3, since it is a live privilege escalation.
+4. **Item 28 (`client_subscriptions`) in Phase 3** as you directed — recorded, not fixed now.
+
+## Verification
+
+Part A: `bun run security:check` — fingerprint matches, 0 unexpected failures, items 27 and 28 printed as known failures with the matrix row counts.
+Part B: re-read `firms` grants with `has_table_privilege` and `aclexplode` (expect SELECT only for `authenticated`); re-read the policy list; prove in the regenerated PGlite fixture that a bare super admin's `owner_user_id` update is denied and an owner's rename through the server path still succeeds; confirm each of the seven paths in the table above still works; Supabase linter shows no new finding class. Security report at the end of each part.
