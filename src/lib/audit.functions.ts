@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { writeAudit } from "@/lib/audit.server";
 
 function requestIp(): string | null {
@@ -22,8 +23,11 @@ const AUTH_ACTIONS = [
 ] as const;
 export type AuthAuditAction = (typeof AUTH_ACTIONS)[number];
 
+// Deliberate aal1 exception: this records the sign-in and MFA lifecycle
+// itself, which happens before a second factor can exist. Write-only, no
+// caller-supplied identifiers, returns no data.
 export const logAuthEvent = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
+  .middleware([requireSupabaseAuth])
   .inputValidator((i: { action: AuthAuditAction }) => {
     if (!AUTH_ACTIONS.includes(i?.action)) throw new Error("Unsupported auth event");
     return i;

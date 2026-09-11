@@ -1,9 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// Deliberate aal1 exception: the login event is recorded at sign-in, before
+// the second factor is presented. Write-only, service-role insert, no reads.
 export const logLogin = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
+  .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const ip =
       getRequestHeader("cf-connecting-ip") ??
