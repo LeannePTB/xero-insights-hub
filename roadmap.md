@@ -1,6 +1,7 @@
 # Roadmap
 
 - [ ] Replace role-check authorisation with access checks on write paths (plan in .lovable/plan.md awaiting approval; five open questions)
+- [ ] Phase 2 — Guardrails: access matrix, PGlite matrix suite, live smoke suite with dedicated test accounts, static guard tests, verified admin-client register, definer_guards tightening + access_tests posture check
 - [x] Fix the firm-subscription super_admin bypass (`resolveAccess`/`assertAccess`)
 - [x] Add Allyce and Chantelle as staff of Autotek NSW and Bangkok On Darby (Path A membership)
 - [x] Phase 1 — enforce MFA (aal2) on the server: middleware wrapper, restrictive policies on all 49 in-scope tables, guards on 26 definer functions
