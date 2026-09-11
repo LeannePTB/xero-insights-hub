@@ -104,19 +104,23 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
     if (fErr) throw new Error(fErr.message);
     if (!firm) throw new Error("Organisation not found");
 
-    const { data: members } = await supabaseAdmin
-      .from("firm_members")
-      .select("id, user_id, role, created_at")
-      .eq("firm_id", data.firmId)
-      .order("created_at", { ascending: true });
+    // Membership is Path C metadata and the list comes from the database
+    // (`public.admin_firm_members` re-checks aal2 + super admin and returns the
+    // verified auth.users email), never from a membership read decided here.
+    const { data: memberRows, error: mErr } = await (context.supabase as any).rpc(
+      "admin_firm_members",
+      { _firm_id: data.firmId },
+    );
+    if (mErr) throw new Error(mErr.message);
+    const members = (memberRows ?? []) as Array<{
+      id: string;
+      user_id: string;
+      role: string;
+      created_at: string;
+      email: string | null;
+      display_name: string | null;
+    }>;
 
-    const userIds = (members ?? []).map((m) => m.user_id);
-    const { data: profiles } = userIds.length
-      ? await supabaseAdmin.from("profiles").select("id, display_name").in("id", userIds)
-      : { data: [] as any[] };
-    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
-    const authUsers = await listVerifiedAuthUsers(supabaseAdmin as any);
-    const emailById = new Map(authUsers.map((user) => [user.id, user.email]));
 
     // Pull last_sign_in_at for each member
     const membersWithAuth = await Promise.all(
