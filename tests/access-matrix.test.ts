@@ -438,8 +438,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     }
     if (row.operation === "insert") {
       const p = await probe(
-        `insert into public.user_presence (user_id, last_seen_at) values ('${uid}', now())
-         on conflict (user_id) do update set last_seen_at = now()`,
+        `insert into public.user_presence (user_id, last_seen_at) values ('${uid}', now())`,
       );
       return p.ok && p.rows > 0 ? "allow" : "deny";
     }
@@ -494,8 +493,9 @@ beforeAll(async () => {
       ${users.map((u) => `('${u}', 'verified')`).join(", ")};
     insert into public.profiles(id, email, display_name) values
       ${users.map((u, i) => `('${u}', 'u${i}@example.invalid', 'User ${i}')`).join(", ")};
+    -- staffA deliberately has NO presence row, so the own-row insert probe is real.
     insert into public.user_presence(user_id, last_seen_at) values
-      ${users.map((u) => `('${u}', now())`).join(", ")};
+      ${users.filter((u) => u !== U.staffA).map((u) => `('${u}', now())`).join(", ")};
 
     -- Only the four platform accounts hold super_admin; none of them is a member.
     insert into public.user_roles(id, user_id, role) values

@@ -493,8 +493,9 @@ export const MATRIX: MatrixRow[] = [
     operation: "update",
     expect: "deny",
     rule: "Phase 1b correction: set_presence_seen_at() trigger overwrites",
-    layers: ["pglite", "live"],
-    note: "Denied in effect: the write succeeds but the forged value never persists.",
+    layers: ["live"],
+    note:
+      "Denied in effect: the write succeeds but the forged value never persists. Live-only — the PGlite fixture mirrors policies and grants, not triggers.",
   },
   {
     role: "org_staff",
