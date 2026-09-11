@@ -44,12 +44,33 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 19. **Bulk dashboard tiers — closed 7 Sep 2026.** `public.set_all_client_tiers` now gates on `app_private.is_super_admin(auth.uid())` instead of `app_private.has_firm_access`; every other line (plan `allowed_tiers` check, rows written, audit row) is unchanged. All 12 active `firm_members` rows belong to users who hold `super_admin`, so no current behaviour changed. **Related, unchanged and reported to the owner:** `setClientDashboardTier` (`src/lib/billing.functions.ts`) writes `client_subscriptions.dashboard_tier` through the caller's session, gated by the `staff manage client subscriptions` RLS policy (`platform_staff_can_access_firm`) or `super admins manage client subscriptions`. That path is *not* super-admin only and also admits a live support grant; a decision is pending.
 20. **Awaiting owner decision (raised 11 Sep 2026, with the Phase 1 MFA change).** (a) Should the two aal1 server functions `logAuthEvent` and `logLogin` be timeboxed or additionally rate limited? A Xero-minted aal1 session can call both; they only write audit/login rows and return `{ok:true}`. (b) One of the three super admins has no verified TOTP factor; after this change no aal1 session reaches any data, so that account enrols at next sign-in via `/auth/mfa-enroll` (Supabase Auth only, unaffected by the new guards). Confirm this is understood before it next signs in. (c) The tier/plan configuration tables were left outside the aal2 policy pending the separate tier-catalogue decision.
 
-## Phase 1b — Security posture card (done 11 Sep 2026)
+## Phase 1b — Security posture card (done 11 Sep 2026, corrected same day)
 
-A compact **Security** card at the bottom of the admin sidebar shows live posture: shield icon,
-status word, pass/review/action counts, online-user chips (green = verified second factor,
-amber = none), a re-run button, and a link to `/admin/security`. Collapsed, it is the shield
-alone with a tooltip carrying the same summary.
+A compact **Security** card sits directly under the sidebar navigation: shield icon, an
+**All OK / Warn / Action** pill, the line `N OK · N Warn · N Action · N online`, "Checked X min
+ago", online chips (green shield = verified second factor, red shield = none; tooltip carries
+name, role, factor status and last active time), a refresh button and a **View details** button
+to `/admin/security`. Above six people online it shows six and "+N more"; `/admin/security` lists
+everyone with the same indicators. Collapsed, it is the shield alone with a tooltip carrying the
+same counts.
+
+**Corrections applied 11 Sep 2026:**
+- The presence heartbeat moved to the `_authenticated` layout, so every signed-in aal2 person is
+  recorded — owners, staff and client viewers, not only super admins on admin pages. It pauses
+  while the tab is hidden and resumes on focus. Reading presence stays super-admin + aal2 via
+  `public.online_users()`.
+- `last_seen_at` can no longer be forged: a BEFORE INSERT OR UPDATE trigger
+  (`public.set_presence_seen_at`) overwrites it with `now()`. Verified — an insert of
+  `now() + 10 days` stored the server time instead.
+- Dropped checks restored into the same list: `token_enc_key` (real AES-256-GCM round trip on the
+  server), `xero_pkce` (recent `xero_oauth_states` rows must carry a 43+ character code verifier;
+  17 rows in 90 days, 0 without), `tls_hsts` (server HEADs the public origin and reads
+  `strict-transport-security`; otherwise Warn "not verified"), and `hibp` (Warn — not verified,
+  confirm in the backend authentication settings). Server-only checks are merged into the single
+  `getSecurityChecks` result, so the sidebar and `/admin/security` still show identical counts.
+- `definer_guards` now states in its evidence that it is a text heuristic and is not proof the
+  guard runs on every path, and returns the guard name matched per function for the details view
+  (28 callable definer functions, 0 unmatched).
 
 Every status is computed at request time by `public.security_posture()` — SECURITY DEFINER,
 `SET search_path = ''`, whose first two statements are `app_private.assert_aal2()` and
