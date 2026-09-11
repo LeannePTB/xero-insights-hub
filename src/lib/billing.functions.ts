@@ -22,15 +22,6 @@ type SubRow = {
   comped_at: string | null;
 };
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (!data) throw new Error("Super admins only.");
-}
 
 /** Effective entitlement plus, for staff only, the billing record behind it. */
 export const getClientBilling = createServerFn({ method: "POST" })
@@ -64,25 +55,7 @@ export const getClientBilling = createServerFn({ method: "POST" })
     };
   });
 
-async function currentSub(clientId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await (supabaseAdmin as any)
-    .from("client_subscriptions")
-    .select("*")
-    .eq("client_id", clientId)
-    .maybeSingle();
-  return data as SubRow | null;
-}
 
-async function firmIdFor(clientId: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
-    .from("clients")
-    .select("firm_id")
-    .eq("id", clientId)
-    .maybeSingle();
-  return (data?.firm_id as string | null) ?? null;
-}
 
 /**
  * Comp a client onto free Standard, or remove the comp.
