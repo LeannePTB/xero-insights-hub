@@ -214,10 +214,19 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
   const stripComments = (t: string) =>
     t.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
 
-  it("never reaches supabaseAdmin in a converted file without a registered DB authorisation call", () => {
+  const isEntryPoint = (path: string) =>
+    /\.functions\.tsx?$/.test(path) || path.startsWith("src/routes/");
+
+  /**
+   * Entry points — the files a browser can actually call. Phase 4 final form:
+   * no exemption list. A privileged step must follow a registered database
+   * authorisation call in the same file.
+   */
+  it("never reaches supabaseAdmin in a converted entry point without a registered DB authorisation call", () => {
     const offenders: string[] = [];
     const names = [...REGISTERED_DB_AUTH_CALLS, ...REGISTERED_DB_AUTH_WRAPPERS];
     for (const path of CONVERTED_FILES) {
+      if (!isEntryPoint(path)) continue;
       const f = FILES.find((x) => x.path === path);
       if (!f) continue;
       const code = stripComments(f.text);
@@ -235,6 +244,40 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
     expect(offenders, report("Unauthorised privileged access in a converted file:", offenders)).toEqual(
       [],
     );
+  });
+
+  /**
+   * Helper modules (`*.server.ts`) are not callable from a browser: they only
+   * run when an entry point calls them. Ordering inside the module says
+   * nothing, so the rule is structural instead, and it is checked rather than
+   * exempted: a converted helper module may not be an entry point itself, may
+   * not decide access (rule above), and every entry point that imports it must
+   * itself be converted — so the caller is always held to the ordering rule.
+   */
+  it("keeps converted helper modules callable only from converted entry points", () => {
+    const offenders: string[] = [];
+    const helpers = CONVERTED_FILES.filter((p) => !isEntryPoint(p));
+    for (const path of helpers) {
+      const f = FILES.find((x) => x.path === path);
+      if (!f) continue;
+      if (/createServerFn\(/.test(stripComments(f.text)))
+        offenders.push(`${path} — a helper module must not declare a server function`);
+
+      const specifier = path.replace(/^src\//, "@/").replace(/\.tsx?$/, "");
+      for (const other of FILES) {
+        if (other.path === path) continue;
+        if (!isEntryPoint(other.path)) continue;
+        if (!other.text.includes(specifier)) continue;
+        if (!CONVERTED_FILES.includes(other.path))
+          offenders.push(
+            `${other.path} imports converted helper ${path} — convert the entry point too`,
+          );
+      }
+    }
+    expect(
+      offenders,
+      report("Converted helper module reached from an unconverted entry point:", offenders),
+    ).toEqual([]);
   });
 });
 
