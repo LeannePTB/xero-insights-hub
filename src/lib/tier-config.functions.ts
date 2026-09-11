@@ -1,20 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { listVerifiedAuthUsers } from "@/lib/auth-users.server";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 import { ALL_TIERS, ALL_WIDGETS, DEFAULT_TIER_WIDGETS, defaultWidgetsFor, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
 function sanitizeWidgets(widgets: string[]): WidgetKey[] {
   return widgets.filter((w): w is WidgetKey => (ALL_WIDGETS as string[]).includes(w));
 }
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin");
-  if (!data || data.length === 0) throw new Error("Forbidden");
-}
 
 
 
@@ -98,7 +91,7 @@ export const savePlatformTierWidgets = createServerFn({ method: "POST" })
     // plan_levels.widgets, so a card nobody unticked can never be lost here.
     // Unticking is still expressed as an exclusion — the deny-list stays,
     // because organisation and client rows are built on it.
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: level } = await (supabaseAdmin as any)
@@ -274,7 +267,7 @@ export const getOrgWidgetMatrix = createServerFn({ method: "POST" })
 export const listOrgTierOverrides = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: rows, error } = await (supabaseAdmin as any)

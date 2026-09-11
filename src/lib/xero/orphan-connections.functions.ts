@@ -14,17 +14,8 @@
 
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden");
-}
 
 export type OrphanXeroConnection = {
   id: string;
@@ -38,7 +29,7 @@ export type OrphanXeroConnection = {
 export const listOrphanXeroConnections = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }): Promise<OrphanXeroConnection[]> => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // Explicit column list — never select * from xero_connections.
@@ -87,7 +78,7 @@ export const assignOrphanXeroConnection = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { connectionId: string; firmId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: existing, error: readErr } = await supabaseAdmin
@@ -130,7 +121,7 @@ export const disconnectOrphanXeroConnection = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { connectionId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: existing, error: readErr } = await supabaseAdmin

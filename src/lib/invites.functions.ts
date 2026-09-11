@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { findVerifiedAuthUserByEmail } from "@/lib/auth-users.server";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 import { randomBytes, createHash } from "crypto";
 import { siteUrl } from "@/lib/site-origin";
 
@@ -8,16 +9,6 @@ function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-async function assertSuperAdmin(supabase: any, _userId: string) {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", _userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden");
-}
 
 async function logAudit(action: string, targetType: string, targetId: string, actorUserId: string | null, meta: Record<string, any>) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -65,7 +56,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     }) => i,
   )
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
 
     const name = (data.name ?? "").trim();
     if (name.length < 2 || name.length > 120) throw new Error("Please enter an organisation name.");
@@ -231,7 +222,7 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { email: string; businessName?: string | null }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const email = validateEmail(data.email);
     const placeholderName = (data.businessName?.trim() || email).slice(0, 120);
 
@@ -300,7 +291,7 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string; email: string; role: "owner" | "staff" }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const email = validateEmail(data.email);
     if (data.role !== "owner" && data.role !== "staff") throw new Error("Invalid role.");
 

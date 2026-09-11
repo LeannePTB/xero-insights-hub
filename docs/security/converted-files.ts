@@ -43,7 +43,20 @@ export const REGISTERED_DB_AUTH_CALLS = [
   "grant_client_access",
   "set_client_access_tier",
   "revoke_client_access",
+  // Phase 4 batch 3 — super admin / Path C. Same rules: caller-scoped
+  // (auth.uid()), aal2-guarded, EXECUTE revoked from PUBLIC/anon.
+  "assert_super_admin",
+  "assert_advisor",
+  "admin_list_advisors",
+  "admin_advisor_user_ids",
+  "admin_set_super_admin",
+  "admin_grant_advisor",
+  "admin_remove_advisor",
+  "organisation_members",
+  "admin_firm_members",
+  "plan_level_usage_count",
 ] as const;
+
 
 
 /**
@@ -65,7 +78,13 @@ export const REGISTERED_DB_AUTH_WRAPPERS = [
   "canAccessClient",
   "platformStaffCanAccessFirm",
   "userCanManageClient",
+  // Batch 3 — the single super-admin and advisor checks.
+  "assertSuperAdminDb",
+  "meIsSuperAdmin",
+  "assertAdvisor",
 ] as const;
+
+
 
 /** Batch 1 — the Xero read gate and everything that authorised through it. */
 export const CONVERTED_FILES: string[] = [
@@ -102,5 +121,23 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/loan-autosetup.server.ts",
   "src/lib/loan-recon.server.ts",
   "src/lib/loan-mismatch.server.ts",
+
+  // Batch 3 — super admin / Path C (platform metadata only).
+  //
+  // `src/lib/invites.functions.ts` is not listed: after the super-admin check
+  // it provisions a new organisation with the service role, and the same file
+  // also holds the pre-session invite acceptance, which is system context.
+  // It stays in the admin-client register instead.
+  "src/lib/admin.functions.ts",
+  "src/lib/advisors.functions.ts",
+  "src/lib/firms.functions.ts",
+  "src/lib/security.functions.ts",
+  "src/lib/plan-levels.functions.ts",
+  "src/lib/tier-config.functions.ts",
+  "src/lib/ownership.functions.ts",
+  "src/lib/xero/orphan-connections.functions.ts",
+  "src/lib/xero-assessment.functions.ts",
+  "src/lib/audit.functions.ts",
 ];
+
 

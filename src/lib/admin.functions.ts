@@ -2,18 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { siteUrl } from "@/lib/site-origin";
-import { listVerifiedAuthUsers } from "@/lib/auth-users.server";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 
-async function assertSuperAdmin(supabase: any, _userId: string) {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", _userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden");
-}
 
 async function logAudit(action: string, targetType: string, targetId: string, actorUserId: string, meta: Record<string, any>) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -35,7 +25,7 @@ export const adminRenameFirm = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string; name: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const name = data.name.trim();
     if (name.length < 2 || name.length > 120) {
       throw new Error("Business name must be between 2 and 120 characters.");
@@ -55,7 +45,7 @@ export const adminRenameFirm = createServerFn({ method: "POST" })
 export const listFirmsAdmin = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { data, error } = await context.supabase
       .from("admin_firm_overview")
       .select("*")
@@ -88,7 +78,7 @@ export const getFirmAuditAdmin = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .inputValidator((input: { firmId: string }) => input)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { data: events, error } = await context.supabase
       .from("audit_log")
       .select("id, action, target_type, target_id, actor_user_id, meta, at")
@@ -103,7 +93,7 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .inputValidator((input: { firmId: string }) => input)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: firm, error: fErr } = await supabaseAdmin
@@ -114,19 +104,23 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
     if (fErr) throw new Error(fErr.message);
     if (!firm) throw new Error("Organisation not found");
 
-    const { data: members } = await supabaseAdmin
-      .from("firm_members")
-      .select("id, user_id, role, created_at")
-      .eq("firm_id", data.firmId)
-      .order("created_at", { ascending: true });
+    // Membership is Path C metadata and the list comes from the database
+    // (`public.admin_firm_members` re-checks aal2 + super admin and returns the
+    // verified auth.users email), never from a membership read decided here.
+    const { data: memberRows, error: mErr } = await (context.supabase as any).rpc(
+      "admin_firm_members",
+      { _firm_id: data.firmId },
+    );
+    if (mErr) throw new Error(mErr.message);
+    const members = (memberRows ?? []) as Array<{
+      id: string;
+      user_id: string;
+      role: string;
+      created_at: string;
+      email: string | null;
+      display_name: string | null;
+    }>;
 
-    const userIds = (members ?? []).map((m) => m.user_id);
-    const { data: profiles } = userIds.length
-      ? await supabaseAdmin.from("profiles").select("id, display_name").in("id", userIds)
-      : { data: [] as any[] };
-    const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]));
-    const authUsers = await listVerifiedAuthUsers(supabaseAdmin as any);
-    const emailById = new Map(authUsers.map((user) => [user.id, user.email]));
 
     // Pull last_sign_in_at for each member
     const membersWithAuth = await Promise.all(
@@ -137,8 +131,9 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
           user_id: m.user_id,
           role: m.role,
           created_at: m.created_at,
-          email: emailById.get(m.user_id) ?? u?.user?.email ?? null,
-          display_name: profileMap.get(m.user_id)?.display_name ?? null,
+          email: m.email ?? u?.user?.email ?? null,
+          display_name: m.display_name ?? null,
+
           last_sign_in_at: u?.user?.last_sign_in_at ?? null,
           email_confirmed_at: u?.user?.email_confirmed_at ?? null,
         };
@@ -159,7 +154,7 @@ export const adminSendPasswordReset = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string; firmId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: u, error } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
     if (error || !u?.user?.email) throw new Error("User not found");
@@ -181,7 +176,7 @@ export const adminSetUserPassword = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string; firmId: string; newPassword: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     validatePassword(data.newPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await (supabaseAdmin as any).auth.admin.updateUserById(data.userId, {
@@ -198,7 +193,7 @@ export const adminUpdateUserEmail = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string; firmId: string; newEmail: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const newEmail = data.newEmail.trim().toLowerCase();
     if (!newEmail.includes("@") || newEmail.length > 254) throw new Error("Invalid email address.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -243,7 +238,7 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
     }),
   )
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const subPatch: Record<string, any> = {};
@@ -385,7 +380,7 @@ export const adminSetFirmConsolidation = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const enabled = data.enabled === true;
 
     const { from, changed } = await setSubscriptionFlag(

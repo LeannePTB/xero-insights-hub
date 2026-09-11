@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 
 export type PlanScope = "firm" | "dashboard";
 
@@ -37,16 +38,6 @@ export const listPlanLevels = createServerFn({ method: "GET" })
     return { levels: (data ?? []) as PlanLevel[] };
   });
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Super admins only.");
-}
 
 export const savePlanLevel = createServerFn({ method: "POST" })
   .middleware([requireAal2])
@@ -68,7 +59,7 @@ export const savePlanLevel = createServerFn({ method: "POST" })
     }) => i,
   )
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const key = data.key.trim().toLowerCase().replace(/[^a-z0-9_]+/g, "_");
     if (!key) throw new Error("A key is required.");
     if (!data.label.trim()) throw new Error("A label is required.");
@@ -111,7 +102,7 @@ export const deletePlanLevel = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const { data: level } = await (supabaseAdmin as any)
@@ -121,18 +112,18 @@ export const deletePlanLevel = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!level) throw new Error("Level not found.");
 
-    if (level.scope === "firm") {
-      const { count } = await (supabaseAdmin as any)
-        .from("subscriptions")
-        .select("id", { count: "exact", head: true })
-        .eq("tier", level.key);
-      if ((count ?? 0) > 0) throw new Error("This plan is in use by an organisation — move them first.");
-    } else {
-      const { count } = await (supabaseAdmin as any)
-        .from("client_access")
-        .select("id", { count: "exact", head: true })
-        .eq("tier", level.key);
-      if ((count ?? 0) > 0) throw new Error("This tier is in use by a client — move them first.");
+    // "Is this level still in use?" is counted by the database, which
+    // re-checks super admin itself and never exposes the rows.
+    const { data: inUse, error: useErr } = await (context.supabase as any).rpc("plan_level_usage_count", {
+      _id: data.id,
+    });
+    if (useErr) throw new Error(useErr.message);
+    if ((inUse ?? 0) > 0) {
+      throw new Error(
+        level.scope === "firm"
+          ? "This plan is in use by an organisation — move them first."
+          : "This tier is in use by a client — move them first.",
+      );
     }
 
     const { error } = await (supabaseAdmin as any).from("plan_levels").delete().eq("id", data.id);

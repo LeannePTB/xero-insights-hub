@@ -1,59 +1,46 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { siteUrl } from "@/lib/site-origin";
-import { findVerifiedAuthUserByEmail, listVerifiedAuthUsers } from "@/lib/auth-users.server";
+import { findVerifiedAuthUserByEmail } from "@/lib/auth-users.server";
+import { meIsSuperAdmin } from "@/lib/auth/super-admin.server";
 
 export const PRIMARY_ADVISOR_USER_ID = "57d544ad-db50-4330-9b12-bcffdf4c6065";
 
-
-async function assertAdvisor(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "advisor");
-  if (!data || data.length === 0) throw new Error("Only advisors can manage advisors.");
+/**
+ * Who may manage advisors is decided by the database (aal2 + advisor role) in
+ * every function below; nothing here reads `user_roles` to make that call.
+ */
+async function assertAdvisor(supabase: any) {
+  const { error } = await supabase.rpc("assert_advisor");
+  if (error) throw new Error(error.message);
 }
 
 export const listAdvisors = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertAdvisor(context.supabase, context.userId);
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
-      .from("user_roles")
-      .select("id, user_id, created_at")
-      .eq("role", "advisor")
-      .order("created_at", { ascending: true });
+    const { data: rows, error } = await (context.supabase as any).rpc("admin_list_advisors");
     if (error) throw new Error(error.message);
-    if (!rows?.length) return { advisors: [], viewerIsSuperAdmin: false };
 
-    const { data: profiles } = await supabaseAdmin
-      .from("profiles")
-      .select("id, display_name")
-      .in("id", rows.map((r) => r.user_id));
-    const map = new Map((profiles ?? []).map((p) => [p.id, p]));
-    const authUsers = await listVerifiedAuthUsers(supabaseAdmin as any);
-    const emailById = new Map(authUsers.map((user) => [user.id, user.email]));
-
-    const { data: superRows } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "super_admin");
-    const supers = new Set(((superRows ?? []) as any[]).map((r) => r.user_id as string));
+    const advisors = ((rows ?? []) as Array<{
+      id: string;
+      user_id: string;
+      created_at: string;
+      email: string | null;
+      display_name: string | null;
+      is_super_admin: boolean;
+    }>).map((r) => ({
+      id: r.id,
+      user_id: r.user_id,
+      created_at: r.created_at,
+      email: r.email ?? null,
+      display_name: r.display_name ?? null,
+      is_self: r.user_id === context.userId,
+      is_super_admin: r.is_super_admin === true,
+    }));
 
     return {
-      viewerIsSuperAdmin: supers.has(context.userId),
-      advisors: rows.map((r) => ({
-        id: r.id,
-        user_id: r.user_id,
-        created_at: r.created_at,
-        email: emailById.get(r.user_id) ?? null,
-        display_name: map.get(r.user_id)?.display_name ?? null,
-        is_self: r.user_id === context.userId,
-        is_super_admin: supers.has(r.user_id),
-      })),
+      viewerIsSuperAdmin: await meIsSuperAdmin(context.supabase),
+      advisors,
     };
   });
 
@@ -61,49 +48,24 @@ export const setAdvisorSuperAdmin = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string; makeSuperAdmin: boolean }) => i)
   .handler(async ({ data, context }) => {
-    // Only an existing super admin may grant or revoke super admin.
-    const { data: mine } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "super_admin");
-    if (!mine || mine.length === 0) throw new Error("Only super admins can change super admin access.");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    if (data.makeSuperAdmin) {
-      const { error } = await (supabaseAdmin as any)
-        .from("user_roles")
-        .upsert({ user_id: data.userId, role: "super_admin" }, { onConflict: "user_id,role", ignoreDuplicates: true });
-      if (error) throw new Error(error.message);
-      return { ok: true, isSuperAdmin: true };
-    }
-
-    if (data.userId === context.userId) {
-      throw new Error("You can't remove your own super admin access.");
-    }
-    const { data: others } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "super_admin")
-      .neq("user_id", data.userId);
-    if (!others || others.length === 0) throw new Error("At least one super admin must remain.");
-
-    const { error } = await (supabaseAdmin as any)
-      .from("user_roles")
-      .delete()
-      .eq("user_id", data.userId)
-      .eq("role", "super_admin");
+    // The database decides: caller must be a super admin, cannot remove their
+    // own access, and the last super admin cannot be removed.
+    const { data: isSuper, error } = await (context.supabase as any).rpc("admin_set_super_admin", {
+      _user_id: data.userId,
+      _make: data.makeSuperAdmin,
+    });
     if (error) throw new Error(error.message);
-    return { ok: true, isSuperAdmin: false };
+    return { ok: true, isSuperAdmin: isSuper === true };
   });
+
+
 
 
 export const inviteAdvisor = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { email: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const email = data.email.trim().toLowerCase();
     if (!email.includes("@")) throw new Error("Please enter a valid email address.");
 
@@ -125,17 +87,9 @@ export const inviteAdvisor = createServerFn({ method: "POST" })
       invited = true;
     }
 
-    // Grant advisor role (and remove any client_viewer role to avoid mixed state)
-    const { error } = await (supabaseAdmin as any)
-      .from("user_roles")
-      .upsert({ user_id: userId, role: "advisor" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+    // Role changes go through the database, which re-checks the caller.
+    const { error } = await (context.supabase as any).rpc("admin_grant_advisor", { _user_id: userId });
     if (error) throw new Error(error.message);
-
-    await (supabaseAdmin as any)
-      .from("user_roles")
-      .delete()
-      .eq("user_id", userId)
-      .eq("role", "client_viewer");
 
     return { ok: true, invited };
   });
@@ -149,7 +103,7 @@ export const createAdvisorWithPassword = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { email: string; password: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const email = data.email.trim().toLowerCase();
     if (!email.includes("@") || email.length > 254) throw new Error("Please enter a valid email address.");
     validatePassword(data.password);
@@ -168,16 +122,8 @@ export const createAdvisorWithPassword = createServerFn({ method: "POST" })
     const userId = created?.user?.id;
     if (!userId) throw new Error("Could not create account.");
 
-    const { error: rErr } = await (supabaseAdmin as any)
-      .from("user_roles")
-      .upsert({ user_id: userId, role: "advisor" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+    const { error: rErr } = await (context.supabase as any).rpc("admin_grant_advisor", { _user_id: userId });
     if (rErr) throw new Error(rErr.message);
-
-    await (supabaseAdmin as any)
-      .from("user_roles")
-      .delete()
-      .eq("user_id", userId)
-      .eq("role", "client_viewer");
 
     return { ok: true, email };
   });
@@ -221,7 +167,7 @@ export const sendAdvisorPasswordReset = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: u, error } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
     if (error || !u?.user?.email) throw new Error("User not found");
@@ -237,7 +183,7 @@ export const setAdvisorPassword = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string; newPassword: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     validatePassword(data.newPassword);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: u, error: gErr } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
@@ -254,31 +200,18 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     if (data.userId === PRIMARY_ADVISOR_USER_ID) {
       throw new Error("The primary advisor account can't be removed.");
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Safety: make sure at least one other advisor remains
-    const { data: others } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "advisor")
-      .neq("user_id", data.userId);
-    if (!others || others.length === 0) {
-      throw new Error("At least one advisor must remain.");
-    }
-
-    // Remove all role rows for this user
-    const { error: roleErr } = await (supabaseAdmin as any)
-      .from("user_roles")
-      .delete()
-      .eq("user_id", data.userId);
+    // The database removes the roles and access grants, and enforces
+    // "at least one advisor must remain" itself.
+    const { error: roleErr } = await (context.supabase as any).rpc("admin_remove_advisor", {
+      _user_id: data.userId,
+    });
     if (roleErr) throw new Error(roleErr.message);
-
-    // Remove client_access grants
-    await (supabaseAdmin as any).from("client_access").delete().eq("user_id", data.userId);
 
     // Remove profile row
     await (supabaseAdmin as any).from("profiles").delete().eq("id", data.userId);
@@ -327,7 +260,7 @@ export const generateAdvisorInviteLink = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: u, error: getErr } = await (supabaseAdmin as any).auth.admin.getUserById(data.userId);
     if (getErr || !u?.user?.email) throw new Error("User not found");
@@ -348,7 +281,7 @@ export const resendAdvisorInvite = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const res = await resendInviteForUser(supabaseAdmin, data.userId);
     if (!res.ok) throw new Error(res.reason);
@@ -358,14 +291,12 @@ export const resendAdvisorInvite = createServerFn({ method: "POST" })
 export const resendAllPendingAdvisorInvites = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: rows } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "advisor");
-    const userIds = (rows ?? []).map((r: any) => r.user_id).filter((id: string) => id !== context.userId);
+    const { data: rows, error: rowsErr } = await (context.supabase as any).rpc("admin_advisor_user_ids");
+    if (rowsErr) throw new Error(rowsErr.message);
+    const userIds = ((rows ?? []) as any[]).map((r) => r.user_id).filter((id: string) => id !== context.userId);
 
     const resent: string[] = [];
     const skipped: { email?: string; reason: string }[] = [];
@@ -380,14 +311,12 @@ export const resendAllPendingAdvisorInvites = createServerFn({ method: "POST" })
 export const listPendingAdvisors = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertAdvisor(context.supabase, context.userId);
+    await assertAdvisor(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "advisor");
+    const { data: rows, error: rowsErr } = await (context.supabase as any).rpc("admin_advisor_user_ids");
+    if (rowsErr) throw new Error(rowsErr.message);
     const pending: string[] = [];
-    for (const r of rows ?? []) {
+    for (const r of ((rows ?? []) as any[])) {
       const { data: u } = await supabaseAdmin.auth.admin.getUserById(r.user_id);
       if (u?.user && !u.user.last_sign_in_at) {
         pending.push(r.user_id);

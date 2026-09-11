@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireAal2 } from "@/lib/auth/require-aal2";
+import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 
 const contactSchema = z.object({
   legal_name: z.string().max(200).nullish(),
@@ -20,21 +21,11 @@ const contactSchema = z.object({
 
 export type XeroAssessmentContact = z.infer<typeof contactSchema>;
 
-async function assertSuperAdmin(supabase: any, userId: string) {
-  const { data, error } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "super_admin")
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Forbidden: super admin only");
-}
 
 export const getAssessmentContact = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }): Promise<XeroAssessmentContact> => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { data, error } = await context.supabase
       .from("xero_assessment_contact")
       .select("*")
@@ -48,7 +39,7 @@ export const saveAssessmentContact = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((d: unknown) => contactSchema.parse(d))
   .handler(async ({ data, context }) => {
-    await assertSuperAdmin(context.supabase, context.userId);
+    await assertSuperAdminDb(context.supabase);
     const { error } = await context.supabase
       .from("xero_assessment_contact")
       .upsert({ id: "singleton", ...data }, { onConflict: "id" });
