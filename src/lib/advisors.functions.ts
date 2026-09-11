@@ -1,59 +1,42 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { siteUrl } from "@/lib/site-origin";
-import { findVerifiedAuthUserByEmail, listVerifiedAuthUsers } from "@/lib/auth-users.server";
+import { findVerifiedAuthUserByEmail } from "@/lib/auth-users.server";
+import { meIsSuperAdmin } from "@/lib/auth/super-admin.server";
 
 export const PRIMARY_ADVISOR_USER_ID = "57d544ad-db50-4330-9b12-bcffdf4c6065";
 
-
-async function assertAdvisor(supabase: any, userId: string) {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId)
-    .eq("role", "advisor");
-  if (!data || data.length === 0) throw new Error("Only advisors can manage advisors.");
-}
+/**
+ * Who may manage advisors is decided by the database (aal2 + advisor role) in
+ * every function below; nothing here reads `user_roles` to make that call.
+ */
 
 export const listAdvisors = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    await assertAdvisor(context.supabase, context.userId);
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
-      .from("user_roles")
-      .select("id, user_id, created_at")
-      .eq("role", "advisor")
-      .order("created_at", { ascending: true });
+    const { data: rows, error } = await (context.supabase as any).rpc("admin_list_advisors");
     if (error) throw new Error(error.message);
-    if (!rows?.length) return { advisors: [], viewerIsSuperAdmin: false };
 
-    const { data: profiles } = await supabaseAdmin
-      .from("profiles")
-      .select("id, display_name")
-      .in("id", rows.map((r) => r.user_id));
-    const map = new Map((profiles ?? []).map((p) => [p.id, p]));
-    const authUsers = await listVerifiedAuthUsers(supabaseAdmin as any);
-    const emailById = new Map(authUsers.map((user) => [user.id, user.email]));
-
-    const { data: superRows } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "super_admin");
-    const supers = new Set(((superRows ?? []) as any[]).map((r) => r.user_id as string));
+    const advisors = ((rows ?? []) as Array<{
+      id: string;
+      user_id: string;
+      created_at: string;
+      email: string | null;
+      display_name: string | null;
+      is_super_admin: boolean;
+    }>).map((r) => ({
+      id: r.id,
+      user_id: r.user_id,
+      created_at: r.created_at,
+      email: r.email ?? null,
+      display_name: r.display_name ?? null,
+      is_self: r.user_id === context.userId,
+      is_super_admin: r.is_super_admin === true,
+    }));
 
     return {
-      viewerIsSuperAdmin: supers.has(context.userId),
-      advisors: rows.map((r) => ({
-        id: r.id,
-        user_id: r.user_id,
-        created_at: r.created_at,
-        email: emailById.get(r.user_id) ?? null,
-        display_name: map.get(r.user_id)?.display_name ?? null,
-        is_self: r.user_id === context.userId,
-        is_super_admin: supers.has(r.user_id),
-      })),
+      viewerIsSuperAdmin: await meIsSuperAdmin(context.supabase),
+      advisors,
     };
   });
 
@@ -61,42 +44,17 @@ export const setAdvisorSuperAdmin = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string; makeSuperAdmin: boolean }) => i)
   .handler(async ({ data, context }) => {
-    // Only an existing super admin may grant or revoke super admin.
-    const { data: mine } = await context.supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", context.userId)
-      .eq("role", "super_admin");
-    if (!mine || mine.length === 0) throw new Error("Only super admins can change super admin access.");
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    if (data.makeSuperAdmin) {
-      const { error } = await (supabaseAdmin as any)
-        .from("user_roles")
-        .upsert({ user_id: data.userId, role: "super_admin" }, { onConflict: "user_id,role", ignoreDuplicates: true });
-      if (error) throw new Error(error.message);
-      return { ok: true, isSuperAdmin: true };
-    }
-
-    if (data.userId === context.userId) {
-      throw new Error("You can't remove your own super admin access.");
-    }
-    const { data: others } = await supabaseAdmin
-      .from("user_roles")
-      .select("user_id")
-      .eq("role", "super_admin")
-      .neq("user_id", data.userId);
-    if (!others || others.length === 0) throw new Error("At least one super admin must remain.");
-
-    const { error } = await (supabaseAdmin as any)
-      .from("user_roles")
-      .delete()
-      .eq("user_id", data.userId)
-      .eq("role", "super_admin");
+    // The database decides: caller must be a super admin, cannot remove their
+    // own access, and the last super admin cannot be removed.
+    const { data: isSuper, error } = await (context.supabase as any).rpc("admin_set_super_admin", {
+      _user_id: data.userId,
+      _make: data.makeSuperAdmin,
+    });
     if (error) throw new Error(error.message);
-    return { ok: true, isSuperAdmin: false };
+    return { ok: true, isSuperAdmin: isSuper === true };
   });
+
+
 
 
 export const inviteAdvisor = createServerFn({ method: "POST" })
