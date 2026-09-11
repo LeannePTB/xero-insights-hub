@@ -519,7 +519,8 @@ export const MATRIX: MatrixRow[] = [
       knownFailure: {
         backlog: 29,
         note:
-          "'super_admin updates signup_requests' is on is_super_admin alone, targets role public rather than authenticated, and writes no audit row.",
+          "'super_admin updates signup_requests' is on is_super_admin alone and writes no audit row (re-targeted from role public to authenticated on 11 Sep 2026).",
+
       },
     },
   ),
