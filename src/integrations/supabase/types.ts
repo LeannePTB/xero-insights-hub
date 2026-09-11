@@ -2541,6 +2541,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      client_xero_files_used: { Args: { _client_id: string }; Returns: number }
       delete_client_report: {
         Args: { _reason?: string; _report_id: string }
         Returns: {
