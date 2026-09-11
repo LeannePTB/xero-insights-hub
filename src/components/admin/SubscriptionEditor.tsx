@@ -180,6 +180,17 @@ export function SubscriptionEditor({
           </div>
           <Switch checked={alwaysFree} onCheckedChange={setAlwaysFree} />
         </div>
+        {alwaysFree !== !!isAlwaysFree && (
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Reason for changing always free</Label>
+            <Input
+              value={alwaysFreeReason}
+              maxLength={500}
+              placeholder="Why is this changing? Recorded in the audit log."
+              onChange={(e) => setAlwaysFreeReason(e.target.value)}
+            />
+          </div>
+        )}
         <div className="flex items-center justify-between rounded-md border p-3 md:col-span-2">
           <div className="pr-4">
             <p className="text-sm font-medium">Consolidation tools</p>
