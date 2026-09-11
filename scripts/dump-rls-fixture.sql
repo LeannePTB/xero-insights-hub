@@ -73,6 +73,7 @@ stmts as (
                '{}'::aclitem[]))
     ) g
    where g.grantee in ('anon','authenticated','service_role')
+     and g.privilege_type <> 'MAINTAIN'
 
   -- column-level grants (xero_connections non-token columns live here)
   union all
@@ -109,7 +110,7 @@ select string_agg(stmt, E'\n' order by ord, k) from stmts;
 
 -- Fingerprint: any change to a policy, grant or authorisation function body
 -- changes this value, so a stale fixture is detectable.
-select E'\n-- catalogue-fingerprint: ' || encode(digest(string_agg(sig, '|' order by sig), 'sha256'), 'hex')
+select E'\n-- catalogue-fingerprint: ' || encode(sha256(convert_to(string_agg(sig, '|' order by sig), 'UTF8')), 'hex')
 from (
   select 'pol:' || c.relname || ':' || pol.polname || ':' || pol.polcmd::text
          || ':' || pol.polpermissive::text
