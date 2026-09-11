@@ -181,7 +181,7 @@ export const listClientNotes = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
     const ids = Array.from(new Set((rows ?? []).map((r: any) => r.author_id).filter(Boolean)));
-    let authorMap = new Map<string, { display_name: string | null; email: string | null }>();
+    let authorMap = new Map<string, { display_name: string | null }>();
     if (ids.length) {
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
       const { data: profiles } = await supabaseAdmin
