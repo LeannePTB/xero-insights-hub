@@ -727,6 +727,7 @@ describe("audit trigger — every Path C table records its changes (backlog 29)"
     await db.exec("begin");
     try {
       await db.exec("set local role postgres");
+      await db.query(`select set_config('request.jwt.claims', $1, true)`, ["{}"]);
       await db.exec(`update public.firms set name = name || ' (audit probe)'`);
       const r = await db.query<{ n: number }>(
         `select count(*)::int as n from public.audit_log
