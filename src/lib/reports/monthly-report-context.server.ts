@@ -119,6 +119,11 @@ export async function saveDraftReport(opts: {
   payloadVersion: number;
   title: string;
 }): Promise<{ id: string; version: number; supersededDraft: boolean }> {
+  // Saving a draft is a WRITE. Security rule 5: a support grant is read-only,
+  // so this needs an active membership (public.user_can_write_client).
+  const { assertClientWriteAccess } = await import("@/lib/support-access.server");
+  await assertClientWriteAccess(opts.userId, opts.ctx.clientId);
+
   const { MONTHLY_REPORT_KEY } = await import("./monthly-report");
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

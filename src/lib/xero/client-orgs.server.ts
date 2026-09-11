@@ -57,25 +57,11 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
 }
 
 export async function userCanManageClient(userId: string, clientId: string): Promise<boolean> {
-  const { data: client } = await supabaseAdmin
-    .from("clients")
-    .select("owner_user_id, firm_id")
-    .eq("id", clientId)
-    .maybeSingle();
-  if (!client) return false;
-  // Invariant 3: being super_admin grants no access on its own. Ownership or an
-  // active membership of the client's organisation decides, and nothing else.
-  if (client.owner_user_id === userId) return true;
-  if (!client.firm_id) return false;
-  const { data: membership } = await supabaseAdmin
-    .from("firm_members")
-    .select("id")
-    .eq("firm_id", client.firm_id)
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .limit(1)
-    .maybeSingle();
-  return Boolean(membership);
+  // One implementation of the rule, and it lives in the database
+  // (public.user_can_write_client): client owner or an active member of the
+  // client's organisation. A support grant is read-only and never qualifies.
+  const { canWriteClient } = await import("@/lib/support-access.server");
+  return canWriteClient(userId, clientId);
 }
 
 
