@@ -293,7 +293,13 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertSuperAdminDb(context.supabase);
     const email = validateEmail(data.email);
-    if (data.role !== "owner" && data.role !== "staff") throw new Error("Invalid role.");
+    if (data.role !== "staff") {
+      // Spec §4: ownership of an existing organisation only ever moves through
+      // public.transfer_organisation_ownership, never by accepting an invite.
+      throw new Error(
+        "An invitation to an existing organisation can only be for staff. To change who owns it, use Hand over ownership on the organisation settings page.",
+      );
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const token = randomBytes(32).toString("hex");
