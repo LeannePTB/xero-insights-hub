@@ -349,10 +349,7 @@ describe("7. reads of client financial data are audited", () => {
  */
 describe("8. the standing viewer grant is never a write path", () => {
   const STANDING = /has_standing_client_access|has_client_read_access/;
-  const catalogue = fs.readFileSync(
-    path.join(process.cwd(), "tests/fixtures/rls-schema.sql"),
-    "utf8",
-  );
+  const catalogue = readFileSync(join(process.cwd(), "tests/fixtures/rls-schema.sql"), "utf8");
   const policyLines = catalogue
     .split("\n")
     .filter((l) => l.trimStart().startsWith("create policy "));
