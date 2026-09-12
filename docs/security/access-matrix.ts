@@ -753,7 +753,7 @@ export const MATRIX: MatrixRow[] = [
 
   // Phase 5 step 5 — a Xero connection always belongs to an organisation.
   {
-    role: "service_role",
+    role: "org_owner",
     resource: "public.xero_connections (firm_id null)",
     operation: "insert",
     expect: "deny",
@@ -762,7 +762,7 @@ export const MATRIX: MatrixRow[] = [
     note: "Phase 5 step 5: the connect callback refuses a tenant it cannot place instead of storing it unassigned; the database refuses it as well.",
   },
   {
-    role: "service_role",
+    role: "org_owner",
     resource: "public.client_xero_orgs (client in another organisation)",
     operation: "insert",
     expect: "deny",
