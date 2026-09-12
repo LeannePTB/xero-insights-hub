@@ -26,6 +26,7 @@ const items = [
   { title: "Security & Compliance", url: "/admin/security", icon: Shield },
   { title: "Tier widgets", url: "/settings/tiers", icon: SlidersHorizontal },
   { title: "Advisors", url: "/settings/advisors", icon: Users },
+  { title: "Practice team", url: "/settings/practice-team", icon: Users },
 ];
 
 
