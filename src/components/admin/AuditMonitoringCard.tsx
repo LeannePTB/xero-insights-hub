@@ -64,7 +64,7 @@ export function AuditMonitoringCard() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `audit-log-${days}d-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `audit-log-${category}-${days}d-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`Exported ${res.rows} audit row(s).`);
