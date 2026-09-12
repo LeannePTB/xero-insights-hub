@@ -1,6 +1,16 @@
-# Traction Advisory — Access Control Spec (full reference)
+# Traction Advisory — Access Control Spec (the detail)
 
-> Reference copy of the Project Knowledge as at 11 September 2026. Project Knowledge ("Security Rules and Change Gate") is binding and takes precedence where the two differ. Keep this file for the detailed rules below.
+> **What this file is for.** The DETAIL behind the rules: how each rule is implemented, and the
+> facts that have caused incidents before. Updated 12 September 2026 (Phase 7 batch 3) to match the
+> system as built through Phases 1–7.
+>
+> **Which document wins.**
+> - **Project Knowledge** ("Security Rules and Change Gate") — the BINDING rules the agent follows. It wins over everything here.
+> - **This file** — the detail. Where it and Project Knowledge differ, Project Knowledge wins.
+> - **`access-matrix.ts` / generated `access-matrix.md`** — the EVIDENCE. Where this file and the matrix disagree, the matrix is right: it is proved against the live catalogue by `bun run security:check`, and prose is not.
+> - **`access-control.md`** — the assessor-facing summary. Never authoritative.
+>
+> Supporting generated/verified registers: `definer-register.md` (every SECURITY DEFINER function, its guard and its callers), `admin-client-register.md` (every `supabaseAdmin` use and its reason), `grant-dump-phase7.md` (before/after grants), `docs/security-backlog.md` (open work and settled decisions).
 
 Xero-connected multi-tenant advisor dashboard subject to the **Xero API Consumer Security Standard**. Access control is the highest-risk area of this codebase.
 
@@ -9,14 +19,27 @@ If a chat request conflicts with this document, STOP and reply:
 
 ## 0. Invariants — must hold after EVERY change
 
-1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies.
-2. No policy on a data table may read `USING (true)`.
-3. **Being `super_admin` grants ZERO access to organisation or client data on its own.**
+1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 53 `public` tables.
+2. No policy on a data table may read `USING (true)`. New permissive policies are per command, never `FOR ALL`; a RESTRICTIVE `FOR ALL` guard that only narrows access (the aal2 guard) is allowed.
+3. **Being `super_admin` grants ZERO access to organisation or client data on its own** (see §4a for the bounds on what it *can* do).
 4. A `firm_id` / `client_id` / `tenant_id` from the caller is a FILTER, never a GRANT.
 5. Xero OAuth tokens never leave the server. `service_role` key never reaches the browser.
 6. RLS is never disabled to fix a bug. Never cache roles or grants in the JWT or localStorage.
-7. **Each rule has ONE implementation, in the database.** Server code calls it, never reimplements it — including plan limits and ownership.
+7. **Each rule has ONE implementation, in the database.** Server code calls it, never reimplements it — including plan limits and ownership. The build enforces this (§6a).
 8. Fail closed. Showing no data is a bug; showing the wrong organisation's data is an incident.
+9. **MFA is enforced on the server**, not by the browser (§0a). The browser gate is UX only.
+10. **Support grants are READ-ONLY everywhere** (§7).
+11. **Every read of a client's financial figures is audited** (§9a).
+12. `authenticated` holds only the privileges the policies on that table admit (§14).
+
+## 0a. MFA (aal2) is enforced on the server — three layers
+
+`MfaGate` and the `_authenticated` layout are UX only; nothing depends on them.
+
+- **Server functions.** `requireAal2` (`src/lib/auth/require-aal2.ts`) wraps the generated `requireSupabaseAuth` and rejects any session whose `aal` claim is not `aal2`. It guards every authenticated server function except two owner-approved logging exceptions, `logAuthEvent` and `logLogin`, which record the sign-in and MFA lifecycle itself before a second factor can exist: both are write-only, derive actor and email from the verified token, accept no caller free text (six-value allow-list; `logLogin` takes no input) and are rate limited via `public.check_rate_limit`. Seven functions are deliberately unauthenticated (Xero sign-in start and callback, the public report link, the webhook and cron routes) and each verifies its own credential.
+- **Database.** `app_private.is_aal2()` reads the `aal` claim from the request JWT. A RESTRICTIVE `FOR ALL TO authenticated` policy `mfa_aal2_required` sits on **51 of the 53 `public` tables** (verified live), with two owner-approved exclusions holding no organisation, client or personal data: `plan_levels` and `tier_settings`. Requests with no JWT claims (cron, migrations) and `service_role` requests are system contexts, which bypass RLS anyway.
+- **Callable functions.** Every SECURITY DEFINER function callable by a signed-in user asserts aal2 in its body via `app_private.assert_aal2()`, with one approved exception, `public.xero_required_scopes()`, which returns a fixed constant and reads no table. `public.xero_missing_scopes` returns `null` unless `app_private.is_aal2()`. All 127 definer functions set `search_path`. See `definer-register.md`, regenerated by `bun run security:check`.
+- `app_private` is not an exposed PostgREST schema: a request with `Accept-Profile: app_private` returns `PGRST106`.
 
 ## 1. Naming and language
 
