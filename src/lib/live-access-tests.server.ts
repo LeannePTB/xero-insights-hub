@@ -742,28 +742,20 @@ export async function runLiveAccessTests(ranBy: string | null): Promise<RunSumma
   const inconclusive = probes.filter((p) => p.observed === "inconclusive").length;
   const failed = probes.length - passed;
 
-  await (supabaseAdmin.rpc as any)("record_access_test_run", {
-    _layer: "live",
-    _passed: passed,
-    _failed: failed,
-    _known_failures: [],
-    _fingerprint_match: true,
-    _details: probes,
-  }).then(
-    () => undefined,
-    async () => {
-      // Older signature / different argument names: fall back to a direct insert.
-      await supabaseAdmin.from("security_test_runs" as any).insert({
-        layer: "live",
-        ran_by: ranBy,
-        passed,
-        failed,
-        known_failures: [],
-        fingerprint_match: true,
-        details: probes,
-      });
-    },
-  );
+  // Recorded with the service role. public.record_access_test_run() is aal2 +
+  // super-admin guarded, which is right for a browser session but cannot be
+  // satisfied by a system context, so the row is written directly here. The
+  // table takes no writes from any browser session either way.
+  const { error: recErr } = await supabaseAdmin.from("security_test_runs" as any).insert({
+    layer: "live",
+    ran_by: ranBy,
+    passed,
+    failed,
+    known_failures: [],
+    fingerprint_match: true,
+    details: probes,
+  });
+  if (recErr) console.error("[live-access-tests] could not record the run:", recErr.message);
 
   return { runId, passed, failed, inconclusive, probes };
 }
