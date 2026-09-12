@@ -74,7 +74,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   const fetchClients = useServerFn(listClients);
   const inviteMember = useServerFn(adminInviteFirmMember);
   const cancelInvite = useServerFn(revokeFirmMemberInvite);
-  const inviteViewer = useServerFn(inviteClientViewer);
+  const fetchStanding = useServerFn(listStandingViewers);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const canInvite = ctxQ.data?.isSuperAdmin ?? false;
