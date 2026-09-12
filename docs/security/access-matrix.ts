@@ -751,6 +751,35 @@ export const MATRIX: MatrixRow[] = [
     ["live"],
   ),
 
+  // Phase 5 step 5 — a Xero connection always belongs to an organisation.
+  {
+    role: "service_role",
+    resource: "public.xero_connections (firm_id null)",
+    operation: "insert",
+    expect: "deny",
+    rule: "PK 4 — a Xero connection cannot exist without an organisation (firm_id NOT NULL)",
+    layers: ["live"],
+    note: "Phase 5 step 5: the connect callback refuses a tenant it cannot place instead of storing it unassigned; the database refuses it as well.",
+  },
+  {
+    role: "service_role",
+    resource: "public.client_xero_orgs (client in another organisation)",
+    operation: "insert",
+    expect: "deny",
+    rule: "PK 4 — a Xero file must belong to the same organisation as the client it is linked to",
+    layers: ["live"],
+    note: "Phase 5 step 5: deferred constraint triggers on client_xero_orgs and xero_connections.firm_id.",
+  },
+  {
+    role: "org_owner",
+    resource: "public.xero_connections (tenant over the plan's Xero file limit)",
+    operation: "insert",
+    expect: "deny",
+    rule: "Plan limit trigger PLAN_LIMIT_XERO_ORGS — refused and reported, never stored unassigned",
+    layers: ["live"],
+    note: "Phase 5 step 5: the callback presents the database's own plan-limit wording and names the refused Xero file.",
+  },
+
 
 
   // --------------------------------------------------------- server functions
