@@ -527,11 +527,18 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   }
   // ---- member removal -------------------------------------------------
   if (r === "remove a staff member of the caller's own organisation") {
-    const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.staffA}')`);
-    if (!p.ok) { console.log("REMOVE ERR:", p.error); return "deny"; }
+    // A THIRD person, so this row never overlaps the self-leave row.
+    await seedThenActAs(
+      row.role,
+      `insert into public.firm_members (id, firm_id, user_id, role, status)
+       values ('99990099-1111-4111-8111-111111111111', '${ORG_A}', '${U.grantTarget}', 'staff', 'active')`,
+    );
+    const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.grantTarget}')`);
+    if (!p.ok) return "deny";
+    await db.exec("set local role postgres");
     const left = await db.query<{ n: number }>(
       `select (select count(*) from public.firm_members
-                where firm_id = '${ORG_A}' and user_id = '${U.staffA}' and status = 'active')::int as n`,
+                where firm_id = '${ORG_A}' and user_id = '${U.grantTarget}' and status = 'active')::int as n`,
     );
     return Number(left.rows[0]?.n) === 0 ? "allow" : "deny";
   }
