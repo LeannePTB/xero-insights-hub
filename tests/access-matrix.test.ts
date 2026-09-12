@@ -525,6 +525,61 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return p.ok ? "allow" : "deny";
   }
+  // ---- member removal -------------------------------------------------
+  if (r === "remove a staff member of the caller's own organisation") {
+    const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.staffA}')`);
+    if (!p.ok) return "deny";
+    const left = await db.query<{ n: number }>(
+      `select (select count(*) from public.firm_members
+                where firm_id = '${ORG_A}' and user_id = '${U.staffA}' and status = 'active')::int as n`,
+    );
+    return Number(left.rows[0]?.n) === 0 ? "allow" : "deny";
+  }
+  if (r === "remove a Traction Advisory (practice-team) staff member") {
+    await seedThenActAs(row.role, `insert into public.practice_team (user_id) values ('${U.staffA}')`);
+    const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.staffA}')`);
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "an owner removes themselves") {
+    const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.ownerA}')`);
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "removing the organisation's last remaining member") {
+    // Leave staffA as the only active member, then have them try to leave.
+    await seedThenActAs(
+      row.role,
+      `update public.firm_members set status = 'removed'
+         where firm_id = '${ORG_A}' and user_id <> '${U.staffA}'`,
+    );
+    const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.staffA}')`);
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "leave the organisation (remove yourself)") {
+    const p = await probe(`select public.remove_firm_member('${ORG_A}', auth.uid())`);
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "removal leaves client viewer and standing grants untouched") {
+    const before = await db.query<{ ca: number; fva: number; conns: number }>(
+      `select (select count(*) from public.client_access)::int as ca,
+              (select count(*) from public.firm_viewer_access)::int as fva,
+              (select count(*) from public.xero_connections)::int as conns`,
+    );
+    const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.staffA}')`);
+    if (!p.ok) return "deny";
+    await db.exec("set local role postgres");
+    const after = await db.query<{ ca: number; fva: number; conns: number }>(
+      `select (select count(*) from public.client_access)::int as ca,
+              (select count(*) from public.firm_viewer_access)::int as fva,
+              (select count(*) from public.xero_connections)::int as conns`,
+    );
+    const b = before.rows[0]!;
+    const a = after.rows[0]!;
+    return a.ca === b.ca && a.fva === b.fva && a.conns === b.conns ? "allow" : "deny";
+  }
+  if (r === "the organisation's clients after removal") {
+    const p = await probe(`select 1 from public.clients where id = '${CLIENT_A}'`);
+    return p.ok && p.rows > 0 ? "allow" : "deny";
+  }
   if (r === "practice_team") {
     if (row.operation === "read") {
       const p = await probe(`select 1 from public.practice_team where user_id = '${U.ownerA}'`);
