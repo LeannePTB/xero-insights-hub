@@ -360,6 +360,7 @@ function AdvisorSettings() {
               {advisors.map((a) => {
                 const isPending = pendingIds.has(a.user_id);
                 const isPrimary = a.user_id === PRIMARY_ADVISOR_USER_ID;
+                const onPracticeTeam = practiceIds.has(a.user_id);
                 return (
                   <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
                     <div className="flex items-center gap-2 min-w-0">
