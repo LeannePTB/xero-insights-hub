@@ -178,7 +178,7 @@ const MEMBER_MANAGED_TABLES = CLIENT_DATA_TABLES.filter(
   (t) =>
     !(SERVER_WRITTEN_TABLES as readonly string[]).includes(t) &&
     !(VIEWER_SCOPED_TABLES as readonly string[]).includes(t) &&
-    !["clients", "client_subscriptions", "report_cache"].includes(t),
+    !["clients", "client_subscriptions", "report_cache", "client_access"].includes(t),
 );
 
 export const MATRIX: MatrixRow[] = [
@@ -294,6 +294,12 @@ export const MATRIX: MatrixRow[] = [
     "pglite",
     "live",
   ]),
+  // Viewer access rows are managed by the organisation OWNER (or an active
+  // practice-team member of that organisation) only: staff may read the viewer
+  // list but never change it — app_private.can_manage_viewers_for_client.
+  ...rows(["org_owner"], ["client_access"], WRITES, "allow", "PK 2 client viewer; owner manages viewers", ["pglite", "live"]),
+  ...rows(["org_staff"], ["client_access"], WRITES, "deny", "PK 2 client viewer; staff may read the list only", ["pglite", "live"]),
+
   // Only an organisation OWNER manages the client list itself.
   ...rows(["org_owner"], ["clients"], WRITES, "allow", "Spec §6 (is_firm_owner)", ["pglite", "live"]),
   ...rows(["org_staff"], ["clients"], WRITES, "deny", "Spec §6 (is_firm_owner only)", ["pglite", "live"]),
