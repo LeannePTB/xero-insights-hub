@@ -1784,12 +1784,24 @@ grant SELECT (tenant_name) on table public.xero_connections to authenticated;
 grant SELECT (tenant_type) on table public.xero_connections to authenticated;
 grant SELECT (updated_at) on table public.xero_connections to authenticated;
 grant SELECT (user_id) on table public.xero_connections to authenticated;
-create policy "firm owners manage invites" on public.access_invites as permissive for all to authenticated using (app_private.is_firm_owner(auth.uid(), firm_id)) with check (app_private.is_firm_owner(auth.uid(), firm_id));
+create policy "firm owners manage invites (delete)" on public.access_invites as permissive for delete to authenticated using (app_private.is_firm_owner(auth.uid(), firm_id));
+create policy "firm owners manage invites (insert)" on public.access_invites as permissive for insert to authenticated with check (app_private.is_firm_owner(auth.uid(), firm_id));
+create policy "firm owners manage invites (select)" on public.access_invites as permissive for select to authenticated using (app_private.is_firm_owner(auth.uid(), firm_id));
+create policy "firm owners manage invites (update)" on public.access_invites as permissive for update to authenticated using (app_private.is_firm_owner(auth.uid(), firm_id)) with check (app_private.is_firm_owner(auth.uid(), firm_id));
 create policy mfa_aal2_required on public.access_invites as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "super_admin reads invites" on public.access_invites as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
 create policy mfa_aal2_required on public.audit_finding_snoozes as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "snoozes read for firm staff" on public.audit_finding_snoozes as permissive for select to authenticated using (app_private.user_can_access_tenant(auth.uid(), tenant_id));
-create policy "snoozes write for firm staff" on public.audit_finding_snoozes as permissive for all to authenticated using ((EXISTS ( SELECT 1
+create policy "snoozes write for firm staff (delete)" on public.audit_finding_snoozes as permissive for delete to authenticated using ((EXISTS ( SELECT 1
+   FROM app_private.firm_ids_for_tenant(audit_finding_snoozes.tenant_id) f(firm_id)
+  WHERE app_private.has_firm_access(auth.uid(), f.firm_id))));
+create policy "snoozes write for firm staff (insert)" on public.audit_finding_snoozes as permissive for insert to authenticated with check ((EXISTS ( SELECT 1
+   FROM app_private.firm_ids_for_tenant(audit_finding_snoozes.tenant_id) f(firm_id)
+  WHERE app_private.has_firm_access(auth.uid(), f.firm_id))));
+create policy "snoozes write for firm staff (select)" on public.audit_finding_snoozes as permissive for select to authenticated using ((EXISTS ( SELECT 1
+   FROM app_private.firm_ids_for_tenant(audit_finding_snoozes.tenant_id) f(firm_id)
+  WHERE app_private.has_firm_access(auth.uid(), f.firm_id))));
+create policy "snoozes write for firm staff (update)" on public.audit_finding_snoozes as permissive for update to authenticated using ((EXISTS ( SELECT 1
    FROM app_private.firm_ids_for_tenant(audit_finding_snoozes.tenant_id) f(firm_id)
   WHERE app_private.has_firm_access(auth.uid(), f.firm_id)))) with check ((EXISTS ( SELECT 1
    FROM app_private.firm_ids_for_tenant(audit_finding_snoozes.tenant_id) f(firm_id)
@@ -1848,7 +1860,16 @@ create policy mfa_aal2_required on public.client_notes as restrictive for all to
 create policy "client viewers read their finalised reports" on public.client_reports as permissive for select to authenticated using ((app_private.has_client_access(auth.uid(), client_id) AND (status = ANY (ARRAY['final'::text, 'sent'::text]))));
 create policy mfa_aal2_required on public.client_reports as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "staff read client reports" on public.client_reports as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
-create policy "Manage statutory accounts by firm" on public.client_statutory_accounts as permissive for all to authenticated using ((EXISTS ( SELECT 1
+create policy "Manage statutory accounts by firm (delete)" on public.client_statutory_accounts as permissive for delete to authenticated using ((EXISTS ( SELECT 1
+   FROM clients c
+  WHERE ((c.id = client_statutory_accounts.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
+create policy "Manage statutory accounts by firm (insert)" on public.client_statutory_accounts as permissive for insert to authenticated with check ((EXISTS ( SELECT 1
+   FROM clients c
+  WHERE ((c.id = client_statutory_accounts.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
+create policy "Manage statutory accounts by firm (select)" on public.client_statutory_accounts as permissive for select to authenticated using ((EXISTS ( SELECT 1
+   FROM clients c
+  WHERE ((c.id = client_statutory_accounts.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
+create policy "Manage statutory accounts by firm (update)" on public.client_statutory_accounts as permissive for update to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_statutory_accounts.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id))))))) with check ((EXISTS ( SELECT 1
    FROM clients c
@@ -1889,11 +1910,23 @@ create policy "manage client xero orgs by firm (update)" on public.client_xero_o
 create policy mfa_aal2_required on public.client_xero_orgs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "viewers read assigned client xero orgs" on public.client_xero_orgs as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
 create policy "firm members read firm clients" on public.clients as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)));
-create policy "firm owners manage firm clients" on public.clients as permissive for all to authenticated using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id))) with check (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
+create policy "firm owners manage firm clients (delete)" on public.clients as permissive for delete to authenticated using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
+create policy "firm owners manage firm clients (insert)" on public.clients as permissive for insert to authenticated with check (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
+create policy "firm owners manage firm clients (select)" on public.clients as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
+create policy "firm owners manage firm clients (update)" on public.clients as permissive for update to authenticated using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id))) with check (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.clients as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "support grant reads firm clients" on public.clients as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), firm_id)));
 create policy "viewers read assigned clients" on public.clients as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), id));
-create policy "Firm people can manage consolidation group members" on public.consolidation_group_members as permissive for all to authenticated using ((EXISTS ( SELECT 1
+create policy "Firm people can manage consolidation group members (delete)" on public.consolidation_group_members as permissive for delete to authenticated using ((EXISTS ( SELECT 1
+   FROM consolidation_groups g
+  WHERE ((g.id = consolidation_group_members.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id)))));
+create policy "Firm people can manage consolidation group members (insert)" on public.consolidation_group_members as permissive for insert to authenticated with check ((EXISTS ( SELECT 1
+   FROM consolidation_groups g
+  WHERE ((g.id = consolidation_group_members.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id)))));
+create policy "Firm people can manage consolidation group members (select)" on public.consolidation_group_members as permissive for select to authenticated using ((EXISTS ( SELECT 1
+   FROM consolidation_groups g
+  WHERE ((g.id = consolidation_group_members.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id)))));
+create policy "Firm people can manage consolidation group members (update)" on public.consolidation_group_members as permissive for update to authenticated using ((EXISTS ( SELECT 1
    FROM consolidation_groups g
   WHERE ((g.id = consolidation_group_members.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id))))) with check ((EXISTS ( SELECT 1
    FROM consolidation_groups g
@@ -1902,25 +1935,40 @@ create policy "Firm people can view consolidation group members" on public.conso
    FROM consolidation_groups g
   WHERE ((g.id = consolidation_group_members.group_id) AND (app_private.has_firm_access(auth.uid(), g.firm_id) OR app_private.platform_staff_can_access_firm(auth.uid(), g.firm_id))))));
 create policy mfa_aal2_required on public.consolidation_group_members as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "Firm people can manage consolidation groups" on public.consolidation_groups as permissive for all to authenticated using (app_private.has_firm_access(auth.uid(), firm_id)) with check (app_private.has_firm_access(auth.uid(), firm_id));
+create policy "Firm people can manage consolidation groups (delete)" on public.consolidation_groups as permissive for delete to authenticated using (app_private.has_firm_access(auth.uid(), firm_id));
+create policy "Firm people can manage consolidation groups (insert)" on public.consolidation_groups as permissive for insert to authenticated with check (app_private.has_firm_access(auth.uid(), firm_id));
+create policy "Firm people can manage consolidation groups (select)" on public.consolidation_groups as permissive for select to authenticated using (app_private.has_firm_access(auth.uid(), firm_id));
+create policy "Firm people can manage consolidation groups (update)" on public.consolidation_groups as permissive for update to authenticated using (app_private.has_firm_access(auth.uid(), firm_id)) with check (app_private.has_firm_access(auth.uid(), firm_id));
 create policy "Firm people can view consolidation groups" on public.consolidation_groups as permissive for select to authenticated using ((app_private.has_firm_access(auth.uid(), firm_id) OR app_private.platform_staff_can_access_firm(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.consolidation_groups as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "Users manage own card order" on public.dashboard_card_order as permissive for all to authenticated using ((user_id = auth.uid())) with check ((user_id = auth.uid()));
+create policy "Users manage own card order (delete)" on public.dashboard_card_order as permissive for delete to authenticated using ((user_id = auth.uid()));
+create policy "Users manage own card order (insert)" on public.dashboard_card_order as permissive for insert to authenticated with check ((user_id = auth.uid()));
+create policy "Users manage own card order (select)" on public.dashboard_card_order as permissive for select to authenticated using ((user_id = auth.uid()));
+create policy "Users manage own card order (update)" on public.dashboard_card_order as permissive for update to authenticated using ((user_id = auth.uid())) with check ((user_id = auth.uid()));
 create policy mfa_aal2_required on public.dashboard_card_order as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "Users manage own dashboard configs" on public.dashboard_configs as permissive for all to authenticated using ((auth.uid() = user_id)) with check ((auth.uid() = user_id));
+create policy "Users manage own dashboard configs (delete)" on public.dashboard_configs as permissive for delete to authenticated using ((auth.uid() = user_id));
+create policy "Users manage own dashboard configs (insert)" on public.dashboard_configs as permissive for insert to authenticated with check ((auth.uid() = user_id));
+create policy "Users manage own dashboard configs (select)" on public.dashboard_configs as permissive for select to authenticated using ((auth.uid() = user_id));
+create policy "Users manage own dashboard configs (update)" on public.dashboard_configs as permissive for update to authenticated using ((auth.uid() = user_id)) with check ((auth.uid() = user_id));
 create policy mfa_aal2_required on public.dashboard_configs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Service role can insert send log" on public.email_send_log as permissive for insert to service_role with check ((auth.role() = 'service_role'::text));
 create policy "Service role can read send log" on public.email_send_log as permissive for select to service_role using ((auth.role() = 'service_role'::text));
 create policy "Service role can update send log" on public.email_send_log as permissive for update to service_role using ((auth.role() = 'service_role'::text)) with check ((auth.role() = 'service_role'::text));
 create policy mfa_aal2_required on public.email_send_log as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "Service role can manage send state" on public.email_send_state as permissive for all to service_role using ((auth.role() = 'service_role'::text)) with check ((auth.role() = 'service_role'::text));
+create policy "Service role can manage send state (delete)" on public.email_send_state as permissive for delete to service_role using ((auth.role() = 'service_role'::text));
+create policy "Service role can manage send state (insert)" on public.email_send_state as permissive for insert to service_role with check ((auth.role() = 'service_role'::text));
+create policy "Service role can manage send state (select)" on public.email_send_state as permissive for select to service_role using ((auth.role() = 'service_role'::text));
+create policy "Service role can manage send state (update)" on public.email_send_state as permissive for update to service_role using ((auth.role() = 'service_role'::text)) with check ((auth.role() = 'service_role'::text));
 create policy mfa_aal2_required on public.email_send_state as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Service role can insert tokens" on public.email_unsubscribe_tokens as permissive for insert to service_role with check ((auth.role() = 'service_role'::text));
 create policy "Service role can mark tokens as used" on public.email_unsubscribe_tokens as permissive for update to service_role using ((auth.role() = 'service_role'::text)) with check ((auth.role() = 'service_role'::text));
 create policy "Service role can read tokens" on public.email_unsubscribe_tokens as permissive for select to service_role using ((auth.role() = 'service_role'::text));
 create policy mfa_aal2_required on public.email_unsubscribe_tokens as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "firm members read own membership rows" on public.firm_members as permissive for select to authenticated using (((user_id = auth.uid()) OR app_private.has_firm_access(auth.uid(), firm_id)));
-create policy "firm owners manage members" on public.firm_members as permissive for all to authenticated using (app_private.is_firm_owner(auth.uid(), firm_id)) with check (app_private.is_firm_owner(auth.uid(), firm_id));
+create policy "firm owners manage members (delete)" on public.firm_members as permissive for delete to authenticated using (app_private.is_firm_owner(auth.uid(), firm_id));
+create policy "firm owners manage members (insert)" on public.firm_members as permissive for insert to authenticated with check (app_private.is_firm_owner(auth.uid(), firm_id));
+create policy "firm owners manage members (select)" on public.firm_members as permissive for select to authenticated using (app_private.is_firm_owner(auth.uid(), firm_id));
+create policy "firm owners manage members (update)" on public.firm_members as permissive for update to authenticated using (app_private.is_firm_owner(auth.uid(), firm_id)) with check (app_private.is_firm_owner(auth.uid(), firm_id));
 create policy mfa_aal2_required on public.firm_members as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "super_admin reads memberships" on public.firm_members as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
 create policy "Firm owners approve support access" on public.firm_support_access as permissive for insert to authenticated with check (app_private.is_org_owner(auth.uid(), firm_id));
@@ -1948,7 +1996,16 @@ create policy "firm people manage loan accounts (update)" on public.loan_consoli
   WHERE ((c.id = loan_consolidation_accounts.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy mfa_aal2_required on public.loan_consolidation_accounts as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "viewers read loan accounts for their client" on public.loan_consolidation_accounts as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
-create policy "Firm people can manage loan snapshots" on public.loan_consolidation_snapshots as permissive for all to authenticated using ((EXISTS ( SELECT 1
+create policy "Firm people can manage loan snapshots (delete)" on public.loan_consolidation_snapshots as permissive for delete to authenticated using ((EXISTS ( SELECT 1
+   FROM consolidation_groups g
+  WHERE ((g.id = loan_consolidation_snapshots.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id)))));
+create policy "Firm people can manage loan snapshots (insert)" on public.loan_consolidation_snapshots as permissive for insert to authenticated with check ((EXISTS ( SELECT 1
+   FROM consolidation_groups g
+  WHERE ((g.id = loan_consolidation_snapshots.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id)))));
+create policy "Firm people can manage loan snapshots (select)" on public.loan_consolidation_snapshots as permissive for select to authenticated using ((EXISTS ( SELECT 1
+   FROM consolidation_groups g
+  WHERE ((g.id = loan_consolidation_snapshots.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id)))));
+create policy "Firm people can manage loan snapshots (update)" on public.loan_consolidation_snapshots as permissive for update to authenticated using ((EXISTS ( SELECT 1
    FROM consolidation_groups g
   WHERE ((g.id = loan_consolidation_snapshots.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id))))) with check ((EXISTS ( SELECT 1
    FROM consolidation_groups g
@@ -1961,21 +2018,36 @@ create policy "Advisors read same-firm login events" on public.login_events as p
 create policy "Users read own login events" on public.login_events as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy mfa_aal2_required on public.login_events as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy plan_levels_read on public.plan_levels as permissive for select to authenticated using (true);
-create policy plan_levels_write on public.plan_levels as permissive for all to authenticated using (app_private.me_is_super_admin()) with check (app_private.me_is_super_admin());
+create policy "plan_levels_write (delete)" on public.plan_levels as permissive for delete to authenticated using (app_private.me_is_super_admin());
+create policy "plan_levels_write (insert)" on public.plan_levels as permissive for insert to authenticated with check (app_private.me_is_super_admin());
+create policy "plan_levels_write (select)" on public.plan_levels as permissive for select to authenticated using (app_private.me_is_super_admin());
+create policy "plan_levels_write (update)" on public.plan_levels as permissive for update to authenticated using (app_private.me_is_super_admin()) with check (app_private.me_is_super_admin());
 create policy "Users update own display name" on public.profiles as permissive for update to authenticated using ((auth.uid() = id)) with check ((auth.uid() = id));
 create policy "Users view own profile" on public.profiles as permissive for select to authenticated using ((auth.uid() = id));
 create policy mfa_aal2_required on public.profiles as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.rate_limit_buckets as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "rate_limit_buckets service only" on public.rate_limit_buckets as permissive for all to service_role using (true) with check (true);
+create policy "rate_limit_buckets service only (delete)" on public.rate_limit_buckets as permissive for delete to service_role using (true);
+create policy "rate_limit_buckets service only (insert)" on public.rate_limit_buckets as permissive for insert to service_role with check (true);
+create policy "rate_limit_buckets service only (select)" on public.rate_limit_buckets as permissive for select to service_role using (true);
+create policy "rate_limit_buckets service only (update)" on public.rate_limit_buckets as permissive for update to service_role using (true) with check (true);
 create policy mfa_aal2_required on public.reconciliation_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "read reconciliation snapshots for accessible clients" on public.reconciliation_snapshots as permissive for select to authenticated using ((app_private.user_can_manage_client(auth.uid(), client_id) OR app_private.has_client_access(auth.uid(), client_id)));
-create policy "Users manage own report cache" on public.report_cache as permissive for all to authenticated using ((auth.uid() = user_id)) with check ((auth.uid() = user_id));
+create policy "Users manage own report cache (delete)" on public.report_cache as permissive for delete to authenticated using ((auth.uid() = user_id));
+create policy "Users manage own report cache (insert)" on public.report_cache as permissive for insert to authenticated with check ((auth.uid() = user_id));
+create policy "Users manage own report cache (select)" on public.report_cache as permissive for select to authenticated using ((auth.uid() = user_id));
+create policy "Users manage own report cache (update)" on public.report_cache as permissive for update to authenticated using ((auth.uid() = user_id)) with check ((auth.uid() = user_id));
 create policy mfa_aal2_required on public.report_cache as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.report_recipients as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "staff read report recipients" on public.report_recipients as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
-create policy "Client members manage scenario exclusions" on public.scenario_exclusions as permissive for all to authenticated using (app_private.has_client_access(auth.uid(), client_id)) with check (app_private.has_client_access(auth.uid(), client_id));
+create policy "Client members manage scenario exclusions (delete)" on public.scenario_exclusions as permissive for delete to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "Client members manage scenario exclusions (insert)" on public.scenario_exclusions as permissive for insert to authenticated with check (app_private.has_client_access(auth.uid(), client_id));
+create policy "Client members manage scenario exclusions (select)" on public.scenario_exclusions as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "Client members manage scenario exclusions (update)" on public.scenario_exclusions as permissive for update to authenticated using (app_private.has_client_access(auth.uid(), client_id)) with check (app_private.has_client_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.scenario_exclusions as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "deny all to app roles" on public.security_contact_details as permissive for all to anon, authenticated using (false) with check (false);
+create policy "deny all to app roles (delete)" on public.security_contact_details as permissive for delete to anon, authenticated using (false);
+create policy "deny all to app roles (insert)" on public.security_contact_details as permissive for insert to anon, authenticated with check (false);
+create policy "deny all to app roles (select)" on public.security_contact_details as permissive for select to anon, authenticated using (false);
+create policy "deny all to app roles (update)" on public.security_contact_details as permissive for update to anon, authenticated using (false) with check (false);
 create policy mfa_aal2_required on public.security_contact_details as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Super admins read security settings" on public.security_settings as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy mfa_aal2_required on public.security_settings as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -1991,7 +2063,10 @@ create policy "Service role can insert suppressed emails" on public.suppressed_e
 create policy "Service role can read suppressed emails" on public.suppressed_emails as permissive for select to service_role using ((auth.role() = 'service_role'::text));
 create policy mfa_aal2_required on public.suppressed_emails as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Authenticated can read tier settings" on public.tier_settings as permissive for select to authenticated using (true);
-create policy "Super admins can manage tier settings" on public.tier_settings as permissive for all to authenticated using (app_private.has_role(auth.uid(), 'super_admin'::app_role)) with check (app_private.has_role(auth.uid(), 'super_admin'::app_role));
+create policy "Super admins can manage tier settings (delete)" on public.tier_settings as permissive for delete to authenticated using (app_private.has_role(auth.uid(), 'super_admin'::app_role));
+create policy "Super admins can manage tier settings (insert)" on public.tier_settings as permissive for insert to authenticated with check (app_private.has_role(auth.uid(), 'super_admin'::app_role));
+create policy "Super admins can manage tier settings (select)" on public.tier_settings as permissive for select to authenticated using (app_private.has_role(auth.uid(), 'super_admin'::app_role));
+create policy "Super admins can manage tier settings (update)" on public.tier_settings as permissive for update to authenticated using (app_private.has_role(auth.uid(), 'super_admin'::app_role)) with check (app_private.has_role(auth.uid(), 'super_admin'::app_role));
 create policy "Viewers read accessible tier widget config" on public.tier_widget_config as permissive for select to authenticated using (((auth.uid() IS NOT NULL) AND ((client_id IS NULL) OR app_private.has_client_access(auth.uid(), client_id))));
 create policy "manage tier widget config by firm or super admin (delete)" on public.tier_widget_config as permissive for delete to authenticated using ((((client_id IS NULL) AND app_private.me_is_super_admin()) OR ((client_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM clients c
@@ -2040,19 +2115,28 @@ create policy "users insert own presence" on public.user_presence as permissive 
 create policy "users read own presence" on public.user_presence as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy "users update own presence" on public.user_presence as permissive for update to authenticated using ((user_id = auth.uid())) with check ((user_id = auth.uid()));
 create policy mfa_aal2_required on public.user_roles as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "super admins manage roles" on public.user_roles as permissive for all to authenticated using (app_private.me_is_super_admin()) with check (app_private.me_is_super_admin());
+create policy "super admins manage roles (delete)" on public.user_roles as permissive for delete to authenticated using (app_private.me_is_super_admin());
+create policy "super admins manage roles (insert)" on public.user_roles as permissive for insert to authenticated with check (app_private.me_is_super_admin());
+create policy "super admins manage roles (select)" on public.user_roles as permissive for select to authenticated using (app_private.me_is_super_admin());
+create policy "super admins manage roles (update)" on public.user_roles as permissive for update to authenticated using (app_private.me_is_super_admin()) with check (app_private.me_is_super_admin());
 create policy "super admins read all roles" on public.user_roles as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy "users read own roles" on public.user_roles as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy mfa_aal2_required on public.xero_api_errors as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "read xero errors for own organisation" on public.xero_api_errors as permissive for select to authenticated using ((((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)) OR ((firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), firm_id)) OR app_private.is_super_admin(auth.uid())));
 create policy mfa_aal2_required on public.xero_assessment_contact as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "super_admin read xero_assessment_contact" on public.xero_assessment_contact as permissive for select to authenticated using (app_private.me_is_super_admin());
-create policy "super_admin write xero_assessment_contact" on public.xero_assessment_contact as permissive for all to authenticated using (app_private.me_is_super_admin()) with check (app_private.me_is_super_admin());
+create policy "super_admin write xero_assessment_contact (delete)" on public.xero_assessment_contact as permissive for delete to authenticated using (app_private.me_is_super_admin());
+create policy "super_admin write xero_assessment_contact (insert)" on public.xero_assessment_contact as permissive for insert to authenticated with check (app_private.me_is_super_admin());
+create policy "super_admin write xero_assessment_contact (select)" on public.xero_assessment_contact as permissive for select to authenticated using (app_private.me_is_super_admin());
+create policy "super_admin write xero_assessment_contact (update)" on public.xero_assessment_contact as permissive for update to authenticated using (app_private.me_is_super_admin()) with check (app_private.me_is_super_admin());
 create policy "Users manage own xero connections" on public.xero_connections as permissive for select to authenticated using ((auth.uid() = user_id));
 create policy "firm members read firm xero connections" on public.xero_connections as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy "firm owners manage firm xero connections" on public.xero_connections as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.xero_connections as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "Users manage own oauth states" on public.xero_oauth_states as permissive for all to authenticated using ((auth.uid() = user_id)) with check ((auth.uid() = user_id));
+create policy "Users manage own oauth states (delete)" on public.xero_oauth_states as permissive for delete to authenticated using ((auth.uid() = user_id));
+create policy "Users manage own oauth states (insert)" on public.xero_oauth_states as permissive for insert to authenticated with check ((auth.uid() = user_id));
+create policy "Users manage own oauth states (select)" on public.xero_oauth_states as permissive for select to authenticated using ((auth.uid() = user_id));
+create policy "Users manage own oauth states (update)" on public.xero_oauth_states as permissive for update to authenticated using ((auth.uid() = user_id)) with check ((auth.uid() = user_id));
 create policy mfa_aal2_required on public.xero_oauth_states as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "entitled users read snapshot runs" on public.xero_snapshot_runs as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -2066,4 +2150,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 50b6584f9cef299593a997bddfa9b5e37674d9ee4a17afa75db6ca10b7bf4027
+-- catalogue-fingerprint: 4b72d63d00af8c71d5db9650fd2b7a9ce020f45f13a0345c3fef35573ab8a0ef
