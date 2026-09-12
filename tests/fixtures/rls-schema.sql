@@ -1374,6 +1374,7 @@ CREATE OR REPLACE FUNCTION public.record_security_attestation(_check_key text, _
 AS $function$
 declare
   attestable text[] := array['leaked_password'];
+  _clean text;
 begin
   perform app_private.assert_aal2();
   if not app_private.is_super_admin(auth.uid()) then
@@ -1386,12 +1387,20 @@ begin
     raise exception 'Note is too long.';
   end if;
 
-  insert into public.security_attestations (check_key, confirmed_by, confirmed_at, note)
-  values (_check_key, auth.uid(), now(), nullif(btrim(coalesce(_note, '')), ''))
-  on conflict (check_key) do update
-    set confirmed_by = auth.uid(),
-        confirmed_at = now(),
-        note = nullif(btrim(coalesce(_note, '')), '');
+  _clean := nullif(btrim(coalesce(_note, '')), '');
+
+  -- update-then-insert rather than ON CONFLICT: the identity and the time are
+  -- always taken from the server, never from the caller.
+  update public.security_attestations
+     set confirmed_by = auth.uid(),
+         confirmed_at = now(),
+         note = _clean
+   where check_key = _check_key;
+
+  if not found then
+    insert into public.security_attestations (check_key, confirmed_by, confirmed_at, note)
+    values (_check_key, auth.uid(), now(), _clean);
+  end if;
 
   insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
   values (auth.uid(), 'security_attestation_recorded', 'security_attestation', _check_key,
@@ -2463,4 +2472,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 0fba5838d6118af85eba7ef9f37993b46ee5e07b4ea9eb40db8bdc51fbdf13ef
+-- catalogue-fingerprint: 25f4c08d9a77f9f5beb22a7c5340f1250ef056552f6a99e4aa35773365ca04a2
