@@ -355,8 +355,19 @@ async function callServerFn(
 ): Promise<CallOutcome> {
   const url = (fn as { url?: string } | undefined)?.url;
   if (!url) return { outcome: "inconclusive", detail: "server function has no callable url" };
-  const { siteOrigin } = await import("@/lib/site-origin");
-  const absolute = url.startsWith("http") ? url : `${siteOrigin()}${url}`;
+  // The suite must exercise the deployment it is RUNNING IN, not whatever the
+  // canonical public origin happens to be — otherwise a preview run silently
+  // tests production. Falls back to the canonical origin.
+  let origin: string;
+  try {
+    const { getRequestUrl } = await import("@tanstack/react-start/server");
+    origin = new URL(String(getRequestUrl())).origin;
+  } catch {
+    const { siteOrigin } = await import("@/lib/site-origin");
+    origin = siteOrigin();
+  }
+  const absolute = url.startsWith("http") ? url : `${origin}${url}`;
+
 
   let payload: string;
   try {
