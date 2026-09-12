@@ -229,3 +229,35 @@ This list records what has been looked at, not what exists. Absence from it is n
   stays a platform-admin action (`move_xero_file_to_client`).
 - The unassigned-connections card stays as a read-only-in-practice view of
   legacy rows; nothing can create a new one.
+
+## Phase 7 batch 1 — excess default grants trimmed (done 12 Sep 2026)
+
+Backlog 24 **CLOSED**. One atomic migration reduced `anon`/`authenticated` table privileges
+to the intersection of what was already held and what a permissive policy for that command
+actually admits. Before/after dump: `docs/security/grant-dump-phase7.md`.
+
+- `authenticated` TRUNCATE: 47 tables → 0. REFERENCES/TRIGGER/MAINTAIN → 0.
+- Authenticated privileges removed entirely from the system-only tables
+  `email_send_log`, `email_send_state`, `email_unsubscribe_tokens`, `suppressed_emails`,
+  `rate_limit_buckets`, `security_contact_details` (every permissive policy there is
+  service-role-only or an explicit deny) and from `xero_connections` at table level —
+  only the 13 non-token column grants remain.
+- `anon` held nothing before and holds nothing after.
+- Purely reductive, so no row can turn from deny into allow. Proved by identical
+  matrix totals: 1,287 rows, 1,222 proved, 0 failed, 0 known failures, 40 tests passed,
+  fingerprint MATCH `50b6584f…`.
+
+Found during the dump, not fixed here:
+
+34. **A table-level SELECT grant on `access_invites` still covers `token_hash` (opened 12 Sep 2026).**
+    The column grants on the eight non-token columns are correct, but the table-level SELECT
+    grant supersedes them, so an organisation owner reading their own invite rows through
+    PostgREST can also read the hash. The hash is not the token and cannot be replayed, so
+    this is hygiene, not an incident. Fixing it means dropping the table-level SELECT and
+    relying on column grants alone, which changes PostgREST behaviour for `select=*` —
+    needs its own change with matrix coverage, not a grant tweak inside batch 1.
+
+35. **`report_cache` is granted but unused (opened 12 Sep 2026).** No application code reads or
+    writes it; it is kept only because the access matrix has rows for it. Candidate for removal
+    in Phase 7 batch 2 alongside the dead-function review, with matrix rows retired in the
+    same change.
