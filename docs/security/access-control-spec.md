@@ -189,7 +189,7 @@ The verified security backlog lives in `docs/security-backlog.md`. Read it befor
 
 Settled decisions there, not tasks: **`FORCE ROW LEVEL SECURITY` is WON'T DO** (all `public` tables are owned by `postgres`, which has `rolbypassrls`, so FORCE changes nothing for any role the app connects as); **token column exposure is CLOSED** (`authenticated` has SELECT on 13 non-token columns of `xero_connections`; `access_token_enc` and `refresh_token_enc` have no grant, and the privilege check precedes RLS); **an organisation may not read its own audit log** (§9); and the remaining super admin without a verified TOTP factor is **left as is** — she is forced to enrol at her next sign-in, server enforcement already blocks her from all data, and the posture card correctly shows one Action item until then.
 
-## 13. Working agreement
+## 16. Working agreement
 
 One change at a time. After anything touching auth, RLS, membership, grants, entitlement, ownership or Xero tokens, restate which invariants in section 0 it touches and why they still hold. Never change an RLS policy as a side effect of a feature task.
 
