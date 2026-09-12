@@ -248,3 +248,28 @@ export const recordPresence = createServerFn({ method: "POST" })
     if (error) throw new Error("Presence not recorded");
     return { ok: true };
   });
+
+/**
+ * Records a human confirmation for a control no system can read. Authorisation
+ * (aal2 + super admin), the attestable key list, the identity and the timestamp
+ * all live in `public.record_security_attestation` — this function passes only
+ * the check key and the optional note, through context.supabase.
+ */
+export const recordAttestation = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((input: { checkKey: string; note?: string }) => {
+    const key = String(input?.checkKey ?? "");
+    if (!Object.prototype.hasOwnProperty.call(ATTESTABLE_CHECKS, key)) {
+      throw new Error("That check cannot be confirmed here.");
+    }
+    const note = typeof input.note === "string" ? input.note.slice(0, 500) : undefined;
+    return { checkKey: key, note };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("record_security_attestation", {
+      _check_key: data.checkKey,
+      _note: data.note ?? null,
+    });
+    if (error) throw new Error("Confirmation not recorded");
+    return { ok: true };
+  });
