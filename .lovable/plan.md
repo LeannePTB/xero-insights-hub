@@ -1,60 +1,33 @@
-# Phase 7 — tidy up and prove it (revised with owner corrections, 12 Sep 2026)
+# Final hygiene batch — backlog 40, 41, 42, 43 (12 Sep 2026)
 
-Classification: SECURITY-RELEVANT (grants, definer functions, documentation, full re-audit).
-This phase removes privileges and surface. No new access path, no new role, nothing widened.
+Classification: SECURITY-RELEVANT (grants, definer/trigger functions, RLS policies, a public route's credential).
+Goal: **no legitimate user's access changes**. Every matrix result must be identical before and after each step.
 
-## Owner decisions, settled
+## Live numbers re-verified this turn (reconciled with the owner's counts)
 
-- **An organisation may NOT read its own audit log.** Current behaviour is already correct; no code change. Batch 3 must correct `docs/security/access-control-spec.md`, which still says otherwise, and record it as a deliberate decision for the Xero assessment.
-- **The super admin without a verified MFA factor is left as is.** She will be forced to enrol at her next sign-in and server enforcement already blocks her from all data. The posture card correctly keeps one Action item until then. Nothing to change.
-- Batch 1 ships as one atomic migration with a committed before/after grant dump.
-- `firm_has_consolidation` removed only if proven dead; `record_access_test_run` kept.
-- The slim live smoke suite is approved at the reduced scope, **after** Phase 7.
+- 3 `app_private` trigger functions with `proacl = NULL` (= EXECUTE to PUBLIC): `enforce_client_limit()`, `enforce_xero_org_limit()`, `enforce_xero_org_limit_on_move()`. **Matches.**
+- **34** policies in `public` with `polroles = '{0}'` (no explicit `TO`). **Matches.**
+- **20** permissive `FOR ALL` policies in `public`; every one has a non-null `WITH CHECK`, so the split is mechanical. **Matches.**
+- `public.email_unsubscribe_tokens`: **1 row total, 1 unused** (so exactly one live outstanding link).
 
-## Verified live before writing this
+## 1. Backlog 41 — revoke EXECUTE (safest first)
 
-- 53 tables in `public`; **RLS is on all 53**.
-- **`anon` holds no privilege on any `public` table** — that half of the `excess_grants` item is already clean.
-- `authenticated` holds **TRUNCATE on 47 of 53 tables**, mostly the untouched Supabase default set (SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN).
-- Six tables give `authenticated` write privileges where the only permissive policy is service-role-only or an explicit deny: `email_send_log`, `email_send_state`, `email_unsubscribe_tokens`, `suppressed_emails`, `rate_limit_buckets`, `security_contact_details`. Every app path to those tables uses the service-role client (verified in `src/lib/email/send.server.ts`, `src/routes/lovable/email/**`, `src/lib/security.functions.ts`).
-- 96 SECURITY DEFINER functions in `public`, 31 in `app_private`; every `public` definer executable by `authenticated` carries `SET search_path` and an `assert_aal2` guard.
-- Not referenced anywhere in `src`, `tests` or `scripts`: `public.firm_has_consolidation`, `public.record_access_test_run` (parked live suite), and the `report_cache` table.
+One migration: `REVOKE EXECUTE ... FROM PUBLIC, anon` on the three trigger functions. A trigger function is invoked by the table owner's trigger, not by the caller's EXECUTE privilege, so `PLAN_LIMIT_CLIENTS` / `PLAN_LIMIT_XERO_ORGS` must still fire. Proof: re-read `proacl` after, and confirm the triggers are still attached and their bodies unchanged.
 
-## Batch 1 — trim table grants to what the policies need (THIS TURN)
+## 2. Backlog 40 — unsubscribe token at rest
 
-One migration, not batched: `REVOKE ALL` followed by narrow re-grants is only safe if it is atomic; a half-applied grant set is exactly the fail-open state to avoid.
+- Add `token_hash text` to `email_unsubscribe_tokens`, backfill the one existing row with `sha256(token)` (so the outstanding link keeps working), make it `NOT NULL UNIQUE`, then **drop `token`** — both columns are never left populated.
+- `src/lib/email/send.server.ts` and `src/routes/lovable/email/transactional/send.ts`: mint a fresh plaintext token per send, store only the hash, put the plaintext in the emailed link only. Reuse-by-lookup is impossible with a hash, so the row is updated with the new hash instead (still one row per email address).
+- `src/routes/email/unsubscribe.ts`: look up by `token_hash = sha256(token)`, and rate limit GET and POST by IP with `enforceRateLimit`.
 
-The rule is **purely reductive**: the target set is the intersection of what `authenticated` holds today and what a permissive policy for `authenticated` actually admits. Nothing is granted that is not already held, so no matrix row can turn from deny into allow.
+## 3. Backlog 42 — explicit `TO` on every policy
 
-- TRUNCATE, REFERENCES, TRIGGER and MAINTAIN go to nobody.
-- Deliberate reductions kept from earlier phases stay reduced even where a policy exists: `firms` keeps SELECT only (the Phase 2 ownership fix), `client_subscriptions` and `audit_log` stay read-only, `xero_connections` keeps its 13 non-token **column** grants and no table privilege.
-- Column grants are re-granted explicitly after the revoke: `profiles UPDATE(display_name)`, `unreconciled_lines UPDATE(client_comment)`, `xero_connections SELECT(13 columns)`, `access_invites SELECT(8 non-token columns)`.
-- `service_role` is untouched.
+`ALTER POLICY ... TO <role>` (no drop/recreate, so there is no window with no policy). The four system tables' "Service role can …" policies go `TO service_role`; everything else goes `TO authenticated`. `anon` holds no privilege on any table, and `service_role` bypasses RLS, so no result can change. Matrix re-run after each table; any changed row is reverted for that table and reported.
 
-What could break: a screen relying on a privilege no policy names (RLS would already refuse it), and nothing else — definer functions run as `postgres`. Proof: `bun run security:check` before and after, the matrix re-proved, the fixture regenerated with its fingerprint, and the full before/after grant dump committed to `docs/security/grant-dump-phase7.md`. Any matrix row that changes result stops the batch.
+## 4. Backlog 43 — split permissive `FOR ALL`
 
-Owner test: as a member — open a client dashboard, add and edit a note, edit statutory accounts and cost classifications, save break-even inputs, save loan accounts, invite a member, revoke a viewer, generate and send a report, change a widget toggle; as a client viewer — open the dashboard and edit an unreconciled comment.
+Each becomes SELECT/UPDATE/DELETE with the same `USING` and INSERT/UPDATE with the same `WITH CHECK`. The RESTRICTIVE `mfa_aal2_required` guards stay `FOR ALL`. Matrix after each table; stop and report on any change.
 
-## Batch 2 — the definer register (not fewer functions)
+## Then
 
-74 callable definer functions is fine when each is guarded and has a reason; the problem is only that nobody can say what they are for. Deliverable: `docs/security/definer-register.md` generated from the live catalogue plus a code search — name, arguments, purpose, callers, guard, `search_path`, execute grants — regenerated by `security:check` so it cannot drift. Removal is limited to what is proven dead (zero code references, zero references from other function bodies and policies). Nothing genuinely distinct is merged.
-
-## Batch 3 — documentation that matches reality, for the Xero assessment
-
-Correct `docs/security/access-control.md` (predates Phases 3–6) and `docs/security/access-control-spec.md` (dated 11 Sep 2026, section 12 stale, and it still implies an organisation may read its own audit log). Cover: MFA position, the three access paths, support grants read-only, the audit position (security events and reads), Xero token handling, disconnection and revocation, retention and purge. Record the audit-log decision as deliberate. File jobs unchanged: Project Knowledge = binding rules, spec = detail, matrix = evidence, `access-control.md` = the assessor-facing summary. List what the assessment response needs and where each answer comes from; do not write the response.
-
-## Batch 4 — full re-audit from scratch, evidence inline
-
-This re-audits my own work, so **every finding and every "clean" verdict carries its evidence inline** — the query or the code line, not an assertion. Where a check cannot be run from the sandbox (live aal2 posture, TLS headers, HIBP setting), say so rather than marking it clean. Scope: every table (RLS, policies per command, table and column grants), every definer function (guard, `search_path`, execute grants), every server function (aal2, authorisation before privileged work), every public route and its credential, secrets, tokens, storage buckets, cron jobs, and the linter with each accepted finding and its reason. Findings become new numbered backlog items; if nothing is found, say so plainly.
-
-## Batch 5 — what remains
-
-Both owner decisions are now settled (above). Remaining: the slim live smoke suite (one member, one client viewer, one outsider, one `ZZ` test organisation, cross-organisation and aal1 denial only, no Xero calls, no super-admin test account), the deferred people-and-access redesign, and the settled non-items — `FORCE ROW LEVEL SECURITY` (WON'T DO), token column exposure (CLOSED), the `setClientXeroAllowance` escalation (owner-approved exception), tier catalogue readability (assessed, left as-is).
-
-## Batch order and estimates
-
-1. Batch 1 — grant trim (medium-large; the migration is generated, the verification is the work).
-2. Batch 2 — definer register (small-medium).
-3. Batch 3 — documentation (small, docs only).
-4. Batch 4 — re-audit with inline evidence (medium; findings only, no behaviour change).
-5. Batch 5 — the remains list, then the slim live suite as its own phase.
+Regenerate the RLS fixture and the definer register, close backlog 40–43 with evidence, update `roadmap.md`, and finish with the owner screen test list and the Security report.
