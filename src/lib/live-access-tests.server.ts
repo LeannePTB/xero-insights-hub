@@ -715,7 +715,7 @@ async function runProbes(
       resource: "server fn: list pending member invitations",
       operation: "execute",
       session: ownerAal2,
-      call: () => callServerFn(invites.listFirmMemberInvites, { firmId: org.firmId }, ownerAal2),
+      call: () => listInvitesProbe(invites.listFirmMemberInvites, org.firmId, ownerAal2),
     },
   ];
 
