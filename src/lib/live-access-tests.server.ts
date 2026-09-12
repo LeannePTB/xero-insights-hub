@@ -404,7 +404,8 @@ async function callServerFn(
   if (errMessage) return { outcome: "deny", detail: `${res.status}: ${errMessage.slice(0, 160)}` };
 
   if (res.ok) {
-    if (res.headers.get("x-tss-serialized")) return { outcome: "allow", detail: `${res.status}` };
+    if (res.headers.get("x-tss-serialized"))
+      return { outcome: "allow", detail: `${res.status}`, body: text };
     // A 2xx without the serialised envelope is not a server-function result.
     return { outcome: "inconclusive", detail: `${res.status} without a server-function payload` };
   }
