@@ -344,7 +344,19 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     memberships, support grants and roles. Owner call needed on which of these the practice writes and
     which are answered "not applicable — single-developer practice".
 
-40. **Unsubscribe links are not rate limited and their token is stored in the clear (opened 12 Sep 2026,
+40. **CLOSED 12 Sep 2026 (final hygiene batch).** `email_unsubscribe_tokens.token_hash` replaces
+    `token` (column dropped in the same migration; the single existing row was converted to
+    `encode(digest(token,'sha256'),'hex')` so its outstanding link still works — `select count(*)` was
+    1 row, 1 unused). `src/routes/email/unsubscribe.ts` now looks up `.eq('token_hash', hashToken(token))`
+    on GET and POST, selects only the columns it needs instead of `*`, and calls
+    `enforceRateLimit('unsubscribe_get|post:<ip>', 30, 300)` before touching the database (429 on limit).
+    Minting moved to hash-at-rest in `src/lib/email/send.server.ts` and
+    `src/routes/lovable/email/transactional/send.ts`: each send mints a fresh token and upserts the hash
+    on `email`, so the newest emailed link is the live one — a hashed token cannot be read back to reuse
+    an older link. Accepted consequence, recorded deliberately: an unsubscribe link in an older email to
+    the same address stops working once a newer email is sent; the newest email always carries a working
+    link, and suppression itself is unaffected. Original finding:
+    **Unsubscribe links are not rate limited and their token is stored in the clear (opened 12 Sep 2026,
     Phase 7 batch 4 re-audit).** `src/routes/email/unsubscribe.ts` looks a token up directly
     (`.eq('token', token)`, lines 33-36 and 96-99) with no `enforceRateLimit` call anywhere in the file
     (`rg -c "enforceRateLimit" src/routes/email/unsubscribe.ts` → none), and
