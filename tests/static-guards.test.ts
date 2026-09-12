@@ -297,3 +297,43 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
   });
 });
 
+
+/**
+ * 7. Every path that returns a client's figures records the read (Phase 6).
+ *
+ * The registry below is the inventory from the Phase 6 plan. The guard is a
+ * drift alarm: if a listed path stops calling `logClientDataRead` — or the one
+ * writer is bypassed with a raw `xero_data_read` / `client_report_read` insert
+ * somewhere else — this test fails, so the posture check can never quietly
+ * drift away from the code.
+ */
+describe("7. reads of client financial data are audited", () => {
+  const READ_PATHS = [
+    "src/lib/xero/api.server.ts", // live Xero reads (via logXeroRead)
+    "src/lib/xero/snapshot-read.server.ts", // stored Xero snapshots
+    "src/lib/xero/recon-snapshot.server.ts", // stored reconciliation snapshots
+    "src/lib/reports/monthly-report.functions.ts", // stored monthly reports
+    "src/lib/reports/report-delivery.server.ts", // public report link
+    "src/lib/loan-consolidation.functions.ts", // saved group loan snapshots
+  ];
+
+  it("each inventoried read path calls the one read writer", () => {
+    const offenders = READ_PATHS.filter((p) => {
+      const f = FILES.find((x) => x.path === p);
+      if (!f) return true;
+      return !/logClientDataRead|logXeroRead/.test(f.text);
+    });
+    report("read paths not calling logClientDataRead", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("nothing writes a read action except the one writer", () => {
+    const offenders = FILES.filter(
+      (f) =>
+        /["']xero_data_read["']|["']client_report_read["']/.test(f.text) &&
+        !["src/lib/audit/read-keys.ts", "src/lib/audit.functions.ts"].includes(f.path),
+    ).map((f) => f.path);
+    report("files naming a read action directly", offenders);
+    expect(offenders).toEqual([]);
+  });
+});
