@@ -126,14 +126,51 @@ async function serverConfigChecks(attestations: Attestation[]): Promise<PostureC
   }
 
   // Leaked-password protection is an auth provider setting the app cannot read.
-  out.push({
-    id: "hibp",
-    title: "Leaked password protection",
-    status: "warn",
-    detail:
-      "Not verified — confirm manually in the backend authentication settings, under password protection (Have I Been Pwned).",
-    evidence: "No server-readable source for this setting",
-  });
+  // There is no machine-readable source, so the only honest evidence is a
+  // recorded human confirmation (see ATTESTABLE_CHECKS). The attestation NEVER
+  // overrides a check the server can read — it applies to this one only.
+  const att = attestations.find((a) => a.check_key === "leaked_password");
+  const claim = ATTESTABLE_CHECKS["leaked_password"]!.claim;
+  if (!att) {
+    out.push({
+      id: "leaked_password",
+      title: "Leaked password protection",
+      status: "warn",
+      detail:
+        "Not verified — check it in the backend authentication settings, under password protection (Have I Been Pwned), then confirm it here.",
+      evidence:
+        "No server-readable source for this setting, and no recorded human confirmation",
+      attestable: { checkKey: "leaked_password", claim },
+    });
+  } else {
+    const days = att.expires_after_days;
+    const ageDays = Math.floor((Date.now() - new Date(att.confirmed_at).getTime()) / 86_400_000);
+    const expired = ageDays > days;
+    const who = att.confirmed_by_email ?? "an unnamed super admin";
+    const when = new Date(att.confirmed_at).toISOString().slice(0, 10);
+    out.push({
+      id: "leaked_password",
+      title: "Leaked password protection",
+      status: expired ? "warn" : "ok",
+      detail: expired
+        ? `Confirmed on ${when}, needs re-confirming — a confirmation lasts ${days} days.`
+        : `Confirmed on ${when} by ${who}. Due to be re-confirmed after ${days} days.`,
+      evidence:
+        `RECORDED HUMAN CONFIRMATION, NOT A MACHINE READING. ${who} confirmed on ${when} ` +
+        `that leaked-password protection is switched on in the backend authentication settings. ` +
+        `The setting itself is not readable by this application, so no automated check exists. ` +
+        `Confirmation valid for ${days} days (age ${ageDays} day(s)).` +
+        (att.note ? ` Note: ${att.note}` : ""),
+      attestable: {
+        checkKey: "leaked_password",
+        claim,
+        confirmedByEmail: att.confirmed_by_email,
+        confirmedAt: att.confirmed_at,
+        note: att.note,
+        expiresAfterDays: days,
+      },
+    });
+  }
 
   return out;
 }
