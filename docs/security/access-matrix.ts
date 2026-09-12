@@ -1099,7 +1099,11 @@ export const MATRIX: MatrixRow[] = [
     rule: "PK 4; Batch 5 — practice team is metadata, an ACTIVE membership of THAT organisation is still required",
     layers: ["pglite", "live"],
   },
-  // The practice team list itself is platform metadata (Path C): super admin only.
+  // The practice team list itself is platform metadata (Path C): super admin
+  // only. The support-grant subject in the fixture also holds the super_admin
+  // role, so it reads the list as a platform admin — the list names our own
+  // staff and holds no organisation or client data, so this is Path C, not the
+  // support grant widening (PK 5 still admits no write anywhere).
   {
     role: "super_admin_no_membership",
     resource: "practice_team",
@@ -1108,8 +1112,16 @@ export const MATRIX: MatrixRow[] = [
     rule: "PK 2 path C — platform metadata, no client data",
     layers: ["pglite", "live"],
   },
+  {
+    role: "support_grant_active",
+    resource: "practice_team",
+    operation: "read",
+    expect: "allow",
+    rule: "PK 2 path C — reads as a platform admin; no organisation or client data on this table",
+    layers: ["pglite", "live"],
+  },
   ...rows(
-    ["super_admin_no_membership"],
+    ["super_admin_no_membership", "support_grant_active"],
     ["practice_team"],
     WRITES,
     "deny",
@@ -1117,7 +1129,7 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
   ),
   ...rows(
-    ["org_owner", "org_staff", "other_org_member", "support_grant_active", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    ["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
     ["practice_team"],
     ["read", ...WRITES],
     "deny",
