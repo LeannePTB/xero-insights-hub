@@ -1,40 +1,73 @@
-# Member removal — implementation record (12 Sep 2026)
+# Slim live smoke suite — implementation record (12 Sep 2026)
 
-Classification: SECURITY-RELEVANT — membership, a new write path, audit.
+Classification: SECURITY-RELEVANT — new tables, a new unauthenticated endpoint, real
+sessions for accounts that exist only to be denied, one new secret.
 
-## Verified live before building
+No stop condition is triggered: no super-admin test account, **one** owner-added secret
+(`SECURITY_TEST_TRIGGER_SECRET`; `TOKEN_ENC_KEY` already exists), and no real
+organisation's data is read or written by any part of this.
 
-- `firm_members.status` is `text` with `firm_members_status_chk CHECK (status IN ('active','suspended','removed'))`. Removal sets the status; no hard delete. `transfer_organisation_ownership` already uses `status='removed'` for the outgoing owner, so this reuses an existing shape.
-- Every membership test is already active-only: `app_private.has_firm_access`, `app_private.is_practice_member_of`, `public.organisation_members`, `public.my_firm_ids`, `public.my_firm_memberships`, `public.firm_access_path` (via `has_firm_access`). `public.plan_level_usage_count` counts subscriptions and `client_access` rows, never members. No defect found.
-- No removal function or screen exists anywhere. `admin_firm_members` (super admin) lists all statuses; `organisation_members` returns active only.
+## What live testing adds, and only that
 
-## 1. One database function
+`bun run security:check` already proves 1,395 rules against a faithful copy. The live
+suite exists for two things the copy cannot produce: a **real session** (in particular the
+same person on aal2 and on aal1) and the **real server functions**. Expectations are read
+from `docs/security/access-matrix.ts` by `(role, resource, operation)` — there is no second
+expectation list.
 
-`public.remove_firm_member(_firm_id uuid, _user_id uuid)` — `plpgsql`, `SECURITY DEFINER`, `SET search_path = public`, `app_private.assert_aal2()` first, caller is always `auth.uid()` (the parameter is the target, never a claimed identity), row locked with `for update`.
+## 1. Database
 
-Checks, in order, all failing closed:
-1. caller must hold an **active** membership of `_firm_id` → `NOT_A_MEMBER`.
-2. target must hold an **active** membership of `_firm_id` → `NOT_A_MEMBER_TARGET`.
-3. self-removal is allowed for any non-owner; an owner removing themselves → `OWNER_MUST_TRANSFER`.
-4. removing someone else requires the caller to be `owner` **and** the target to be `staff` → `NOT_PERMITTED`. Staff, support-grant holders and non-member super admins never satisfy this (a support grant is not a membership).
-5. never strand the organisation: refuse if the target is the only active member (`LAST_MEMBER`), and an owner can never be removed by anyone (rule 4 covers it).
+- `firms.is_test boolean not null default false`; one row `ZZ Security Test Org` with two
+  dummy clients, no Xero connection, no financial data. Excluded from
+  `admin_firm_overview`, from `online_users()` and from the posture people counts; its
+  three addresses are inserted into `suppressed_emails`, so no email can leave for them,
+  and it owns no Xero connection so no scheduled job has anything to do.
+- `public.security_test_accounts` (user_id, label owner|staff|viewer, password ciphertext,
+  TOTP ciphertext, factor id) and `public.security_test_run_state` (single row: running,
+  started_at, run_id). RLS on, `revoke all ... from anon, authenticated`, per-command
+  policies naming `service_role` only, plus the aal2 restrictive guard. No `anon` or
+  `authenticated` grant at all — the runner reaches them with the service role.
+- Secrets at rest: passwords and TOTP secrets are wrapped with the existing
+  `TOKEN_ENC_KEY` (`src/lib/crypto.server.ts`) and never returned to any caller.
+- **Confinement, in the database.** `app_private.is_security_test_account(uuid)` plus
+  `BEFORE INSERT OR UPDATE` triggers on `firm_members`, `client_access`,
+  `firm_viewer_access`, `firm_support_access`, `user_roles`, `practice_team` and `firms`:
+  a test account may hold a membership or grant **only** inside the test organisation, and
+  may never hold a role, a support grant, practice-team membership or ownership of a real
+  organisation. Proved by matrix rows, not by convention.
+- `public.test_accounts_posture()` — same shape as `read_audit_posture()`: Action when a
+  test account is unbanned outside a run, holds anything outside the test organisation, or
+  has a session older than the run window.
 
-Then `status='removed'`, `updated_at=now()`, and one `audit_log` row `firm_member_removed` recording actor, target, previous role, previous status and organisation. `EXECUTE` revoked from `PUBLIC`/`anon`, granted to `authenticated`.
+## 2. Runner
 
-Nothing else is written: no `client_access`, `firm_viewer_access`, `xero_connections`, snapshot or account row is touched.
+`src/lib/live-access-tests.server.ts`, service-role only:
 
-## 2. Server function
+1. **Sweep** — re-ban every test account and clear stale run state left by a crash.
+2. Mark the run started, unban the three accounts.
+3. Build sessions: owner aal2 (password + a server-generated TOTP code), owner aal1
+   (password only, second factor skipped), staff aal2, viewer aal2, plus anonymous.
+4. Probes — real server functions over HTTP with the session's bearer token: read a client
+   dashboard, write client data, list clients, invite and revoke a client viewer, remove a
+   member, and one Path C admin call (an owner asking for pending member invitations, which
+   must be refused). Each asserts the matrix row for that role/resource/operation.
+5. `finally` — re-ban, sign out every session, delete rows the run created, clear run state.
+   Recorded in `security_test_runs` with layer `live`, so the `access_tests` posture check
+   goes green after a clean run.
 
-`removeOrganisationMember` in `src/lib/ownership.functions.ts`: `requireAal2`, thin call through `context.supabase.rpc` (never `supabaseAdmin`), error codes mapped to plain sentences.
+TOTP codes are generated server-side (`src/lib/totp.server.ts`, HMAC-SHA1, RFC 6238).
 
-## 3. Screen
+## 3. Ways in
 
-`PeopleSection` member rows gain a Remove control, shown only when the viewer is the owner and the row is staff, plus "Leave this organisation" on the viewer's own row when they are not the owner. The confirmation names the person, states they lose access to every client in this organisation and their Xero data, that only a fresh invitation restores it, and that client viewer access, standing grants, Xero connections, snapshots, history and their account are untouched.
+- `POST /api/public/security/run-access-tests` — constant-time secret comparison, rate
+  limited, registered in the admin-client register and the unauthenticated allow-list.
+- A super-admin-only "Run access tests" button on `/admin/security` (aal2 + super admin
+  asserted in the database).
+- `bun run security:check` calls the same suite when the secret and a URL are present, and
+  says SKIPPED when they are not.
 
-## 4. Matrix
+## 4. Close out
 
-New bespoke rows: owner removes staff (allow); owner removes a Traction Advisory member (allow); owner removes themselves (deny); last remaining member removed (deny); staff / support grant / non-member super admin / viewers remove anyone (deny); a member leaves (allow); removal changes no viewer or standing grant (allow). Existing rows must not change.
-
-## 5. Close out
-
-`docs/design/people-and-access.md` decision 8, `roadmap.md`, fixture, definer register, generated matrix, `bun run security:check`, typecheck, linter.
+Matrix rows for confinement and for the smoke probes; fixture, definer register and
+generated matrix regenerated; spec section, backlog, roadmap; `bun run security:check`,
+typecheck, linter.
