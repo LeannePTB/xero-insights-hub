@@ -168,8 +168,9 @@ export const getAuditAnomalies = createServerFn({ method: "GET" })
       },
       {
         id: "xero-reads",
-        title: "Xero data reads logged (24h)",
-        detail: "Accounting data access, grouped per user, organisation and endpoint.",
+        title: "Client data reads logged (24h)",
+        detail:
+          "Every read of a client's figures — live, from a stored snapshot, from a stored report or through a report link — grouped per person, client and report.",
         count: reads,
         status: "ok",
       },
