@@ -115,24 +115,42 @@ export function AuditMonitoringCard() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium">Export for auditors:</span>
-          {EXPORT_RANGES.map((range) => (
-            <Button
-              key={range.days}
-              variant="outline"
-              size="sm"
-              onClick={() => handleExport(range.days)}
-              disabled={exporting !== null}
-            >
-              {exporting === range.days ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              {range.label}
-            </Button>
-          ))}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">Export for auditors:</span>
+            {EXPORT_CATEGORIES.map((c) => (
+              <Button
+                key={c.value}
+                variant={category === c.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCategory(c.value)}
+                disabled={exporting !== null}
+              >
+                {c.label}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {EXPORT_CATEGORIES.find((c) => c.value === category)?.hint}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {EXPORT_RANGES.map((range) => (
+              <Button
+                key={range.days}
+                variant="outline"
+                size="sm"
+                onClick={() => handleExport(range.days)}
+                disabled={exporting !== null}
+              >
+                {exporting === range.days ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {range.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>
