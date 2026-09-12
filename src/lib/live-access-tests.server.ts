@@ -646,11 +646,7 @@ async function runProbes(
       operation: "execute",
       session: ownerAal2,
       call: () =>
-        callServerFn(
-          clients.renameClient,
-          { clientId: org.clientOne, name: "ZZ Test Client One" },
-          ownerAal2,
-        ),
+        renameProbe(clients.renameClient, org.clientOne, "ZZ Test Client One", ownerAal2),
     },
     {
       role: "standing_viewer",
@@ -658,11 +654,7 @@ async function runProbes(
       operation: "execute",
       session: viewerAal2,
       call: () =>
-        callServerFn(
-          clients.renameClient,
-          { clientId: org.clientTwo, name: "ZZ Renamed By Viewer" },
-          viewerAal2,
-        ),
+        renameProbe(clients.renameClient, org.clientTwo, "ZZ Renamed By Viewer", viewerAal2),
     },
     {
       role: "aal1_member",
@@ -670,11 +662,7 @@ async function runProbes(
       operation: "execute",
       session: ownerAal1,
       call: () =>
-        callServerFn(
-          clients.renameClient,
-          { clientId: org.clientOne, name: "ZZ Renamed By Aal1" },
-          ownerAal1,
-        ),
+        renameProbe(clients.renameClient, org.clientOne, "ZZ Renamed By Aal1", ownerAal1),
     },
     // viewer management (Batch 5 widening): owner may, staff may not
     {
