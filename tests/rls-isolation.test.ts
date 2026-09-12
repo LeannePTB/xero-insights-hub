@@ -153,7 +153,10 @@ describe("cross-organisation isolation", () => {
     const allowed = new Set([
       "plan_levels:plan_levels_read",
       "tier_settings:Authenticated can read tier settings",
-      "rate_limit_buckets:rate_limit_buckets service only",
+      "rate_limit_buckets:rate_limit_buckets service only (select)",
+      "rate_limit_buckets:rate_limit_buckets service only (insert)",
+      "rate_limit_buckets:rate_limit_buckets service only (update)",
+      "rate_limit_buckets:rate_limit_buckets service only (delete)",
     ]);
     const res = await db.query<{ sig: string }>(
       `select c.relname || ':' || p.polname as sig
