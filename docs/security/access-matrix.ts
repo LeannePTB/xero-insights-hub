@@ -22,6 +22,7 @@ export type Role =
   | "other_org_member"
   | "org_a_owner_reading_org_b"
   | "client_viewer"
+  | "standing_viewer"
   | "support_grant_active"
   | "support_grant_expired"
   | "support_grant_revoked"
@@ -61,6 +62,7 @@ export const ROLE_LABELS: Record<Role, string> = {
   other_org_member: "Active member of a DIFFERENT organisation",
   org_a_owner_reading_org_b: "Organisation A's owner, reading organisation B",
   client_viewer: "Client viewer (client_access on one client)",
+  standing_viewer: "Standing viewer grant (every client in one organisation, read-only)",
   support_grant_active: "Support-grant holder, active, non-member organisation",
   support_grant_expired: "Support-grant holder, grant expired",
   support_grant_revoked: "Support-grant holder, grant revoked",
