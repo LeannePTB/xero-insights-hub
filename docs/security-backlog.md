@@ -380,7 +380,14 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     `SET search_path` — but the project rule says revoke EXECUTE from PUBLIC and `anon` on every definer
     function, so this is a hygiene gap. Fix: one revoke migration.
 
-42. **46 policies have no explicit `TO` clause (opened 12 Sep 2026, Phase 7 batch 4 re-audit).**
+42. **CLOSED 12 Sep 2026 (final hygiene batch).** Real count re-verified live before starting: **34**
+    policies with `polroles = '{0}'`, not 46 (the earlier figure counted policies rather than distinct
+    `polroles = '{0}'` rows after Batch 1). Fixed with `ALTER POLICY ... TO <role>` (no drop/recreate, so
+    there was never a window with no policy): 9 on the four system email tables to `service_role`
+    (`email_send_log`, `email_send_state`, `email_unsubscribe_tokens`, `suppressed_emails`) and 25 to
+    `authenticated`. Live check after: `polroles = '{0}'` count is **0**. Matrix re-proved after each
+    migration: 1222 proved, 0 failed, identical both times. Original finding:
+    **46 policies have no explicit `TO` clause (opened 12 Sep 2026, Phase 7 batch 4 re-audit).**
     `pg_policy.polroles = '{0}'` (PUBLIC) on 46 permissive policies across `clients`, `firm_members`,
     `billing_events`, `client_notes`, `subscriptions`, the email tables and others, so each applies to
     every role rather than to `authenticated` (or `service_role`) explicitly. Not currently reachable by
@@ -388,7 +395,17 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     `mfa_aal2_required` guard is on 51 of 53 tables. Fix: recreate each policy with an explicit `TO`
     role; do it table by table, proving the matrix unchanged at each step.
 
-43. **Eight legacy permissive `FOR ALL` policies remain on data tables (opened 12 Sep 2026,
+43. **CLOSED 12 Sep 2026 (final hygiene batch).** Real count re-verified live: **20** permissive
+    `FOR ALL` policies in `public`, not eight, and every one had a non-null `WITH CHECK`, so the split was
+    mechanical. One migration recreated each as four per-command policies — SELECT/DELETE carrying the
+    original `USING`, INSERT the original `WITH CHECK`, UPDATE both — generated from the live catalogue
+    itself so no expression could be retyped wrongly, and raising an exception rather than guessing if a
+    policy had no role or a missing expression. The 51 RESTRICTIVE `mfa_aal2_required` guards stay
+    `FOR ALL` (they only narrow). Live after: permissive `FOR ALL` count **0**, total policies 238 (was
+    178), `polroles = '{0}'` still 0. Matrix identical: 1222 proved, 0 failed. One static guard needed its
+    allow-list updated for the renamed `rate_limit_buckets service only` policy (four per-command names,
+    still `service_role`-only). Original finding:
+    **Eight legacy permissive `FOR ALL` policies remain on data tables (opened 12 Sep 2026,
     Phase 7 batch 4 re-audit).** `audit_finding_snoozes`, `client_statutory_accounts`,
     `consolidation_group_members`, `consolidation_groups`, `dashboard_card_order`,
     `loan_consolidation_snapshots`, `scenario_exclusions` and `xero_oauth_states` (plus the super-admin
