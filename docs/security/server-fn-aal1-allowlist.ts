@@ -89,4 +89,13 @@ export const AAL1_ALLOWLIST: Aal1Exception[] = [
     containment:
       "Mints a PKCE state row with user_id null and returns Xero's authorize URL. It grants nothing: the callback matches the Xero identity email against already-invited users, so it cannot create access.",
   },
+  {
+    file: "src/routes/api/public/security/run-access-tests.ts",
+    fn: "POST (server route, not a server function)",
+    kind: "unauthenticated",
+    reason:
+      "Trigger for the slim live smoke suite. It must be callable by a scheduler or CI with no session, in the same way as the snapshot-refresh route.",
+    containment:
+      "The owner-added SECURITY_TEST_TRIGGER_SECRET is the credential, compared in constant time over SHA-256 digests; a wrong or missing secret gets a bare 401. Rate limited app-wide to six runs an hour BEFORE any work. Touches only the isolated ZZ Security Test Org and the suite's own three accounts, which database triggers refuse to attach to any real organisation. Returns counts and failed expectations only — never a token, password, TOTP secret, email address or anything about a real organisation.",
+  },
 ];
