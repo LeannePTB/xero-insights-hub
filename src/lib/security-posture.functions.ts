@@ -60,7 +60,15 @@ export type OnlineUser = {
  * /admin/security always show identical results. Server-side only; nothing here
  * returns a secret value, only whether it is present and usable.
  */
-async function serverConfigChecks(): Promise<PostureCheck[]> {
+type Attestation = {
+  check_key: string;
+  confirmed_by_email: string | null;
+  confirmed_at: string;
+  note: string | null;
+  expires_after_days: number;
+};
+
+async function serverConfigChecks(attestations: Attestation[]): Promise<PostureCheck[]> {
   const out: PostureCheck[] = [];
 
   // Token encryption key — proven by a real round trip, never echoed.
