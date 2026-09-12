@@ -343,3 +343,39 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     (f) No published security contact or disclosure channel. (g) No periodic access-review record for
     memberships, support grants and roles. Owner call needed on which of these the practice writes and
     which are answered "not applicable — single-developer practice".
+
+40. **Unsubscribe links are not rate limited and their token is stored in the clear (opened 12 Sep 2026,
+    Phase 7 batch 4 re-audit).** `src/routes/email/unsubscribe.ts` looks a token up directly
+    (`.eq('token', token)`, lines 33-36 and 96-99) with no `enforceRateLimit` call anywhere in the file
+    (`rg -c "enforceRateLimit" src/routes/email/unsubscribe.ts` → none), and
+    `src/lib/email/send.server.ts:60-73` stores the generated token as plaintext in
+    `email_unsubscribe_tokens.token`, unlike invite and report tokens, which are stored hashed.
+    Impact is limited: the only thing the token does is suppress that one email address, the update is
+    atomic and single-use, and `anon`/`authenticated` hold no privileges on the table (verified: `anon`
+    has zero grants in `public`). Fix: hash the token like the others, and rate limit the route by IP.
+
+41. **Three `app_private` trigger functions still hold EXECUTE for `PUBLIC` (opened 12 Sep 2026,
+    Phase 7 batch 4 re-audit).** `app_private.enforce_client_limit`, `enforce_xero_org_limit` and
+    `enforce_xero_org_limit_on_move` return true for `has_function_privilege('anon', oid, 'execute')`;
+    every other definer function has EXECUTE revoked. Not exploitable — Postgres refuses to call a
+    trigger function directly ("trigger functions can only be called as triggers") and all three carry
+    `SET search_path` — but the project rule says revoke EXECUTE from PUBLIC and `anon` on every definer
+    function, so this is a hygiene gap. Fix: one revoke migration.
+
+42. **46 policies have no explicit `TO` clause (opened 12 Sep 2026, Phase 7 batch 4 re-audit).**
+    `pg_policy.polroles = '{0}'` (PUBLIC) on 46 permissive policies across `clients`, `firm_members`,
+    `billing_events`, `client_notes`, `subscriptions`, the email tables and others, so each applies to
+    every role rather than to `authenticated` (or `service_role`) explicitly. Not currently reachable by
+    `anon`: `anon` holds no table privileges in `public` (verified live), and the RESTRICTIVE
+    `mfa_aal2_required` guard is on 51 of 53 tables. Fix: recreate each policy with an explicit `TO`
+    role; do it table by table, proving the matrix unchanged at each step.
+
+43. **Eight legacy permissive `FOR ALL` policies remain on data tables (opened 12 Sep 2026,
+    Phase 7 batch 4 re-audit).** `audit_finding_snoozes`, `client_statutory_accounts`,
+    `consolidation_group_members`, `consolidation_groups`, `dashboard_card_order`,
+    `loan_consolidation_snapshots`, `scenario_exclusions` and `xero_oauth_states` (plus the super-admin
+    write policies on `user_roles` and `xero_assessment_contact`). Each qual was read: they resolve to
+    `app_private.has_firm_access` (active membership only), `app_private.has_client_access`,
+    `user_id = auth.uid()` or `app_private.me_is_super_admin()` — none admits a support grant, so no
+    access is over-granted today. The defect is shape, not scope: rule 1 wants per-command policies so a
+    future edit cannot widen reads and writes together. Fix: split into per-command policies.
