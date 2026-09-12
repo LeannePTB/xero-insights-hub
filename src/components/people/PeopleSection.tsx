@@ -202,9 +202,11 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                     <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {m.isPractice && <Badge>Traction Advisory</Badge>}
                     <Badge variant="outline">{m.role === "owner" ? "Owner" : "Staff"}</Badge>
                     {m.status !== "active" && <Badge variant="secondary">{m.status}</Badge>}
                   </div>
+
                 </li>
               ))}
             </ul>
