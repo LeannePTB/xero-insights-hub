@@ -51,16 +51,24 @@ export type StandingViewer = {
 export const listStandingViewers = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
-  .handler(async ({ data, context }): Promise<{ viewers: StandingViewer[]; canManage: boolean }> => {
-    const [{ data: rows, error }, { data: canManage }] = await Promise.all([
+  .handler(async ({ data, context }): Promise<{
+    viewers: StandingViewer[];
+    canManage: boolean;
+    firmName: string | null;
+  }> => {
+    const [{ data: rows, error }, { data: canManage }, { data: firm }] = await Promise.all([
       (context.supabase as any).rpc("firm_viewers", { _firm_id: data.firmId }),
       (context.supabase as any).rpc("me_can_manage_firm_viewers", { _firm_id: data.firmId }),
+      (context.supabase as any).from("firms").select("name").eq("id", data.firmId).maybeSingle(),
     ]);
     if (error) {
-      if (/cannot view/i.test(error.message)) return { viewers: [], canManage: false };
+      if (/cannot view/i.test(error.message)) {
+        return { viewers: [], canManage: false, firmName: (firm as any)?.name ?? null };
+      }
       throw new Error(error.message);
     }
     return {
+      firmName: (firm as any)?.name ?? null,
       viewers: ((rows ?? []) as any[]).map((r) => ({
         id: r.id,
         userId: r.user_id,
