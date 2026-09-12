@@ -6,6 +6,7 @@
  * Do NOT import this file from a client/component module.
  */
 import * as React from "react";
+import { createHash } from "crypto";
 import { render } from "@react-email/components";
 import { TEMPLATES } from "@/lib/email-templates/registry";
 
