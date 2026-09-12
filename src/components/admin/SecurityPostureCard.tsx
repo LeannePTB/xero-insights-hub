@@ -199,6 +199,9 @@ export function SecurityPostureCard() {
                         </ul>
                       </details>
                     )}
+                    {c.attestable && (
+                      <AttestationControl check={c} onRecorded={() => void refetch()} />
+                    )}
                   </div>
                   <div className="shrink-0">
                     <StatusPill status={c.status} />
