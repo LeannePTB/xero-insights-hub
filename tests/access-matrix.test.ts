@@ -73,6 +73,10 @@ const CONTEXT: Record<Role, Ctx> = {
   super_admin_self_approving_support: { uid: U.superAdmin, dbRole: "authenticated", aal: "aal2" },
   suspended_member: { uid: U.suspended, dbRole: "authenticated", aal: "aal2" },
   removed_member: { uid: U.removed, dbRole: "authenticated", aal: "aal2" },
+  // Live-suite accounts only: every one of their rows is layers: ["live"], so
+  // no PGlite probe ever uses this context. Present because CONTEXT is
+  // exhaustive over Role.
+  security_test_account: { uid: null, dbRole: "authenticated", aal: "aal2" },
 };
 
 /**
