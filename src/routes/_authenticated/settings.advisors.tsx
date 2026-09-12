@@ -73,6 +73,13 @@ function AdvisorSettings() {
     queryFn: () => fetchPending(),
     enabled: ctxQ.data?.isAdvisor ?? false,
   });
+  // The practice team list is platform metadata: readable by super admins only,
+  // so only they see the indicator and the control.
+  const practiceQ = useQuery({
+    queryKey: ["practice-team"],
+    queryFn: () => fetchPracticeTeam(),
+    enabled: ctxQ.data?.isSuperAdmin ?? false,
+  });
 
   const [mode, setMode] = useState<"invite" | "password">("invite");
   const [email, setEmail] = useState("");
