@@ -1,11 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
 import { createFileRoute } from '@tanstack/react-router'
+import { createHash } from 'crypto'
+import { enforceRateLimit } from '@/lib/rate-limit.server'
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'
   const [localPart, domain] = email.split('@')
   if (!localPart || !domain) return '***'
   return `${localPart[0]}***@${domain}`
+}
+
+// The emailed link carries the plaintext token; only its SHA-256 hash is stored.
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
+
+function callerIp(request: Request): string {
+  return (
+    request.headers.get('cf-connecting-ip') ??
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  )
 }
 
 export const Route = createFileRoute("/email/unsubscribe")({
@@ -27,13 +42,19 @@ export const Route = createFileRoute("/email/unsubscribe")({
           return Response.json({ error: 'Token is required' }, { status: 400 })
         }
 
+        try {
+          await enforceRateLimit(`unsubscribe_get:${callerIp(request)}`, 30, 300)
+        } catch {
+          return Response.json({ error: 'Too many requests' }, { status: 429 })
+        }
+
         const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-        // Look up the token
+        // Look up the token by its hash — the plaintext is never stored.
         const { data: tokenRecord, error: lookupError } = await supabase
           .from('email_unsubscribe_tokens')
-          .select('*')
-          .eq('token', token)
+          .select('used_at')
+          .eq('token_hash', hashToken(token))
           .maybeSingle()
 
         if (lookupError || !tokenRecord) {
@@ -90,13 +111,20 @@ export const Route = createFileRoute("/email/unsubscribe")({
           return Response.json({ error: 'Token is required' }, { status: 400 })
         }
 
+        try {
+          await enforceRateLimit(`unsubscribe_post:${callerIp(request)}`, 30, 300)
+        } catch {
+          return Response.json({ error: 'Too many requests' }, { status: 429 })
+        }
+
+        const tokenHash = hashToken(token)
         const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-        // Look up the token
+        // Look up the token by its hash — the plaintext is never stored.
         const { data: tokenRecord, error: lookupError } = await supabase
           .from('email_unsubscribe_tokens')
-          .select('*')
-          .eq('token', token)
+          .select('email, used_at')
+          .eq('token_hash', tokenHash)
           .maybeSingle()
 
         if (lookupError || !tokenRecord) {
@@ -111,13 +139,13 @@ export const Route = createFileRoute("/email/unsubscribe")({
         const { data: updated, error: updateError } = await supabase
           .from('email_unsubscribe_tokens')
           .update({ used_at: new Date().toISOString() })
-          .eq('token', token)
+          .eq('token_hash', tokenHash)
           .is('used_at', null)
-          .select()
+          .select('id')
           .maybeSingle()
 
         if (updateError) {
-          console.error('Failed to mark token as used', { error: updateError, token })
+          console.error('Failed to mark token as used', { error: updateError })
           return Response.json({ error: 'Failed to process unsubscribe' }, { status: 500 })
         }
 

@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { render } from '@react-email/components'
 import { createClient } from '@supabase/supabase-js'
+import { createHash } from 'crypto'
 import { createFileRoute } from '@tanstack/react-router'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 
@@ -27,6 +28,11 @@ function generateToken(): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
+}
+
+// Only the hash of an unsubscribe token is stored; the plaintext lives in the emailed link.
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
 }
 
 export const Route = createFileRoute("/lovable/email/transactional/send")({
@@ -149,14 +155,15 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           return Response.json({ success: false, reason: 'email_suppressed' })
         }
 
-        // 3. Get or create unsubscribe token (one token per email address)
+        // 3. Get or create unsubscribe token (one row per email address).
+        // Only the hash is stored, so a live token cannot be read back — each send
+        // mints a fresh token and the newest emailed link is the live one.
         const normalizedEmail = effectiveRecipient.toLowerCase()
         let unsubscribeToken: string
 
-        // Check for existing token for this email
         const { data: existingToken, error: tokenLookupError } = await supabase
           .from('email_unsubscribe_tokens')
-          .select('token, used_at')
+          .select('used_at')
           .eq('email', normalizedEmail)
           .maybeSingle()
 
@@ -178,17 +185,13 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           )
         }
 
-        if (existingToken && !existingToken.used_at) {
-          // Reuse existing unused token
-          unsubscribeToken = existingToken.token
-        } else if (!existingToken) {
-          // Create new token — upsert handles concurrent inserts gracefully
+        if (!existingToken || !existingToken.used_at) {
           unsubscribeToken = generateToken()
           const { error: tokenError } = await supabase
             .from('email_unsubscribe_tokens')
             .upsert(
-              { token: unsubscribeToken, email: normalizedEmail },
-              { onConflict: 'email', ignoreDuplicates: true }
+              { email: normalizedEmail, token_hash: hashToken(unsubscribeToken) },
+              { onConflict: 'email' }
             )
 
           if (tokenError) {
@@ -207,33 +210,6 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
               { status: 500 }
             )
           }
-
-          // If another request raced us, our upsert was silently ignored.
-          // Re-read to get the actual stored token.
-          const { data: storedToken, error: reReadError } = await supabase
-            .from('email_unsubscribe_tokens')
-            .select('token')
-            .eq('email', normalizedEmail)
-            .maybeSingle()
-
-          if (reReadError || !storedToken) {
-            console.error('Failed to read back unsubscribe token after upsert', {
-              error: reReadError,
-              email_redacted: redactEmail(normalizedEmail),
-            })
-            await supabase.from('email_send_log').insert({
-              message_id: messageId,
-              template_name: templateName,
-              recipient_email: effectiveRecipient,
-              status: 'failed',
-              error_message: 'Failed to confirm unsubscribe token storage',
-            })
-            return Response.json(
-              { error: 'Failed to prepare email' },
-              { status: 500 }
-            )
-          }
-          unsubscribeToken = storedToken.token
         } else {
           // Token exists but is already used — email should have been caught by suppression check above.
           // This is a safety fallback; log and skip sending.

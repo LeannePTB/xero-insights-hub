@@ -344,7 +344,19 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     memberships, support grants and roles. Owner call needed on which of these the practice writes and
     which are answered "not applicable — single-developer practice".
 
-40. **Unsubscribe links are not rate limited and their token is stored in the clear (opened 12 Sep 2026,
+40. **CLOSED 12 Sep 2026 (final hygiene batch).** `email_unsubscribe_tokens.token_hash` replaces
+    `token` (column dropped in the same migration; the single existing row was converted to
+    `encode(digest(token,'sha256'),'hex')` so its outstanding link still works — `select count(*)` was
+    1 row, 1 unused). `src/routes/email/unsubscribe.ts` now looks up `.eq('token_hash', hashToken(token))`
+    on GET and POST, selects only the columns it needs instead of `*`, and calls
+    `enforceRateLimit('unsubscribe_get|post:<ip>', 30, 300)` before touching the database (429 on limit).
+    Minting moved to hash-at-rest in `src/lib/email/send.server.ts` and
+    `src/routes/lovable/email/transactional/send.ts`: each send mints a fresh token and upserts the hash
+    on `email`, so the newest emailed link is the live one — a hashed token cannot be read back to reuse
+    an older link. Accepted consequence, recorded deliberately: an unsubscribe link in an older email to
+    the same address stops working once a newer email is sent; the newest email always carries a working
+    link, and suppression itself is unaffected. Original finding:
+    **Unsubscribe links are not rate limited and their token is stored in the clear (opened 12 Sep 2026,
     Phase 7 batch 4 re-audit).** `src/routes/email/unsubscribe.ts` looks a token up directly
     (`.eq('token', token)`, lines 33-36 and 96-99) with no `enforceRateLimit` call anywhere in the file
     (`rg -c "enforceRateLimit" src/routes/email/unsubscribe.ts` → none), and
@@ -354,7 +366,13 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     atomic and single-use, and `anon`/`authenticated` hold no privileges on the table (verified: `anon`
     has zero grants in `public`). Fix: hash the token like the others, and rate limit the route by IP.
 
-41. **Three `app_private` trigger functions still hold EXECUTE for `PUBLIC` (opened 12 Sep 2026,
+41. **CLOSED 12 Sep 2026 (final hygiene batch).** One revoke migration; `proacl` on all three is now
+    `{postgres=X/postgres}` (was `NULL`, i.e. EXECUTE to PUBLIC). The triggers are still attached and
+    enabled — `trg_enforce_client_limit` on `clients`, `trg_enforce_xero_org_limit` and
+    `trg_enforce_xero_org_limit_on_move` on `xero_connections`, all `tgenabled = 'O'` — and a trigger runs
+    as the table owner, not the caller, so `PLAN_LIMIT_CLIENTS` / `PLAN_LIMIT_XERO_ORGS` still fire. The
+    definer register's "callable by signed-in users" count fell from 97 to 94 as a result. Original
+    finding: **Three `app_private` trigger functions still hold EXECUTE for `PUBLIC` (opened 12 Sep 2026,
     Phase 7 batch 4 re-audit).** `app_private.enforce_client_limit`, `enforce_xero_org_limit` and
     `enforce_xero_org_limit_on_move` return true for `has_function_privilege('anon', oid, 'execute')`;
     every other definer function has EXECUTE revoked. Not exploitable — Postgres refuses to call a
@@ -362,7 +380,14 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     `SET search_path` — but the project rule says revoke EXECUTE from PUBLIC and `anon` on every definer
     function, so this is a hygiene gap. Fix: one revoke migration.
 
-42. **46 policies have no explicit `TO` clause (opened 12 Sep 2026, Phase 7 batch 4 re-audit).**
+42. **CLOSED 12 Sep 2026 (final hygiene batch).** Real count re-verified live before starting: **34**
+    policies with `polroles = '{0}'`, not 46 (the earlier figure counted policies rather than distinct
+    `polroles = '{0}'` rows after Batch 1). Fixed with `ALTER POLICY ... TO <role>` (no drop/recreate, so
+    there was never a window with no policy): 9 on the four system email tables to `service_role`
+    (`email_send_log`, `email_send_state`, `email_unsubscribe_tokens`, `suppressed_emails`) and 25 to
+    `authenticated`. Live check after: `polroles = '{0}'` count is **0**. Matrix re-proved after each
+    migration: 1222 proved, 0 failed, identical both times. Original finding:
+    **46 policies have no explicit `TO` clause (opened 12 Sep 2026, Phase 7 batch 4 re-audit).**
     `pg_policy.polroles = '{0}'` (PUBLIC) on 46 permissive policies across `clients`, `firm_members`,
     `billing_events`, `client_notes`, `subscriptions`, the email tables and others, so each applies to
     every role rather than to `authenticated` (or `service_role`) explicitly. Not currently reachable by
@@ -370,7 +395,17 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     `mfa_aal2_required` guard is on 51 of 53 tables. Fix: recreate each policy with an explicit `TO`
     role; do it table by table, proving the matrix unchanged at each step.
 
-43. **Eight legacy permissive `FOR ALL` policies remain on data tables (opened 12 Sep 2026,
+43. **CLOSED 12 Sep 2026 (final hygiene batch).** Real count re-verified live: **20** permissive
+    `FOR ALL` policies in `public`, not eight, and every one had a non-null `WITH CHECK`, so the split was
+    mechanical. One migration recreated each as four per-command policies — SELECT/DELETE carrying the
+    original `USING`, INSERT the original `WITH CHECK`, UPDATE both — generated from the live catalogue
+    itself so no expression could be retyped wrongly, and raising an exception rather than guessing if a
+    policy had no role or a missing expression. The 51 RESTRICTIVE `mfa_aal2_required` guards stay
+    `FOR ALL` (they only narrow). Live after: permissive `FOR ALL` count **0**, total policies 238 (was
+    178), `polroles = '{0}'` still 0. Matrix identical: 1222 proved, 0 failed. One static guard needed its
+    allow-list updated for the renamed `rate_limit_buckets service only` policy (four per-command names,
+    still `service_role`-only). Original finding:
+    **Eight legacy permissive `FOR ALL` policies remain on data tables (opened 12 Sep 2026,
     Phase 7 batch 4 re-audit).** `audit_finding_snoozes`, `client_statutory_accounts`,
     `consolidation_group_members`, `consolidation_groups`, `dashboard_card_order`,
     `loan_consolidation_snapshots`, `scenario_exclusions` and `xero_oauth_states` (plus the super-admin

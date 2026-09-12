@@ -6,6 +6,7 @@
  * Do NOT import this file from a client/component module.
  */
 import * as React from "react";
+import { createHash } from "crypto";
 import { render } from "@react-email/components";
 import { TEMPLATES } from "@/lib/email-templates/registry";
 
@@ -17,6 +18,11 @@ function generateToken(): string {
   const bytes = new Uint8Array(32);
   crypto.getRandomValues(bytes);
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Only the hash of an unsubscribe token is stored; the plaintext lives in the emailed link.
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
 }
 
 export interface EnqueueResult {
@@ -56,22 +62,13 @@ export async function enqueueAppEmail(opts: {
     return { status: "suppressed" };
   }
 
-  // Get/create unsubscribe token
-  let unsubscribeToken: string;
-  const { data: existing } = await supabase
-    .from("email_unsubscribe_tokens").select("token, used_at").eq("email", normalized).maybeSingle();
-  if (existing && !existing.used_at) {
-    unsubscribeToken = existing.token;
-  } else {
-    unsubscribeToken = generateToken();
-    await supabase.from("email_unsubscribe_tokens").upsert(
-      { token: unsubscribeToken, email: normalized },
-      { onConflict: "email", ignoreDuplicates: true },
-    );
-    const { data: stored } = await supabase
-      .from("email_unsubscribe_tokens").select("token").eq("email", normalized).maybeSingle();
-    if (stored?.token) unsubscribeToken = stored.token;
-  }
+  // Mint a fresh unsubscribe token for this send. Only its hash is stored, so an
+  // existing token cannot be read back — the newest emailed link is the live one.
+  const unsubscribeToken = generateToken();
+  await supabase.from("email_unsubscribe_tokens").upsert(
+    { email: normalized, token_hash: hashToken(unsubscribeToken) },
+    { onConflict: "email" },
+  );
 
   // Render
   const data = opts.templateData ?? {};
