@@ -48,10 +48,9 @@ select json_build_object(
     from pg_policy pol join pg_class c on c.oid = pol.polrelid
     where c.relnamespace = 'public'::regnamespace
   ), '[]'::json),
-  'cron_jobs', coalesce((
-    select json_agg(json_build_object('name', j.jobname, 'command', j.command))
-    from cron.job j
-  ), '[]'::json),
+  -- Scheduled jobs: the dump role has no USAGE on schema `cron`, so scheduled
+  -- callers cannot be read here. Recorded as a stated limitation in the register.
+  'cron_jobs', '[]'::json,
   'triggers', coalesce((
     select json_agg(json_build_object(
       'table', c.relnamespace::regnamespace::text || '.' || c.relname,
