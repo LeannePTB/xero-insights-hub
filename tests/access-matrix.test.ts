@@ -492,6 +492,46 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       await db.exec("rollback to savepoint revoke_probe");
     }
   }
+  if (r === "viewer management for a client in the caller's own organisation") {
+    const p = await probe(
+      `select 1 / (case when app_private.can_manage_viewers_for_client(auth.uid(), '${CLIENT_A}') then 1 else 0 end)`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "viewer management for another organisation's client") {
+    const p = await probe(
+      `select 1 / (case when app_private.can_manage_viewers_for_client(auth.uid(), '${CLIENT_B}') then 1 else 0 end)`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "practice-team membership of organisation A inside organisation B") {
+    // ownerA is on the practice team and an active member of A only. Path D
+    // management must not follow the practice-team row into organisation B.
+    const p = await probe(
+      `select 1 / (case when app_private.can_manage_client_viewers(auth.uid(), '${ORG_B}') then 1 else 0 end)`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "practice_team") {
+    if (row.operation === "read") {
+      const p = await probe(`select 1 from public.practice_team where user_id = '${U.ownerA}'`);
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    if (row.operation === "insert") {
+      const p = await probe(
+        `insert into public.practice_team (user_id) values ('${U.grantTarget}')`,
+      );
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    if (row.operation === "update") {
+      const p = await probe(
+        `update public.practice_team set added_by = auth.uid() where user_id = '${U.ownerA}'`,
+      );
+      return p.ok && p.rows > 0 ? "allow" : "deny";
+    }
+    const p = await probe(`delete from public.practice_team where user_id = '${U.ownerA}'`);
+    return p.ok && p.rows > 0 ? "allow" : "deny";
+  }
   if (r.startsWith("profiles")) {
     const uid = CONTEXT[row.role].uid;
     if (row.operation === "read") {
@@ -609,6 +649,10 @@ beforeAll(async () => {
     insert into public.firm_viewer_access(id, firm_id, user_id, tier, granted_by) values
       ('e0000002-1111-4111-8111-111111111111', '${ORG_A}', '${U.standingViewer}', 'multi_company', '${U.ownerA}'),
       ('e0000003-1111-4111-8111-111111111111', '${ORG_A}', '${U.mixedViewer}', 'multi_company', '${U.ownerA}');
+    -- Batch 5: ownerA is on the practice team. It confers nothing by itself —
+    -- Path D management still needs an ACTIVE membership of the organisation in
+    -- question, which ownerA has for A and not for B.
+    insert into public.practice_team(user_id, added_by) values ('${U.ownerA}', '${U.superAdmin}');
     insert into public.clients(id, name, owner_user_id, firm_id, notes, report_basis,
                                cost_classification_enabled, basis_overrides, max_xero_orgs,
                                consolidation_mode, consolidation_org_ids) values
