@@ -1,6 +1,6 @@
 # Xero API Consumer assessment — mapping
 
-This document maps each section of the Xero API Consumer Annual Security Assessment to the controls we operate in Traction Advisory.
+This document maps each section of the Xero API Consumer Annual Security Assessment to the controls we operate in Traction Advisory. It records the mapping only — the honest state of the evidence behind each answer, including the gaps, is in [xero-assessment-inputs.md](./xero-assessment-inputs.md). Where this mapping and `access-matrix.md` disagree, the matrix is right.
 
 ## Section 2 — Encryption
 
@@ -21,9 +21,10 @@ This document maps each section of the Xero API Consumer Annual Security Assessm
 
 | # | Question | Answer | Evidence |
 | --- | --- | --- | --- |
-| 3.1 | Strong customer authentication | Yes — TOTP MFA mandatory, AAL2 required for app shell | `access-control.md` |
+| 3.1 | Strong customer authentication | Yes — TOTP MFA mandatory and enforced **on the server**: `requireAal2` on authenticated server functions, a RESTRICTIVE `mfa_aal2_required` policy on 51 of 53 tables, and an aal2 assertion in every signed-in-callable definer function. The browser gate is UX only | `access-control-spec.md` §0a, `src/lib/auth/require-aal2.ts`, `definer-register.md` |
 | 3.2 | Password policy | HIBP leaked-password check enabled; self-signup disabled | Supabase Auth config |
-| 3.3 | Connection ownership | Per-firm, revocable, audit-logged | `access-control.md` |
+| 3.3 | Connection ownership | Per organisation (`xero_connections.firm_id` is `NOT NULL`), revocable, audit-logged. Disconnect revokes at Xero first and fails closed; the row is marked, not deleted, keeping the client-to-file link | `access-control-spec.md` §10, `src/lib/xero/connections.functions.ts` |
+| 3.4 | Access control model | Three paths only — membership, read-only 72-hour owner-approved support grant, metadata-only platform operations. `super_admin` alone grants no organisation or client data | `access-control-spec.md` §3, §4a; `access-matrix.md` |
 
 ## Section 4 — Data hosting & third-party access
 
@@ -41,9 +42,10 @@ See [vulnerability-management.md](./vulnerability-management.md).
 
 | # | Question | Answer | Evidence |
 | --- | --- | --- | --- |
-| 7.1 | Audit logging implemented & maintained | Yes — `audit_log` table | `README.md` |
+| 7.1 | Audit logging implemented & maintained | Yes — `audit_log`, including **every read of a client's financial figures** (`xero_data_read`, `client_report_read`; sources live/snapshot/cache/report/report_link) with no figures, names, tokens, IPs or devices, grouped per person and client in five-minute windows | `access-control-spec.md` §9a, `src/lib/audit.server.ts`, `public.read_audit_posture()` |
+| 7.1a | Who may read the log | Practice super admins at aal2 only. An organisation may not read its own audit log — a deliberate decision, with reasoning | `access-control-spec.md` §9 |
 | 7.2 | Append-only logs | Yes — `UPDATE`/`DELETE` revoked from app roles | Migration |
-| 7.3 | Retention | 2 years (exceeds 1-year Xero minimum) | `data-retention.md` |
+| 7.3 | Retention | 2 years — `security_settings.audit_retention_days` = 730 (verified live), nightly pg_cron purge | `data-retention.md` |
 
 ## Section 8 — Security monitoring & incident lookback
 

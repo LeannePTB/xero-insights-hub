@@ -1,6 +1,16 @@
-# Traction Advisory — Access Control Spec (full reference)
+# Traction Advisory — Access Control Spec (the detail)
 
-> Reference copy of the Project Knowledge as at 11 September 2026. Project Knowledge ("Security Rules and Change Gate") is binding and takes precedence where the two differ. Keep this file for the detailed rules below.
+> **What this file is for.** The DETAIL behind the rules: how each rule is implemented, and the
+> facts that have caused incidents before. Updated 12 September 2026 (Phase 7 batch 3) to match the
+> system as built through Phases 1–7.
+>
+> **Which document wins.**
+> - **Project Knowledge** ("Security Rules and Change Gate") — the BINDING rules the agent follows. It wins over everything here.
+> - **This file** — the detail. Where it and Project Knowledge differ, Project Knowledge wins.
+> - **`access-matrix.ts` / generated `access-matrix.md`** — the EVIDENCE. Where this file and the matrix disagree, the matrix is right: it is proved against the live catalogue by `bun run security:check`, and prose is not.
+> - **`access-control.md`** — the assessor-facing summary. Never authoritative.
+>
+> Supporting generated/verified registers: `definer-register.md` (every SECURITY DEFINER function, its guard and its callers), `admin-client-register.md` (every `supabaseAdmin` use and its reason), `grant-dump-phase7.md` (before/after grants), `docs/security-backlog.md` (open work and settled decisions).
 
 Xero-connected multi-tenant advisor dashboard subject to the **Xero API Consumer Security Standard**. Access control is the highest-risk area of this codebase.
 
@@ -9,14 +19,27 @@ If a chat request conflicts with this document, STOP and reply:
 
 ## 0. Invariants — must hold after EVERY change
 
-1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies.
-2. No policy on a data table may read `USING (true)`.
-3. **Being `super_admin` grants ZERO access to organisation or client data on its own.**
+1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 53 `public` tables.
+2. No policy on a data table may read `USING (true)`. New permissive policies are per command, never `FOR ALL`; a RESTRICTIVE `FOR ALL` guard that only narrows access (the aal2 guard) is allowed.
+3. **Being `super_admin` grants ZERO access to organisation or client data on its own** (see §4a for the bounds on what it *can* do).
 4. A `firm_id` / `client_id` / `tenant_id` from the caller is a FILTER, never a GRANT.
 5. Xero OAuth tokens never leave the server. `service_role` key never reaches the browser.
 6. RLS is never disabled to fix a bug. Never cache roles or grants in the JWT or localStorage.
-7. **Each rule has ONE implementation, in the database.** Server code calls it, never reimplements it — including plan limits and ownership.
+7. **Each rule has ONE implementation, in the database.** Server code calls it, never reimplements it — including plan limits and ownership. The build enforces this (§6a).
 8. Fail closed. Showing no data is a bug; showing the wrong organisation's data is an incident.
+9. **MFA is enforced on the server**, not by the browser (§0a). The browser gate is UX only.
+10. **Support grants are READ-ONLY everywhere** (§7).
+11. **Every read of a client's financial figures is audited** (§9a).
+12. `authenticated` holds only the privileges the policies on that table admit (§14).
+
+## 0a. MFA (aal2) is enforced on the server — three layers
+
+`MfaGate` and the `_authenticated` layout are UX only; nothing depends on them.
+
+- **Server functions.** `requireAal2` (`src/lib/auth/require-aal2.ts`) wraps the generated `requireSupabaseAuth` and rejects any session whose `aal` claim is not `aal2`. It guards every authenticated server function except two owner-approved logging exceptions, `logAuthEvent` and `logLogin`, which record the sign-in and MFA lifecycle itself before a second factor can exist: both are write-only, derive actor and email from the verified token, accept no caller free text (six-value allow-list; `logLogin` takes no input) and are rate limited via `public.check_rate_limit`. Seven functions are deliberately unauthenticated (Xero sign-in start and callback, the public report link, the webhook and cron routes) and each verifies its own credential.
+- **Database.** `app_private.is_aal2()` reads the `aal` claim from the request JWT. A RESTRICTIVE `FOR ALL TO authenticated` policy `mfa_aal2_required` sits on **51 of the 53 `public` tables** (verified live), with two owner-approved exclusions holding no organisation, client or personal data: `plan_levels` and `tier_settings`. Requests with no JWT claims (cron, migrations) and `service_role` requests are system contexts, which bypass RLS anyway.
+- **Callable functions.** Every SECURITY DEFINER function callable by a signed-in user asserts aal2 in its body via `app_private.assert_aal2()`, with one approved exception, `public.xero_required_scopes()`, which returns a fixed constant and reads no table. `public.xero_missing_scopes` returns `null` unless `app_private.is_aal2()`. All 127 definer functions set `search_path`. See `definer-register.md`, regenerated by `bun run security:check`.
+- `app_private` is not an exposed PostgREST schema: a request with `Accept-Profile: app_private` returns `PGRST106`.
 
 ## 1. Naming and language
 
@@ -36,9 +59,9 @@ If a chat request conflicts with this document, STOP and reply:
 
 **Path A — membership.** An active `firm_members` row. How Positive Traction reaches organisations it set up and runs the books for, and how a client reaches their own. Disclosed in the member list, revocable. **Never use support access for an organisation Positive Traction set up.**
 
-**Path B — support grant.** ONLY for an organisation Positive Traction is not a member of. Read-only, one named person, max 72h, approved by that organisation's owner.
+**Path B — support grant.** ONLY for an organisation Positive Traction is not a member of. **Read-only, everywhere and without exception** — see §7. One named person, max 72h, approved by that organisation's owner.
 
-**Path C — platform operations.** Metadata only: organisation list, plans, billing events, signup requests, invites, audit log, user roles, `admin_firm_overview`, `xero_api_errors`. MAY use bare `me_is_super_admin()`. Must never expose Xero financial data.
+**Path C — platform operations.** Metadata only: organisation list, plans, billing events, signup requests, invites, audit log, user roles, `admin_firm_overview`, `xero_api_errors`, security posture. MAY use bare `me_is_super_admin()`. Must never expose Xero financial data. Path C **writes** are audited by a generic audit trigger on the Path C tables (Phase 3b).
 
 If a feature seems to need cross-organisation visibility, ask which path it is first.
 
@@ -46,9 +69,16 @@ If a feature seems to need cross-organisation visibility, ask which path it is f
 
 **Creation** must, atomically: insert `firm_members` for the creator (`role='owner'`, `status='active'`); set `firms.owner_user_id`; insert `subscriptions` with `tier='ptb'`, `status='active'`; write an `audit_log` row. If any step fails, roll everything back. An organisation with no members and no owner is **stranded** — nobody can approve anything. This happened to "Autotek NSW" and needed manual repair.
 
-**Never set `is_always_free` on a client organisation.** That flag is for Positive Traction's own organisation and grants the *highest enabled* tier, not Standard.
+**Handover** goes only through `public.transfer_organisation_ownership(_firm_id, _new_owner_user_id, _keep_previous_as_staff default true)`: caller must be current owner, new owner must already be an active member, previous owner is demoted to `staff` or removed. Writes its own audit row. Never transfer ownership by direct UPDATE, and never through a super-admin path — `authenticated` holds no UPDATE grant on `firms` at all. Assigning an owner where there is none (first acceptance) is allowed only when `owner_user_id` is null, and is audited, refusals included.
 
-**Handover** goes only through `public.transfer_organisation_ownership(_firm_id, _new_owner_user_id, _keep_previous_as_staff default true)`: caller must be current owner, new owner must already be an active member, previous owner is demoted to `staff` or removed. Writes its own audit row. Never transfer ownership by direct UPDATE.
+## 4a. Super-admin powers are bounded and audited
+
+`super_admin` on its own reaches no organisation or client data (invariant 3). What it can do is bounded in the database and audited:
+
+- **Self-join.** `public.admin_set_self_firm_membership` adds or removes the caller as a member of an organisation **Positive Traction still owns** — never an organisation handed over to a client — and audits every attempt.
+- **Always-free.** `public.set_firm_always_free` is restricted to Positive Traction's own organisation (pinned to `4dcfd606-dce3-4674-923f-c5183ecae141`), **fails closed** if that organisation cannot be identified, requires a 3–500 character reason, and audits the change. That flag grants the *highest enabled* tier, not Standard. **Never set `is_always_free` on a client organisation.**
+- **Subscriptions and comps.** `client_subscriptions` has no browser write grant; changes go through audited aal2 RPCs that require a reason.
+- **MFA reset, role changes, plan changes, audit exports** all write audit rows.
 
 ## 5. Plans and limits — enforced by database triggers
 
@@ -64,17 +94,34 @@ An organisation with no `subscriptions` row has NO limits — assign a plan at c
 
 ## 6. Authorisation functions — use these, never hand-roll
 
-Server code (service_role bypasses RLS, so these are mandatory): `public.user_can_access_firm`, `public.user_can_access_client`, `public.client_entitlement`.
+Server code (service_role bypasses RLS, so these are mandatory) calls **caller-scoped** functions that take no user id from the caller and read `auth.uid()` themselves: `public.user_can_read_client`, `public.user_can_write_client`, `public.assert_client_write_access`, `public.user_can_access_tenant`, `public.assert_tenant_belongs_to_client`, `public.client_for_tenant`, `public.firm_access_path`, `public.client_entitlement`, `public.my_roles`, `public.my_firm_memberships`, `public.my_client_access`, `public.firm_support_grants`, `public.firm_support_viewer_state`, and the super-admin/advisor checks. `public.user_can_access_firm` and `public.user_can_access_client` are the older aliases; they are still live and superseded by the read/write pair (backlog 37 tracks retiring them as its own change).
 
-RLS policies use `app_private.*`: `has_firm_access`, `is_org_owner`, `is_firm_owner`, `has_client_access`, `user_can_manage_client`, `firm_support_access_active`, `platform_staff_can_access_firm`, `user_can_access_tenant`, `firm_limits`.
+RLS policies use `app_private.*`: `has_firm_access`, `is_org_owner`, `is_firm_owner`, `has_client_access`, `user_can_read_client`, `user_can_write_client`, `user_can_manage_client`, `firm_support_access_active`, `platform_staff_can_access_firm`, `user_can_access_tenant`, `has_tenant_access`, `client_for_tenant`, `firm_limits`, `is_aal2`.
 
-Pattern: **read** = `has_firm_access(auth.uid(), firm_id) OR platform_staff_can_access_firm(auth.uid(), firm_id)`; **write** = `has_firm_access` only, because support access is read-only. Tenant-keyed tables use `user_can_access_tenant`; client-keyed use `user_can_manage_client`. New policies target `to authenticated`, never `public`.
+Pattern: **read** = `has_firm_access(auth.uid(), firm_id) OR platform_staff_can_access_firm(auth.uid(), firm_id)`; **write** = `has_firm_access` only, because support access is read-only. Tenant-keyed tables use `user_can_access_tenant`; client-keyed reads use `user_can_read_client` and client-keyed writes `user_can_write_client`. New policies target `to authenticated`, never `public`, and are per command.
 
-## 7. Support access (`firm_support_access`)
+## 6a. One rulebook — the build blocks re-implementation
+
+Invariant 7 is enforced, not just stated. `tests/static-guards.test.ts` (run by `bun run security:check`) fails the build on:
+
+- a direct read of `user_roles`, `firm_members`, `client_access` or `firm_support_access` in a converted file (`docs/security/converted-files.ts`) — access questions must be asked of a database function;
+- a `supabaseAdmin` use that is not a registered system context and is not preceded by a database authorisation call (`admin-client-register.md`);
+- any read of `profiles.email` — identity comes from `auth.users` (invariant 10);
+- a `tenantId`/`firmId`/`clientId` taken from a request body, query string or header and used as a grant;
+- a callable SECURITY DEFINER function without an aal2 assertion, and a read path that stops writing its read audit row (§9a).
+
+`docs/security/access-matrix.ts` is the authoritative expectation of who may read and write what; `bun run security:check` proves it against a PGlite copy of the live schema, policies, grants, definer bodies and triggers, with a fingerprint check that fails when the live catalogue drifts from the copy.
+
+## 7. Support access (`firm_support_access`) — read-only everywhere
 
 PK is `id`. `grantee_user_id` and `expires_at` are NOT NULL, with a CHECK capping expiry at 72h. Partial unique index on `(firm_id, grantee_user_id) WHERE granted AND revoked_at IS NULL`. **No unique constraint on `firm_id` alone** — never upsert on `firm_id`, never `.maybeSingle()` filtered only by it.
 
 Staff insert a pending request for themselves only. Only `is_org_owner` may approve. **A super admin can never approve their own access.** Writes go through `context.supabase`, never `supabaseAdmin`.
+
+What a live support grant may do (Phase 3a):
+
+- **Read**: the organisation's dashboards and Xero-derived figures, **the client list (`clients`) and statutory accounts (`client_statutory_accounts`)** as well.
+- **Write: nothing at all.** No client record, no note, no setting, no scenario, and **no branding** — the branding and logo paths (including clearing a logo, which is audited) require membership or client ownership, not a support grant. No policy, RPC or server function that writes may admit a support grant, which is why write policies use `has_firm_access`/`user_can_write_client` and never `platform_staff_can_access_firm`.
 
 ## 8. Entitlement (separate from access control)
 
@@ -86,30 +133,63 @@ Stripe: the practice's OWN account — `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SEC
 
 ## 9. Logging — telemetry vs audit
 
-**`audit_log` is access and security events ONLY**, append-only: sign-ins, invites, membership and role changes, ownership transfers, support grants, comps, Xero connect/disconnect/token refresh, `xero_data_read`.
+**`audit_log` is access and security events ONLY**, append-only: sign-ins, invites, membership and role changes, ownership transfers, support grants, comps, Xero connect/disconnect/token refresh/refusal, Path C administrative writes, and the client-data read events in §9a.
+
+**Who may read `audit_log`: only Positive Traction super admins, at aal2.**
+
+> **Settled owner decision, 12 September 2026 — an organisation may NOT read its own audit log.** This is deliberate, and current behaviour already matches it; earlier wording in this file that implied otherwise was wrong. Reasoning: `audit_log` is a single platform-operations trail spanning every organisation. Its rows describe Positive Traction's own operational actions and reference other organisations' identifiers, so exposing "your organisation's rows" would mean filtering a cross-tenant security trail per request — a new access path, and one more place to get wrong (invariants 3 and 6). Organisations that need assurance are given a report or an extract by the practice instead. Revisiting this needs the owner to amend Project Knowledge first.
 
 **`xero_api_errors` is disposable telemetry**: one row per `(day, path, http_status, tenant_id, firm_id)` with an `occurrences` counter, 30-day retention pruned on write. Write ONLY via `public.log_xero_api_error(...)` (service_role). No in-code deduplication. Never pass tokens, headers or payloads. Telemetry failures are swallowed.
+
+## 9a. Reads of client financial data are audited (Phase 6)
+
+Every path that shows a person a client's figures records the read through the single writer in `src/lib/audit.server.ts`. Never write a read action directly, and never add a figures-serving path without it — static guard 7 fails the build if you do.
+
+- **Actions:** `xero_data_read` (Xero figures, however served) and `client_report_read` (a stored report or a public report link, where the target is a report row and the link viewer has no signed-in actor).
+- **Sources:** `live`, `snapshot`, `cache`, `report`, `report_link` (`src/lib/audit/read-keys.ts`).
+- **Each row records:** who read it (or that there was no signed-in person), which client, which Xero file (tenant), a short stable key for the kind of figures (`pnl`, `receivables`, `report:monthly`), the period or date range where one applies, and the access path.
+- **Each row never contains:** a figure, an account or contact name, a token (including the report-link token), an IP address or a device.
+- **Grouping:** one row per `(actor, client, tenant, key, source)` per **five minutes**, in process, so one dashboard view is one row per kind of figures. A different person or a different client always writes its own row.
+- **Failure:** an audit write failure is swallowed and logged — it never breaks a dashboard — which is why coverage is checked rather than assumed: `public.read_audit_posture()` (super admin, aal2) compares the trail against the reads actually served, and the Security card shows it.
+- Retention follows `security_settings.audit_retention_days` (730 days live), purged by the nightly job.
 
 ## 10. Xero rules
 
 - Resolve `tenant_id` SERVER-SIDE from the organisation/client the user is authorised for. **Never read tenantId from a request body, query string or header.**
-- Tokens live in `xero_connections.access_token_enc` / `refresh_token_enc`. Never `select *` from `xero_connections` in client-reachable code.
-- Refresh tokens rotate; store atomically, row-lock against concurrent refresh.
+- Tokens live in `xero_connections.access_token_enc` / `refresh_token_enc`, wrapped with AES-256-GCM under the server-only `TOKEN_ENC_KEY`. Never `select *` from `xero_connections` in client-reachable code; `authenticated` has SELECT on the 13 non-token columns only.
+- Refresh tokens rotate; store atomically, row-lock against concurrent refresh. Only a definitive `invalid_grant` marks a grant revoked.
 - On 401/403: `status='disconnected'`, stop syncing, prompt reconnect. No retry loops.
+- **A connection always belongs to an organisation.** `xero_connections.firm_id` is `NOT NULL`, deferred constraint triggers keep a Xero file in the same organisation as the client it is linked to, and the connect callback **refuses** a tenant it cannot place, or one the plan has no room for, instead of storing it unassigned (audited `xero_file_refused`). Unlinking keeps the organisation stamp.
+- **Disconnection** (`public.user_can_disconnect_xero_connection` authorises the caller): revoke at Xero FIRST via `DELETE /connections/{connectionId}`, verify the connection is gone, and **fail closed** — if Xero does not confirm, change nothing and tell the person. Then **mark** the row `disconnected`; **never hard-delete it**, because `client_xero_orgs.xero_connection_id` is `ON DELETE CASCADE` and deleting destroys the client-to-Xero-file link. Keeping the link means a reconnect restores the same file to the same client. Both success and failure are audited. A disconnected connection does not count toward the plan's Xero file allowance (`app_private.client_xero_files_used`).
 - **`Reports/ActivityStatement` DOES NOT EXIST** — never call it. Current BAS figures are not available from the Xero API at all.
 - `Reports/BankSummary` requires `toDate - fromDate <= 365 days`.
+- `accounting.journals.read` is unavailable.
 
 ## 11. Membership & invites
 
-`firm_members.status` is `active | suspended | removed`; role is `owner | staff`. Removal sets status, never hard-deletes; only `active` counts. Invites are email-bound, single-use, expiring, storing a token HASH.
+`firm_members.status` is `active | suspended | removed`; role is `owner | staff`. Removal sets status, never hard-deletes; only `active` counts. Invites are email-bound, single-use, expiring, storing a token HASH. Team member and client viewer invitations share one screen, the organisation's People page, and each path keeps its own server function and permissions — grouping them in the UI widened nothing. An owner invite is refused for an organisation that already has an owner.
 
-## 12. Outstanding work
+## 12. Roles and identity
+
+Roles live in `public.user_roles` (never on `profiles` or a users table) and are read through `has_role(uuid, app_role)` and `me_is_super_admin()`. **Identity comes from `auth.users`**: never use `profiles.email` or a display name to identify a person or choose a recipient — `profiles.display_name` is self-chosen and can imitate someone else, so a verified `auth.users` email accompanies the name in tooltips and admin lists.
+
+## 13. Grants — only what the policies admit
+
+Verified live on 12 September 2026 (Phase 7 batch 1; before/after dump in `grant-dump-phase7.md`):
+
+- `anon` holds **no** privilege on any `public` table.
+- `authenticated` holds **no** TRUNCATE, REFERENCES, TRIGGER or MAINTAIN on any table (was 47 tables), and no privilege at all on system-only tables.
+- Every remaining `authenticated` grant has a matching permissive policy; a grant with no policy behind it is a defect.
+- `service_role` grants are intact for system contexts; sensitive columns keep column-level grants.
+- New table checklist: RLS on; `revoke all ... from anon, authenticated;` then grant only what the policies need; per-command policies; column grants for sensitive columns; add rows to `access-matrix.ts`.
+
+## 14. Outstanding work
 
 The verified security backlog lives in `docs/security-backlog.md`. Read it before planning any access-control work, and update it in the same change that closes an item. Do not track outstanding work in this document — this section only points at it.
 
-Two entries there are settled decisions, not tasks: **`FORCE ROW LEVEL SECURITY` is WON'T DO** (all `public` tables are owned by `postgres`, which has `rolbypassrls`, so FORCE changes nothing for any role the app connects as), and **token column exposure is CLOSED** (`authenticated` has SELECT on 13 non-token columns of `xero_connections`; `access_token_enc` and `refresh_token_enc` have no grant, and the privilege check precedes RLS).
+Settled decisions there, not tasks: **`FORCE ROW LEVEL SECURITY` is WON'T DO** (all `public` tables are owned by `postgres`, which has `rolbypassrls`, so FORCE changes nothing for any role the app connects as); **token column exposure is CLOSED** (`authenticated` has SELECT on 13 non-token columns of `xero_connections`; `access_token_enc` and `refresh_token_enc` have no grant, and the privilege check precedes RLS); **an organisation may not read its own audit log** (§9); and the remaining super admin without a verified TOTP factor is **left as is** — she is forced to enrol at her next sign-in, server enforcement already blocks her from all data, and the posture card correctly shows one Action item until then.
 
-## 13. Working agreement
+## 15. Working agreement
 
 One change at a time. After anything touching auth, RLS, membership, grants, entitlement, ownership or Xero tokens, restate which invariants in section 0 it touches and why they still hold. Never change an RLS policy as a side effect of a feature task.
 

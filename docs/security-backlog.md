@@ -312,3 +312,28 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     `user_can_read_client`/`user_can_write_client` and `user_can_write_firm` first, which changes
     behaviour where a read caller currently accepts a support grant. Owner's instruction stands: this
     is its own change, not part of Phase 7 batch 2.
+
+38. **A revoked Xero token's ciphertext stays on the row until the next authorisation (opened 12 Sep 2026,
+    Phase 7 batch 3).** Disconnect revokes the grant at Xero first and fails closed, so the tokens are
+    dead the moment the row is marked. But `src/lib/xero/connections.functions.ts` updates only
+    `status`, `disconnected_at` and `disconnected_reason` — `access_token_enc` and `refresh_token_enc`
+    are left in place and are overwritten only when someone reconnects the same file. The row itself
+    must be kept (deleting it cascades away `client_xero_orgs` and so the client-to-Xero-file link),
+    but the ciphertext does not need to be. Low risk: the tokens are already revoked at Xero, the
+    columns carry no grant for `anon` or `authenticated`, and the key never leaves the server. Fix:
+    null both columns in the same update as the status change, and correct the wording in
+    `data-retention.md` and `data-hosting.md` to "revoked and removed" once it is true.
+    Found because `README.md` and both of those documents claimed tokens were deleted on disconnect;
+    the claim has been corrected in all three rather than left overstated.
+
+39. **Xero assessment evidence gaps — artefacts that do not exist (opened 12 Sep 2026, Phase 7 batch 3).**
+    None of these is an access-control defect; each is a document or record an assessor will ask to
+    see. Full detail, question by question, in `docs/security/xero-assessment-inputs.md`.
+    (a) No rotation procedure for `TOKEN_ENC_KEY` and no re-wrap path. (b) No secret rotation schedule
+    and no record of who can read project secrets. (c) `incident-response.md` has never been tested —
+    no drill, and no incident register exists. (d) `vulnerability-management.md` has no retained scan
+    output, no remediation SLA and no penetration test. (e) No retained platform attestations
+    (SOC 2 / ISO) behind the Australian-residency claim, and no tested restore with an RPO/RTO.
+    (f) No published security contact or disclosure channel. (g) No periodic access-review record for
+    memberships, support grants and roles. Owner call needed on which of these the practice writes and
+    which are answered "not applicable — single-developer practice".

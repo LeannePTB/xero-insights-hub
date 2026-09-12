@@ -16,10 +16,11 @@ No data is hosted in high-risk jurisdictions.
 | Supabase | Managed Postgres, auth, storage | Application data |
 | Xero | Accounting data source | OAuth tokens, accounting records pulled on demand |
 | Resend (via Lovable) | Transactional and auth emails | Email address, message body |
+| Stripe | Subscription payments (the practice's own account) | Billing contact and payment details. **No Xero accounting data.** |
 
 ## Third-party access to customer data
 
-- No third party reads customer data outside the integrations the customer explicitly authorises (currently Xero). Each connection is per-firm and revocable from the admin console — disconnecting deletes the stored tokens immediately.
+- No third party reads customer data outside the integrations the customer explicitly authorises (currently Xero). Each connection belongs to one organisation and is revocable from the admin console: disconnecting revokes the grant at Xero first and only then marks the connection disconnected, so the tokens are dead immediately. The connection row itself is kept (deleting it would destroy the link between the client and their Xero file, which a reconnect relies on), and the revoked token ciphertext is overwritten by the next authorisation — backlog 38 tracks clearing it at disconnect time.
 - Sub-processors above act on our behalf under their published security and privacy commitments. They do not use customer data for their own purposes.
 
 ## Data residency on request
