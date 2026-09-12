@@ -537,12 +537,19 @@ export const disconnectXero = createServerFn({ method: "POST" })
     // and leave the next authorisation as an unassigned connection. Keeping the
     // row (and the link) means a later reconnect restores the same file to the
     // same client, and the client's history and snapshots stay readable.
+    // Backlog 38: the grant has just been revoked at Xero, so the stored
+    // ciphertext is dead weight. It goes in the SAME update that marks the row,
+    // so a revoked token is never left at rest. The row and the
+    // `client_xero_orgs` link are still kept; the reconnect callback writes
+    // fresh tokens onto this same row.
     const { error } = await (supabaseAdmin as any)
       .from("xero_connections")
       .update({
         status: "disconnected",
         disconnected_at: new Date().toISOString(),
         disconnected_reason: "disconnected_by_advisor",
+        access_token_enc: null,
+        refresh_token_enc: null,
       })
       .eq("id", row.id);
     if (error) throw new Error(error.message);
