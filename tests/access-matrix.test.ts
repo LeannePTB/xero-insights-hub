@@ -402,6 +402,13 @@ function newId(literal: string): string {
   return `${literal.slice(0, -1)}-new'`;
 }
 
+/** Re-points the current transaction at another user, for a cross-user assertion. */
+async function actAs(uid: string) {
+  await db.query(`select set_config('request.jwt.claims', $1, true)`, [
+    JSON.stringify({ role: "authenticated", sub: uid, aal: "aal2" }),
+  ]);
+}
+
 /** Resources that are not plain tables get a bespoke probe. */
 async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   const r = row.resource;
@@ -439,6 +446,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   }
   if (r === "PLAN_LIMIT_CLIENTS counts clients, not standing grants") {
     // The limit trigger counts client rows. Standing grants must not inflate it.
+    await actAs(U.ownerA);
     const p = await db.query<{ n: number }>(
       `select (select count(*) from public.clients where firm_id = '${ORG_A}')::int as n`,
     );
@@ -447,6 +455,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r === "app_private.viewer_tier() — specific grant overrides standing") {
     // The standing grant is multi_company and the client is entitled to it; the
     // specific grant on that client is advisory, and must win.
+    await actAs(U.mixedViewer);
     const p = await db.query<{ t: string | null }>(
       `select app_private.viewer_tier('${U.mixedViewer}', '${CLIENT_NEW}')::text as t`,
     );
@@ -455,6 +464,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r === "app_private.viewer_tier() — the client's entitlement caps the level") {
     // CLIENT_A is free_forever at Standard (basic), which caps the standing
     // grant's multi_company.
+    await actAs(U.standingViewer);
     const p = await db.query<{ t: string | null }>(
       `select app_private.viewer_tier('${U.standingViewer}', '${CLIENT_A}')::text as t`,
     );
@@ -463,6 +473,8 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r === "revoking a specific grant leaves the standing grant in place") {
     await db.exec("savepoint revoke_probe");
     try {
+      await db.exec("set local role postgres");
+      await actAs(U.mixedViewer);
       await db.exec(
         `delete from public.client_access where client_id = '${CLIENT_NEW}' and user_id = '${U.mixedViewer}'`,
       );
