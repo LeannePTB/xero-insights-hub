@@ -159,6 +159,15 @@ function AdvisorSettings() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+  const practiceMut = useMutation({
+    mutationFn: ({ userId, onTeam }: { userId: string; onTeam: boolean }) =>
+      setPracticeFn({ data: { userId, onTeam } }),
+    onSuccess: (r) => {
+      toast.success(r.onTeam ? "Added to the practice team" : "Removed from the practice team");
+      qc.invalidateQueries({ queryKey: ["practice-team"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
   const nameMut = useMutation({
     mutationFn: () => {
       if (!nameTarget) throw new Error("Choose a person.");
