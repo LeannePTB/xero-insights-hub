@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1288**. Known failures: **0**.
+Rows: **1397**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -115,6 +115,10 @@ None.
 | user_presence | read | DENY | pglite, live | Phase 1b follow-up (anon holds no privilege) |  |
 | server fn: accept an owner invite while the organisation already has an owner | execute | DENY | live | Spec §4 — accepting an invite never replaces a sitting owner | acceptInvite sets firms.owner_user_id only while it is null (the organisation-creation flow) and writes an audit row when it does; otherwise the person joins as a member and ownership is untouched. |
 | audit trail row for a public report link view | insert | ALLOW | live | PK 8 — a link view is a read and is recorded; PK 8 — never the token, IP or user agent | client_report_read with anonymous = true, the report and client, and the period; the token itself is never stored, only its SHA-256 hash on the recipient row. |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 
 ## Active member, aal1 session only
 
@@ -231,6 +235,10 @@ None.
 | server fn: write client data | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: invite a member | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: transfer ownership | execute | DENY | live | PK 2 (requireAal2) |  |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 
 ## Active member of a DIFFERENT organisation
 
@@ -343,6 +351,10 @@ None.
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | audit trail row for reading another organisation's client figures | insert | DENY | live | PK 1 / PK 4 — the read is impossible, so nothing is recorded | Access is refused before any read path runs; no audit row is written because no read happened. |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 
 ## Organisation A's owner, reading organisation B
 
@@ -787,6 +799,10 @@ None.
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: invite an owner to an existing organisation | execute | DENY | live | Spec §4 — ownership only moves through transfer_organisation_ownership | adminInviteFirmMember accepts role 'staff' only; an owner invitation to an existing organisation is refused with a pointer to ownership transfer. |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 
 ## Support-grant holder, grant expired
 
@@ -1096,6 +1112,11 @@ None.
 | server fn: write client data | execute | ALLOW | live | PK 2 path A |  |
 | server fn: invite a member | execute | ALLOW | live | PK 2 path A |  |
 | server fn: list pending member invitations | execute | DENY | live | PK section 2 path C — invitations stay platform metadata; inviting is super admin only | public.firm_member_invites requires aal2 + super admin; the People section hides the forms for everyone else. |
+| PLAN_LIMIT_CLIENTS counts clients, not standing grants | execute | ALLOW | pglite, live | PK section 2 path D — a standing grant never counts toward plan limits |  |
+| firm_viewer_access | read | ALLOW | pglite, live | PK section 2 path D — the organisation's owner grants and revokes |  |
+| firm_viewer_access | insert | ALLOW | pglite, live | PK section 2 path D — the organisation's owner grants and revokes |  |
+| firm_viewer_access | update | ALLOW | pglite, live | PK section 2 path D — the organisation's owner grants and revokes |  |
+| firm_viewer_access | delete | ALLOW | pglite, live | PK section 2 path D — the organisation's owner grants and revokes |  |
 
 ## Organisation staff (own organisation)
 
@@ -1220,6 +1241,10 @@ None.
 | public.set_profile_display_name_admin() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
 | public.security_posture() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — reading client financial data must be auditable | Opening a client dashboard writes one xero_data_read row per actor + client + Xero file + read key + source per five minutes, recording no figures, account names or contact names. |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 
 ## Client viewer (client_access on one client)
 
@@ -1257,6 +1282,11 @@ None.
 | tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — every reader is recorded, not only staff | A client viewer's dashboard read writes the same row with their own user id as the actor. |
+| clients (client added after the grant) | read | DENY | pglite, live | PK section 2 client viewer — a specific grant covers that client only |  |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1363,9 +1393,93 @@ None.
 | server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
 | server fn: change organisation or client branding | execute | DENY | live | PK 5 (support grants are READ-ONLY) | branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK section 2 path B — support reads are read-only AND recorded | meta.access_path comes from public.firm_access_path, so a support read is distinguishable from a member read. |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 
 ## Super admin approving their own support grant
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
 | server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
+
+## Standing viewer grant (every client in one organisation, read-only)
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| clients | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
+| client_notes | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
+| client_cost_classifications | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
+| client_statutory_accounts | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
+| client_true_breakeven_inputs | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
+| client_xero_orgs | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
+| unreconciled_lines | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
+| unreconciled_uploads | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
+| clients (client added after the grant) | read | ALLOW | pglite, live | PK section 2 path D — standing, not a snapshot |  |
+| clients (another organisation's client) | read | DENY | pglite, live | PK section 2 path D — never crosses organisations |  |
+| clients | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| clients | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| clients | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_access | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_access | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_access | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_notes | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_notes | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_notes | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_cost_classifications | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_cost_classifications | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_cost_classifications | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_statutory_accounts | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_statutory_accounts | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_statutory_accounts | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_true_breakeven_inputs | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_true_breakeven_inputs | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_true_breakeven_inputs | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_xero_orgs | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_xero_orgs | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| client_xero_orgs | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| unreconciled_lines | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| unreconciled_uploads | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| unreconciled_uploads | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| unreconciled_uploads | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| scenario_exclusions | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — a standing grant confers no write, anywhere; the standing predicate appears only in read paths |  |
+| firms | read | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| firms | insert | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| firms | update | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| firms | delete | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| firm_members | read | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| firm_members | insert | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| firm_members | update | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| firm_members | delete | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| audit_log | read | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| audit_log | insert | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| audit_log | update | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| audit_log | delete | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| subscriptions | read | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| subscriptions | insert | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| subscriptions | update | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| subscriptions | delete | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| billing_events | read | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| billing_events | insert | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| billing_events | update | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| billing_events | delete | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| client_subscriptions | read | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| client_subscriptions | insert | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| client_subscriptions | update | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| client_subscriptions | delete | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| access_invites | read | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| access_invites | insert | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| access_invites | update | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| access_invites | delete | DENY | pglite, live | PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data |  |
+| member list (standing grant holder is not a member) | read | DENY | pglite, live | PK section 2 path D — the holder never appears in the member list |  |
+| app_private.viewer_tier() — specific grant overrides standing | execute | ALLOW | pglite, live | PK section 2 path D precedence |  |
+| app_private.viewer_tier() — the client's entitlement caps the level | execute | ALLOW | pglite, live | PK section 2 path D — a grant can never widen access beyond the client's tier |  |
+| revoking a specific grant leaves the standing grant in place | execute | ALLOW | pglite, live | PK section 2 path D — revoking standing removes all of it and leaves specific grants; the reverse also holds |  |
