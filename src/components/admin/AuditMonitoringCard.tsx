@@ -10,6 +10,7 @@ import {
   exportAuditLogCsv,
   getAuditAnomalies,
   getRetentionStatus,
+  type AuditExportCategory,
 } from "@/lib/audit.functions";
 
 function StatusPill({ status }: { status: "ok" | "warn" | "action" }) {
@@ -22,6 +23,20 @@ const EXPORT_RANGES = [
   { label: "Last 30 days", days: 30 },
   { label: "Last 90 days", days: 90 },
   { label: "Last 12 months", days: 365 },
+];
+
+const EXPORT_CATEGORIES: { value: AuditExportCategory; label: string; hint: string }[] = [
+  {
+    value: "security",
+    label: "Security events",
+    hint: "Sign-ins, permission changes, Xero connection and token events. Leaves out the high-volume reads.",
+  },
+  {
+    value: "reads",
+    label: "Client data reads",
+    hint: "Who opened which client's figures, when and from where. No figures are ever recorded, only the fact of the read.",
+  },
+  { value: "all", label: "Everything", hint: "Both lists in one file." },
 ];
 
 export function AuditMonitoringCard() {
