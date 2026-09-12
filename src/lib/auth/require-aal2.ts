@@ -21,5 +21,14 @@ export const requireAal2 = createMiddleware({ type: "function" })
     if (aal !== "aal2") {
       throw new Error("Unauthorized: multi-factor authentication required");
     }
+    // Phase 6: remember the verified actor for the length of this request so
+    // read-audit rows can name the person without every read helper taking a
+    // user id. Attribution only — never an access decision.
+    try {
+      const { setRequestActor } = await import("@/lib/auth/request-actor.server");
+      setRequestActor((context as { userId?: string | null }).userId ?? null);
+    } catch (e) {
+      console.warn("[audit] actor capture failed", e);
+    }
     return next();
   });
