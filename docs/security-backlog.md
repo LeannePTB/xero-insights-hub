@@ -335,23 +335,30 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
 39. **Xero assessment evidence gaps — artefacts that do not exist (opened 12 Sep 2026, Phase 7 batch 3).**
     None of these is an access-control defect; each is a document or record an assessor will ask to
     see. Full detail, question by question, in `docs/security/xero-assessment-inputs.md`.
-    (a) No rotation procedure for `TOKEN_ENC_KEY` and no re-wrap path. (b) No secret rotation schedule
-    and no record of who can read project secrets. (c) `incident-response.md` has never been tested —
-    no drill, and no incident register exists. (d) `vulnerability-management.md` has no retained scan
-    output, no remediation SLA and no penetration test. (e) **Residency part CLOSED 12 Sep 2026:**
-    the region is confirmed Singapore and the decision (remain, disclose) is recorded in
-    `docs/security/data-residency-decision.md`. Still open under (e): no retained platform
-    attestations (SOC 2 / ISO), and no tested restore with an RPO/RTO.
-    (f) No published security contact or disclosure channel. (g) No periodic access-review record for
-    memberships, support grants and roles. Owner call needed on which of these the practice writes and
-    which are answered "not applicable — single-developer practice".
+    **Documents created 12 Sep 2026 (no action performed yet):**
+    (a) and (b) — rotation procedure and secret inventory now in `docs/security/key-and-secret-rotation.md`;
+    (c) — incident register and security-contact procedure now in `docs/security/incident-register.md`;
+    (d) — remediation SLA and scan/pen-test record now in `docs/security/vulnerability-records.md`;
+    (e) **residency part CLOSED 12 Sep 2026:** region confirmed Singapore and decision recorded in
+    `docs/security/data-residency-decision.md`; backup/restore procedure now in
+    `docs/security/backup-and-restore.md`;
+    (f) — security contact procedure now in `docs/security/incident-register.md`;
+    (g) — periodic access-review procedure now in `docs/security/access-review.md`.
+    **Still open — owner actions required, not documents:**
+    (a)/(b) first rotation not performed and secret list not confirmed against Project Settings → Secrets;
+    (c) no drill performed and no incident has been recorded;
+    (d) no retained scan output and no penetration test commissioned;
+    (e) no retained platform attestations (SOC 2 / ISO) and no tested restore with an RPO/RTO;
+    (f) security contact page not published at `https://tractionadvisory.com.au/security`;
+    (g) first access review not performed and signed off.
     **Mechanism now exists (12 Sep 2026):** `public.security_attestations` +
-    `public.record_security_attestation` (spec §17) record a dated, named,
+    `public.record_security_attestation` (spec §17) records a dated, named,
     audited human confirmation for a control no system can read. Wired to
     `leaked_password` only so far; (c) incident drill, (g) access review, the
     tested restore in (e) and the rotation records in (a)/(b) can each be added
     to the attestable list as they are actually done. Attestation is evidence
     that a person checked, never a substitute for a machine-readable check.
+
 
 40. **CLOSED 12 Sep 2026 (final hygiene batch).** `email_unsubscribe_tokens.token_hash` replaces
     `token` (column dropped in the same migration; the single existing row was converted to
