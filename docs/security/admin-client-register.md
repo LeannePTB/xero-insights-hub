@@ -101,3 +101,4 @@ membership, TOTP secret held only in project secrets), reaches aal2, and calls
 `public.record_access_test_run(...)` through that session. It never uses `supabaseAdmin`, and it
 writes only `security_test_runs`. The `/admin/security` button runs the same recording call as the
 signed-in super admin who pressed it.
+| `src/lib/practice-team.functions.ts` | `addPracticeMember` | `exception — calls DB authorisation first` | **Batch 5, verified.** The handler's first statement is `rpc("admin_practice_team")` on the caller's own session, which asserts aal2 + super admin inside the database; only then is the service role reached, and only to resolve a verified auth email to a user id (a browser session cannot read `auth.users`). The write itself goes through `rpc("admin_add_practice_member")` on the caller's session, which re-asserts super admin and writes the audit row. `listPracticeTeam` and `removePracticeMember` never touch the service role. |
