@@ -415,6 +415,25 @@ function AdvisorSettings() {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
+                            const label = a.email ?? a.display_name ?? a.user_id;
+                            const msg = onPracticeTeam
+                              ? `Take ${label} off the practice team? They'll stop being added to new client organisations. Memberships they already have are untouched.`
+                              : `Put ${label} on the practice team? They'll be added as a member whenever we create a new client organisation. This grants nothing on its own.`;
+                            if (confirm(msg))
+                              practiceMut.mutate({ userId: a.user_id, onTeam: !onPracticeTeam });
+                          }}
+                          disabled={practiceMut.isPending}
+                          title={onPracticeTeam ? "Remove from the practice team" : "Add to the practice team"}
+                          className={onPracticeTeam ? "text-primary" : undefined}
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {viewerIsSuperAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
                             setNameTarget({ userId: a.user_id, email: a.email });
                             setEditedName(isRealDisplayName(a.display_name) ? a.display_name : "");
                           }}
