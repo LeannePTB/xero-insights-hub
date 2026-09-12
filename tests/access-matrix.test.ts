@@ -45,6 +45,8 @@ const U = {
   standingViewer: "99990011-1111-4111-8111-111111111111",
   /** Holds BOTH a standing grant and a specific grant, to prove precedence. */
   mixedViewer: "99990012-1111-4111-8111-111111111111",
+  /** Subject of the standing-grant row probes only; holds no other access. */
+  grantTarget: "99990013-1111-4111-8111-111111111111",
   supportActive: "99990005-1111-4111-8111-111111111111",
   supportExpired: "99990006-1111-4111-8111-111111111111",
   supportRevoked: "99990007-1111-4111-8111-111111111111",
@@ -304,7 +306,7 @@ const TARGET: Record<string, Record<string, string>> = {
   firm_viewer_access: {
     id: q("e0000001-1111-4111-8111-111111111111"),
     firm_id: q(ORG_A),
-    user_id: q(U.viewer),
+    user_id: q(U.grantTarget),
     tier: q("basic"),
   },
   user_roles: {
