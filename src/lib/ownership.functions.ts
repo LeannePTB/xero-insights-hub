@@ -43,6 +43,8 @@ export const listOrganisationMembers = createServerFn({ method: "POST" })
       displayName: r.display_name ?? null,
       role: r.role,
       status: r.status,
+      isPractice: r.is_practice === true,
+
     }));
     members.sort((a, b) => (a.role === b.role ? 0 : a.role === "owner" ? -1 : 1));
 
