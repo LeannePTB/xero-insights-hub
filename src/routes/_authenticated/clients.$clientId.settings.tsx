@@ -622,28 +622,52 @@ function ClientSettings() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Disconnect {tenantName}</AlertDialogTitle>
+                            <AlertDialogTitle>{tenantName}</AlertDialogTitle>
                             <AlertDialogDescription>
-                              <strong>Unlink from this client</strong> removes the link only — the
-                              Xero connection stays available to link to other clients.
-                              <br />
-                              <br />
-                              <strong>Disconnect from Xero</strong> revokes our access at Xero and
-                              removes the connection here. Reconnecting requires a fresh Xero
-                              sign-in.
+                              Choose what you want to do with this Xero file. Neither choice deletes
+                              any saved figures or history.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
-                          <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => detachMut.mutate(o.id)}>
-                              Unlink from this client
-                            </AlertDialogAction>
-                            <AlertDialogAction
-                              onClick={() => tenantId && disconnectMut.mutate(tenantId)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
+
+                          <div className="rounded-md border border-border bg-background p-3">
+                            <p className="text-sm font-medium">Unlink from this client</p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Removes the link only. The Xero connection stays live and can be
+                              linked to another client in this organisation.
+                            </p>
+                            <div className="mt-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => detachMut.mutate(o.id)}
+                              >
+                                Unlink from this client
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="mt-3 rounded-md border border-destructive/40 bg-destructive/5 p-3">
+                            <p className="text-sm font-medium text-destructive">
                               Disconnect from Xero
-                            </AlertDialogAction>
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              Revokes our access at Xero. The file stays listed here marked
+                              “Reconnect required”, its history and saved figures are kept, and
+                              reconnecting restores it to this client with no re-linking.
+                            </p>
+                            <div className="mt-3">
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                onClick={() => tenantId && disconnectMut.mutate(tenantId)}
+                              >
+                                Disconnect from Xero
+                              </Button>
+                            </div>
+                          </div>
+
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>

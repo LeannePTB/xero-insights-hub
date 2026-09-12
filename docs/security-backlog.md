@@ -208,5 +208,24 @@ This list records what has been looked at, not what exists. Absence from it is n
 - Token refresh: only a definitive `invalid_grant` marks rows disconnected
   (`grant_revoked`). Transient failures change no status, and a successful
   refresh never revives a row disconnected on purpose.
-- STILL OPEN: Phase 5 step 5 (orphan prevention at the creation path and the
-  `firm_id NOT NULL` constraint) is held for separate owner review.
+## Phase 5 step 5 — orphan prevention at the source (done 12 Sep 2026)
+
+- `xero_connections.firm_id` is now `NOT NULL`. Verified read-only first: 12
+  rows, 0 with a null organisation, 0 whose linked client belongs to a
+  different organisation. No existing row was modified.
+- Deferred constraint triggers (`client_xero_orgs_firm_match`,
+  `xero_connections_firm_match`) refuse a link whose client belongs to a
+  different organisation from the connection. Deferred so
+  `app_private.move_xero_file_to_client` can relink and restamp in one
+  transaction.
+- The connect/onboard callback no longer stores an unassigned row when the
+  plan-limit trigger refuses a tenant. Every row is stamped with the
+  organisation that already owns the file, otherwise the one the flow was
+  started for; a tenant with neither is refused. Refusals are audited
+  (`xero_file_refused`) and reported to the user using the database's own
+  `PLAN_LIMIT_XERO_ORGS` wording.
+- `detachXeroOrg` no longer clears `firm_id` on unlink. A connection keeps the
+  organisation it was authorised for; moving a file between organisations
+  stays a platform-admin action (`move_xero_file_to_client`).
+- The unassigned-connections card stays as a read-only-in-practice view of
+  legacy rows; nothing can create a new one.

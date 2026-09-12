@@ -658,17 +658,11 @@ export const detachXeroOrg = createServerFn({ method: "POST" })
       throw new Error("You cannot unlink this Xero file.");
     const { error } = await supabaseAdmin.from("client_xero_orgs").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
-    // Release the organisation stamp so the file can be linked elsewhere.
+    // The organisation stamp is KEPT: a Xero connection always belongs to the
+    // organisation it was authorised for, so unlinking leaves it available to
+    // link to another client in that same organisation. Moving a file between
+    // organisations stays a platform-admin action (move_xero_file_to_client).
     if (row?.xero_connection_id) {
-      const { count } = await supabaseAdmin
-        .from("client_xero_orgs")
-        .select("id", { count: "exact", head: true })
-        .eq("xero_connection_id", row.xero_connection_id);
-      if ((count ?? 0) === 0)
-        await supabaseAdmin
-          .from("xero_connections")
-          .update({ firm_id: null })
-          .eq("id", row.xero_connection_id);
       await supabaseAdmin.from("audit_log").insert({
         actor_user_id: context.userId,
         action: "xero_file_unlinked",
