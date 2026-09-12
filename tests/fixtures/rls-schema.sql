@@ -1366,6 +1366,57 @@ AS $function$
   select f.id from public.firms f where f.is_test order by f.created_at limit 1
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.record_security_attestation(_check_key text, _note text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  attestable text[] := array['leaked_password'];
+begin
+  perform app_private.assert_aal2();
+  if not app_private.is_super_admin(auth.uid()) then
+    raise exception 'Not authorised.';
+  end if;
+  if _check_key is null or not (_check_key = any(attestable)) then
+    raise exception 'That check cannot be attested.';
+  end if;
+  if _note is not null and length(_note) > 500 then
+    raise exception 'Note is too long.';
+  end if;
+
+  insert into public.security_attestations (check_key, confirmed_by, confirmed_at, note)
+  values (_check_key, auth.uid(), now(), nullif(btrim(coalesce(_note, '')), ''))
+  on conflict (check_key) do update
+    set confirmed_by = auth.uid(),
+        confirmed_at = now(),
+        note = nullif(btrim(coalesce(_note, '')), '');
+
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'security_attestation_recorded', 'security_attestation', _check_key,
+          jsonb_build_object('check_key', _check_key, 'has_note', _note is not null));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.security_attestations_list()
+ RETURNS TABLE(check_key text, confirmed_by uuid, confirmed_by_email text, confirmed_at timestamp with time zone, note text, expires_after_days integer)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if not app_private.me_is_super_admin() then
+    raise exception 'FORBIDDEN' using errcode = 'insufficient_privilege';
+  end if;
+  return query
+    select a.check_key, a.confirmed_by, u.email::text, a.confirmed_at, a.note, a.expires_after_days
+    from public.security_attestations a
+    left join auth.users u on u.id = a.confirmed_by;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
