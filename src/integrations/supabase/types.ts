@@ -3014,6 +3014,17 @@ export type Database = {
       revoke_firm_member_invite: { Args: { _id: string }; Returns: undefined }
       revoke_firm_viewer_access: { Args: { _id: string }; Returns: undefined }
       revoke_viewer_invite: { Args: { _id: string }; Returns: undefined }
+      security_attestations_list: {
+        Args: never
+        Returns: {
+          check_key: string
+          confirmed_at: string
+          confirmed_by: string
+          confirmed_by_email: string
+          expires_after_days: number
+          note: string
+        }[]
+      }
       security_posture: { Args: never; Returns: Json }
       set_all_client_tiers: {
         Args: {
