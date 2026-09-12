@@ -265,3 +265,39 @@ creator as owner and only member. `public.admin_set_self_firm_membership` and it
 handed-over restriction are unchanged — joining still requires the
 organisation's owner to hold `super_admin`, so a practice-team person cannot
 join a handed-over organisation.
+
+## 15. Member removal (12 Sep 2026)
+
+There is exactly one removal path: `public.remove_firm_member(_firm_id, _user_id)`
+— aal2-guarded, `SET search_path`, EXECUTE revoked from `PUBLIC`/`anon`, caller
+is always `auth.uid()` (the parameter is the target, never a claimed identity),
+target row locked `for update`.
+
+Removal is a **soft** removal: it sets `firm_members.status = 'removed'`, the
+same shape `transfer_organisation_ownership` already uses. Nothing is deleted.
+
+Who may do it:
+
+- an **owner** may remove any `staff` member of their **own** organisation,
+  including one of Traction Advisory's people (the handover case);
+- **anyone** may remove themselves, unless they are the owner — an owner is
+  refused with `OWNER_MUST_TRANSFER` and pointed at ownership transfer;
+- **staff** may remove nobody. A support grant is not a membership, so PK 5 is
+  untouched: it never reaches this write. The `super_admin` role alone gives
+  nothing (PK 3), and another organisation's owner nothing (PK 4);
+- no path removes an owner, and removal is refused (`LAST_MEMBER`) when the
+  target is the only active member, so an organisation is never stranded.
+
+One `audit_log` row `firm_member_removed` records actor, target, previous role,
+previous status, organisation and whether it was a self-removal.
+
+Removal touches nothing else: no `client_access` row, no `firm_viewer_access`
+row, no Xero connection, snapshot or history row, and no account. A matrix row
+counts those tables before and after to prove it.
+
+Removed means removed, and this was verified rather than assumed: every
+membership test is active-only — `app_private.has_firm_access`,
+`app_private.is_practice_member_of`, `public.organisation_members`,
+`public.my_firm_ids`, `public.my_firm_memberships` and `public.firm_access_path`
+(through `has_firm_access`). `public.plan_level_usage_count` counts subscriptions
+and `client_access` rows, never members, so removal cannot change a plan limit.

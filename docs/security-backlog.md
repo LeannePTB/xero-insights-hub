@@ -432,3 +432,17 @@ Objects touched, all in Batch 3/4 or here: `app_private.can_manage_viewers_for_c
 **Practice team.** `practice_team` (super-admin managed, aal2, audited, service-role writes only, readable by platform admins only) already existed from Batch 2. Added here: `public.admin_practice_team()`, `admin_add_practice_member(uuid)`, `admin_remove_practice_member(uuid)` — each asserts aal2 and super admin, audits, EXECUTE revoked from `PUBLIC`/`anon`; a super-admin screen at `/settings/practice-team`; and auto-add inside `adminCreateOrganisation`'s existing all-or-nothing block, one audit row each. An empty practice team is normal: organisation creation still succeeds with the creator as owner and only member. `admin_set_self_firm_membership` and its handed-over restriction (backlog 30) are UNCHANGED — verified by reading the live function definition: joining still requires the organisation's owner to hold `super_admin`, so a practice-team member still cannot join a handed-over organisation.
 
 **Proof:** 1,444 matrix rows, 1,378 proved here, 0 failures, 0 known failures, 44 tests, fixture fingerprint `628888f09775a063d7877a8abe92e88434c7950be478ae9946dc8e74c87f92fc`. New rows cover owner allow / staff-support-superadmin-viewer-anon deny on viewer management, an owner denied on another organisation's client, a practice-team member of organisation A denied management in organisation B, and `practice_team` readable by platform admins only with every write denied. Backlog 44 closed by the revoke-trap wording in Batch 3/4.
+
+## Member removal — 12 Sep 2026
+
+Closed the last handover gap. `public.remove_firm_member(_firm_id, _user_id)` is
+the only removal path: aal2-guarded, caller-scoped (`auth.uid()`), row-locked,
+`SET search_path`, EXECUTE revoked from `PUBLIC`/`anon`, audited as
+`firm_member_removed`. Owner removes staff of their own organisation (including a
+Traction Advisory person); anyone but the owner may remove themselves; the owner
+is refused and pointed at ownership transfer; the last active member cannot be
+removed. Soft removal only (`status = 'removed'`). No support grant, staff
+member, unrelated super admin or other organisation's owner can reach it.
+Verified, not assumed: every membership test and the plan-limit counter are
+already active-only, so no path counts a removed row. Spec §15, 17 matrix rows,
+1,461 rows / 1,395 proved / 0 failures, fingerprint `a760e424…`.
