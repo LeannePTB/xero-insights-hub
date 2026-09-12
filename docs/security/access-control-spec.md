@@ -349,3 +349,39 @@ Two entry points, both authorised: the super-admin "Run access tests" button on
 owner-added `SECURITY_TEST_TRIGGER_SECRET` in constant time and is rate limited
 to six runs an hour before doing any work. Results land in
 `public.security_test_runs` with layer `live`.
+
+## 17. Attestations — controls no system can read (12 Sep 2026)
+
+Some controls have no server-readable source. Leaked-password protection (Have
+I Been Pwned) in the auth provider is one: the application cannot query it, so
+its posture check would sit on Warn forever. A permanent amber that can never
+go green trains people to ignore the card, so the honest evidence is a recorded
+human confirmation — which is what an assessor expects for such a control.
+
+- `public.security_attestations` — one row per attestable check
+  (`check_key` PK, `confirmed_by`, `confirmed_at`, optional `note` ≤ 500 chars,
+  `expires_after_days` default 180). RLS on; `anon` and `authenticated`
+  defaults revoked; a single permissive `authenticated` SELECT policy requiring
+  `app_private.me_is_super_admin()`; a RESTRICTIVE `mfa_aal2_required` guard;
+  **no write policy of any kind**; audited by `public.audit_table_change`.
+- `public.record_security_attestation(_check_key, _note)` — the only writer.
+  aal2 + super admin, `SET search_path`, execute revoked from `PUBLIC`/`anon`.
+  It stamps `auth.uid()` and `now()` itself; the caller can supply neither an
+  identity nor a time. Writes `audit_log` action
+  `security_attestation_recorded` (check key and whether a note was given —
+  never the note text).
+- `public.security_attestations_list()` — aal2 + super admin read, joined to
+  `auth.users` for the confirmer's sign-in address (rule 10: identity comes
+  from `auth.users`, never `profiles`).
+- The attestable set is a **fixed allow-list in two places** — `attestable` in
+  the function and `ATTESTABLE_CHECKS` in `src/lib/security-posture.functions.ts`.
+  It currently contains `leaked_password` only. An attestation may **never**
+  answer a check the server can read for itself; adding a key to that list is a
+  security-relevant change requiring the owner's approval.
+- Posture behaviour for an attestable check: **OK** with a current attestation
+  (evidence states in terms an assessor cannot misread that this is a recorded
+  human confirmation, not a machine reading, and names who and when);
+  **Warn — "confirmed on <date>, needs re-confirming"** past
+  `expires_after_days`; **Warn — "not verified"** with none.
+- No access path, role or organisation-scoped rule is touched: this is platform
+  metadata (Path C), and it holds no organisation or client data.
