@@ -528,7 +528,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   // ---- member removal -------------------------------------------------
   if (r === "remove a staff member of the caller's own organisation") {
     const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.staffA}')`);
-    if (!p.ok) return "deny";
+    if (!p.ok) { console.log("REMOVE ERR:", p.error); return "deny"; }
     const left = await db.query<{ n: number }>(
       `select (select count(*) from public.firm_members
                 where firm_id = '${ORG_A}' and user_id = '${U.staffA}' and status = 'active')::int as n`,
