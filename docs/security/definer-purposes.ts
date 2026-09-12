@@ -179,6 +179,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.firm_viewer_invites": "List the pending viewer invitations of one organisation. Never returns the token.",
   "public.revoke_viewer_invite": "Cancel a pending viewer invitation. Audited.",
   "public.apply_viewer_invite": "System context (service role only): apply an accepted viewer invitation — role, grants, acceptance stamp and audit row in one transaction, re-validating the client ids against the organisation.",
+  "app_private.is_security_test_account": "True when a user id belongs to the live smoke suite's test accounts. Used by containment triggers and to keep test identities out of presence, posture counts and the organisation list.",
+  "app_private.security_test_firm_id": "The id of the isolated ZZ Security Test Org. The only organisation a live-suite test account may be attached to.",
+  "app_private.confine_security_test_accounts": "Trigger: refuses any attempt — including by service_role — to give a live-suite test account a membership, viewer grant, support grant, platform role, practice-team row or organisation ownership outside the test organisation.",
+  "public.test_accounts_posture": "Posture check (aal2 + super admin): Action if a test account can sign in outside a run, holds access outside the test organisation, or has a session outside the run window.",
 };
 
 /**
