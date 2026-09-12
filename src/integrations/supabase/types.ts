@@ -1607,6 +1607,36 @@ export type Database = {
           },
         ]
       }
+      security_attestations: {
+        Row: {
+          check_key: string
+          confirmed_at: string
+          confirmed_by: string
+          created_at: string
+          expires_after_days: number
+          note: string | null
+          updated_at: string
+        }
+        Insert: {
+          check_key: string
+          confirmed_at?: string
+          confirmed_by: string
+          created_at?: string
+          expires_after_days?: number
+          note?: string | null
+          updated_at?: string
+        }
+        Update: {
+          check_key?: string
+          confirmed_at?: string
+          confirmed_by?: string
+          created_at?: string
+          expires_after_days?: number
+          note?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       security_contact_details: {
         Row: {
           abn: string | null
@@ -2959,6 +2989,10 @@ export type Database = {
           _passed: number
         }
         Returns: string
+      }
+      record_security_attestation: {
+        Args: { _check_key: string; _note?: string }
+        Returns: undefined
       }
       remove_client: {
         Args: { _client_id: string }
