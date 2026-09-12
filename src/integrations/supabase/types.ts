@@ -2908,6 +2908,10 @@ export type Database = {
           referencing_clients: string[]
         }[]
       }
+      remove_firm_member: {
+        Args: { _firm_id: string; _user_id: string }
+        Returns: undefined
+      }
       reset_org_tier_widgets: {
         Args: { _firm_id: string; _tier: string }
         Returns: undefined
