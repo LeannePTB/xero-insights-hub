@@ -129,6 +129,33 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         if (oErr) throw new Error(oErr.message);
       }
 
+      // Batch 5 — practice team auto-add. Traction Advisory's own people are
+      // added as staff members here, inside the same all-or-nothing block, with
+      // one audit row each, so nobody has to add themselves later. The list is
+      // read from `practice_team` (super-admin managed); an empty list is normal
+      // and simply means the creator is the only member. This never touches
+      // `admin_set_self_firm_membership` or its handed-over restriction, and it
+      // only ever runs for an organisation being created in this call.
+      const { data: practice } = await (supabaseAdmin as any)
+        .from("practice_team")
+        .select("user_id");
+      for (const row of ((practice ?? []) as any[])) {
+        const memberId = String(row.user_id);
+        if (memberId === context.userId) continue;
+        const { error: pmErr } = await (supabaseAdmin as any).from("firm_members").insert({
+          firm_id: firm.id,
+          user_id: memberId,
+          role: "staff",
+          status: "active",
+        });
+        if (pmErr && !/duplicate/i.test(pmErr.message)) throw new Error(pmErr.message);
+        await logAudit("practice_team_member_joined_new_organisation", "firm", firm.id, context.userId, {
+          firm_id: firm.id,
+          user_id: memberId,
+          role: "staff",
+        });
+      }
+
       if (data.ownerMode === "none") {
         await logAudit("organisation_created", "firm", firm.id, context.userId, {
           firm_id: firm.id, tier: data.tier, status: data.status, owner_mode: "none",
