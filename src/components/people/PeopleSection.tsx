@@ -117,22 +117,20 @@ export function PeopleSection({ firmId }: { firmId: string }) {
     onError: (e: any) => toast.error(e?.message ?? "Could not cancel the invitation."),
   });
 
-  const [viewerClientId, setViewerClientId] = useState<string>("");
-  const [viewerEmail, setViewerEmail] = useState("");
-  const [viewerTier, setViewerTier] = useState<DashboardTier>("basic");
-
-  const inviteViewerMut = useMutation({
-    mutationFn: () =>
-      inviteViewer({ data: { clientId: viewerClientId, email: viewerEmail, tier: viewerTier } }),
-    onSuccess: () => {
-      toast.success("Client viewer added.");
-      setViewerEmail("");
-      qc.invalidateQueries({ queryKey: ["client-access"] });
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Could not give that person access."),
-  });
-
   const clients = (clientsQ.data?.clients ?? []) as Array<{ id: string; name: string }>;
+
+  // Who may manage client viewers is decided in the database
+  // (app_private.can_manage_client_viewers): the organisation owner, or one of
+  // Traction Advisory's own people with an active membership of this
+  // organisation. Staff see the lists and nothing more.
+  const standingQ = useQuery({
+    queryKey: ["standing-viewers", firmId],
+    queryFn: () => fetchStanding({ data: { firmId } }),
+  });
+  const canManageViewers = standingQ.data?.canManage ?? false;
+  const firmName = standingQ.data?.firmName ?? "this organisation";
+
+
 
   return (
     <div className="space-y-6">
