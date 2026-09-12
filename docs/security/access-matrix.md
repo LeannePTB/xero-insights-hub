@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1287**. Known failures: **0**.
+Rows: **1288**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1368,3 +1368,9 @@ None.
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
 | server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
+
+## undefined
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| public.xero_connections (disconnected row holds no token ciphertext) | select | ALLOW | live | Backlog 38 — a revoked grant leaves no token at rest | Phase 7: every path that marks a connection disconnected because the grant is dead (advisor disconnect, grant_revoked on refresh, unassigned cleanup) nulls access_token_enc and refresh_token_enc in the same update. The authorisation reconcile (not_authorised) deliberately keeps the ciphertext, because that token is still valid for the other tenants on the same consent and the row can be restored without re-authorising. |
