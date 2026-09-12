@@ -195,20 +195,42 @@ export function PeopleSection({ firmId }: { firmId: string }) {
             <p className="mt-2 text-sm text-muted-foreground">Nobody yet.</p>
           ) : (
             <ul className="mt-2 divide-y divide-border rounded-lg border border-border">
-              {(membersQ.data?.members ?? []).map((m) => (
-                <li key={m.userId} className="flex items-center justify-between gap-3 px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{m.displayName ?? m.email}</p>
-                    <p className="truncate text-xs text-muted-foreground">{m.email}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {m.isPractice && <Badge>Traction Advisory</Badge>}
-                    <Badge variant="outline">{m.role === "owner" ? "Owner" : "Staff"}</Badge>
-                    {m.status !== "active" && <Badge variant="secondary">{m.status}</Badge>}
-                  </div>
-
-                </li>
-              ))}
+              {(membersQ.data?.members ?? []).map((m) => {
+                const isMe = m.userId === membersQ.data?.meUserId;
+                const iAmOwner = membersQ.data?.isOwner ?? false;
+                // Visibility only. The database decides who may actually remove
+                // whom (public.remove_firm_member).
+                const canRemove = isMe ? m.role !== "owner" : iAmOwner && m.role === "staff";
+                return (
+                  <li key={m.userId} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{m.displayName ?? m.email}</p>
+                      <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {m.isPractice && <Badge>Traction Advisory</Badge>}
+                      <Badge variant="outline">{m.role === "owner" ? "Owner" : "Staff"}</Badge>
+                      {m.status !== "active" && <Badge variant="secondary">{m.status}</Badge>}
+                      {canRemove && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() =>
+                            setRemoving({
+                              userId: m.userId,
+                              label: m.displayName ?? m.email ?? "this person",
+                              isMe,
+                            })
+                          }
+                        >
+                          {isMe ? "Leave this organisation" : "Remove"}
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
