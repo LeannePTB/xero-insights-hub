@@ -412,6 +412,19 @@ async function actAs(uid: string) {
 }
 
 /** Resources that are not plain tables get a bespoke probe. */
+/**
+ * Setup that must happen outside the caller's own privileges, then hand the
+ * transaction back to the row's role. Safe because every case runs in a
+ * transaction that is always rolled back.
+ */
+async function seedThenActAs(role: Role, sql: string) {
+  await db.exec("set local role postgres");
+  await db.exec(sql);
+  const ctx = CONTEXT[role];
+  await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+  await db.exec(`set local role ${ctx.dbRole}`);
+}
+
 async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   const r = row.resource;
 
