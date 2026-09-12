@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1444**. Known failures: **0**.
+Rows: **1461**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -124,6 +124,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 
 ## Active member, aal1 session only
 
@@ -249,6 +250,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 
 ## Active member of a DIFFERENT organisation
 
@@ -370,6 +372,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 
 ## Organisation A's owner, reading organisation B
 
@@ -571,6 +574,7 @@ None.
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 
 ## Member with status = removed
 
@@ -674,6 +678,8 @@ None.
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| the organisation's clients after removal | read | DENY | pglite, live | PK 2 path A — membership must be ACTIVE |  |
 
 ## Super admin with NO membership
 
@@ -823,6 +829,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 
 ## Support-grant holder, grant expired
 
@@ -1144,6 +1151,10 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| remove a staff member of the caller's own organisation | execute | ALLOW | pglite, live | Spec §15 — the handover case: an owner removes staff of their own organisation |  |
+| remove a Traction Advisory (practice-team) staff member | execute | ALLOW | pglite, live | Design decision 8 — our people are removable by the owner after handover |  |
+| an owner removes themselves | execute | DENY | pglite, live | Spec §15 — ownership must be transferred first; an organisation is never left without an owner |  |
+| removal leaves client viewer and standing grants untouched | execute | ALLOW | pglite, live | Spec §15 — removal is a membership status change and nothing else |  |
 
 ## Organisation staff (own organisation)
 
@@ -1277,6 +1288,9 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| removing the organisation's last remaining member | execute | DENY | pglite, live | Spec §15 — an organisation is never stranded with no members |  |
+| leave the organisation (remove yourself) | execute | ALLOW | pglite, live | Spec §15 — anyone who is not the owner may leave |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 
 ## Client viewer (client_access on one client)
 
@@ -1324,6 +1338,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1439,6 +1454,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 
 ## Super admin approving their own support grant
 
@@ -1530,3 +1546,4 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |

@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { listOrganisationMembers } from "@/lib/ownership.functions";
+import { listOrganisationMembers, removeOrganisationMember } from "@/lib/ownership.functions";
 import {
   adminInviteFirmMember,
   listFirmMemberInvites,
@@ -95,6 +95,25 @@ export function PeopleSection({ firmId }: { firmId: string }) {
 
   const [memberEmail, setMemberEmail] = useState("");
   const [memberLink, setMemberLink] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<{
+    userId: string;
+    label: string;
+    isMe: boolean;
+  } | null>(null);
+
+  const removeMember = useServerFn(removeOrganisationMember);
+  const removeMemberMut = useMutation({
+    mutationFn: (userId: string) => removeMember({ data: { firmId, userId } }),
+    onSuccess: (_r, userId) => {
+      const wasMe = userId === membersQ.data?.meUserId;
+      toast.success(wasMe ? "You have left this organisation." : "That person has been removed.");
+      setRemoving(null);
+      qc.invalidateQueries({ queryKey: ["organisation-members", firmId] });
+      qc.invalidateQueries({ queryKey: ["my-firms"] });
+      if (wasMe) window.location.href = "/dashboard";
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not remove that person."),
+  });
 
   const inviteMemberMut = useMutation({
     mutationFn: () => inviteMember({ data: { firmId, email: memberEmail, role: "staff" } }),
@@ -195,20 +214,42 @@ export function PeopleSection({ firmId }: { firmId: string }) {
             <p className="mt-2 text-sm text-muted-foreground">Nobody yet.</p>
           ) : (
             <ul className="mt-2 divide-y divide-border rounded-lg border border-border">
-              {(membersQ.data?.members ?? []).map((m) => (
-                <li key={m.userId} className="flex items-center justify-between gap-3 px-3 py-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">{m.displayName ?? m.email}</p>
-                    <p className="truncate text-xs text-muted-foreground">{m.email}</p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    {m.isPractice && <Badge>Traction Advisory</Badge>}
-                    <Badge variant="outline">{m.role === "owner" ? "Owner" : "Staff"}</Badge>
-                    {m.status !== "active" && <Badge variant="secondary">{m.status}</Badge>}
-                  </div>
-
-                </li>
-              ))}
+              {(membersQ.data?.members ?? []).map((m) => {
+                const isMe = m.userId === membersQ.data?.meUserId;
+                const iAmOwner = membersQ.data?.isOwner ?? false;
+                // Visibility only. The database decides who may actually remove
+                // whom (public.remove_firm_member).
+                const canRemove = isMe ? m.role !== "owner" : iAmOwner && m.role === "staff";
+                return (
+                  <li key={m.userId} className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{m.displayName ?? m.email}</p>
+                      <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {m.isPractice && <Badge>Traction Advisory</Badge>}
+                      <Badge variant="outline">{m.role === "owner" ? "Owner" : "Staff"}</Badge>
+                      {m.status !== "active" && <Badge variant="secondary">{m.status}</Badge>}
+                      {canRemove && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive"
+                          onClick={() =>
+                            setRemoving({
+                              userId: m.userId,
+                              label: m.displayName ?? m.email ?? "this person",
+                              isMe,
+                            })
+                          }
+                        >
+                          {isMe ? "Leave this organisation" : "Remove"}
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>
@@ -288,6 +329,39 @@ export function PeopleSection({ firmId }: { firmId: string }) {
         Email addresses shown here are the verified sign-in addresses, not names people chose
         themselves.
       </p>
+
+      <AlertDialog open={removing !== null} onOpenChange={(o) => !o && setRemoving(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {removing?.isMe ? `Leave ${firmName}?` : `Remove ${removing?.label}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  {removing?.isMe ? "You" : removing?.label} will immediately lose access to every
+                  client in {firmName}, including all of their Xero data. Only a fresh invitation
+                  can restore it.
+                </p>
+                <p>
+                  This does not change anyone's client viewer access or "every client" access, does
+                  not disconnect any Xero file, and does not delete any saved figures, history or{" "}
+                  {removing?.isMe ? "your" : "their"} sign-in account.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => removing && removeMemberMut.mutate(removing.userId)}
+              disabled={removeMemberMut.isPending}
+            >
+              {removing?.isMe ? "Leave" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -93,3 +93,41 @@ export const transferOrganisationOwnership = createServerFn({ method: "POST" })
     if (error) throw new Error(explainTransferError(error.message ?? ""));
     return { ok: true };
   });
+
+/** Plain-English text for the refusals `public.remove_firm_member` can raise. */
+function explainRemovalError(message: string): string {
+  if (/OWNER_MUST_TRANSFER/.test(message))
+    return "You own this organisation, so you can't remove yourself. Hand ownership to someone else first, then leave.";
+  if (/LAST_MEMBER/.test(message))
+    return "This is the only person left in the organisation, so they can't be removed.";
+  if (/NOT_A_MEMBER_TARGET/.test(message)) return "That person is no longer in this organisation.";
+  if (/NOT_A_MEMBER|NOT_PERMITTED|insufficient/i.test(message))
+    return "You don't have permission to remove people from this organisation.";
+  if (/MFA_REQUIRED|aal2/i.test(message))
+    return "Please verify your second factor and try again.";
+  return "Could not remove that person.";
+}
+
+/**
+ * Removal is a WRITE, so no support grant may reach it. The check, the status
+ * change and the audit row all happen inside `public.remove_firm_member`,
+ * called as the user through `context.supabase`, so RLS applies; the service
+ * role is not used here at all.
+ * Nothing else is touched: viewer grants, standing grants, Xero connections,
+ * snapshots, history and the person's own account all remain as they were.
+ */
+export const removeOrganisationMember = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { firmId: string; userId: string }) => {
+    const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuid.test(i.firmId) || !uuid.test(i.userId)) throw new Error("Invalid request.");
+    return i;
+  })
+  .handler(async ({ data, context }): Promise<{ ok: true }> => {
+    const { error } = await (context.supabase as any).rpc("remove_firm_member", {
+      _firm_id: data.firmId,
+      _user_id: data.userId,
+    });
+    if (error) throw new Error(explainRemovalError(error.message ?? ""));
+    return { ok: true };
+  });

@@ -13,11 +13,11 @@ can say what it is for; the risk is a function nobody can explain.
 
 | | count |
 | --- | --- |
-| SECURITY DEFINER functions in `public` + `app_private` | **145** |
-| in `public` | 108 |
+| SECURITY DEFINER functions in `public` + `app_private` | **146** |
+| in `public` | 109 |
 | in `app_private` | 37 |
-| callable by signed-in users (EXECUTE to `authenticated`/`anon`/PUBLIC) | **111** |
-| callable and asserting aal2 in the body | 84 |
+| callable by signed-in users (EXECUTE to `authenticated`/`anon`/PUBLIC) | **112** |
+| callable and asserting aal2 in the body | 85 |
 | callable WITHOUT an aal2 assertion (each must be justified below) | 27 |
 | without `SET search_path` | 0 |
 | with no caller found | **5** |
@@ -150,6 +150,7 @@ PostgREST request logs cannot be read from here, so this is not proof that nothi
 | `read_email_batch(queue_name text, batch_size integer, vt integer)` | Takes the next batch of queued emails for sending. | postgres, service_role | yes | no | `src/routes/lovable/email/queue/process.ts` |
 | `record_access_test_run(_layer text, _passed integer, _failed integer, _known_failures jsonb, _fingerprint_match boolean, _details jsonb)` | Records the result of an access test run (for the approved live smoke suite). | authenticated, postgres, service_role | yes | yes | none found |
 | `remove_client(_client_id uuid)` | Removes a client and its links, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/clients.functions.ts` |
+| `remove_firm_member(_firm_id uuid, _user_id uuid)` | Removes a person from an organisation by setting firm_members.status = 'removed', audited. Owner removes staff; anyone but the owner may remove themselves; never strands an organisation. | authenticated, postgres, service_role | yes | yes | `src/components/people/PeopleSection.tsx`<br>`src/lib/ownership.functions.ts`<br>`tests/access-matrix.test.ts` |
 | `reset_org_tier_widgets(_firm_id uuid, _tier text)` | Resets an organisation's card list for a plan level to the default. | authenticated, postgres, service_role | yes | yes | `src/lib/tier-config.functions.ts` |
 | `revoke_client_access(_id uuid)` | Takes away a person's viewer access to a client, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/clients.functions.ts` |
 | `revoke_firm_member_invite(_id uuid)` | Cancels a pending team member invitation, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/invites.functions.ts` |

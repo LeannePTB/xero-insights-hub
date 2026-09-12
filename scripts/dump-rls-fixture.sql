@@ -30,7 +30,7 @@ fns as (
         'user_can_access_firm','user_can_access_client','firm_access_path',
         'client_entitlement','client_allowed_widgets','client_can_use_widget',
         'assert_client_write_access','set_client_widget_enabled',
-        'delete_client_report','transfer_organisation_ownership',
+        'delete_client_report','transfer_organisation_ownership','remove_firm_member',
         'set_all_client_tiers','online_users','set_profile_display_name_admin',
         'xero_missing_scopes','xero_required_scopes','has_role'))
     )
