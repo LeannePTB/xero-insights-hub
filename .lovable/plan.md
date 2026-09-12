@@ -1,73 +1,57 @@
 # Slim live smoke suite — implementation record (12 Sep 2026)
 
-Classification: SECURITY-RELEVANT — new tables, a new unauthenticated endpoint, real
-sessions for accounts that exist only to be denied, one new secret.
+Classification: SECURITY-RELEVANT — new identities, auth/session handling, new
+tables, a public endpoint, a posture check, real server-function execution.
 
-No stop condition is triggered: no super-admin test account, **one** owner-added secret
-(`SECURITY_TEST_TRIGGER_SECRET`; `TOKEN_ENC_KEY` already exists), and no real
-organisation's data is read or written by any part of this.
+## Threat and boundary
 
-## What live testing adds, and only that
+The suite creates real accounts. The threat is that those accounts, or the
+endpoint that runs them, become a way into a real organisation. Boundary, all in
+the database, none by convention:
 
-`bun run security:check` already proves 1,395 rules against a faithful copy. The live
-suite exists for two things the copy cannot produce: a **real session** (in particular the
-same person on aal2 and on aal1) and the **real server functions**. Expectations are read
-from `docs/security/access-matrix.ts` by `(role, resource, operation)` — there is no second
+- `firms.is_test` marks the one isolated organisation; `app_private.confine_security_test_accounts()`
+  triggers on `firm_members`, `client_access`, `firm_viewer_access`,
+  `firm_support_access`, `user_roles`, `practice_team` and `firms` refuse a test
+  identity anywhere else, and refuse a platform role or practice-team row
+  outright — including for `service_role`. Proved by attempting it as
+  `service_role` in the suite itself.
+- Accounts are banned whenever a run is not in progress (sweep → unban → run →
+  re-ban + sign out + restore, in `finally`).
+- Credentials and TOTP secrets are generated server-side, encrypted with
+  `TOKEN_ENC_KEY`, and stored in service-role-only tables with no `anon` or
+  `authenticated` privilege.
+- The test organisation has no Xero connection, so no Xero API call is reachable.
+- The public route's credential is one owner-added secret, compared in constant
+  time, rate limited to six runs an hour before any work, returning counts only.
+
+## What it proves that the copy cannot
+
+Real sessions and the real server functions: the same owner on aal2 and on aal1,
+staff on aal2, a standing viewer on aal2, and anonymous — calling `listClients`,
+`getClient`, `renameClient`, `inviteClientViewer`, `revokeClientAccess`,
+`removeOrganisationMember` and one Path C call (`listFirmMemberInvites`). Every
+expectation is read from `docs/security/access-matrix.ts`; there is no second
 expectation list.
 
-## 1. Database
+## Objects
 
-- `firms.is_test boolean not null default false`; one row `ZZ Security Test Org` with two
-  dummy clients, no Xero connection, no financial data. Excluded from
-  `admin_firm_overview`, from `online_users()` and from the posture people counts; its
-  three addresses are inserted into `suppressed_emails`, so no email can leave for them,
-  and it owns no Xero connection so no scheduled job has anything to do.
-- `public.security_test_accounts` (user_id, label owner|staff|viewer, password ciphertext,
-  TOTP ciphertext, factor id) and `public.security_test_run_state` (single row: running,
-  started_at, run_id). RLS on, `revoke all ... from anon, authenticated`, per-command
-  policies naming `service_role` only, plus the aal2 restrictive guard. No `anon` or
-  `authenticated` grant at all — the runner reaches them with the service role.
-- Secrets at rest: passwords and TOTP secrets are wrapped with the existing
-  `TOKEN_ENC_KEY` (`src/lib/crypto.server.ts`) and never returned to any caller.
-- **Confinement, in the database.** `app_private.is_security_test_account(uuid)` plus
-  `BEFORE INSERT OR UPDATE` triggers on `firm_members`, `client_access`,
-  `firm_viewer_access`, `firm_support_access`, `user_roles`, `practice_team` and `firms`:
-  a test account may hold a membership or grant **only** inside the test organisation, and
-  may never hold a role, a support grant, practice-team membership or ownership of a real
-  organisation. Proved by matrix rows, not by convention.
-- `public.test_accounts_posture()` — same shape as `read_audit_posture()`: Action when a
-  test account is unbanned outside a run, holds anything outside the test organisation, or
-  has a session older than the run window.
+Database: `firms.is_test`; `security_test_accounts`, `security_test_run_state`;
+`app_private.is_security_test_account`, `security_test_firm_id`,
+`confine_security_test_accounts()`; `public.test_accounts_posture()`;
+`admin_firm_overview` (test firms excluded, still `security_invoker`),
+`online_users()` and `security_posture()` exclude test identities.
 
-## 2. Runner
+Code: `src/lib/live-access-tests.server.ts`, `src/lib/totp.server.ts`,
+`src/lib/live-access-tests.functions.ts`,
+`src/routes/api/public/security/run-access-tests.ts`,
+`scripts/run-live-access-tests.ts`, the `/admin/security` button, and the posture
+check wiring.
 
-`src/lib/live-access-tests.server.ts`, service-role only:
+Docs: spec §16, admin-client register, unauthenticated allow-list, definer
+purposes, matrix (11 new rows), backlog, roadmap.
 
-1. **Sweep** — re-ban every test account and clear stale run state left by a crash.
-2. Mark the run started, unban the three accounts.
-3. Build sessions: owner aal2 (password + a server-generated TOTP code), owner aal1
-   (password only, second factor skipped), staff aal2, viewer aal2, plus anonymous.
-4. Probes — real server functions over HTTP with the session's bearer token: read a client
-   dashboard, write client data, list clients, invite and revoke a client viewer, remove a
-   member, and one Path C admin call (an owner asking for pending member invitations, which
-   must be refused). Each asserts the matrix row for that role/resource/operation.
-5. `finally` — re-ban, sign out every session, delete rows the run created, clear run state.
-   Recorded in `security_test_runs` with layer `live`, so the `access_tests` posture check
-   goes green after a clean run.
+## Secrets
 
-TOTP codes are generated server-side (`src/lib/totp.server.ts`, HMAC-SHA1, RFC 6238).
-
-## 3. Ways in
-
-- `POST /api/public/security/run-access-tests` — constant-time secret comparison, rate
-  limited, registered in the admin-client register and the unauthenticated allow-list.
-- A super-admin-only "Run access tests" button on `/admin/security` (aal2 + super admin
-  asserted in the database).
-- `bun run security:check` calls the same suite when the secret and a URL are present, and
-  says SKIPPED when they are not.
-
-## 4. Close out
-
-Matrix rows for confinement and for the smoke probes; fixture, definer register and
-generated matrix regenerated; spec section, backlog, roadmap; `bun run security:check`,
-typecheck, linter.
+Exactly one, owner-added: `SECURITY_TEST_TRIGGER_SECRET`. Everything else is
+server-generated. No super-admin test account. No real organisation's data
+changes.
