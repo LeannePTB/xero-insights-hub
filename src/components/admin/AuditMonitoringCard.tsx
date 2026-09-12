@@ -44,6 +44,7 @@ export function AuditMonitoringCard() {
   const retentionFn = useServerFn(getRetentionStatus);
   const exportFn = useServerFn(exportAuditLogCsv);
   const [exporting, setExporting] = useState<number | null>(null);
+  const [category, setCategory] = useState<AuditExportCategory>("security");
 
   const anomaliesQ = useQuery({
     queryKey: ["audit-anomalies"],
