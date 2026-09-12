@@ -238,73 +238,37 @@ export function PeopleSection({ firmId }: { firmId: string }) {
 
       <Panel
         title="Client viewer"
-        blurb="The business owner or one of their staff. A client viewer sees one client's dashboard only, at the level you choose — never another client, and never this organisation's other data."
+        blurb="The business owner or one of their staff. A client viewer only ever reads a dashboard — they can never change anything, see this organisation's billing or settings, or see another organisation's clients."
         icon={<Building2 className="h-5 w-5" />}
       >
-        {canInvite ? (
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[12rem] space-y-1.5">
-              <Label>Which client</Label>
-              <Select value={viewerClientId} onValueChange={setViewerClientId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="min-w-[14rem] flex-1 space-y-1.5">
-              <Label htmlFor="viewer-email">Their email address</Label>
-              <Input
-                id="viewer-email"
-                type="email"
-                value={viewerEmail}
-                onChange={(e) => setViewerEmail(e.target.value)}
-                placeholder="owner@business.com.au"
-              />
-            </div>
-            <div className="min-w-[11rem] space-y-1.5">
-              <Label>Dashboard level</Label>
-              <Select value={viewerTier} onValueChange={(v) => setViewerTier(v as DashboardTier)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ALL_TIERS.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {tierLabel(t)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              onClick={() => inviteViewerMut.mutate()}
-              disabled={inviteViewerMut.isPending || !viewerClientId || !viewerEmail}
-            >
-              {inviteViewerMut.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Mail className="mr-2 h-4 w-4" />
-              )}
-              Give client access
-            </Button>
-          </div>
+        {canManageViewers ? (
+          <ViewerInviteForm firmId={firmId} clients={clients} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Only Traction Advisory can give a client viewer access. You can still change or remove
-            access from each client's own settings page.
+            Only the organisation owner can give a client viewer access. You can still see who has
+            access below.
           </p>
         )}
 
+        <StandingViewers
+          firmId={firmId}
+          firmName={firmName}
+          clientCount={clients.length}
+          canManage={canManageViewers}
+        />
+
         <div className="space-y-3">
+          <h3 className="text-sm font-medium">People who can see one client only</h3>
           {clients.map((c) => (
-            <ClientViewerList key={c.id} clientId={c.id} clientName={c.name} />
+            <ClientViewerList
+              key={c.id}
+              clientId={c.id}
+              clientName={c.name}
+              firmId={firmId}
+              clients={clients}
+              standing={standingQ.data?.viewers ?? []}
+              canManage={canManageViewers}
+            />
           ))}
           {clients.length === 0 && (
             <p className="text-sm text-muted-foreground">
@@ -323,27 +287,73 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   );
 }
 
-function ClientViewerList({ clientId, clientName }: { clientId: string; clientName: string }) {
+type Client = { id: string; name: string };
+
+function ClientViewerList({
+  clientId,
+  clientName,
+  firmId,
+  clients,
+  standing,
+  canManage,
+}: {
+  clientId: string;
+  clientName: string;
+  firmId: string;
+  clients: Client[];
+  standing: Array<{ userId: string; tier: DashboardTier }>;
+  canManage: boolean;
+}) {
   const qc = useQueryClient();
   const fetchAccess = useServerFn(listClientAccess);
   const revoke = useServerFn(revokeClientAccess);
+  const switchScope = useServerFn(switchStandingToSelected);
 
   const q = useQuery({
     queryKey: ["client-access", clientId],
     queryFn: () => fetchAccess({ data: { clientId } }),
   });
 
+  const [pending, setPending] = useState<{
+    id: string;
+    userId: string;
+    who: string;
+  } | null>(null);
+
   const revokeMut = useMutation({
     mutationFn: (id: string) => revoke({ data: { id } }),
     onSuccess: () => {
       toast.success("Access removed.");
+      setPending(null);
       qc.invalidateQueries({ queryKey: ["client-access", clientId] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not remove access."),
   });
 
+  const switchMut = useMutation({
+    mutationFn: (v: { userId: string; tier: DashboardTier }) =>
+      switchScope({
+        data: {
+          firmId,
+          userId: v.userId,
+          tier: v.tier,
+          clientIds: clients.filter((c) => c.id !== clientId).map((c) => c.id),
+        },
+      }),
+    onSuccess: () => {
+      toast.success(`Switched to named clients — ${clientName} is no longer included.`);
+      setPending(null);
+      qc.invalidateQueries({ queryKey: ["standing-viewers", firmId] });
+      qc.invalidateQueries({ queryKey: ["client-access"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not change their access."),
+  });
+
   const rows = q.data?.access ?? [];
   if (rows.length === 0) return null;
+
+  const standingFor = pending ? standing.find((s) => s.userId === pending.userId) : undefined;
+  const otherClients = clients.filter((c) => c.id !== clientId).length;
 
   return (
     <div>
@@ -357,18 +367,73 @@ function ClientViewerList({ clientId, clientName }: { clientId: string; clientNa
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <Badge variant="outline">{tierLabel(a.tier)}</Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => revokeMut.mutate(a.id)}
-                disabled={revokeMut.isPending}
-              >
-                <Trash2 className="mr-1 h-4 w-4" /> Remove
-              </Button>
+              {standing.some((s) => s.userId === a.user_id) && (
+                <Badge variant="secondary">Also all clients</Badge>
+              )}
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    setPending({
+                      id: a.id,
+                      userId: a.user_id,
+                      who: a.display_name ?? a.email ?? "This person",
+                    })
+                  }
+                >
+                  <Trash2 className="mr-1 h-4 w-4" /> Remove
+                </Button>
+              )}
             </div>
           </li>
         ))}
       </ul>
+
+      <AlertDialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {standingFor ? `This will not hide ${clientName}` : "Remove their access?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {standingFor ? (
+                <>
+                  {pending?.who} will still see {clientName}, because they have access to every
+                  client in this organisation. The only way to hide this one client is to switch them
+                  to a named list of clients instead, with {clientName} left out.
+                </>
+              ) : (
+                <>
+                  {pending?.who} will no longer see {clientName}.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            {standingFor ? (
+              <AlertDialogAction
+                onClick={() =>
+                  pending &&
+                  switchMut.mutate({ userId: pending.userId, tier: standingFor.tier })
+                }
+                disabled={switchMut.isPending || otherClients === 0}
+              >
+                Switch to the other {otherClients} client{otherClients === 1 ? "" : "s"}
+              </AlertDialogAction>
+            ) : (
+              <AlertDialogAction
+                onClick={() => pending && revokeMut.mutate(pending.id)}
+                disabled={revokeMut.isPending}
+              >
+                Remove access
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
