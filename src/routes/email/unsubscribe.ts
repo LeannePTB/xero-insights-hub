@@ -1,11 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
 import { createFileRoute } from '@tanstack/react-router'
+import { createHash } from 'crypto'
+import { enforceRateLimit } from '@/lib/rate-limit.server'
 
 function redactEmail(email: string | null | undefined): string {
   if (!email) return '***'
   const [localPart, domain] = email.split('@')
   if (!localPart || !domain) return '***'
   return `${localPart[0]}***@${domain}`
+}
+
+// The emailed link carries the plaintext token; only its SHA-256 hash is stored.
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
+}
+
+function callerIp(request: Request): string {
+  return (
+    request.headers.get('cf-connecting-ip') ??
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  )
 }
 
 export const Route = createFileRoute("/email/unsubscribe")({
