@@ -1038,9 +1038,6 @@ None.
 | client_notes | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_notes | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_notes | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_access | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_access | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_access | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_cost_classifications | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_cost_classifications | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_cost_classifications | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
@@ -1071,6 +1068,9 @@ None.
 | tier_widget_config | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
+| client_access | insert | ALLOW | pglite, live | PK 2 client viewer; owner manages viewers |  |
+| client_access | update | ALLOW | pglite, live | PK 2 client viewer; owner manages viewers |  |
+| client_access | delete | ALLOW | pglite, live | PK 2 client viewer; owner manages viewers |  |
 | clients | insert | ALLOW | pglite, live | Spec §6 (is_firm_owner) |  |
 | clients | update | ALLOW | pglite, live | Spec §6 (is_firm_owner) |  |
 | clients | delete | ALLOW | pglite, live | Spec §6 (is_firm_owner) |  |
@@ -1158,9 +1158,6 @@ None.
 | client_notes | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_notes | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_notes | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_access | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_access | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_access | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_cost_classifications | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_cost_classifications | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_cost_classifications | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
@@ -1191,6 +1188,9 @@ None.
 | tier_widget_config | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
+| client_access | insert | DENY | pglite, live | PK 2 client viewer; staff may read the list only |  |
+| client_access | update | DENY | pglite, live | PK 2 client viewer; staff may read the list only |  |
+| client_access | delete | DENY | pglite, live | PK 2 client viewer; staff may read the list only |  |
 | clients | insert | DENY | pglite, live | Spec §6 (is_firm_owner only) |  |
 | clients | update | DENY | pglite, live | Spec §6 (is_firm_owner only) |  |
 | clients | delete | DENY | pglite, live | Spec §6 (is_firm_owner only) |  |
