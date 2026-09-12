@@ -92,6 +92,7 @@ create table public.reconciliation_snapshots (id uuid, client_id uuid, tenant_id
 create table public.report_cache (id uuid, user_id uuid, tenant_id text, report_key text, params_hash text, payload jsonb, fetched_at timestamp with time zone);
 create table public.report_recipients (id uuid, report_id uuid, client_id uuid, email text, token_hash text, sent_by uuid, sent_at timestamp with time zone, expires_at timestamp with time zone, revoked_at timestamp with time zone, first_opened_at timestamp with time zone, last_opened_at timestamp with time zone, open_count integer);
 create table public.scenario_exclusions (id uuid, client_id uuid, xero_invoice_id text, created_at timestamp with time zone);
+create table public.security_attestations (check_key text, confirmed_by uuid, confirmed_at timestamp with time zone, note text, expires_after_days integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.security_contact_details (id uuid, singleton boolean, company_legal_name text, trading_name text, abn text, registered_address text, website text, app_name text, xero_client_id text, primary_contact_name text, primary_contact_role text, primary_contact_email text, primary_contact_phone text, xero_api_usage text, assessment_date date, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.security_settings (singleton boolean, audit_retention_days integer, login_retention_days integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.security_test_accounts (user_id uuid, label text, email text, password_enc bytea, totp_secret_enc bytea, factor_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -1448,6 +1449,7 @@ alter table public.reconciliation_snapshots enable row level security;
 alter table public.report_cache enable row level security;
 alter table public.report_recipients enable row level security;
 alter table public.scenario_exclusions enable row level security;
+alter table public.security_attestations enable row level security;
 alter table public.security_contact_details enable row level security;
 alter table public.security_settings enable row level security;
 alter table public.security_test_accounts enable row level security;
@@ -1822,6 +1824,14 @@ grant SELECT on table public.scenario_exclusions to service_role;
 grant TRIGGER on table public.scenario_exclusions to service_role;
 grant TRUNCATE on table public.scenario_exclusions to service_role;
 grant UPDATE on table public.scenario_exclusions to service_role;
+grant SELECT on table public.security_attestations to authenticated;
+grant DELETE on table public.security_attestations to service_role;
+grant INSERT on table public.security_attestations to service_role;
+grant REFERENCES on table public.security_attestations to service_role;
+grant SELECT on table public.security_attestations to service_role;
+grant TRIGGER on table public.security_attestations to service_role;
+grant TRUNCATE on table public.security_attestations to service_role;
+grant UPDATE on table public.security_attestations to service_role;
 grant DELETE on table public.security_contact_details to service_role;
 grant INSERT on table public.security_contact_details to service_role;
 grant REFERENCES on table public.security_contact_details to service_role;
@@ -2283,6 +2293,8 @@ create policy "Client members manage scenario exclusions (insert)" on public.sce
 create policy "Client members manage scenario exclusions (select)" on public.scenario_exclusions as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
 create policy "Client members manage scenario exclusions (update)" on public.scenario_exclusions as permissive for update to authenticated using (app_private.has_client_access(auth.uid(), client_id)) with check (app_private.has_client_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.scenario_exclusions as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy attestations_select_super_admin on public.security_attestations as permissive for select to authenticated using (app_private.me_is_super_admin());
+create policy mfa_aal2_required on public.security_attestations as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "deny all to app roles (delete)" on public.security_contact_details as permissive for delete to anon, authenticated using (false);
 create policy "deny all to app roles (insert)" on public.security_contact_details as permissive for insert to anon, authenticated with check (false);
 create policy "deny all to app roles (select)" on public.security_contact_details as permissive for select to anon, authenticated using (false);
@@ -2394,9 +2406,10 @@ create policy mfa_aal2_required on public.xero_snapshots as restrictive for all 
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.client_subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.firms FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.plan_levels FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER security_attestations_audit AFTER INSERT OR DELETE OR UPDATE ON public.security_attestations FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.signup_requests FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: b6027c60edcc3407f1c12afb23b11fab34164fc5b5a94d644102ce125e81a74d
+-- catalogue-fingerprint: 0fba5838d6118af85eba7ef9f37993b46ee5e07b4ea9eb40db8bdc51fbdf13ef
