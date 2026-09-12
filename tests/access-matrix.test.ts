@@ -565,6 +565,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
               (select count(*) from public.firm_viewer_access)::int as fva,
               (select count(*) from public.xero_connections)::int as conns`,
     );
+    await seedThenActAs(row.role, "select 1");
     const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.staffA}')`);
     if (!p.ok) return "deny";
     await db.exec("set local role postgres");
