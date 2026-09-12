@@ -111,7 +111,8 @@ function explainRemovalError(message: string): string {
 /**
  * Removal is a WRITE, so no support grant may reach it. The check, the status
  * change and the audit row all happen inside `public.remove_firm_member`,
- * called as the user through `context.supabase` — never `supabaseAdmin`.
+ * called as the user through `context.supabase`, so RLS applies; the service
+ * role is not used here at all.
  * Nothing else is touched: viewer grants, standing grants, Xero connections,
  * snapshots, history and the person's own account all remain as they were.
  */
