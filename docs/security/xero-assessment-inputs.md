@@ -128,7 +128,7 @@ Nothing here changes access control; these are artefacts to write or produce.
 3. Incident response drill and an incident register. **No artefact.**
 4. Retained vulnerability/dependency scan output with a remediation SLA. **No artefact.**
 5. Retained platform attestations (SOC 2 / ISO) for Supabase and Cloudflare to back the residency and hosting claims. **No artefact.**
-6. Hosting region is now confirmed (Singapore, corrected 12 Sep 2026 — it was previously misdocumented as Australia), but the keep-and-disclose vs migrate decision is open (backlog 45), and there is still no tested restore with RPO/RTO. **Partial.**
+6. Hosting region is confirmed (Singapore, corrected 12 Sep 2026 — it was previously misdocumented as Australia) and the residency decision is recorded in `data-residency-decision.md` (remain on Singapore, disclose it). Still open: the privacy-policy / engagement-letter disclosure and the privacy-adviser check it lists, and a tested restore with RPO/RTO. **Partial.**
 7. Published security contact / disclosure channel. **Partial.**
 8. Periodic access review record (memberships, support grants, roles). **Partial.**
 9. Backlog 38 — clear revoked token ciphertext at disconnect, so "revoked and removed" is literally true.

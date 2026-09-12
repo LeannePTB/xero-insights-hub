@@ -338,9 +338,10 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     (a) No rotation procedure for `TOKEN_ENC_KEY` and no re-wrap path. (b) No secret rotation schedule
     and no record of who can read project secrets. (c) `incident-response.md` has never been tested —
     no drill, and no incident register exists. (d) `vulnerability-management.md` has no retained scan
-    output, no remediation SLA and no penetration test. (e) No retained platform attestations
-    (SOC 2 / ISO) behind the hosting-region claim (the region was misdocumented as Australia at
-    the time; it is confirmed Singapore — see item 45), and no tested restore with an RPO/RTO.
+    output, no remediation SLA and no penetration test. (e) **Residency part CLOSED 12 Sep 2026:**
+    the region is confirmed Singapore and the decision (remain, disclose) is recorded in
+    `docs/security/data-residency-decision.md`. Still open under (e): no retained platform
+    attestations (SOC 2 / ISO), and no tested restore with an RPO/RTO.
     (f) No published security contact or disclosure channel. (g) No periodic access-review record for
     memberships, support grants and roles. Owner call needed on which of these the practice writes and
     which are answered "not applicable — single-developer practice".
