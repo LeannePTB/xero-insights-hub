@@ -215,6 +215,7 @@ function AdvisorSettings() {
   const viewerIsSuperAdmin = listQ.data?.viewerIsSuperAdmin ?? false;
   const pendingIds = new Set(pendingQ.data?.pendingUserIds ?? []);
   const pendingCount = pendingIds.size;
+  const practiceIds = new Set((practiceQ.data?.members ?? []).map((m) => m.userId));
 
   return (
     <AdminShell>
