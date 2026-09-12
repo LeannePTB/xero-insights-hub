@@ -169,11 +169,11 @@ Every path that shows a person a client's figures records the read through the s
 
 `firm_members.status` is `active | suspended | removed`; role is `owner | staff`. Removal sets status, never hard-deletes; only `active` counts. Invites are email-bound, single-use, expiring, storing a token HASH. Team member and client viewer invitations share one screen, the organisation's People page, and each path keeps its own server function and permissions — grouping them in the UI widened nothing. An owner invite is refused for an organisation that already has an owner.
 
-## 13. Roles and identity
+## 12. Roles and identity
 
 Roles live in `public.user_roles` (never on `profiles` or a users table) and are read through `has_role(uuid, app_role)` and `me_is_super_admin()`. **Identity comes from `auth.users`**: never use `profiles.email` or a display name to identify a person or choose a recipient — `profiles.display_name` is self-chosen and can imitate someone else, so a verified `auth.users` email accompanies the name in tooltips and admin lists.
 
-## 14. Grants — only what the policies admit
+## 13. Grants — only what the policies admit
 
 Verified live on 12 September 2026 (Phase 7 batch 1; before/after dump in `grant-dump-phase7.md`):
 
@@ -183,13 +183,13 @@ Verified live on 12 September 2026 (Phase 7 batch 1; before/after dump in `grant
 - `service_role` grants are intact for system contexts; sensitive columns keep column-level grants.
 - New table checklist: RLS on; `revoke all ... from anon, authenticated;` then grant only what the policies need; per-command policies; column grants for sensitive columns; add rows to `access-matrix.ts`.
 
-## 15. Outstanding work
+## 14. Outstanding work
 
 The verified security backlog lives in `docs/security-backlog.md`. Read it before planning any access-control work, and update it in the same change that closes an item. Do not track outstanding work in this document — this section only points at it.
 
 Settled decisions there, not tasks: **`FORCE ROW LEVEL SECURITY` is WON'T DO** (all `public` tables are owned by `postgres`, which has `rolbypassrls`, so FORCE changes nothing for any role the app connects as); **token column exposure is CLOSED** (`authenticated` has SELECT on 13 non-token columns of `xero_connections`; `access_token_enc` and `refresh_token_enc` have no grant, and the privilege check precedes RLS); **an organisation may not read its own audit log** (§9); and the remaining super admin without a verified TOTP factor is **left as is** — she is forced to enrol at her next sign-in, server enforcement already blocks her from all data, and the posture card correctly shows one Action item until then.
 
-## 16. Working agreement
+## 15. Working agreement
 
 One change at a time. After anything touching auth, RLS, membership, grants, entitlement, ownership or Xero tokens, restate which invariants in section 0 it touches and why they still hold. Never change an RLS policy as a side effect of a feature task.
 
