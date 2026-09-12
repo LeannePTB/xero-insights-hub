@@ -2779,6 +2779,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      me_can_manage_client_viewers: {
+        Args: { _client_id: string }
+        Returns: boolean
+      }
+      me_can_manage_firm_viewers: {
+        Args: { _firm_id: string }
+        Returns: boolean
+      }
       me_has_role: {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
