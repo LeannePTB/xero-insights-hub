@@ -1,10 +1,20 @@
 # Traction Advisory — Security overview
 
-Traction Advisory is a Xero-connected advisor dashboard for accounting firms and the clients they invite. It is designed to meet the Xero API Consumer Security Standard.
+Traction Advisory is a Xero-connected advisor dashboard for accounting practices and the clients they invite. It is designed to meet the Xero API Consumer Security Standard.
 
-Detailed policies live in this folder:
+## Which document is which, and which one wins
 
-- [Access control](./access-control.md)
+| Document | What it is | Authority |
+| --- | --- | --- |
+| Project Knowledge — "Security Rules and Change Gate" | The binding rules the agent follows on every change | **Binding. Wins over everything below.** |
+| [access-control-spec.md](./access-control-spec.md) | The detail behind those rules, and the facts that caused past incidents | Detail; Project Knowledge wins on conflict |
+| [access-matrix.ts](./access-matrix.ts) / [access-matrix.md](./access-matrix.md) | The evidence: every role × table × command expectation, proved on every `bun run security:check` | **Evidence. Where prose and the matrix disagree, the matrix is right.** |
+| [access-control.md](./access-control.md) | The assessor-facing summary tying it all together | Summary; never authoritative |
+
+Generated or verified registers: [definer-register.md](./definer-register.md), [admin-client-register.md](./admin-client-register.md), [grant-dump-phase7.md](./grant-dump-phase7.md), [xero-assessment-inputs.md](./xero-assessment-inputs.md), and open work in [../security-backlog.md](../security-backlog.md).
+
+Policies:
+
 - [Data hosting & third parties](./data-hosting.md)
 - [Data retention](./data-retention.md)
 - [Incident response](./incident-response.md)
