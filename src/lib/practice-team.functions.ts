@@ -35,33 +35,26 @@ export const listPracticeTeam = createServerFn({ method: "GET" })
     };
   });
 
-export const addPracticeMember = createServerFn({ method: "POST" })
+/**
+ * Add or remove one person, by user id, from the advisors page. Both branches go
+ * to the audited definer function on the CALLER's session (aal2 + super admin
+ * asserted in the database); the service role is never involved.
+ */
+export const setPracticeMembership = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { email: string }) => i)
+  .inputValidator((i: { userId: string; onTeam: boolean }) => {
+    const userId = String(i?.userId ?? "");
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId))
+      throw new Error("Choose a person.");
+    return { userId, onTeam: !!i.onTeam };
+  })
   .handler(async ({ data, context }) => {
-    const email = (data.email ?? "").trim().toLowerCase();
-    if (!email.includes("@") || email.length > 254)
-      throw new Error("Please enter a valid email address.");
-
-    // Authorise on the caller's own session BEFORE any privileged step.
-    const { data: rows, error: listErr } = await (context.supabase as any).rpc(
-      "admin_practice_team",
+    const { error } = await (context.supabase as any).rpc(
+      data.onTeam ? "admin_add_practice_member" : "admin_remove_practice_member",
+      { _user_id: data.userId },
     );
-    if (listErr) throw new Error(listErr.message);
-    if (((rows ?? []) as any[]).some((r) => String(r.email ?? "").toLowerCase() === email)) {
-      return { ok: true, alreadyThere: true };
-    }
-
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const found = await findVerifiedAuthUserByEmail(supabaseAdmin as any, email);
-    if (!found?.id)
-      throw new Error("That person does not have an account yet. Invite them as an advisor first.");
-
-    const { error } = await (context.supabase as any).rpc("admin_add_practice_member", {
-      _user_id: found.id,
-    });
     if (error) throw new Error(error.message);
-    return { ok: true, alreadyThere: false };
+    return { ok: true, onTeam: data.onTeam };
   });
 
 export const removePracticeMember = createServerFn({ method: "POST" })
