@@ -1088,6 +1088,7 @@ None.
 | audit_log | read | DENY | pglite, live | Backlog 26 — Spec §3 promises the organisation its own audit rows; only super_admin can read today | Fails closed, so it is a gap rather than an incident. Recorded, not fixed in Phase 2. |
 | public.user_can_disconnect_xero_connection() | execute | ALLOW | live | Path A — membership, own organisation |  |
 | public.client_xero_files_used() | execute | ALLOW | live | Path A — membership; disconnected files do not consume the allowance | Phase 5: shared with the client allowance triggers, so a disconnected Xero file keeps its client link without counting toward the plan limit. |
+| public.xero_connections (disconnecting leaves no token ciphertext) | update | ALLOW | live | Backlog 38 — a revoked grant leaves no token at rest | Phase 7: every path that marks a connection disconnected because the grant is dead (advisor disconnect, grant_revoked on refresh, unassigned cleanup) nulls access_token_enc and refresh_token_enc in the same update. The authorisation reconcile (not_authorised) deliberately keeps the ciphertext, because that token is still valid for the other tenants on the same consent and the row can be restored without re-authorising. |
 | public.xero_connections (firm_id null) | insert | DENY | live | PK 4 — a Xero connection cannot exist without an organisation (firm_id NOT NULL) | Phase 5 step 5: the connect callback refuses a tenant it cannot place instead of storing it unassigned; the database refuses it as well. |
 | public.client_xero_orgs (client in another organisation) | insert | DENY | live | PK 4 — a Xero file must belong to the same organisation as the client it is linked to | Phase 5 step 5: deferred constraint triggers on client_xero_orgs and xero_connections.firm_id. |
 | public.xero_connections (tenant over the plan's Xero file limit) | insert | DENY | live | Plan limit trigger PLAN_LIMIT_XERO_ORGS — refused and reported, never stored unassigned | Phase 5 step 5: the callback presents the database's own plan-limit wording and names the refused Xero file. |
@@ -1368,9 +1369,3 @@ None.
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
 | server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
-
-## undefined
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| public.xero_connections (disconnected row holds no token ciphertext) | select | ALLOW | live | Backlog 38 — a revoked grant leaves no token at rest | Phase 7: every path that marks a connection disconnected because the grant is dead (advisor disconnect, grant_revoked on refresh, unassigned cleanup) nulls access_token_enc and refresh_token_enc in the same update. The authorisation reconcile (not_authorised) deliberately keeps the ciphertext, because that token is still valid for the other tenants on the same consent and the row can be restored without re-authorising. |
