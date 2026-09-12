@@ -817,6 +817,7 @@ export const getGroupLoanSnapshot = createServerFn({ method: "POST" })
       const { logClientDataRead } = await import("@/lib/audit.server");
       logClientDataRead({
         actorUserId: context.userId,
+        firmId: group.firmId,
         readKey: "loan_consolidation",
         source: "snapshot",
         periodEnd: ((row as any).as_at as string) ?? null,
