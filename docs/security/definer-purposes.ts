@@ -154,6 +154,13 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.move_to_dlq": "Moves an email that cannot be sent to the dead-letter queue.",
   "public.email_queue_dispatch": "Sends the next batch of queued emails.",
   "public.email_queue_wake": "Wakes the email queue after a pause.",
+
+  // ── app_private: standing viewer grant (path D, read-only).
+  "app_private.has_standing_client_access": "Whether a person holds a standing viewer grant covering this client's organisation. READ paths only.",
+  "app_private.has_client_read_access": "Whether a person may READ this client: a specific viewer grant or a standing grant. Never used by a write path.",
+  "app_private.is_practice_member_of": "Whether a practice-team person is an active member of this particular organisation.",
+  "app_private.can_manage_client_viewers": "Whether the caller may grant or revoke viewer access in this organisation: its owner, or an active practice-team member of it.",
+  "app_private.viewer_tier": "The dashboard level a viewer sees for a client: specific grant first, then standing grant, capped by the client's own entitlement.",
 };
 
 /**
