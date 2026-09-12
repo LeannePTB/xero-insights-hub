@@ -50,13 +50,13 @@ select json_build_object(
   ), '[]'::json),
   'triggers', coalesce((
     select json_agg(json_build_object(
-      'table', c.relname,
+      'table', c.relnamespace::regnamespace::text || '.' || c.relname,
       'name', tg.tgname,
       'function', fp.proname
     ))
     from pg_trigger tg
     join pg_class c on c.oid = tg.tgrelid
     join pg_proc fp on fp.oid = tg.tgfoid
-    where c.relnamespace = 'public'::regnamespace and not tg.tgisinternal
+    where not tg.tgisinternal
   ), '[]'::json)
 );

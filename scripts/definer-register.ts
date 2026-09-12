@@ -67,7 +67,15 @@ function codeCallers(name: string): string[] {
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean)
-      .filter((f) => !f.startsWith("scripts/dump-definer") && f !== "scripts/definer-register.ts");
+      .filter(
+        (f) =>
+          // Generated mirrors and type stubs are not callers.
+          !f.startsWith("scripts/dump-definer") &&
+          f !== "scripts/definer-register.ts" &&
+          f !== "scripts/dump-rls-fixture.sql" &&
+          f !== "tests/fixtures/rls-schema.sql" &&
+          f !== "src/integrations/supabase/types.ts",
+      );
   } catch {
     return []; // rg exits 1 when nothing matches
   }
