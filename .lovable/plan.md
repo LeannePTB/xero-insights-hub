@@ -92,3 +92,9 @@ Recommend a **table**, `practice_team` (user_id, added_by, timestamps), super-ad
 3. **Owner revokes Positive Traction's membership:** revoke nothing else automatically, but tell the owner plainly that support and reporting stop, and require a typed confirmation. *Recommended:* no cascade, explicit warning.
 4. **Standing grant level vs later tier upgrades:** the cap is dynamic, so a client upgraded later automatically shows the viewer more, up to the granted level. *Recommended:* dynamic (no re-grant needed).
 5. **Existing single-client viewers:** none exist (0 rows), so no conversion offer is needed. *Recommended:* nothing.
+
+## Owner additions — 12 Sep 2026 (path D now in Project Knowledge section 2)
+
+1. **Revoking a specific grant while a standing grant exists (Batches 3 and 4).** The person keeps seeing that client through the standing grant, so the revoke confirmation must say so in plain words ("They will still see this client because they have access to every client in this organisation") and offer the only real remedy: switch that person from "every client" to "only the clients I tick", with this client unticked. No exclusion row type; the two scopes stay the only shapes.
+2. **"Active Positive Traction member" is defined precisely** in `app_private.can_manage_client_viewers`: an **active `firm_members` row for THAT organisation** held by someone in `practice_team`. Not any super admin, and not a practice-team member of a different organisation — otherwise it becomes a route back into a handed-over organisation and undercuts backlog 30.
+3. **Matrix rows proving a standing grant is not membership:** denied on `firms`, `subscriptions`, `billing_events`, `firm_members`, `audit_log`, `access_invites` and support-grant management; not returned by member lists; and not counted toward `PLAN_LIMIT_CLIENTS`.

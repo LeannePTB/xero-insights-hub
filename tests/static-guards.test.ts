@@ -337,3 +337,56 @@ describe("7. reads of client financial data are audited", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * 8. The standing viewer grant (path D) is read-only, structurally.
+ *
+ * Project Knowledge section 2 path D: the standing predicate may appear ONLY in
+ * read paths. This guard reads the generated catalogue copy
+ * (tests/fixtures/rls-schema.sql) rather than the migration text, so a later
+ * migration that quietly puts the predicate into a write policy — or into the
+ * write helpers — fails the build instead of being spotted by eye.
+ */
+describe("8. the standing viewer grant is never a write path", () => {
+  const STANDING = /has_standing_client_access|has_client_read_access/;
+  const catalogue = readFileSync(join(process.cwd(), "tests/fixtures/rls-schema.sql"), "utf8");
+  const policyLines = catalogue
+    .split("\n")
+    .filter((l) => l.trimStart().startsWith("create policy "));
+
+  it("appears in no INSERT, UPDATE or DELETE policy", () => {
+    const offenders = policyLines.filter(
+      (l) => STANDING.test(l) && /\bfor (insert|update|delete)\b/.test(l),
+    );
+    report("write policies naming the standing predicate", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("appears in no permissive FOR ALL policy", () => {
+    const offenders = policyLines.filter(
+      (l) => STANDING.test(l) && /as permissive for all\b/.test(l),
+    );
+    report("permissive FOR ALL policies naming the standing predicate", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("appears in neither write helper", () => {
+    const bodies = catalogue.split(/CREATE OR REPLACE FUNCTION /);
+    const offenders = bodies
+      .filter(
+        (b) =>
+          /^app_private\.(user_can_write_client|user_can_manage_client|assert_client_write_access)\(/.test(b) &&
+          STANDING.test(b),
+      )
+      .map((b) => b.split("\n")[0]!);
+    report("write helpers naming the standing predicate", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("is reachable from the client READ check, so the path actually works", () => {
+    const readCheck = catalogue
+      .split(/CREATE OR REPLACE FUNCTION /)
+      .find((b) => /^app_private\.user_can_read_client\(/.test(b));
+    expect(readCheck && STANDING.test(readCheck)).toBe(true);
+  });
+});
