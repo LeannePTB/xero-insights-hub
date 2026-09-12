@@ -872,6 +872,53 @@ export const MATRIX: MatrixRow[] = [
     layers: ["live"],
     note: "public.firm_member_invites requires aal2 + super admin; the People section hides the forms for everyone else.",
   },
+  // ---- Phase 6: reads of client financial data are recorded ----
+  {
+    role: "org_staff",
+    resource: "audit trail row for reading a client's figures",
+    operation: "insert",
+    expect: "allow",
+    rule: "PK 8 / Spec §1 — reading client financial data must be auditable",
+    layers: ["live"],
+    note:
+      "Opening a client dashboard writes one xero_data_read row per actor + client + Xero file + read key + source per five minutes, recording no figures, account names or contact names.",
+  },
+  {
+    role: "client_viewer",
+    resource: "audit trail row for reading a client's figures",
+    operation: "insert",
+    expect: "allow",
+    rule: "PK 8 / Spec §1 — every reader is recorded, not only staff",
+    layers: ["live"],
+    note: "A client viewer's dashboard read writes the same row with their own user id as the actor.",
+  },
+  {
+    role: "support_grant_active",
+    resource: "audit trail row for reading a client's figures",
+    operation: "insert",
+    expect: "allow",
+    rule: "PK section 2 path B — support reads are read-only AND recorded",
+    layers: ["live"],
+    note: "meta.access_path comes from public.firm_access_path, so a support read is distinguishable from a member read.",
+  },
+  {
+    role: "anonymous",
+    resource: "audit trail row for a public report link view",
+    operation: "insert",
+    expect: "allow",
+    rule: "PK 8 — a link view is a read and is recorded; PK 8 — never the token, IP or user agent",
+    layers: ["live"],
+    note: "client_report_read with anonymous = true, the report and client, and the period; the token itself is never stored, only its SHA-256 hash on the recipient row.",
+  },
+  {
+    role: "other_org_member",
+    resource: "audit trail row for reading another organisation's client figures",
+    operation: "insert",
+    expect: "deny",
+    rule: "PK 1 / PK 4 — the read is impossible, so nothing is recorded",
+    layers: ["live"],
+    note: "Access is refused before any read path runs; no audit row is written because no read happened.",
+  },
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);
