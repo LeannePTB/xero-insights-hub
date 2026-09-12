@@ -126,7 +126,7 @@ Nothing here changes access control; these are artefacts to write or produce.
 2. Secret rotation schedule and the list of who can read project secrets. **No artefact.**
 3. Incident response drill and an incident register. **No artefact.**
 4. Retained vulnerability/dependency scan output with a remediation SLA. **No artefact.**
-5. Single sub-processor register (purpose, data, location). **No artefact.**
+5. Retained platform attestations (SOC 2 / ISO) for Supabase and Cloudflare to back the residency and hosting claims. **No artefact.**
 6. Confirmed hosting region, and a tested restore with RPO/RTO. **Partial.**
 7. Published security contact / disclosure channel. **Partial.**
 8. Periodic access review record (memberships, support grants, roles). **Partial.**
