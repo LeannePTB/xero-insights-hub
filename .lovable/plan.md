@@ -1,59 +1,85 @@
-# Phase 6 — audit the reading of client financial data
+# Phase 7 — tidy up and prove it
 
-Classification: SECURITY-RELEVANT (audit trail, `supabaseAdmin` audit writes, public report link, posture check).
-Invariants touched: 8 (nothing from the client's data leaves the server into the log), 10/auditability, 1 and 4 unchanged — this phase records reads, it never changes who may read.
+Classification: SECURITY-RELEVANT (grants, definer functions, documentation, full re-audit).
+This phase removes privileges and surface. No new access path, no new role, nothing widened.
 
-## Step 1 — inventory (verified by reading the code, 12 Sep 2026)
+## What I verified live before writing this (12 Sep 2026)
 
-| Path | Returns client figures | Audited today |
-|---|---|---|
-| Live Xero reads — `xeroGet`, `xeroAssetsGet`, `xeroPayrollGet` (`xero/api.server.ts`) | yes | YES — `logXeroRead` → `xero_data_read`, 5-minute de-dupe per user+tenant+endpoint (5,445 rows in the last 7 days) |
-| Snapshot reads — `readSnapshot` (`xero/snapshot-read.server.ts`) and its callers (`open-invoices`, `file-capability`, `payroll`, `health`, `snapshot-compare`) | yes | NO |
-| Reconciliation snapshots — `xero/recon-snapshot.server.ts` (GST/statutory screens) | yes | NO on the snapshot branch (the compute branch is audited as `live`) |
-| Stored monthly report — `getStoredMonthlyReport` | yes (whole report payload) | NO |
-| Report PDF — `getMonthlyReportPdfUrl` | yes | NO |
-| Public report link — `report.$token` → `openLink` | yes | PARTLY — `client_report_link_opened` exists but records e-mail, IP and user agent and no read key/source |
-| Report generation — `generateMonthlyReport` | yes | indirectly (its Xero reads) plus `client_report_generated` |
-| Transaction search — `searchClientTransactions` | yes | YES via `xeroGet` |
-| Consolidated and group loan views | yes | YES via `xeroGet` |
-| Saved group loan reports — `getGroupLoanSnapshot` | yes | NO |
-| Statutory accounts, cost classification, break-even inputs, scenario exclusions | no figures from the client's ledger — they are the advisor's own settings/classifications; scenario and health figures come from `xeroGet`/snapshots and are covered there | dropped from scope |
-| `report_cache` table | no code reads or writes it (legacy) | dropped from scope; noted in the backlog |
-| Unreconciled statement uploads | figures, but supplied by the organisation itself, not read from Xero | out of scope for this phase, recorded in the backlog |
+- 53 tables in `public`; **RLS is on all 53**.
+- **`anon` holds no privilege on any `public` table** — so the "anon holds anything" half of the `excess_grants` backlog item is already clean. Nothing to do there.
+- `authenticated` holds **TRUNCATE on 47 of 53 tables**, and on most of those the full default set (SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN) — Supabase's default, never trimmed.
+- Tables where `authenticated` holds INSERT/UPDATE/DELETE with **no permissive policy for any command**: `access_invites`, `billing_events`, `dashboard_configs`, `email_send_log`, `email_send_state`, `email_unsubscribe_tokens`, `firm_members`, `rate_limit_buckets`, `report_cache`. Writes there are already refused by RLS, so the grants are pure surface.
+- 96 SECURITY DEFINER functions in `public`, 31 in `app_private`. Every `public` definer executable by `authenticated` that I sampled has `SET search_path` and contains `assert_aal2` — Phase 1 held.
+- Function-level `EXECUTE` is `authenticated` + `service_role`; `anon` on none of the sampled set.
+- Not called anywhere in app code, tests or scripts: `public.firm_has_consolidation`, `public.record_access_test_run` (belongs to the parked live suite), and the `report_cache` table.
 
-**Unaudited today: snapshot reads, reconciliation-snapshot reads, stored report opens, report PDF downloads, saved group loan reports, and the report-link view as a *read*.**
+## Batch 1 — trim table grants to what the policies need (one migration)
 
-## Step 2 — one helper
+One migration, not batched: a per-table `REVOKE ALL … FROM authenticated` followed by narrow re-grants is only safe if it is atomic. Half-applied grants are exactly the fail-open state to avoid, and the whole change is a single transaction.
 
-`logClientDataRead()` in `src/lib/audit.server.ts` is the only writer. Records actor, client, organisation, tenant, a short stable read key (`pnl`, `receivables`, `report:monthly`, …), source (`live` / `snapshot` / `cache` / `report` / `report_link`) and period start/end where one applies. Nothing else: no figures, account names, contact names, tokens, IP or user agent.
+Rule applied per table, derived from the policies that exist — not a blanket rule:
 
-Actor: `requireAal2` stashes the verified `userId` in a per-request store (`src/lib/auth/request-actor.server.ts`, WeakMap keyed on the `Request`), so deep helpers such as `readSnapshot` need no signature change and the actor is always the token the middleware verified. No request context (cron/daily writer) ⇒ no actor ⇒ no read row.
+1. `REVOKE ALL ON public.<t> FROM anon, authenticated;`
+2. `GRANT SELECT` back only where a permissive SELECT (or `FOR ALL`) policy for `authenticated` exists.
+3. `GRANT INSERT / UPDATE / DELETE` back only per command that has a matching permissive policy.
+4. `GRANT ALL … TO service_role` preserved everywhere (system contexts already depend on it).
+5. TRUNCATE, REFERENCES, TRIGGER, MAINTAIN granted to nobody.
+6. `profiles` keeps its existing column grant shape (`UPDATE(display_name)` only).
 
-Actions: reuse `xero_data_read` for `live` / `snapshot` / `cache`. Stored reports and the public link get `client_report_read`, because the target is a report row, not a Xero connection, and the actor may be absent — reusing `xero_data_read` there would be misleading.
+What could break, and the proof: any screen quietly relying on a grant that RLS would have allowed but no policy names, plus definer functions that read as their owner (unaffected — owner is `postgres`). Proof is the access matrix: `bun run security:check` before and after with the fixture fingerprint, the matrix rows re-proved, and a full before/after grant dump committed to `docs/security/grant-dump-phase7.md` so the change is reviewable line by line. Any matrix row that changes result stops the batch.
 
-## Step 3 — volume
+Owner test: sign in as a member, open a client dashboard, add and edit a note, edit statutory accounts and cost classifications, save break-even inputs, invite a member, revoke a viewer, generate and send a report; then as a client viewer, open the dashboard and confirm read-only still reads.
 
-- De-dupe: one row per actor + client + tenant + read key + source per 5 minutes, in process. 5 minutes matches the existing live-read window, so the two halves of one dashboard agree; a page reload inside the window is one read event, a return an hour later is a new one.
-- The key always contains actor and client, so a different person or a different client can never be collapsed away.
-- Expected volume: live reads run ~780 rows/day. Snapshot reads mostly *replace* live calls rather than add to them, so the expected total is ~1,000–1,500 rows/day, ≤45,000 rows inside the existing 30-day `security_settings.audit_retention_days` window, purged by `purge_expired_security_logs`. Both unchanged.
-- Performance: the write is fire-and-forget (never awaited on the render path) and short-circuits on the de-dupe map before touching the database, so a card that was already read this window costs one `Map` lookup.
+Estimate: medium-large (the migration is generated, the verification is the work).
 
-## Step 4 — the public report link
+## Batch 2 — definer sprawl: remove only what is provably dead
 
-`openLink` gets a `client_report_read` row: report id, client, organisation, `read_key: report:monthly`, `source: report_link`, period end, `actor_user_id null`, `anonymous: true`. No token, IP or user agent. The existing `client_report_link_opened` delivery event is left exactly as it is.
-Token facts confirmed by reading `report-delivery.server.ts`: stored as a SHA-256 `token_hash` (never the raw token), bound to one report and one recipient e-mail, `expires_at` enforced on every call, revocable, rate-limited, and every failure returns one generic message.
+- Produce the complete callable-definer table (name, args, purpose, callers) into `docs/security/definer-register.md`, generated from the database plus a code search so it cannot drift silently.
+- Propose removal of `public.firm_has_consolidation` and `public.record_access_test_run` **only after** proving each dead: zero references in `src`, `tests`, `scripts`, zero references from other function bodies, zero references from any policy, and zero calls in the PostgREST request logs for the retention window. If any check finds a caller, it stays and is recorded as live.
+- `record_access_test_run` is the parked live suite's writer — removing it is tied to the Part 5 decision below. Recommendation: keep the function, drop nothing, if the slim smoke suite is approved.
+- Duplication to merge, not collapse: `public.user_can_access_client` / `user_can_read_client` / `user_can_write_client` are genuinely distinct (read vs write vs legacy alias) — the legacy alias is the only merge candidate, and only if unused.
+- No function that is still called is touched. Fewer is not the goal.
 
-## Step 5 — visible and provable
+Estimate: small-medium.
 
-- Posture check `read_audit`, computed from the log itself, not a list: it inspects the last 7 days of `audit_log` read rows and fails Action if any row is missing `source`, `read_key` or `client_id` (a path writing rows the wrong way), or if signed-in activity exists in the window with zero read rows (a whole path gone silent). Evidence names the sources seen and their counts.
-- A static guard test refuses any new module that reads `xero_snapshots`, `reconciliation_snapshots`, `loan_consolidation_snapshots` or `client_reports.payload` unless it is listed in `docs/security/read-audit-register.ts`, so the code side cannot drift either.
-- Matrix rows: member read audited, client-viewer read audited, support-grant read audited (with `access_path: support`), cross-organisation read impossible so nothing written.
-- Audit screen: reads are a single filterable category ("Data reads") and are collapsed by default so the security events stay readable.
+## Batch 3 — documentation an assessor can be handed
 
-## Constraints
+`docs/security/access-control-spec.md` is dated 11 Sep 2026 and its section 12 still describes the backlog state before Phases 3–6. `docs/security/access-control.md` (28 lines) predates Phases 3–6 entirely: it describes roles and RLS but nothing about read auditing, support grants being read-only, the disconnect/revocation position, or the Phase 4 single-rulebook helpers.
 
-A failed audit write is swallowed and logged, as telemetry is today — safe on read paths, which is all this phase adds. It would not be safe for the write/lifecycle events, and none of those change.
+Corrections to make, each traced to the phase that changed it:
 
-## Verification
+| Statement today | Correction |
+|---|---|
+| `access-control.md` "policies scope reads to firm members or `auth.uid()`" | name the `app_private` helpers and the read/write split (Phase 3a) |
+| no mention of support grants being read-only | add it, with the write-side helpers that refuse them |
+| audit section covers security events only | add the read audit: `xero_data_read` and `client_report_read`, sources `live`/`snapshot`/`cache`/`report`/`report_link`, no figures recorded (Phase 6) |
+| nothing on disconnection | revoke-first, fail-closed, mark-not-delete, link retained, audited (Phase 5) |
+| spec §12 backlog pointer | re-point at the current backlog state |
 
-`bun run security:check` before/after with fingerprint, `bunx tsgo --noEmit`, Supabase linter with no new finding class, sample rows for one dashboard page view and one report-link view showing no financial values, owner screen tests, Security report.
+Files and their jobs, unchanged in principle: Project Knowledge = binding rules; `access-control-spec.md` = the detail; `access-matrix.ts` / `.md` = the evidence; `access-control.md` = the assessor-facing summary that ties the three together.
+
+Also list (not answer) what the Xero assessment response needs and where each answer comes from: MFA position, the three access paths, support grants read-only, audit position, token handling and encryption, disconnection and revocation, retention and purge, incident response, dependency and vulnerability management.
+
+Estimate: small. Docs only, no code.
+
+## Batch 4 — full re-audit from scratch
+
+Run the original audit as if today were day one, against the live database and current code, assuming nothing from Phases 1–6: every table (RLS, policies per command, table and column grants), every definer function (guard, `search_path`, execute grants), every server function (aal2 and authorisation before privileged work), every public route and its credential, secrets, tokens, storage buckets, cron jobs, and the Supabase linter with each accepted finding and its reason.
+
+Output is a findings list only. Anything found becomes a **new numbered backlog item** in `docs/security-backlog.md`. If nothing is found, the report says so plainly.
+
+Estimate: medium. No behaviour change in this batch by design.
+
+## Part 5 — what remains
+
+- **Open owner decision A — may an organisation read its own audit log?** Recommendation: yes for its own rows, read-only, excluding platform-operations rows, as a later phase. Not in Phase 7.
+- **Open owner decision B — the super admin with no verified MFA factor.** Recommendation: enrol or demote this week; server enforcement already blocks that account from all data, so the risk is an account that cannot work rather than an exposure.
+- **Phase 2 part 3 (live smoke suite), parked after Phase 4.** Recommendation: still worth building, at reduced scope — one non-super-admin member, one client viewer, one outsider, in a single `ZZ` test organisation, asserting cross-organisation denial and aal1 denial only, with no Xero calls and no super-admin test account. Rationale: the access checks are now consolidated in the database, so the fast suite already proves the rules; the live suite's remaining value is proving the real token path, which nothing else covers.
+- **Deliberately not done:** `FORCE ROW LEVEL SECURITY` (settled WON'T DO), token column exposure (settled CLOSED), the `setClientXeroAllowance` super-admin escalation (owner-decided exception), and the tier catalogue readability (assessed, left as-is).
+
+## Owner decisions needed
+
+1. Approve Batch 1 as one migration with the committed before/after grant dump. **Recommend yes.**
+2. Approve removing `firm_has_consolidation` if proven dead; keep `record_access_test_run` pending decision 3. **Recommend yes.**
+3. Approve the slim live smoke suite at the reduced scope above, after Phase 7. **Recommend yes.**
+4. Decisions A and B above.
