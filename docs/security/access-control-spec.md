@@ -206,3 +206,31 @@ Read-only, structurally: `app_private.has_client_access` (the specific-grant pre
 Level: `app_private.viewer_tier(user, client)` returns the specific grant's tier when one exists, otherwise the standing tier, capped with `least()` by `public.client_entitlement(client).tier`. `public.client_access_tiers` now also returns the standing tier, so widget access follows the same rule. A grant can never widen access beyond the client's own tier.
 
 Not membership: the holder gets no `firm_members` row, appears in no member list, counts toward no plan limit (`PLAN_LIMIT_CLIENTS` counts `clients` rows), and is denied `firms`, `firm_members`, `subscriptions`, `billing_events`, `client_subscriptions`, `access_invites` and `audit_log`. Matrix rows prove each of these, plus: a standing grant reads a client added after the grant; a specific grant overrides standing for that client; the entitlement caps the level; revoking a specific grant leaves the standing grant; a standing grant never crosses organisations; and only the owner manages grants (staff denied).
+
+### 14.1 Viewer management and viewer invites (Batch 3, 12 Sep 2026)
+
+Who may manage client viewers is one database predicate,
+`app_private.can_manage_viewers_for_client` (via `can_manage_client_viewers`):
+the client's organisation **owner**, or a `practice_team` person holding an
+**active `firm_members` row for that same organisation**. It authorises
+`grant_client_access`, `revoke_client_access`, `set_client_access_tier`,
+`client_viewers`, `grant_firm_viewer_access`, `set_firm_viewer_tier`,
+`revoke_firm_viewer_access`, `firm_viewers`, `firm_viewer_invites` and
+`revoke_viewer_invite`, and the `client_access` INSERT/UPDATE/DELETE policies.
+Organisation **staff** may read the viewer lists and change nothing — three
+`org_staff × client_access` write rows moved from allow to deny for this.
+
+Viewer invites reuse `access_invites` (hashed token, email-bound, single-use,
+expiring) with `kind = 'viewer'`, `scope`, `tier` and `client_ids`. Every member
+path filters `kind = 'member'`, so a viewer invite can never produce a
+`firm_members` row. Acceptance runs `public.apply_viewer_invite`
+(service_role only, called from the pre-session accept handler): it locks the
+invite, re-validates the client ids against the organisation — skipping any
+client deleted or moved, and failing with `VIEWER_INVITE_NO_CLIENTS` and no
+acceptance stamp if none survive — then writes the `client_viewer` role, the
+standing row or the specific rows, the acceptance stamp and the audit row in one
+transaction. The user id is the auth user matched to the email-bound invite,
+never a request value.
+
+"Adjustable per client afterwards" is a specific `client_access` grant that
+overrides the standing one; there is no exclusion row type.
