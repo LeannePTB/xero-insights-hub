@@ -1,6 +1,13 @@
-# People and access — approved design
+# People and access — BUILT
 
-**Status:** approved design, NOT scheduled. Build only after Phases 4–7 are complete, because it changes the client read path that Phase 4 is still consolidating.
+**Status:** BUILT, 12 Sep 2026 (batches 1–5). Path D is in Project Knowledge section 2; the data shape, read path, invites, screens, practice team and the owner viewer permission are live and covered by the access matrix.
+
+**What differs from the design as approved, and why**
+
+- The standing grant lives in its own table, `firm_viewer_access`, rather than as a flag on `client_access`. A separate table keeps specific per-client grants untouched, and lets the standing predicate be referenced by read paths only — which is what Project Knowledge section 2 now requires. Rule 2 (precedence) and rule 5 (revoke all of it at once) behave exactly as approved.
+- Decision 8's badge reads "Positive Traction"/"Traction Advisory" from the `practice_team` table, not from the `super_admin` role, so the badge cannot imply access. Removing one of our people after handover is still NOT possible from the screen: no member-removal path exists anywhere in the product yet. Still open.
+- Rule 9's revoke wording gained a second warning the design did not anticipate: revoking one client from someone who holds "every client in this organisation" does not remove their access at all. The screen says so and offers the only real remedy — switch that person to a ticked list of clients with that client left out (backlog 44).
+- No exclusion row type was added. Two scopes only, as approved.
 
 ## Problem
 

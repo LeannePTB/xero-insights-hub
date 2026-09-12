@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1397**. Known failures: **0**.
+Rows: **1444**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -119,6 +119,11 @@ None.
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 
 ## Active member, aal1 session only
 
@@ -239,6 +244,11 @@ None.
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 
 ## Active member of a DIFFERENT organisation
 
@@ -355,6 +365,11 @@ None.
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 
 ## Organisation A's owner, reading organisation B
 
@@ -803,6 +818,11 @@ None.
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | ALLOW | pglite, live | PK 2 path C — platform metadata, no client data |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 
 ## Support-grant holder, grant expired
 
@@ -1117,6 +1137,13 @@ None.
 | firm_viewer_access | insert | ALLOW | pglite, live | PK section 2 path D — the organisation's owner grants and revokes |  |
 | firm_viewer_access | update | ALLOW | pglite, live | PK section 2 path D — the organisation's owner grants and revokes |  |
 | firm_viewer_access | delete | ALLOW | pglite, live | PK section 2 path D — the organisation's owner grants and revokes |  |
+| viewer management for a client in the caller's own organisation | execute | ALLOW | pglite, live | PK 2 client viewer + path D; Batch 5 owner permission |  |
+| viewer management for another organisation's client | execute | DENY | pglite, live | PK 4 — the owner's own organisation only |  |
+| practice-team membership of organisation A inside organisation B | execute | DENY | pglite, live | PK 4; Batch 5 — practice team is metadata, an ACTIVE membership of THAT organisation is still required |  |
+| practice_team | read | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 
 ## Organisation staff (own organisation)
 
@@ -1245,6 +1272,11 @@ None.
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 
 ## Client viewer (client_access on one client)
 
@@ -1287,6 +1319,11 @@ None.
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1397,6 +1434,11 @@ None.
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | ALLOW | pglite, live | PK 2 path C — reads as a platform admin; no organisation or client data on this table |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 
 ## Super admin approving their own support grant
 
@@ -1483,3 +1525,8 @@ None.
 | app_private.viewer_tier() — specific grant overrides standing | execute | ALLOW | pglite, live | PK section 2 path D precedence |  |
 | app_private.viewer_tier() — the client's entitlement caps the level | execute | ALLOW | pglite, live | PK section 2 path D — a grant can never widen access beyond the client's tier |  |
 | revoking a specific grant leaves the standing grant in place | execute | ALLOW | pglite, live | PK section 2 path D — revoking standing removes all of it and leaves specific grants; the reverse also holds |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |

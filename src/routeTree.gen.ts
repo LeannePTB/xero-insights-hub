@@ -24,6 +24,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedSettingsTiersRouteImport } from './routes/_authenticated/settings.tiers'
+import { Route as AuthenticatedSettingsPracticeTeamRouteImport } from './routes/_authenticated/settings.practice-team'
 import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
 import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
 import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
@@ -133,6 +134,12 @@ const AuthenticatedSettingsTiersRoute =
   AuthenticatedSettingsTiersRouteImport.update({
     id: '/settings/tiers',
     path: '/settings/tiers',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSettingsPracticeTeamRoute =
+  AuthenticatedSettingsPracticeTeamRouteImport.update({
+    id: '/settings/practice-team',
+    path: '/settings/practice-team',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSettingsAdvisorsRoute =
@@ -359,6 +366,7 @@ export interface FileRoutesByFullPath {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
+  '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -408,6 +416,7 @@ export interface FileRoutesByTo {
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
+  '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
   '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -460,6 +469,7 @@ export interface FileRoutesById {
   '/_authenticated/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
+  '/_authenticated/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
   '/_authenticated/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -513,6 +523,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/activity'
     | '/settings/advisors'
+    | '/settings/practice-team'
     | '/settings/tiers'
     | '/lovable/email/suppression'
     | '/admin/'
@@ -562,6 +573,7 @@ export interface FileRouteTypes {
     | '/settings/account'
     | '/settings/activity'
     | '/settings/advisors'
+    | '/settings/practice-team'
     | '/settings/tiers'
     | '/lovable/email/suppression'
     | '/admin'
@@ -613,6 +625,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/account'
     | '/_authenticated/settings/activity'
     | '/_authenticated/settings/advisors'
+    | '/_authenticated/settings/practice-team'
     | '/_authenticated/settings/tiers'
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
@@ -773,6 +786,13 @@ declare module '@tanstack/react-router' {
       path: '/settings/tiers'
       fullPath: '/settings/tiers'
       preLoaderRoute: typeof AuthenticatedSettingsTiersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/practice-team': {
+      id: '/_authenticated/settings/practice-team'
+      path: '/settings/practice-team'
+      fullPath: '/settings/practice-team'
+      preLoaderRoute: typeof AuthenticatedSettingsPracticeTeamRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/settings/advisors': {
@@ -1097,6 +1117,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
   AuthenticatedSettingsActivityRoute: typeof AuthenticatedSettingsActivityRoute
   AuthenticatedSettingsAdvisorsRoute: typeof AuthenticatedSettingsAdvisorsRoute
+  AuthenticatedSettingsPracticeTeamRoute: typeof AuthenticatedSettingsPracticeTeamRoute
   AuthenticatedSettingsTiersRoute: typeof AuthenticatedSettingsTiersRoute
   AuthenticatedClientsClientIdCashflowScenarioRoute: typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   AuthenticatedClientsClientIdLoansRoute: typeof AuthenticatedClientsClientIdLoansRoute
@@ -1118,6 +1139,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
   AuthenticatedSettingsActivityRoute: AuthenticatedSettingsActivityRoute,
   AuthenticatedSettingsAdvisorsRoute: AuthenticatedSettingsAdvisorsRoute,
+  AuthenticatedSettingsPracticeTeamRoute:
+    AuthenticatedSettingsPracticeTeamRoute,
   AuthenticatedSettingsTiersRoute: AuthenticatedSettingsTiersRoute,
   AuthenticatedClientsClientIdCashflowScenarioRoute:
     AuthenticatedClientsClientIdCashflowScenarioRoute,

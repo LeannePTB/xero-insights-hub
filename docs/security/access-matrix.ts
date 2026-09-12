@@ -1061,6 +1061,81 @@ export const MATRIX: MatrixRow[] = [
     "PK section 2 path D — owner or an active practice-team member of THAT organisation only",
     ["pglite", "live"],
   ),
+
+  // ---------------------------------------------- Batch 5 (12 Sep 2026)
+  // The one deliberate widening in the programme: viewer management is no longer
+  // advisor-only. It is decided by app_private.can_manage_viewers_for_client —
+  // the client's organisation OWNER, or a practice-team person holding an ACTIVE
+  // membership of that same organisation. Nothing else moved.
+  {
+    role: "org_owner",
+    resource: "viewer management for a client in the caller's own organisation",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 client viewer + path D; Batch 5 owner permission",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "org_owner",
+    resource: "viewer management for another organisation's client",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 4 — the owner's own organisation only",
+    layers: ["pglite", "live"],
+  },
+  ...rows(
+    ["org_staff", "other_org_member", "support_grant_active", "super_admin_no_membership", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    ["viewer management for a client in the caller's own organisation"],
+    ["execute"],
+    "deny",
+    "Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here",
+    ["pglite", "live"],
+  ),
+  {
+    role: "org_owner",
+    resource: "practice-team membership of organisation A inside organisation B",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 4; Batch 5 — practice team is metadata, an ACTIVE membership of THAT organisation is still required",
+    layers: ["pglite", "live"],
+  },
+  // The practice team list itself is platform metadata (Path C): super admin
+  // only. The support-grant subject in the fixture also holds the super_admin
+  // role, so it reads the list as a platform admin — the list names our own
+  // staff and holds no organisation or client data, so this is Path C, not the
+  // support grant widening (PK 5 still admits no write anywhere).
+  {
+    role: "super_admin_no_membership",
+    resource: "practice_team",
+    operation: "read",
+    expect: "allow",
+    rule: "PK 2 path C — platform metadata, no client data",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "support_grant_active",
+    resource: "practice_team",
+    operation: "read",
+    expect: "allow",
+    rule: "PK 2 path C — reads as a platform admin; no organisation or client data on this table",
+    layers: ["pglite", "live"],
+  },
+  ...rows(
+    ["super_admin_no_membership", "support_grant_active"],
+    ["practice_team"],
+    WRITES,
+    "deny",
+    "Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    ["practice_team"],
+    ["read", ...WRITES],
+    "deny",
+    "Batch 5 — practice team readable by super admins only",
+    ["pglite", "live"],
+  ),
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);

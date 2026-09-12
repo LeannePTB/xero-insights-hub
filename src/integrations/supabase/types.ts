@@ -2507,6 +2507,10 @@ export type Database = {
       }
     }
     Functions: {
+      admin_add_practice_member: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       admin_advisor_user_ids: {
         Args: never
         Returns: {
@@ -2537,7 +2541,21 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_practice_team: {
+        Args: never
+        Returns: {
+          added_by: string
+          created_at: string
+          display_name: string
+          email: string
+          user_id: string
+        }[]
+      }
       admin_remove_advisor: { Args: { _user_id: string }; Returns: undefined }
+      admin_remove_practice_member: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       admin_set_self_firm_membership: {
         Args: { _firm_id: string; _join: boolean }
         Returns: boolean

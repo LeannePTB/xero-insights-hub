@@ -234,3 +234,34 @@ never a request value.
 
 "Adjustable per client afterwards" is a specific `client_access` grant that
 overrides the standing one; there is no exclusion row type.
+
+### 14.2 The practice team and the one deliberate widening (Batch 5, 12 Sep 2026)
+
+`public.practice_team` names Traction Advisory's own people. It is platform
+metadata (Path C): RLS on, aal2 restrictive guard, readable by platform admins
+only, no `anon` privileges, and writable only through
+`public.admin_add_practice_member` / `admin_remove_practice_member` — both aal2,
+super-admin-guarded, audited, with EXECUTE revoked from `PUBLIC` and `anon`.
+`public.admin_practice_team()` lists it. The table confers no access by itself:
+every path that consults it also requires an **active `firm_members` row for the
+organisation in question** (`app_private.is_practice_member_of`), so a
+practice-team person has nothing in an organisation they are not a member of.
+
+`public.organisation_members` returns `is_practice` so the screens can badge
+those people; the badge reflects membership, never the `super_admin` role.
+
+**The widening.** `inviteClientViewer` previously required the `advisor` role.
+It now reads no role and asks `public.me_can_manage_client_viewers(client)`
+instead, so an organisation **owner** may invite, re-level and revoke client
+viewers for clients **in their own organisation, and nowhere else**. Staff,
+support-grant holders (PK 5), a super admin who is neither a member nor practice
+team (PK 3), another organisation's owner (PK 4) and every aal1 session remain
+denied. Inviting **team members** stays super-admin only.
+
+**Organisation creation.** `adminCreateOrganisation` adds each practice-team
+person as an active `staff` member inside its existing all-or-nothing block, one
+audit row each. An empty practice team is normal: creation succeeds with the
+creator as owner and only member. `public.admin_set_self_firm_membership` and its
+handed-over restriction are unchanged — joining still requires the
+organisation's owner to hold `super_admin`, so a practice-team person cannot
+join a handed-over organisation.
