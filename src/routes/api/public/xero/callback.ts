@@ -467,10 +467,11 @@ export const Route = createFileRoute("/api/public/xero/callback")({
 
 
         // ─────────────────────────────────────────────────────────────────────
-        // Connect / onboard: store the authorised tenants. Rows introduced by
-        // this authorisation are stamped with the organisation the flow was
-        // started for, so unstamped connections stop appearing. Tenants already
-        // known keep whatever organisation they belong to.
+        // Connect / onboard: store the authorised tenants. Every row carries an
+        // organisation — the one that already owns the Xero file, otherwise the
+        // one this flow was started for. A tenant with no organisation to
+        // belong to, or one the plan has no room for, is REFUSED and reported;
+        // it is never stored unassigned (that was the orphan factory).
         // ─────────────────────────────────────────────────────────────────────
         const { getClientFirmId: resolveClientFirmId } = await import(
           "@/lib/xero/client-orgs.server"
@@ -478,61 +479,123 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         const intendedFirmId =
           stateRow.firm_id ??
           (stateRow.client_id ? await resolveClientFirmId(stateRow.client_id) : null);
-        const knownTenantIds = new Set(stateRow.known_tenant_ids ?? []);
 
-        const baseRow = (t: (typeof tenants)[number]) => ({
-          user_id: userId,
-          tenant_id: t.tenantId,
-          tenant_name: t.tenantName,
-          tenant_type: t.tenantType,
-          access_token_enc: accessEnc,
-          refresh_token_enc: refreshEnc,
-          expires_at: expiresAt,
-          scopes: tokens.scope,
-          status: "connected",
-          disconnected_at: null,
-          disconnected_reason: null,
-        });
-        const isNewTenant = (tenantId: string) =>
-          Boolean(intendedFirmId) && !knownTenantIds.has(tenantId);
+        const backPath = stateRow.client_id
+          ? `/clients/${stateRow.client_id}/settings`
+          : stateRow.firm_id
+            ? `/firms/${stateRow.firm_id}`
+            : "/dashboard";
 
-        // Stamped rows go in one at a time: the database enforces the Xero file
-        // limit on insert, and one refused tenant must not lose the others. A
-        // refused tenant is still stored (unstamped) so the authorisation isn't
-        // silently dropped — it then shows up for a super admin to place.
-        for (const t of tenants) {
-          const row = baseRow(t);
-          const stamped = isNewTenant(t.tenantId)
-            ? { ...row, firm_id: intendedFirmId }
-            : row;
-          const { error: upsertErr } = await supabaseAdmin
+        // Which organisation already owns each of these Xero files? Resolved
+        // server-side; a file never changes organisation on a connect.
+        const existingFirmByTenant = new Map<string, string>();
+        {
+          const { data: existingRows, error: existingErr } = await supabaseAdmin
             .from("xero_connections")
-            .upsert(stamped, { onConflict: "user_id,tenant_id" });
-          if (upsertErr) {
-            const { isPlanLimitError } = await import("@/lib/plan-errors");
-            if (stamped !== row && isPlanLimitError(upsertErr)) {
-              const { error: retryErr } = await supabaseAdmin
-                .from("xero_connections")
-                .upsert(row, { onConflict: "user_id,tenant_id" });
-              if (!retryErr) continue;
-              console.error("xero_connections upsert failed", retryErr);
-            } else {
-              console.error("xero_connections upsert failed", upsertErr);
-            }
-            return redirectTo(`${returnOrigin}/dashboard?xero_error=db`);
+            .select("tenant_id, firm_id")
+            .in(
+              "tenant_id",
+              tenants.map((t) => t.tenantId),
+            );
+          if (existingErr) {
+            console.error("xero_connections lookup failed", existingErr);
+            return redirectTo(`${returnOrigin}${backPath}?xero_error=db`);
+          }
+          for (const row of existingRows ?? []) {
+            if (row.firm_id) existingFirmByTenant.set(row.tenant_id, row.firm_id);
           }
         }
 
+        const storedTenants: typeof tenants = [];
+        const refusedNoOrg: string[] = [];
+        const refusedLimit: Array<{ name: string; message: string }> = [];
 
-        if (tenants.length > 0) {
+        // One tenant at a time: the database enforces the Xero file limit on
+        // insert, and one refused tenant must not lose the others.
+        for (const t of tenants) {
+          const name = t.tenantName ?? t.tenantId;
+          const targetFirmId = existingFirmByTenant.get(t.tenantId) ?? intendedFirmId;
+          if (!targetFirmId) {
+            refusedNoOrg.push(name);
+            continue;
+          }
+          const { error: upsertErr } = await supabaseAdmin.from("xero_connections").upsert(
+            {
+              user_id: userId,
+              tenant_id: t.tenantId,
+              tenant_name: t.tenantName,
+              tenant_type: t.tenantType,
+              access_token_enc: accessEnc,
+              refresh_token_enc: refreshEnc,
+              expires_at: expiresAt,
+              scopes: tokens.scope,
+              status: "connected",
+              disconnected_at: null,
+              disconnected_reason: null,
+              firm_id: targetFirmId,
+            },
+            { onConflict: "user_id,tenant_id" },
+          );
+          if (upsertErr) {
+            const { parsePlanLimitError } = await import("@/lib/plan-errors");
+            const limit = parsePlanLimitError(upsertErr);
+            if (limit) {
+              // The plan's own wording, never a number we invented.
+              refusedLimit.push({ name, message: limit.message });
+              continue;
+            }
+            console.error("xero_connections upsert failed", upsertErr);
+            return redirectTo(`${returnOrigin}${backPath}?xero_error=db`);
+          }
+          storedTenants.push(t);
+        }
+
+        if (storedTenants.length > 0) {
           await supabaseAdmin.from("audit_log").insert(
-            tenants.map((t) => ({
+            storedTenants.map((t) => ({
               actor_user_id: userId,
               action: "xero_connected",
               target_type: "xero_connection",
               target_id: t.tenantId,
               meta: { tenant_name: t.tenantName, scopes: tokens.scope, firm_id: intendedFirmId },
             })),
+          );
+        }
+
+        if (refusedLimit.length > 0 || refusedNoOrg.length > 0) {
+          await supabaseAdmin.from("audit_log").insert(
+            [
+              ...refusedLimit.map((r) => ({ name: r.name, reason: "plan_limit" })),
+              ...refusedNoOrg.map((name) => ({ name, reason: "no_organisation" })),
+            ].map((r) => ({
+              actor_user_id: userId,
+              firm_id: intendedFirmId,
+              action: "xero_file_refused",
+              target_type: "xero_connection",
+              target_id: null,
+              meta: { tenant_name: r.name, reason: r.reason },
+            })),
+          );
+
+          const parts: string[] = [];
+          if (refusedLimit.length > 0) {
+            parts.push(
+              `${refusedLimit.map((r) => r.name).join(", ")} could not be connected. ${refusedLimit[0].message}`,
+            );
+          }
+          if (refusedNoOrg.length > 0) {
+            parts.push(
+              `${refusedNoOrg.join(", ")} could not be connected because this sign-in wasn't started from a client or an organisation. Start again from the client's settings page.`,
+            );
+          }
+          if (storedTenants.length > 0) {
+            parts.push(
+              `Connected: ${storedTenants.map((t) => t.tenantName ?? t.tenantId).join(", ")}.`,
+            );
+          }
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+          return redirectTo(
+            `${returnOrigin}${backPath}?xero_error=${encodeURIComponent(parts.join(" "))}`,
           );
         }
 
