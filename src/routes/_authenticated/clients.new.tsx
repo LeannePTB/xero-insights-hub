@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { createClient } from "@/lib/clients.functions";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
+import { listStandingViewers } from "@/lib/viewers.functions";
 
 export const Route = createFileRoute("/_authenticated/clients/new")({
   head: () => ({ meta: [{ title: "New client — Traction Advisory" }] }),
@@ -24,6 +25,16 @@ function NewClient() {
   const create = useServerFn(createClient);
 
   const [name, setName] = useState("");
+
+  // Anyone who can already see every client in this organisation will see this
+  // one too, the moment it exists. Say so before the button is pressed.
+  const fetchStanding = useServerFn(listStandingViewers);
+  const standingQ = useQuery({
+    queryKey: ["standing-viewers", firmId],
+    queryFn: () => fetchStanding({ data: { firmId: firmId! } }),
+    enabled: !!firmId,
+  });
+  const standing = standingQ.data?.viewers ?? [];
 
   const createMut = useMutation({
     mutationFn: () => create({ data: { name, xeroConnectionIds: [], firmId } }),
@@ -64,6 +75,15 @@ function NewClient() {
             <Label htmlFor="name">Client name</Label>
             <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Pty Ltd" className="mt-1.5" />
           </div>
+
+          {standing.length > 0 && (
+            <p className="rounded-lg bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+              {standing.map((v) => v.displayName ?? v.email).join(", ")}{" "}
+              {standing.length === 1 ? "already sees" : "already see"} every client in this
+              organisation, so {standing.length === 1 ? "they" : "they"} will be able to see this new
+              client as soon as you create it.
+            </p>
+          )}
 
           <div className="flex justify-end gap-2">
             <Button variant="ghost" asChild>
