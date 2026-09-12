@@ -133,18 +133,37 @@ Stripe: the practice's OWN account — `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SEC
 
 ## 9. Logging — telemetry vs audit
 
-**`audit_log` is access and security events ONLY**, append-only: sign-ins, invites, membership and role changes, ownership transfers, support grants, comps, Xero connect/disconnect/token refresh, `xero_data_read`.
+**`audit_log` is access and security events ONLY**, append-only: sign-ins, invites, membership and role changes, ownership transfers, support grants, comps, Xero connect/disconnect/token refresh/refusal, Path C administrative writes, and the client-data read events in §9a.
+
+**Who may read `audit_log`: only Positive Traction super admins, at aal2.**
+
+> **Settled owner decision, 12 September 2026 — an organisation may NOT read its own audit log.** This is deliberate, and current behaviour already matches it; earlier wording in this file that implied otherwise was wrong. Reasoning: `audit_log` is a single platform-operations trail spanning every organisation. Its rows describe Positive Traction's own operational actions and reference other organisations' identifiers, so exposing "your organisation's rows" would mean filtering a cross-tenant security trail per request — a new access path, and one more place to get wrong (invariants 3 and 6). Organisations that need assurance are given a report or an extract by the practice instead. Revisiting this needs the owner to amend Project Knowledge first.
 
 **`xero_api_errors` is disposable telemetry**: one row per `(day, path, http_status, tenant_id, firm_id)` with an `occurrences` counter, 30-day retention pruned on write. Write ONLY via `public.log_xero_api_error(...)` (service_role). No in-code deduplication. Never pass tokens, headers or payloads. Telemetry failures are swallowed.
+
+## 9a. Reads of client financial data are audited (Phase 6)
+
+Every path that shows a person a client's figures records the read through the single writer in `src/lib/audit.server.ts`. Never write a read action directly, and never add a figures-serving path without it — static guard 7 fails the build if you do.
+
+- **Actions:** `xero_data_read` (Xero figures, however served) and `client_report_read` (a stored report or a public report link, where the target is a report row and the link viewer has no signed-in actor).
+- **Sources:** `live`, `snapshot`, `cache`, `report`, `report_link` (`src/lib/audit/read-keys.ts`).
+- **Each row records:** who read it (or that there was no signed-in person), which client, which Xero file (tenant), a short stable key for the kind of figures (`pnl`, `receivables`, `report:monthly`), the period or date range where one applies, and the access path.
+- **Each row never contains:** a figure, an account or contact name, a token (including the report-link token), an IP address or a device.
+- **Grouping:** one row per `(actor, client, tenant, key, source)` per **five minutes**, in process, so one dashboard view is one row per kind of figures. A different person or a different client always writes its own row.
+- **Failure:** an audit write failure is swallowed and logged — it never breaks a dashboard — which is why coverage is checked rather than assumed: `public.read_audit_posture()` (super admin, aal2) compares the trail against the reads actually served, and the Security card shows it.
+- Retention follows `security_settings.audit_retention_days` (730 days live), purged by the nightly job.
 
 ## 10. Xero rules
 
 - Resolve `tenant_id` SERVER-SIDE from the organisation/client the user is authorised for. **Never read tenantId from a request body, query string or header.**
-- Tokens live in `xero_connections.access_token_enc` / `refresh_token_enc`. Never `select *` from `xero_connections` in client-reachable code.
-- Refresh tokens rotate; store atomically, row-lock against concurrent refresh.
+- Tokens live in `xero_connections.access_token_enc` / `refresh_token_enc`, wrapped with AES-256-GCM under the server-only `TOKEN_ENC_KEY`. Never `select *` from `xero_connections` in client-reachable code; `authenticated` has SELECT on the 13 non-token columns only.
+- Refresh tokens rotate; store atomically, row-lock against concurrent refresh. Only a definitive `invalid_grant` marks a grant revoked.
 - On 401/403: `status='disconnected'`, stop syncing, prompt reconnect. No retry loops.
+- **A connection always belongs to an organisation.** `xero_connections.firm_id` is `NOT NULL`, deferred constraint triggers keep a Xero file in the same organisation as the client it is linked to, and the connect callback **refuses** a tenant it cannot place, or one the plan has no room for, instead of storing it unassigned (audited `xero_file_refused`). Unlinking keeps the organisation stamp.
+- **Disconnection** (`public.user_can_disconnect_xero_connection` authorises the caller): revoke at Xero FIRST via `DELETE /connections/{connectionId}`, verify the connection is gone, and **fail closed** — if Xero does not confirm, change nothing and tell the person. Then **mark** the row `disconnected`; **never hard-delete it**, because `client_xero_orgs.xero_connection_id` is `ON DELETE CASCADE` and deleting destroys the client-to-Xero-file link. Keeping the link means a reconnect restores the same file to the same client. Both success and failure are audited. A disconnected connection does not count toward the plan's Xero file allowance (`app_private.client_xero_files_used`).
 - **`Reports/ActivityStatement` DOES NOT EXIST** — never call it. Current BAS figures are not available from the Xero API at all.
 - `Reports/BankSummary` requires `toDate - fromDate <= 365 days`.
+- `accounting.journals.read` is unavailable.
 
 ## 11. Membership & invites
 
