@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1282**. Known failures: **0**.
+Rows: **1287**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -114,6 +114,7 @@ None.
 | profiles | read | DENY | pglite, live | PK 1 |  |
 | user_presence | read | DENY | pglite, live | Phase 1b follow-up (anon holds no privilege) |  |
 | server fn: accept an owner invite while the organisation already has an owner | execute | DENY | live | Spec §4 — accepting an invite never replaces a sitting owner | acceptInvite sets firms.owner_user_id only while it is null (the organisation-creation flow) and writes an audit row when it does; otherwise the person joins as a member and ownership is untouched. |
+| audit trail row for a public report link view | insert | ALLOW | live | PK 8 — a link view is a read and is recorded; PK 8 — never the token, IP or user agent | client_report_read with anonymous = true, the report and client, and the period; the token itself is never stored, only its SHA-256 hash on the recipient row. |
 
 ## Active member, aal1 session only
 
@@ -341,6 +342,7 @@ None.
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| audit trail row for reading another organisation's client figures | insert | DENY | live | PK 1 / PK 4 — the read is impossible, so nothing is recorded | Access is refused before any read path runs; no audit row is written because no read happened. |
 
 ## Organisation A's owner, reading organisation B
 
@@ -1216,6 +1218,7 @@ None.
 | public.transfer_organisation_ownership() | execute | DENY | pglite, live | Spec §4 (current owner only) |  |
 | public.set_profile_display_name_admin() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
 | public.security_posture() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
+| audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — reading client financial data must be auditable | Opening a client dashboard writes one xero_data_read row per actor + client + Xero file + read key + source per five minutes, recording no figures, account names or contact names. |
 
 ## Client viewer (client_access on one client)
 
@@ -1252,6 +1255,7 @@ None.
 | tier_settings | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — every reader is recorded, not only staff | A client viewer's dashboard read writes the same row with their own user id as the actor. |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1357,6 +1361,7 @@ None.
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
 | server fn: change organisation or client branding | execute | DENY | live | PK 5 (support grants are READ-ONLY) | branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. |
+| audit trail row for reading a client's figures | insert | ALLOW | live | PK section 2 path B — support reads are read-only AND recorded | meta.access_path comes from public.firm_access_path, so a support read is distinguishable from a member read. |
 
 ## Super admin approving their own support grant
 
