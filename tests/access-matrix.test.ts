@@ -30,6 +30,8 @@ const ORG_A = "11111111-1111-4111-8111-111111111111";
 const ORG_B = "22222222-2222-4222-8222-222222222222";
 const CLIENT_A = "aaaaaaaa-1111-4111-8111-111111111111";
 const CLIENT_B = "bbbbbbbb-2222-4222-8222-222222222222";
+/** Added to Organisation A AFTER the standing grant exists. */
+const CLIENT_NEW = "cccccccc-1111-4111-8111-111111111111";
 const CONN_A = "aaaaaaaa-cccc-4111-8111-111111111111";
 const GROUP_A = "aaaaaaaa-9999-4111-8111-111111111111";
 const UPLOAD_A = "aaaaaaaa-8888-4111-8111-111111111111";
@@ -40,6 +42,7 @@ const U = {
   staffA: "99990002-1111-4111-8111-111111111111",
   ownerB: "99990003-2222-4222-8222-222222222222",
   viewer: "99990004-1111-4111-8111-111111111111",
+  standingViewer: "99990011-1111-4111-8111-111111111111",
   supportActive: "99990005-1111-4111-8111-111111111111",
   supportExpired: "99990006-1111-4111-8111-111111111111",
   supportRevoked: "99990007-1111-4111-8111-111111111111",
@@ -58,6 +61,7 @@ const CONTEXT: Record<Role, Ctx> = {
   other_org_member: { uid: U.ownerB, dbRole: "authenticated", aal: "aal2" },
   org_a_owner_reading_org_b: { uid: U.ownerB, dbRole: "authenticated", aal: "aal2" },
   client_viewer: { uid: U.viewer, dbRole: "authenticated", aal: "aal2" },
+  standing_viewer: { uid: U.standingViewer, dbRole: "authenticated", aal: "aal2" },
   support_grant_active: { uid: U.supportActive, dbRole: "authenticated", aal: "aal2" },
   support_grant_expired: { uid: U.supportExpired, dbRole: "authenticated", aal: "aal2" },
   support_grant_revoked: { uid: U.supportRevoked, dbRole: "authenticated", aal: "aal2" },
@@ -295,6 +299,12 @@ const TARGET: Record<string, Record<string, string>> = {
     token_hash: q("h"),
     expires_at: "now() + interval '1 day'",
   },
+  firm_viewer_access: {
+    id: q("e0000001-1111-4111-8111-111111111111"),
+    firm_id: q(ORG_A),
+    user_id: q(U.viewer),
+    tier: q("basic"),
+  },
   user_roles: {
     id: q("d0000009-1111-4111-8111-111111111111"),
     user_id: q(U.superAdmin),
@@ -411,6 +421,60 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`select 1 from public.clients where id = '${CLIENT_A}'`);
     return p.ok && p.rows > 0 ? "allow" : "deny";
   }
+  if (r === "clients (client added after the grant)") {
+    const p = await probe(`select 1 from public.clients where id = '${CLIENT_NEW}'`);
+    return p.ok && p.rows > 0 ? "allow" : "deny";
+  }
+  if (r === "clients (another organisation's client)") {
+    const p = await probe(`select 1 from public.clients where id = '${CLIENT_B}'`);
+    return p.ok && p.rows > 0 ? "allow" : "deny";
+  }
+  if (r === "member list (standing grant holder is not a member)") {
+    const p = await probe(
+      `select 1 from public.firm_members where firm_id = '${ORG_A}' and user_id = auth.uid()`,
+    );
+    return p.ok && p.rows > 0 ? "allow" : "deny";
+  }
+  if (r === "PLAN_LIMIT_CLIENTS counts clients, not standing grants") {
+    // The limit trigger counts client rows. Standing grants must not inflate it.
+    const p = await db.query<{ n: number }>(
+      `select (select count(*) from public.clients where firm_id = '${ORG_A}')::int as n`,
+    );
+    return Number(p.rows[0]?.n) === 2 ? "allow" : "deny";
+  }
+  if (r === "app_private.viewer_tier() — specific grant overrides standing") {
+    // The standing grant is multi_company; the specific grant on CLIENT_A is basic.
+    const p = await db.query<{ t: string | null }>(
+      `select app_private.viewer_tier('${U.viewer}', '${CLIENT_A}')::text as t`,
+    );
+    return p.rows[0]?.t === "basic" ? "allow" : "deny";
+  }
+  if (r === "app_private.viewer_tier() — the client's entitlement caps the level") {
+    // No subscription on CLIENT_NEW, so the entitlement is Standard (basic) and
+    // caps the standing grant's multi_company.
+    const p = await db.query<{ t: string | null }>(
+      `select app_private.viewer_tier('${U.standingViewer}', '${CLIENT_NEW}')::text as t`,
+    );
+    return p.rows[0]?.t === "basic" ? "allow" : "deny";
+  }
+  if (r === "revoking a specific grant leaves the standing grant in place") {
+    await db.exec("savepoint revoke_probe");
+    try {
+      await db.exec(
+        `delete from public.client_access where client_id = '${CLIENT_A}' and user_id = '${U.standingViewer}'`,
+      );
+      const still = await db.query<{ n: number }>(
+        `select (select count(*) from public.firm_viewer_access
+                  where firm_id = '${ORG_A}' and user_id = '${U.standingViewer}')::int as n`,
+      );
+      const reads = await db.query<{ ok: boolean }>(
+        `select app_private.has_client_read_access('${U.standingViewer}', '${CLIENT_A}') as ok`,
+      );
+      return Number(still.rows[0]?.n) === 1 && reads.rows[0]?.ok === true ? "allow" : "deny";
+    } finally {
+      await db.exec("rollback to savepoint revoke_probe");
+    }
+  }
   if (r.startsWith("profiles")) {
     const uid = CONTEXT[row.role].uid;
     if (row.operation === "read") {
@@ -524,6 +588,13 @@ beforeAll(async () => {
                                cost_classification_enabled, basis_overrides, max_xero_orgs,
                                consolidation_mode, consolidation_org_ids) values
       ('${CLIENT_B}', 'Client B', '${U.ownerB}', '${ORG_B}', '', 'accrual', false, '{}', 1, 'none', '{}');
+    -- The standing grant (path D) and a client added to Organisation A after it.
+    insert into public.firm_viewer_access(id, firm_id, user_id, tier, granted_by) values
+      ('e0000002-1111-4111-8111-111111111111', '${ORG_A}', '${U.standingViewer}', 'multi_company', '${U.ownerA}');
+    insert into public.clients(id, name, owner_user_id, firm_id, notes, report_basis,
+                               cost_classification_enabled, basis_overrides, max_xero_orgs,
+                               consolidation_mode, consolidation_org_ids) values
+      ('${CLIENT_NEW}', 'Client added later', '${U.ownerA}', '${ORG_A}', '', 'accrual', false, '{}', 1, 'none', '{}');
     insert into public.xero_connections(id, user_id, tenant_id, tenant_name, firm_id, status,
                                         expires_at, access_token_enc, refresh_token_enc, enc_version) values
       ('${CONN_A}', '${U.ownerA}', '${TENANT_A}', 'File A', '${ORG_A}', 'connected',
