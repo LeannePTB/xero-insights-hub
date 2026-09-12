@@ -95,6 +95,25 @@ export function PeopleSection({ firmId }: { firmId: string }) {
 
   const [memberEmail, setMemberEmail] = useState("");
   const [memberLink, setMemberLink] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<{
+    userId: string;
+    label: string;
+    isMe: boolean;
+  } | null>(null);
+
+  const removeMember = useServerFn(removeOrganisationMember);
+  const removeMemberMut = useMutation({
+    mutationFn: (userId: string) => removeMember({ data: { firmId, userId } }),
+    onSuccess: (_r, userId) => {
+      const wasMe = userId === membersQ.data?.meUserId;
+      toast.success(wasMe ? "You have left this organisation." : "That person has been removed.");
+      setRemoving(null);
+      qc.invalidateQueries({ queryKey: ["organisation-members", firmId] });
+      qc.invalidateQueries({ queryKey: ["my-firms"] });
+      if (wasMe) window.location.href = "/dashboard";
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not remove that person."),
+  });
 
   const inviteMemberMut = useMutation({
     mutationFn: () => inviteMember({ data: { firmId, email: memberEmail, role: "staff" } }),
