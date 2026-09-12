@@ -61,8 +61,9 @@ audited: a super admin may join or leave only organisations Positive Traction st
 organisation, fails closed if that organisation cannot be identified, and requires a 3–500 character
 reason. Each of these writes its own audit row.
 
-Client viewers hold a `client_access` row for one client at a granted tier, and may change nothing
-but their own comment on an unreconciled line.
+Client viewers hold a `client_access` row for one client at a granted tier. They read only that
+client, at that tier, and the matrix proves they cannot write the client record or their own access
+row.
 
 ## Reads of client financial data are audited
 
