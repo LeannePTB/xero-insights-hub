@@ -329,6 +329,39 @@ export function PeopleSection({ firmId }: { firmId: string }) {
         Email addresses shown here are the verified sign-in addresses, not names people chose
         themselves.
       </p>
+
+      <AlertDialog open={removing !== null} onOpenChange={(o) => !o && setRemoving(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {removing?.isMe ? `Leave ${firmName}?` : `Remove ${removing?.label}?`}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  {removing?.isMe ? "You" : removing?.label} will immediately lose access to every
+                  client in {firmName}, including all of their Xero data. Only a fresh invitation
+                  can restore it.
+                </p>
+                <p>
+                  This does not change anyone's client viewer access or "every client" access, does
+                  not disconnect any Xero file, and does not delete any saved figures, history or{" "}
+                  {removing?.isMe ? "your" : "their"} sign-in account.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => removing && removeMemberMut.mutate(removing.userId)}
+              disabled={removeMemberMut.isPending}
+            >
+              {removing?.isMe ? "Leave" : "Remove"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
