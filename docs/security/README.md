@@ -16,6 +16,7 @@ Generated or verified registers: [definer-register.md](./definer-register.md), [
 Policies:
 
 - [Data hosting & third parties](./data-hosting.md)
+- [Data residency — decision record](./data-residency-decision.md)
 - [Data retention](./data-retention.md)
 - [Incident response](./incident-response.md)
 - [Security monitoring](./monitoring.md)

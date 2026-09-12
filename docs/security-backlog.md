@@ -338,9 +338,10 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     (a) No rotation procedure for `TOKEN_ENC_KEY` and no re-wrap path. (b) No secret rotation schedule
     and no record of who can read project secrets. (c) `incident-response.md` has never been tested —
     no drill, and no incident register exists. (d) `vulnerability-management.md` has no retained scan
-    output, no remediation SLA and no penetration test. (e) No retained platform attestations
-    (SOC 2 / ISO) behind the hosting-region claim (the region was misdocumented as Australia at
-    the time; it is confirmed Singapore — see item 45), and no tested restore with an RPO/RTO.
+    output, no remediation SLA and no penetration test. (e) **Residency part CLOSED 12 Sep 2026:**
+    the region is confirmed Singapore and the decision (remain, disclose) is recorded in
+    `docs/security/data-residency-decision.md`. Still open under (e): no retained platform
+    attestations (SOC 2 / ISO), and no tested restore with an RPO/RTO.
     (f) No published security contact or disclosure channel. (g) No periodic access-review record for
     memberships, support grants and roles. Owner call needed on which of these the practice writes and
     which are answered "not applicable — single-developer practice".
@@ -427,9 +428,9 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
 
 Path D means a person can hold both a standing grant and a specific grant on the same client. Revoking the specific grant leaves the standing grant in force, so the client is still visible while the screen suggests access was removed. The database behaviour is correct and proved by a matrix row; the **wording and remedy are owed by the UI**: the revoke confirmation must say the person will still see the client through their "every client" grant, and offer the only real remedy — switch them to "only the clients I tick" with that client unticked. No exclusion row type. **CLOSED 12 Sep 2026 (Batch 4).** The specific-grant revoke confirmation now detects the standing grant, says plainly that the person will still see the client, and the only action offered is switching them to a named list of clients with that one left out (`switchStandingToSelected` → specific grants first, standing grant revoked last, so a failure leaves the wider access rather than none). No exclusion row type was added.
 
-## 45. Hosting region is Singapore — owner decision and privacy disclosure (opened 12 Sep 2026)
+## 45. Hosting region is Singapore — decision RECORDED 12 Sep 2026; disclosure actions still open
 
-The database is confirmed as Supabase managed PostgreSQL 17.6.1.127 in **Asia Pacific (Singapore)** — checked against the backend on 12 Sep 2026. The documentation previously claimed an Australian region and a Sydney edge; that was wrong and was corrected the same day in `data-hosting.md` and `xero-assessment-inputs.md`. The region cannot be changed in place on an existing project, so the owner decision is open: **(a) keep Singapore and disclose the offshore hosting**, or **(b) migrate to an Australian region via a new Supabase project** (a real migration, not a toggle). Whichever is chosen, the privacy policy and client terms must disclose where customer data is stored. Note plainly: payroll data means **employees' personal information** is involved, not just the client's own books, and whether the Australian Privacy Act (including its overseas-disclosure provisions) applies to the practice's use of an offshore region is a question for a **professional adviser**, not for this project's documentation. This repository records the facts and the open decision; it does not make the call.
+The database is confirmed as Supabase managed PostgreSQL 17.6.1.127 in **Asia Pacific (Singapore)** — checked against the backend on 12 Sep 2026. Lovable Cloud offers only Americas / Europe / Asia Pacific with no country-level choice, and the region cannot be changed after creation. **Decision made and recorded in `docs/security/data-residency-decision.md`: remain on Singapore and disclose it, rather than migrate** — no Australian option exists on the platform at any price, and migration would mean a separate self-managed Supabase project, not a toggle. **Still open:** adding the disclosure wording (which lives in that file) to the privacy policy and to client terms / the engagement letter — both `[CONFIRM: date]` in the record — and confirming with a privacy adviser whether the Australian Privacy Principles, in particular APP 8 on cross-border disclosure, apply to the practice. Note plainly: payroll data means **employees' personal information** is involved, not just the client's own books, and the legal question is for a **professional adviser**, not for this project's documentation.
 
 ## People and access redesign — Batch 5 (done 12 Sep 2026)
 

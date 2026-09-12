@@ -107,7 +107,7 @@ unverified in the way an assessor would want. **No** = no artefact; would have t
 
 | Likely question | Where the answer comes from | Can we evidence it? |
 | --- | --- | --- |
-| Where is customer data stored? | `data-hosting.md` — Supabase managed PostgreSQL 17.6.1.127 in **Asia Pacific (Singapore)** (confirmed against the backend on 12 Sep 2026), application and edge on Lovable Cloud / Cloudflare with no specific edge location claimed, no object storage enabled | **Partial** — the region is confirmed and documented, but it is **offshore** from the practice's own jurisdiction, no platform attestation has been retained, and the disclosure decision (disclose Singapore vs migrate to an Australian region) is open (backlog 45). |
+| Where is customer data stored? | `data-hosting.md` and the decision record `data-residency-decision.md` — Supabase managed PostgreSQL 17.6.1.127 in **Asia Pacific (Singapore)** (confirmed against the backend on 12 Sep 2026), application and edge on Lovable Cloud / Cloudflare with no specific edge location claimed, no object storage enabled. The platform offers region groupings only (Americas / Europe / Asia Pacific) with no country-level choice, and the region cannot be changed after creation. | **Yes, with open follow-ups** — the region is confirmed, documented, and a recorded owner decision (12 Sep 2026) keeps Singapore and discloses it. Still open: adding the disclosure wording to the privacy policy and engagement terms, and the privacy-adviser check (both tracked in `data-residency-decision.md` and backlog 45). No platform attestation has been retained. |
 | Encryption at rest and in transit? | Supabase-managed AES-256 at rest plus the application-level token wrap; TLS 1.2+ with HSTS (`tls_hsts` posture check) | **Yes** |
 | Backups and restore? | `data-retention.md` — managed by the platform | **Partial** — no tested restore, no documented RPO/RTO. |
 
@@ -128,7 +128,7 @@ Nothing here changes access control; these are artefacts to write or produce.
 3. Incident response drill and an incident register. **No artefact.**
 4. Retained vulnerability/dependency scan output with a remediation SLA. **No artefact.**
 5. Retained platform attestations (SOC 2 / ISO) for Supabase and Cloudflare to back the residency and hosting claims. **No artefact.**
-6. Hosting region is now confirmed (Singapore, corrected 12 Sep 2026 — it was previously misdocumented as Australia), but the keep-and-disclose vs migrate decision is open (backlog 45), and there is still no tested restore with RPO/RTO. **Partial.**
+6. Hosting region is confirmed (Singapore, corrected 12 Sep 2026 — it was previously misdocumented as Australia) and the residency decision is recorded in `data-residency-decision.md` (remain on Singapore, disclose it). Still open: the privacy-policy / engagement-letter disclosure and the privacy-adviser check it lists, and a tested restore with RPO/RTO. **Partial.**
 7. Published security contact / disclosure channel. **Partial.**
 8. Periodic access review record (memberships, support grants, roles). **Partial.**
 9. Backlog 38 — clear revoked token ciphertext at disconnect, so "revoked and removed" is literally true.
