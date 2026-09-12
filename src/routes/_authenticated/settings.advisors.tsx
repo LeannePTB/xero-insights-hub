@@ -378,6 +378,11 @@ function AdvisorSettings() {
                             </span>
                           )}
                           {isPending && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">Pending invite</span>}
+                          {viewerIsSuperAdmin && onPracticeTeam && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                              <Users className="h-3 w-3" /> Practice team
+                            </span>
+                          )}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">{a.email ?? "Verified email unavailable"}</p>
                       </div>
