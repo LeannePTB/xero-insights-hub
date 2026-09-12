@@ -352,7 +352,7 @@ export const getInvitePublic = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: invite, error } = await (supabaseAdmin as any)
       .from("access_invites")
-      .select("id, firm_id, email, role, expires_at, accepted_at")
+      .select("id, firm_id, email, role, kind, scope, tier, client_ids, expires_at, accepted_at")
       .eq("token_hash", hashToken(data.token))
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -364,13 +364,47 @@ export const getInvitePublic = createServerFn({ method: "POST" })
     const { data: firm } = await (supabaseAdmin as any)
       .from("firms").select("name").eq("id", invite.firm_id).maybeSingle();
 
+    // On a viewer invite, show what is being offered before they accept: the
+    // organisation, whether it is every client or a named list, and the level.
+    // Client names only — never ids or any other organisation data.
+    let clientNames: string[] = [];
+    if (invite.kind === "viewer" && invite.scope === "selected") {
+      const { data: rows } = await (supabaseAdmin as any)
+        .from("clients")
+        .select("name")
+        .eq("firm_id", invite.firm_id)
+        .in("id", (invite.client_ids ?? []) as string[]);
+      clientNames = ((rows ?? []) as any[]).map((r) => String(r.name));
+    }
+
+    let invitedByName: string | null = null;
+    const { data: inviter } = await (supabaseAdmin as any)
+      .from("access_invites")
+      .select("invited_by")
+      .eq("id", invite.id)
+      .maybeSingle();
+    if (inviter?.invited_by) {
+      const { data: prof } = await (supabaseAdmin as any)
+        .from("profiles")
+        .select("display_name")
+        .eq("id", inviter.invited_by)
+        .maybeSingle();
+      invitedByName = prof?.display_name ?? null;
+    }
+
     return {
       email: invite.email,
       role: invite.role as "owner" | "staff",
+      kind: (invite.kind ?? "member") as "member" | "viewer",
+      scope: (invite.scope ?? null) as "selected" | "all_clients" | null,
+      tier: (invite.tier ?? null) as string | null,
+      clientNames,
+      invitedByName,
       firmName: firm?.name ?? null,
       firmId: invite.firm_id,
     };
   });
+
 
 /**
  * Public: accept an invite. Creates auth user if needed, sets password,
