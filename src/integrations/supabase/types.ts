@@ -2122,7 +2122,7 @@ export type Database = {
           disconnected_reason: string | null
           enc_version: number
           expires_at: string
-          firm_id: string | null
+          firm_id: string
           id: string
           refresh_token_enc: string | null
           scopes: string | null
@@ -2142,7 +2142,7 @@ export type Database = {
           disconnected_reason?: string | null
           enc_version?: number
           expires_at: string
-          firm_id?: string | null
+          firm_id: string
           id?: string
           refresh_token_enc?: string | null
           scopes?: string | null
@@ -2162,7 +2162,7 @@ export type Database = {
           disconnected_reason?: string | null
           enc_version?: number
           expires_at?: string
-          firm_id?: string | null
+          firm_id?: string
           id?: string
           refresh_token_enc?: string | null
           scopes?: string | null
