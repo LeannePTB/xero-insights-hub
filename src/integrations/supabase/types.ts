@@ -2850,6 +2850,7 @@ export type Database = {
         Returns: {
           display_name: string
           email: string
+          is_practice: boolean
           role: string
           status: string
           user_id: string
