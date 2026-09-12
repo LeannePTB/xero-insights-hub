@@ -42,6 +42,7 @@ import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/em
 import { Route as ApiPublicXeroSnapshotRefreshRouteImport } from './routes/api/public/xero/snapshot-refresh'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
+import { Route as ApiPublicSecurityRunAccessTestsRouteImport } from './routes/api/public/security/run-access-tests'
 import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
 import { Route as AuthenticatedFirmsFirmIdPeopleRouteImport } from './routes/_authenticated/firms.$firmId.people'
 import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
@@ -238,6 +239,12 @@ const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   path: '/api/public/stripe/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSecurityRunAccessTestsRoute =
+  ApiPublicSecurityRunAccessTestsRouteImport.update({
+    id: '/api/public/security/run-access-tests',
+    path: '/api/public/security/run-access-tests',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedFirmsFirmIdSettingsRoute =
   AuthenticatedFirmsFirmIdSettingsRouteImport.update({
     id: '/settings',
@@ -381,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
+  '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/api/public/xero/snapshot-refresh': typeof ApiPublicXeroSnapshotRefreshRoute
@@ -430,6 +438,7 @@ export interface FileRoutesByTo {
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
+  '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/api/public/xero/snapshot-refresh': typeof ApiPublicXeroSnapshotRefreshRoute
@@ -484,6 +493,7 @@ export interface FileRoutesById {
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/_authenticated/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/_authenticated/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
+  '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/api/public/xero/snapshot-refresh': typeof ApiPublicXeroSnapshotRefreshRoute
@@ -538,6 +548,7 @@ export interface FileRouteTypes {
     | '/firms/$firmId/loans'
     | '/firms/$firmId/people'
     | '/firms/$firmId/settings'
+    | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
     | '/api/public/xero/snapshot-refresh'
@@ -587,6 +598,7 @@ export interface FileRouteTypes {
     | '/firms/$firmId/consolidations'
     | '/firms/$firmId/people'
     | '/firms/$firmId/settings'
+    | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
     | '/api/public/xero/snapshot-refresh'
@@ -640,6 +652,7 @@ export interface FileRouteTypes {
     | '/_authenticated/firms/$firmId/loans'
     | '/_authenticated/firms/$firmId/people'
     | '/_authenticated/firms/$firmId/settings'
+    | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
     | '/api/public/xero/snapshot-refresh'
@@ -671,6 +684,7 @@ export interface RootRouteChildren {
   ReportTokenRoute: typeof ReportTokenRoute
   SignupTokenRoute: typeof SignupTokenRoute
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
+  ApiPublicSecurityRunAccessTestsRoute: typeof ApiPublicSecurityRunAccessTestsRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicXeroCallbackRoute: typeof ApiPublicXeroCallbackRoute
   ApiPublicXeroSnapshotRefreshRoute: typeof ApiPublicXeroSnapshotRefreshRoute
@@ -912,6 +926,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/stripe/webhook'
       fullPath: '/api/public/stripe/webhook'
       preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/security/run-access-tests': {
+      id: '/api/public/security/run-access-tests'
+      path: '/api/public/security/run-access-tests'
+      fullPath: '/api/public/security/run-access-tests'
+      preLoaderRoute: typeof ApiPublicSecurityRunAccessTestsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/firms/$firmId/settings': {
@@ -1179,6 +1200,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReportTokenRoute: ReportTokenRoute,
   SignupTokenRoute: SignupTokenRoute,
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
+  ApiPublicSecurityRunAccessTestsRoute: ApiPublicSecurityRunAccessTestsRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicXeroCallbackRoute: ApiPublicXeroCallbackRoute,
   ApiPublicXeroSnapshotRefreshRoute: ApiPublicXeroSnapshotRefreshRoute,

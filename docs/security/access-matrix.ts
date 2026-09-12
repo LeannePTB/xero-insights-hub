@@ -29,7 +29,8 @@ export type Role =
   | "super_admin_no_membership"
   | "super_admin_self_approving_support"
   | "suspended_member"
-  | "removed_member";
+  | "removed_member"
+  | "security_test_account";
 
 export type Operation = "read" | "insert" | "update" | "delete" | "execute";
 export type Expect = "allow" | "deny";
@@ -70,6 +71,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   super_admin_self_approving_support: "Super admin approving their own support grant",
   suspended_member: "Member with status = suspended",
   removed_member: "Member with status = removed",
+  security_test_account:
+    "Live smoke-suite test account (confined to ZZ Security Test Org, banned outside a run)",
 };
 
 /** Client-scoped data tables: same expectation set applies to each. */
@@ -1206,6 +1209,73 @@ export const MATRIX: MatrixRow[] = [
     rule: "PK 2 path A — membership must be ACTIVE",
     layers: ["pglite", "live"],
   },
+
+  // -------------------------------- Slim live smoke suite (12 Sep 2026)
+  // These rows exist because only a REAL session can prove them: the same
+  // person on aal2 and on aal1, and the real server functions over HTTP. The
+  // live runner reads its expectations from here — it never keeps its own list.
+  {
+    role: "org_owner",
+    resource: "server fn: read a client dashboard",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 path A",
+    layers: ["live"],
+  },
+  {
+    role: "standing_viewer",
+    resource: "server fn: read a client dashboard",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK section 2 path D — read-only over every client in that organisation",
+    layers: ["live"],
+  },
+  ...rows(
+    ["aal1_member", "anonymous"],
+    ["server fn: read a client dashboard"],
+    ["execute"],
+    "deny",
+    "PK 2 (requireAal2); no session reaches a server function",
+    ["live"],
+  ),
+  ...rows(
+    ["anonymous"],
+    ["server fn: list clients for an organisation", "server fn: write client data"],
+    ["execute"],
+    "deny",
+    "PK 1 deny by default — no session, no server function",
+    ["live"],
+  ),
+  {
+    role: "standing_viewer",
+    resource: "server fn: write client data",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK section 2 path D — a standing grant is READ-ONLY and never enters a write path",
+    layers: ["live"],
+  },
+  {
+    role: "org_owner",
+    resource: "server fn: list pending member invitations",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 2 path C — member invitations are platform metadata, super admin only",
+    layers: ["live"],
+  },
+  // The suite's own accounts are confined by DATABASE TRIGGERS, not convention:
+  // proved by attempting each insert as the SERVICE ROLE and being refused.
+  ...rows(
+    ["security_test_account"],
+    [
+      "membership of a real organisation",
+      "a platform role (user_roles)",
+      "practice_team membership",
+    ],
+    ["insert"],
+    "deny",
+    "Live suite containment — app_private.confine_security_test_accounts() refuses even service_role",
+    ["live"],
+  ),
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);

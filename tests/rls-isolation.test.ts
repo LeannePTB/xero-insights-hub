@@ -150,9 +150,19 @@ describe("cross-organisation isolation", () => {
     //  * plan_levels / tier_settings — the public plan and tier catalogue
     //    (backlog: "Tier catalogue readable by any signed-in user", left as-is).
     //  * rate_limit_buckets — service_role only; no browser role holds a grant.
+    //  * security_test_accounts / security_test_run_state — the live smoke
+    //    suite's own tables. Same shape as rate_limit_buckets: the policies
+    //    name service_role only and neither anon nor authenticated holds any
+    //    privilege on the table, so no browser session can reach a row.
     const allowed = new Set([
       "plan_levels:plan_levels_read",
       "tier_settings:Authenticated can read tier settings",
+      "security_test_accounts:test account rows service select",
+      "security_test_accounts:test account rows service update",
+      "security_test_accounts:test account rows service delete",
+      "security_test_run_state:test run state service select",
+      "security_test_run_state:test run state service update",
+      "security_test_run_state:test run state service delete",
       "rate_limit_buckets:rate_limit_buckets service only (select)",
       "rate_limit_buckets:rate_limit_buckets service only (insert)",
       "rate_limit_buckets:rate_limit_buckets service only (update)",

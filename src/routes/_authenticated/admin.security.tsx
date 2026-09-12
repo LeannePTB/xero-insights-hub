@@ -18,6 +18,7 @@ import {
   type XeroAssessmentContact,
 } from "@/lib/xero-assessment.functions";
 import { purgeOldAuditLog } from "@/lib/security.functions";
+import { runAccessTests } from "@/lib/live-access-tests.functions";
 import { getMyContext } from "@/lib/roles.functions";
 
 // Bundle the markdown at build time via Vite ?raw imports.
@@ -104,6 +105,7 @@ function SecurityDocsPage() {
   const getFn = useServerFn(getAssessmentContact);
   const saveFn = useServerFn(saveAssessmentContact);
   const purgeFn = useServerFn(purgeOldAuditLog);
+  const runTestsFn = useServerFn(runAccessTests);
 
   const ctxQ = useQuery({
     queryKey: ["my-context"],
@@ -136,6 +138,23 @@ function SecurityDocsPage() {
   const purgeM = useMutation({
     mutationFn: () => purgeFn(),
     onSuccess: (r) => toast.success(`Deleted ${r.deleted} audit row(s) older than 2 years.`),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const runTestsM = useMutation({
+    mutationFn: () => runTestsFn(),
+    onSuccess: async (r) => {
+      await qc.invalidateQueries({ queryKey: ["security-checks"] });
+      if (r.failed === 0) {
+        toast.success(
+          `Access tests passed: ${r.passed} checked${r.inconclusive ? `, ${r.inconclusive} inconclusive` : ""}.`,
+        );
+      } else {
+        toast.error(
+          `${r.failed} access test(s) did not behave as expected. First: ${r.failures[0]?.resource ?? ""}.`,
+        );
+      }
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -241,6 +260,17 @@ function SecurityDocsPage() {
           <Link to="/settings/activity">
             <Button size="sm" variant="outline">Audit log</Button>
           </Link>
+          {isSuper && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => runTestsM.mutate()}
+              disabled={runTestsM.isPending}
+            >
+              {runTestsM.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Run access tests
+            </Button>
+          )}
           {isSuper && (
             <Button
               size="sm"

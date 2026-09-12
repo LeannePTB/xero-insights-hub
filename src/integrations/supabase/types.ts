@@ -1169,6 +1169,7 @@ export type Database = {
           default_widgets: string[] | null
           id: string
           is_always_free: boolean
+          is_test: boolean
           logo_path: string | null
           name: string
           owner_user_id: string | null
@@ -1179,6 +1180,7 @@ export type Database = {
           default_widgets?: string[] | null
           id?: string
           is_always_free?: boolean
+          is_test?: boolean
           logo_path?: string | null
           name: string
           owner_user_id?: string | null
@@ -1189,6 +1191,7 @@ export type Database = {
           default_widgets?: string[] | null
           id?: string
           is_always_free?: boolean
+          is_test?: boolean
           logo_path?: string | null
           name?: string
           owner_user_id?: string | null
@@ -1684,6 +1687,63 @@ export type Database = {
           created_at?: string
           login_retention_days?: number
           singleton?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      security_test_accounts: {
+        Row: {
+          created_at: string
+          email: string
+          factor_id: string | null
+          label: string
+          password_enc: string
+          totp_secret_enc: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          factor_id?: string | null
+          label: string
+          password_enc: string
+          totp_secret_enc?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          factor_id?: string | null
+          label?: string
+          password_enc?: string
+          totp_secret_enc?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      security_test_run_state: {
+        Row: {
+          id: boolean
+          run_id: string | null
+          running: boolean
+          started_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          run_id?: string | null
+          running?: boolean
+          started_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          run_id?: string | null
+          running?: boolean
+          started_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -3009,6 +3069,7 @@ export type Database = {
         Args: { _enabled: boolean; _tier: string }
         Returns: undefined
       }
+      test_accounts_posture: { Args: never; Returns: Json }
       transfer_organisation_ownership: {
         Args: {
           _firm_id: string

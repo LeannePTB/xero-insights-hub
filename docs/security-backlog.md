@@ -446,3 +446,28 @@ member, unrelated super admin or other organisation's owner can reach it.
 Verified, not assumed: every membership test and the plan-limit counter are
 already active-only, so no path counts a removed row. Spec §15, 17 matrix rows,
 1,461 rows / 1,395 proved / 0 failures, fingerprint `a760e424…`.
+
+## Slim live smoke suite (12 Sep 2026) — the parked item, built at reduced scope
+
+Built exactly the reduced scope: three accounts, **no super-admin test account**,
+**one owner-added secret** (`SECURITY_TEST_TRIGGER_SECRET`), no test-vs-real
+plumbing on real tables. Spec §16 has the detail. New objects: `firms.is_test`;
+service-role-only `security_test_accounts` and `security_test_run_state`;
+`app_private.is_security_test_account`, `app_private.security_test_firm_id`,
+`app_private.confine_security_test_accounts()` (triggers on seven tables);
+`public.test_accounts_posture()`. `admin_firm_overview` (still
+`security_invoker`), `online_users()` and `security_posture()` now exclude test
+identities. Code: `src/lib/live-access-tests.server.ts`, `src/lib/totp.server.ts`,
+`src/lib/live-access-tests.functions.ts`,
+`src/routes/api/public/security/run-access-tests.ts`,
+`scripts/run-live-access-tests.ts` (wired into `security:check`, SKIPS with a
+message when the secret is absent). Registered: admin-client register row for the
+runner, unauthenticated allow-list entry for the route, four definer purposes.
+Matrix: 11 new rows (1,472 rows, 1,395 proved here, 0 failures, 0 known
+failures); the two service-role-only tables added to the documented
+`USING (true)` allow-list in `tests/rls-isolation.test.ts` on the same footing as
+`rate_limit_buckets` (no browser role holds a grant). No existing row changed.
+
+Still open: the first live run has not happened — it needs the owner to add
+`SECURITY_TEST_TRIGGER_SECRET` in Project Settings → Secrets and the app to be
+published. Backlog 39 (non-code assessment evidence) is unchanged.

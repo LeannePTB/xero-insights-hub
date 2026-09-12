@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1461**. Known failures: **0**.
+Rows: **1472**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -125,6 +125,9 @@ None.
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| server fn: read a client dashboard | execute | DENY | live | PK 2 (requireAal2); no session reaches a server function |  |
+| server fn: list clients for an organisation | execute | DENY | live | PK 1 deny by default — no session, no server function |  |
+| server fn: write client data | execute | DENY | live | PK 1 deny by default — no session, no server function |  |
 
 ## Active member, aal1 session only
 
@@ -251,6 +254,7 @@ None.
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| server fn: read a client dashboard | execute | DENY | live | PK 2 (requireAal2); no session reaches a server function |  |
 
 ## Active member of a DIFFERENT organisation
 
@@ -1155,6 +1159,8 @@ None.
 | remove a Traction Advisory (practice-team) staff member | execute | ALLOW | pglite, live | Design decision 8 — our people are removable by the owner after handover |  |
 | an owner removes themselves | execute | DENY | pglite, live | Spec §15 — ownership must be transferred first; an organisation is never left without an owner |  |
 | removal leaves client viewer and standing grants untouched | execute | ALLOW | pglite, live | Spec §15 — removal is a membership status change and nothing else |  |
+| server fn: read a client dashboard | execute | ALLOW | live | PK 2 path A |  |
+| server fn: list pending member invitations | execute | DENY | live | PK 2 path C — member invitations are platform metadata, super admin only |  |
 
 ## Organisation staff (own organisation)
 
@@ -1547,3 +1553,13 @@ None.
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| server fn: read a client dashboard | execute | ALLOW | live | PK section 2 path D — read-only over every client in that organisation |  |
+| server fn: write client data | execute | DENY | live | PK section 2 path D — a standing grant is READ-ONLY and never enters a write path |  |
+
+## Live smoke-suite test account (confined to ZZ Security Test Org, banned outside a run)
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| membership of a real organisation | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
+| a platform role (user_roles) | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
+| practice_team membership | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |

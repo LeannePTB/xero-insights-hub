@@ -1,0 +1,1 @@
+alter view public.admin_firm_overview set (security_invoker = on);

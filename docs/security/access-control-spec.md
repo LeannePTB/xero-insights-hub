@@ -301,3 +301,51 @@ membership test is active-only — `app_private.has_firm_access`,
 `public.my_firm_ids`, `public.my_firm_memberships` and `public.firm_access_path`
 (through `has_firm_access`). `public.plan_level_usage_count` counts subscriptions
 and `client_access` rows, never members, so removal cannot change a plan limit.
+
+## 16. The slim live smoke suite
+
+`bun run security:check` proves the whole access matrix against a faithful copy
+of the live catalogue. The live suite exists for the only two things that copy
+cannot produce: a **real session** — in particular the same person on `aal2` and
+on `aal1` — and the **real server functions** over HTTP. It is a smoke test, not
+a second matrix, and it keeps no expectations of its own: every probe reads its
+expected allow/deny from `docs/security/access-matrix.ts` by
+(role, resource, operation), and a probe with no matrix row is an error.
+
+### What it exercises
+Real sessions for three accounts (owner aal2, the **same owner on aal1**, staff
+aal2, client viewer with a standing grant aal2) plus anonymous, calling
+`listClients`, `getClient`, `renameClient`, `inviteClientViewer`,
+`revokeClientAccess`, `removeOrganisationMember` and one Path C call
+(`listFirmMemberInvites`). None of the accounts holds `super_admin` or a
+`practice_team` row.
+
+### Containment (each enforced in the database, never by convention)
+- `firms.is_test` marks the one isolated organisation, `ZZ Security Test Org`.
+  It has no Xero connection, so **no Xero API call is reachable** from the suite.
+- `app_private.confine_security_test_accounts()` is a trigger on `firm_members`,
+  `client_access`, `firm_viewer_access`, `firm_support_access`, `user_roles`,
+  `practice_team` and `firms`. It refuses to attach a test identity to anything
+  outside the test organisation, and refuses a platform role or practice-team row
+  outright — **including for `service_role`**. The suite proves this by trying it
+  as `service_role` and being refused.
+- The accounts are **banned whenever a run is not in progress**. The runner
+  sweeps and re-bans at the start, unbans for the run, and re-bans, signs every
+  session out and restores the fixture in a `finally` block.
+- Their addresses are permanently suppressed, and they are excluded from
+  `admin_firm_overview`, `online_users()` and the posture people/MFA counts.
+- Credentials and TOTP secrets are generated server-side and stored encrypted
+  with `TOKEN_ENC_KEY` in `public.security_test_accounts`, a table with policies
+  naming `service_role` only and no `anon` or `authenticated` privilege at all.
+  TOTP codes are computed at run time; nothing is ever returned to a browser.
+
+### Posture and triggering
+`public.test_accounts_posture()` (aal2 + super admin) reports **Action** if any
+test account can sign in outside a run, holds any membership, grant or role
+outside the test organisation, or has a session outside the run window.
+Two entry points, both authorised: the super-admin "Run access tests" button on
+`/admin/security` (`assertSuperAdminDb`), and
+`POST /api/public/security/run-access-tests`, which compares the single
+owner-added `SECURITY_TEST_TRIGGER_SECRET` in constant time and is rate limited
+to six runs an hour before doing any work. Results land in
+`public.security_test_runs` with layer `live`.
