@@ -17,7 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { listOrganisationMembers } from "@/lib/ownership.functions";
+import { listOrganisationMembers, removeOrganisationMember } from "@/lib/ownership.functions";
 import {
   adminInviteFirmMember,
   listFirmMemberInvites,
