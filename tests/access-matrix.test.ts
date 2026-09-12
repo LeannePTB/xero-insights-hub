@@ -617,6 +617,13 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`delete from public.practice_team where user_id = '${U.ownerA}'`);
     return p.ok && p.rows > 0 ? "allow" : "deny";
   }
+  if (r === "manage the practice team (admin_add/remove_practice_member)") {
+    // The advisors-page control calls exactly these two functions, nothing else.
+    const add = await probe(`select public.admin_add_practice_member('${U.grantTarget}')`);
+    if (!add.ok) return "deny";
+    const rm = await probe(`select public.admin_remove_practice_member('${U.grantTarget}')`);
+    return rm.ok ? "allow" : "deny";
+  }
   // ---- attestations (Spec §17) ----------------------------------------
   if (r === "record a security attestation") {
     const p = await probe(`select public.record_security_attestation('leaked_password', 'probe')`);
