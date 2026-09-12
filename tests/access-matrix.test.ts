@@ -559,6 +559,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return p.ok ? "allow" : "deny";
   }
   if (r === "removal leaves client viewer and standing grants untouched") {
+    await db.exec("set local role postgres");
     const before = await db.query<{ ca: number; fva: number; conns: number }>(
       `select (select count(*) from public.client_access)::int as ca,
               (select count(*) from public.firm_viewer_access)::int as fva,
