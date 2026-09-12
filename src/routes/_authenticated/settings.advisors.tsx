@@ -339,6 +339,7 @@ function AdvisorSettings() {
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="font-display text-lg font-semibold">Current advisors</h2>
+
             {pendingCount > 0 && (
               <Button
                 variant="outline"
