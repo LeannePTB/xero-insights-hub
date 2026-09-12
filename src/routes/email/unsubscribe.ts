@@ -42,13 +42,19 @@ export const Route = createFileRoute("/email/unsubscribe")({
           return Response.json({ error: 'Token is required' }, { status: 400 })
         }
 
+        try {
+          await enforceRateLimit(`unsubscribe_get:${callerIp(request)}`, 30, 300)
+        } catch {
+          return Response.json({ error: 'Too many requests' }, { status: 429 })
+        }
+
         const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-        // Look up the token
+        // Look up the token by its hash — the plaintext is never stored.
         const { data: tokenRecord, error: lookupError } = await supabase
           .from('email_unsubscribe_tokens')
-          .select('*')
-          .eq('token', token)
+          .select('used_at')
+          .eq('token_hash', hashToken(token))
           .maybeSingle()
 
         if (lookupError || !tokenRecord) {
