@@ -16,6 +16,7 @@ import {
   setAdvisorSuperAdmin,
   PRIMARY_ADVISOR_USER_ID,
 } from "@/lib/advisors.functions";
+import { listPracticeTeam, setPracticeMembership } from "@/lib/practice-team.functions";
 import { updateProfileNameAsAdmin } from "@/lib/profile.functions";
 import { displayNameSchema, isRealDisplayName } from "@/lib/profile-name";
 import { getMyContext } from "@/lib/roles.functions";
