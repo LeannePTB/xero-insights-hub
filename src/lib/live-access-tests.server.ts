@@ -693,15 +693,16 @@ async function unbanAll(): Promise<void> {
 
 async function setRunState(running: boolean, runId: string | null): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await supabaseAdmin
-    .from("security_test_run_state" as any)
-    .update({
+  await supabaseAdmin.from("security_test_run_state" as any).upsert(
+    {
+      id: true,
       running,
       run_id: runId,
       started_at: running ? new Date().toISOString() : null,
       updated_at: new Date().toISOString(),
-    })
-    .eq("id", true);
+    },
+    { onConflict: "id" },
+  );
 }
 
 /**
