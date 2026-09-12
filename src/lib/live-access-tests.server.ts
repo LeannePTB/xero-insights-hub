@@ -313,13 +313,45 @@ async function openSession(account: Account, stepUp: boolean): Promise<Session> 
 }
 
 // --------------------------------------------------------------- calling the app
-type CallOutcome = { outcome: "allow" | "deny" | "inconclusive"; detail: string };
+type CallOutcome = {
+  outcome: "allow" | "deny" | "inconclusive";
+  detail: string;
+  /** Raw response payload, for probes that must check the RESULT, not the status. */
+  body?: string;
+};
+
+/**
+ * Extracts the message from a TanStack-serialised error payload.
+ *
+ * The response envelope is seroval cross-JSON, and its error node carries the
+ * plugin tag `$TSR/Error`. Deserialising it properly needs TanStack's internal
+ * seroval plugins, which the package does not export, so the message is read
+ * out of the raw payload instead. Presence of the tag is the signal; the text
+ * is only for the report.
+ */
+function serialisedErrorMessage(text: string): string | null {
+  if (!text.includes('"$TSR/Error"')) return null;
+  const m = /"message":\{"t":1,"s":"((?:[^"\\]|\\.)*)"\}/.exec(text);
+  if (!m) return "error (message not readable)";
+  try {
+    return JSON.parse(`"${m[1]}"`) as string;
+  } catch {
+    return m[1] ?? "error";
+  }
+}
 
 /**
  * Calls a real server function over HTTP with a real session's bearer token.
  *
- * 2xx is allow; 401/403 and an error payload are deny. Anything the runner
- * cannot classify is INCONCLUSIVE and is never counted as a pass.
+ * The request shape is TanStack Start's own RPC contract, read from the
+ * installed version's client (`serverFnFetcher`): POST to the function's
+ * `/_serverFn/<id>` url, header `x-tsr-serverFn: true`, and a body that is the
+ * SEROVAL-serialised `{ data }` envelope — not plain JSON. Plain JSON is what
+ * produced "Seroval Error (step: 3)" on every probe.
+ *
+ * Classification: a serialised error payload (any status) is a refusal; 2xx
+ * with a result is allow; 401/403 and other 4xx are deny. A 5xx without a
+ * readable payload, or anything unparseable, is INCONCLUSIVE and never a pass.
  */
 async function callServerFn(
   fn: unknown,
@@ -328,41 +360,62 @@ async function callServerFn(
 ): Promise<CallOutcome> {
   const url = (fn as { url?: string } | undefined)?.url;
   if (!url) return { outcome: "inconclusive", detail: "server function has no callable url" };
-  const { siteOrigin } = await import("@/lib/site-origin");
-  const absolute = url.startsWith("http") ? url : `${siteOrigin()}${url}`;
+  // The suite must exercise the deployment it is RUNNING IN, not whatever the
+  // canonical public origin happens to be — otherwise a preview run silently
+  // tests production. Falls back to the canonical origin.
+  let origin: string;
+  try {
+    const { getRequestUrl } = await import("@tanstack/react-start/server");
+    origin = new URL(String(getRequestUrl())).origin;
+  } catch {
+    const { siteOrigin } = await import("@/lib/site-origin");
+    origin = siteOrigin();
+  }
+  const absolute = url.startsWith("http") ? url : `${origin}${url}`;
+
+
+  let payload: string;
+  try {
+    const { toJSONAsync } = await import("seroval");
+    payload = JSON.stringify(await toJSONAsync({ data: body }));
+  } catch (e) {
+    return { outcome: "inconclusive", detail: `could not serialise payload: ${(e as Error).message}` };
+  }
 
   let res: Response;
   try {
     res = await fetch(absolute, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "content-type": "application/json",
+        "x-tsr-serverFn": "true",
+        accept: "application/json",
         ...(session ? { Authorization: `Bearer ${session.accessToken}` } : {}),
       },
-      body: JSON.stringify({ data: body }),
+      body: payload,
       signal: AbortSignal.timeout(20_000),
     });
   } catch (e) {
     return { outcome: "inconclusive", detail: `request failed: ${(e as Error).message}` };
   }
 
-  const text = (await res.text()).slice(0, 400);
+  const text = (await res.text()).slice(0, 2000);
+  const errMessage = serialisedErrorMessage(text);
+  if (errMessage) return { outcome: "deny", detail: `${res.status}: ${errMessage.slice(0, 160)}` };
+
   if (res.ok) {
-    // A 200 carrying a serialised error is still a refusal.
-    if (/unauthorized|forbidden|not permitted|cannot|permission denied/i.test(text) && /error/i.test(text)) {
-      return { outcome: "deny", detail: `200 with refusal: ${text.slice(0, 120)}` };
-    }
-    return { outcome: "allow", detail: `${res.status}` };
+    if (res.headers.get("x-tss-serialized"))
+      return { outcome: "allow", detail: `${res.status}`, body: text };
+    // A 2xx without the serialised envelope is not a server-function result.
+    return { outcome: "inconclusive", detail: `${res.status} without a server-function payload` };
   }
   if (res.status === 401 || res.status === 403) return { outcome: "deny", detail: `${res.status}` };
   if (res.status >= 400 && res.status < 500) {
     return { outcome: "deny", detail: `${res.status}: ${text.slice(0, 120)}` };
   }
-  if (res.status === 500 && /unauthorized|forbidden|not permitted|cannot|permission/i.test(text)) {
-    return { outcome: "deny", detail: `500 refusal: ${text.slice(0, 120)}` };
-  }
   return { outcome: "inconclusive", detail: `${res.status}: ${text.slice(0, 120)}` };
 }
+
 
 // ------------------------------------------------------------------- confinement
 /**
@@ -438,6 +491,80 @@ async function probeConfinement(accounts: Account[]): Promise<ProbeResult[]> {
     });
   }
   return out;
+}
+
+/**
+ * A write probe is judged by its EFFECT, not by the HTTP status.
+ *
+ * `renameClient` reports success even when row-level security matched no row,
+ * so a refused write still answers 200. Reading the row back with the service
+ * role is the only honest test of whether the write landed.
+ */
+async function renameProbe(
+  fn: unknown,
+  clientId: string,
+  name: string,
+  session: Session,
+): Promise<CallOutcome> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const before = await supabaseAdmin.from("clients").select("name").eq("id", clientId).maybeSingle();
+  const res = await callServerFn(fn, { clientId, name }, session);
+  if (res.outcome !== "allow") return res;
+  const after = await supabaseAdmin.from("clients").select("name").eq("id", clientId).maybeSingle();
+  const landed = (after.data as any)?.name === name;
+  if (landed) {
+    // Leave the fixture exactly as it was found.
+    const original = (before.data as any)?.name;
+    if (original && original !== name) {
+      await supabaseAdmin.from("clients").update({ name: original }).eq("id", clientId);
+    }
+    return { outcome: "allow", detail: `${res.detail}; the row was changed` };
+  }
+  return {
+    outcome: "deny",
+    detail: `${res.detail} but the row is unchanged ("${(before.data as any)?.name ?? "?"}") — the write was refused`,
+  };
+}
+
+/**
+ * `listFirmMemberInvites` maps the database's NOT_PERMITTED into an empty list,
+ * so the status alone cannot tell allow from deny. A pending invitation is
+ * seeded for the test organisation first: seeing it is allow, not seeing it is
+ * the refusal.
+ */
+async function listInvitesProbe(
+  fn: unknown,
+  firmId: string,
+  session: Session,
+): Promise<CallOutcome> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const email = "zz-security-test-invite@example.invalid";
+  const { createHash, randomBytes } = await import("node:crypto");
+  const tokenHash = createHash("sha256").update(randomBytes(32)).digest("hex");
+  const seeded = await supabaseAdmin.from("access_invites" as any).insert({
+    firm_id: firmId,
+    email,
+    role: "staff",
+    kind: "member",
+    token_hash: tokenHash,
+    expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  });
+  try {
+    if (seeded.error) {
+      return { outcome: "inconclusive", detail: `could not seed an invitation: ${seeded.error.message}` };
+    }
+    const res = await callServerFn(fn, { firmId }, session);
+    if (res.outcome !== "allow") return res;
+    if (res.body?.includes(email)) {
+      return { outcome: "allow", detail: `${res.detail}; the pending invitation was returned` };
+    }
+    return {
+      outcome: "deny",
+      detail: `${res.detail} but no invitation was returned — the database refused and the function reported an empty list`,
+    };
+  } finally {
+    await supabaseAdmin.from("access_invites" as any).delete().eq("token_hash", tokenHash);
+  }
 }
 
 // -------------------------------------------------------------------- the probes
@@ -526,11 +653,7 @@ async function runProbes(
       operation: "execute",
       session: ownerAal2,
       call: () =>
-        callServerFn(
-          clients.renameClient,
-          { clientId: org.clientOne, name: "ZZ Test Client One" },
-          ownerAal2,
-        ),
+        renameProbe(clients.renameClient, org.clientOne, "ZZ Test Client One (write probe)", ownerAal2),
     },
     {
       role: "standing_viewer",
@@ -538,11 +661,7 @@ async function runProbes(
       operation: "execute",
       session: viewerAal2,
       call: () =>
-        callServerFn(
-          clients.renameClient,
-          { clientId: org.clientTwo, name: "ZZ Renamed By Viewer" },
-          viewerAal2,
-        ),
+        renameProbe(clients.renameClient, org.clientTwo, "ZZ Renamed By Viewer", viewerAal2),
     },
     {
       role: "aal1_member",
@@ -550,11 +669,7 @@ async function runProbes(
       operation: "execute",
       session: ownerAal1,
       call: () =>
-        callServerFn(
-          clients.renameClient,
-          { clientId: org.clientOne, name: "ZZ Renamed By Aal1" },
-          ownerAal1,
-        ),
+        renameProbe(clients.renameClient, org.clientOne, "ZZ Renamed By Aal1", ownerAal1),
     },
     // viewer management (Batch 5 widening): owner may, staff may not
     {
@@ -600,7 +715,7 @@ async function runProbes(
       resource: "server fn: list pending member invitations",
       operation: "execute",
       session: ownerAal2,
-      call: () => callServerFn(invites.listFirmMemberInvites, { firmId: org.firmId }, ownerAal2),
+      call: () => listInvitesProbe(invites.listFirmMemberInvites, org.firmId, ownerAal2),
     },
   ];
 
