@@ -5,6 +5,7 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { writeAudit } from "@/lib/audit.server";
+import { READ_ACTION_REPORT, READ_ACTION_XERO } from "@/lib/audit/read-keys";
 
 function requestIp(): string | null {
   return (
