@@ -725,6 +725,13 @@ beforeAll(async () => {
   const fixture = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/rls-schema.sql"), "utf8");
   await db.exec(fixture);
 
+  // The fixture dump carries columns and policies, not constraints. Live
+  // `practice_team` has a primary key on user_id (verified 12 Sep 2026) and
+  // `admin_add_practice_member` relies on it via `on conflict (user_id)`, so the
+  // copy needs it to be faithful for that path. Test-copy fidelity only — no
+  // application object changes.
+  await db.exec(`alter table public.practice_team add primary key (user_id);`);
+
   const users = Object.values(U);
   await db.exec(`
     insert into auth.users(id, email) values
