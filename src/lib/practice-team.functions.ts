@@ -16,9 +16,12 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
  * Every function here defers to the database for authorisation: the
  * `admin_practice_team` / `admin_add_practice_member` /
  * `admin_remove_practice_member` definer functions assert aal2 and super admin
- * first and write the audit row themselves. The service role is used for one
- * thing only — resolving a verified auth email to a user id, which a browser
- * session cannot do.
+ * first and write the audit row themselves. The service role is never used here.
+ *
+ * Membership is shown and changed on the advisors page (`/settings/advisors`), so
+ * the practice team and the advisors list cannot drift apart. Holding `advisor`
+ * or `super_admin` never implies practice-team membership: it stays an explicit
+ * per-person choice.
  */
 export const listPracticeTeam = createServerFn({ method: "GET" })
   .middleware([requireAal2])
