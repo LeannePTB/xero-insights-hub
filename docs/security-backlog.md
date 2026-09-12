@@ -414,3 +414,7 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     `user_id = auth.uid()` or `app_private.me_is_super_admin()` — none admits a support grant, so no
     access is over-granted today. The defect is shape, not scope: rule 1 wants per-command policies so a
     future edit cannot widen reads and writes together. Fix: split into per-command policies.
+
+## 44. Revoking a specific grant while a standing grant exists can mislead the owner (opened 12 Sep 2026)
+
+Path D means a person can hold both a standing grant and a specific grant on the same client. Revoking the specific grant leaves the standing grant in force, so the client is still visible while the screen suggests access was removed. The database behaviour is correct and proved by a matrix row; the **wording and remedy are owed by the UI**: the revoke confirmation must say the person will still see the client through their "every client" grant, and offer the only real remedy — switch them to "only the clients I tick" with that client unticked. No exclusion row type. Scheduled for people-and-access Batches 3 and 4.
