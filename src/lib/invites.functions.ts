@@ -470,7 +470,31 @@ export const acceptInvite = createServerFn({ method: "POST" })
       id: userId, email: invite.email, display_name: displayName,
     });
 
+    // A viewer invite grants read-only client access and NEVER membership: the
+    // early return below is what keeps it out of firm_members. The role, the
+    // grants (standing or specific), the acceptance stamp and the audit row all
+    // happen inside one database transaction, and the selected client ids are
+    // re-validated against the organisation there rather than trusted from the
+    // invite. The user id is the auth user matched to the email-bound invite,
+    // never anything from the request.
+    if ((invite.kind ?? "member") === "viewer") {
+      const { error: vErr } = await (supabaseAdmin as any).rpc("apply_viewer_invite", {
+        _invite_id: invite.id,
+        _user_id: userId,
+      });
+      if (vErr) {
+        if (/VIEWER_INVITE_NO_CLIENTS/i.test(vErr.message)) {
+          throw new Error(
+            "Those clients are no longer available. Ask the person who invited you to send a new invitation.",
+          );
+        }
+        throw new Error(vErr.message);
+      }
+      return { ok: true, email: invite.email };
+    }
+
     // Add to firm_members (unique on firm_id+user_id assumed; ignore conflict).
+
     const { error: mErr } = await (supabaseAdmin as any).from("firm_members").insert({
       firm_id: invite.firm_id, user_id: userId, role: invite.role,
     });
