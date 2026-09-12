@@ -3069,6 +3069,7 @@ export type Database = {
         Args: { _enabled: boolean; _tier: string }
         Returns: undefined
       }
+      test_accounts_posture: { Args: never; Returns: Json }
       transfer_organisation_ownership: {
         Args: {
           _firm_id: string
