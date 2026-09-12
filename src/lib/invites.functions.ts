@@ -352,7 +352,7 @@ export const getInvitePublic = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: invite, error } = await (supabaseAdmin as any)
       .from("access_invites")
-      .select("id, firm_id, email, role, expires_at, accepted_at")
+      .select("id, firm_id, email, role, kind, scope, tier, client_ids, expires_at, accepted_at")
       .eq("token_hash", hashToken(data.token))
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -364,13 +364,47 @@ export const getInvitePublic = createServerFn({ method: "POST" })
     const { data: firm } = await (supabaseAdmin as any)
       .from("firms").select("name").eq("id", invite.firm_id).maybeSingle();
 
+    // On a viewer invite, show what is being offered before they accept: the
+    // organisation, whether it is every client or a named list, and the level.
+    // Client names only — never ids or any other organisation data.
+    let clientNames: string[] = [];
+    if (invite.kind === "viewer" && invite.scope === "selected") {
+      const { data: rows } = await (supabaseAdmin as any)
+        .from("clients")
+        .select("name")
+        .eq("firm_id", invite.firm_id)
+        .in("id", (invite.client_ids ?? []) as string[]);
+      clientNames = ((rows ?? []) as any[]).map((r) => String(r.name));
+    }
+
+    let invitedByName: string | null = null;
+    const { data: inviter } = await (supabaseAdmin as any)
+      .from("access_invites")
+      .select("invited_by")
+      .eq("id", invite.id)
+      .maybeSingle();
+    if (inviter?.invited_by) {
+      const { data: prof } = await (supabaseAdmin as any)
+        .from("profiles")
+        .select("display_name")
+        .eq("id", inviter.invited_by)
+        .maybeSingle();
+      invitedByName = prof?.display_name ?? null;
+    }
+
     return {
       email: invite.email,
       role: invite.role as "owner" | "staff",
+      kind: (invite.kind ?? "member") as "member" | "viewer",
+      scope: (invite.scope ?? null) as "selected" | "all_clients" | null,
+      tier: (invite.tier ?? null) as string | null,
+      clientNames,
+      invitedByName,
       firmName: firm?.name ?? null,
       firmId: invite.firm_id,
     };
   });
+
 
 /**
  * Public: accept an invite. Creates auth user if needed, sets password,
@@ -395,7 +429,7 @@ export const acceptInvite = createServerFn({ method: "POST" })
     await enforceRateLimit(`invite:accept:${data.token.slice(0, 16)}`, 20, 600);
     const { data: invite, error } = await (supabaseAdmin as any)
       .from("access_invites")
-      .select("id, firm_id, email, role, expires_at, accepted_at")
+      .select("id, firm_id, email, role, kind, expires_at, accepted_at")
       .eq("token_hash", hashToken(data.token))
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -436,7 +470,31 @@ export const acceptInvite = createServerFn({ method: "POST" })
       id: userId, email: invite.email, display_name: displayName,
     });
 
+    // A viewer invite grants read-only client access and NEVER membership: the
+    // early return below is what keeps it out of firm_members. The role, the
+    // grants (standing or specific), the acceptance stamp and the audit row all
+    // happen inside one database transaction, and the selected client ids are
+    // re-validated against the organisation there rather than trusted from the
+    // invite. The user id is the auth user matched to the email-bound invite,
+    // never anything from the request.
+    if ((invite.kind ?? "member") === "viewer") {
+      const { error: vErr } = await (supabaseAdmin as any).rpc("apply_viewer_invite", {
+        _invite_id: invite.id,
+        _user_id: userId,
+      });
+      if (vErr) {
+        if (/VIEWER_INVITE_NO_CLIENTS/i.test(vErr.message)) {
+          throw new Error(
+            "Those clients are no longer available. Ask the person who invited you to send a new invitation.",
+          );
+        }
+        throw new Error(vErr.message);
+      }
+      return { ok: true, email: invite.email };
+    }
+
     // Add to firm_members (unique on firm_id+user_id assumed; ignore conflict).
+
     const { error: mErr } = await (supabaseAdmin as any).from("firm_members").insert({
       firm_id: invite.firm_id, user_id: userId, role: invite.role,
     });

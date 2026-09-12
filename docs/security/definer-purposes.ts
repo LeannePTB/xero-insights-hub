@@ -161,6 +161,19 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "app_private.is_practice_member_of": "Whether a practice-team person is an active member of this particular organisation.",
   "app_private.can_manage_client_viewers": "Whether the caller may grant or revoke viewer access in this organisation: its owner, or an active practice-team member of it.",
   "app_private.viewer_tier": "The dashboard level a viewer sees for a client: specific grant first, then standing grant, capped by the client's own entitlement.",
+
+  // ── Viewer management and viewer invites (Batch 3). Every one asserts aal2
+  // and authorises through app_private.can_manage_client_viewers.
+  "app_private.can_manage_viewers_for_client": "Whether the caller may manage viewer access for one client: its organisation's owner, or an active practice-team member of that organisation.",
+  "public.me_can_manage_client_viewers": "Caller-scoped: may I manage viewer access for this client? UI gate only; every write re-checks.",
+  "public.me_can_manage_firm_viewers": "Caller-scoped: may I manage viewer access in this organisation? UI gate only; every write re-checks.",
+  "public.grant_firm_viewer_access": "Give one person read-only access to every client in an organisation (standing grant). Audited.",
+  "public.set_firm_viewer_tier": "Change the dashboard level on a standing viewer grant. Audited.",
+  "public.revoke_firm_viewer_access": "Remove a standing viewer grant in full, leaving specific per-client grants intact. Audited.",
+  "public.firm_viewers": "List the standing viewer grants of one organisation, with the verified sign-in email.",
+  "public.firm_viewer_invites": "List the pending viewer invitations of one organisation. Never returns the token.",
+  "public.revoke_viewer_invite": "Cancel a pending viewer invitation. Audited.",
+  "public.apply_viewer_invite": "System context (service role only): apply an accepted viewer invitation — role, grants, acceptance stamp and audit row in one transaction, re-validating the client ids against the organisation.",
 };
 
 /**

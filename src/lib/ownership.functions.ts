@@ -7,7 +7,10 @@ export type OrganisationMember = {
   displayName: string | null;
   role: "owner" | "staff";
   status: string;
+  /** True when this member is one of Traction Advisory's own people. */
+  isPractice: boolean;
 };
+
 
 export type OrganisationMembersView = {
   members: OrganisationMember[];
@@ -40,6 +43,8 @@ export const listOrganisationMembers = createServerFn({ method: "POST" })
       displayName: r.display_name ?? null,
       role: r.role,
       status: r.status,
+      isPractice: r.is_practice === true,
+
     }));
     members.sort((a, b) => (a.role === b.role ? 0 : a.role === "owner" ? -1 : 1));
 

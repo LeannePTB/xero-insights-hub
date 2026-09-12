@@ -55,7 +55,7 @@ create type public.report_basis as enum ('accrual', 'cash');
 create type public.statutory_category as enum ('gst', 'payg', 'super', 'none');
 create type public.subscription_status as enum ('trialing', 'active', 'past_due', 'canceled', 'incomplete', 'incomplete_expired', 'unpaid');
 create type public.subscription_tier as enum ('starter', 'growth', 'scale', 'firm', 'legacy', 'free');
-create table public.access_invites (id uuid, firm_id uuid, email text, role firm_member_role, token_hash text, invited_by uuid, expires_at timestamp with time zone, accepted_at timestamp with time zone, created_at timestamp with time zone);
+create table public.access_invites (id uuid, firm_id uuid, email text, role firm_member_role, token_hash text, invited_by uuid, expires_at timestamp with time zone, accepted_at timestamp with time zone, created_at timestamp with time zone, kind text, scope text, tier dashboard_tier, client_ids uuid[]);
 create table public.audit_finding_snoozes (tenant_id text, finding_key text, snoozed_until timestamp with time zone, snoozed_by uuid, note text, created_at timestamp with time zone, resolved boolean, resolved_at timestamp with time zone, resolved_by uuid);
 create table public.audit_findings (id uuid, run_id uuid, tenant_id text, rule_id text, category text, severity text, title text, message text, entity_type text, entity_id text, deep_link text, evidence jsonb, finding_key text, created_at timestamp with time zone);
 create table public.audit_log (id uuid, actor_user_id uuid, firm_id uuid, action text, target_type text, target_id text, ip text, user_agent text, meta jsonb, at timestamp with time zone);
@@ -1252,6 +1252,25 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.can_manage_viewers_for_client(_user_id uuid, _client_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select case when auth.uid() is not null and _user_id is distinct from auth.uid() then false else (
+    exists (
+      select 1
+      from public.clients c
+      where c.id = _client_id
+        and (
+          (c.firm_id is not null and app_private.can_manage_client_viewers(_user_id, c.firm_id))
+          or (c.firm_id is null and c.owner_user_id = _user_id)
+        )
+    )
+  ) end
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1926,19 +1945,11 @@ create policy mfa_aal2_required on public.audit_runs as restrictive for all to a
 create policy "firm members read own billing events" on public.billing_events as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.billing_events as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "super_admin reads billing events" on public.billing_events as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
-create policy "manage client access by firm (delete)" on public.client_access as permissive for delete to authenticated using ((EXISTS ( SELECT 1
-   FROM clients c
-  WHERE ((c.id = client_access.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
-create policy "manage client access by firm (insert)" on public.client_access as permissive for insert to authenticated with check ((EXISTS ( SELECT 1
-   FROM clients c
-  WHERE ((c.id = client_access.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy "manage client access by firm (read)" on public.client_access as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
-create policy "manage client access by firm (update)" on public.client_access as permissive for update to authenticated using ((EXISTS ( SELECT 1
-   FROM clients c
-  WHERE ((c.id = client_access.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id))))))) with check ((EXISTS ( SELECT 1
-   FROM clients c
-  WHERE ((c.id = client_access.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy mfa_aal2_required on public.client_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "viewer managers write client access (delete)" on public.client_access as permissive for delete to authenticated using (app_private.can_manage_viewers_for_client(auth.uid(), client_id));
+create policy "viewer managers write client access (insert)" on public.client_access as permissive for insert to authenticated with check (app_private.can_manage_viewers_for_client(auth.uid(), client_id));
+create policy "viewer managers write client access (update)" on public.client_access as permissive for update to authenticated using (app_private.can_manage_viewers_for_client(auth.uid(), client_id)) with check (app_private.can_manage_viewers_for_client(auth.uid(), client_id));
 create policy "viewers read own access" on public.client_access as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy "Manage cost classifications by firm (delete)" on public.client_cost_classifications as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
@@ -2268,4 +2279,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: ef34df9f03ef68d5d483982730be7ea4a79ee7a577a78267abc6286e60feb26e
+-- catalogue-fingerprint: e72ed43b793d358f1120c86cdb5cab57d2303ebb22130c0df416a7d02cc64ce2

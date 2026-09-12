@@ -2,33 +2,38 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Building2, Loader2, Mail, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
+import { Building2, Loader2, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { listOrganisationMembers } from "@/lib/ownership.functions";
 import {
   adminInviteFirmMember,
   listFirmMemberInvites,
   revokeFirmMemberInvite,
 } from "@/lib/invites.functions";
+import { listClientAccess, listClients, revokeClientAccess } from "@/lib/clients.functions";
 import {
-  inviteClientViewer,
-  listClientAccess,
-  listClients,
-  revokeClientAccess,
-} from "@/lib/clients.functions";
+  listStandingViewers,
+  switchStandingToSelected,
+} from "@/lib/viewers.functions";
+import { ViewerInviteForm } from "@/components/people/ViewerInviteForm";
+import { StandingViewers } from "@/components/people/StandingViewers";
 import { getMyContext } from "@/lib/roles.functions";
-import { ALL_TIERS, tierLabel } from "@/lib/tiers";
+import { tierLabel } from "@/lib/tiers";
 import type { DashboardTier } from "@/lib/tiers";
+
 
 function Panel({
   title,
@@ -69,7 +74,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   const fetchClients = useServerFn(listClients);
   const inviteMember = useServerFn(adminInviteFirmMember);
   const cancelInvite = useServerFn(revokeFirmMemberInvite);
-  const inviteViewer = useServerFn(inviteClientViewer);
+  const fetchStanding = useServerFn(listStandingViewers);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const canInvite = ctxQ.data?.isSuperAdmin ?? false;
@@ -112,22 +117,20 @@ export function PeopleSection({ firmId }: { firmId: string }) {
     onError: (e: any) => toast.error(e?.message ?? "Could not cancel the invitation."),
   });
 
-  const [viewerClientId, setViewerClientId] = useState<string>("");
-  const [viewerEmail, setViewerEmail] = useState("");
-  const [viewerTier, setViewerTier] = useState<DashboardTier>("basic");
-
-  const inviteViewerMut = useMutation({
-    mutationFn: () =>
-      inviteViewer({ data: { clientId: viewerClientId, email: viewerEmail, tier: viewerTier } }),
-    onSuccess: () => {
-      toast.success("Client viewer added.");
-      setViewerEmail("");
-      qc.invalidateQueries({ queryKey: ["client-access"] });
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Could not give that person access."),
-  });
-
   const clients = (clientsQ.data?.clients ?? []) as Array<{ id: string; name: string }>;
+
+  // Who may manage client viewers is decided in the database
+  // (app_private.can_manage_client_viewers): the organisation owner, or one of
+  // Traction Advisory's own people with an active membership of this
+  // organisation. Staff see the lists and nothing more.
+  const standingQ = useQuery({
+    queryKey: ["standing-viewers", firmId],
+    queryFn: () => fetchStanding({ data: { firmId } }),
+  });
+  const canManageViewers = standingQ.data?.canManage ?? false;
+  const firmName = standingQ.data?.firmName ?? "this organisation";
+
+
 
   return (
     <div className="space-y-6">
@@ -199,9 +202,11 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                     <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
+                    {m.isPractice && <Badge>Traction Advisory</Badge>}
                     <Badge variant="outline">{m.role === "owner" ? "Owner" : "Staff"}</Badge>
                     {m.status !== "active" && <Badge variant="secondary">{m.status}</Badge>}
                   </div>
+
                 </li>
               ))}
             </ul>
@@ -238,73 +243,37 @@ export function PeopleSection({ firmId }: { firmId: string }) {
 
       <Panel
         title="Client viewer"
-        blurb="The business owner or one of their staff. A client viewer sees one client's dashboard only, at the level you choose — never another client, and never this organisation's other data."
+        blurb="The business owner or one of their staff. A client viewer only ever reads a dashboard — they can never change anything, see this organisation's billing or settings, or see another organisation's clients."
         icon={<Building2 className="h-5 w-5" />}
       >
-        {canInvite ? (
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="min-w-[12rem] space-y-1.5">
-              <Label>Which client</Label>
-              <Select value={viewerClientId} onValueChange={setViewerClientId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Choose a client" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="min-w-[14rem] flex-1 space-y-1.5">
-              <Label htmlFor="viewer-email">Their email address</Label>
-              <Input
-                id="viewer-email"
-                type="email"
-                value={viewerEmail}
-                onChange={(e) => setViewerEmail(e.target.value)}
-                placeholder="owner@business.com.au"
-              />
-            </div>
-            <div className="min-w-[11rem] space-y-1.5">
-              <Label>Dashboard level</Label>
-              <Select value={viewerTier} onValueChange={(v) => setViewerTier(v as DashboardTier)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ALL_TIERS.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {tierLabel(t)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              onClick={() => inviteViewerMut.mutate()}
-              disabled={inviteViewerMut.isPending || !viewerClientId || !viewerEmail}
-            >
-              {inviteViewerMut.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Mail className="mr-2 h-4 w-4" />
-              )}
-              Give client access
-            </Button>
-          </div>
+        {canManageViewers ? (
+          <ViewerInviteForm firmId={firmId} clients={clients} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Only Traction Advisory can give a client viewer access. You can still change or remove
-            access from each client's own settings page.
+            Only the organisation owner can give a client viewer access. You can still see who has
+            access below.
           </p>
         )}
 
+        <StandingViewers
+          firmId={firmId}
+          firmName={firmName}
+          clientCount={clients.length}
+          canManage={canManageViewers}
+        />
+
         <div className="space-y-3">
+          <h3 className="text-sm font-medium">People who can see one client only</h3>
           {clients.map((c) => (
-            <ClientViewerList key={c.id} clientId={c.id} clientName={c.name} />
+            <ClientViewerList
+              key={c.id}
+              clientId={c.id}
+              clientName={c.name}
+              firmId={firmId}
+              clients={clients}
+              standing={standingQ.data?.viewers ?? []}
+              canManage={canManageViewers}
+            />
           ))}
           {clients.length === 0 && (
             <p className="text-sm text-muted-foreground">
@@ -323,27 +292,73 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   );
 }
 
-function ClientViewerList({ clientId, clientName }: { clientId: string; clientName: string }) {
+type Client = { id: string; name: string };
+
+function ClientViewerList({
+  clientId,
+  clientName,
+  firmId,
+  clients,
+  standing,
+  canManage,
+}: {
+  clientId: string;
+  clientName: string;
+  firmId: string;
+  clients: Client[];
+  standing: Array<{ userId: string; tier: DashboardTier }>;
+  canManage: boolean;
+}) {
   const qc = useQueryClient();
   const fetchAccess = useServerFn(listClientAccess);
   const revoke = useServerFn(revokeClientAccess);
+  const switchScope = useServerFn(switchStandingToSelected);
 
   const q = useQuery({
     queryKey: ["client-access", clientId],
     queryFn: () => fetchAccess({ data: { clientId } }),
   });
 
+  const [pending, setPending] = useState<{
+    id: string;
+    userId: string;
+    who: string;
+  } | null>(null);
+
   const revokeMut = useMutation({
     mutationFn: (id: string) => revoke({ data: { id } }),
     onSuccess: () => {
       toast.success("Access removed.");
+      setPending(null);
       qc.invalidateQueries({ queryKey: ["client-access", clientId] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not remove access."),
   });
 
+  const switchMut = useMutation({
+    mutationFn: (v: { userId: string; tier: DashboardTier }) =>
+      switchScope({
+        data: {
+          firmId,
+          userId: v.userId,
+          tier: v.tier,
+          clientIds: clients.filter((c) => c.id !== clientId).map((c) => c.id),
+        },
+      }),
+    onSuccess: () => {
+      toast.success(`Switched to named clients — ${clientName} is no longer included.`);
+      setPending(null);
+      qc.invalidateQueries({ queryKey: ["standing-viewers", firmId] });
+      qc.invalidateQueries({ queryKey: ["client-access"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not change their access."),
+  });
+
   const rows = q.data?.access ?? [];
   if (rows.length === 0) return null;
+
+  const standingFor = pending ? standing.find((s) => s.userId === pending.userId) : undefined;
+  const otherClients = clients.filter((c) => c.id !== clientId).length;
 
   return (
     <div>
@@ -357,18 +372,73 @@ function ClientViewerList({ clientId, clientName }: { clientId: string; clientNa
             </div>
             <div className="flex shrink-0 items-center gap-2">
               <Badge variant="outline">{tierLabel(a.tier)}</Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => revokeMut.mutate(a.id)}
-                disabled={revokeMut.isPending}
-              >
-                <Trash2 className="mr-1 h-4 w-4" /> Remove
-              </Button>
+              {standing.some((s) => s.userId === a.user_id) && (
+                <Badge variant="secondary">Also all clients</Badge>
+              )}
+              {canManage && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() =>
+                    setPending({
+                      id: a.id,
+                      userId: a.user_id,
+                      who: a.display_name ?? a.email ?? "This person",
+                    })
+                  }
+                >
+                  <Trash2 className="mr-1 h-4 w-4" /> Remove
+                </Button>
+              )}
             </div>
           </li>
         ))}
       </ul>
+
+      <AlertDialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {standingFor ? `This will not hide ${clientName}` : "Remove their access?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {standingFor ? (
+                <>
+                  {pending?.who} will still see {clientName}, because they have access to every
+                  client in this organisation. The only way to hide this one client is to switch them
+                  to a named list of clients instead, with {clientName} left out.
+                </>
+              ) : (
+                <>
+                  {pending?.who} will no longer see {clientName}.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            {standingFor ? (
+              <AlertDialogAction
+                onClick={() =>
+                  pending &&
+                  switchMut.mutate({ userId: pending.userId, tier: standingFor.tier })
+                }
+                disabled={switchMut.isPending || otherClients === 0}
+              >
+                Switch to the other {otherClients} client{otherClients === 1 ? "" : "s"}
+              </AlertDialogAction>
+            ) : (
+              <AlertDialogAction
+                onClick={() => pending && revokeMut.mutate(pending.id)}
+                disabled={revokeMut.isPending}
+              >
+                Remove access
+              </AlertDialogAction>
+            )}
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
