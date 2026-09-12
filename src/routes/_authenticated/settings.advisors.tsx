@@ -352,6 +352,15 @@ function AdvisorSettings() {
               </Button>
             )}
           </div>
+          {viewerIsSuperAdmin && (
+            <p className="mb-3 text-xs text-muted-foreground">
+              People on the practice team are added as members automatically whenever Positive
+              Traction creates a new client organisation, so nobody has to add themselves
+              afterwards. Being on the list grants nothing by itself. Use the
+              <Users className="mx-1 inline h-3 w-3" /> button on a person's row to put them on or
+              take them off.
+            </p>
+          )}
           {listQ.isLoading ? (
             <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
           ) : advisors.length === 0 ? (
