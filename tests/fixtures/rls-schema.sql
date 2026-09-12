@@ -79,11 +79,13 @@ create table public.email_send_state (id integer, retry_after_until timestamp wi
 create table public.email_unsubscribe_tokens (id uuid, email text, created_at timestamp with time zone, used_at timestamp with time zone, token_hash text);
 create table public.firm_members (id uuid, firm_id uuid, user_id uuid, role firm_member_role, created_at timestamp with time zone, updated_at timestamp with time zone, status text);
 create table public.firm_support_access (firm_id uuid, granted boolean, granted_by uuid, granted_at timestamp with time zone, revoked_at timestamp with time zone, note text, created_at timestamp with time zone, updated_at timestamp with time zone, id uuid, grantee_user_id uuid, expires_at timestamp with time zone, requested_by uuid, reason text);
+create table public.firm_viewer_access (id uuid, firm_id uuid, user_id uuid, tier dashboard_tier, granted_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text);
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
+create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.rate_limit_buckets (key text, window_start timestamp with time zone, count integer);
 create table public.reconciliation_snapshots (id uuid, client_id uuid, tenant_id text, report_key text, as_at date, payload jsonb, complete boolean, generated_by uuid, generated_at timestamp with time zone);
@@ -266,7 +268,7 @@ CREATE OR REPLACE FUNCTION app_private.user_can_read_client(_user_id uuid, _clie
 AS $function$
   select case when auth.uid() is not null and _user_id is distinct from auth.uid() then false else (
   SELECT app_private.user_can_manage_client(_user_id, _client_id)
-      OR app_private.has_client_access(_user_id, _client_id)
+      OR app_private.has_client_read_access(_user_id, _client_id)
       OR EXISTS (
         SELECT 1 FROM public.clients c
         WHERE c.id = _client_id
@@ -1162,6 +1164,94 @@ AS $function$
     and coalesce(xc.status, 'connected') <> 'disconnected'
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.is_practice_member_of(_user_id uuid, _firm_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select exists (
+    select 1
+    from public.firm_members fm
+    join public.practice_team pt on pt.user_id = fm.user_id
+    where fm.firm_id = _firm_id
+      and fm.user_id = _user_id
+      and fm.status = 'active'
+  )
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.can_manage_client_viewers(_user_id uuid, _firm_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select case when auth.uid() is not null and _user_id is distinct from auth.uid() then false else (
+    _firm_id is not null
+    and (
+      app_private.is_org_owner(_user_id, _firm_id)
+      or app_private.is_practice_member_of(_user_id, _firm_id)
+    )
+  ) end
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.has_standing_client_access(_user_id uuid, _client_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select case when auth.uid() is not null and _user_id is distinct from auth.uid() then false else (
+    exists (
+      select 1
+      from public.clients c
+      join public.firm_viewer_access fva
+        on fva.firm_id = c.firm_id and fva.user_id = _user_id
+      where c.id = _client_id and c.firm_id is not null
+    )
+  ) end
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.has_client_read_access(_user_id uuid, _client_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select app_private.has_client_access(_user_id, _client_id)
+      or app_private.has_standing_client_access(_user_id, _client_id)
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.viewer_tier(_user_id uuid, _client_id uuid)
+ RETURNS dashboard_tier
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _t public.dashboard_tier; _cap public.dashboard_tier;
+begin
+  if auth.uid() is not null and _user_id is distinct from auth.uid() then return null; end if;
+
+  select ca.tier::public.dashboard_tier into _t
+  from public.client_access ca
+  where ca.client_id = _client_id and ca.user_id = _user_id;
+
+  if _t is null then
+    select fva.tier into _t
+    from public.clients c
+    join public.firm_viewer_access fva
+      on fva.firm_id = c.firm_id and fva.user_id = _user_id
+    where c.id = _client_id;
+  end if;
+
+  if _t is null then return null; end if;
+
+  select e.tier into _cap from public.client_entitlement(_client_id) e;
+  if _cap is null then return 'basic'::public.dashboard_tier; end if;
+  return least(_t, _cap);
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1232,11 +1322,13 @@ alter table public.email_send_state enable row level security;
 alter table public.email_unsubscribe_tokens enable row level security;
 alter table public.firm_members enable row level security;
 alter table public.firm_support_access enable row level security;
+alter table public.firm_viewer_access enable row level security;
 alter table public.firms enable row level security;
 alter table public.loan_consolidation_accounts enable row level security;
 alter table public.loan_consolidation_snapshots enable row level security;
 alter table public.login_events enable row level security;
 alter table public.plan_levels enable row level security;
+alter table public.practice_team enable row level security;
 alter table public.profiles enable row level security;
 alter table public.rate_limit_buckets enable row level security;
 alter table public.reconciliation_snapshots enable row level security;
@@ -1494,6 +1586,17 @@ grant SELECT on table public.firm_support_access to service_role;
 grant TRIGGER on table public.firm_support_access to service_role;
 grant TRUNCATE on table public.firm_support_access to service_role;
 grant UPDATE on table public.firm_support_access to service_role;
+grant DELETE on table public.firm_viewer_access to authenticated;
+grant INSERT on table public.firm_viewer_access to authenticated;
+grant SELECT on table public.firm_viewer_access to authenticated;
+grant UPDATE on table public.firm_viewer_access to authenticated;
+grant DELETE on table public.firm_viewer_access to service_role;
+grant INSERT on table public.firm_viewer_access to service_role;
+grant REFERENCES on table public.firm_viewer_access to service_role;
+grant SELECT on table public.firm_viewer_access to service_role;
+grant TRIGGER on table public.firm_viewer_access to service_role;
+grant TRUNCATE on table public.firm_viewer_access to service_role;
+grant UPDATE on table public.firm_viewer_access to service_role;
 grant SELECT on table public.firms to authenticated;
 grant DELETE on table public.firms to service_role;
 grant INSERT on table public.firms to service_role;
@@ -1543,6 +1646,14 @@ grant SELECT on table public.plan_levels to service_role;
 grant TRIGGER on table public.plan_levels to service_role;
 grant TRUNCATE on table public.plan_levels to service_role;
 grant UPDATE on table public.plan_levels to service_role;
+grant SELECT on table public.practice_team to authenticated;
+grant DELETE on table public.practice_team to service_role;
+grant INSERT on table public.practice_team to service_role;
+grant REFERENCES on table public.practice_team to service_role;
+grant SELECT on table public.practice_team to service_role;
+grant TRIGGER on table public.practice_team to service_role;
+grant TRUNCATE on table public.practice_team to service_role;
+grant UPDATE on table public.practice_team to service_role;
 grant SELECT on table public.profiles to authenticated;
 grant DELETE on table public.profiles to service_role;
 grant INSERT on table public.profiles to service_role;
@@ -1841,9 +1952,9 @@ create policy "Manage cost classifications by firm (update)" on public.client_co
   WHERE ((c.id = client_cost_classifications.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id))))))) with check ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_cost_classifications.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
-create policy "Viewers read cost classifications" on public.client_cost_classifications as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "Viewers read cost classifications" on public.client_cost_classifications as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_cost_classifications as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "Client viewers read notes" on public.client_notes as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "Client viewers read notes" on public.client_notes as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy "manage client notes by firm (delete)" on public.client_notes as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_notes.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -1857,7 +1968,7 @@ create policy "manage client notes by firm (update)" on public.client_notes as p
    FROM clients c
   WHERE ((c.id = client_notes.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy mfa_aal2_required on public.client_notes as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "client viewers read their finalised reports" on public.client_reports as permissive for select to authenticated using ((app_private.has_client_access(auth.uid(), client_id) AND (status = ANY (ARRAY['final'::text, 'sent'::text]))));
+create policy "client viewers read their finalised reports" on public.client_reports as permissive for select to authenticated using ((app_private.has_client_read_access(auth.uid(), client_id) AND (status = ANY (ARRAY['final'::text, 'sent'::text]))));
 create policy mfa_aal2_required on public.client_reports as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "staff read client reports" on public.client_reports as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
 create policy "Manage statutory accounts by firm (delete)" on public.client_statutory_accounts as permissive for delete to authenticated using ((EXISTS ( SELECT 1
@@ -1874,7 +1985,7 @@ create policy "Manage statutory accounts by firm (update)" on public.client_stat
   WHERE ((c.id = client_statutory_accounts.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id))))))) with check ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_statutory_accounts.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
-create policy "Viewers read statutory accounts" on public.client_statutory_accounts as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "Viewers read statutory accounts" on public.client_statutory_accounts as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_statutory_accounts as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "support grant reads statutory accounts" on public.client_statutory_accounts as permissive for select to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
@@ -1893,7 +2004,7 @@ create policy "Manage true breakeven inputs by firm (update)" on public.client_t
   WHERE ((c.id = client_true_breakeven_inputs.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id))))))) with check ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_true_breakeven_inputs.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
-create policy "Viewers read true breakeven inputs" on public.client_true_breakeven_inputs as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "Viewers read true breakeven inputs" on public.client_true_breakeven_inputs as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_true_breakeven_inputs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "manage client xero orgs by firm (delete)" on public.client_xero_orgs as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
@@ -1908,7 +2019,7 @@ create policy "manage client xero orgs by firm (update)" on public.client_xero_o
    FROM clients c
   WHERE ((c.id = client_xero_orgs.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy mfa_aal2_required on public.client_xero_orgs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "viewers read assigned client xero orgs" on public.client_xero_orgs as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "viewers read assigned client xero orgs" on public.client_xero_orgs as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy "firm members read firm clients" on public.clients as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy "firm owners manage firm clients (delete)" on public.clients as permissive for delete to authenticated using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
 create policy "firm owners manage firm clients (insert)" on public.clients as permissive for insert to authenticated with check (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
@@ -1916,7 +2027,7 @@ create policy "firm owners manage firm clients (select)" on public.clients as pe
 create policy "firm owners manage firm clients (update)" on public.clients as permissive for update to authenticated using (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id))) with check (((firm_id IS NOT NULL) AND app_private.is_firm_owner(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.clients as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "support grant reads firm clients" on public.clients as permissive for select to authenticated using (((firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), firm_id)));
-create policy "viewers read assigned clients" on public.clients as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), id));
+create policy "viewers read assigned clients" on public.clients as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), id));
 create policy "Firm people can manage consolidation group members (delete)" on public.consolidation_group_members as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM consolidation_groups g
   WHERE ((g.id = consolidation_group_members.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id)))));
@@ -1978,6 +2089,11 @@ create policy "Owners and members read support access" on public.firm_support_ac
 create policy "Owners approve, staff may only revoke" on public.firm_support_access as permissive for update to authenticated using ((app_private.is_org_owner(auth.uid(), firm_id) OR (app_private.is_super_admin(auth.uid()) AND (grantee_user_id = auth.uid())))) with check ((app_private.is_org_owner(auth.uid(), firm_id) OR (app_private.is_super_admin(auth.uid()) AND (granted = false))));
 create policy "Staff may request support access" on public.firm_support_access as permissive for insert to authenticated with check ((app_private.is_super_admin(auth.uid()) AND (grantee_user_id = auth.uid()) AND (requested_by = auth.uid()) AND (granted = false) AND (granted_by IS NULL) AND (granted_at IS NULL) AND (revoked_at IS NULL)));
 create policy mfa_aal2_required on public.firm_support_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.firm_viewer_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "owners manage standing viewer grants (delete)" on public.firm_viewer_access as permissive for delete to authenticated using (app_private.can_manage_client_viewers(auth.uid(), firm_id));
+create policy "owners manage standing viewer grants (insert)" on public.firm_viewer_access as permissive for insert to authenticated with check (app_private.can_manage_client_viewers(auth.uid(), firm_id));
+create policy "owners manage standing viewer grants (select)" on public.firm_viewer_access as permissive for select to authenticated using ((app_private.can_manage_client_viewers(auth.uid(), firm_id) OR (user_id = auth.uid())));
+create policy "owners manage standing viewer grants (update)" on public.firm_viewer_access as permissive for update to authenticated using (app_private.can_manage_client_viewers(auth.uid(), firm_id)) with check (app_private.can_manage_client_viewers(auth.uid(), firm_id));
 create policy "firm members read own firm" on public.firms as permissive for select to authenticated using (app_private.has_firm_access(auth.uid(), id));
 create policy "firm owners update own firm" on public.firms as permissive for update to authenticated using (app_private.is_firm_owner(auth.uid(), id)) with check (app_private.is_firm_owner(auth.uid(), id));
 create policy mfa_aal2_required on public.firms as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -1995,7 +2111,7 @@ create policy "firm people manage loan accounts (update)" on public.loan_consoli
    FROM clients c
   WHERE ((c.id = loan_consolidation_accounts.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy mfa_aal2_required on public.loan_consolidation_accounts as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "viewers read loan accounts for their client" on public.loan_consolidation_accounts as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "viewers read loan accounts for their client" on public.loan_consolidation_accounts as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy "Firm people can manage loan snapshots (delete)" on public.loan_consolidation_snapshots as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM consolidation_groups g
   WHERE ((g.id = loan_consolidation_snapshots.group_id) AND app_private.has_firm_access(auth.uid(), g.firm_id)))));
@@ -2022,6 +2138,8 @@ create policy "plan_levels_write (delete)" on public.plan_levels as permissive f
 create policy "plan_levels_write (insert)" on public.plan_levels as permissive for insert to authenticated with check (app_private.me_is_super_admin());
 create policy "plan_levels_write (select)" on public.plan_levels as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy "plan_levels_write (update)" on public.plan_levels as permissive for update to authenticated using (app_private.me_is_super_admin()) with check (app_private.me_is_super_admin());
+create policy mfa_aal2_required on public.practice_team as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "practice team readable by super admin" on public.practice_team as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
 create policy "Users update own display name" on public.profiles as permissive for update to authenticated using ((auth.uid() = id)) with check ((auth.uid() = id));
 create policy "Users view own profile" on public.profiles as permissive for select to authenticated using ((auth.uid() = id));
 create policy mfa_aal2_required on public.profiles as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -2031,7 +2149,7 @@ create policy "rate_limit_buckets service only (insert)" on public.rate_limit_bu
 create policy "rate_limit_buckets service only (select)" on public.rate_limit_buckets as permissive for select to service_role using (true);
 create policy "rate_limit_buckets service only (update)" on public.rate_limit_buckets as permissive for update to service_role using (true) with check (true);
 create policy mfa_aal2_required on public.reconciliation_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "read reconciliation snapshots for accessible clients" on public.reconciliation_snapshots as permissive for select to authenticated using ((app_private.user_can_manage_client(auth.uid(), client_id) OR app_private.has_client_access(auth.uid(), client_id)));
+create policy "read reconciliation snapshots for accessible clients" on public.reconciliation_snapshots as permissive for select to authenticated using ((app_private.user_can_manage_client(auth.uid(), client_id) OR app_private.has_client_read_access(auth.uid(), client_id)));
 create policy "Users manage own report cache (delete)" on public.report_cache as permissive for delete to authenticated using ((auth.uid() = user_id));
 create policy "Users manage own report cache (insert)" on public.report_cache as permissive for insert to authenticated with check ((auth.uid() = user_id));
 create policy "Users manage own report cache (select)" on public.report_cache as permissive for select to authenticated using ((auth.uid() = user_id));
@@ -2067,7 +2185,7 @@ create policy "Super admins can manage tier settings (delete)" on public.tier_se
 create policy "Super admins can manage tier settings (insert)" on public.tier_settings as permissive for insert to authenticated with check (app_private.has_role(auth.uid(), 'super_admin'::app_role));
 create policy "Super admins can manage tier settings (select)" on public.tier_settings as permissive for select to authenticated using (app_private.has_role(auth.uid(), 'super_admin'::app_role));
 create policy "Super admins can manage tier settings (update)" on public.tier_settings as permissive for update to authenticated using (app_private.has_role(auth.uid(), 'super_admin'::app_role)) with check (app_private.has_role(auth.uid(), 'super_admin'::app_role));
-create policy "Viewers read accessible tier widget config" on public.tier_widget_config as permissive for select to authenticated using (((auth.uid() IS NOT NULL) AND ((client_id IS NULL) OR app_private.has_client_access(auth.uid(), client_id))));
+create policy "Viewers read accessible tier widget config" on public.tier_widget_config as permissive for select to authenticated using (((auth.uid() IS NOT NULL) AND ((client_id IS NULL) OR app_private.has_client_read_access(auth.uid(), client_id))));
 create policy "manage tier widget config by firm or super admin (delete)" on public.tier_widget_config as permissive for delete to authenticated using ((((client_id IS NULL) AND app_private.me_is_super_admin()) OR ((client_id IS NOT NULL) AND (EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = tier_widget_config.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))))));
@@ -2081,7 +2199,7 @@ create policy "manage tier widget config by firm or super admin (update)" on pub
    FROM clients c
   WHERE ((c.id = tier_widget_config.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))))));
 create policy mfa_aal2_required on public.tier_widget_config as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "Viewers can read lines for their client" on public.unreconciled_lines as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "Viewers can read lines for their client" on public.unreconciled_lines as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy "Viewers can update comments for their client" on public.unreconciled_lines as permissive for update to authenticated using (app_private.has_client_access(auth.uid(), client_id)) with check (app_private.has_client_access(auth.uid(), client_id));
 create policy "manage unreconciled lines by firm (delete)" on public.unreconciled_lines as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
@@ -2096,7 +2214,7 @@ create policy "manage unreconciled lines by firm (update)" on public.unreconcile
    FROM clients c
   WHERE ((c.id = unreconciled_lines.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy mfa_aal2_required on public.unreconciled_lines as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "Viewers can read uploads for their client" on public.unreconciled_uploads as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "Viewers can read uploads for their client" on public.unreconciled_uploads as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy "manage unreconciled uploads by firm (delete)" on public.unreconciled_uploads as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = unreconciled_uploads.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -2150,4 +2268,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 4b72d63d00af8c71d5db9650fd2b7a9ce020f45f13a0345c3fef35573ab8a0ef
+-- catalogue-fingerprint: ef34df9f03ef68d5d483982730be7ea4a79ee7a577a78267abc6286e60feb26e
