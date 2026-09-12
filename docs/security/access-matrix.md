@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1472**. Known failures: **0**.
+Rows: **1518**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -128,6 +128,11 @@ None.
 | server fn: read a client dashboard | execute | DENY | live | PK 2 (requireAal2); no session reaches a server function |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 1 deny by default — no session, no server function |  |
 | server fn: write client data | execute | DENY | live | PK 1 deny by default — no session, no server function |  |
+| record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
+| security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 
 ## Active member, aal1 session only
 
@@ -255,6 +260,11 @@ None.
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | server fn: read a client dashboard | execute | DENY | live | PK 2 (requireAal2); no session reaches a server function |  |
+| record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
+| security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 
 ## Active member of a DIFFERENT organisation
 
@@ -377,6 +387,11 @@ None.
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
+| security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 
 ## Organisation A's owner, reading organisation B
 
@@ -834,6 +849,12 @@ None.
 | practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| record a security attestation | execute | ALLOW | pglite, live | Spec §17 — attestations are platform metadata, super admin only |  |
+| a security attestation's confirmed_by and confirmed_at are set by the server | execute | ALLOW | pglite, live | Spec §17 — the function stamps auth.uid() and now(); no caller-supplied identity or time |  |
+| security_attestations | read | ALLOW | pglite, live | PK 2 path C — platform metadata, no client data |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 
 ## Support-grant holder, grant expired
 
@@ -1161,6 +1182,11 @@ None.
 | removal leaves client viewer and standing grants untouched | execute | ALLOW | pglite, live | Spec §15 — removal is a membership status change and nothing else |  |
 | server fn: read a client dashboard | execute | ALLOW | live | PK 2 path A |  |
 | server fn: list pending member invitations | execute | DENY | live | PK 2 path C — member invitations are platform metadata, super admin only |  |
+| record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
+| security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 
 ## Organisation staff (own organisation)
 
@@ -1297,6 +1323,11 @@ None.
 | removing the organisation's last remaining member | execute | DENY | pglite, live | Spec §15 — an organisation is never stranded with no members |  |
 | leave the organisation (remove yourself) | execute | ALLOW | pglite, live | Spec §15 — anyone who is not the owner may leave |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
+| security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 
 ## Client viewer (client_access on one client)
 
@@ -1345,6 +1376,11 @@ None.
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
+| security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1461,6 +1497,11 @@ None.
 | practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| record a security attestation | execute | ALLOW | pglite, live | Spec §17 — acts as a platform admin (this fixture identity also holds super_admin); PK 5 is untouched, no organisation or client data is reachable here | The support-grant subject in the fixture also holds the super_admin role, so this row proves the Path C rule, not a support-grant widening. |
+| security_attestations | read | ALLOW | pglite, live | PK 2 path C — reads as a platform admin; no organisation or client data on this table |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 
 ## Super admin approving their own support grant
 
@@ -1555,6 +1596,11 @@ None.
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | server fn: read a client dashboard | execute | ALLOW | live | PK section 2 path D — read-only over every client in that organisation |  |
 | server fn: write client data | execute | DENY | live | PK section 2 path D — a standing grant is READ-ONLY and never enters a write path |  |
+| record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
+| security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 
 ## Live smoke-suite test account (confined to ZZ Security Test Org, banned outside a run)
 
