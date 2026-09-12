@@ -43,6 +43,8 @@ const U = {
   ownerB: "99990003-2222-4222-8222-222222222222",
   viewer: "99990004-1111-4111-8111-111111111111",
   standingViewer: "99990011-1111-4111-8111-111111111111",
+  /** Holds BOTH a standing grant and a specific grant, to prove precedence. */
+  mixedViewer: "99990012-1111-4111-8111-111111111111",
   supportActive: "99990005-1111-4111-8111-111111111111",
   supportExpired: "99990006-1111-4111-8111-111111111111",
   supportRevoked: "99990007-1111-4111-8111-111111111111",
@@ -443,17 +445,18 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return Number(p.rows[0]?.n) === 2 ? "allow" : "deny";
   }
   if (r === "app_private.viewer_tier() — specific grant overrides standing") {
-    // The standing grant is multi_company; the specific grant on CLIENT_A is basic.
+    // The standing grant is multi_company and the client is entitled to it; the
+    // specific grant on that client is advisory, and must win.
     const p = await db.query<{ t: string | null }>(
-      `select app_private.viewer_tier('${U.viewer}', '${CLIENT_A}')::text as t`,
+      `select app_private.viewer_tier('${U.mixedViewer}', '${CLIENT_NEW}')::text as t`,
     );
-    return p.rows[0]?.t === "basic" ? "allow" : "deny";
+    return p.rows[0]?.t === "advisory" ? "allow" : "deny";
   }
   if (r === "app_private.viewer_tier() — the client's entitlement caps the level") {
-    // No subscription on CLIENT_NEW, so the entitlement is Standard (basic) and
-    // caps the standing grant's multi_company.
+    // CLIENT_A is free_forever at Standard (basic), which caps the standing
+    // grant's multi_company.
     const p = await db.query<{ t: string | null }>(
-      `select app_private.viewer_tier('${U.standingViewer}', '${CLIENT_NEW}')::text as t`,
+      `select app_private.viewer_tier('${U.standingViewer}', '${CLIENT_A}')::text as t`,
     );
     return p.rows[0]?.t === "basic" ? "allow" : "deny";
   }
@@ -461,14 +464,14 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     await db.exec("savepoint revoke_probe");
     try {
       await db.exec(
-        `delete from public.client_access where client_id = '${CLIENT_A}' and user_id = '${U.standingViewer}'`,
+        `delete from public.client_access where client_id = '${CLIENT_NEW}' and user_id = '${U.mixedViewer}'`,
       );
       const still = await db.query<{ n: number }>(
         `select (select count(*) from public.firm_viewer_access
-                  where firm_id = '${ORG_A}' and user_id = '${U.standingViewer}')::int as n`,
+                  where firm_id = '${ORG_A}' and user_id = '${U.mixedViewer}')::int as n`,
       );
       const reads = await db.query<{ ok: boolean }>(
-        `select app_private.has_client_read_access('${U.standingViewer}', '${CLIENT_A}') as ok`,
+        `select app_private.has_client_read_access('${U.mixedViewer}', '${CLIENT_NEW}') as ok`,
       );
       return Number(still.rows[0]?.n) === 1 && reads.rows[0]?.ok === true ? "allow" : "deny";
     } finally {
@@ -590,11 +593,19 @@ beforeAll(async () => {
       ('${CLIENT_B}', 'Client B', '${U.ownerB}', '${ORG_B}', '', 'accrual', false, '{}', 1, 'none', '{}');
     -- The standing grant (path D) and a client added to Organisation A after it.
     insert into public.firm_viewer_access(id, firm_id, user_id, tier, granted_by) values
-      ('e0000002-1111-4111-8111-111111111111', '${ORG_A}', '${U.standingViewer}', 'multi_company', '${U.ownerA}');
+      ('e0000002-1111-4111-8111-111111111111', '${ORG_A}', '${U.standingViewer}', 'multi_company', '${U.ownerA}'),
+      ('e0000003-1111-4111-8111-111111111111', '${ORG_A}', '${U.mixedViewer}', 'multi_company', '${U.ownerA}');
     insert into public.clients(id, name, owner_user_id, firm_id, notes, report_basis,
                                cost_classification_enabled, basis_overrides, max_xero_orgs,
                                consolidation_mode, consolidation_org_ids) values
       ('${CLIENT_NEW}', 'Client added later', '${U.ownerA}', '${ORG_A}', '', 'accrual', false, '{}', 1, 'none', '{}');
+    -- The later client is entitled to the top level, so a capped result cannot be
+    -- mistaken for precedence working.
+    insert into public.client_subscriptions(id, client_id, subscription_type, status, dashboard_tier) values
+      ('e0000004-1111-4111-8111-111111111111', '${CLIENT_NEW}', 'free_forever', 'free_forever', 'multi_company');
+    -- ... and the mixed holder also has a SPECIFIC grant on it, at a lower level.
+    insert into public.client_access(id, client_id, user_id, tier) values
+      ('e0000005-1111-4111-8111-111111111111', '${CLIENT_NEW}', '${U.mixedViewer}', 'advisory');
     insert into public.xero_connections(id, user_id, tenant_id, tenant_name, firm_id, status,
                                         expires_at, access_token_enc, refresh_token_enc, enc_version) values
       ('${CONN_A}', '${U.ownerA}', '${TENANT_A}', 'File A', '${ORG_A}', 'connected',
