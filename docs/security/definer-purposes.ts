@@ -11,7 +11,6 @@
 export const DEFINER_PURPOSES: Record<string, string> = {
   // ── app_private: the access rules themselves (invariant 6). Never called from
   //    TypeScript; called by RLS policies and by the public wrappers.
-  "app_private.assert_aal2": "Refuses to continue unless the caller signed in with a second factor.",
   "app_private.assert_xero_connection_firm_match":
     "Trigger guard: a client may only be linked to a Xero file belonging to its own organisation.",
   "app_private.client_for_tenant": "Which client a Xero file belongs to, for system contexts.",
@@ -44,8 +43,6 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "app_private.user_can_manage_client": "Whether a person may manage a client's settings.",
   "app_private.user_can_read_client": "Whether a person may read a client.",
   "app_private.user_can_write_client": "Whether a person may change a client's data.",
-  "app_private.is_aal2": "Whether the current session used a second factor.",
-  "app_private.firm_ids_for_client": "Which organisations a client belongs to.",
 
   // ── public: caller-scoped authorisation helpers used by server functions.
   "public.assert_advisor": "Stops the call unless the caller is an advisor.",
@@ -136,7 +133,6 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.audit_table_change": "Trigger: records inserts, updates and deletes on audited tables.",
   "public.audit_user_roles_change": "Trigger: records every change to platform roles.",
   "public.purge_expired_security_logs": "Deletes audit and sign-in rows past their retention period.",
-  "public.set_presence_seen_at": "Trigger: the server, not the browser, sets the last-seen time.",
   "public.check_rate_limit": "Counts attempts in a time window so a public route can refuse abuse.",
   "public.handle_new_user": "Trigger: creates a profile row when a new person signs up.",
 
@@ -148,11 +144,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.xero_missing_scopes": "Which Xero permissions a connection is missing.",
   "public.xero_required_scopes": "The Xero permissions the app requires.",
   "public.xero_tenant_already_linked": "Whether a Xero file is already linked in an organisation.",
-  "public.move_xero_file_to_client": "Moves a Xero file to another client in the same organisation, audited.",
   "public.enforce_client_max_xero_orgs": "Trigger: keeps a client within its own Xero file cap.",
   "public.enforce_client_xero_org_allowance": "Trigger: keeps an organisation within its plan's Xero file allowance.",
-  "public.tg_xero_oauth_states_validate": "Trigger: validates a Xero sign-in state row before it is stored.",
-  "public.tg_set_updated_at": "Trigger: keeps the updated-at column current.",
 
   // ── public: email queue (system contexts only).
   "public.enqueue_email": "Puts an email on the sending queue.",
