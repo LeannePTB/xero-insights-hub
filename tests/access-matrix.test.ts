@@ -620,7 +620,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r === "manage the practice team (admin_add/remove_practice_member)") {
     // The advisors-page control calls exactly these two functions, nothing else.
     const add = await probe(`select public.admin_add_practice_member('${U.grantTarget}')`);
-    if (!add.ok) { console.error("DBG", row.role, add.error); return "deny"; }
+    if (!add.ok) return "deny";
     const rm = await probe(`select public.admin_remove_practice_member('${U.grantTarget}')`);
     return rm.ok ? "allow" : "deny";
   }
