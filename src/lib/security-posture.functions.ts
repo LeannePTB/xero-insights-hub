@@ -124,16 +124,13 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
     const readRes = await (context.supabase as any).rpc("read_audit_posture");
     if (!readRes.error && readRes.data) readAudit = [readRes.data as PostureCheck];
 
-    // Live smoke suite containment check. Same pattern again: the definer
-    // function asserts aal2 + super admin itself.
-    let testAccounts: PostureCheck[] = [];
-    const testRes = await (context.supabase as any).rpc("test_accounts_posture");
-    if (!testRes.error && testRes.data) testAccounts = [testRes.data as PostureCheck];
+    // The live-suite containment check is appended by `security_posture()`
+    // itself, so it must NOT be fetched again here — doing so rendered
+    // "Security test accounts are contained" twice on the card.
 
     const checks: PostureCheck[] = [
       ...((data?.checks ?? []) as PostureCheck[]),
       ...readAudit,
-      ...testAccounts,
       ...(await serverConfigChecks()),
     ];
     return {
