@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
-import { findVerifiedAuthUserByEmail } from "@/lib/auth-users.server";
+
 
 /**
  * The Traction Advisory practice team (people-and-access Batch 5).
