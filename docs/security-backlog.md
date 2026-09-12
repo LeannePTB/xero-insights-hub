@@ -366,7 +366,13 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     atomic and single-use, and `anon`/`authenticated` hold no privileges on the table (verified: `anon`
     has zero grants in `public`). Fix: hash the token like the others, and rate limit the route by IP.
 
-41. **Three `app_private` trigger functions still hold EXECUTE for `PUBLIC` (opened 12 Sep 2026,
+41. **CLOSED 12 Sep 2026 (final hygiene batch).** One revoke migration; `proacl` on all three is now
+    `{postgres=X/postgres}` (was `NULL`, i.e. EXECUTE to PUBLIC). The triggers are still attached and
+    enabled — `trg_enforce_client_limit` on `clients`, `trg_enforce_xero_org_limit` and
+    `trg_enforce_xero_org_limit_on_move` on `xero_connections`, all `tgenabled = 'O'` — and a trigger runs
+    as the table owner, not the caller, so `PLAN_LIMIT_CLIENTS` / `PLAN_LIMIT_XERO_ORGS` still fire. The
+    definer register's "callable by signed-in users" count fell from 97 to 94 as a result. Original
+    finding: **Three `app_private` trigger functions still hold EXECUTE for `PUBLIC` (opened 12 Sep 2026,
     Phase 7 batch 4 re-audit).** `app_private.enforce_client_limit`, `enforce_xero_org_limit` and
     `enforce_xero_org_limit_on_move` return true for `has_function_privilege('anon', oid, 'execute')`;
     every other definer function has EXECUTE revoked. Not exploitable — Postgres refuses to call a
