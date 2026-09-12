@@ -313,7 +313,12 @@ async function openSession(account: Account, stepUp: boolean): Promise<Session> 
 }
 
 // --------------------------------------------------------------- calling the app
-type CallOutcome = { outcome: "allow" | "deny" | "inconclusive"; detail: string };
+type CallOutcome = {
+  outcome: "allow" | "deny" | "inconclusive";
+  detail: string;
+  /** Raw response payload, for probes that must check the RESULT, not the status. */
+  body?: string;
+};
 
 /**
  * Extracts the message from a TanStack-serialised error payload.
