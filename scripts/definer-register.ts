@@ -41,6 +41,7 @@ type Catalogue = {
   functions: Fn[];
   all_functions: { schema: string; name: string; definer: boolean; body: string }[];
   policies: { table: string; name: string; expr: string }[];
+  cron_jobs: { name: string | null; command: string }[];
   triggers: { table: string; name: string; function: string }[];
 };
 
@@ -104,6 +105,8 @@ function render(cat: Catalogue) {
     }
     for (const p of cat.policies) if (p.expr.includes(f.name)) callers.push(`policy \`${p.table}: ${p.name}\``);
     for (const t of cat.triggers) if (t.function === f.name) callers.push(`trigger \`${t.table}: ${t.name}\``);
+    for (const j of cat.cron_jobs)
+      if (j.command.includes(f.name)) callers.push(`scheduled job \`${j.name ?? "unnamed"}\``);
 
     return {
       ...f,

@@ -48,6 +48,10 @@ select json_build_object(
     from pg_policy pol join pg_class c on c.oid = pol.polrelid
     where c.relnamespace = 'public'::regnamespace
   ), '[]'::json),
+  'cron_jobs', coalesce((
+    select json_agg(json_build_object('name', j.jobname, 'command', j.command))
+    from cron.job j
+  ), '[]'::json),
   'triggers', coalesce((
     select json_agg(json_build_object(
       'table', c.relnamespace::regnamespace::text || '.' || c.relname,
