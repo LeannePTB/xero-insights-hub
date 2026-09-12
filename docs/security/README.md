@@ -13,16 +13,22 @@ Traction Advisory is a Xero-connected advisor dashboard for accounting practices
 
 Generated or verified registers: [definer-register.md](./definer-register.md), [admin-client-register.md](./admin-client-register.md), [grant-dump-phase7.md](./grant-dump-phase7.md), [xero-assessment-inputs.md](./xero-assessment-inputs.md), and open work in [../security-backlog.md](../security-backlog.md).
 
-Policies:
+Policies and registers:
 
+- [Access review](./access-review.md)
+- [Backup, restore and recovery objectives](./backup-and-restore.md)
 - [Data hosting & third parties](./data-hosting.md)
 - [Data residency — decision record](./data-residency-decision.md)
 - [Data retention](./data-retention.md)
+- [Incident register, drills and security contact](./incident-register.md)
 - [Incident response](./incident-response.md)
+- [Key and secret rotation](./key-and-secret-rotation.md)
 - [Security monitoring](./monitoring.md)
 - [Secure SDLC](./sdlc.md)
 - [Vulnerability management](./vulnerability-management.md)
+- [Vulnerability management — records and SLA](./vulnerability-records.md)
 - [Xero assessment mapping](./xero-assessment-mapping.md)
+
 
 ## Technical controls in place
 
