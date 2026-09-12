@@ -318,10 +318,14 @@ const TARGET: Record<string, Record<string, string>> = {
     user_id: q(U.superAdmin),
     role: q("super_admin"),
   },
+  security_attestations: {
+    check_key: q("leaked_password"),
+    confirmed_by: q(U.superAdmin),
+  },
 };
 
 /** Primary key column used for the row-scoped read/update/delete probe. */
-const PK: Record<string, string> = { tier_settings: "tier" };
+const PK: Record<string, string> = { tier_settings: "tier", security_attestations: "check_key" };
 const pkOf = (t: string) => PK[t] ?? "id";
 
 /** Database functions callable in the fixture, with a synthetic argument set. */
@@ -612,6 +616,33 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     }
     const p = await probe(`delete from public.practice_team where user_id = '${U.ownerA}'`);
     return p.ok && p.rows > 0 ? "allow" : "deny";
+  }
+  // ---- attestations (Spec §17) ----------------------------------------
+  if (r === "record a security attestation") {
+    const p = await probe(`select public.record_security_attestation('leaked_password', 'probe')`);
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "a security attestation's confirmed_by and confirmed_at are set by the server") {
+    // The function takes no identity or timestamp. Proved by asserting the row
+    // it writes carries the CALLER's id and a fresh timestamp, whatever was
+    // there before (the fixture row names the same super admin, so it is first
+    // re-pointed at a different person by a privileged write).
+    await seedThenActAs(
+      row.role,
+      `update public.security_attestations
+          set confirmed_by = '${U.ownerA}', confirmed_at = now() - interval '400 days'
+        where check_key = 'leaked_password'`,
+    );
+    const p = await probe(`select public.record_security_attestation('leaked_password', null)`);
+    if (!p.ok) return "deny";
+    await db.exec("set local role postgres");
+    const after = await db.query<{ n: number }>(
+      `select (select count(*) from public.security_attestations
+                where check_key = 'leaked_password'
+                  and confirmed_by = '${CONTEXT[row.role].uid}'
+                  and confirmed_at > now() - interval '1 minute')::int as n`,
+    );
+    return Number(after.rows[0]?.n) === 1 ? "allow" : "deny";
   }
   if (r.startsWith("profiles")) {
     const uid = CONTEXT[row.role].uid;

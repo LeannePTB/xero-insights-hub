@@ -1,57 +1,42 @@
-# Slim live smoke suite — implementation record (12 Sep 2026)
+# Attestations for checks no system can read
 
-Classification: SECURITY-RELEVANT — new identities, auth/session handling, new
-tables, a public endpoint, a posture check, real server-function execution.
+SECURITY-RELEVANT: new table, new SECURITY DEFINER function, posture check, admin screen.
+Threat: an attestation must never be forgeable, never self-stamped by the caller, and never
+able to make a machine-readable control look green. Invariants touched: PK 1 (deny by default),
+PK 2 (aal2 in the database), PK 3 (super_admin here is platform metadata only, Path C), PK 6
+(the rule lives in the database), PK 9 (nothing loosens).
 
-## Threat and boundary
+## 1. `public.security_attestations`
+`check_key` (PK/unique), `confirmed_by uuid`, `confirmed_at`, `note` (≤500 chars),
+`expires_after_days int default 180`, timestamps. RLS on; `revoke all from anon, authenticated`;
+`grant select` to `authenticated` only; `grant all` to `service_role`; per-command SELECT policy
+naming `authenticated` and requiring `app_private.me_is_super_admin()`; restrictive
+`mfa_aal2_required` guard; no insert/update/delete policy at all (writes only via the definer
+function). Audited by `audit_table_change`.
 
-The suite creates real accounts. The threat is that those accounts, or the
-endpoint that runs them, become a way into a real organisation. Boundary, all in
-the database, none by convention:
+## 2. `public.record_security_attestation(_check_key text, _note text)`
+aal2 + super admin asserted first, `SET search_path = ''`, `EXECUTE` revoked from `PUBLIC`/`anon`.
+Refuses any key not in a fixed attestable list (`leaked_password` only). Stamps `auth.uid()` and
+`now()` itself — no caller-supplied identity or time. Upserts one row per key and writes
+`audit_log` action `security_attestation_recorded`.
 
-- `firms.is_test` marks the one isolated organisation; `app_private.confine_security_test_accounts()`
-  triggers on `firm_members`, `client_access`, `firm_viewer_access`,
-  `firm_support_access`, `user_roles`, `practice_team` and `firms` refuse a test
-  identity anywhere else, and refuse a platform role or practice-team row
-  outright — including for `service_role`. Proved by attempting it as
-  `service_role` in the suite itself.
-- Accounts are banned whenever a run is not in progress (sweep → unban → run →
-  re-ban + sign out + restore, in `finally`).
-- Credentials and TOTP secrets are generated server-side, encrypted with
-  `TOKEN_ENC_KEY`, and stored in service-role-only tables with no `anon` or
-  `authenticated` privilege.
-- The test organisation has no Xero connection, so no Xero API call is reachable.
-- The public route's credential is one owner-added secret, compared in constant
-  time, rate limited to six runs an hour before any work, returning counts only.
+## 3. Posture
+`hibp`/`leaked_password` check in `src/lib/security-posture.functions.ts` reads the attestation
+through `context.supabase` (RLS applies): OK when current, Warn "confirmed on <date>, needs
+re-confirming" when older than `expires_after_days`, Warn "not verified" when absent. Evidence
+always states this is a recorded human confirmation, naming who and when. Attestation is applied
+only to checks in an explicit `ATTESTABLE` map; never to a machine-readable check.
 
-## What it proves that the copy cannot
+## 4. Screen
+`SecurityPostureCard` shows a Confirm control with an optional note on attestable checks, super
+admin only, with wording that the person is asserting they checked the backend setting
+themselves. No attestation is recorded on the owner's behalf.
 
-Real sessions and the real server functions: the same owner on aal2 and on aal1,
-staff on aal2, a standing viewer on aal2, and anonymous — calling `listClients`,
-`getClient`, `renameClient`, `inviteClientViewer`, `revokeClientAccess`,
-`removeOrganisationMember` and one Path C call (`listFirmMemberInvites`). Every
-expectation is read from `docs/security/access-matrix.ts`; there is no second
-expectation list.
+## 5. Docs and matrix
+Spec §17; `xero-assessment-inputs.md` MFA/password row becomes "attested in-product, with who
+and when, setting not machine-readable"; matrix rows for super-admin-only recording and reading,
+denial for staff/support/viewers/aal1/anonymous, and that no path sets `confirmed_by`/
+`confirmed_at`. Regenerate fixture, definer register, access matrix.
 
-## Objects
-
-Database: `firms.is_test`; `security_test_accounts`, `security_test_run_state`;
-`app_private.is_security_test_account`, `security_test_firm_id`,
-`confine_security_test_accounts()`; `public.test_accounts_posture()`;
-`admin_firm_overview` (test firms excluded, still `security_invoker`),
-`online_users()` and `security_posture()` exclude test identities.
-
-Code: `src/lib/live-access-tests.server.ts`, `src/lib/totp.server.ts`,
-`src/lib/live-access-tests.functions.ts`,
-`src/routes/api/public/security/run-access-tests.ts`,
-`scripts/run-live-access-tests.ts`, the `/admin/security` button, and the posture
-check wiring.
-
-Docs: spec §16, admin-client register, unauthenticated allow-list, definer
-purposes, matrix (11 new rows), backlog, roadmap.
-
-## Secrets
-
-Exactly one, owner-added: `SECURITY_TEST_TRIGGER_SECRET`. Everything else is
-server-generated. No super-admin test account. No real organisation's data
-changes.
+## After
+`bun run security:check` before/after with fingerprint, typecheck, linter.

@@ -1,15 +1,86 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Loader2, RefreshCw } from "lucide-react";
 import {
   getSecurityChecks,
   getOnlineUsers,
+  recordAttestation,
+  type PostureCheck,
   type PostureStatus,
 } from "@/lib/security-posture.functions";
 import { OnlineChip, relativeMinutes } from "@/components/admin/SecurityStatusCard";
+
+/**
+ * A control no system can read: the only honest evidence is a recorded human
+ * confirmation. The wording makes plain that the person pressing Confirm is
+ * asserting they checked the backend setting themselves.
+ */
+function AttestationControl({
+  check,
+  onRecorded,
+}: {
+  check: PostureCheck;
+  onRecorded: () => void;
+}) {
+  const att = check.attestable!;
+  const [open, setOpen] = useState(false);
+  const [note, setNote] = useState("");
+  const record = useServerFn(recordAttestation);
+
+  const mutation = useMutation({
+    mutationFn: () => record({ data: { checkKey: att.checkKey, note: note.trim() || undefined } }),
+    onSuccess: () => {
+      toast.success("Confirmation recorded against your name.");
+      setOpen(false);
+      setNote("");
+      onRecorded();
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  return (
+    <div className="mt-2 rounded-md border border-dashed p-3 text-xs">
+      <p className="text-muted-foreground">
+        This setting cannot be read by this application, so it is evidenced by a recorded human
+        confirmation rather than an automated check.
+        {att.confirmedByEmail
+          ? ` Last confirmed by ${att.confirmedByEmail} on ${new Date(att.confirmedAt!).toISOString().slice(0, 10)}.`
+          : " Nobody has confirmed it yet."}
+      </p>
+      {att.note && <p className="mt-1 text-muted-foreground/80">Note: {att.note}</p>}
+      {open ? (
+        <div className="mt-2 space-y-2">
+          <p className="font-medium">{att.claim}</p>
+          <Input
+            value={note}
+            maxLength={500}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Optional note (what you saw, where)"
+          />
+          <div className="flex gap-2">
+            <Button size="sm" onClick={() => mutation.mutate()} disabled={mutation.isPending}>
+              {mutation.isPending && <Loader2 className="mr-2 h-3 w-3 animate-spin" />}
+              I confirm this myself
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <Button size="sm" variant="outline" className="mt-2" onClick={() => setOpen(true)}>
+          {att.confirmedAt ? "Re-confirm" : "Confirm"}
+        </Button>
+      )}
+    </div>
+  );
+}
 
 function StatusPill({ status }: { status: PostureStatus }) {
   if (status === "ok") {
@@ -127,6 +198,9 @@ export function SecurityPostureCard() {
                           ))}
                         </ul>
                       </details>
+                    )}
+                    {c.attestable && (
+                      <AttestationControl check={c} onRecorded={() => void refetch()} />
                     )}
                   </div>
                   <div className="shrink-0">

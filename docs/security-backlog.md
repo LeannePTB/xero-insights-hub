@@ -343,6 +343,13 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     (f) No published security contact or disclosure channel. (g) No periodic access-review record for
     memberships, support grants and roles. Owner call needed on which of these the practice writes and
     which are answered "not applicable — single-developer practice".
+    **Mechanism now exists (12 Sep 2026):** `public.security_attestations` +
+    `public.record_security_attestation` (spec §17) record a dated, named,
+    audited human confirmation for a control no system can read. Wired to
+    `leaked_password` only so far; (c) incident drill, (g) access review, the
+    tested restore in (e) and the rotation records in (a)/(b) can each be added
+    to the attestable list as they are actually done. Attestation is evidence
+    that a person checked, never a substitute for a machine-readable check.
 
 40. **CLOSED 12 Sep 2026 (final hygiene batch).** `email_unsubscribe_tokens.token_hash` replaces
     `token` (column dropped in the same migration; the single existing row was converted to

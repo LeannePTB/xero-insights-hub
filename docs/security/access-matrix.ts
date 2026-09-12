@@ -1276,6 +1276,76 @@ export const MATRIX: MatrixRow[] = [
     "Live suite containment — app_private.confine_security_test_accounts() refuses even service_role",
     ["live"],
   ),
+
+  // ------------------------------ Attestations (12 Sep 2026) — Spec §17
+  // A control no system can read is evidenced by a recorded human confirmation.
+  // The record is platform metadata (Path C): super admin only, written ONLY by
+  // public.record_security_attestation, which stamps auth.uid() and now() itself.
+  {
+    role: "super_admin_no_membership",
+    resource: "record a security attestation",
+    operation: "execute",
+    expect: "allow",
+    rule: "Spec §17 — attestations are platform metadata, super admin only",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "support_grant_active",
+    resource: "record a security attestation",
+    operation: "execute",
+    expect: "allow",
+    rule: "Spec §17 — acts as a platform admin (this fixture identity also holds super_admin); PK 5 is untouched, no organisation or client data is reachable here",
+    layers: ["pglite", "live"],
+    note: "The support-grant subject in the fixture also holds the super_admin role, so this row proves the Path C rule, not a support-grant widening.",
+  },
+  ...rows(
+    ["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    ["record a security attestation"],
+    ["execute"],
+    "deny",
+    "Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it",
+    ["pglite", "live"],
+  ),
+  {
+    role: "super_admin_no_membership",
+    resource: "a security attestation's confirmed_by and confirmed_at are set by the server",
+    operation: "execute",
+    expect: "allow",
+    rule: "Spec §17 — the function stamps auth.uid() and now(); no caller-supplied identity or time",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "super_admin_no_membership",
+    resource: "security_attestations",
+    operation: "read",
+    expect: "allow",
+    rule: "PK 2 path C — platform metadata, no client data",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "support_grant_active",
+    resource: "security_attestations",
+    operation: "read",
+    expect: "allow",
+    rule: "PK 2 path C — reads as a platform admin; no organisation or client data on this table",
+    layers: ["pglite", "live"],
+  },
+  ...rows(
+    ["super_admin_no_membership", "support_grant_active"],
+    ["security_attestations"],
+    WRITES,
+    "deny",
+    "Spec §17 — writes only through public.record_security_attestation; no write policy exists at all",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    ["security_attestations"],
+    ["read", ...WRITES],
+    "deny",
+    "Spec §17 — readable by super admins only",
+    ["pglite", "live"],
+  ),
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);

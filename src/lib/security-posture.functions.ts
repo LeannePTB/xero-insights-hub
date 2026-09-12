@@ -11,6 +11,31 @@ export type PostureCheck = {
   evidence: string;
   /** definer_guards only: which guard name matched in each callable function. */
   matches?: { fn: string; pattern: string }[];
+  /**
+   * Set only on checks in ATTESTABLE_CHECKS: controls no system can read, where
+   * the only honest evidence is a recorded human confirmation. Never set on a
+   * check the server can read for itself.
+   */
+  attestable?: {
+    checkKey: string;
+    /** What the person is asserting when they press Confirm. */
+    claim: string;
+    confirmedByEmail?: string | null;
+    confirmedAt?: string | null;
+    note?: string | null;
+    expiresAfterDays?: number;
+  };
+};
+
+/**
+ * The ONLY checks an attestation may answer. A check the server can read must
+ * never appear here — an attestation can never override a machine reading.
+ */
+export const ATTESTABLE_CHECKS: Record<string, { claim: string }> = {
+  leaked_password: {
+    claim:
+      "I have opened the backend authentication settings myself and confirmed that leaked-password protection (Have I Been Pwned) is switched on.",
+  },
 };
 
 export type PostureResult = {
@@ -35,7 +60,15 @@ export type OnlineUser = {
  * /admin/security always show identical results. Server-side only; nothing here
  * returns a secret value, only whether it is present and usable.
  */
-async function serverConfigChecks(): Promise<PostureCheck[]> {
+type Attestation = {
+  check_key: string;
+  confirmed_by_email: string | null;
+  confirmed_at: string;
+  note: string | null;
+  expires_after_days: number;
+};
+
+async function serverConfigChecks(attestations: Attestation[]): Promise<PostureCheck[]> {
   const out: PostureCheck[] = [];
 
   // Token encryption key — proven by a real round trip, never echoed.
@@ -93,14 +126,51 @@ async function serverConfigChecks(): Promise<PostureCheck[]> {
   }
 
   // Leaked-password protection is an auth provider setting the app cannot read.
-  out.push({
-    id: "hibp",
-    title: "Leaked password protection",
-    status: "warn",
-    detail:
-      "Not verified — confirm manually in the backend authentication settings, under password protection (Have I Been Pwned).",
-    evidence: "No server-readable source for this setting",
-  });
+  // There is no machine-readable source, so the only honest evidence is a
+  // recorded human confirmation (see ATTESTABLE_CHECKS). The attestation NEVER
+  // overrides a check the server can read — it applies to this one only.
+  const att = attestations.find((a) => a.check_key === "leaked_password");
+  const claim = ATTESTABLE_CHECKS["leaked_password"]!.claim;
+  if (!att) {
+    out.push({
+      id: "leaked_password",
+      title: "Leaked password protection",
+      status: "warn",
+      detail:
+        "Not verified — check it in the backend authentication settings, under password protection (Have I Been Pwned), then confirm it here.",
+      evidence:
+        "No server-readable source for this setting, and no recorded human confirmation",
+      attestable: { checkKey: "leaked_password", claim },
+    });
+  } else {
+    const days = att.expires_after_days;
+    const ageDays = Math.floor((Date.now() - new Date(att.confirmed_at).getTime()) / 86_400_000);
+    const expired = ageDays > days;
+    const who = att.confirmed_by_email ?? "an unnamed super admin";
+    const when = new Date(att.confirmed_at).toISOString().slice(0, 10);
+    out.push({
+      id: "leaked_password",
+      title: "Leaked password protection",
+      status: expired ? "warn" : "ok",
+      detail: expired
+        ? `Confirmed on ${when}, needs re-confirming — a confirmation lasts ${days} days.`
+        : `Confirmed on ${when} by ${who}. Due to be re-confirmed after ${days} days.`,
+      evidence:
+        `RECORDED HUMAN CONFIRMATION, NOT A MACHINE READING. ${who} confirmed on ${when} ` +
+        `that leaked-password protection is switched on in the backend authentication settings. ` +
+        `The setting itself is not readable by this application, so no automated check exists. ` +
+        `Confirmation valid for ${days} days (age ${ageDays} day(s)).` +
+        (att.note ? ` Note: ${att.note}` : ""),
+      attestable: {
+        checkKey: "leaked_password",
+        claim,
+        confirmedByEmail: att.confirmed_by_email,
+        confirmedAt: att.confirmed_at,
+        note: att.note,
+        expiresAfterDays: days,
+      },
+    });
+  }
 
   return out;
 }
@@ -128,10 +198,16 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
     // itself, so it must NOT be fetched again here — doing so rendered
     // "Security test accounts are contained" twice on the card.
 
+    // Recorded human confirmations, read through context.supabase so the
+    // super-admin-only rule is the database's, not this file's.
+    let attestations: Attestation[] = [];
+    const attRes = await (context.supabase as any).rpc("security_attestations_list");
+    if (!attRes.error && attRes.data) attestations = attRes.data as Attestation[];
+
     const checks: PostureCheck[] = [
       ...((data?.checks ?? []) as PostureCheck[]),
       ...readAudit,
-      ...(await serverConfigChecks()),
+      ...(await serverConfigChecks(attestations)),
     ];
     return {
       generatedAt: (data?.generated_at as string) ?? new Date().toISOString(),
@@ -170,5 +246,30 @@ export const recordPresence = createServerFn({ method: "POST" })
         { onConflict: "user_id" },
       );
     if (error) throw new Error("Presence not recorded");
+    return { ok: true };
+  });
+
+/**
+ * Records a human confirmation for a control no system can read. Authorisation
+ * (aal2 + super admin), the attestable key list, the identity and the timestamp
+ * all live in `public.record_security_attestation` — this function passes only
+ * the check key and the optional note, through context.supabase.
+ */
+export const recordAttestation = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((input: { checkKey: string; note?: string }) => {
+    const key = String(input?.checkKey ?? "");
+    if (!Object.prototype.hasOwnProperty.call(ATTESTABLE_CHECKS, key)) {
+      throw new Error("That check cannot be confirmed here.");
+    }
+    const note = typeof input.note === "string" ? input.note.slice(0, 500) : undefined;
+    return { checkKey: key, note };
+  })
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("record_security_attestation", {
+      _check_key: data.checkKey,
+      _note: data.note ?? null,
+    });
+    if (error) throw new Error("Confirmation not recorded");
     return { ok: true };
   });
