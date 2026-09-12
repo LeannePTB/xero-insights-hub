@@ -742,13 +742,20 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
     const email = data.email.trim().toLowerCase();
     if (!email.includes("@")) throw new Error("Please enter a valid email address.");
 
-    // Only advisors invite viewers. The role lookup lives in the database
-    // (public.me_has_role), never in a table read here.
-    const { data: isAdvisor } = await (context.supabase as any).rpc("me_has_role", {
-      _role: "advisor",
-    });
-    if (isAdvisor !== true) {
-      throw new Error("Only advisors can invite client viewers.");
+    // Batch 5 — the one deliberate widening. Viewer invites are no longer
+    // advisor-only: the organisation's OWNER may invite viewers for its own
+    // clients, and so may an active practice-team member of that organisation.
+    // The decision is one database predicate
+    // (app_private.can_manage_viewers_for_client), never a role read here, and
+    // it is scoped to this client — an owner gets nothing outside their own
+    // organisation, staff get nothing, and a support grant gets nothing.
+    const { data: canManage, error: manageErr } = await (context.supabase as any).rpc(
+      "me_can_manage_client_viewers",
+      { _client_id: data.clientId },
+    );
+    if (manageErr) throw new Error(manageErr.message);
+    if (canManage !== true) {
+      throw new Error("You cannot manage access for this client.");
     }
 
     const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
