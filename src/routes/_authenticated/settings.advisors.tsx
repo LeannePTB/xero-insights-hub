@@ -30,7 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { AdminShell } from "@/components/admin/AdminShell";
