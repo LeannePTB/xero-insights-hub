@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { render } from '@react-email/components'
 import { createClient } from '@supabase/supabase-js'
+import { createHash } from 'crypto'
 import { createFileRoute } from '@tanstack/react-router'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 
@@ -27,6 +28,11 @@ function generateToken(): string {
   return Array.from(bytes)
     .map((b) => b.toString(16).padStart(2, '0'))
     .join('')
+}
+
+// Only the hash of an unsubscribe token is stored; the plaintext lives in the emailed link.
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex')
 }
 
 export const Route = createFileRoute("/lovable/email/transactional/send")({
