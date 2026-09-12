@@ -512,7 +512,14 @@ async function renameProbe(
   if (res.outcome !== "allow") return res;
   const after = await supabaseAdmin.from("clients").select("name").eq("id", clientId).maybeSingle();
   const landed = (after.data as any)?.name === name;
-  if (landed) return { outcome: "allow", detail: `${res.detail}; the row was changed` };
+  if (landed) {
+    // Leave the fixture exactly as it was found.
+    const original = (before.data as any)?.name;
+    if (original && original !== name) {
+      await supabaseAdmin.from("clients").update({ name: original }).eq("id", clientId);
+    }
+    return { outcome: "allow", detail: `${res.detail}; the row was changed` };
+  }
   return {
     outcome: "deny",
     detail: `${res.detail} but the row is unchanged ("${(before.data as any)?.name ?? "?"}") — the write was refused`,
@@ -646,7 +653,7 @@ async function runProbes(
       operation: "execute",
       session: ownerAal2,
       call: () =>
-        renameProbe(clients.renameClient, org.clientOne, "ZZ Test Client One", ownerAal2),
+        renameProbe(clients.renameClient, org.clientOne, "ZZ Test Client One (write probe)", ownerAal2),
     },
     {
       role: "standing_viewer",
