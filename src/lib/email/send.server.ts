@@ -19,6 +19,11 @@ function generateToken(): string {
   return Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+// Only the hash of an unsubscribe token is stored; the plaintext lives in the emailed link.
+function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 export interface EnqueueResult {
   status: "queued" | "suppressed" | "skipped" | "failed";
   reason?: string;
