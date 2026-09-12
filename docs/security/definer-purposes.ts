@@ -186,4 +186,7 @@ export const DEFINER_PURPOSES: Record<string, string> = {
  */
 export const SCHEDULED_CALLERS: Record<string, string> = {
   "public.purge_expired_security_logs": "purge-expired-security-logs (daily 03:17)",
+  "public.admin_practice_team": "The Traction Advisory practice team list, for platform admins only.",
+  "public.admin_add_practice_member": "Adds one of our own staff to the practice team; platform admins only, audited.",
+  "public.admin_remove_practice_member": "Removes someone from the practice team; platform admins only, audited.",
 };
