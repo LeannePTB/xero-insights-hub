@@ -80,7 +80,7 @@ create table public.email_unsubscribe_tokens (id uuid, email text, created_at ti
 create table public.firm_members (id uuid, firm_id uuid, user_id uuid, role firm_member_role, created_at timestamp with time zone, updated_at timestamp with time zone, status text);
 create table public.firm_support_access (firm_id uuid, granted boolean, granted_by uuid, granted_at timestamp with time zone, revoked_at timestamp with time zone, note text, created_at timestamp with time zone, updated_at timestamp with time zone, id uuid, grantee_user_id uuid, expires_at timestamp with time zone, requested_by uuid, reason text);
 create table public.firm_viewer_access (id uuid, firm_id uuid, user_id uuid, tier dashboard_tier, granted_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
-create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text);
+create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean);
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
@@ -94,6 +94,8 @@ create table public.report_recipients (id uuid, report_id uuid, client_id uuid, 
 create table public.scenario_exclusions (id uuid, client_id uuid, xero_invoice_id text, created_at timestamp with time zone);
 create table public.security_contact_details (id uuid, singleton boolean, company_legal_name text, trading_name text, abn text, registered_address text, website text, app_name text, xero_client_id text, primary_contact_name text, primary_contact_role text, primary_contact_email text, primary_contact_phone text, xero_api_usage text, assessment_date date, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.security_settings (singleton boolean, audit_retention_days integer, login_retention_days integer, created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.security_test_accounts (user_id uuid, label text, email text, password_enc bytea, totp_secret_enc bytea, factor_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.security_test_run_state (id boolean, running boolean, run_id uuid, started_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.security_test_runs (id uuid, ran_at timestamp with time zone, ran_by uuid, layer text, passed integer, failed integer, known_failures jsonb, fingerprint_match boolean, details jsonb, created_at timestamp with time zone);
 create table public.signup_requests (id uuid, firm_name text, contact_name text, email text, note text, status text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.subscriptions (id uuid, firm_id uuid, stripe_customer_id text, stripe_subscription_id text, tier text, status subscription_status, trial_ends_at timestamp with time zone, current_period_end timestamp with time zone, cancel_at_period_end boolean, created_at timestamp with time zone, updated_at timestamp with time zone, client_limit_override integer, consolidation_enabled boolean, wip_enabled boolean);
@@ -994,6 +996,7 @@ BEGIN
     LEFT JOIN public.profiles pr ON pr.id = p.user_id
     LEFT JOIN auth.users u ON u.id = p.user_id
     WHERE p.last_seen_at > now() - make_interval(mins => greatest(1, least(_window_minutes, 60)))
+      AND NOT app_private.is_security_test_account(p.user_id)
     ORDER BY p.last_seen_at DESC;
 END;
 $function$
@@ -1343,6 +1346,25 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.is_security_test_account(_user_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select _user_id is not null
+     and exists (select 1 from public.security_test_accounts t where t.user_id = _user_id)
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.security_test_firm_id()
+ RETURNS uuid
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select f.id from public.firms f where f.is_test order by f.created_at limit 1
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1428,6 +1450,8 @@ alter table public.report_recipients enable row level security;
 alter table public.scenario_exclusions enable row level security;
 alter table public.security_contact_details enable row level security;
 alter table public.security_settings enable row level security;
+alter table public.security_test_accounts enable row level security;
+alter table public.security_test_run_state enable row level security;
 alter table public.security_test_runs enable row level security;
 alter table public.signup_requests enable row level security;
 alter table public.subscriptions enable row level security;
@@ -1813,6 +1837,20 @@ grant SELECT on table public.security_settings to service_role;
 grant TRIGGER on table public.security_settings to service_role;
 grant TRUNCATE on table public.security_settings to service_role;
 grant UPDATE on table public.security_settings to service_role;
+grant DELETE on table public.security_test_accounts to service_role;
+grant INSERT on table public.security_test_accounts to service_role;
+grant REFERENCES on table public.security_test_accounts to service_role;
+grant SELECT on table public.security_test_accounts to service_role;
+grant TRIGGER on table public.security_test_accounts to service_role;
+grant TRUNCATE on table public.security_test_accounts to service_role;
+grant UPDATE on table public.security_test_accounts to service_role;
+grant DELETE on table public.security_test_run_state to service_role;
+grant INSERT on table public.security_test_run_state to service_role;
+grant REFERENCES on table public.security_test_run_state to service_role;
+grant SELECT on table public.security_test_run_state to service_role;
+grant TRIGGER on table public.security_test_run_state to service_role;
+grant TRUNCATE on table public.security_test_run_state to service_role;
+grant UPDATE on table public.security_test_run_state to service_role;
 grant SELECT on table public.security_test_runs to authenticated;
 grant DELETE on table public.security_test_runs to service_role;
 grant INSERT on table public.security_test_runs to service_role;
@@ -2252,6 +2290,16 @@ create policy "deny all to app roles (update)" on public.security_contact_detail
 create policy mfa_aal2_required on public.security_contact_details as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Super admins read security settings" on public.security_settings as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy mfa_aal2_required on public.security_settings as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.security_test_accounts as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "test account rows service delete" on public.security_test_accounts as permissive for delete to service_role using (true);
+create policy "test account rows service insert" on public.security_test_accounts as permissive for insert to service_role with check (true);
+create policy "test account rows service select" on public.security_test_accounts as permissive for select to service_role using (true);
+create policy "test account rows service update" on public.security_test_accounts as permissive for update to service_role using (true) with check (true);
+create policy mfa_aal2_required on public.security_test_run_state as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "test run state service delete" on public.security_test_run_state as permissive for delete to service_role using (true);
+create policy "test run state service insert" on public.security_test_run_state as permissive for insert to service_role with check (true);
+create policy "test run state service select" on public.security_test_run_state as permissive for select to service_role using (true);
+create policy "test run state service update" on public.security_test_run_state as permissive for update to service_role using (true) with check (true);
 create policy "Super admins read access test runs" on public.security_test_runs as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy mfa_aal2_required on public.security_test_runs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.signup_requests as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -2351,4 +2399,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: a760e42421b38203cf55247eb326111a5c95507c8c369e854004979997cc6cc2
+-- catalogue-fingerprint: 5db4fee11732dfa6e8d6a2d0e0b5a9be1b80e491183ce5a6c2360cf869263223
