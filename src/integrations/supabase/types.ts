@@ -17,35 +17,47 @@ export type Database = {
       access_invites: {
         Row: {
           accepted_at: string | null
+          client_ids: string[]
           created_at: string
           email: string
           expires_at: string
           firm_id: string
           id: string
           invited_by: string | null
+          kind: string
           role: Database["public"]["Enums"]["firm_member_role"]
+          scope: string | null
+          tier: Database["public"]["Enums"]["dashboard_tier"] | null
           token_hash: string
         }
         Insert: {
           accepted_at?: string | null
+          client_ids?: string[]
           created_at?: string
           email: string
           expires_at: string
           firm_id: string
           id?: string
           invited_by?: string | null
+          kind?: string
           role?: Database["public"]["Enums"]["firm_member_role"]
+          scope?: string | null
+          tier?: Database["public"]["Enums"]["dashboard_tier"] | null
           token_hash: string
         }
         Update: {
           accepted_at?: string | null
+          client_ids?: string[]
           created_at?: string
           email?: string
           expires_at?: string
           firm_id?: string
           id?: string
           invited_by?: string | null
+          kind?: string
           role?: Database["public"]["Enums"]["firm_member_role"]
+          scope?: string | null
+          tier?: Database["public"]["Enums"]["dashboard_tier"] | null
           token_hash?: string
         }
         Relationships: [
@@ -2534,6 +2546,10 @@ export type Database = {
         Args: { _make: boolean; _user_id: string }
         Returns: boolean
       }
+      apply_viewer_invite: {
+        Args: { _invite_id: string; _user_id: string }
+        Returns: Json
+      }
       assert_advisor: { Args: never; Returns: undefined }
       assert_client_write_access: {
         Args: { _client_id: string }
@@ -2706,6 +2722,30 @@ export type Database = {
           is_super_admin: boolean
         }[]
       }
+      firm_viewer_invites: {
+        Args: { _firm_id: string }
+        Returns: {
+          client_ids: string[]
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          invited_by: string
+          scope: string
+          tier: Database["public"]["Enums"]["dashboard_tier"]
+        }[]
+      }
+      firm_viewers: {
+        Args: { _firm_id: string }
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
+          id: string
+          tier: Database["public"]["Enums"]["dashboard_tier"]
+          user_id: string
+        }[]
+      }
       get_mfa_posture_counts: {
         Args: never
         Returns: {
@@ -2718,6 +2758,14 @@ export type Database = {
       grant_client_access: {
         Args: { _client_id: string; _tier: string; _user_id: string }
         Returns: undefined
+      }
+      grant_firm_viewer_access: {
+        Args: {
+          _firm_id: string
+          _tier: Database["public"]["Enums"]["dashboard_tier"]
+          _user_id: string
+        }
+        Returns: string
       }
       log_xero_api_error: {
         Args: {
@@ -2839,6 +2887,8 @@ export type Database = {
       }
       revoke_client_access: { Args: { _id: string }; Returns: undefined }
       revoke_firm_member_invite: { Args: { _id: string }; Returns: undefined }
+      revoke_firm_viewer_access: { Args: { _id: string }; Returns: undefined }
+      revoke_viewer_invite: { Args: { _id: string }; Returns: undefined }
       security_posture: { Args: never; Returns: Json }
       set_all_client_tiers: {
         Args: {
@@ -2897,6 +2947,13 @@ export type Database = {
       set_firm_default_widgets: {
         Args: { _firm_id: string; _widgets: string[] }
         Returns: number
+      }
+      set_firm_viewer_tier: {
+        Args: {
+          _id: string
+          _tier: Database["public"]["Enums"]["dashboard_tier"]
+        }
+        Returns: undefined
       }
       set_org_widget_enabled: {
         Args: {
