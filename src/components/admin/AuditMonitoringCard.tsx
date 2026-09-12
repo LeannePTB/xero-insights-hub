@@ -59,7 +59,7 @@ export function AuditMonitoringCard() {
   async function handleExport(days: number) {
     setExporting(days);
     try {
-      const res = await exportFn({ data: { days } });
+      const res = await exportFn({ data: { days, category } });
       const blob = new Blob([res.csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
