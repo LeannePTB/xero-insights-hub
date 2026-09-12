@@ -169,7 +169,7 @@ Every path that shows a person a client's figures records the read through the s
 
 `firm_members.status` is `active | suspended | removed`; role is `owner | staff`. Removal sets status, never hard-deletes; only `active` counts. Invites are email-bound, single-use, expiring, storing a token HASH. Team member and client viewer invitations share one screen, the organisation's People page, and each path keeps its own server function and permissions — grouping them in the UI widened nothing. An owner invite is refused for an organisation that already has an owner.
 
-## 12. Membership, roles and identity
+## 13. Roles and identity
 
 Roles live in `public.user_roles` (never on `profiles` or a users table) and are read through `has_role(uuid, app_role)` and `me_is_super_admin()`. **Identity comes from `auth.users`**: never use `profiles.email` or a display name to identify a person or choose a recipient — `profiles.display_name` is self-chosen and can imitate someone else, so a verified `auth.users` email accompanies the name in tooltips and admin lists.
 
