@@ -186,23 +186,40 @@ function csvCell(v: unknown): string {
   return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
-/** Super-admin CSV export of the audit trail for auditors. */
+/**
+ * Super-admin CSV export of the audit trail for auditors.
+ *
+ * Client-data reads are far more numerous than security events, so the export
+ * is split: "security" leaves them out, "reads" returns only them, "all"
+ * returns everything. Nothing is hidden — only separated, so neither list
+ * drowns the other.
+ */
+const EXPORT_CATEGORIES = ["security", "reads", "all"] as const;
+export type AuditExportCategory = (typeof EXPORT_CATEGORIES)[number];
+
 export const exportAuditLogCsv = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { days?: number }) => ({
+  .inputValidator((i: { days?: number; category?: AuditExportCategory }) => ({
     days: Math.min(Math.max(Math.trunc(i?.days ?? 90), 1), 1095),
+    category: EXPORT_CATEGORIES.includes(i?.category as AuditExportCategory)
+      ? (i.category as AuditExportCategory)
+      : ("security" as AuditExportCategory),
   }))
   .handler(async ({ data, context }) => {
     await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const since = new Date(Date.now() - data.days * 24 * 60 * 60 * 1000).toISOString();
 
-    const { data: rows, error } = await (supabaseAdmin as any)
+    const readActions = [READ_ACTION_XERO, READ_ACTION_REPORT];
+    let query = (supabaseAdmin as any)
       .from("audit_log")
       .select("at, action, actor_user_id, firm_id, target_type, target_id, ip, user_agent, meta")
-      .gte("at", since)
-      .order("at", { ascending: false })
-      .limit(20000);
+      .gte("at", since);
+    if (data.category === "reads") query = query.in("action", readActions);
+    else if (data.category === "security")
+      query = query.not("action", "in", `(${readActions.join(",")})`);
+
+    const { data: rows, error } = await query.order("at", { ascending: false }).limit(20000);
     if (error) throw new Error(error.message);
 
     const actorIds = Array.from(
