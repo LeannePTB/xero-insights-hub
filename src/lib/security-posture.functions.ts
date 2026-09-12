@@ -198,10 +198,16 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
     // itself, so it must NOT be fetched again here — doing so rendered
     // "Security test accounts are contained" twice on the card.
 
+    // Recorded human confirmations, read through context.supabase so the
+    // super-admin-only rule is the database's, not this file's.
+    let attestations: Attestation[] = [];
+    const attRes = await (context.supabase as any).rpc("security_attestations_list");
+    if (!attRes.error && attRes.data) attestations = attRes.data as Attestation[];
+
     const checks: PostureCheck[] = [
       ...((data?.checks ?? []) as PostureCheck[]),
       ...readAudit,
-      ...(await serverConfigChecks()),
+      ...(await serverConfigChecks(attestations)),
     ];
     return {
       generatedAt: (data?.generated_at as string) ?? new Date().toISOString(),
