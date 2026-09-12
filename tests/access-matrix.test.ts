@@ -318,10 +318,14 @@ const TARGET: Record<string, Record<string, string>> = {
     user_id: q(U.superAdmin),
     role: q("super_admin"),
   },
+  security_attestations: {
+    check_key: q("leaked_password"),
+    confirmed_by: q(U.superAdmin),
+  },
 };
 
 /** Primary key column used for the row-scoped read/update/delete probe. */
-const PK: Record<string, string> = { tier_settings: "tier" };
+const PK: Record<string, string> = { tier_settings: "tier", security_attestations: "check_key" };
 const pkOf = (t: string) => PK[t] ?? "id";
 
 /** Database functions callable in the fixture, with a synthetic argument set. */
