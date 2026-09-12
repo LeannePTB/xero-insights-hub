@@ -429,7 +429,7 @@ export const acceptInvite = createServerFn({ method: "POST" })
     await enforceRateLimit(`invite:accept:${data.token.slice(0, 16)}`, 20, 600);
     const { data: invite, error } = await (supabaseAdmin as any)
       .from("access_invites")
-      .select("id, firm_id, email, role, expires_at, accepted_at")
+      .select("id, firm_id, email, role, kind, expires_at, accepted_at")
       .eq("token_hash", hashToken(data.token))
       .maybeSingle();
     if (error) throw new Error(error.message);
