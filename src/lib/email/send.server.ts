@@ -56,22 +56,13 @@ export async function enqueueAppEmail(opts: {
     return { status: "suppressed" };
   }
 
-  // Get/create unsubscribe token
-  let unsubscribeToken: string;
-  const { data: existing } = await supabase
-    .from("email_unsubscribe_tokens").select("token, used_at").eq("email", normalized).maybeSingle();
-  if (existing && !existing.used_at) {
-    unsubscribeToken = existing.token;
-  } else {
-    unsubscribeToken = generateToken();
-    await supabase.from("email_unsubscribe_tokens").upsert(
-      { token: unsubscribeToken, email: normalized },
-      { onConflict: "email", ignoreDuplicates: true },
-    );
-    const { data: stored } = await supabase
-      .from("email_unsubscribe_tokens").select("token").eq("email", normalized).maybeSingle();
-    if (stored?.token) unsubscribeToken = stored.token;
-  }
+  // Mint a fresh unsubscribe token for this send. Only its hash is stored, so an
+  // existing token cannot be read back — the newest emailed link is the live one.
+  const unsubscribeToken = generateToken();
+  await supabase.from("email_unsubscribe_tokens").upsert(
+    { email: normalized, token_hash: hashToken(unsubscribeToken) },
+    { onConflict: "email" },
+  );
 
   // Render
   const data = opts.templateData ?? {};
