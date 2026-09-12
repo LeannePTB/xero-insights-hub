@@ -101,5 +101,10 @@ membership, TOTP secret held only in project secrets), reaches aal2, and calls
 `public.record_access_test_run(...)` through that session. It never uses `supabaseAdmin`, and it
 writes only `security_test_runs`. The `/admin/security` button runs the same recording call as the
 signed-in super admin who pressed it.
-| `src/lib/practice-team.functions.ts` | `addPracticeMember` | `exception — calls DB authorisation first` | **Batch 5, verified.** The handler's first statement is `rpc("admin_practice_team")` on the caller's own session, which asserts aal2 + super admin inside the database; only then is the service role reached, and only to resolve a verified auth email to a user id (a browser session cannot read `auth.users`). The write itself goes through `rpc("admin_add_practice_member")` on the caller's session, which re-asserts super admin and writes the audit row. `listPracticeTeam` and `removePracticeMember` never touch the service role. |
+`src/lib/practice-team.functions.ts` no longer appears here. The email-based `addPracticeMember`
+(its only service-role use, resolving a verified auth email to a user id) was removed on
+12 Sep 2026 when practice-team membership moved onto the advisors page: the control already knows
+the person's user id, so `listPracticeTeam`, `setPracticeMembership` and `removePracticeMember` all
+run wholly on the caller's own session through the audited `admin_practice_team` /
+`admin_add_practice_member` / `admin_remove_practice_member` definer functions.
 | `src/lib/live-access-tests.server.ts` | `runLiveAccessTests` | `system context` | **Live smoke suite, verified.** Runs with no caller session: it creates and bans the suite's own three test accounts, mints their credentials and TOTP secrets, seeds ONLY the isolated `ZZ Security Test Org` and its two dummy clients, records the run in `security_test_runs`, and reads `security_test_accounts` / `security_test_run_state` (service-role-only tables no browser session can reach). Both entry points authorise before it is loaded: the admin server function asserts aal2 + super admin in the database, and the public route compares the trigger secret in constant time. Test identities cannot be attached to a real organisation even here — `app_private.confine_security_test_accounts()` refuses service_role too, and the suite proves it. |
