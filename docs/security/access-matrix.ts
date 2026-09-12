@@ -1136,6 +1136,76 @@ export const MATRIX: MatrixRow[] = [
     "Batch 5 — practice team readable by super admins only",
     ["pglite", "live"],
   ),
+
+  // ---------------------------------------------- Member removal (12 Sep 2026)
+  // public.remove_firm_member() is the ONLY removal path. It is a WRITE, so no
+  // support grant may reach it (PK 5), and the super_admin role alone gives
+  // nothing (PK 3). Removal sets firm_members.status = 'removed'; every
+  // membership test is already active-only, so a removed row reaches nothing.
+  {
+    role: "org_owner",
+    resource: "remove a staff member of the caller's own organisation",
+    operation: "execute",
+    expect: "allow",
+    rule: "Spec §15 — the handover case: an owner removes staff of their own organisation",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "org_owner",
+    resource: "remove a Traction Advisory (practice-team) staff member",
+    operation: "execute",
+    expect: "allow",
+    rule: "Design decision 8 — our people are removable by the owner after handover",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "org_owner",
+    resource: "an owner removes themselves",
+    operation: "execute",
+    expect: "deny",
+    rule: "Spec §15 — ownership must be transferred first; an organisation is never left without an owner",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "org_staff",
+    resource: "removing the organisation's last remaining member",
+    operation: "execute",
+    expect: "deny",
+    rule: "Spec §15 — an organisation is never stranded with no members",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "org_staff",
+    resource: "leave the organisation (remove yourself)",
+    operation: "execute",
+    expect: "allow",
+    rule: "Spec §15 — anyone who is not the owner may leave",
+    layers: ["pglite", "live"],
+  },
+  ...rows(
+    ["org_staff", "other_org_member", "support_grant_active", "super_admin_no_membership", "client_viewer", "standing_viewer", "suspended_member", "removed_member", "aal1_member", "anonymous"],
+    ["remove a staff member of the caller's own organisation"],
+    ["execute"],
+    "deny",
+    "Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone",
+    ["pglite", "live"],
+  ),
+  {
+    role: "org_owner",
+    resource: "removal leaves client viewer and standing grants untouched",
+    operation: "execute",
+    expect: "allow",
+    rule: "Spec §15 — removal is a membership status change and nothing else",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "removed_member",
+    resource: "the organisation's clients after removal",
+    operation: "read",
+    expect: "deny",
+    rule: "PK 2 path A — membership must be ACTIVE",
+    layers: ["pglite", "live"],
+  },
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);
