@@ -59,9 +59,9 @@ If a chat request conflicts with this document, STOP and reply:
 
 **Path A — membership.** An active `firm_members` row. How Positive Traction reaches organisations it set up and runs the books for, and how a client reaches their own. Disclosed in the member list, revocable. **Never use support access for an organisation Positive Traction set up.**
 
-**Path B — support grant.** ONLY for an organisation Positive Traction is not a member of. Read-only, one named person, max 72h, approved by that organisation's owner.
+**Path B — support grant.** ONLY for an organisation Positive Traction is not a member of. **Read-only, everywhere and without exception** — see §7. One named person, max 72h, approved by that organisation's owner.
 
-**Path C — platform operations.** Metadata only: organisation list, plans, billing events, signup requests, invites, audit log, user roles, `admin_firm_overview`, `xero_api_errors`. MAY use bare `me_is_super_admin()`. Must never expose Xero financial data.
+**Path C — platform operations.** Metadata only: organisation list, plans, billing events, signup requests, invites, audit log, user roles, `admin_firm_overview`, `xero_api_errors`, security posture. MAY use bare `me_is_super_admin()`. Must never expose Xero financial data. Path C **writes** are audited by a generic audit trigger on the Path C tables (Phase 3b).
 
 If a feature seems to need cross-organisation visibility, ask which path it is first.
 
@@ -69,9 +69,16 @@ If a feature seems to need cross-organisation visibility, ask which path it is f
 
 **Creation** must, atomically: insert `firm_members` for the creator (`role='owner'`, `status='active'`); set `firms.owner_user_id`; insert `subscriptions` with `tier='ptb'`, `status='active'`; write an `audit_log` row. If any step fails, roll everything back. An organisation with no members and no owner is **stranded** — nobody can approve anything. This happened to "Autotek NSW" and needed manual repair.
 
-**Never set `is_always_free` on a client organisation.** That flag is for Positive Traction's own organisation and grants the *highest enabled* tier, not Standard.
+**Handover** goes only through `public.transfer_organisation_ownership(_firm_id, _new_owner_user_id, _keep_previous_as_staff default true)`: caller must be current owner, new owner must already be an active member, previous owner is demoted to `staff` or removed. Writes its own audit row. Never transfer ownership by direct UPDATE, and never through a super-admin path — `authenticated` holds no UPDATE grant on `firms` at all. Assigning an owner where there is none (first acceptance) is allowed only when `owner_user_id` is null, and is audited, refusals included.
 
-**Handover** goes only through `public.transfer_organisation_ownership(_firm_id, _new_owner_user_id, _keep_previous_as_staff default true)`: caller must be current owner, new owner must already be an active member, previous owner is demoted to `staff` or removed. Writes its own audit row. Never transfer ownership by direct UPDATE.
+## 4a. Super-admin powers are bounded and audited
+
+`super_admin` on its own reaches no organisation or client data (invariant 3). What it can do is bounded in the database and audited:
+
+- **Self-join.** `public.admin_set_self_firm_membership` adds or removes the caller as a member of an organisation **Positive Traction still owns** — never an organisation handed over to a client — and audits every attempt.
+- **Always-free.** `public.set_firm_always_free` is restricted to Positive Traction's own organisation (pinned to `4dcfd606-dce3-4674-923f-c5183ecae141`), **fails closed** if that organisation cannot be identified, requires a 3–500 character reason, and audits the change. That flag grants the *highest enabled* tier, not Standard. **Never set `is_always_free` on a client organisation.**
+- **Subscriptions and comps.** `client_subscriptions` has no browser write grant; changes go through audited aal2 RPCs that require a reason.
+- **MFA reset, role changes, plan changes, audit exports** all write audit rows.
 
 ## 5. Plans and limits — enforced by database triggers
 
