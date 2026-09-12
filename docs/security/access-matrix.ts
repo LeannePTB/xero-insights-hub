@@ -743,9 +743,9 @@ export const MATRIX: MatrixRow[] = [
     note: "Phase 5: shared with the client allowance triggers, so a disconnected Xero file keeps its client link without counting toward the plan limit.",
   },
   {
-    role: "service_role",
-    resource: "public.xero_connections (disconnected row holds no token ciphertext)",
-    operation: "select",
+    role: "org_owner",
+    resource: "public.xero_connections (disconnecting leaves no token ciphertext)",
+    operation: "update",
     expect: "allow",
     rule: "Backlog 38 — a revoked grant leaves no token at rest",
     layers: ["live"],
