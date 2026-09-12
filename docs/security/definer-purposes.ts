@@ -103,6 +103,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.organisation_members": "The members of an organisation with their verified email.",
   "public.plan_level_usage_count": "How many organisations or clients sit on one plan level.",
   "public.transfer_organisation_ownership": "Moves ownership of an organisation to another member, audited.",
+  "public.remove_firm_member":
+    "Removes a person from an organisation by setting firm_members.status = 'removed', audited. Owner removes staff; anyone but the owner may remove themselves; never strands an organisation.",
   "public.set_firm_always_free": "Marks Positive Traction's own organisation as never billed, audited.",
   "public.set_firm_default_widgets": "Sets an organisation's default dashboard cards.",
   "public.set_all_client_tiers": "Sets the plan level for every client in an organisation, audited.",
