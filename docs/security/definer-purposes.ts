@@ -155,3 +155,15 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.email_queue_dispatch": "Sends the next batch of queued emails.",
   "public.email_queue_wake": "Wakes the email queue after a pause.",
 };
+
+/**
+ * Scheduled (pg_cron) callers. The dump role has no USAGE on schema `cron`, so the
+ * register cannot read them from the catalogue; these were read once with an
+ * administrative connection (`select jobname, command from cron.job`) on 12 Sep 2026 and
+ * are listed here so a scheduled-only function is not reported as having no caller.
+ * Verified: `purge-expired-security-logs` runs `select public.purge_expired_security_logs();`
+ * daily at 03:17; `xero-snapshot-refresh-daily` posts to the public snapshot-refresh route.
+ */
+export const SCHEDULED_CALLERS: Record<string, string> = {
+  "public.purge_expired_security_logs": "purge-expired-security-logs (daily 03:17)",
+};

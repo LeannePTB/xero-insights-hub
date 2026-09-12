@@ -20,7 +20,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { DEFINER_PURPOSES } from "../docs/security/definer-purposes";
+import { DEFINER_PURPOSES, SCHEDULED_CALLERS } from "../docs/security/definer-purposes";
 
 const ROOT = resolve(import.meta.dir, "..");
 const OUT = resolve(ROOT, "docs/security/definer-register.md");
@@ -107,6 +107,8 @@ function render(cat: Catalogue) {
     for (const t of cat.triggers) if (t.function === f.name) callers.push(`trigger \`${t.table}: ${t.name}\``);
     for (const j of cat.cron_jobs)
       if (j.command.includes(f.name)) callers.push(`scheduled job \`${j.name ?? "unnamed"}\``);
+    const scheduled = SCHEDULED_CALLERS[key];
+    if (scheduled) callers.push(`scheduled job \`${scheduled}\` (verified manually — see definer-purposes.ts)`);
 
     return {
       ...f,

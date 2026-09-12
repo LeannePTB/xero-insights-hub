@@ -20,7 +20,7 @@ can say what it is for; the risk is a function nobody can explain.
 | callable and asserting aal2 in the body | 73 |
 | callable WITHOUT an aal2 assertion (each must be justified below) | 24 |
 | without `SET search_path` | 0 |
-| with no caller found | **6** |
+| with no caller found | **5** |
 
 `aal2` means the body asserts a second-factor session itself. `app_private` helpers do not need to:
 they are not callable by signed-in users, and every policy that uses them sits behind the restrictive
@@ -66,7 +66,6 @@ PostgREST request logs cannot be read from here, so this is not proof that nothi
 | `app_private.get_user_firm_id(_user_id uuid)` | The organisation a person belongs to. |
 | `app_private.get_user_tier(_user_id uuid, _tenant_id text)` | The plan level that applies to a person for a Xero file. |
 | `public.audit_user_roles_change()` | Trigger: records every change to platform roles. |
-| `public.purge_expired_security_logs()` | Deletes audit and sign-in rows past their retention period. |
 | `public.record_access_test_run(_layer text, _passed integer, _failed integer, _known_failures jsonb, _fingerprint_match boolean, _details jsonb)` | Records the result of an access test run (for the approved live smoke suite). |
 
 ## `public`
@@ -134,7 +133,7 @@ PostgREST request logs cannot be read from here, so this is not proof that nothi
 | `organisation_members(_firm_id uuid)` | The members of an organisation with their verified email. | authenticated, postgres, service_role | yes | yes | `src/lib/ownership.functions.ts` |
 | `plan_level_usage_count(_id uuid)` | How many organisations or clients sit on one plan level. | authenticated, postgres, service_role | yes | yes | `src/lib/plan-levels.functions.ts` |
 | `prune_xero_snapshot_runs(_retention_days integer, _abandoned_hours integer)` | Removes old and abandoned snapshot runs. | postgres, service_role | yes | no | `src/lib/xero/snapshot-refresh.server.ts` |
-| `purge_expired_security_logs()` | Deletes audit and sign-in rows past their retention period. | postgres, service_role | yes | no | none found |
+| `purge_expired_security_logs()` | Deletes audit and sign-in rows past their retention period. | postgres, service_role | yes | no | scheduled job `purge-expired-security-logs (daily 03:17)` (verified manually — see definer-purposes.ts) |
 | `read_audit_posture()` | Whether reads of client figures are being recorded as they should be. | authenticated, postgres, service_role | yes | yes | `src/lib/security-posture.functions.ts` |
 | `read_email_batch(queue_name text, batch_size integer, vt integer)` | Takes the next batch of queued emails for sending. | postgres, service_role | yes | no | `src/routes/lovable/email/queue/process.ts` |
 | `record_access_test_run(_layer text, _passed integer, _failed integer, _known_failures jsonb, _fingerprint_match boolean, _details jsonb)` | Records the result of an access test run (for the approved live smoke suite). | authenticated, postgres, service_role | yes | yes | none found |
