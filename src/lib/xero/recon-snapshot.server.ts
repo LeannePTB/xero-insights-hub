@@ -80,6 +80,18 @@ export async function runReconciliation<T extends { complete: boolean }>(opts: {
   }
 
   if (existing?.complete && !recalculate && !superseded) {
+    // Phase 6: served from the stored snapshot, so no live read is logged
+    // beneath us — audit the read here. Fire-and-forget.
+    const { logClientDataRead } = await import("@/lib/audit.server");
+    logClientDataRead({
+      actorUserId: opts.userId,
+      clientId,
+      tenantId,
+      tenantName,
+      readKey: reportKey,
+      source: "snapshot",
+      periodEnd: asAt,
+    });
     return {
       ...(existing.payload as T),
       generatedAt: existing.generated_at,
