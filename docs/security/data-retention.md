@@ -6,7 +6,7 @@
 | Sign-in history (`login_events`) | 2 years, purged by the same nightly job. |
 | Xero API error telemetry (`xero_api_errors`) | 30 days, pruned on write. |
 | Xero OAuth state (`xero_oauth_states`) | 15 minutes, single-use, deleted on callback. |
-| Xero access/refresh tokens | Revoked at Xero on disconnect (revocation is verified before anything is marked). The connection row is then marked `disconnected` and kept — it is never deleted, because deleting it would cascade away the client-to-Xero-file link — so the already-revoked token ciphertext remains on the row until the next authorisation overwrites it. Backlog 38 tracks clearing it at disconnect time. |
+| Xero access/refresh tokens | Revoked at Xero on disconnect and removed (revocation is verified before anything is marked; the same update that marks the row also clears both encrypted token columns). The connection row itself is kept — it is never deleted, because deleting it would cascade away the client-to-Xero-file link — so the file returns to the same client on reconnect, with fresh tokens. A token Xero itself rejects (`grant_revoked`) and an unassigned-connection cleanup are cleared the same way. The one exception is the nightly authorisation reconcile (`not_authorised`): that token is still valid for the other Xero files on the same consent and the file can come back without re-authorising, so its ciphertext stays. |
 | User accounts | Retained until the organisation requests deletion or the person is removed. |
 | Email send log | 90 days. |
 | Rate-limit buckets | 24 hours rolling. |
