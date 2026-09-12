@@ -164,6 +164,9 @@ export const DEFINER_PURPOSES: Record<string, string> = {
 
   // ── Viewer management and viewer invites (Batch 3). Every one asserts aal2
   // and authorises through app_private.can_manage_client_viewers.
+  "public.admin_practice_team": "The Traction Advisory practice team list, for platform admins only.",
+  "public.admin_add_practice_member": "Adds one of our own staff to the practice team; platform admins only, audited.",
+  "public.admin_remove_practice_member": "Removes someone from the practice team; platform admins only, audited.",
   "app_private.can_manage_viewers_for_client": "Whether the caller may manage viewer access for one client: its organisation's owner, or an active practice-team member of that organisation.",
   "public.me_can_manage_client_viewers": "Caller-scoped: may I manage viewer access for this client? UI gate only; every write re-checks.",
   "public.me_can_manage_firm_viewers": "Caller-scoped: may I manage viewer access in this organisation? UI gate only; every write re-checks.",
@@ -186,7 +189,4 @@ export const DEFINER_PURPOSES: Record<string, string> = {
  */
 export const SCHEDULED_CALLERS: Record<string, string> = {
   "public.purge_expired_security_logs": "purge-expired-security-logs (daily 03:17)",
-  "public.admin_practice_team": "The Traction Advisory practice team list, for platform admins only.",
-  "public.admin_add_practice_member": "Adds one of our own staff to the practice team; platform admins only, audited.",
-  "public.admin_remove_practice_member": "Removes someone from the practice team; platform admins only, audited.",
 };
