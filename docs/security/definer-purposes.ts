@@ -182,6 +182,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "app_private.is_security_test_account": "True when a user id belongs to the live smoke suite's test accounts. Used by containment triggers and to keep test identities out of presence, posture counts and the organisation list.",
   "app_private.security_test_firm_id": "The id of the isolated ZZ Security Test Org. The only organisation a live-suite test account may be attached to.",
   "app_private.confine_security_test_accounts": "Trigger: refuses any attempt — including by service_role — to give a live-suite test account a membership, viewer grant, support grant, platform role, practice-team row or organisation ownership outside the test organisation.",
+  "public.record_security_attestation": "Record a human confirmation (aal2 + super admin) for a control no system can read, currently leaked-password protection only. Stamps auth.uid() and now() itself and writes an audit row; the caller supplies only the check key and an optional note.",
+  "public.security_attestations_list": "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
   "public.test_accounts_posture": "Posture check (aal2 + super admin): Action if a test account can sign in outside a run, holds access outside the test organisation, or has a session outside the run window.",
 };
 
