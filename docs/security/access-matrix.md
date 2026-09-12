@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1518**. Known failures: **0**.
+Rows: **1527**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -124,6 +124,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | DENY | pglite, live | Batch 5 — super-admin-only, unchanged by the advisors-page control |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | server fn: read a client dashboard | execute | DENY | live | PK 2 (requireAal2); no session reaches a server function |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 1 deny by default — no session, no server function |  |
@@ -258,6 +259,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | DENY | pglite, live | Batch 5 — super-admin-only, unchanged by the advisors-page control |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | server fn: read a client dashboard | execute | DENY | live | PK 2 (requireAal2); no session reaches a server function |  |
 | record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
@@ -386,6 +388,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | DENY | pglite, live | Batch 5 — super-admin-only, unchanged by the advisors-page control |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
 | security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
@@ -848,6 +851,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | ALLOW | pglite, live | PK 2 path C — platform metadata; aal2 + super admin asserted in the definer function |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | record a security attestation | execute | ALLOW | pglite, live | Spec §17 — attestations are platform metadata, super admin only |  |
 | a security attestation's confirmed_by and confirmed_at are set by the server | execute | ALLOW | pglite, live | Spec §17 — the function stamps auth.uid() and now(); no caller-supplied identity or time |  |
@@ -1176,6 +1180,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | DENY | pglite, live | Batch 5 — super-admin-only, unchanged by the advisors-page control |  |
 | remove a staff member of the caller's own organisation | execute | ALLOW | pglite, live | Spec §15 — the handover case: an owner removes staff of their own organisation |  |
 | remove a Traction Advisory (practice-team) staff member | execute | ALLOW | pglite, live | Design decision 8 — our people are removable by the owner after handover |  |
 | an owner removes themselves | execute | DENY | pglite, live | Spec §15 — ownership must be transferred first; an organisation is never left without an owner |  |
@@ -1320,6 +1325,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | DENY | pglite, live | Batch 5 — super-admin-only, unchanged by the advisors-page control |  |
 | removing the organisation's last remaining member | execute | DENY | pglite, live | Spec §15 — an organisation is never stranded with no members |  |
 | leave the organisation (remove yourself) | execute | ALLOW | pglite, live | Spec §15 — anyone who is not the owner may leave |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
@@ -1375,6 +1381,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | DENY | pglite, live | Batch 5 — super-admin-only, unchanged by the advisors-page control |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
 | security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
@@ -1496,6 +1503,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | ALLOW | pglite, live | PK 2 path C — platform metadata; aal2 + super admin asserted in the definer function |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | record a security attestation | execute | ALLOW | pglite, live | Spec §17 — acts as a platform admin (this fixture identity also holds super_admin); PK 5 is untouched, no organisation or client data is reachable here | The support-grant subject in the fixture also holds the super_admin role, so this row proves the Path C rule, not a support-grant widening. |
 | security_attestations | read | ALLOW | pglite, live | PK 2 path C — reads as a platform admin; no organisation or client data on this table |  |
@@ -1593,6 +1601,7 @@ None.
 | practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
 | practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | DENY | pglite, live | Batch 5 — super-admin-only, unchanged by the advisors-page control |  |
 | remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
 | server fn: read a client dashboard | execute | ALLOW | live | PK section 2 path D — read-only over every client in that organisation |  |
 | server fn: write client data | execute | DENY | live | PK section 2 path D — a standing grant is READ-ONLY and never enters a write path |  |

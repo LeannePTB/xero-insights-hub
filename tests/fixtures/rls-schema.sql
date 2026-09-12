@@ -1275,6 +1275,49 @@ AS $function$
   ) end
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.admin_add_practice_member(_user_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if not app_private.is_super_admin(auth.uid()) then
+    raise exception 'Not authorised.';
+  end if;
+  if not exists (select 1 from auth.users u where u.id = _user_id) then
+    raise exception 'No such person.';
+  end if;
+  insert into public.practice_team (user_id, added_by)
+  values (_user_id, auth.uid())
+  on conflict (user_id) do nothing;
+
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'practice_team_member_added', 'user', _user_id::text,
+          jsonb_build_object('user_id', _user_id));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.admin_remove_practice_member(_user_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if not app_private.is_super_admin(auth.uid()) then
+    raise exception 'Not authorised.';
+  end if;
+  delete from public.practice_team where user_id = _user_id;
+
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'practice_team_member_removed', 'user', _user_id::text,
+          jsonb_build_object('user_id', _user_id));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.remove_firm_member(_firm_id uuid, _user_id uuid)
  RETURNS void
  LANGUAGE plpgsql

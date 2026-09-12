@@ -16,6 +16,7 @@ import {
   setAdvisorSuperAdmin,
   PRIMARY_ADVISOR_USER_ID,
 } from "@/lib/advisors.functions";
+import { listPracticeTeam, setPracticeMembership } from "@/lib/practice-team.functions";
 import { updateProfileNameAsAdmin } from "@/lib/profile.functions";
 import { displayNameSchema, isRealDisplayName } from "@/lib/profile-name";
 import { getMyContext } from "@/lib/roles.functions";
@@ -29,7 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users } from "lucide-react";
 import { toast } from "sonner";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -57,6 +58,8 @@ function AdvisorSettings() {
   const setPwFn = useServerFn(setAdvisorPassword);
   const setSuperFn = useServerFn(setAdvisorSuperAdmin);
   const setNameFn = useServerFn(updateProfileNameAsAdmin);
+  const fetchPracticeTeam = useServerFn(listPracticeTeam);
+  const setPracticeFn = useServerFn(setPracticeMembership);
 
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
@@ -69,6 +72,13 @@ function AdvisorSettings() {
     queryKey: ["advisors-pending"],
     queryFn: () => fetchPending(),
     enabled: ctxQ.data?.isAdvisor ?? false,
+  });
+  // The practice team list is platform metadata: readable by super admins only,
+  // so only they see the indicator and the control.
+  const practiceQ = useQuery({
+    queryKey: ["practice-team"],
+    queryFn: () => fetchPracticeTeam(),
+    enabled: ctxQ.data?.isSuperAdmin ?? false,
   });
 
   const [mode, setMode] = useState<"invite" | "password">("invite");
@@ -149,6 +159,15 @@ function AdvisorSettings() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+  const practiceMut = useMutation({
+    mutationFn: ({ userId, onTeam }: { userId: string; onTeam: boolean }) =>
+      setPracticeFn({ data: { userId, onTeam } }),
+    onSuccess: (r) => {
+      toast.success(r.onTeam ? "Added to the practice team" : "Removed from the practice team");
+      qc.invalidateQueries({ queryKey: ["practice-team"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
   const nameMut = useMutation({
     mutationFn: () => {
       if (!nameTarget) throw new Error("Choose a person.");
@@ -196,6 +215,7 @@ function AdvisorSettings() {
   const viewerIsSuperAdmin = listQ.data?.viewerIsSuperAdmin ?? false;
   const pendingIds = new Set(pendingQ.data?.pendingUserIds ?? []);
   const pendingCount = pendingIds.size;
+  const practiceIds = new Set((practiceQ.data?.members ?? []).map((m) => m.userId));
 
   return (
     <AdminShell>
@@ -319,6 +339,7 @@ function AdvisorSettings() {
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="font-display text-lg font-semibold">Current advisors</h2>
+
             {pendingCount > 0 && (
               <Button
                 variant="outline"
@@ -331,6 +352,15 @@ function AdvisorSettings() {
               </Button>
             )}
           </div>
+          {viewerIsSuperAdmin && (
+            <p className="mb-3 text-xs text-muted-foreground">
+              People on the practice team are added as members automatically whenever Positive
+              Traction creates a new client organisation, so nobody has to add themselves
+              afterwards. Being on the list grants nothing by itself. Use the
+              <Users className="mx-1 inline h-3 w-3" /> button on a person's row to put them on or
+              take them off.
+            </p>
+          )}
           {listQ.isLoading ? (
             <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
           ) : advisors.length === 0 ? (
@@ -340,6 +370,7 @@ function AdvisorSettings() {
               {advisors.map((a) => {
                 const isPending = pendingIds.has(a.user_id);
                 const isPrimary = a.user_id === PRIMARY_ADVISOR_USER_ID;
+                const onPracticeTeam = practiceIds.has(a.user_id);
                 return (
                   <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -357,6 +388,11 @@ function AdvisorSettings() {
                             </span>
                           )}
                           {isPending && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">Pending invite</span>}
+                          {viewerIsSuperAdmin && onPracticeTeam && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                              <Users className="h-3 w-3" /> Practice team
+                            </span>
+                          )}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">{a.email ?? "Verified email unavailable"}</p>
                       </div>
@@ -383,6 +419,25 @@ function AdvisorSettings() {
                             <Send className="h-3.5 w-3.5" />
                           </Button>
                         </>
+                      )}
+                      {viewerIsSuperAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const label = a.email ?? a.display_name ?? a.user_id;
+                            const msg = onPracticeTeam
+                              ? `Take ${label} off the practice team? They'll stop being added to new client organisations. Memberships they already have are untouched.`
+                              : `Put ${label} on the practice team? They'll be added as a member whenever we create a new client organisation. This grants nothing on its own.`;
+                            if (confirm(msg))
+                              practiceMut.mutate({ userId: a.user_id, onTeam: !onPracticeTeam });
+                          }}
+                          disabled={practiceMut.isPending}
+                          title={onPracticeTeam ? "Remove from the practice team" : "Add to the practice team"}
+                          className={onPracticeTeam ? "text-primary" : undefined}
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                        </Button>
                       )}
                       {viewerIsSuperAdmin && (
                         <Button

@@ -1139,6 +1139,27 @@ export const MATRIX: MatrixRow[] = [
     "Batch 5 — practice team readable by super admins only",
     ["pglite", "live"],
   ),
+  // The advisors-page control (12 Sep 2026). It is the SAME audited definer
+  // function as the old standalone screen — aal2 + super admin, asserted in the
+  // database — so moving the control changes nobody's rights. Both fixture
+  // super admins reach it as platform admins (Path C, metadata only); everyone
+  // else, including an organisation owner and any aal1 session, is refused.
+  ...rows(
+    ["super_admin_no_membership", "support_grant_active"],
+    ["manage the practice team (admin_add/remove_practice_member)"],
+    ["execute"],
+    "allow",
+    "PK 2 path C — platform metadata; aal2 + super admin asserted in the definer function",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    ["manage the practice team (admin_add/remove_practice_member)"],
+    ["execute"],
+    "deny",
+    "Batch 5 — super-admin-only, unchanged by the advisors-page control",
+    ["pglite", "live"],
+  ),
 
   // ---------------------------------------------- Member removal (12 Sep 2026)
   // public.remove_firm_member() is the ONLY removal path. It is a WRITE, so no

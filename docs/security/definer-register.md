@@ -74,14 +74,14 @@ PostgREST request logs cannot be read from here, so this is not proof that nothi
 
 | function | purpose | may execute | search_path | aal2 | callers |
 | --- | --- | --- | --- | --- | --- |
-| `admin_add_practice_member(_user_id uuid)` | Adds one of our own staff to the practice team; platform admins only, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/practice-team.functions.ts` |
+| `admin_add_practice_member(_user_id uuid)` | Adds one of our own staff to the practice team; platform admins only, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/practice-team.functions.ts`<br>`tests/access-matrix.test.ts` |
 | `admin_advisor_user_ids()` | The user ids of all advisors, for platform administration. | authenticated, postgres, service_role | yes | yes | `src/lib/advisors.functions.ts` |
 | `admin_firm_members(_firm_id uuid)` | The members of one organisation, for platform administration. | authenticated, postgres, service_role | yes | yes | `src/lib/admin.functions.ts` |
 | `admin_grant_advisor(_user_id uuid)` | Makes a person an advisor, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/advisors.functions.ts` |
 | `admin_list_advisors()` | Lists advisors with their verified email, for platform administration. | authenticated, postgres, service_role | yes | yes | `src/lib/advisors.functions.ts` |
 | `admin_practice_team()` | The Traction Advisory practice team list, for platform admins only. | authenticated, postgres, service_role | yes | yes | `src/lib/practice-team.functions.ts` |
 | `admin_remove_advisor(_user_id uuid)` | Removes a person's advisor role, keeping at least one, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/advisors.functions.ts` |
-| `admin_remove_practice_member(_user_id uuid)` | Removes someone from the practice team; platform admins only, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/practice-team.functions.ts` |
+| `admin_remove_practice_member(_user_id uuid)` | Removes someone from the practice team; platform admins only, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/practice-team.functions.ts`<br>`tests/access-matrix.test.ts` |
 | `admin_set_self_firm_membership(_firm_id uuid, _join boolean)` | Lets a super admin join or leave Positive Traction's own organisation, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/admin.functions.ts`<br>`src/lib/invites.functions.ts` |
 | `admin_set_super_admin(_user_id uuid, _make boolean)` | Grants or removes the super admin role, never the last one, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/advisors.functions.ts` |
 | `apply_viewer_invite(_invite_id uuid, _user_id uuid)` | System context (service role only): apply an accepted viewer invitation — role, grants, acceptance stamp and audit row in one transaction, re-validating the client ids against the organisation. | postgres, service_role | yes | no | `src/lib/invites.functions.ts` |
