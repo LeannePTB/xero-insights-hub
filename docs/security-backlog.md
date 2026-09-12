@@ -313,18 +313,24 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     behaviour where a read caller currently accepts a support grant. Owner's instruction stands: this
     is its own change, not part of Phase 7 batch 2.
 
-38. **A revoked Xero token's ciphertext stays on the row until the next authorisation (opened 12 Sep 2026,
-    Phase 7 batch 3).** Disconnect revokes the grant at Xero first and fails closed, so the tokens are
-    dead the moment the row is marked. But `src/lib/xero/connections.functions.ts` updates only
-    `status`, `disconnected_at` and `disconnected_reason` — `access_token_enc` and `refresh_token_enc`
-    are left in place and are overwritten only when someone reconnects the same file. The row itself
-    must be kept (deleting it cascades away `client_xero_orgs` and so the client-to-Xero-file link),
-    but the ciphertext does not need to be. Low risk: the tokens are already revoked at Xero, the
-    columns carry no grant for `anon` or `authenticated`, and the key never leaves the server. Fix:
-    null both columns in the same update as the status change, and correct the wording in
-    `data-retention.md` and `data-hosting.md` to "revoked and removed" once it is true.
-    Found because `README.md` and both of those documents claimed tokens were deleted on disconnect;
-    the claim has been corrected in all three rather than left overstated.
+38. **CLOSED 12 Sep 2026 (Phase 7 batch 4 part A) — a revoked Xero token's ciphertext stayed on the row
+    until the next authorisation (opened 12 Sep 2026, Phase 7 batch 3).** Disconnect already revoked the
+    grant at Xero first and failed closed, but `src/lib/xero/connections.functions.ts` updated only
+    `status`, `disconnected_at` and `disconnected_reason`, leaving `access_token_enc` and
+    `refresh_token_enc` in place until a reconnect overwrote them.
+    Fixed: both columns are now nulled in the SAME update that marks the row, in every path where the
+    grant is dead — advisor disconnect (`connections.functions.ts`, `disconnected_by_advisor`),
+    a refresh token Xero itself rejects (`api.server.ts`, `invalid_grant` → `grant_revoked`), and the
+    unassigned-connection cleanup (`orphan-connections.functions.ts`, which already did so). The row and
+    the `client_xero_orgs` link are still kept, and the callback upserts fresh tokens onto the same row
+    on `user_id,tenant_id`, so a reconnect restores the same file to the same client.
+    Deliberately NOT cleared: the nightly authorisation reconcile (`authorised-tenants.server.ts`,
+    `not_authorised`). That token is still valid for the other Xero files on the same consent, and the
+    reconcile restores such a row to `connected` without any re-authorisation — clearing it would break
+    that recovery and force an unnecessary consent. Wording corrected to "revoked at Xero and removed"
+    in `data-retention.md`, `data-hosting.md` and `README.md`; matrix row added.
+    No back-fill was needed: all 12 live connections were `connected` at the time of the fix, so no row
+    was holding a revoked token. This is a forward fix.
 
 39. **Xero assessment evidence gaps — artefacts that do not exist (opened 12 Sep 2026, Phase 7 batch 3).**
     None of these is an access-control defect; each is a document or record an assessor will ask to
@@ -337,3 +343,39 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     (f) No published security contact or disclosure channel. (g) No periodic access-review record for
     memberships, support grants and roles. Owner call needed on which of these the practice writes and
     which are answered "not applicable — single-developer practice".
+
+40. **Unsubscribe links are not rate limited and their token is stored in the clear (opened 12 Sep 2026,
+    Phase 7 batch 4 re-audit).** `src/routes/email/unsubscribe.ts` looks a token up directly
+    (`.eq('token', token)`, lines 33-36 and 96-99) with no `enforceRateLimit` call anywhere in the file
+    (`rg -c "enforceRateLimit" src/routes/email/unsubscribe.ts` → none), and
+    `src/lib/email/send.server.ts:60-73` stores the generated token as plaintext in
+    `email_unsubscribe_tokens.token`, unlike invite and report tokens, which are stored hashed.
+    Impact is limited: the only thing the token does is suppress that one email address, the update is
+    atomic and single-use, and `anon`/`authenticated` hold no privileges on the table (verified: `anon`
+    has zero grants in `public`). Fix: hash the token like the others, and rate limit the route by IP.
+
+41. **Three `app_private` trigger functions still hold EXECUTE for `PUBLIC` (opened 12 Sep 2026,
+    Phase 7 batch 4 re-audit).** `app_private.enforce_client_limit`, `enforce_xero_org_limit` and
+    `enforce_xero_org_limit_on_move` return true for `has_function_privilege('anon', oid, 'execute')`;
+    every other definer function has EXECUTE revoked. Not exploitable — Postgres refuses to call a
+    trigger function directly ("trigger functions can only be called as triggers") and all three carry
+    `SET search_path` — but the project rule says revoke EXECUTE from PUBLIC and `anon` on every definer
+    function, so this is a hygiene gap. Fix: one revoke migration.
+
+42. **46 policies have no explicit `TO` clause (opened 12 Sep 2026, Phase 7 batch 4 re-audit).**
+    `pg_policy.polroles = '{0}'` (PUBLIC) on 46 permissive policies across `clients`, `firm_members`,
+    `billing_events`, `client_notes`, `subscriptions`, the email tables and others, so each applies to
+    every role rather than to `authenticated` (or `service_role`) explicitly. Not currently reachable by
+    `anon`: `anon` holds no table privileges in `public` (verified live), and the RESTRICTIVE
+    `mfa_aal2_required` guard is on 51 of 53 tables. Fix: recreate each policy with an explicit `TO`
+    role; do it table by table, proving the matrix unchanged at each step.
+
+43. **Eight legacy permissive `FOR ALL` policies remain on data tables (opened 12 Sep 2026,
+    Phase 7 batch 4 re-audit).** `audit_finding_snoozes`, `client_statutory_accounts`,
+    `consolidation_group_members`, `consolidation_groups`, `dashboard_card_order`,
+    `loan_consolidation_snapshots`, `scenario_exclusions` and `xero_oauth_states` (plus the super-admin
+    write policies on `user_roles` and `xero_assessment_contact`). Each qual was read: they resolve to
+    `app_private.has_firm_access` (active membership only), `app_private.has_client_access`,
+    `user_id = auth.uid()` or `app_private.me_is_super_admin()` — none admits a support grant, so no
+    access is over-granted today. The defect is shape, not scope: rule 1 wants per-command policies so a
+    future edit cannot widen reads and writes together. Fix: split into per-command policies.

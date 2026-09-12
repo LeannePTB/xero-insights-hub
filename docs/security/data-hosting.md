@@ -20,7 +20,7 @@ No data is hosted in high-risk jurisdictions.
 
 ## Third-party access to customer data
 
-- No third party reads customer data outside the integrations the customer explicitly authorises (currently Xero). Each connection belongs to one organisation and is revocable from the admin console: disconnecting revokes the grant at Xero first and only then marks the connection disconnected, so the tokens are dead immediately. The connection row itself is kept (deleting it would destroy the link between the client and their Xero file, which a reconnect relies on), and the revoked token ciphertext is overwritten by the next authorisation — backlog 38 tracks clearing it at disconnect time.
+- No third party reads customer data outside the integrations the customer explicitly authorises (currently Xero). Each connection belongs to one organisation and is revocable from the admin console: disconnecting revokes the grant at Xero first and only then marks the connection disconnected, so the tokens are dead immediately — and the same update removes the stored tokens, so nothing is left at rest. The connection row itself is kept (deleting it would destroy the link between the client and their Xero file, which a reconnect relies on).
 - Sub-processors above act on our behalf under their published security and privacy commitments. They do not use customer data for their own purposes.
 
 ## Data residency on request

@@ -742,6 +742,15 @@ export const MATRIX: MatrixRow[] = [
     layers: ["live"],
     note: "Phase 5: shared with the client allowance triggers, so a disconnected Xero file keeps its client link without counting toward the plan limit.",
   },
+  {
+    role: "org_owner",
+    resource: "public.xero_connections (disconnecting leaves no token ciphertext)",
+    operation: "update",
+    expect: "allow",
+    rule: "Backlog 38 — a revoked grant leaves no token at rest",
+    layers: ["live"],
+    note: "Phase 7: every path that marks a connection disconnected because the grant is dead (advisor disconnect, grant_revoked on refresh, unassigned cleanup) nulls access_token_enc and refresh_token_enc in the same update. The authorisation reconcile (not_authorised) deliberately keeps the ciphertext, because that token is still valid for the other tenants on the same consent and the row can be restored without re-authorising.",
+  },
   ...rows(
     ["aal1_member", "other_org_member", "super_admin_no_membership"],
     ["public.client_xero_files_used()"],

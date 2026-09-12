@@ -153,6 +153,12 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
           // Distinguishes this cause from a tenant dropped out of the consent;
           // the authorisation reconcile must never revive these rows.
           disconnected_reason: "grant_revoked",
+          // Backlog 38: Xero itself rejected this refresh token, so it is dead
+          // for every tenant on this Xero login. Nothing can be recovered from
+          // it and only a fresh authorisation brings these rows back, so the
+          // ciphertext is removed in the same write.
+          access_token_enc: null,
+          refresh_token_enc: null,
         })
         .eq("user_id", conn.user_id)
         .neq("status", "disconnected");
