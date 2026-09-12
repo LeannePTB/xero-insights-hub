@@ -64,5 +64,16 @@ export const getStoredMonthlyReport = createServerFn({ method: "POST" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!row) throw new Error("Report not found.");
+    // Phase 6: opening a stored report shows the client's figures, so the read
+    // is audited. RLS on client_reports has already decided access.
+    const { logClientDataRead } = await import("@/lib/audit.server");
+    logClientDataRead({
+      actorUserId: context.userId,
+      clientId: (row as any).client_id ?? null,
+      readKey: "report:monthly",
+      source: "report",
+      periodEnd: (row as any).period_end ?? null,
+      reportId: (row as any).id ?? null,
+    });
     return { report: row as any };
   });

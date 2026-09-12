@@ -2742,6 +2742,7 @@ export type Database = {
         Returns: number
       }
       purge_expired_security_logs: { Args: never; Returns: Json }
+      read_audit_posture: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {

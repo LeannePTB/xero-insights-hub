@@ -438,6 +438,23 @@ export async function openLink(token: string, email: string, ip: string | null, 
     },
   });
 
+  // Phase 6: the link view is also a READ of the client's figures, recorded
+  // through the one read writer. No signed-in actor, and deliberately no token,
+  // IP or user agent — the delivery event above already covers link abuse.
+  {
+    const { logClientDataRead } = await import("@/lib/audit.server");
+    logClientDataRead({
+      actorUserId: null,
+      anonymous: true,
+      clientId: report.client_id,
+      firmId: report.firm_id,
+      readKey: "report:monthly",
+      source: "report_link",
+      periodEnd: report.period_end,
+      reportId: report.id,
+    });
+  }
+
   // The PDF, when one exists, is served through a short-lived signed URL minted
   // AFTER the token and address are verified. The bucket stays private.
   let pdfUrl: string | null = null;

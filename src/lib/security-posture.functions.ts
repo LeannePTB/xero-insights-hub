@@ -116,8 +116,17 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<PostureResult> => {
     const { data, error } = await (context.supabase as any).rpc("security_posture");
     if (error) throw new Error("Security posture unavailable");
+
+    // Phase 6 read-audit check. Same authorisation pattern: a definer function
+    // that asserts aal2 + super admin itself, called through context.supabase.
+    // Computed from the trail and from figures actually served, not a fixed list.
+    let readAudit: PostureCheck[] = [];
+    const readRes = await (context.supabase as any).rpc("read_audit_posture");
+    if (!readRes.error && readRes.data) readAudit = [readRes.data as PostureCheck];
+
     const checks: PostureCheck[] = [
       ...((data?.checks ?? []) as PostureCheck[]),
+      ...readAudit,
       ...(await serverConfigChecks()),
     ];
     return {

@@ -800,7 +800,9 @@ export const getGroupLoanSnapshot = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { groupId: string; snapshotId: string }) => i)
   .handler(async ({ data, context }) => {
-    await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, {
+      allowSupportRead: true,
+    });
     const supabaseAdmin = await getSupabaseAdmin();
     const { data: row } = await supabaseAdmin
       .from("loan_consolidation_snapshots")
@@ -809,6 +811,19 @@ export const getGroupLoanSnapshot = createServerFn({ method: "POST" })
       .eq("group_id", data.groupId)
       .maybeSingle();
     if (!row) throw new Error("Saved report not found.");
+    // Phase 6: a saved loan reconciliation holds the group's figures, so
+    // opening one is an audited read. Access was decided by resolveLoanGroup.
+    {
+      const { logClientDataRead } = await import("@/lib/audit.server");
+      logClientDataRead({
+        actorUserId: context.userId,
+        firmId: group.firmId,
+        readKey: "loan_consolidation",
+        source: "snapshot",
+        periodEnd: ((row as any).as_at as string) ?? null,
+        reportId: (row as any).id as string,
+      });
+    }
     return {
       id: (row as any).id as string,
       asAt: (row as any).as_at as string,

@@ -117,6 +117,21 @@ export async function readSnapshot(opts: {
   const ageSeconds = (now.getTime() - new Date(fetchedAt).getTime()) / 1000;
   const threshold = STALENESS_SECONDS[reportKey] ?? DEFAULT_STALENESS_SECONDS;
 
+  // Phase 6: a figure served from a snapshot is still a read of the client's
+  // financial data, so it is audited exactly like a live one. Fire-and-forget
+  // through the one writer; a failed audit write never breaks a card.
+  {
+    const { logClientDataRead } = await import("@/lib/audit.server");
+    logClientDataRead({
+      clientId: clientId ?? null,
+      tenantId,
+      readKey: reportKey,
+      source: "snapshot",
+      periodStart: params["fromDate"] ?? null,
+      periodEnd: params["toDate"] ?? params["date"] ?? null,
+    });
+  }
+
   return {
     payload: data.payload,
     source: {

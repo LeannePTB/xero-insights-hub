@@ -31,7 +31,7 @@ the check is TypeScript, but they are not open endpoints.
 | --- | --- | --- | --- |
 | `src/integrations/supabase/client.server.ts` | `supabaseAdmin` | `system context` | The client definition itself; generated, never edited. |
 | `src/routes/api/public/xero/callback.ts` | route handler | `system context` | Xero OAuth redirect. The `xero_oauth_states` row is the credential; this is the trust boundary and stores rotated tokens. |
-| `src/lib/audit.server.ts` | `writeAudit`, `logXeroRead` | `system context` | Append-only audit writes; `audit_log` takes no writes from a browser session. |
+| `src/lib/audit.server.ts` | `writeAudit`, `logXeroRead`, `logClientDataRead` | `system context` | Append-only audit writes; `audit_log` takes no writes from a browser session. **Phase 6:** `logClientDataRead` additionally resolves the client and organisation for a Xero file it was not given, and reads `public.firm_access_path`, both for attribution on the audit row only. Neither result is returned to the caller or used to decide access, and the write is fire-and-forget so a failed audit never breaks a read. |
 | `src/lib/rate-limit.server.ts` | rate-limit bucket writes | `system context` | Abuse control; must work before and without a session. |
 | `src/lib/email/send.server.ts` | queue send/log | `system context` | Email queue processing and `email_send_log`. |
 | `src/lib/xero/api.server.ts` | token read/refresh | `system context` | Xero token storage and rotation; refresh must survive an unauthenticated background path. **Phase 5:** only a definitive `invalid_grant` marks rows disconnected (`grant_revoked`); a successful refresh no longer revives rows disconnected by an advisor, by revocation, or by loss of consent. |

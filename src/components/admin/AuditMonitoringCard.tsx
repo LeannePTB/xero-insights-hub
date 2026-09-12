@@ -10,6 +10,7 @@ import {
   exportAuditLogCsv,
   getAuditAnomalies,
   getRetentionStatus,
+  type AuditExportCategory,
 } from "@/lib/audit.functions";
 
 function StatusPill({ status }: { status: "ok" | "warn" | "action" }) {
@@ -24,11 +25,26 @@ const EXPORT_RANGES = [
   { label: "Last 12 months", days: 365 },
 ];
 
+const EXPORT_CATEGORIES: { value: AuditExportCategory; label: string; hint: string }[] = [
+  {
+    value: "security",
+    label: "Security events",
+    hint: "Sign-ins, permission changes, Xero connection and token events. Leaves out the high-volume reads.",
+  },
+  {
+    value: "reads",
+    label: "Client data reads",
+    hint: "Who opened which client's figures, when and from where. No figures are ever recorded, only the fact of the read.",
+  },
+  { value: "all", label: "Everything", hint: "Both lists in one file." },
+];
+
 export function AuditMonitoringCard() {
   const anomaliesFn = useServerFn(getAuditAnomalies);
   const retentionFn = useServerFn(getRetentionStatus);
   const exportFn = useServerFn(exportAuditLogCsv);
   const [exporting, setExporting] = useState<number | null>(null);
+  const [category, setCategory] = useState<AuditExportCategory>("security");
 
   const anomaliesQ = useQuery({
     queryKey: ["audit-anomalies"],
@@ -43,12 +59,12 @@ export function AuditMonitoringCard() {
   async function handleExport(days: number) {
     setExporting(days);
     try {
-      const res = await exportFn({ data: { days } });
+      const res = await exportFn({ data: { days, category } });
       const blob = new Blob([res.csv], { type: "text/csv;charset=utf-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `audit-log-${days}d-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `audit-log-${category}-${days}d-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       URL.revokeObjectURL(url);
       toast.success(`Exported ${res.rows} audit row(s).`);
@@ -115,24 +131,42 @@ export function AuditMonitoringCard() {
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-medium">Export for auditors:</span>
-          {EXPORT_RANGES.map((range) => (
-            <Button
-              key={range.days}
-              variant="outline"
-              size="sm"
-              onClick={() => handleExport(range.days)}
-              disabled={exporting !== null}
-            >
-              {exporting === range.days ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="mr-2 h-4 w-4" />
-              )}
-              {range.label}
-            </Button>
-          ))}
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-medium">Export for auditors:</span>
+            {EXPORT_CATEGORIES.map((c) => (
+              <Button
+                key={c.value}
+                variant={category === c.value ? "default" : "outline"}
+                size="sm"
+                onClick={() => setCategory(c.value)}
+                disabled={exporting !== null}
+              >
+                {c.label}
+              </Button>
+            ))}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            {EXPORT_CATEGORIES.find((c) => c.value === category)?.hint}
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            {EXPORT_RANGES.map((range) => (
+              <Button
+                key={range.days}
+                variant="outline"
+                size="sm"
+                onClick={() => handleExport(range.days)}
+                disabled={exporting !== null}
+              >
+                {exporting === range.days ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Download className="mr-2 h-4 w-4" />
+                )}
+                {range.label}
+              </Button>
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>
