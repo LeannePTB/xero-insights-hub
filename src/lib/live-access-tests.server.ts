@@ -673,7 +673,7 @@ async function signOutSessions(sessions: Session[]) {
 async function banAll(): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin.from("security_test_accounts" as any).select("user_id");
-  for (const row of (data ?? []) as { user_id: string }[]) {
+  for (const row of (data ?? []) as unknown as { user_id: string }[]) {
     try {
       await supabaseAdmin.auth.admin.updateUserById(row.user_id, { ban_duration: BAN_FOREVER } as any);
       await (supabaseAdmin.auth.admin as any).signOut?.(row.user_id, "global");
@@ -686,7 +686,7 @@ async function banAll(): Promise<void> {
 async function unbanAll(): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin.from("security_test_accounts" as any).select("user_id");
-  for (const row of (data ?? []) as { user_id: string }[]) {
+  for (const row of (data ?? []) as unknown as { user_id: string }[]) {
     await supabaseAdmin.auth.admin.updateUserById(row.user_id, { ban_duration: "none" } as any);
   }
 }
