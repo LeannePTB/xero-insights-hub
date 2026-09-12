@@ -800,7 +800,9 @@ export const getGroupLoanSnapshot = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { groupId: string; snapshotId: string }) => i)
   .handler(async ({ data, context }) => {
-    await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
+    const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId, {
+      allowSupportRead: true,
+    });
     const supabaseAdmin = await getSupabaseAdmin();
     const { data: row } = await supabaseAdmin
       .from("loan_consolidation_snapshots")
