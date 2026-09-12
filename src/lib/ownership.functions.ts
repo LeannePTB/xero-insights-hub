@@ -7,7 +7,10 @@ export type OrganisationMember = {
   displayName: string | null;
   role: "owner" | "staff";
   status: string;
+  /** True when this member is one of Traction Advisory's own people. */
+  isPractice: boolean;
 };
+
 
 export type OrganisationMembersView = {
   members: OrganisationMember[];
