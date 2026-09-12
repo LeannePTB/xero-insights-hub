@@ -11,6 +11,31 @@ export type PostureCheck = {
   evidence: string;
   /** definer_guards only: which guard name matched in each callable function. */
   matches?: { fn: string; pattern: string }[];
+  /**
+   * Set only on checks in ATTESTABLE_CHECKS: controls no system can read, where
+   * the only honest evidence is a recorded human confirmation. Never set on a
+   * check the server can read for itself.
+   */
+  attestable?: {
+    checkKey: string;
+    /** What the person is asserting when they press Confirm. */
+    claim: string;
+    confirmedByEmail?: string | null;
+    confirmedAt?: string | null;
+    note?: string | null;
+    expiresAfterDays?: number;
+  };
+};
+
+/**
+ * The ONLY checks an attestation may answer. A check the server can read must
+ * never appear here — an attestation can never override a machine reading.
+ */
+export const ATTESTABLE_CHECKS: Record<string, { claim: string }> = {
+  leaked_password: {
+    claim:
+      "I have opened the backend authentication settings myself and confirmed that leaked-password protection (Have I Been Pwned) is switched on.",
+  },
 };
 
 export type PostureResult = {
