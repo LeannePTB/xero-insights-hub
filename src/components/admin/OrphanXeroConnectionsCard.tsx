@@ -141,8 +141,9 @@ export function OrphanXeroConnectionsCard({ firms }: { firms: FirmOption[] }) {
                     <AlertDialogHeader>
                       <AlertDialogTitle>Disconnect {c.tenantName}?</AlertDialogTitle>
                       <AlertDialogDescription>
-                        The stored Xero authorisation is removed. Nobody is using this file, so no
-                        dashboard is affected. It can be connected again at any time.
+                        Our access is revoked at Xero and the file is marked as needing
+                        reconnection. It isn't placed with any organisation, so no dashboard is
+                        affected, and it can be connected again at any time.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
