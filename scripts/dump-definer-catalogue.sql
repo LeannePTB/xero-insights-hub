@@ -28,6 +28,16 @@ select json_build_object(
         and p.prosecdef
     ) s
   ), '[]'::json),
+  'all_functions', coalesce((
+    select json_agg(json_build_object(
+      'schema', ns.nspname,
+      'name', p.proname,
+      'definer', p.prosecdef,
+      'body', p.prosrc
+    ))
+    from pg_proc p join pg_namespace ns on ns.oid = p.pronamespace
+    where ns.nspname in ('public', 'app_private') and p.prokind = 'f'
+  ), '[]'::json),
   'policies', coalesce((
     select json_agg(json_build_object(
       'table', c.relname,
