@@ -1106,6 +1106,51 @@ export type Database = {
           },
         ]
       }
+      firm_viewer_access: {
+        Row: {
+          created_at: string
+          firm_id: string
+          granted_by: string | null
+          id: string
+          tier: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          firm_id: string
+          granted_by?: string | null
+          id?: string
+          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          firm_id?: string
+          granted_by?: string | null
+          id?: string
+          tier?: Database["public"]["Enums"]["dashboard_tier"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "firm_viewer_access_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "firm_viewer_access_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       firms: {
         Row: {
           created_at: string
@@ -1321,6 +1366,24 @@ export type Database = {
           updated_at?: string
           widgets?: string[]
           xero_org_limit?: number
+        }
+        Relationships: []
+      }
+      practice_team: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          user_id?: string
         }
         Relationships: []
       }
