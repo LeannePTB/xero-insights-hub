@@ -58,6 +58,8 @@ function AdvisorSettings() {
   const setPwFn = useServerFn(setAdvisorPassword);
   const setSuperFn = useServerFn(setAdvisorSuperAdmin);
   const setNameFn = useServerFn(updateProfileNameAsAdmin);
+  const fetchPracticeTeam = useServerFn(listPracticeTeam);
+  const setPracticeFn = useServerFn(setPracticeMembership);
 
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
