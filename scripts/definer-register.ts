@@ -60,14 +60,14 @@ function codeCallers(name: string): string[] {
   try {
     const out = execFileSync(
       "rg",
-      ["-l", "--no-messages", "-F", name, "src", "tests", "scripts", "docs/security"],
+      ["-l", "--no-messages", "-F", name, "src", "tests", "scripts"],
       { cwd: ROOT, encoding: "utf8" },
     );
     return out
       .split("\n")
       .map((l) => l.trim())
       .filter(Boolean)
-      .filter((f) => f !== "docs/security/definer-purposes.ts" && f !== "docs/security/definer-register.md");
+      .filter((f) => !f.startsWith("scripts/dump-definer") && f !== "scripts/definer-register.ts");
   } catch {
     return []; // rg exits 1 when nothing matches
   }
@@ -153,7 +153,7 @@ function render(cat: Catalogue) {
       lines.push(
         `| \`${r.key}(${esc(r.args)})\` | ${
           r.schema === "app_private"
-            ? "internal helper reached only through a policy or a guarded wrapper; the calling table carries the restrictive aal2 policy"
+            ? "internal helper or trigger function, not reachable as a signed-in call path; the tables it guards carry the restrictive aal2 policy"
             : "approved exception — returns no organisation, client or personal data"
         } |`,
       );
