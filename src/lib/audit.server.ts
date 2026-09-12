@@ -175,14 +175,21 @@ async function writeClientDataRead(entry: ClientDataRead): Promise<void> {
   });
 }
 
-/** Live Xero call. Delegates to the one writer; keeps the endpoint path. */
+/**
+ * Live Xero call. Delegates to the one writer.
+ *
+ * The actor is the person whose request this is, taken from the verified
+ * request actor. `conn.user_id` — whoever originally connected the Xero file —
+ * is only the fallback for background work, and is not evidence of who read.
+ */
 export async function logXeroRead(
   conn: { user_id: string; tenant_id: string; tenant_name?: string | null; firm_id?: string | null },
   path: string,
 ): Promise<void> {
   const { readKeyForXeroPath } = await import("@/lib/audit/read-keys");
+  const { getRequestActor } = await import("@/lib/auth/request-actor.server");
   logClientDataRead({
-    actorUserId: conn.user_id,
+    actorUserId: getRequestActor() ?? conn.user_id,
     firmId: conn.firm_id ?? null,
     tenantId: conn.tenant_id,
     tenantName: conn.tenant_name ?? null,
