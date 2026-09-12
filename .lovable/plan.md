@@ -1,85 +1,60 @@
-# Phase 7 — tidy up and prove it
+# Phase 7 — tidy up and prove it (revised with owner corrections, 12 Sep 2026)
 
 Classification: SECURITY-RELEVANT (grants, definer functions, documentation, full re-audit).
 This phase removes privileges and surface. No new access path, no new role, nothing widened.
 
-## What I verified live before writing this (12 Sep 2026)
+## Owner decisions, settled
+
+- **An organisation may NOT read its own audit log.** Current behaviour is already correct; no code change. Batch 3 must correct `docs/security/access-control-spec.md`, which still says otherwise, and record it as a deliberate decision for the Xero assessment.
+- **The super admin without a verified MFA factor is left as is.** She will be forced to enrol at her next sign-in and server enforcement already blocks her from all data. The posture card correctly keeps one Action item until then. Nothing to change.
+- Batch 1 ships as one atomic migration with a committed before/after grant dump.
+- `firm_has_consolidation` removed only if proven dead; `record_access_test_run` kept.
+- The slim live smoke suite is approved at the reduced scope, **after** Phase 7.
+
+## Verified live before writing this
 
 - 53 tables in `public`; **RLS is on all 53**.
-- **`anon` holds no privilege on any `public` table** — so the "anon holds anything" half of the `excess_grants` backlog item is already clean. Nothing to do there.
-- `authenticated` holds **TRUNCATE on 47 of 53 tables**, and on most of those the full default set (SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN) — Supabase's default, never trimmed.
-- Tables where `authenticated` holds INSERT/UPDATE/DELETE with **no permissive policy for any command**: `access_invites`, `billing_events`, `dashboard_configs`, `email_send_log`, `email_send_state`, `email_unsubscribe_tokens`, `firm_members`, `rate_limit_buckets`, `report_cache`. Writes there are already refused by RLS, so the grants are pure surface.
-- 96 SECURITY DEFINER functions in `public`, 31 in `app_private`. Every `public` definer executable by `authenticated` that I sampled has `SET search_path` and contains `assert_aal2` — Phase 1 held.
-- Function-level `EXECUTE` is `authenticated` + `service_role`; `anon` on none of the sampled set.
-- Not called anywhere in app code, tests or scripts: `public.firm_has_consolidation`, `public.record_access_test_run` (belongs to the parked live suite), and the `report_cache` table.
+- **`anon` holds no privilege on any `public` table** — that half of the `excess_grants` item is already clean.
+- `authenticated` holds **TRUNCATE on 47 of 53 tables**, mostly the untouched Supabase default set (SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER, MAINTAIN).
+- Six tables give `authenticated` write privileges where the only permissive policy is service-role-only or an explicit deny: `email_send_log`, `email_send_state`, `email_unsubscribe_tokens`, `suppressed_emails`, `rate_limit_buckets`, `security_contact_details`. Every app path to those tables uses the service-role client (verified in `src/lib/email/send.server.ts`, `src/routes/lovable/email/**`, `src/lib/security.functions.ts`).
+- 96 SECURITY DEFINER functions in `public`, 31 in `app_private`; every `public` definer executable by `authenticated` carries `SET search_path` and an `assert_aal2` guard.
+- Not referenced anywhere in `src`, `tests` or `scripts`: `public.firm_has_consolidation`, `public.record_access_test_run` (parked live suite), and the `report_cache` table.
 
-## Batch 1 — trim table grants to what the policies need (one migration)
+## Batch 1 — trim table grants to what the policies need (THIS TURN)
 
-One migration, not batched: a per-table `REVOKE ALL … FROM authenticated` followed by narrow re-grants is only safe if it is atomic. Half-applied grants are exactly the fail-open state to avoid, and the whole change is a single transaction.
+One migration, not batched: `REVOKE ALL` followed by narrow re-grants is only safe if it is atomic; a half-applied grant set is exactly the fail-open state to avoid.
 
-Rule applied per table, derived from the policies that exist — not a blanket rule:
+The rule is **purely reductive**: the target set is the intersection of what `authenticated` holds today and what a permissive policy for `authenticated` actually admits. Nothing is granted that is not already held, so no matrix row can turn from deny into allow.
 
-1. `REVOKE ALL ON public.<t> FROM anon, authenticated;`
-2. `GRANT SELECT` back only where a permissive SELECT (or `FOR ALL`) policy for `authenticated` exists.
-3. `GRANT INSERT / UPDATE / DELETE` back only per command that has a matching permissive policy.
-4. `GRANT ALL … TO service_role` preserved everywhere (system contexts already depend on it).
-5. TRUNCATE, REFERENCES, TRIGGER, MAINTAIN granted to nobody.
-6. `profiles` keeps its existing column grant shape (`UPDATE(display_name)` only).
+- TRUNCATE, REFERENCES, TRIGGER and MAINTAIN go to nobody.
+- Deliberate reductions kept from earlier phases stay reduced even where a policy exists: `firms` keeps SELECT only (the Phase 2 ownership fix), `client_subscriptions` and `audit_log` stay read-only, `xero_connections` keeps its 13 non-token **column** grants and no table privilege.
+- Column grants are re-granted explicitly after the revoke: `profiles UPDATE(display_name)`, `unreconciled_lines UPDATE(client_comment)`, `xero_connections SELECT(13 columns)`, `access_invites SELECT(8 non-token columns)`.
+- `service_role` is untouched.
 
-What could break, and the proof: any screen quietly relying on a grant that RLS would have allowed but no policy names, plus definer functions that read as their owner (unaffected — owner is `postgres`). Proof is the access matrix: `bun run security:check` before and after with the fixture fingerprint, the matrix rows re-proved, and a full before/after grant dump committed to `docs/security/grant-dump-phase7.md` so the change is reviewable line by line. Any matrix row that changes result stops the batch.
+What could break: a screen relying on a privilege no policy names (RLS would already refuse it), and nothing else — definer functions run as `postgres`. Proof: `bun run security:check` before and after, the matrix re-proved, the fixture regenerated with its fingerprint, and the full before/after grant dump committed to `docs/security/grant-dump-phase7.md`. Any matrix row that changes result stops the batch.
 
-Owner test: sign in as a member, open a client dashboard, add and edit a note, edit statutory accounts and cost classifications, save break-even inputs, invite a member, revoke a viewer, generate and send a report; then as a client viewer, open the dashboard and confirm read-only still reads.
+Owner test: as a member — open a client dashboard, add and edit a note, edit statutory accounts and cost classifications, save break-even inputs, save loan accounts, invite a member, revoke a viewer, generate and send a report, change a widget toggle; as a client viewer — open the dashboard and edit an unreconciled comment.
 
-Estimate: medium-large (the migration is generated, the verification is the work).
+## Batch 2 — the definer register (not fewer functions)
 
-## Batch 2 — definer sprawl: remove only what is provably dead
+74 callable definer functions is fine when each is guarded and has a reason; the problem is only that nobody can say what they are for. Deliverable: `docs/security/definer-register.md` generated from the live catalogue plus a code search — name, arguments, purpose, callers, guard, `search_path`, execute grants — regenerated by `security:check` so it cannot drift. Removal is limited to what is proven dead (zero code references, zero references from other function bodies and policies). Nothing genuinely distinct is merged.
 
-- Produce the complete callable-definer table (name, args, purpose, callers) into `docs/security/definer-register.md`, generated from the database plus a code search so it cannot drift silently.
-- Propose removal of `public.firm_has_consolidation` and `public.record_access_test_run` **only after** proving each dead: zero references in `src`, `tests`, `scripts`, zero references from other function bodies, zero references from any policy, and zero calls in the PostgREST request logs for the retention window. If any check finds a caller, it stays and is recorded as live.
-- `record_access_test_run` is the parked live suite's writer — removing it is tied to the Part 5 decision below. Recommendation: keep the function, drop nothing, if the slim smoke suite is approved.
-- Duplication to merge, not collapse: `public.user_can_access_client` / `user_can_read_client` / `user_can_write_client` are genuinely distinct (read vs write vs legacy alias) — the legacy alias is the only merge candidate, and only if unused.
-- No function that is still called is touched. Fewer is not the goal.
+## Batch 3 — documentation that matches reality, for the Xero assessment
 
-Estimate: small-medium.
+Correct `docs/security/access-control.md` (predates Phases 3–6) and `docs/security/access-control-spec.md` (dated 11 Sep 2026, section 12 stale, and it still implies an organisation may read its own audit log). Cover: MFA position, the three access paths, support grants read-only, the audit position (security events and reads), Xero token handling, disconnection and revocation, retention and purge. Record the audit-log decision as deliberate. File jobs unchanged: Project Knowledge = binding rules, spec = detail, matrix = evidence, `access-control.md` = the assessor-facing summary. List what the assessment response needs and where each answer comes from; do not write the response.
 
-## Batch 3 — documentation an assessor can be handed
+## Batch 4 — full re-audit from scratch, evidence inline
 
-`docs/security/access-control-spec.md` is dated 11 Sep 2026 and its section 12 still describes the backlog state before Phases 3–6. `docs/security/access-control.md` (28 lines) predates Phases 3–6 entirely: it describes roles and RLS but nothing about read auditing, support grants being read-only, the disconnect/revocation position, or the Phase 4 single-rulebook helpers.
+This re-audits my own work, so **every finding and every "clean" verdict carries its evidence inline** — the query or the code line, not an assertion. Where a check cannot be run from the sandbox (live aal2 posture, TLS headers, HIBP setting), say so rather than marking it clean. Scope: every table (RLS, policies per command, table and column grants), every definer function (guard, `search_path`, execute grants), every server function (aal2, authorisation before privileged work), every public route and its credential, secrets, tokens, storage buckets, cron jobs, and the linter with each accepted finding and its reason. Findings become new numbered backlog items; if nothing is found, say so plainly.
 
-Corrections to make, each traced to the phase that changed it:
+## Batch 5 — what remains
 
-| Statement today | Correction |
-|---|---|
-| `access-control.md` "policies scope reads to firm members or `auth.uid()`" | name the `app_private` helpers and the read/write split (Phase 3a) |
-| no mention of support grants being read-only | add it, with the write-side helpers that refuse them |
-| audit section covers security events only | add the read audit: `xero_data_read` and `client_report_read`, sources `live`/`snapshot`/`cache`/`report`/`report_link`, no figures recorded (Phase 6) |
-| nothing on disconnection | revoke-first, fail-closed, mark-not-delete, link retained, audited (Phase 5) |
-| spec §12 backlog pointer | re-point at the current backlog state |
+Both owner decisions are now settled (above). Remaining: the slim live smoke suite (one member, one client viewer, one outsider, one `ZZ` test organisation, cross-organisation and aal1 denial only, no Xero calls, no super-admin test account), the deferred people-and-access redesign, and the settled non-items — `FORCE ROW LEVEL SECURITY` (WON'T DO), token column exposure (CLOSED), the `setClientXeroAllowance` escalation (owner-approved exception), tier catalogue readability (assessed, left as-is).
 
-Files and their jobs, unchanged in principle: Project Knowledge = binding rules; `access-control-spec.md` = the detail; `access-matrix.ts` / `.md` = the evidence; `access-control.md` = the assessor-facing summary that ties the three together.
+## Batch order and estimates
 
-Also list (not answer) what the Xero assessment response needs and where each answer comes from: MFA position, the three access paths, support grants read-only, audit position, token handling and encryption, disconnection and revocation, retention and purge, incident response, dependency and vulnerability management.
-
-Estimate: small. Docs only, no code.
-
-## Batch 4 — full re-audit from scratch
-
-Run the original audit as if today were day one, against the live database and current code, assuming nothing from Phases 1–6: every table (RLS, policies per command, table and column grants), every definer function (guard, `search_path`, execute grants), every server function (aal2 and authorisation before privileged work), every public route and its credential, secrets, tokens, storage buckets, cron jobs, and the Supabase linter with each accepted finding and its reason.
-
-Output is a findings list only. Anything found becomes a **new numbered backlog item** in `docs/security-backlog.md`. If nothing is found, the report says so plainly.
-
-Estimate: medium. No behaviour change in this batch by design.
-
-## Part 5 — what remains
-
-- **Open owner decision A — may an organisation read its own audit log?** Recommendation: yes for its own rows, read-only, excluding platform-operations rows, as a later phase. Not in Phase 7.
-- **Open owner decision B — the super admin with no verified MFA factor.** Recommendation: enrol or demote this week; server enforcement already blocks that account from all data, so the risk is an account that cannot work rather than an exposure.
-- **Phase 2 part 3 (live smoke suite), parked after Phase 4.** Recommendation: still worth building, at reduced scope — one non-super-admin member, one client viewer, one outsider, in a single `ZZ` test organisation, asserting cross-organisation denial and aal1 denial only, with no Xero calls and no super-admin test account. Rationale: the access checks are now consolidated in the database, so the fast suite already proves the rules; the live suite's remaining value is proving the real token path, which nothing else covers.
-- **Deliberately not done:** `FORCE ROW LEVEL SECURITY` (settled WON'T DO), token column exposure (settled CLOSED), the `setClientXeroAllowance` super-admin escalation (owner-decided exception), and the tier catalogue readability (assessed, left as-is).
-
-## Owner decisions needed
-
-1. Approve Batch 1 as one migration with the committed before/after grant dump. **Recommend yes.**
-2. Approve removing `firm_has_consolidation` if proven dead; keep `record_access_test_run` pending decision 3. **Recommend yes.**
-3. Approve the slim live smoke suite at the reduced scope above, after Phase 7. **Recommend yes.**
-4. Decisions A and B above.
+1. Batch 1 — grant trim (medium-large; the migration is generated, the verification is the work).
+2. Batch 2 — definer register (small-medium).
+3. Batch 3 — documentation (small, docs only).
+4. Batch 4 — re-audit with inline evidence (medium; findings only, no behaviour change).
+5. Batch 5 — the remains list, then the slim live suite as its own phase.
