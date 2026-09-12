@@ -94,17 +94,34 @@ An organisation with no `subscriptions` row has NO limits — assign a plan at c
 
 ## 6. Authorisation functions — use these, never hand-roll
 
-Server code (service_role bypasses RLS, so these are mandatory): `public.user_can_access_firm`, `public.user_can_access_client`, `public.client_entitlement`.
+Server code (service_role bypasses RLS, so these are mandatory) calls **caller-scoped** functions that take no user id from the caller and read `auth.uid()` themselves: `public.user_can_read_client`, `public.user_can_write_client`, `public.assert_client_write_access`, `public.user_can_access_tenant`, `public.assert_tenant_belongs_to_client`, `public.client_for_tenant`, `public.firm_access_path`, `public.client_entitlement`, `public.my_roles`, `public.my_firm_memberships`, `public.my_client_access`, `public.firm_support_grants`, `public.firm_support_viewer_state`, and the super-admin/advisor checks. `public.user_can_access_firm` and `public.user_can_access_client` are the older aliases; they are still live and superseded by the read/write pair (backlog 37 tracks retiring them as its own change).
 
-RLS policies use `app_private.*`: `has_firm_access`, `is_org_owner`, `is_firm_owner`, `has_client_access`, `user_can_manage_client`, `firm_support_access_active`, `platform_staff_can_access_firm`, `user_can_access_tenant`, `firm_limits`.
+RLS policies use `app_private.*`: `has_firm_access`, `is_org_owner`, `is_firm_owner`, `has_client_access`, `user_can_read_client`, `user_can_write_client`, `user_can_manage_client`, `firm_support_access_active`, `platform_staff_can_access_firm`, `user_can_access_tenant`, `has_tenant_access`, `client_for_tenant`, `firm_limits`, `is_aal2`.
 
-Pattern: **read** = `has_firm_access(auth.uid(), firm_id) OR platform_staff_can_access_firm(auth.uid(), firm_id)`; **write** = `has_firm_access` only, because support access is read-only. Tenant-keyed tables use `user_can_access_tenant`; client-keyed use `user_can_manage_client`. New policies target `to authenticated`, never `public`.
+Pattern: **read** = `has_firm_access(auth.uid(), firm_id) OR platform_staff_can_access_firm(auth.uid(), firm_id)`; **write** = `has_firm_access` only, because support access is read-only. Tenant-keyed tables use `user_can_access_tenant`; client-keyed reads use `user_can_read_client` and client-keyed writes `user_can_write_client`. New policies target `to authenticated`, never `public`, and are per command.
 
-## 7. Support access (`firm_support_access`)
+## 6a. One rulebook — the build blocks re-implementation
+
+Invariant 7 is enforced, not just stated. `tests/static-guards.test.ts` (run by `bun run security:check`) fails the build on:
+
+- a direct read of `user_roles`, `firm_members`, `client_access` or `firm_support_access` in a converted file (`docs/security/converted-files.ts`) — access questions must be asked of a database function;
+- a `supabaseAdmin` use that is not a registered system context and is not preceded by a database authorisation call (`admin-client-register.md`);
+- any read of `profiles.email` — identity comes from `auth.users` (invariant 10);
+- a `tenantId`/`firmId`/`clientId` taken from a request body, query string or header and used as a grant;
+- a callable SECURITY DEFINER function without an aal2 assertion, and a read path that stops writing its read audit row (§9a).
+
+`docs/security/access-matrix.ts` is the authoritative expectation of who may read and write what; `bun run security:check` proves it against a PGlite copy of the live schema, policies, grants, definer bodies and triggers, with a fingerprint check that fails when the live catalogue drifts from the copy.
+
+## 7. Support access (`firm_support_access`) — read-only everywhere
 
 PK is `id`. `grantee_user_id` and `expires_at` are NOT NULL, with a CHECK capping expiry at 72h. Partial unique index on `(firm_id, grantee_user_id) WHERE granted AND revoked_at IS NULL`. **No unique constraint on `firm_id` alone** — never upsert on `firm_id`, never `.maybeSingle()` filtered only by it.
 
 Staff insert a pending request for themselves only. Only `is_org_owner` may approve. **A super admin can never approve their own access.** Writes go through `context.supabase`, never `supabaseAdmin`.
+
+What a live support grant may do (Phase 3a):
+
+- **Read**: the organisation's dashboards and Xero-derived figures, **the client list (`clients`) and statutory accounts (`client_statutory_accounts`)** as well.
+- **Write: nothing at all.** No client record, no note, no setting, no scenario, and **no branding** — the branding and logo paths (including clearing a logo, which is audited) require membership or client ownership, not a support grant. No policy, RPC or server function that writes may admit a support grant, which is why write policies use `has_firm_access`/`user_can_write_client` and never `platform_staff_can_access_firm`.
 
 ## 8. Entitlement (separate from access control)
 
