@@ -122,7 +122,7 @@ export const getAuditAnomalies = createServerFn({ method: "GET" })
       countAction(["xero_api_error"], since24h),
       countAction(["xero_file_unlinked", "xero_disconnected", "xero_reconnect_required"], since24h),
       countAction(["role_granted", "role_revoked", "role_changed"], since7d),
-      countAction(["xero_data_read"], since24h),
+      countAction([READ_ACTION_XERO, READ_ACTION_REPORT], since24h),
     ]);
 
     const { count: logins24h } = await (supabaseAdmin as any)
