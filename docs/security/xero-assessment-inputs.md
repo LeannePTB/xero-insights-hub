@@ -106,7 +106,7 @@ unverified in the way an assessor would want. **No** = no artefact; would have t
 
 | Likely question | Where the answer comes from | Can we evidence it? |
 | --- | --- | --- |
-| Where is customer data stored? | `data-hosting.md` — Lovable Cloud (Supabase) database and storage, Cloudflare edge | **Partial** — the platform is named; the **region** should be confirmed and written down, since Australian clients will ask. |
+| Where is customer data stored? | `data-hosting.md` — Supabase managed Postgres in an Australian region, Lovable Cloud on Cloudflare Workers (Sydney edge), no object storage enabled | **Partial** — the region is documented and no alternate region is offered; there is no platform attestation retained to back the claim. |
 | Encryption at rest and in transit? | Supabase-managed AES-256 at rest plus the application-level token wrap; TLS 1.2+ with HSTS (`tls_hsts` posture check) | **Yes** |
 | Backups and restore? | `data-retention.md` — managed by the platform | **Partial** — no tested restore, no documented RPO/RTO. |
 
@@ -114,8 +114,8 @@ unverified in the way an assessor would want. **No** = no artefact; would have t
 
 | Likely question | Where the answer comes from | Can we evidence it? |
 | --- | --- | --- |
-| Who are your sub-processors? | `data-hosting.md` — Lovable Cloud/Supabase (hosting, database, auth), Cloudflare (edge/TLS), Xero (source data), Stripe (payments), the transactional email provider | **Partial** — named across documents; there is no single sub-processor register with purpose, data shared and location. |
-| Do they have access to customer accounting data? | Hosting and email providers process it as infrastructure; Stripe receives billing data only, never Xero figures | **Partial** — accurate, but stated in prose only. |
+| Who are your sub-processors? | `data-hosting.md` sub-processor table: Cloudflare (TLS/edge), Supabase (Postgres, auth, storage), Xero (source data), Resend via Lovable (email), Stripe (payments — added this turn, it was missing) | **Yes** |
+| Do they have access to customer accounting data? | Hosting processes it as infrastructure; email carries addresses and message bodies; Stripe receives billing data only, never Xero figures (`data-hosting.md`) | **Yes** |
 | Customer-facing privacy terms and DPA? | — | **No** — outside this repository; would need to be supplied by the practice. |
 
 ## Summary of gaps to close before the assessment
