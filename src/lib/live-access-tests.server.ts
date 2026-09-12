@@ -493,6 +493,73 @@ async function probeConfinement(accounts: Account[]): Promise<ProbeResult[]> {
   return out;
 }
 
+/**
+ * A write probe is judged by its EFFECT, not by the HTTP status.
+ *
+ * `renameClient` reports success even when row-level security matched no row,
+ * so a refused write still answers 200. Reading the row back with the service
+ * role is the only honest test of whether the write landed.
+ */
+async function renameProbe(
+  fn: unknown,
+  clientId: string,
+  name: string,
+  session: Session,
+): Promise<CallOutcome> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const before = await supabaseAdmin.from("clients").select("name").eq("id", clientId).maybeSingle();
+  const res = await callServerFn(fn, { clientId, name }, session);
+  if (res.outcome !== "allow") return res;
+  const after = await supabaseAdmin.from("clients").select("name").eq("id", clientId).maybeSingle();
+  const landed = (after.data as any)?.name === name;
+  if (landed) return { outcome: "allow", detail: `${res.detail}; the row was changed` };
+  return {
+    outcome: "deny",
+    detail: `${res.detail} but the row is unchanged ("${(before.data as any)?.name ?? "?"}") — the write was refused`,
+  };
+}
+
+/**
+ * `listFirmMemberInvites` maps the database's NOT_PERMITTED into an empty list,
+ * so the status alone cannot tell allow from deny. A pending invitation is
+ * seeded for the test organisation first: seeing it is allow, not seeing it is
+ * the refusal.
+ */
+async function listInvitesProbe(
+  fn: unknown,
+  firmId: string,
+  session: Session,
+): Promise<CallOutcome> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const email = "zz-security-test-invite@example.invalid";
+  const { createHash, randomBytes } = await import("node:crypto");
+  const tokenHash = createHash("sha256").update(randomBytes(32)).digest("hex");
+  const seeded = await supabaseAdmin.from("access_invites" as any).insert({
+    firm_id: firmId,
+    email,
+    role: "staff",
+    kind: "member",
+    token_hash: tokenHash,
+    expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+  });
+  try {
+    if (seeded.error) {
+      return { outcome: "inconclusive", detail: `could not seed an invitation: ${seeded.error.message}` };
+    }
+    const res = await callServerFn(fn, { firmId }, session);
+    if (res.outcome !== "allow") return res;
+    if (res.body?.includes(email)) {
+      return { outcome: "allow", detail: `${res.detail}; the pending invitation was returned` };
+    }
+    return {
+      outcome: "deny",
+      detail: `${res.detail} but no invitation was returned — the database refused and the function reported an empty list`,
+    };
+  } finally {
+    await supabaseAdmin.from("access_invites" as any).delete().eq("token_hash", tokenHash);
+  }
+}
+
 // -------------------------------------------------------------------- the probes
 async function runProbes(
   accounts: Account[],
