@@ -316,10 +316,37 @@ async function openSession(account: Account, stepUp: boolean): Promise<Session> 
 type CallOutcome = { outcome: "allow" | "deny" | "inconclusive"; detail: string };
 
 /**
+ * Extracts the message from a TanStack-serialised error payload.
+ *
+ * The response envelope is seroval cross-JSON, and its error node carries the
+ * plugin tag `$TSR/Error`. Deserialising it properly needs TanStack's internal
+ * seroval plugins, which the package does not export, so the message is read
+ * out of the raw payload instead. Presence of the tag is the signal; the text
+ * is only for the report.
+ */
+function serialisedErrorMessage(text: string): string | null {
+  if (!text.includes('"$TSR/Error"')) return null;
+  const m = /"message":\{"t":1,"s":"((?:[^"\\]|\\.)*)"\}/.exec(text);
+  if (!m) return "error (message not readable)";
+  try {
+    return JSON.parse(`"${m[1]}"`) as string;
+  } catch {
+    return m[1] ?? "error";
+  }
+}
+
+/**
  * Calls a real server function over HTTP with a real session's bearer token.
  *
- * 2xx is allow; 401/403 and an error payload are deny. Anything the runner
- * cannot classify is INCONCLUSIVE and is never counted as a pass.
+ * The request shape is TanStack Start's own RPC contract, read from the
+ * installed version's client (`serverFnFetcher`): POST to the function's
+ * `/_serverFn/<id>` url, header `x-tsr-serverFn: true`, and a body that is the
+ * SEROVAL-serialised `{ data }` envelope — not plain JSON. Plain JSON is what
+ * produced "Seroval Error (step: 3)" on every probe.
+ *
+ * Classification: a serialised error payload (any status) is a refusal; 2xx
+ * with a result is allow; 401/403 and other 4xx are deny. A 5xx without a
+ * readable payload, or anything unparseable, is INCONCLUSIVE and never a pass.
  */
 async function callServerFn(
   fn: unknown,
@@ -331,38 +358,47 @@ async function callServerFn(
   const { siteOrigin } = await import("@/lib/site-origin");
   const absolute = url.startsWith("http") ? url : `${siteOrigin()}${url}`;
 
+  let payload: string;
+  try {
+    const { toJSONAsync } = await import("seroval");
+    payload = JSON.stringify(await toJSONAsync({ data: body }));
+  } catch (e) {
+    return { outcome: "inconclusive", detail: `could not serialise payload: ${(e as Error).message}` };
+  }
+
   let res: Response;
   try {
     res = await fetch(absolute, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
+        "content-type": "application/json",
+        "x-tsr-serverFn": "true",
+        accept: "application/json",
         ...(session ? { Authorization: `Bearer ${session.accessToken}` } : {}),
       },
-      body: JSON.stringify({ data: body }),
+      body: payload,
       signal: AbortSignal.timeout(20_000),
     });
   } catch (e) {
     return { outcome: "inconclusive", detail: `request failed: ${(e as Error).message}` };
   }
 
-  const text = (await res.text()).slice(0, 400);
+  const text = (await res.text()).slice(0, 2000);
+  const errMessage = serialisedErrorMessage(text);
+  if (errMessage) return { outcome: "deny", detail: `${res.status}: ${errMessage.slice(0, 160)}` };
+
   if (res.ok) {
-    // A 200 carrying a serialised error is still a refusal.
-    if (/unauthorized|forbidden|not permitted|cannot|permission denied/i.test(text) && /error/i.test(text)) {
-      return { outcome: "deny", detail: `200 with refusal: ${text.slice(0, 120)}` };
-    }
-    return { outcome: "allow", detail: `${res.status}` };
+    if (res.headers.get("x-tss-serialized")) return { outcome: "allow", detail: `${res.status}` };
+    // A 2xx without the serialised envelope is not a server-function result.
+    return { outcome: "inconclusive", detail: `${res.status} without a server-function payload` };
   }
   if (res.status === 401 || res.status === 403) return { outcome: "deny", detail: `${res.status}` };
   if (res.status >= 400 && res.status < 500) {
     return { outcome: "deny", detail: `${res.status}: ${text.slice(0, 120)}` };
   }
-  if (res.status === 500 && /unauthorized|forbidden|not permitted|cannot|permission/i.test(text)) {
-    return { outcome: "deny", detail: `500 refusal: ${text.slice(0, 120)}` };
-  }
   return { outcome: "inconclusive", detail: `${res.status}: ${text.slice(0, 120)}` };
 }
+
 
 // ------------------------------------------------------------------- confinement
 /**
