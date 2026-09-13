@@ -2425,6 +2425,10 @@ create policy mfa_aal2_required on public.report_cache as restrictive for all to
 create policy mfa_aal2_required on public.report_recipients as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "staff read report recipients" on public.report_recipients as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
 create policy "Client members manage scenario exclusions (select)" on public.scenario_exclusions as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
+create policy "Members manage scenario exclusions (delete)" on public.scenario_exclusions as permissive for delete to authenticated using (app_private.user_can_write_client(auth.uid(), client_id));
+create policy "Members manage scenario exclusions (insert)" on public.scenario_exclusions as permissive for insert to authenticated with check (app_private.user_can_write_client(auth.uid(), client_id));
+create policy "Members manage scenario exclusions (update)" on public.scenario_exclusions as permissive for update to authenticated using (app_private.user_can_write_client(auth.uid(), client_id)) with check (app_private.user_can_write_client(auth.uid(), client_id));
+create policy "Members read scenario exclusions" on public.scenario_exclusions as permissive for select to authenticated using (app_private.user_can_write_client(auth.uid(), client_id));
 create policy mfa_aal2_required on public.scenario_exclusions as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy attestations_select_super_admin on public.security_attestations as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy mfa_aal2_required on public.security_attestations as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -2545,4 +2549,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: aabf2dfcfb732ea4f81aca9c32f324b0f0d9fa6a3a4868c38458d6a247c1585c
+-- catalogue-fingerprint: 7b8fe11a3f6b31dfb96f1dd82780f00b3186ad02ceae52f93599267052752a7f

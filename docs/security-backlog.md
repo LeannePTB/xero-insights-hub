@@ -522,6 +522,7 @@ Outstanding, in order, each its own security change:
   Xero files and before ownership/support controls. The old People route redirects to that section;
   all application links point there. Active membership remains the visibility boundary, and the
   existing audited functions remain the only implementation.
+- **Batch 3 regression fixed 13 Sep 2026.** Dropping the `scenario_exclusions` write policies left no write path for members or client owners; per-command member write policies plus a member SELECT policy were re-created, the scenario server functions moved off the admin client, and the matrix gained the 8 positive member/client-owner rows that would have caught it.
 - **Batch 3 — remove the accidental External adviser writes. DONE 13 Sep 2026.** The three
   permissive `scenario_exclusions` write policies were dropped (writes already went through the
   audited server functions, so no member write was moved to a direct REST path);

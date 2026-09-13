@@ -175,14 +175,18 @@ const SERVER_WRITTEN_TABLES = [
   "xero_snapshot_runs",
 ] as const;
 
-/** Client-scoped tables written only by the client viewer who owns the row. */
-const VIEWER_SCOPED_TABLES = ["scenario_exclusions"] as const;
-
-/** Tables a member manages directly through RLS (per-command firm policies). */
+/**
+ * Tables a member manages directly through RLS (per-command firm policies).
+ * scenario_exclusions belongs here as of 13 Sep 2026: Batch 3 dropped its three
+ * accidental adviser write policies and left nothing behind, so members and
+ * client owners lost the scenario planner's exclude/restore entirely. The
+ * regression fix re-created per-command INSERT/UPDATE/DELETE plus a member
+ * SELECT policy on app_private.user_can_write_client, and these positive rows
+ * are what would have caught it.
+ */
 const MEMBER_MANAGED_TABLES = CLIENT_DATA_TABLES.filter(
   (t) =>
     !(SERVER_WRITTEN_TABLES as readonly string[]).includes(t) &&
-    !(VIEWER_SCOPED_TABLES as readonly string[]).includes(t) &&
     !["clients", "client_subscriptions", "report_cache", "client_access"].includes(t),
 );
 
@@ -281,14 +285,10 @@ export const MATRIX: MatrixRow[] = [
   // ------------------------------------------------------------ membership (A)
   ...rows(
     ["org_owner", "org_staff"],
-    [
-      "firms",
-      "firm_members",
-      ...CLIENT_DATA_TABLES.filter((t) => !["report_cache", "scenario_exclusions"].includes(t)),
-    ],
+    ["firms", "firm_members", ...CLIENT_DATA_TABLES.filter((t) => t !== "report_cache")],
     ["read"],
     "allow",
-    "PK 2 path A; Spec §3",
+    "PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits",
     ["pglite", "live"],
   ),
   // report_cache is per-user, not per-organisation: a member sees only their own rows.
@@ -313,16 +313,6 @@ export const MATRIX: MatrixRow[] = [
     "pglite",
     "live",
   ]),
-
-  // scenario_exclusions is written by the client viewer who owns the client.
-  ...rows(
-    ["org_owner", "org_staff"],
-    VIEWER_SCOPED_TABLES,
-    ["read", ...WRITES],
-    "deny",
-    "Spec §6 (client_access-scoped table)",
-    ["pglite", "live"],
-  ),
 
   ...rows(
     ["org_owner", "org_staff"],
