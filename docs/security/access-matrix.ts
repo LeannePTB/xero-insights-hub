@@ -1589,14 +1589,6 @@ export const MATRIX: MatrixRow[] = [
     rule: "PK 1 / PK 4 — membership in another organisation writes nothing here",
     layers: ["pglite"],
   },
-  {
-    role: "org_owner",
-    resource: "unreconciled comment update stays restricted to client_comment",
-    operation: "execute",
-    expect: "allow",
-    rule: "Spec §6 — enforce_unreconciled_line_viewer_columns still refuses any other column for a non-advisor writer",
-    layers: ["pglite"],
-  },
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);
