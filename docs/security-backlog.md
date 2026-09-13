@@ -445,6 +445,10 @@ The database is confirmed as Supabase managed PostgreSQL 17.6.1.127 in **Asia Pa
 
 RFC 9116 treats a stale `security.txt` as invalid. The file at `public/.well-known/security.txt` carries `Expires: 2027-09-13T00:00:00.000Z` (12 months from its creation on 13 Sep 2026). Before that date the file must be re-issued with a fresh `Expires` roughly 12 months out, and this item rolled forward. There is no mechanism that reminds anyone — the calendar reminder belongs to the owner.
 
+## 47. No product path to delete a non-advisor account (opened 13 Sep 2026, from the first access review)
+
+The only account-deletion path is `revokeAdvisor` on the advisors page, and the advisors list shows `advisor` role holders only. The dormant `leanne@astrovisual.com.au` account (a leftover `client_viewer` role, since revoked through the audited function on 13 Sep 2026) cannot be reached by that screen, so its auth login cannot be deleted from the product. The account reaches nothing: no role, membership, grant, or practice-team row. Remedy owed: either extend the advisors-page removal to any account a super admin selects, or a deliberately narrow audited delete path for fully-dormant accounts. Until then, deletion of this login is a manual service-role operation the owner performs deliberately, not a workaround.
+
 ## People and access redesign — Batch 5 (done 12 Sep 2026)
 
 The one deliberate widening in the security programme, and its boundary.
