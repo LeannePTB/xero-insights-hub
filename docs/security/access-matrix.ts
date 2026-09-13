@@ -62,8 +62,10 @@ export const ROLE_LABELS: Record<Role, string> = {
   org_staff: "Organisation staff (own organisation)",
   other_org_member: "Active member of a DIFFERENT organisation",
   org_a_owner_reading_org_b: "Organisation A's owner, reading organisation B",
-  client_viewer: "Client viewer (client_access on one client)",
-  standing_viewer: "Standing viewer grant (every client in one organisation, read-only)",
+  client_viewer:
+    "External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)",
+  standing_viewer:
+    "External adviser — All clients (firm_viewer_access on one organisation, read-only; user-facing name only, the key is unchanged)",
   support_grant_active: "Support-grant holder, active, non-member organisation",
   support_grant_expired: "Support-grant holder, grant expired",
   support_grant_revoked: "Support-grant holder, grant revoked",

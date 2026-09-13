@@ -266,6 +266,20 @@ handed-over restriction are unchanged — joining still requires the
 organisation's owner to hold `super_admin`, so a practice-team person cannot
 join a handed-over organisation.
 
+### 14.3 Naming: "External adviser", and the Business owner relationship to come (13 Sep 2026)
+
+Project Knowledge section 2 now names Path D **External adviser** and adds Path E **Business owner**, with invariant 11 forbidding a read predicate (`has_client_access`, `has_client_read_access`, `has_standing_client_access`) in any write policy, write helper or billing authorisation.
+
+Wording only, in this change:
+
+- User-facing copy says **External adviser**, with **All clients** or the number of selected clients. "Standing grant" / "standing viewer grant" are retired from screens. Internal names — `firm_viewer_access`, `client_access`, `has_standing_client_access`, matrix role keys, audit actions — are unchanged, and must stay unchanged.
+- A `client_access` row will carry a nullable `relationship` (`business_owner` | `external_adviser`); `NULL` displays as **Not set** and is read-only. Nothing is inferred or backfilled.
+- **Business owner** is self-service for one specific client only, never on an All clients grant. A client may have **several** business owners (partners, spouses), so no unique constraint on `(client_id)` for that relationship.
+- **Membership governs an overlap.** After handover a person may hold both an active `firm_members` row and a `business_owner` row; membership is the broader path and the self-service capabilities are a subset of it, so the two cannot conflict. If the membership is later removed or suspended the relationship row is untouched, and the person falls back to self-service on that one client.
+- Relationship changes go only through an aal2, caller-scoped, audited database function, callable by the organisation owner or an active practice-team member of that organisation. Direct `client_access` writes are closed unconditionally in Batch 2.
+
+Nothing in this subsection is implemented yet beyond the wording; the two writes a selected-client grant can currently reach (`scenario_exclusions`, the `unreconciled_lines` comment) remain defects tracked as backlog 48 Batch 3, and §14 above still describes live behaviour.
+
 ## 15. Member removal (12 Sep 2026)
 
 There is exactly one removal path: `public.remove_firm_member(_firm_id, _user_id)`
