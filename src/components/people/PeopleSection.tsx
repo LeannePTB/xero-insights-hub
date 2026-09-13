@@ -283,16 +283,16 @@ export function PeopleSection({ firmId }: { firmId: string }) {
       </Panel>
 
       <Panel
-        title="Client viewer"
-        blurb="The business owner or one of their staff. A client viewer only ever reads a dashboard — they can never change anything, see this organisation's billing or settings, or see another organisation's clients."
+        title="External adviser"
+        blurb="Someone outside this organisation who reads a client's dashboard — an accountant, a broker, or the business owner's own adviser. An external adviser only ever reads: they can never change anything, see this organisation's billing or settings, or see another organisation's clients. Their access is either All clients or the clients you select."
         icon={<Building2 className="h-5 w-5" />}
       >
         {canManageViewers ? (
           <ViewerInviteForm firmId={firmId} clients={clients} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Only the organisation owner can give a client viewer access. You can still see who has
-            access below.
+            Only the organisation owner can give an external adviser access. You can still see who
+            has access below.
           </p>
         )}
 
@@ -304,7 +304,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
         />
 
         <div className="space-y-3">
-          <h3 className="text-sm font-medium">People who can see one client only</h3>
+          <h3 className="text-sm font-medium">External advisers — selected clients</h3>
           {clients.map((c) => (
             <ClientViewerList
               key={c.id}
@@ -344,8 +344,9 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                   can restore it.
                 </p>
                 <p>
-                  This does not change anyone's client viewer access or "every client" access, does
-                  not disconnect any Xero file, and does not delete any saved figures, history or{" "}
+                  This does not change any external adviser's access, whether All clients or
+                  selected clients, does not disconnect any Xero file, and does not delete any saved
+                  figures, history or{" "}
                   {removing?.isMe ? "your" : "their"} sign-in account.
                 </p>
               </div>
@@ -447,7 +448,7 @@ function ClientViewerList({
             <div className="flex shrink-0 items-center gap-2">
               <Badge variant="outline">{tierLabel(a.tier)}</Badge>
               {standing.some((s) => s.userId === a.user_id) && (
-                <Badge variant="secondary">Also all clients</Badge>
+                <Badge variant="secondary">Also All clients</Badge>
               )}
               {canManage && (
                 <Button
