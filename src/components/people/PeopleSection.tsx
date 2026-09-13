@@ -31,8 +31,8 @@ import {
 import { ViewerInviteForm } from "@/components/people/ViewerInviteForm";
 import { StandingViewers } from "@/components/people/StandingViewers";
 import { getMyContext } from "@/lib/roles.functions";
-import { tierLabel } from "@/lib/tiers";
 import type { DashboardTier } from "@/lib/tiers";
+import { relationshipLabel } from "@/lib/access-labels";
 
 
 function Panel({
@@ -94,6 +94,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   });
 
   const [memberEmail, setMemberEmail] = useState("");
+  const [memberName, setMemberName] = useState("");
   const [memberLink, setMemberLink] = useState<string | null>(null);
   const [removing, setRemoving] = useState<{
     userId: string;
@@ -116,11 +117,12 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   });
 
   const inviteMemberMut = useMutation({
-    mutationFn: () => inviteMember({ data: { firmId, email: memberEmail, role: "staff" } }),
+    mutationFn: () => inviteMember({ data: { firmId, email: memberEmail, name: memberName, role: "staff" } }),
     onSuccess: (res: any) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       setMemberLink(`${origin}/signup/${res.token}`);
       setMemberEmail("");
+      setMemberName("");
       toast.success("Invitation created.");
       qc.invalidateQueries({ queryKey: ["firm-member-invites", firmId] });
     },
@@ -140,7 +142,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
 
   // Who may manage client viewers is decided in the database
   // (app_private.can_manage_client_viewers): the organisation owner, or one of
-  // Traction Advisory's own people with an active membership of this
+    // Positive Traction's own people with an active membership of this
   // organisation. Staff see the lists and nothing more.
   const standingQ = useQuery({
     queryKey: ["standing-viewers", firmId],
@@ -159,7 +161,17 @@ export function PeopleSection({ firmId }: { firmId: string }) {
         icon={<Users className="h-5 w-5" />}
       >
         {canInvite ? (
-          <div className="flex flex-wrap items-end gap-2">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="member-name">Name (optional)</Label>
+              <Input
+                id="member-name"
+                value={memberName}
+                maxLength={80}
+                onChange={(e) => setMemberName(e.target.value)}
+                placeholder="Their name"
+              />
+            </div>
             <div className="min-w-[16rem] flex-1 space-y-1.5">
               <Label htmlFor="member-email">Their email address</Label>
               <Input
@@ -170,13 +182,13 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                 placeholder="name@example.com"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Role</Label>
               <p className="h-9 rounded-md border border-border px-3 text-sm leading-9 text-muted-foreground">
                 Staff
               </p>
             </div>
-            <Button
+            <Button className="sm:col-span-2 sm:w-fit"
               onClick={() => inviteMemberMut.mutate()}
               disabled={inviteMemberMut.isPending || !memberEmail}
             >
@@ -202,7 +214,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Only Traction Advisory can add team members. Ask us and we'll send the invitation.
+            Only Positive Traction can add team members. Ask us and we'll send the invitation.
           </p>
         )}
 
@@ -227,7 +239,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                       <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {m.isPractice && <Badge>Traction Advisory</Badge>}
+                      {m.isPractice && <Badge>Positive Traction</Badge>}
                       <Badge variant="outline">{m.role === "owner" ? "Owner" : "Staff"}</Badge>
                       {m.status !== "active" && <Badge variant="secondary">{m.status}</Badge>}
                       {canRemove && (
@@ -261,7 +273,8 @@ export function PeopleSection({ firmId }: { firmId: string }) {
               {(invitesQ.data?.invites ?? []).map((i) => (
                 <li key={i.id} className="flex items-center justify-between gap-3 px-3 py-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm">{i.email}</p>
+                    <p className="truncate text-sm font-medium">{i.inviterLabel ?? i.email}</p>
+                    {i.inviterLabel && <p className="truncate text-xs text-muted-foreground">{i.email}</p>}
                     <p className="text-xs text-muted-foreground">
                       {i.role === "owner" ? "Owner" : "Staff"} · expires{" "}
                       {new Date(i.expiresAt).toLocaleDateString()}
@@ -304,7 +317,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
         />
 
         <div className="space-y-3">
-          <h3 className="text-sm font-medium">External advisers — selected clients</h3>
+          <h3 className="text-sm font-medium">Business owners and External advisers — selected clients</h3>
           {clients.map((c) => (
             <ClientViewerList
               key={c.id}
@@ -411,12 +424,11 @@ function ClientViewerList({
   });
 
   const switchMut = useMutation({
-    mutationFn: (v: { userId: string; tier: DashboardTier }) =>
+    mutationFn: (v: { userId: string }) =>
       switchScope({
         data: {
           firmId,
           userId: v.userId,
-          tier: v.tier,
           clientIds: clients.filter((c) => c.id !== clientId).map((c) => c.id),
         },
       }),
@@ -442,11 +454,11 @@ function ClientViewerList({
         {rows.map((a) => (
           <li key={a.id} className="flex items-center justify-between gap-3 px-3 py-2">
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{a.display_name ?? a.email}</p>
+              <p className="truncate text-sm font-medium">{a.display_name ?? a.inviter_label ?? a.email}</p>
               <p className="truncate text-xs text-muted-foreground">{a.email}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Badge variant="outline">{tierLabel(a.tier)}</Badge>
+              <Badge variant="outline">{relationshipLabel(a.relationship)}</Badge>
               {standing.some((s) => s.userId === a.user_id) && (
                 <Badge variant="secondary">Also All clients</Badge>
               )}
@@ -458,7 +470,7 @@ function ClientViewerList({
                     setPending({
                       id: a.id,
                       userId: a.user_id,
-                      who: a.display_name ?? a.email ?? "This person",
+                      who: a.display_name ?? a.inviter_label ?? a.email ?? "This person",
                     })
                   }
                 >
@@ -496,7 +508,7 @@ function ClientViewerList({
               <AlertDialogAction
                 onClick={() =>
                   pending &&
-                  switchMut.mutate({ userId: pending.userId, tier: standingFor.tier })
+                  switchMut.mutate({ userId: pending.userId })
                 }
                 disabled={switchMut.isPending || otherClients === 0}
               >

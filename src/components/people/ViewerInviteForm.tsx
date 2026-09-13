@@ -8,21 +8,13 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { inviteViewer } from "@/lib/viewers.functions";
-import { ALL_TIERS, tierLabel } from "@/lib/tiers";
-import type { DashboardTier } from "@/lib/tiers";
+import type { ClientAccessRelationship } from "@/lib/access-labels";
 
 type Client = { id: string; name: string };
 
 /**
- * One invitation, one level, two scopes. The wording is deliberately plain:
+ * One invitation, one relationship, two scopes. The wording is deliberately plain:
  * "Only the clients I tick" versus "Every client in this organisation,
  * including ones added later".
  */
@@ -31,8 +23,10 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
   const send = useServerFn(inviteViewer);
 
   const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [relationship, setRelationship] =
+    useState<ClientAccessRelationship>("external_adviser");
   const [scope, setScope] = useState<"selected" | "all_clients">("selected");
-  const [tier, setTier] = useState<DashboardTier>("basic");
   const [picked, setPicked] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [link, setLink] = useState<string | null>(null);
@@ -51,13 +45,15 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
         data: {
           firmId,
           email,
+          name,
+          relationship,
           scope,
-          tier,
           clientIds: scope === "selected" ? picked : [],
         },
       }),
     onSuccess: (res: any) => {
       setEmail("");
+      setName("");
       setPicked([]);
       if (res?.invited && res?.token) {
         const origin = typeof window !== "undefined" ? window.location.origin : "";
@@ -76,12 +72,25 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
 
   const summary =
     scope === "all_clients"
-      ? `${email || "This person"} will see every client in this organisation, including ones added later, at ${tierLabel(tier)} level. They will never be able to change anything.`
-      : `${email || "This person"} will see ${picked.length} of ${clients.length} client${clients.length === 1 ? "" : "s"} at ${tierLabel(tier)} level. They will never be able to change anything.`;
+      ? `${name.trim() || email || "This person"} will see every client in this organisation, including ones added later. They will never be able to change anything.`
+      : picked.length === 0
+        ? "Select at least one client to continue."
+        : `${name.trim() || email || "This person"} will see ${picked.length} selected client${picked.length === 1 ? "" : "s"}. ${relationship === "external_adviser" ? "They will never be able to change anything." : "Business owner self-service is not enabled yet; this invitation is read-only for now."}`;
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-end gap-2">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label htmlFor="viewer-name">Name (optional)</Label>
+          <Input
+            id="viewer-name"
+            value={name}
+            maxLength={80}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Their name or business"
+          />
+          <p className="text-xs text-muted-foreground">A display label only. It never identifies the account or grants access.</p>
+        </div>
         <div className="min-w-[16rem] flex-1 space-y-1.5">
           <Label htmlFor="viewer-email">Their email address</Label>
           <Input
@@ -89,27 +98,34 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="owner@business.com.au"
+            placeholder="accountant@example.com"
           />
         </div>
-        <div className="min-w-[11rem] space-y-1.5">
-          <Label>Dashboard level</Label>
-          <Select value={tier} onValueChange={(v) => setTier(v as DashboardTier)}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {ALL_TIERS.map((t) => (
-                <SelectItem key={t} value={t}>
-                  {tierLabel(t)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-muted-foreground">
-            One level for the whole selection. You can change it for a single client afterwards.
-          </p>
-        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Relationship</Label>
+        <RadioGroup
+          value={relationship}
+          onValueChange={(v) => {
+            const next = v as ClientAccessRelationship;
+            setRelationship(next);
+            if (next === "business_owner") setScope("selected");
+          }}
+        >
+          <div className="flex items-start gap-2">
+            <RadioGroupItem value="external_adviser" id="relationship-adviser" className="mt-1" />
+            <Label htmlFor="relationship-adviser" className="font-normal">
+              External adviser — read-only access
+            </Label>
+          </div>
+          <div className="flex items-start gap-2">
+            <RadioGroupItem value="business_owner" id="relationship-owner" className="mt-1" />
+            <Label htmlFor="relationship-owner" className="font-normal">
+              Business owner — selected clients only; self-service is not enabled yet
+            </Label>
+          </div>
+        </RadioGroup>
       </div>
 
       <div className="space-y-2">
@@ -121,12 +137,14 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
               Only the clients I tick
             </Label>
           </div>
-          <div className="flex items-start gap-2">
-            <RadioGroupItem value="all_clients" id="scope-all" className="mt-1" />
-            <Label htmlFor="scope-all" className="font-normal">
-              Every client in this organisation, including ones added later
-            </Label>
-          </div>
+          {relationship === "external_adviser" && (
+            <div className="flex items-start gap-2">
+              <RadioGroupItem value="all_clients" id="scope-all" className="mt-1" />
+              <Label htmlFor="scope-all" className="font-normal">
+                Every client in this organisation, including ones added later
+              </Label>
+            </div>
+          )}
         </RadioGroup>
       </div>
 
