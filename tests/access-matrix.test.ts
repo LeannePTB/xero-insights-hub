@@ -49,6 +49,7 @@ const U = {
   grantTarget: "99990013-1111-4111-8111-111111111111",
   businessOwnerOne: "99990014-1111-4111-8111-111111111111",
   businessOwnerTwo: "99990015-1111-4111-8111-111111111111",
+  handoverOwner: "99990016-1111-4111-8111-111111111111",
   supportActive: "99990005-1111-4111-8111-111111111111",
   supportExpired: "99990006-1111-4111-8111-111111111111",
   supportRevoked: "99990007-1111-4111-8111-111111111111",
@@ -570,10 +571,11 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return p.rows[0]?.same_client === 2 && p.rows[0]?.cross_client === 0 ? "allow" : "deny";
   }
   if (r === "membership governs a simultaneous Business owner relationship") {
+    await db.exec("set local role postgres");
     const p = await db.query<{ member: boolean; relationship: string | null }>(`
-      select app_private.has_firm_access(auth.uid(), '${ORG_A}') as member,
+      select app_private.has_firm_access('${U.handoverOwner}', '${ORG_A}') as member,
              (select relationship::text from public.client_access
-               where client_id = '${CLIENT_A}' and user_id = auth.uid()) as relationship
+               where client_id = '${CLIENT_A}' and user_id = '${U.handoverOwner}') as relationship
     `);
     return p.rows[0]?.member === true && p.rows[0]?.relationship === "business_owner"
       ? "allow"
@@ -583,12 +585,12 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     await db.exec("set local role postgres");
     await db.exec(
       `update public.firm_members set status = 'removed'
-        where firm_id = '${ORG_A}' and user_id = '${U.staffA}'`,
+        where firm_id = '${ORG_A}' and user_id = '${U.handoverOwner}'`,
     );
     const p = await db.query<{ member: boolean; rows: number }>(`
-      select app_private.has_firm_access('${U.staffA}', '${ORG_A}') as member,
+      select app_private.has_firm_access('${U.handoverOwner}', '${ORG_A}') as member,
              (select count(*) from public.client_access
-               where client_id = '${CLIENT_A}' and user_id = '${U.staffA}'
+               where client_id = '${CLIENT_A}' and user_id = '${U.handoverOwner}'
                  and relationship = 'business_owner')::int as rows
     `);
     return p.rows[0]?.member === false && p.rows[0]?.rows === 1 ? "allow" : "deny";
@@ -879,7 +881,9 @@ beforeAll(async () => {
       ('e0000005-1111-4111-8111-111111111111', '${CLIENT_NEW}', '${U.mixedViewer}', 'advisory', 'external_adviser', null),
       ('e0000006-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.businessOwnerOne}', 'multi_company', 'business_owner', 'Partner one'),
       ('e0000007-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.businessOwnerTwo}', 'multi_company', 'business_owner', 'Partner two'),
-      ('e0000008-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.staffA}', 'multi_company', 'business_owner', 'Handed-over owner');
+      ('e0000008-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.handoverOwner}', 'multi_company', 'business_owner', 'Handed-over owner');
+    insert into public.firm_members(id, firm_id, user_id, role, status) values
+      ('e0000009-1111-4111-8111-111111111111', '${ORG_A}', '${U.handoverOwner}', 'staff', 'active');
     insert into public.xero_connections(id, user_id, tenant_id, tenant_name, firm_id, status,
                                         expires_at, access_token_enc, refresh_token_enc, enc_version) values
       ('${CONN_A}', '${U.ownerA}', '${TENANT_A}', 'File A', '${ORG_A}', 'connected',
