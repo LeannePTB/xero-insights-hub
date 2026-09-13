@@ -1155,6 +1155,20 @@ AS $function$
   ), '{}'::text[])
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.user_can_write_client_scenario(_client_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _uid uuid := auth.uid();
+begin
+  perform app_private.assert_aal2();
+  if _uid is null then return false; end if;
+  return app_private.user_can_write_client(_uid, _client_id);
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION app_private.client_xero_files_used(_client_id uuid, _exclude_link_id uuid DEFAULT NULL::uuid)
  RETURNS integer
  LANGUAGE sql
@@ -2410,10 +2424,7 @@ create policy "Users manage own report cache (update)" on public.report_cache as
 create policy mfa_aal2_required on public.report_cache as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.report_recipients as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "staff read report recipients" on public.report_recipients as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
-create policy "Client members manage scenario exclusions (delete)" on public.scenario_exclusions as permissive for delete to authenticated using (app_private.has_client_access(auth.uid(), client_id));
-create policy "Client members manage scenario exclusions (insert)" on public.scenario_exclusions as permissive for insert to authenticated with check (app_private.has_client_access(auth.uid(), client_id));
 create policy "Client members manage scenario exclusions (select)" on public.scenario_exclusions as permissive for select to authenticated using (app_private.has_client_access(auth.uid(), client_id));
-create policy "Client members manage scenario exclusions (update)" on public.scenario_exclusions as permissive for update to authenticated using (app_private.has_client_access(auth.uid(), client_id)) with check (app_private.has_client_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.scenario_exclusions as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy attestations_select_super_admin on public.security_attestations as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy mfa_aal2_required on public.security_attestations as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -2464,8 +2475,8 @@ create policy "manage tier widget config by firm or super admin (update)" on pub
    FROM clients c
   WHERE ((c.id = tier_widget_config.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))))));
 create policy mfa_aal2_required on public.tier_widget_config as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "Members update comments for their client" on public.unreconciled_lines as permissive for update to authenticated using (app_private.user_can_write_client(auth.uid(), client_id)) with check (app_private.user_can_write_client(auth.uid(), client_id));
 create policy "Viewers can read lines for their client" on public.unreconciled_lines as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
-create policy "Viewers can update comments for their client" on public.unreconciled_lines as permissive for update to authenticated using (app_private.has_client_access(auth.uid(), client_id)) with check (app_private.has_client_access(auth.uid(), client_id));
 create policy "manage unreconciled lines by firm (delete)" on public.unreconciled_lines as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = unreconciled_lines.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -2534,4 +2545,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: e0e0de05240e3b2865a6d303b640edc74dfc61789413f4d36baf394cc6e74d02
+-- catalogue-fingerprint: aabf2dfcfb732ea4f81aca9c32f324b0f0d9fa6a3a4868c38458d6a247c1585c
