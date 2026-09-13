@@ -10,8 +10,6 @@ import {
   detachXeroOrg,
   deleteClient,
   listClientAccess,
-  inviteClientViewer,
-  createClientViewerWithPassword,
   revokeClientAccess,
   updateClientReportBasis,
   updateClientLodgementCycles,
@@ -63,7 +61,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { siteUrl } from "@/lib/site-origin";
 import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
 import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
 import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
@@ -74,10 +71,6 @@ import {
   Loader2,
   UserPlus,
   Link2,
-  KeyRound,
-  Eye,
-  EyeOff,
-  Copy,
   AlertCircle,
   ChevronDown,
 } from "lucide-react";
@@ -116,8 +109,6 @@ function ClientSettings() {
   const rename = useServerFn(renameClient);
   const detach = useServerFn(detachXeroOrg);
   const del = useServerFn(deleteClient);
-  const invite = useServerFn(inviteClientViewer);
-  const createViewerPw = useServerFn(createClientViewerWithPassword);
   const revoke = useServerFn(revokeClientAccess);
   const fetchTierCfg = useServerFn(listTierConfig);
   const saveTier = useServerFn(saveClientTierWidgets);
@@ -195,15 +186,6 @@ function ClientSettings() {
   });
 
   const [name, setName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteViewerName, setInviteViewerName] = useState("");
-  const [viewerMode, setViewerMode] = useState<"invite" | "password">("invite");
-  const [viewerPassword, setViewerPassword] = useState("");
-  const [showViewerPw, setShowViewerPw] = useState(false);
-  const [lastViewerCreated, setLastViewerCreated] = useState<{
-    email: string;
-    password: string;
-  } | null>(null);
   const [selectedXeroIds, setSelectedXeroIds] = useState<Set<string>>(new Set());
   const [xeroAllowance, setXeroAllowance] = useState(1);
 
@@ -285,33 +267,6 @@ function ClientSettings() {
     onSuccess: () => {
       toast.success("Client deleted");
       navigate({ to: "/dashboard", replace: true });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const inviteMut = useMutation({
-    mutationFn: () => invite({ data: { clientId, email: inviteEmail, name: inviteViewerName } }),
-    onSuccess: ({ invited }) => {
-      toast.success(invited ? "Invite email sent" : "Access granted");
-      setInviteEmail("");
-      setInviteViewerName("");
-      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const createViewerPwMut = useMutation({
-    mutationFn: () =>
-      createViewerPw({
-        data: { clientId, email: inviteEmail, name: inviteViewerName, password: viewerPassword },
-      }),
-    onSuccess: () => {
-      toast.success(`Viewer created — ${inviteEmail}`);
-      setLastViewerCreated({ email: inviteEmail, password: viewerPassword });
-      setInviteEmail("");
-      setInviteViewerName("");
-      setViewerPassword("");
-      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
     },
     onError: (e: any) => toast.error(e.message),
   });
@@ -782,145 +737,19 @@ function ClientSettings() {
           )}
         </Section>
 
-        {/* Viewer access */}
-        <Section title="Viewer access">
-          <div className="mb-3 inline-flex rounded-md border border-border p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setViewerMode("invite");
-                setLastViewerCreated(null);
-              }}
-              className={`rounded px-3 py-1.5 transition ${viewerMode === "invite" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Send email invite
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewerMode("password");
-                setLastViewerCreated(null);
-              }}
-              className={`rounded px-3 py-1.5 transition ${viewerMode === "password" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Create with password
-            </button>
-          </div>
-
-          {viewerMode === "invite" ? (
-            <>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  placeholder="Name (optional)"
-                  maxLength={80}
-                  value={inviteViewerName}
-                  onChange={(e) => setInviteViewerName(e.target.value)}
-                  className="flex-1"
-                />
-                <Input
-                  type="email"
-                  placeholder="accountant@example.com"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={() => inviteMut.mutate()}
-                  disabled={!inviteEmail.includes("@") || inviteMut.isPending}
-                >
-                  {inviteMut.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <UserPlus className="mr-2 h-4 w-4" />
-                  )}{" "}
-                  Invite
-                </Button>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                If the email isn't registered yet, they'll receive an invite link.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    placeholder="Name (optional)"
-                    maxLength={80}
-                    value={inviteViewerName}
-                    onChange={(e) => setInviteViewerName(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Input
-                    type="email"
-                    placeholder="accountant@example.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    className="flex-1"
-                  />
-                </div>
-                <div className="relative">
-                  <Input
-                    type={showViewerPw ? "text" : "password"}
-                    placeholder="Starter password (min 8 chars, letter + number)"
-                    value={viewerPassword}
-                    onChange={(e) => setViewerPassword(e.target.value)}
-                    className="pr-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowViewerPw((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    aria-label={showViewerPw ? "Hide password" : "Show password"}
-                  >
-                    {showViewerPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <Button
-                  onClick={() => createViewerPwMut.mutate()}
-                  disabled={
-                    !inviteEmail.includes("@") ||
-                    viewerPassword.length < 8 ||
-                    createViewerPwMut.isPending
-                  }
-                  className="self-start"
-                >
-                  {createViewerPwMut.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <KeyRound className="mr-2 h-4 w-4" />
-                  )}
-                  Create viewer
-                </Button>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Account is active immediately — no email click required. Share the credentials
-                securely; they can change the password from Account settings after signing in.
-              </p>
-              {lastViewerCreated && (
-                <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs">
-                  <div className="mb-2 font-medium text-foreground">New viewer credentials</div>
-                  <div className="font-mono text-foreground">{lastViewerCreated.email}</div>
-                  <div className="font-mono text-foreground">{lastViewerCreated.password}</div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={async () => {
-                      const text = `Email: ${lastViewerCreated.email}\nPassword: ${lastViewerCreated.password}\nSign in: ${siteUrl("/auth")}`;
-                      try {
-                        await navigator.clipboard.writeText(text);
-                        toast.success("Credentials copied");
-                      } catch {
-                        window.prompt("Copy credentials:", text);
-                      }
-                    }}
-                  >
-                    <Copy className="mr-2 h-3.5 w-3.5" /> Copy credentials
-                  </Button>
-                </div>
-              )}
-            </>
+        {/* People access is managed centrally so relationship and scope are explicit. */}
+        <Section title="People access">
+          <p className="text-sm text-muted-foreground">
+            Invite and manage Business owners and External advisers from the organisation's People
+            page. Relationship is selected before scope, and every change uses the audited access
+            functions.
+          </p>
+          {client.firm_id && (
+            <Button asChild variant="outline" className="mt-3">
+              <Link to="/firms/$firmId/people" params={{ firmId: client.firm_id }}>
+                Manage people and access
+              </Link>
+            </Button>
           )}
 
           <div className="mt-4">
