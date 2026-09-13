@@ -51,8 +51,6 @@ export type ScenarioData = {
   unclassifiedCount: number;
 };
 
-
-
 type XeroInvoice = {
   InvoiceID: string;
   Status?: string;
@@ -123,7 +121,12 @@ type ReportRow = {
   Cells?: { Value: string }[];
 };
 
-type PnlLine = { name: string; month: string; amount: number; section: "income" | "cogs" | "operating" };
+type PnlLine = {
+  name: string;
+  month: string;
+  amount: number;
+  section: "income" | "cogs" | "operating";
+};
 
 function classifySection(rawTitle: string): "income" | "cogs" | "operating" | null {
   const title = rawTitle.toLowerCase();
@@ -136,7 +139,8 @@ function classifySection(rawTitle: string): "income" | "cogs" | "operating" | nu
   }
   if (title.includes("expense") || title.includes("operating")) return "operating";
   if (title.includes("other income")) return null;
-  if (title.includes("income") || title.includes("revenue") || title.includes("sales")) return "income";
+  if (title.includes("income") || title.includes("revenue") || title.includes("sales"))
+    return "income";
   return null;
 }
 
@@ -201,11 +205,12 @@ function summarisePnl(lines: PnlLine[], months: string[]): ScenarioPnlMonth[] {
   });
 }
 
-
 /** Live Cashflow Scenario data straight from the connected Xero organisation. */
 export const getScenarioData = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { clientId: string; tenantId: string; fromDate: string; toDate: string }) => i)
+  .inputValidator(
+    (i: { clientId: string; tenantId: string; fromDate: string; toDate: string }) => i,
+  )
   .handler(async ({ data, context }): Promise<ScenarioData> => {
     const { getConnectionByTenant, xeroGet } = await import("./api.server");
     const { assertWidgetAccess } = await import("./access.server");
@@ -217,7 +222,6 @@ export const getScenarioData = createServerFn({ method: "POST" })
     const conn = await getConnectionByTenant(data.tenantId);
     // The Cashflow Scenario always reports on the accrual basis so it lines up
     // with the Xero Profit & Loss (payments-only drops accrued wages/super).
-
 
     const where =
       `Type=="ACCREC"&&Status!="VOIDED"&&Status!="DELETED"&&Status!="DRAFT"` +
@@ -246,7 +250,6 @@ export const getScenarioData = createServerFn({ method: "POST" })
     });
     const pnlLines = parseMonthlyPnl(plRes.Reports?.[0], months);
     const expenseLines = pnlLines.filter((l) => l.section !== "income");
-
 
     // Fixed / variable tags plus saved exclusions. Read with the trusted server
     // client after widget access has been checked: advisors and firm members have
@@ -288,7 +291,9 @@ export const getScenarioData = createServerFn({ method: "POST" })
       })),
       accounts: xeroAccounts,
     });
-    const excluded = new Set<string>(((exclRes.data ?? []) as any[]).map((r) => String(r.xero_invoice_id)));
+    const excluded = new Set<string>(
+      ((exclRes.data ?? []) as any[]).map((r) => String(r.xero_invoice_id)),
+    );
 
     const customerNames = new Set<string>();
     const invoices: ScenarioInvoice[] = [];
@@ -366,9 +371,7 @@ export const getScenarioData = createServerFn({ method: "POST" })
       avg3,
       unclassifiedCount: unclassifiedNames.size,
     };
-
   });
-
 
 /**
  * One rulebook: public.user_can_write_client_scenario decides (active
@@ -437,7 +440,6 @@ export const setInvoicesExcludedBulk = createServerFn({ method: "POST" })
   });
 
 export const resetScenario = createServerFn({ method: "POST" })
-
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
@@ -449,4 +451,3 @@ export const resetScenario = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
-

@@ -285,11 +285,7 @@ export const MATRIX: MatrixRow[] = [
   // ------------------------------------------------------------ membership (A)
   ...rows(
     ["org_owner", "org_staff"],
-    [
-      "firms",
-      "firm_members",
-      ...CLIENT_DATA_TABLES.filter((t) => t !== "report_cache"),
-    ],
+    ["firms", "firm_members", ...CLIENT_DATA_TABLES.filter((t) => t !== "report_cache")],
     ["read"],
     "allow",
     "PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits",
