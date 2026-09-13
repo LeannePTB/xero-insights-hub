@@ -550,6 +550,13 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return p.ok ? "allow" : "deny";
   }
+  if (r.startsWith("user_can_write_client_scenario()")) {
+    const target = r.includes("another organisation") ? CLIENT_B : CLIENT_A;
+    const p = await probe(
+      `select 1 / (case when public.user_can_write_client_scenario('${target}') then 1 else 0 end)`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
   if (r === "set_client_access_relationship() for own organisation") {
     const p = await probe(
       `select public.set_client_access_relationship('c0000003-1111-4111-8111-111111111111', 'external_adviser')`,
