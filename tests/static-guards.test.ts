@@ -447,10 +447,12 @@ describe("9. relationship foundation cannot silently grant authority", () => {
   it("has no authenticated direct write privilege or write policy on client_access", () => {
     const grants = catalogue
       .split("\n")
-      .filter((line) => /^grant /i.test(line) && /public\.client_access to authenticated/i.test(line));
+      .filter(
+        (line) => /^grant /i.test(line) && /public\.client_access to authenticated/i.test(line),
+      );
     expect(grants.some((line) => /\b(insert|update|delete)\b/i.test(line))).toBe(false);
     expect(catalogue).not.toMatch(
-      /create policy .* on public\.client_access .* for (insert|update|delete|all) to authenticated/i,
+      /create policy [^\n]* on public\.client_access [^\n]* for (insert|update|delete|all) to authenticated/i,
     );
   });
 });

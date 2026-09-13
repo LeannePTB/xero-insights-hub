@@ -5,6 +5,7 @@
 > system as built through Phases 1–7.
 >
 > **Which document wins.**
+>
 > - **Project Knowledge** ("Security Rules and Change Gate") — the BINDING rules the agent follows. It wins over everything here.
 > - **This file** — the detail. Where it and Project Knowledge differ, Project Knowledge wins.
 > - **`access-matrix.ts` / generated `access-matrix.md`** — the EVIDENCE. Where this file and the matrix disagree, the matrix is right: it is proved against the live catalogue by `bun run security:check`, and prose is not.
@@ -21,7 +22,7 @@ If a chat request conflicts with this document, STOP and reply:
 
 1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 53 `public` tables.
 2. No policy on a data table may read `USING (true)`. New permissive policies are per command, never `FOR ALL`; a RESTRICTIVE `FOR ALL` guard that only narrows access (the aal2 guard) is allowed.
-3. **Being `super_admin` grants ZERO access to organisation or client data on its own** (see §4a for the bounds on what it *can* do).
+3. **Being `super_admin` grants ZERO access to organisation or client data on its own** (see §4a for the bounds on what it _can_ do).
 4. A `firm_id` / `client_id` / `tenant_id` from the caller is a FILTER, never a GRANT.
 5. Xero OAuth tokens never leave the server. `service_role` key never reaches the browser.
 6. RLS is never disabled to fix a bug. Never cache roles or grants in the JWT or localStorage.
@@ -45,7 +46,7 @@ If a chat request conflicts with this document, STOP and reply:
 
 **Never use "firm" in user-facing copy.** The user-facing term is **"organisation"** (matching Xero). `firm` / `firm_id` / `firms` are internal identifiers only — tables, columns, functions, RPC parameter names, TypeScript symbols, routes, query keys. Do not rename them.
 
-- **"Company" is taken**: a *company* is an individual Xero entity belonging to a client. Hierarchy: **Organisation → Clients → Companies**.
+- **"Company" is taken**: a _company_ is an individual Xero entity belonging to a client. Hierarchy: **Organisation → Clients → Companies**.
 - The `basic` tier is **"Standard"** in UI copy; do not rename the enum value.
 - **Australian English**: organisation, authorise, cancelled, licence (noun). Prices in AUD.
 
@@ -76,7 +77,7 @@ If a feature seems to need cross-organisation visibility, ask which path it is f
 `super_admin` on its own reaches no organisation or client data (invariant 3). What it can do is bounded in the database and audited:
 
 - **Self-join.** `public.admin_set_self_firm_membership` adds or removes the caller as a member of an organisation **Positive Traction still owns** — never an organisation handed over to a client — and audits every attempt.
-- **Always-free.** `public.set_firm_always_free` is restricted to Positive Traction's own organisation (pinned to `4dcfd606-dce3-4674-923f-c5183ecae141`), **fails closed** if that organisation cannot be identified, requires a 3–500 character reason, and audits the change. That flag grants the *highest enabled* tier, not Standard. **Never set `is_always_free` on a client organisation.**
+- **Always-free.** `public.set_firm_always_free` is restricted to Positive Traction's own organisation (pinned to `4dcfd606-dce3-4674-923f-c5183ecae141`), **fails closed** if that organisation cannot be identified, requires a 3–500 character reason, and audits the change. That flag grants the _highest enabled_ tier, not Standard. **Never set `is_always_free` on a client organisation.**
 - **Subscriptions and comps.** `client_subscriptions` has no browser write grant; changes go through audited aal2 RPCs that require a reason.
 - **MFA reset, role changes, plan changes, audit exports** all write audit rows.
 
@@ -87,6 +88,7 @@ If a feature seems to need cross-organisation visibility, ask which path it is f
 **`ptb` is the default for client organisations**: 1 client, 1 Xero organisation, `allowed_tiers={basic}`, free.
 
 Triggers on `clients` and `xero_connections` block over-limit inserts and fire even for `service_role`. Catch and present these; never reimplement the check:
+
 - `PLAN_LIMIT_CLIENTS: this organisation's plan allows N client(s). Upgrade to add more.`
 - `PLAN_LIMIT_XERO_ORGS: this organisation's plan allows N Xero organisation(s). Upgrade to connect more.`
 
@@ -328,6 +330,7 @@ expected allow/deny from `docs/security/access-matrix.ts` by
 (role, resource, operation), and a probe with no matrix row is an error.
 
 ### What it exercises
+
 Real sessions for three accounts (owner aal2, the **same owner on aal1**, staff
 aal2, client viewer with a standing grant aal2) plus anonymous, calling
 `listClients`, `getClient`, `renameClient`, `inviteClientViewer`,
@@ -336,6 +339,7 @@ aal2, client viewer with a standing grant aal2) plus anonymous, calling
 `practice_team` row.
 
 ### Containment (each enforced in the database, never by convention)
+
 - `firms.is_test` marks the one isolated organisation, `ZZ Security Test Org`.
   It has no Xero connection, so **no Xero API call is reachable** from the suite.
 - `app_private.confine_security_test_accounts()` is a trigger on `firm_members`,
@@ -355,6 +359,7 @@ aal2, client viewer with a standing grant aal2) plus anonymous, calling
   TOTP codes are computed at run time; nothing is ever returned to a browser.
 
 ### Posture and triggering
+
 `public.test_accounts_posture()` (aal2 + super admin) reports **Action** if any
 test account can sign in outside a run, holds any membership, grant or role
 outside the test organisation, or has a session outside the run window.
