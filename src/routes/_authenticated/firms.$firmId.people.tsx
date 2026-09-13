@@ -10,13 +10,13 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/people")({
       {
         name: "description",
         content:
-          "Add team members who see every client in this organisation, or client viewers who see one client's dashboard only.",
+          "Manage Team members, Business owners and External advisers for this organisation.",
       },
       { property: "og:title", content: "People — Traction Advisory" },
       {
         property: "og:description",
         content:
-          "Add team members who see every client in this organisation, or client viewers who see one client's dashboard only.",
+          "Manage Team members, Business owners and External advisers for this organisation.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -37,8 +37,8 @@ function PeoplePage() {
         </Button>
         <h1 className="font-display text-3xl font-semibold">People</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Two kinds of access: team members who work across every client, and client viewers who see
-          a single client's dashboard.
+          Manage Team members, Business owners and External advisers. Access is shown separately by
+          relationship and scope.
         </p>
         <div className="mt-8">
           <PeopleSection firmId={firmId} />

@@ -82,6 +82,12 @@ function SignupPage() {
 
   const invite = inviteQ.data!;
   const isOwner = invite.role === "owner";
+  const invitationRole =
+    invite.kind === "viewer"
+      ? invite.relationship === "business_owner"
+        ? "Business owner"
+        : "External adviser"
+      : invite.role;
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">
@@ -105,8 +111,15 @@ function SignupPage() {
           <div>
             <h1 className="font-display text-2xl font-semibold">Set up your account</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              You've been invited as <span className="font-medium">{invite.role}</span>.
+              You've been invited as <span className="font-medium">{invitationRole}</span>.
             </p>
+            {invite.kind === "viewer" && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {invite.scope === "all_clients"
+                  ? "Scope: All clients, including clients added later."
+                  : `Scope: ${invite.clientNames.length} selected client${invite.clientNames.length === 1 ? "" : "s"}.`}
+              </p>
+            )}
           </div>
 
           <div className="space-y-3">

@@ -48,7 +48,7 @@ export type StandingViewer = {
   createdAt: string;
 };
 
-/** Standing ("every client") viewer grants for one organisation. */
+/** External advisers with All clients access for one organisation. */
 export const listStandingViewers = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
@@ -190,6 +190,22 @@ export const cancelViewerInvite = createServerFn({ method: "POST" })
   .inputValidator((i: { id: string }) => i)
   .handler(async ({ data, context }) => {
     const { error } = await (context.supabase as any).rpc("revoke_viewer_invite", { _id: data.id });
+    if (error) throw new Error(explain(error.message));
+    return { ok: true };
+  });
+
+/** Classify an existing selected-client row. The database authorises and audits the change. */
+export const setClientAccessRelationship = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { id: string; relationship: ClientAccessRelationship }) => i)
+  .handler(async ({ data, context }) => {
+    if (data.relationship !== "business_owner" && data.relationship !== "external_adviser") {
+      throw new Error("Choose a relationship.");
+    }
+    const { error } = await (context.supabase as any).rpc("set_client_access_relationship", {
+      _id: data.id,
+      _relationship: data.relationship,
+    });
     if (error) throw new Error(explain(error.message));
     return { ok: true };
   });

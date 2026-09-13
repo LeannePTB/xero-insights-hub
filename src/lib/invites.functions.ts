@@ -384,7 +384,7 @@ export const getInvitePublic = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: invite, error } = await (supabaseAdmin as any)
       .from("access_invites")
-      .select("id, firm_id, email, role, kind, scope, tier, client_ids, expires_at, accepted_at")
+      .select("id, firm_id, email, role, kind, scope, relationship, inviter_label, client_ids, expires_at, accepted_at")
       .eq("token_hash", hashToken(data.token))
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -397,7 +397,7 @@ export const getInvitePublic = createServerFn({ method: "POST" })
       .from("firms").select("name").eq("id", invite.firm_id).maybeSingle();
 
     // On a viewer invite, show what is being offered before they accept: the
-    // organisation, whether it is every client or a named list, and the level.
+    // organisation, relationship, and whether it is every client or a named list.
     // Client names only — never ids or any other organisation data.
     let clientNames: string[] = [];
     if (invite.kind === "viewer" && invite.scope === "selected") {
@@ -429,7 +429,8 @@ export const getInvitePublic = createServerFn({ method: "POST" })
       role: invite.role as "owner" | "staff",
       kind: (invite.kind ?? "member") as "member" | "viewer",
       scope: (invite.scope ?? null) as "selected" | "all_clients" | null,
-      tier: (invite.tier ?? null) as string | null,
+      relationship: (invite.relationship ?? null) as "business_owner" | "external_adviser" | null,
+      inviterLabel: invite.inviter_label ?? null,
       clientNames,
       invitedByName,
       firmName: firm?.name ?? null,

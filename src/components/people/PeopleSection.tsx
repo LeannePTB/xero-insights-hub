@@ -26,6 +26,7 @@ import {
 import { listClientAccess, listClients, revokeClientAccess } from "@/lib/clients.functions";
 import {
   listStandingViewers,
+  setClientAccessRelationship,
   switchStandingToSelected,
 } from "@/lib/viewers.functions";
 import { ViewerInviteForm } from "@/components/people/ViewerInviteForm";
@@ -61,7 +62,7 @@ function Panel({
 }
 
 /**
- * One place for both kinds of person in an organisation. It calls exactly the
+ * One place for the three relationship labels in an organisation. It calls exactly the
  * same server functions as the existing screens — no second implementation of
  * who may invite (super admin only) or of what anyone may see.
  */
@@ -142,7 +143,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
 
   // Who may manage client viewers is decided in the database
   // (app_private.can_manage_client_viewers): the organisation owner, or one of
-    // Positive Traction's own people with an active membership of this
+  // Positive Traction's own people with an active membership of this
   // organisation. Staff see the lists and nothing more.
   const standingQ = useQuery({
     queryKey: ["standing-viewers", firmId],
@@ -296,15 +297,15 @@ export function PeopleSection({ firmId }: { firmId: string }) {
       </Panel>
 
       <Panel
-        title="External adviser"
-        blurb="Someone outside this organisation who reads a client's dashboard — an accountant, a broker, or the business owner's own adviser. An external adviser only ever reads: they can never change anything, see this organisation's billing or settings, or see another organisation's clients. Their access is either All clients or the clients you select."
+        title="Business owner or External adviser"
+        blurb="A Business owner is linked to selected clients and is read-only until self-service is enabled. An External adviser is always read-only and may see selected clients or All clients. Neither relationship grants organisation membership."
         icon={<Building2 className="h-5 w-5" />}
       >
         {canManageViewers ? (
           <ViewerInviteForm firmId={firmId} clients={clients} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Only the organisation owner can give an external adviser access. You can still see who
+            Only the organisation owner can give a Business owner or External adviser access. You can still see who
             has access below.
           </p>
         )}
@@ -339,8 +340,8 @@ export function PeopleSection({ firmId }: { firmId: string }) {
 
       <p className="flex items-center gap-2 text-xs text-muted-foreground">
         <ShieldCheck className="h-3.5 w-3.5" />
-        Email addresses shown here are the verified sign-in addresses, not names people chose
-        themselves.
+        Email addresses shown here are verified sign-in addresses. Optional labels are display-only
+        and never identify an account or grant access.
       </p>
 
       <AlertDialog open={removing !== null} onOpenChange={(o) => !o && setRemoving(null)}>
@@ -401,6 +402,7 @@ function ClientViewerList({
   const fetchAccess = useServerFn(listClientAccess);
   const revoke = useServerFn(revokeClientAccess);
   const switchScope = useServerFn(switchStandingToSelected);
+  const setRelationship = useServerFn(setClientAccessRelationship);
 
   const q = useQuery({
     queryKey: ["client-access", clientId],
@@ -441,6 +443,16 @@ function ClientViewerList({
     onError: (e: any) => toast.error(e?.message ?? "Could not change their access."),
   });
 
+  const relationshipMut = useMutation({
+    mutationFn: (v: { id: string; relationship: "business_owner" | "external_adviser" }) =>
+      setRelationship({ data: v }),
+    onSuccess: () => {
+      toast.success("Relationship updated.");
+      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not change the relationship."),
+  });
+
   const rows = q.data?.access ?? [];
   if (rows.length === 0) return null;
 
@@ -458,7 +470,27 @@ function ClientViewerList({
               <p className="truncate text-xs text-muted-foreground">{a.email}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Badge variant="outline">{relationshipLabel(a.relationship)}</Badge>
+              {canManage ? (
+                <select
+                  aria-label={`Relationship for ${a.display_name ?? a.inviter_label ?? a.email ?? "person"}`}
+                  className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  value={a.relationship ?? "not_set"}
+                  onChange={(event) => {
+                    if (event.target.value === "not_set") return;
+                    relationshipMut.mutate({
+                      id: a.id,
+                      relationship: event.target.value as "business_owner" | "external_adviser",
+                    });
+                  }}
+                  disabled={relationshipMut.isPending}
+                >
+                  <option value="not_set" disabled>Not set</option>
+                  <option value="business_owner">Business owner</option>
+                  <option value="external_adviser">External adviser</option>
+                </select>
+              ) : (
+                <Badge variant="outline">{relationshipLabel(a.relationship)}</Badge>
+              )}
               {standing.some((s) => s.userId === a.user_id) && (
                 <Badge variant="secondary">Also All clients</Badge>
               )}
