@@ -6,7 +6,7 @@
 
 The main threats are: silently promoting legacy or unclassified viewers; letting a person change their own relationship; reusing a broad read helper for writes; crossing client or organisation boundaries; exposing organisation billing or Xero files; or allowing support grants, standing access, or `super_admin` status to gain client writes.
 
-Before implementation, the owner must add the proposed binding Project Knowledge wording below. No self-service code or database change starts before that rule amendment.
+Project Knowledge was amended on 13 September 2026: Path D (External adviser) and Path E (Business owner) are in section 2, and rule 11 forbids a read predicate in any write or billing authorisation. The precondition is met.
 
 ## Settled owner decisions
 
@@ -25,10 +25,12 @@ Before implementation, the owner must add the proposed binding Project Knowledge
 - `NULL` is always read-only. There is no inference or automatic backfill from email, role, current writes, tier, client ownership, or organisation membership.
 - `firm_viewer_access` is always External adviser / All clients and remains read-only.
 - Business owner is available only on specific selected-client rows, never on an all-client grant. Each row authorises only its exact client.
+- **One client may have several Business owners.** Business partners and spouses are normal, so no unique constraint is added for that relationship on `client_id`. Each row stands alone and authorises only its own client.
+- **Handover overlap:** a Business owner who later becomes the organisation owner holds both an active `firm_members` row and a `business_owner` `client_access` row. **Membership governs**, because it is broader; the self-service capabilities are a subset of what membership already allows, so the two can never conflict or subtract from each other. If that membership is later removed or suspended, the relationship row is left untouched by design and the person falls back to Business owner self-service on that one client only.
 - Keep `user_roles.client_viewer` as the existing coarse role; add no app role. The relationship on `client_access` is the load-bearing client-scoped distinction.
 - Keep all internal table, column-except-the-new-column, function, matrix-key, and audit-action names unchanged.
 
-All relationship and grant mutations must use AAL2, caller-scoped, audited database functions. Remove direct authenticated INSERT/UPDATE/DELETE privileges on `client_access` if the live privilege review confirms the UI has no legitimate direct-write caller; the existing audited grant/tier/revoke functions remain the only write path. Invite acceptance remains service-role-only, row-locked, single-use, and revalidates every selected client against the invite’s organisation.
+All relationship and grant mutations must use AAL2, caller-scoped, audited database functions. The direct-write closure on `client_access` is **unconditional**: revoke authenticated INSERT, UPDATE and DELETE, drop the corresponding write policies, and leave the audited grant, tier-change, relationship-change and revoke functions as the only write path. Any screen that currently writes the table directly is re-routed through one of those functions in the same change rather than keeping a privilege. Invite acceptance remains service-role-only, row-locked, single-use, and revalidates every selected client against the invite’s organisation.
 
 ## Authorisation design
 
@@ -112,6 +114,9 @@ Add roles/fixtures for specific `client_access` rows classified as Business owne
 - the two former adviser writes now deny;
 - cross-client and cross-organisation reads/writes/billing/Xero operations deny;
 - Business owner is not membership, is absent from member lists and plan counts, and cannot manage viewers;
+- two Business owners on one client both hold their own self-service capabilities, and neither reaches the other's clients or any other client in the organisation;
+- a person holding both an active membership and a `business_owner` row is governed by membership, retains every membership capability, and loses nothing; after that membership is removed or suspended they keep Business owner self-service on that one client and nothing else;
+- direct authenticated writes to `client_access` deny for every actor, including organisation owners and practice-team members, whose writes go through the audited functions;
 - support grants and unrelated super admins still deny all self-service writes;
 - suspended/removed membership does not supplement the relationship;
 - relationship self-change and direct-table tampering deny;
