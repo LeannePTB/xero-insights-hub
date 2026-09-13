@@ -20,7 +20,7 @@ can say what it is for; the risk is a function nobody can explain.
 | callable and asserting aal2 in the body | 89 |
 | callable WITHOUT an aal2 assertion (each must be justified below) | 27 |
 | without `SET search_path` | 0 |
-| with no caller found | **7** |
+| with no caller found | **8** |
 
 `aal2` means the body asserts a second-factor session itself. `app_private` helpers do not need to:
 they are not callable by signed-in users, and every policy that uses them sits behind the restrictive
@@ -69,6 +69,7 @@ PostgREST request logs cannot be read from here, so this is not proof that nothi
 | `app_private.get_user_firm_id(_user_id uuid)` | The organisation a person belongs to. |
 | `app_private.get_user_tier(_user_id uuid, _tenant_id text)` | The plan level that applies to a person for a Xero file. |
 | `public.audit_user_roles_change()` | Trigger: records every change to platform roles. |
+| `public.client_access_tiers(_client_id uuid)` | The plan levels a client's viewers hold. |
 | `public.client_for_access(_id uuid)` | The client a viewer grant refers to. |
 | `public.set_client_access_tier(_id uuid, _tier text)` | Changes the plan level of one viewer grant, audited. |
 | `public.set_firm_viewer_tier(_id uuid, _tier dashboard_tier)` | Change the dashboard level on a standing viewer grant. Audited. |
@@ -98,7 +99,7 @@ PostgREST request logs cannot be read from here, so this is not proof that nothi
 | `change_firm_plan(_firm_id uuid, _plan_key text)` | Changes an organisation's plan, audited. | authenticated, postgres, service_role | yes | yes | `src/lib/firm-subscription.functions.ts` |
 | `check_rate_limit(_key text, _max integer, _window_seconds integer)` | Counts attempts in a time window so a public route can refuse abuse. | postgres, service_role | yes | no | `src/lib/audit.functions.ts`<br>`src/lib/login-log-write.functions.ts`<br>`src/lib/rate-limit.server.ts` |
 | `claim_xero_snapshot_run(_client_id uuid, _firm_id uuid, _tenant_id text, _trigger text, _abandoned_minutes integer)` | Claims a snapshot run so two workers cannot run it at once. | postgres, service_role | yes | no | `src/lib/xero/first-link-refresh.server.ts`<br>`src/lib/xero/snapshot-refresh.server.ts` |
-| `client_access_tiers(_client_id uuid)` | The plan levels a client's viewers hold. | authenticated, postgres, service_role | yes | yes | `src/lib/xero/client-orgs.server.ts` |
+| `client_access_tiers(_client_id uuid)` | The plan levels a client's viewers hold. | authenticated, postgres, service_role | yes | yes | none found |
 | `client_allowed_widgets(_client_id uuid)` | The dashboard cards a client may see. | authenticated, postgres, service_role | yes | yes | `src/components/billing/ClientCardsPanel.tsx`<br>`src/lib/clients.functions.ts`<br>`src/lib/tier-config.functions.ts`<br>`src/lib/widget-access.server.ts`<br>`src/lib/widget-resolve.server.ts`<br>fn `public.client_can_use_widget`<br>fn `public.firm_allowed_widgets` |
 | `client_can_use_widget(_client_id uuid, _widget text)` | Whether a client's plan allows one dashboard card. | authenticated, postgres, service_role | yes | yes | `src/lib/widget-access.server.ts`<br>`src/lib/xero/audit.functions.ts`<br>`src/lib/xero/recon-snapshot.server.ts`<br>fn `public.set_client_widget_enabled` |
 | `client_entitlement(_client_id uuid)` | A client's plan level and what it includes. | authenticated, postgres, service_role | yes | yes | `src/lib/admin-plan-usage.server.ts`<br>`src/lib/clients.functions.ts`<br>`src/lib/entitlement.server.ts`<br>`tests/access-matrix.test.ts`<br>fn `app_private.viewer_tier`<br>fn `public.client_allowed_widgets`<br>fn `public.set_client_widget_enabled` |
