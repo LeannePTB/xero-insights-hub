@@ -189,10 +189,9 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           unsubscribeToken = generateToken()
           const { error: tokenError } = await supabase
             .from('email_unsubscribe_tokens')
-            .upsert(
-              { email: normalizedEmail, token_hash: hashToken(unsubscribeToken) },
-              { onConflict: 'email' }
-            )
+            // One row per send: older emails keep their own working
+            // unsubscribe link instead of being invalidated by the newest send.
+            .insert({ email: normalizedEmail, token_hash: hashToken(unsubscribeToken) })
 
           if (tokenError) {
             console.error('Failed to create unsubscribe token', {

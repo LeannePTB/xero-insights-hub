@@ -551,7 +551,13 @@ export const disconnectXero = createServerFn({ method: "POST" })
         access_token_enc: null,
         refresh_token_enc: null,
       })
-      .eq("id", row.id);
+      // A Xero file can carry one row per staff member who authorised it.
+      // Marking only the caller's row left the others connected with live
+      // tokens, so the file kept loading data after "Disconnect". Every row for
+      // this file in THIS organisation is marked; another organisation's rows
+      // are its own and are left alone.
+      .eq("tenant_id", row.tenant_id)
+      .eq("firm_id", row.firm_id);
     if (error) throw new Error(error.message);
 
     await supabaseAdmin.from("audit_log").insert({
