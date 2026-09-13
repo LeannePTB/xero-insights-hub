@@ -32,7 +32,11 @@ import {
 import { ALL_TIERS, tierLabel } from "@/lib/tiers";
 import type { DashboardTier } from "@/lib/tiers";
 
-/** Standing ("all clients") grants, badged, with a one-click revoke. */
+/**
+ * External advisers with the "All clients" scope, badged, with a one-click
+ * revoke. Internal names (firm_viewer_access, listStandingViewers) are
+ * deliberately unchanged — only the wording people read is "External adviser".
+ */
 export function StandingViewers({
   firmId,
   firmName,
@@ -100,7 +104,7 @@ export function StandingViewers({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-medium">People who can see every client</h3>
+        <h3 className="text-sm font-medium">External advisers — All clients</h3>
         {q.isLoading ? (
           <Loader2 className="mt-3 h-4 w-4 animate-spin text-muted-foreground" />
         ) : rows.length === 0 ? (
@@ -156,16 +160,18 @@ export function StandingViewers({
 
       {invites.length > 0 && (
         <div>
-          <h3 className="text-sm font-medium">Viewer invitations waiting to be accepted</h3>
+          <h3 className="text-sm font-medium">
+            External adviser invitations waiting to be accepted
+          </h3>
           <ul className="mt-2 divide-y divide-border rounded-lg border border-border">
             {invites.map((i) => (
               <li key={i.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm">{i.email}</p>
                   <p className="text-xs text-muted-foreground">
-                    {i.scope === "all_clients"
-                      ? "Every client"
-                      : `${i.clientIds.length} client${i.clientIds.length === 1 ? "" : "s"}`}{" "}
+                     {i.scope === "all_clients"
+                      ? "All clients"
+                      : `${i.clientIds.length} selected client${i.clientIds.length === 1 ? "" : "s"}`}{" "}
                     · {tierLabel(i.tier)} · expires {new Date(i.expiresAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -191,7 +197,7 @@ export function StandingViewers({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove access to every client?</AlertDialogTitle>
+            <AlertDialogTitle>Remove their All clients access?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingRevoke?.who} will lose access to all {clientCount} client
               {clientCount === 1 ? "" : "s"} in {firmName}, and to any client added later. Any access

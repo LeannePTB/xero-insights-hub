@@ -1335,7 +1335,7 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 
-## Client viewer (client_access on one client)
+## External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
@@ -1517,7 +1517,7 @@ None.
 | --- | --- | --- | --- | --- | --- |
 | server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
 
-## Standing viewer grant (every client in one organisation, read-only)
+## External adviser — All clients (firm_viewer_access on one organisation, read-only; user-facing name only, the key is unchanged)
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |

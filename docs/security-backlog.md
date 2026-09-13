@@ -501,3 +501,34 @@ failures); the two service-role-only tables added to the documented
 Still open: the first live run has not happened — it needs the owner to add
 `SECURITY_TEST_TRIGGER_SECRET` in Project Settings → Secrets and the app to be
 published. Backlog 39 (non-code assessment evidence) is unchanged.
+
+## 48. Business owner self-service and External adviser terminology (opened 13 Sep 2026)
+
+**OPEN — batches 2 to 6.** Project Knowledge section 2 was amended on 13 September
+2026 with Path D (External adviser, read-only) and Path E (Business owner,
+self-service on one specific client), plus invariant 11 (a read predicate is never
+a write or billing grant). Batch 1 (rules and terminology) is DONE: user-facing
+wording, screen labels, matrix role labels, spec §18 and the design note. No
+policy, grant, function or access rule changed in Batch 1.
+
+Outstanding, in order, each its own security change:
+
+- **Batch 2 — relationship foundation.** Nullable enum-backed `client_access.relationship`
+  (`business_owner` / `external_adviser`, `NULL` = Not set, read-only) plus the same on
+  `access_invites`; audited aal2 caller-scoped assignment function; relationship carried
+  through `grant_client_access`, `client_viewers`, `my_client_access` and
+  `apply_viewer_invite`; **unconditional** closure of direct writes to `client_access`
+  (revoke authenticated INSERT/UPDATE/DELETE, drop those write policies, route every screen
+  through the audited functions). No unique constraint on `(client_id)` for
+  `business_owner` — a client may have several business owners.
+- **Batch 3 — remove the two accidental External adviser writes.** `scenario_exclusions`
+  per-command policies and `public.user_can_write_client_scenario`, and the
+  `unreconciled_lines` comment UPDATE, must stop naming `app_private.has_client_access`;
+  keep the comment-only column trigger; extend the static guard to invariant 11.
+- **Batch 4 — Business owner self-service:** dashboard cards, break-even inputs, statement
+  uploads and comments, scenario exclusions, and Xero connections bound to that exact client.
+- **Batch 5 — client-scoped billing**, behind a separate payment-readiness gate
+  (webhook verification, replay, initial checkout event, GST, price catalogue).
+- **Batch 6 — proof and closure:** matrix rows including two business owners on one client,
+  the membership-governs handover case, cross-client and cross-organisation denials, and the
+  direct-write closure; fixtures, generated docs, posture, linter and the Security report.
