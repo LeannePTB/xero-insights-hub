@@ -12,7 +12,6 @@ import {
   listClientAccess,
   inviteClientViewer,
   createClientViewerWithPassword,
-  updateClientAccessTier,
   revokeClientAccess,
   updateClientReportBasis,
   updateClientLodgementCycles,
@@ -119,7 +118,6 @@ function ClientSettings() {
   const del = useServerFn(deleteClient);
   const invite = useServerFn(inviteClientViewer);
   const createViewerPw = useServerFn(createClientViewerWithPassword);
-  const updateTier = useServerFn(updateClientAccessTier);
   const revoke = useServerFn(revokeClientAccess);
   const fetchTierCfg = useServerFn(listTierConfig);
   const saveTier = useServerFn(saveClientTierWidgets);
@@ -198,7 +196,7 @@ function ClientSettings() {
 
   const [name, setName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteTier, setInviteTier] = useState<DashboardTier>("basic");
+  const [inviteViewerName, setInviteViewerName] = useState("");
   const [viewerMode, setViewerMode] = useState<"invite" | "password">("invite");
   const [viewerPassword, setViewerPassword] = useState("");
   const [showViewerPw, setShowViewerPw] = useState(false);
@@ -215,13 +213,6 @@ function ClientSettings() {
       setXeroAllowance(clientQ.data.client.max_xero_orgs as number);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientQ.data?.client?.name]);
-
-  useEffect(() => {
-    if (enabledTiers.length && !enabledTiers.includes(inviteTier)) {
-      setInviteTier(enabledTiers[0]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabledTiers.join(",")]);
 
   const renameMut = useMutation({
     mutationFn: () => rename({ data: { clientId, name } }),
@@ -299,10 +290,11 @@ function ClientSettings() {
   });
 
   const inviteMut = useMutation({
-    mutationFn: () => invite({ data: { clientId, email: inviteEmail, tier: inviteTier } }),
+    mutationFn: () => invite({ data: { clientId, email: inviteEmail, name: inviteViewerName } }),
     onSuccess: ({ invited }) => {
       toast.success(invited ? "Invite email sent" : "Access granted");
       setInviteEmail("");
+      setInviteViewerName("");
       qc.invalidateQueries({ queryKey: ["client-access", clientId] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -311,23 +303,14 @@ function ClientSettings() {
   const createViewerPwMut = useMutation({
     mutationFn: () =>
       createViewerPw({
-        data: { clientId, email: inviteEmail, password: viewerPassword, tier: inviteTier },
+        data: { clientId, email: inviteEmail, name: inviteViewerName, password: viewerPassword },
       }),
     onSuccess: () => {
       toast.success(`Viewer created — ${inviteEmail}`);
       setLastViewerCreated({ email: inviteEmail, password: viewerPassword });
       setInviteEmail("");
+      setInviteViewerName("");
       setViewerPassword("");
-      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const tierMut = useMutation({
-    mutationFn: ({ id, tier }: { id: string; tier: DashboardTier }) =>
-      updateTier({ data: { id, tier } }),
-    onSuccess: () => {
-      toast.success("Tier updated");
       qc.invalidateQueries({ queryKey: ["client-access", clientId] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -828,24 +811,19 @@ function ClientSettings() {
             <>
               <div className="flex flex-col gap-2 sm:flex-row">
                 <Input
+                  placeholder="Name (optional)"
+                  maxLength={80}
+                  value={inviteViewerName}
+                  onChange={(e) => setInviteViewerName(e.target.value)}
+                  className="flex-1"
+                />
+                <Input
                   type="email"
-                  placeholder="viewer@example.com"
+                  placeholder="accountant@example.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   className="flex-1"
                 />
-                <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as DashboardTier)}>
-                  <SelectTrigger className="sm:w-52">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {enabledTiers.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {labelFor(t)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
                 <Button
                   onClick={() => inviteMut.mutate()}
                   disabled={!inviteEmail.includes("@") || inviteMut.isPending}
@@ -867,27 +845,19 @@ function ClientSettings() {
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <Input
+                    placeholder="Name (optional)"
+                    maxLength={80}
+                    value={inviteViewerName}
+                    onChange={(e) => setInviteViewerName(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Input
                     type="email"
-                    placeholder="viewer@example.com"
+                    placeholder="accountant@example.com"
                     value={inviteEmail}
                     onChange={(e) => setInviteEmail(e.target.value)}
                     className="flex-1"
                   />
-                  <Select
-                    value={inviteTier}
-                    onValueChange={(v) => setInviteTier(v as DashboardTier)}
-                  >
-                    <SelectTrigger className="sm:w-52">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {enabledTiers.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {labelFor(t)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
                 <div className="relative">
                   <Input
@@ -969,30 +939,20 @@ function ClientSettings() {
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {a.display_name ?? a.email ?? a.user_id}
+                        {a.display_name ?? a.inviter_label ?? a.email ?? a.user_id}
                       </p>
-                      {a.email && a.display_name && (
+                      {a.email && (a.display_name || a.inviter_label) && (
                         <p className="truncate text-xs text-muted-foreground">{a.email}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Select
-                        value={a.tier}
-                        onValueChange={(v) =>
-                          tierMut.mutate({ id: a.id, tier: v as DashboardTier })
-                        }
-                      >
-                        <SelectTrigger className="h-8 w-44">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {enabledTiers.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {labelFor(t)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <span className="text-xs text-muted-foreground">
+                        {a.relationship === "business_owner"
+                          ? "Business owner"
+                          : a.relationship === "external_adviser"
+                            ? "External adviser"
+                            : "Not set"}
+                      </span>
                       <Button variant="ghost" size="sm" onClick={() => revokeMut.mutate(a.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
