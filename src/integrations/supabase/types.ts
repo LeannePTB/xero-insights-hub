@@ -24,7 +24,11 @@ export type Database = {
           firm_id: string
           id: string
           invited_by: string | null
+          inviter_label: string | null
           kind: string
+          relationship:
+            | Database["public"]["Enums"]["client_access_relationship"]
+            | null
           role: Database["public"]["Enums"]["firm_member_role"]
           scope: string | null
           tier: Database["public"]["Enums"]["dashboard_tier"] | null
@@ -39,7 +43,11 @@ export type Database = {
           firm_id: string
           id?: string
           invited_by?: string | null
+          inviter_label?: string | null
           kind?: string
+          relationship?:
+            | Database["public"]["Enums"]["client_access_relationship"]
+            | null
           role?: Database["public"]["Enums"]["firm_member_role"]
           scope?: string | null
           tier?: Database["public"]["Enums"]["dashboard_tier"] | null
@@ -54,7 +62,11 @@ export type Database = {
           firm_id?: string
           id?: string
           invited_by?: string | null
+          inviter_label?: string | null
           kind?: string
+          relationship?:
+            | Database["public"]["Enums"]["client_access_relationship"]
+            | null
           role?: Database["public"]["Enums"]["firm_member_role"]
           scope?: string | null
           tier?: Database["public"]["Enums"]["dashboard_tier"] | null
@@ -313,6 +325,10 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          inviter_label: string | null
+          relationship:
+            | Database["public"]["Enums"]["client_access_relationship"]
+            | null
           tier: string
           updated_at: string
           user_id: string
@@ -321,6 +337,10 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          inviter_label?: string | null
+          relationship?:
+            | Database["public"]["Enums"]["client_access_relationship"]
+            | null
           tier?: string
           updated_at?: string
           user_id: string
@@ -329,6 +349,10 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          inviter_label?: string | null
+          relationship?:
+            | Database["public"]["Enums"]["client_access_relationship"]
+            | null
           tier?: string
           updated_at?: string
           user_id?: string
@@ -1124,6 +1148,7 @@ export type Database = {
           firm_id: string
           granted_by: string | null
           id: string
+          inviter_label: string | null
           tier: Database["public"]["Enums"]["dashboard_tier"]
           updated_at: string
           user_id: string
@@ -1133,6 +1158,7 @@ export type Database = {
           firm_id: string
           granted_by?: string | null
           id?: string
+          inviter_label?: string | null
           tier?: Database["public"]["Enums"]["dashboard_tier"]
           updated_at?: string
           user_id: string
@@ -1142,6 +1168,7 @@ export type Database = {
           firm_id?: string
           granted_by?: string | null
           id?: string
+          inviter_label?: string | null
           tier?: Database["public"]["Enums"]["dashboard_tier"]
           updated_at?: string
           user_id?: string
@@ -2724,6 +2751,8 @@ export type Database = {
           display_name: string
           email: string
           id: string
+          inviter_label: string
+          relationship: Database["public"]["Enums"]["client_access_relationship"]
           tier: string
           user_id: string
         }[]
@@ -2775,6 +2804,7 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string
+          inviter_label: string
           role: Database["public"]["Enums"]["firm_member_role"]
         }[]
       }
@@ -2839,6 +2869,8 @@ export type Database = {
           expires_at: string
           id: string
           invited_by: string
+          inviter_label: string
+          relationship: Database["public"]["Enums"]["client_access_relationship"]
           scope: string
           tier: Database["public"]["Enums"]["dashboard_tier"]
         }[]
@@ -2850,6 +2882,7 @@ export type Database = {
           display_name: string
           email: string
           id: string
+          inviter_label: string
           tier: Database["public"]["Enums"]["dashboard_tier"]
           user_id: string
         }[]
@@ -2864,12 +2897,19 @@ export type Database = {
         }[]
       }
       grant_client_access: {
-        Args: { _client_id: string; _tier: string; _user_id: string }
+        Args: {
+          _client_id: string
+          _inviter_label?: string
+          _relationship?: Database["public"]["Enums"]["client_access_relationship"]
+          _tier: string
+          _user_id: string
+        }
         Returns: undefined
       }
       grant_firm_viewer_access: {
         Args: {
           _firm_id: string
+          _inviter_label?: string
           _tier: Database["public"]["Enums"]["dashboard_tier"]
           _user_id: string
         }
@@ -2923,6 +2963,8 @@ export type Database = {
           client_id: string
           client_name: string
           id: string
+          inviter_label: string
+          relationship: Database["public"]["Enums"]["client_access_relationship"]
           tier: string
         }[]
       }
@@ -3038,6 +3080,13 @@ export type Database = {
           skipped_billed: number
           unchanged: number
         }[]
+      }
+      set_client_access_relationship: {
+        Args: {
+          _id: string
+          _relationship: Database["public"]["Enums"]["client_access_relationship"]
+        }
+        Returns: undefined
       }
       set_client_access_tier: {
         Args: { _id: string; _tier: string }
@@ -3184,6 +3233,7 @@ export type Database = {
         | "super_admin"
         | "firm_owner"
         | "firm_staff"
+      client_access_relationship: "business_owner" | "external_adviser"
       client_subscription_status:
         | "active"
         | "trialing"
@@ -3346,6 +3396,7 @@ export const Constants = {
         "firm_owner",
         "firm_staff",
       ],
+      client_access_relationship: ["business_owner", "external_adviser"],
       client_subscription_status: [
         "active",
         "trialing",
