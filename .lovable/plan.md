@@ -16,6 +16,8 @@ Project Knowledge was amended on 13 September 2026: Path D (External adviser) an
 - A Business owner may manage only: their assigned client’s plan and billing, dashboard cards, break-even inputs, scenario exclusions, statement uploads/comments, and Xero connections.
 - Organisation owners and active Positive Traction practice-team members of that same organisation may assign or remove the relationship through audited functions.
 - Billing ships as a separate, later batch after payment, GST, webhook, product/price, and customer-binding checks are approved.
+- External advisers do not choose a dashboard level. New adviser grants store `multi_company`, the highest existing enum value, only as a pass-through sentinel; `app_private.viewer_tier` continues to apply `least(grant tier, client entitlement)`, so Standard remains Standard and a grant can never lift the client ceiling.
+- Invitations may carry an optional inviter-supplied name label. It is display-only, never identity: matching and authorisation continue to use the verified `auth.users` user id/email. Pending invitations show the label plus email; accepted accounts show the person’s own display name plus verified email.
 
 ## Terminology and data model
 
@@ -69,9 +71,10 @@ Explicitly out of scope for Business owners: organisation settings, members, vie
 ### Relationship and invitations
 
 - Add the enum and nullable relationship columns to `client_access` and `access_invites`; revoke defaults and preserve existing RLS/grants discipline.
+- Add an optional, trimmed 1–80 character, non-email inviter label to viewer invitations and both resulting grant shapes (`client_access` and `firm_viewer_access`). Existing rows stay `NULL` and show email alone. Add the same optional Name input to the team-member invitation, stored on its invite only; after acceptance, the person’s own display name governs the membership list.
 - Extend `grant_client_access`, the relationship-change function, `client_viewers`, `my_client_access`, and `apply_viewer_invite` to write/return the relationship safely.
 - Keep `set_client_access_tier` and `revoke_client_access` behaviour, audit, and manager boundary; include relationship in audit metadata where relevant without renaming existing actions.
-- Invite UI asks **Relationship** first, then **Scope**. External adviser keeps **All clients** and **Selected clients**. Business owner is limited to explicit selected-client access.
+- Invite UI asks **Relationship** first, then **Scope**. External adviser keeps **All clients** and **Selected clients**. Business owner is limited to explicit selected-client access. Batch 2 removes the External adviser level selector and writes `multi_company` as a pass-through sentinel; the entitlement cap remains authoritative.
 - Update People lists, pending invites, badges, and summaries to show Business owner, External adviser, or Not set; use **All clients** or the selected count.
 
 ### Self-service capability changes
@@ -96,7 +99,7 @@ Explicitly out of scope for Business owners: organisation settings, members, vie
 ## Batches
 
 1. **Rules and terminology:** owner amends Project Knowledge; update design/spec wording for Path D; finish External adviser labels, badges, and invite order without changing access.
-2. **Relationship foundation:** enum/nullable columns, audited assignment and grant functions, invite propagation/revalidation, read DTOs, direct-write closure, fixture/register/docs updates. Existing rows stay Not set/read-only.
+2. **Relationship foundation plus owner corrections:** enum/nullable columns, audited assignment and grant functions, invite propagation/revalidation, display-only inviter labels, read DTOs, unconditional direct-write closure, External adviser pass-through tiers, People-page copy/badge/summary corrections, fixture/register/docs updates. Existing rows stay Not set/read-only.
 3. **Remove accidental adviser writes:** scenario exclusions and unreconciled comments become Business-owner/member-only; preserve comment-column enforcement; add static write-helper guards.
 4. **Operational self-service:** dashboard cards, break-even inputs, statements, and exact-client Xero lifecycle; client UI controls and denial states.
 5. **Billing readiness and launch:** separate approval gate, then exact-client checkout/portal and webhook lifecycle only after payment prerequisites pass.
@@ -109,6 +112,7 @@ Each batch is one security change at a time, with current live objects re-read b
 Add roles/fixtures for specific `client_access` rows classified as Business owner, External adviser, and `NULL`, while keeping existing internal matrix keys stable. Prove:
 
 - identical reads at the same tier, with specific-over-All-clients precedence preserved;
+- an External adviser on a Standard client resolves to Standard even though new adviser grants store `multi_company`, and changing the stored grant to the highest value cannot lift the result above the client entitlement;
 - Business owner allows only the listed capabilities for the exact client;
 - External adviser, All clients, and Not set deny every self-service write;
 - the two former adviser writes now deny;
@@ -121,6 +125,20 @@ Add roles/fixtures for specific `client_access` rows classified as Business owne
 - suspended/removed membership does not supplement the relationship;
 - relationship self-change and direct-table tampering deny;
 - caller-supplied client/organisation/tenant/customer/price identifiers never grant access.
+- inviter labels never participate in an auth-user lookup, grant match, access predicate, or authorisation decision; verified email stays visible and existing unlabeled rows show email alone.
+
+## Batch 2 implementation boundary and owner-screen corrections
+
+This implementation stops after the relationship foundation. It does not add Business owner self-service writes, alter support/team/super-admin access, or fix the two accidental adviser writes reserved for Batch 3.
+
+- Change every practice-membership badge string to **Positive Traction**.
+- Rewrite the People subtitle and route metadata around Team member, Business owner, and External adviser.
+- Use `accountant@example.com` for the External adviser email placeholder.
+- Before any selected client is ticked, show a neutral selection prompt instead of “0 of …”.
+- Remove every External adviser level selector, including existing-grant controls. The stored tier remains for compatibility and enforcement; new adviser grants use `multi_company`, while existing values remain untouched unless a grant is reissued.
+- Add a relationship-first control: Business owner forces selected clients; External adviser permits selected or All clients. In Batch 2 both relationships retain the same existing read access only; Business owner write capabilities do not begin until later batches.
+- Add optional Name fields with shared Zod validation. A label is copied to pending viewer invites and accepted specific/All-clients grants. Lists prefer an accepted person’s own display name, then the inviter label, while always displaying verified email; pending invitations prefer the inviter label and always display the invite email.
+- Add a static guard that fails if the label column is referenced by identity lookup or authorisation functions, and preserve the existing no-`profiles.email` guard.
 
 Preserve every unrelated matrix expectation. Baseline evidence before this plan is 1,527 rows, 1,450 proved, 0 failures, 44 tests, live suite 18/18, fingerprint `25f4c08d9a77f9f5beb22a7c5340f1250ef056552f6a99e4aa35773365ca04a2`. Final reporting must show before/after totals and fingerprint, typecheck, security check, database linter/security scan, posture, and owner-screen tests for each relationship and scope.
 
