@@ -441,6 +441,10 @@ Path D means a person can hold both a standing grant and a specific grant on the
 
 The database is confirmed as Supabase managed PostgreSQL 17.6.1.127 in **Asia Pacific (Singapore)** — checked against the backend on 12 Sep 2026. Lovable Cloud offers only Americas / Europe / Asia Pacific with no country-level choice, and the region cannot be changed after creation. **Decision made and recorded in `docs/security/data-residency-decision.md`: remain on Singapore and disclose it, rather than migrate** — no Australian option exists on the platform at any price, and migration would mean a separate self-managed Supabase project, not a toggle. **Still open:** adding the disclosure wording (which lives in that file) to the privacy policy and to client terms / the engagement letter — both `[CONFIRM: date]` in the record — and confirming with a privacy adviser whether the Australian Privacy Principles, in particular APP 8 on cross-border disclosure, apply to the practice. Note plainly: payroll data means **employees' personal information** is involved, not just the client's own books, and the legal question is for a **professional adviser**, not for this project's documentation.
 
+## 46. `security.txt` `Expires:` must be refreshed annually (opened 13 Sep 2026)
+
+RFC 9116 treats a stale `security.txt` as invalid. The file at `public/.well-known/security.txt` carries `Expires: 2027-09-13T00:00:00.000Z` (12 months from its creation on 13 Sep 2026). Before that date the file must be re-issued with a fresh `Expires` roughly 12 months out, and this item rolled forward. There is no mechanism that reminds anyone — the calendar reminder belongs to the owner.
+
 ## People and access redesign — Batch 5 (done 12 Sep 2026)
 
 The one deliberate widening in the security programme, and its boundary.
