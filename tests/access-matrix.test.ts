@@ -581,9 +581,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
           where client_id = '${CLIENT_A}' and user_id = '${U.handoverOwner}'
             and relationship = 'business_owner')::int as relationships
     `);
-    return p.rows[0]?.memberships === 1 && p.rows[0]?.relationships === 1
-      ? "allow"
-      : "deny";
+    return p.rows[0]?.memberships === 1 && p.rows[0]?.relationships === 1 ? "allow" : "deny";
   }
   if (r === "removing membership preserves the Business owner relationship row") {
     await db.exec("set local role postgres");
