@@ -510,16 +510,10 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
               <Label>Email</Label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
-            <div className="space-y-1.5">
-              <Label>Role</Label>
-              <Select value={role} onValueChange={(v) => setRole(v as any)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="owner">Owner</SelectItem>
-                  <SelectItem value="staff">Staff</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <p className="text-xs text-muted-foreground">
+              Invitations to an existing organisation are always for staff. To change who owns
+              it, use Hand over ownership on the organisation settings page.
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
