@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1527**. Known failures: **0**.
+Rows: **1540**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -108,6 +108,7 @@ None.
 | scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections (non-token columns) | read | DENY | pglite, live | PK 3, PK 4 |  |
@@ -231,6 +232,7 @@ None.
 | scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections (non-token columns) | read | DENY | pglite, live | PK 3, PK 4 |  |
 | public.user_can_access_firm() | execute | DENY | pglite, live | PK 2 (assert_aal2 guard is the first statement) |  |
 | public.user_can_access_client() | execute | DENY | pglite, live | PK 2 (assert_aal2 guard is the first statement) |  |
@@ -364,6 +366,7 @@ None.
 | scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections (non-token columns) | read | DENY | pglite, live | PK 3, PK 4 |  |
 | plan_levels | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | plan_levels | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
@@ -798,6 +801,7 @@ None.
 | client_subscriptions | insert | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
 | client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
 | client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
@@ -1124,9 +1128,9 @@ None.
 | tier_widget_config | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_access | insert | ALLOW | pglite, live | PK 2 client viewer; owner manages viewers |  |
-| client_access | update | ALLOW | pglite, live | PK 2 client viewer; owner manages viewers |  |
-| client_access | delete | ALLOW | pglite, live | PK 2 client viewer; owner manages viewers |  |
+| client_access | insert | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
+| client_access | update | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
+| client_access | delete | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
 | clients | insert | ALLOW | pglite, live | Spec §6 (is_firm_owner) |  |
 | clients | update | ALLOW | pglite, live | Spec §6 (is_firm_owner) |  |
 | clients | delete | ALLOW | pglite, live | Spec §6 (is_firm_owner) |  |
@@ -1145,6 +1149,10 @@ None.
 | client_subscriptions | insert | DENY | pglite, live | Spec §8 (billing is platform-owned) |  |
 | client_subscriptions | update | DENY | pglite, live | Spec §8 (billing is platform-owned) |  |
 | client_subscriptions | delete | DENY | pglite, live | Spec §8 (billing is platform-owned) |  |
+| set_client_access_relationship() for own organisation | execute | ALLOW | pglite, live | PK paths D/E — owner classifies selected-client access through an audited function |  |
+| two Business owners on one client remain independently client-scoped | execute | ALLOW | pglite, live | PK path E — several Business owners are valid; each exact client_access row stands alone |  |
+| removing membership preserves the Business owner relationship row | execute | ALLOW | pglite, live | PK path E — membership removal does not silently delete independently granted client access |  |
+| inviter labels do not affect identity or authorisation | execute | ALLOW | pglite, live | PK rule 11; Spec §14.3 — labels are display-only |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections (non-token columns) | read | ALLOW | pglite, live | Spec §10 |  |
@@ -1263,9 +1271,9 @@ None.
 | tier_widget_config | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
-| client_access | insert | DENY | pglite, live | PK 2 client viewer; staff may read the list only |  |
-| client_access | update | DENY | pglite, live | PK 2 client viewer; staff may read the list only |  |
-| client_access | delete | DENY | pglite, live | PK 2 client viewer; staff may read the list only |  |
+| client_access | insert | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
+| client_access | update | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
+| client_access | delete | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
 | clients | insert | DENY | pglite, live | Spec §6 (is_firm_owner only) |  |
 | clients | update | DENY | pglite, live | Spec §6 (is_firm_owner only) |  |
 | clients | delete | DENY | pglite, live | Spec §6 (is_firm_owner only) |  |
@@ -1284,6 +1292,8 @@ None.
 | client_subscriptions | insert | DENY | pglite, live | Spec §8 (billing is platform-owned) |  |
 | client_subscriptions | update | DENY | pglite, live | Spec §8 (billing is platform-owned) |  |
 | client_subscriptions | delete | DENY | pglite, live | Spec §8 (billing is platform-owned) |  |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
+| membership governs a simultaneous Business owner relationship | execute | ALLOW | pglite, live | PK paths A/E — active membership is broader and does not conflict with the relationship row |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections (non-token columns) | read | ALLOW | pglite, live | Spec §10 |  |
@@ -1352,6 +1362,7 @@ None.
 | client_access | insert | DENY | pglite, live | Spec §3 |  |
 | client_access | update | DENY | pglite, live | Spec §3 |  |
 | client_access | delete | DENY | pglite, live | Spec §3 |  |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
@@ -1479,6 +1490,7 @@ None.
 | client_subscriptions | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write. |
 | client_subscriptions | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write. |
 | client_subscriptions | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write. |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
@@ -1511,16 +1523,11 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 
-## Super admin approving their own support grant
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
-
 ## External adviser — All clients (firm_viewer_access on one organisation, read-only; user-facing name only, the key is unchanged)
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | clients | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
 | client_notes | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
 | client_cost_classifications | read | ALLOW | pglite, live | PK section 2 path D — read every client in the organisation |  |
@@ -1610,6 +1617,12 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+
+## Super admin approving their own support grant
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
 
 ## Live smoke-suite test account (confined to ZZ Security Test Org, banned outside a run)
 

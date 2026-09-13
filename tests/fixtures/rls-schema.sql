@@ -1470,6 +1470,30 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.set_client_access_relationship(_id uuid, _relationship client_access_relationship)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _client uuid; _firm uuid; _user uuid; _previous public.client_access_relationship;
+begin
+  perform app_private.assert_aal2();
+  select client_id, user_id, relationship into _client, _user, _previous
+  from public.client_access where id = _id for update;
+  if _client is null then raise exception 'Access row not found.'; end if;
+  if not app_private.can_manage_viewers_for_client(auth.uid(), _client) then
+    raise exception 'You cannot manage access for this client.';
+  end if;
+  update public.client_access set relationship = _relationship where id = _id;
+  select firm_id into _firm from public.clients where id = _client;
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'client_viewer_relationship_changed', 'client', _client::text,
+          jsonb_build_object('user_id', _user, 'previous_relationship', _previous,
+                             'relationship', _relationship));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
