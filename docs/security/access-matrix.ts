@@ -475,7 +475,7 @@ export const MATRIX: MatrixRow[] = [
     layers: ["pglite", "live"],
   },
   {
-    role: "org_owner",
+    role: "org_staff",
     resource: "membership governs a simultaneous Business owner relationship",
     operation: "execute",
     expect: "allow",

@@ -34,7 +34,8 @@ fns as (
         'set_all_client_tiers','online_users','set_profile_display_name_admin',
         'xero_missing_scopes','xero_required_scopes','has_role',
         'record_security_attestation','security_attestations_list',
-        'admin_add_practice_member','admin_remove_practice_member'))
+        'admin_add_practice_member','admin_remove_practice_member',
+        'set_client_access_relationship'))
     )
 ),
 stmts as (

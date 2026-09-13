@@ -571,11 +571,10 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return p.rows[0]?.same_client === 2 && p.rows[0]?.cross_client === 0 ? "allow" : "deny";
   }
   if (r === "membership governs a simultaneous Business owner relationship") {
-    await db.exec("set local role postgres");
     const p = await db.query<{ member: boolean; relationship: string | null }>(`
-      select app_private.has_firm_access('${U.handoverOwner}', '${ORG_A}') as member,
+      select app_private.has_firm_access(auth.uid(), '${ORG_A}') as member,
              (select relationship::text from public.client_access
-               where client_id = '${CLIENT_A}' and user_id = '${U.handoverOwner}') as relationship
+               where client_id = '${CLIENT_A}' and user_id = auth.uid()) as relationship
     `);
     return p.rows[0]?.member === true && p.rows[0]?.relationship === "business_owner"
       ? "allow"

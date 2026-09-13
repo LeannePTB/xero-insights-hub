@@ -504,7 +504,7 @@ published. Backlog 39 (non-code assessment evidence) is unchanged.
 
 ## 48. Business owner self-service and External adviser terminology (opened 13 Sep 2026)
 
-**OPEN — batches 2 to 6.** Project Knowledge section 2 was amended on 13 September
+**OPEN — batches 3 to 6.** Project Knowledge section 2 was amended on 13 September
 2026 with Path D (External adviser, read-only) and Path E (Business owner,
 self-service on one specific client), plus invariant 11 (a read predicate is never
 a write or billing grant). Batch 1 (rules and terminology) is DONE: user-facing
@@ -513,14 +513,17 @@ policy, grant, function or access rule changed in Batch 1.
 
 Outstanding, in order, each its own security change:
 
-- **Batch 2 — relationship foundation.** Nullable enum-backed `client_access.relationship`
+- **Batch 2 — relationship foundation: CLOSED 13 Sep 2026.** Nullable enum-backed `client_access.relationship`
   (`business_owner` / `external_adviser`, `NULL` = Not set, read-only) plus the same on
   `access_invites`; audited aal2 caller-scoped assignment function; relationship carried
   through `grant_client_access`, `client_viewers`, `my_client_access` and
   `apply_viewer_invite`; **unconditional** closure of direct writes to `client_access`
   (revoke authenticated INSERT/UPDATE/DELETE, drop those write policies, route every screen
   through the audited functions). No unique constraint on `(client_id)` for
-  `business_owner` — a client may have several business owners.
+  `business_owner` — a client may have several business owners. Optional display-only inviter
+  labels are carried through grants and invites; the verified email remains identity. The People
+  screen asks relationship before scope, shows Business owner / External adviser / Not set, and
+  uses selected-client counts or All clients badges. No Business owner self-service was enabled.
 - **Batch 3 — remove the two accidental External adviser writes.** `scenario_exclusions`
   per-command policies and `public.user_can_write_client_scenario`, and the
   `unreconciled_lines` comment UPDATE, must stop naming `app_private.has_client_access`;
