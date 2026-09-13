@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import type { DashboardTier } from "@/lib/tiers";
+import type { ClientAccessRelationship } from "@/lib/access-labels";
 
 /**
  * UI context for the signed-in person. Every fact here comes from a
@@ -28,13 +29,19 @@ export const getMyContext = createServerFn({ method: "GET" })
     // Previewing the app as someone else is for platform admins and advisors only.
     const canViewAs = isSuperAdmin || hasAdvisorRole;
 
-    let viewerClients: { id: string; name: string; tier: DashboardTier }[] = [];
+    let viewerClients: {
+      id: string;
+      name: string;
+      tier: DashboardTier;
+      relationship: ClientAccessRelationship | null;
+    }[] = [];
     if (!isAdvisor) {
       const { data: access } = await (context.supabase as any).rpc("my_client_access");
       viewerClients = ((access ?? []) as any[]).map((a) => ({
         id: a.client_id as string,
         name: a.client_name as string,
         tier: a.tier as DashboardTier,
+        relationship: (a.relationship ?? null) as ClientAccessRelationship | null,
       }));
     }
     return {

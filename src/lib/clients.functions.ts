@@ -692,35 +692,13 @@ export const listClientAccess = createServerFn({ method: "POST" })
         id: r.id,
         user_id: r.user_id,
         tier: r.tier,
+        relationship: r.relationship ?? null,
+        inviter_label: r.inviter_label ?? null,
         created_at: r.created_at,
         email: r.email ?? null,
         display_name: r.display_name ?? null,
       })),
     };
-  });
-
-export const updateClientAccessTier = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator((i: { id: string; tier: DashboardTier }) => i)
-  .handler(async ({ data, context }) => {
-    // Unchanged behaviour: the tier must still be inside the client's plan.
-    // The row -> client lookup is a database function, not a table read.
-    const { data: clientId, error: lookupErr } = await (context.supabase as any).rpc(
-      "client_for_access",
-      { _id: data.id },
-    );
-    if (lookupErr) throw new Error(lookupErr.message);
-    if (clientId) {
-      const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-      await assertTierInPlanForClient(context.supabase, clientId as string, data.tier);
-    }
-    const { error } = await (context.supabase as any).rpc("set_client_access_tier", {
-      _id: data.id,
-      _tier: data.tier,
-    });
-    if (error) throw new Error(error.message);
-
-    return { ok: true };
   });
 
 export const revokeClientAccess = createServerFn({ method: "POST" })
