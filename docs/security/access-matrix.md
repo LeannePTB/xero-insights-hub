@@ -1064,35 +1064,32 @@ None.
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
-| firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| clients | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_xero_orgs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_notes | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_access | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_cost_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_true_breakeven_inputs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| unreconciled_uploads | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| unreconciled_lines | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| loan_consolidation_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| loan_consolidation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| consolidation_groups | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| consolidation_group_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| tier_widget_config | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| xero_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| xero_snapshot_runs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
+| firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| clients | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_xero_orgs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_notes | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_access | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_cost_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_true_breakeven_inputs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| unreconciled_uploads | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| unreconciled_lines | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| loan_consolidation_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| loan_consolidation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| consolidation_groups | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| consolidation_group_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| tier_widget_config | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| xero_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| xero_snapshot_runs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| scenario_exclusions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | report_cache | read | ALLOW | pglite, live | own cache rows |  |
 | report_cache | insert | ALLOW | pglite, live | own cache rows |  |
 | report_cache | update | ALLOW | pglite, live | own cache rows |  |
 | report_cache | delete | ALLOW | pglite, live | own cache rows |  |
-| scenario_exclusions | read | DENY | pglite, live | Spec §6 (client_access-scoped table) |  |
-| scenario_exclusions | insert | DENY | pglite, live | Spec §6 (client_access-scoped table) |  |
-| scenario_exclusions | update | DENY | pglite, live | Spec §6 (client_access-scoped table) |  |
-| scenario_exclusions | delete | DENY | pglite, live | Spec §6 (client_access-scoped table) |  |
 | client_xero_orgs | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_xero_orgs | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_xero_orgs | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
@@ -1129,6 +1126,9 @@ None.
 | tier_widget_config | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
+| scenario_exclusions | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
+| scenario_exclusions | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
+| scenario_exclusions | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_access | insert | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
 | client_access | update | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
 | client_access | delete | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
@@ -1208,35 +1208,32 @@ None.
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
-| firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| clients | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_xero_orgs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_notes | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_access | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_cost_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_true_breakeven_inputs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| unreconciled_uploads | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| unreconciled_lines | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| loan_consolidation_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| loan_consolidation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| consolidation_groups | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| consolidation_group_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| tier_widget_config | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| xero_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
-| xero_snapshot_runs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 |  |
+| firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| clients | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_xero_orgs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_notes | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_access | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_cost_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_true_breakeven_inputs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| unreconciled_uploads | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| unreconciled_lines | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| loan_consolidation_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| loan_consolidation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| consolidation_groups | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| consolidation_group_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| tier_widget_config | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| xero_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| xero_snapshot_runs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| scenario_exclusions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | report_cache | read | DENY | pglite, live | another member's cache rows |  |
 | report_cache | insert | DENY | pglite, live | another member's cache rows |  |
 | report_cache | update | DENY | pglite, live | another member's cache rows |  |
 | report_cache | delete | DENY | pglite, live | another member's cache rows |  |
-| scenario_exclusions | read | DENY | pglite, live | Spec §6 (client_access-scoped table) |  |
-| scenario_exclusions | insert | DENY | pglite, live | Spec §6 (client_access-scoped table) |  |
-| scenario_exclusions | update | DENY | pglite, live | Spec §6 (client_access-scoped table) |  |
-| scenario_exclusions | delete | DENY | pglite, live | Spec §6 (client_access-scoped table) |  |
 | client_xero_orgs | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_xero_orgs | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_xero_orgs | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
@@ -1273,6 +1270,9 @@ None.
 | tier_widget_config | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | tier_widget_config | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
+| scenario_exclusions | insert | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
+| scenario_exclusions | update | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
+| scenario_exclusions | delete | ALLOW | pglite, live | PK 2 path A; Spec §6 |  |
 | client_access | insert | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
 | client_access | update | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
 | client_access | delete | DENY | pglite, live | PK rule 11; Spec §14.3 — client_access writes use audited functions only |  |
