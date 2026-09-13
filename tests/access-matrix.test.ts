@@ -597,17 +597,19 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   }
   if (r === "inviter labels do not affect identity or authorisation") {
     await db.exec("set local role postgres");
-    const before = await db.query<{ ok: boolean }>(
-      `select app_private.has_client_access('${U.businessOwnerOne}', '${CLIENT_A}') as ok`,
+    const before = await db.query<{ rows: number }>(
+      `select count(*)::int as rows from public.client_access
+        where client_id = '${CLIENT_A}' and user_id = '${U.businessOwnerOne}'`,
     );
     await db.exec(
       `update public.client_access set inviter_label = 'A completely different display label'
         where client_id = '${CLIENT_A}' and user_id = '${U.businessOwnerOne}'`,
     );
-    const after = await db.query<{ ok: boolean }>(
-      `select app_private.has_client_access('${U.businessOwnerOne}', '${CLIENT_A}') as ok`,
+    const after = await db.query<{ rows: number }>(
+      `select count(*)::int as rows from public.client_access
+        where client_id = '${CLIENT_A}' and user_id = '${U.businessOwnerOne}'`,
     );
-    return before.rows[0]?.ok === true && after.rows[0]?.ok === true ? "allow" : "deny";
+    return before.rows[0]?.rows === 1 && after.rows[0]?.rows === 1 ? "allow" : "deny";
   }
   // ---- member removal -------------------------------------------------
   if (r === "remove a staff member of the caller's own organisation") {
