@@ -45,6 +45,7 @@ grant usage on schema public, app_private, auth to anon, authenticated, service_
 grant select on auth.users, auth.mfa_factors to service_role;
 set check_function_bodies = off;
 create type public.app_role as enum ('advisor', 'client_viewer', 'super_admin', 'firm_owner', 'firm_staff');
+create type public.client_access_relationship as enum ('business_owner', 'external_adviser');
 create type public.client_subscription_status as enum ('active', 'trialing', 'past_due', 'cancelled', 'free_forever');
 create type public.client_subscription_type as enum ('paid', 'free_forever', 'trial');
 create type public.dashboard_tier as enum ('basic', 'advisory', 'investigate', 'multi_company');
@@ -55,13 +56,13 @@ create type public.report_basis as enum ('accrual', 'cash');
 create type public.statutory_category as enum ('gst', 'payg', 'super', 'none');
 create type public.subscription_status as enum ('trialing', 'active', 'past_due', 'canceled', 'incomplete', 'incomplete_expired', 'unpaid');
 create type public.subscription_tier as enum ('starter', 'growth', 'scale', 'firm', 'legacy', 'free');
-create table public.access_invites (id uuid, firm_id uuid, email text, role firm_member_role, token_hash text, invited_by uuid, expires_at timestamp with time zone, accepted_at timestamp with time zone, created_at timestamp with time zone, kind text, scope text, tier dashboard_tier, client_ids uuid[]);
+create table public.access_invites (id uuid, firm_id uuid, email text, role firm_member_role, token_hash text, invited_by uuid, expires_at timestamp with time zone, accepted_at timestamp with time zone, created_at timestamp with time zone, kind text, scope text, tier dashboard_tier, client_ids uuid[], relationship client_access_relationship, inviter_label text);
 create table public.audit_finding_snoozes (tenant_id text, finding_key text, snoozed_until timestamp with time zone, snoozed_by uuid, note text, created_at timestamp with time zone, resolved boolean, resolved_at timestamp with time zone, resolved_by uuid);
 create table public.audit_findings (id uuid, run_id uuid, tenant_id text, rule_id text, category text, severity text, title text, message text, entity_type text, entity_id text, deep_link text, evidence jsonb, finding_key text, created_at timestamp with time zone);
 create table public.audit_log (id uuid, actor_user_id uuid, firm_id uuid, action text, target_type text, target_id text, ip text, user_agent text, meta jsonb, at timestamp with time zone);
 create table public.audit_runs (id uuid, tenant_id text, run_at timestamp with time zone, run_by uuid, summary jsonb, duration_ms integer, error text);
 create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text, type text, payload jsonb, occurred_at timestamp with time zone, client_id uuid);
-create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[]);
@@ -79,7 +80,7 @@ create table public.email_send_state (id integer, retry_after_until timestamp wi
 create table public.email_unsubscribe_tokens (id uuid, email text, created_at timestamp with time zone, used_at timestamp with time zone, token_hash text);
 create table public.firm_members (id uuid, firm_id uuid, user_id uuid, role firm_member_role, created_at timestamp with time zone, updated_at timestamp with time zone, status text);
 create table public.firm_support_access (firm_id uuid, granted boolean, granted_by uuid, granted_at timestamp with time zone, revoked_at timestamp with time zone, note text, created_at timestamp with time zone, updated_at timestamp with time zone, id uuid, grantee_user_id uuid, expires_at timestamp with time zone, requested_by uuid, reason text);
-create table public.firm_viewer_access (id uuid, firm_id uuid, user_id uuid, tier dashboard_tier, granted_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.firm_viewer_access (id uuid, firm_id uuid, user_id uuid, tier dashboard_tier, granted_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone, inviter_label text);
 create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean);
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -1469,6 +1470,30 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.set_client_access_relationship(_id uuid, _relationship client_access_relationship)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _client uuid; _firm uuid; _user uuid; _previous public.client_access_relationship;
+begin
+  perform app_private.assert_aal2();
+  select client_id, user_id, relationship into _client, _user, _previous
+  from public.client_access where id = _id for update;
+  if _client is null then raise exception 'Access row not found.'; end if;
+  if not app_private.can_manage_viewers_for_client(auth.uid(), _client) then
+    raise exception 'You cannot manage access for this client.';
+  end if;
+  update public.client_access set relationship = _relationship where id = _id;
+  select firm_id into _firm from public.clients where id = _client;
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'client_viewer_relationship_changed', 'client', _client::text,
+          jsonb_build_object('user_id', _user, 'previous_relationship', _previous,
+                             'relationship', _relationship));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1627,10 +1652,7 @@ grant SELECT on table public.billing_events to service_role;
 grant TRIGGER on table public.billing_events to service_role;
 grant TRUNCATE on table public.billing_events to service_role;
 grant UPDATE on table public.billing_events to service_role;
-grant DELETE on table public.client_access to authenticated;
-grant INSERT on table public.client_access to authenticated;
 grant SELECT on table public.client_access to authenticated;
-grant UPDATE on table public.client_access to authenticated;
 grant DELETE on table public.client_access to service_role;
 grant INSERT on table public.client_access to service_role;
 grant REFERENCES on table public.client_access to service_role;
@@ -2170,9 +2192,6 @@ create policy mfa_aal2_required on public.billing_events as restrictive for all 
 create policy "super_admin reads billing events" on public.billing_events as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
 create policy "manage client access by firm (read)" on public.client_access as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "viewer managers write client access (delete)" on public.client_access as permissive for delete to authenticated using (app_private.can_manage_viewers_for_client(auth.uid(), client_id));
-create policy "viewer managers write client access (insert)" on public.client_access as permissive for insert to authenticated with check (app_private.can_manage_viewers_for_client(auth.uid(), client_id));
-create policy "viewer managers write client access (update)" on public.client_access as permissive for update to authenticated using (app_private.can_manage_viewers_for_client(auth.uid(), client_id)) with check (app_private.can_manage_viewers_for_client(auth.uid(), client_id));
 create policy "viewers read own access" on public.client_access as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy "Manage cost classifications by firm (delete)" on public.client_cost_classifications as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
@@ -2515,4 +2534,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 25f4c08d9a77f9f5beb22a7c5340f1250ef056552f6a99e4aa35773365ca04a2
+-- catalogue-fingerprint: e0e0de05240e3b2865a6d303b640edc74dfc61789413f4d36baf394cc6e74d02

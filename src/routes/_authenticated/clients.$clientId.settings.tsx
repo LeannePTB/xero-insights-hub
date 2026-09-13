@@ -10,9 +10,6 @@ import {
   detachXeroOrg,
   deleteClient,
   listClientAccess,
-  inviteClientViewer,
-  createClientViewerWithPassword,
-  updateClientAccessTier,
   revokeClientAccess,
   updateClientReportBasis,
   updateClientLodgementCycles,
@@ -22,7 +19,11 @@ import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccounts
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
 import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
-import { listTierConfig, saveClientTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
+import {
+  listTierConfig,
+  saveClientTierWidgets,
+  listTierSettings,
+} from "@/lib/tier-config.functions";
 import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
 import { getMyContext } from "@/lib/roles.functions";
 
@@ -39,11 +40,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { usePersistedDisclosure, sectionStorageKey } from "@/hooks/usePersistedDisclosure";
 import {
   Select,
@@ -64,7 +61,6 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { siteUrl } from "@/lib/site-origin";
 import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
 import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
 import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
@@ -75,10 +71,6 @@ import {
   Loader2,
   UserPlus,
   Link2,
-  KeyRound,
-  Eye,
-  EyeOff,
-  Copy,
   AlertCircle,
   ChevronDown,
 } from "lucide-react";
@@ -117,9 +109,6 @@ function ClientSettings() {
   const rename = useServerFn(renameClient);
   const detach = useServerFn(detachXeroOrg);
   const del = useServerFn(deleteClient);
-  const invite = useServerFn(inviteClientViewer);
-  const createViewerPw = useServerFn(createClientViewerWithPassword);
-  const updateTier = useServerFn(updateClientAccessTier);
   const revoke = useServerFn(revokeClientAccess);
   const fetchTierCfg = useServerFn(listTierConfig);
   const saveTier = useServerFn(saveClientTierWidgets);
@@ -172,11 +161,11 @@ function ClientSettings() {
       .map((c) => [c.tenantId, c.missingScopes] as [string, string[]]),
   );
 
-
-
   // Only offer tiers the organisation's plan includes.
   const { levels: tierLevels } = usePlanLevels("dashboard");
-  const catalogueKeys = (tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]) as DashboardTier[];
+  const catalogueKeys = (
+    tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]
+  ) as DashboardTier[];
   const labelFor = (t: string) => tierLabel(t, tierLevels.find((l) => l.key === t)?.label);
   const enabledTiers = catalogueKeys.filter(
     (t) =>
@@ -197,15 +186,6 @@ function ClientSettings() {
   });
 
   const [name, setName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteTier, setInviteTier] = useState<DashboardTier>("basic");
-  const [viewerMode, setViewerMode] = useState<"invite" | "password">("invite");
-  const [viewerPassword, setViewerPassword] = useState("");
-  const [showViewerPw, setShowViewerPw] = useState(false);
-  const [lastViewerCreated, setLastViewerCreated] = useState<{
-    email: string;
-    password: string;
-  } | null>(null);
   const [selectedXeroIds, setSelectedXeroIds] = useState<Set<string>>(new Set());
   const [xeroAllowance, setXeroAllowance] = useState(1);
 
@@ -215,13 +195,6 @@ function ClientSettings() {
       setXeroAllowance(clientQ.data.client.max_xero_orgs as number);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientQ.data?.client?.name]);
-
-  useEffect(() => {
-    if (enabledTiers.length && !enabledTiers.includes(inviteTier)) {
-      setInviteTier(enabledTiers[0]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabledTiers.join(",")]);
 
   const renameMut = useMutation({
     mutationFn: () => rename({ data: { clientId, name } }),
@@ -298,41 +271,6 @@ function ClientSettings() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const inviteMut = useMutation({
-    mutationFn: () => invite({ data: { clientId, email: inviteEmail, tier: inviteTier } }),
-    onSuccess: ({ invited }) => {
-      toast.success(invited ? "Invite email sent" : "Access granted");
-      setInviteEmail("");
-      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const createViewerPwMut = useMutation({
-    mutationFn: () =>
-      createViewerPw({
-        data: { clientId, email: inviteEmail, password: viewerPassword, tier: inviteTier },
-      }),
-    onSuccess: () => {
-      toast.success(`Viewer created — ${inviteEmail}`);
-      setLastViewerCreated({ email: inviteEmail, password: viewerPassword });
-      setInviteEmail("");
-      setViewerPassword("");
-      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
-  const tierMut = useMutation({
-    mutationFn: ({ id, tier }: { id: string; tier: DashboardTier }) =>
-      updateTier({ data: { id, tier } }),
-    onSuccess: () => {
-      toast.success("Tier updated");
-      qc.invalidateQueries({ queryKey: ["client-access", clientId] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
-
   const revokeMut = useMutation({
     mutationFn: (id: string) => revoke({ data: { id } }),
     onSuccess: () => {
@@ -365,7 +303,6 @@ function ClientSettings() {
     }
   }
 
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -390,7 +327,6 @@ function ClientSettings() {
       qc.invalidateQueries({ queryKey: ["xero-scope-status"] });
     } else if (status === "choose") {
       toast.info("Choose which Xero files belong to this subscription.");
-
     } else if (err) {
       toast.error(err);
     }
@@ -494,7 +430,6 @@ function ClientSettings() {
           <ClientCardsPanel clientId={clientId} />
         </Section>
 
-
         {/* Report branding */}
         <Section title="Report branding" collapsible>
           <LogoUploadCard
@@ -509,8 +444,10 @@ function ClientSettings() {
           <ReportBasisSection
             clientId={clientId}
             clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
-            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
-              ?.tenant_id}
+            tenantId={
+              linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+                ?.tenant_id
+            }
           />
         </Section>
 
@@ -520,16 +457,20 @@ function ClientSettings() {
             clientId={clientId}
             gstCycle={(client.gst_cycle as GstCycle | null) ?? null}
             paygCycle={(client.payg_withholding_cycle as PaygCycle | null) ?? null}
-            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
-              ?.tenant_id}
+            tenantId={
+              linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+                ?.tenant_id
+            }
           />
         </Section>
 
         <Section title="How this client codes GST, PAYG and super" collapsible>
           <StatutoryAccountsSection
             clientId={clientId}
-            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
-              ?.tenant_id}
+            tenantId={
+              linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+                ?.tenant_id
+            }
           />
         </Section>
 
@@ -587,9 +528,7 @@ function ClientSettings() {
                 const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
                 const status: string = o.xero_connections?.status ?? "connected";
                 const isDisconnected = status === "disconnected";
-                const missingScopes = tenantId
-                  ? (missingScopesByTenant.get(tenantId) ?? [])
-                  : [];
+                const missingScopes = tenantId ? (missingScopesByTenant.get(tenantId) ?? []) : [];
                 return (
                   <li
                     key={o.id}
@@ -678,9 +617,9 @@ function ClientSettings() {
                           This connection needs reauthorising to enable additional reports.
                         </p>
                         <p className="mt-1 text-muted-foreground">
-                          Currently unavailable for this organisation: {capabilityList(missingScopes)}.
-                          Reconnecting grants read-only access only — nothing is lost, and
-                          everything working today keeps working.
+                          Currently unavailable for this organisation:{" "}
+                          {capabilityList(missingScopes)}. Reconnecting grants read-only access only
+                          — nothing is lost, and everything working today keeps working.
                         </p>
                         <div className="mt-2">
                           <ConnectWithXeroButton
@@ -693,7 +632,6 @@ function ClientSettings() {
                       </div>
                     ) : null}
                   </li>
-
                 );
               })}
             </ul>
@@ -799,158 +737,19 @@ function ClientSettings() {
           )}
         </Section>
 
-        {/* Viewer access */}
-        <Section title="Viewer access">
-          <div className="mb-3 inline-flex rounded-md border border-border p-0.5 text-xs">
-            <button
-              type="button"
-              onClick={() => {
-                setViewerMode("invite");
-                setLastViewerCreated(null);
-              }}
-              className={`rounded px-3 py-1.5 transition ${viewerMode === "invite" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Send email invite
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewerMode("password");
-                setLastViewerCreated(null);
-              }}
-              className={`rounded px-3 py-1.5 transition ${viewerMode === "password" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
-            >
-              Create with password
-            </button>
-          </div>
-
-          {viewerMode === "invite" ? (
-            <>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <Input
-                  type="email"
-                  placeholder="viewer@example.com"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
-                  className="flex-1"
-                />
-                <Select value={inviteTier} onValueChange={(v) => setInviteTier(v as DashboardTier)}>
-                  <SelectTrigger className="sm:w-52">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {enabledTiers.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {labelFor(t)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={() => inviteMut.mutate()}
-                  disabled={!inviteEmail.includes("@") || inviteMut.isPending}
-                >
-                  {inviteMut.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <UserPlus className="mr-2 h-4 w-4" />
-                  )}{" "}
-                  Invite
-                </Button>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                If the email isn't registered yet, they'll receive an invite link.
-              </p>
-            </>
-          ) : (
-            <>
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <Input
-                    type="email"
-                    placeholder="viewer@example.com"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    className="flex-1"
-                  />
-                  <Select
-                    value={inviteTier}
-                    onValueChange={(v) => setInviteTier(v as DashboardTier)}
-                  >
-                    <SelectTrigger className="sm:w-52">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {enabledTiers.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {labelFor(t)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="relative">
-                  <Input
-                    type={showViewerPw ? "text" : "password"}
-                    placeholder="Starter password (min 8 chars, letter + number)"
-                    value={viewerPassword}
-                    onChange={(e) => setViewerPassword(e.target.value)}
-                    className="pr-9"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowViewerPw((v) => !v)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    aria-label={showViewerPw ? "Hide password" : "Show password"}
-                  >
-                    {showViewerPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </button>
-                </div>
-                <Button
-                  onClick={() => createViewerPwMut.mutate()}
-                  disabled={
-                    !inviteEmail.includes("@") ||
-                    viewerPassword.length < 8 ||
-                    createViewerPwMut.isPending
-                  }
-                  className="self-start"
-                >
-                  {createViewerPwMut.isPending ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <KeyRound className="mr-2 h-4 w-4" />
-                  )}
-                  Create viewer
-                </Button>
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Account is active immediately — no email click required. Share the credentials
-                securely; they can change the password from Account settings after signing in.
-              </p>
-              {lastViewerCreated && (
-                <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs">
-                  <div className="mb-2 font-medium text-foreground">New viewer credentials</div>
-                  <div className="font-mono text-foreground">{lastViewerCreated.email}</div>
-                  <div className="font-mono text-foreground">{lastViewerCreated.password}</div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2"
-                    onClick={async () => {
-                      const text = `Email: ${lastViewerCreated.email}\nPassword: ${lastViewerCreated.password}\nSign in: ${siteUrl("/auth")}`;
-                      try {
-                        await navigator.clipboard.writeText(text);
-                        toast.success("Credentials copied");
-                      } catch {
-                        window.prompt("Copy credentials:", text);
-                      }
-                    }}
-                  >
-                    <Copy className="mr-2 h-3.5 w-3.5" /> Copy credentials
-                  </Button>
-                </div>
-              )}
-            </>
+        {/* People access is managed centrally so relationship and scope are explicit. */}
+        <Section title="People access">
+          <p className="text-sm text-muted-foreground">
+            Invite and manage Business owners and External advisers from the organisation's People
+            page. Relationship is selected before scope, and every change uses the audited access
+            functions.
+          </p>
+          {client.firm_id && (
+            <Button asChild variant="outline" className="mt-3">
+              <Link to="/firms/$firmId/people" params={{ firmId: client.firm_id }}>
+                Manage people and access
+              </Link>
+            </Button>
           )}
 
           <div className="mt-4">
@@ -969,30 +768,20 @@ function ClientSettings() {
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {a.display_name ?? a.email ?? a.user_id}
+                        {a.display_name ?? a.inviter_label ?? a.email ?? a.user_id}
                       </p>
-                      {a.email && a.display_name && (
+                      {a.email && (a.display_name || a.inviter_label) && (
                         <p className="truncate text-xs text-muted-foreground">{a.email}</p>
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <Select
-                        value={a.tier}
-                        onValueChange={(v) =>
-                          tierMut.mutate({ id: a.id, tier: v as DashboardTier })
-                        }
-                      >
-                        <SelectTrigger className="h-8 w-44">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {enabledTiers.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {labelFor(t)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <span className="text-xs text-muted-foreground">
+                        {a.relationship === "business_owner"
+                          ? "Business owner"
+                          : a.relationship === "external_adviser"
+                            ? "External adviser"
+                            : "Not set"}
+                      </span>
                       <Button variant="ghost" size="sm" onClick={() => revokeMut.mutate(a.id)}>
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -1032,7 +821,6 @@ function ClientSettings() {
             choice is offered.
           </p>
         </Section>
-
       </main>
     </div>
   );
@@ -1065,7 +853,10 @@ function Section({
 
   if (!collapsible) {
     return (
-      <section id={id} className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+      <section
+        id={id}
+        className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]"
+      >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold">{title}</h2>
           {action}
@@ -1077,7 +868,10 @@ function Section({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <section id={id} className="scroll-mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+      <section
+        id={id}
+        className="scroll-mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]"
+      >
         <div className="mb-4 flex items-center justify-between">
           <CollapsibleTrigger asChild>
             <button className="group flex flex-1 items-center justify-between gap-2 text-left">
@@ -1193,8 +987,8 @@ function CostClassificationSection({
         <CollapsibleContent>
           {!enabled ? (
             <p className="text-sm text-muted-foreground">
-              Cost classification is turned off. Break-Even treats all operating expenses as
-              fixed, and Cost of Sales as variable.
+              Cost classification is turned off. Break-Even treats all operating expenses as fixed,
+              and Cost of Sales as variable.
             </p>
           ) : linkedOrgs.length === 0 ? (
             <p className="text-sm text-muted-foreground">Link a Xero organisation first.</p>
@@ -1269,7 +1063,8 @@ function ReportBasisSection({
   // be read at all (a file that is not GST registered returns nothing) — an
   // ambiguous case is better shown than hidden.
   const unreadable = !xeroQ.isLoading && !xeroBasis;
-  const showControl = xeroBasis === "cash" || (!!xeroBasis && xeroBasis !== clientBasis) || unreadable;
+  const showControl =
+    xeroBasis === "cash" || (!!xeroBasis && xeroBasis !== clientBasis) || unreadable;
 
   return (
     <div className="space-y-3">
@@ -1305,7 +1100,6 @@ function ReportBasisSection({
     </div>
   );
 }
-
 
 export type GstCycle = "monthly" | "quarterly" | "annual" | "not_registered";
 export type PaygCycle = "monthly" | "quarterly" | "not_registered";

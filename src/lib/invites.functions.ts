@@ -4,13 +4,19 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 import { randomBytes, createHash } from "crypto";
 import { siteUrl } from "@/lib/site-origin";
+import { optionalInviterLabelSchema } from "@/lib/access-labels";
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
 }
 
-
-async function logAudit(action: string, targetType: string, targetId: string, actorUserId: string | null, meta: Record<string, any>) {
+async function logAudit(
+  action: string,
+  targetType: string,
+  targetId: string,
+  actorUserId: string | null,
+  meta: Record<string, any>,
+) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   await (supabaseAdmin as any).from("audit_log").insert({
     actor_user_id: actorUserId,
@@ -22,8 +28,10 @@ async function logAudit(action: string, targetType: string, targetId: string, ac
 }
 
 function validatePassword(pw: string) {
-  if (typeof pw !== "string" || pw.length < 8) throw new Error("Password must be at least 8 characters.");
-  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) throw new Error("Password must include at least one letter and one number.");
+  if (typeof pw !== "string" || pw.length < 8)
+    throw new Error("Password must be at least 8 characters.");
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw))
+    throw new Error("Password must include at least one letter and one number.");
 }
 
 function validateEmail(email: string) {
@@ -76,9 +84,11 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       .select("key")
       .eq("scope", "firm")
       .eq("enabled", true);
-    const allowedTiers = new Set([...builtInTiers, ...((planRows ?? []) as any[]).map((r) => String(r.key))]);
+    const allowedTiers = new Set([
+      ...builtInTiers,
+      ...((planRows ?? []) as any[]).map((r) => String(r.key)),
+    ]);
     if (!allowedTiers.has(data.tier)) throw new Error("Invalid plan tier.");
-
 
     // `is_always_free` belongs to Traction Advisory's own organisation only —
     // on a client organisation it would silently grant the highest enabled
@@ -139,7 +149,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       const { data: practice } = await (supabaseAdmin as any)
         .from("practice_team")
         .select("user_id");
-      for (const row of ((practice ?? []) as any[])) {
+      for (const row of (practice ?? []) as any[]) {
         const memberId = String(row.user_id);
         if (memberId === context.userId) continue;
         const { error: pmErr } = await (supabaseAdmin as any).from("firm_members").insert({
@@ -149,19 +159,35 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
           status: "active",
         });
         if (pmErr && !/duplicate/i.test(pmErr.message)) throw new Error(pmErr.message);
-        await logAudit("practice_team_member_joined_new_organisation", "firm", firm.id, context.userId, {
-          firm_id: firm.id,
-          user_id: memberId,
-          role: "staff",
-        });
+        await logAudit(
+          "practice_team_member_joined_new_organisation",
+          "firm",
+          firm.id,
+          context.userId,
+          {
+            firm_id: firm.id,
+            user_id: memberId,
+            role: "staff",
+          },
+        );
       }
 
       if (data.ownerMode === "none") {
         await logAudit("organisation_created", "firm", firm.id, context.userId, {
-          firm_id: firm.id, tier: data.tier, status: data.status, owner_mode: "none",
+          firm_id: firm.id,
+          tier: data.tier,
+          status: data.status,
+          owner_mode: "none",
           owner_user_id: context.userId,
         });
-        return { ok: true, firmId: firm.id, email: null, mode: "none" as const, token: null, emailStatus: null };
+        return {
+          ok: true,
+          firmId: firm.id,
+          email: null,
+          mode: "none" as const,
+          token: null,
+          emailStatus: null,
+        };
       }
 
       if (data.ownerMode === "password") {
@@ -179,10 +205,15 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         const ownerId = created?.user?.id;
         if (!ownerId) throw new Error("Could not create the owner account.");
 
-        await (supabaseAdmin as any).from("profiles").upsert({ id: ownerId, email, display_name: displayName });
+        await (supabaseAdmin as any)
+          .from("profiles")
+          .upsert({ id: ownerId, email, display_name: displayName });
         await (supabaseAdmin as any)
           .from("user_roles")
-          .upsert({ user_id: ownerId, role: "firm_owner" }, { onConflict: "user_id,role", ignoreDuplicates: true });
+          .upsert(
+            { user_id: ownerId, role: "firm_owner" },
+            { onConflict: "user_id,role", ignoreDuplicates: true },
+          );
         const { error: mErr } = await (supabaseAdmin as any)
           .from("firm_members")
           .insert({ firm_id: firm.id, user_id: ownerId, role: "owner", status: "active" });
@@ -194,11 +225,22 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         if (fuErr) throw new Error(fuErr.message);
 
         await logAudit("organisation_created", "firm", firm.id, context.userId, {
-          firm_id: firm.id, email, tier: data.tier, status: data.status, owner_mode: "password",
+          firm_id: firm.id,
+          email,
+          tier: data.tier,
+          status: data.status,
+          owner_mode: "password",
           owner_user_id: ownerId,
         });
 
-        return { ok: true, firmId: firm.id, email, mode: "password" as const, token: null, emailStatus: null };
+        return {
+          ok: true,
+          firmId: firm.id,
+          email,
+          mode: "password" as const,
+          token: null,
+          emailStatus: null,
+        };
       }
 
       const token = randomBytes(32).toString("hex");
@@ -214,7 +256,11 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       if (iErr) throw new Error(iErr.message);
 
       await logAudit("organisation_created", "firm", firm.id, context.userId, {
-        firm_id: firm.id, email, tier: data.tier, status: data.status, owner_mode: "invite",
+        firm_id: firm.id,
+        email,
+        tier: data.tier,
+        status: data.status,
+        owner_mode: "invite",
         owner_user_id: context.userId,
       });
 
@@ -286,7 +332,10 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
     if (iErr) throw new Error(iErr.message);
 
     await logAudit("firm_invite_created", "firm", firm.id, context.userId, {
-      firm_id: firm.id, email, role: "owner", new_firm: true,
+      firm_id: firm.id,
+      email,
+      role: "owner",
+      new_firm: true,
     });
 
     // Build the canonical signup URL and fire-and-forget the email.
@@ -299,7 +348,10 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
         recipientEmail: email,
         idempotencyKey: `firm-invite-${firm.id}-${token.slice(0, 8)}`,
         templateData: {
-          inviteUrl, role: "owner", firmName: firm.name, inviterName: null,
+          inviteUrl,
+          role: "owner",
+          firmName: firm.name,
+          inviterName: null,
         },
       });
       emailStatus = res.status;
@@ -316,10 +368,13 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
  */
 export const adminInviteFirmMember = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { firmId: string; email: string; role: "owner" | "staff" }) => i)
+  .inputValidator(
+    (i: { firmId: string; email: string; name?: string | null; role: "owner" | "staff" }) => i,
+  )
   .handler(async ({ data, context }) => {
     await assertSuperAdminDb(context.supabase);
     const email = validateEmail(data.email);
+    const inviterLabel = optionalInviterLabelSchema.parse(data.name ?? null);
     if (data.role !== "staff") {
       // Spec §4: ownership of an existing organisation only ever moves through
       // public.transfer_organisation_ownership, never by accepting an invite.
@@ -335,6 +390,7 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
       firm_id: data.firmId,
       email,
       role: data.role,
+      inviter_label: inviterLabel,
       token_hash: hashToken(token),
       expires_at: expiresAt,
       invited_by: context.userId,
@@ -342,11 +398,18 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     await logAudit("firm_invite_created", "firm", data.firmId, context.userId, {
-      firm_id: data.firmId, email, role: data.role, new_firm: false,
+      firm_id: data.firmId,
+      email,
+      role: data.role,
+      inviter_label: inviterLabel,
+      new_firm: false,
     });
 
     const { data: firm } = await (supabaseAdmin as any)
-      .from("firms").select("name").eq("id", data.firmId).maybeSingle();
+      .from("firms")
+      .select("name")
+      .eq("id", data.firmId)
+      .maybeSingle();
     const inviteUrl = siteUrl(`/signup/${token}`);
     let emailStatus: string = "skipped";
     try {
@@ -356,7 +419,10 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
         recipientEmail: email,
         idempotencyKey: `firm-invite-${data.firmId}-${token.slice(0, 8)}`,
         templateData: {
-          inviteUrl, role: data.role, firmName: firm?.name ?? null, inviterName: null,
+          inviteUrl,
+          role: data.role,
+          firmName: firm?.name ?? null,
+          inviterName: null,
         },
       });
       emailStatus = res.status;
@@ -379,20 +445,26 @@ export const getInvitePublic = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: invite, error } = await (supabaseAdmin as any)
       .from("access_invites")
-      .select("id, firm_id, email, role, kind, scope, tier, client_ids, expires_at, accepted_at")
+      .select(
+        "id, firm_id, email, role, kind, scope, relationship, inviter_label, client_ids, expires_at, accepted_at",
+      )
       .eq("token_hash", hashToken(data.token))
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!invite) throw new Error("Invite not found or already used.");
     if (invite.accepted_at) throw new Error("This invite has already been used. Please sign in.");
-    if (new Date(invite.expires_at).getTime() < Date.now()) throw new Error("This invite has expired.");
+    if (new Date(invite.expires_at).getTime() < Date.now())
+      throw new Error("This invite has expired.");
 
     // Look up firm name (placeholder) to show context.
     const { data: firm } = await (supabaseAdmin as any)
-      .from("firms").select("name").eq("id", invite.firm_id).maybeSingle();
+      .from("firms")
+      .select("name")
+      .eq("id", invite.firm_id)
+      .maybeSingle();
 
     // On a viewer invite, show what is being offered before they accept: the
-    // organisation, whether it is every client or a named list, and the level.
+    // organisation, relationship, and whether it is every client or a named list.
     // Client names only — never ids or any other organisation data.
     let clientNames: string[] = [];
     if (invite.kind === "viewer" && invite.scope === "selected") {
@@ -424,7 +496,8 @@ export const getInvitePublic = createServerFn({ method: "POST" })
       role: invite.role as "owner" | "staff",
       kind: (invite.kind ?? "member") as "member" | "viewer",
       scope: (invite.scope ?? null) as "selected" | "all_clients" | null,
-      tier: (invite.tier ?? null) as string | null,
+      relationship: (invite.relationship ?? null) as "business_owner" | "external_adviser" | null,
+      inviterLabel: invite.inviter_label ?? null,
       clientNames,
       invitedByName,
       firmName: firm?.name ?? null,
@@ -432,18 +505,15 @@ export const getInvitePublic = createServerFn({ method: "POST" })
     };
   });
 
-
 /**
  * Public: accept an invite. Creates auth user if needed, sets password,
  * joins firm_members. If owner + businessName provided, renames the firm.
  */
 export const acceptInvite = createServerFn({ method: "POST" })
-  .inputValidator((i: {
-    token: string;
-    password: string;
-    displayName: string;
-    businessName?: string | null;
-  }) => i)
+  .inputValidator(
+    (i: { token: string; password: string; displayName: string; businessName?: string | null }) =>
+      i,
+  )
   .handler(async ({ data }) => {
     if (!data.token || data.token.length < 32) throw new Error("Invalid invite link.");
     validatePassword(data.password);
@@ -462,7 +532,8 @@ export const acceptInvite = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!invite) throw new Error("Invite not found or already used.");
     if (invite.accepted_at) throw new Error("This invite has already been used. Please sign in.");
-    if (new Date(invite.expires_at).getTime() < Date.now()) throw new Error("This invite has expired.");
+    if (new Date(invite.expires_at).getTime() < Date.now())
+      throw new Error("This invite has expired.");
 
     // Create or find auth user.
     let userId: string | null = null;
@@ -475,10 +546,11 @@ export const acceptInvite = createServerFn({ method: "POST" })
     if (cErr) {
       // Likely already exists — try lookup by email + update password.
       const { data: list } = await (supabaseAdmin as any).auth.admin.listUsers({
-        page: 1, perPage: 200,
+        page: 1,
+        perPage: 200,
       });
-      const existing = (list?.users ?? []).find((u: any) =>
-        (u.email ?? "").toLowerCase() === invite.email.toLowerCase()
+      const existing = (list?.users ?? []).find(
+        (u: any) => (u.email ?? "").toLowerCase() === invite.email.toLowerCase(),
       );
       if (!existing) throw new Error(cErr.message);
       userId = existing.id;
@@ -494,7 +566,9 @@ export const acceptInvite = createServerFn({ method: "POST" })
 
     // Upsert profile.
     await (supabaseAdmin as any).from("profiles").upsert({
-      id: userId, email: invite.email, display_name: displayName,
+      id: userId,
+      email: invite.email,
+      display_name: displayName,
     });
 
     // A viewer invite grants read-only client access and NEVER membership: the
@@ -523,10 +597,11 @@ export const acceptInvite = createServerFn({ method: "POST" })
     // Add to firm_members (unique on firm_id+user_id assumed; ignore conflict).
 
     const { error: mErr } = await (supabaseAdmin as any).from("firm_members").insert({
-      firm_id: invite.firm_id, user_id: userId, role: invite.role,
+      firm_id: invite.firm_id,
+      user_id: userId,
+      role: invite.role,
     });
     if (mErr && !/duplicate/i.test(mErr.message)) throw new Error(mErr.message);
-
 
     // An owner invite only ever belongs to the organisation-creation flow, where
     // the organisation has no owner yet. Accepting an invite must never replace a
@@ -575,11 +650,15 @@ export const acceptInvite = createServerFn({ method: "POST" })
     }
 
     // Mark invite accepted.
-    await (supabaseAdmin as any).from("access_invites")
-      .update({ accepted_at: new Date().toISOString() }).eq("id", invite.id);
+    await (supabaseAdmin as any)
+      .from("access_invites")
+      .update({ accepted_at: new Date().toISOString() })
+      .eq("id", invite.id);
 
     await logAudit("firm_invite_accepted", "firm", invite.firm_id, userId, {
-      firm_id: invite.firm_id, email: invite.email, role: invite.role,
+      firm_id: invite.firm_id,
+      email: invite.email,
+      role: invite.role,
     });
 
     return { ok: true, email: invite.email };
@@ -588,6 +667,7 @@ export const acceptInvite = createServerFn({ method: "POST" })
 export type PendingFirmInvite = {
   id: string;
   email: string;
+  inviterLabel: string | null;
   role: "owner" | "staff";
   expiresAt: string;
   createdAt: string;
@@ -612,6 +692,7 @@ export const listFirmMemberInvites = createServerFn({ method: "POST" })
       invites: ((rows ?? []) as any[]).map((r) => ({
         id: r.id,
         email: r.email,
+        inviterLabel: r.inviter_label ?? null,
         role: r.role,
         expiresAt: r.expires_at,
         createdAt: r.created_at,
@@ -628,9 +709,12 @@ export const revokeFirmMemberInvite = createServerFn({ method: "POST" })
       _id: data.id,
     });
     if (error) {
-      if (/NOT_PERMITTED/i.test(error.message)) throw new Error("You cannot cancel this invitation.");
-      if (/INVITE_NOT_FOUND/i.test(error.message)) throw new Error("That invitation no longer exists.");
-      if (/ALREADY_ACCEPTED/i.test(error.message)) throw new Error("That invitation has already been used.");
+      if (/NOT_PERMITTED/i.test(error.message))
+        throw new Error("You cannot cancel this invitation.");
+      if (/INVITE_NOT_FOUND/i.test(error.message))
+        throw new Error("That invitation no longer exists.");
+      if (/ALREADY_ACCEPTED/i.test(error.message))
+        throw new Error("That invitation has already been used.");
       throw new Error(error.message);
     }
     return { ok: true };

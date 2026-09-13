@@ -5,6 +5,7 @@
 > system as built through Phases 1–7.
 >
 > **Which document wins.**
+>
 > - **Project Knowledge** ("Security Rules and Change Gate") — the BINDING rules the agent follows. It wins over everything here.
 > - **This file** — the detail. Where it and Project Knowledge differ, Project Knowledge wins.
 > - **`access-matrix.ts` / generated `access-matrix.md`** — the EVIDENCE. Where this file and the matrix disagree, the matrix is right: it is proved against the live catalogue by `bun run security:check`, and prose is not.
@@ -21,7 +22,7 @@ If a chat request conflicts with this document, STOP and reply:
 
 1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 53 `public` tables.
 2. No policy on a data table may read `USING (true)`. New permissive policies are per command, never `FOR ALL`; a RESTRICTIVE `FOR ALL` guard that only narrows access (the aal2 guard) is allowed.
-3. **Being `super_admin` grants ZERO access to organisation or client data on its own** (see §4a for the bounds on what it *can* do).
+3. **Being `super_admin` grants ZERO access to organisation or client data on its own** (see §4a for the bounds on what it _can_ do).
 4. A `firm_id` / `client_id` / `tenant_id` from the caller is a FILTER, never a GRANT.
 5. Xero OAuth tokens never leave the server. `service_role` key never reaches the browser.
 6. RLS is never disabled to fix a bug. Never cache roles or grants in the JWT or localStorage.
@@ -45,7 +46,7 @@ If a chat request conflicts with this document, STOP and reply:
 
 **Never use "firm" in user-facing copy.** The user-facing term is **"organisation"** (matching Xero). `firm` / `firm_id` / `firms` are internal identifiers only — tables, columns, functions, RPC parameter names, TypeScript symbols, routes, query keys. Do not rename them.
 
-- **"Company" is taken**: a *company* is an individual Xero entity belonging to a client. Hierarchy: **Organisation → Clients → Companies**.
+- **"Company" is taken**: a _company_ is an individual Xero entity belonging to a client. Hierarchy: **Organisation → Clients → Companies**.
 - The `basic` tier is **"Standard"** in UI copy; do not rename the enum value.
 - **Australian English**: organisation, authorise, cancelled, licence (noun). Prices in AUD.
 
@@ -76,7 +77,7 @@ If a feature seems to need cross-organisation visibility, ask which path it is f
 `super_admin` on its own reaches no organisation or client data (invariant 3). What it can do is bounded in the database and audited:
 
 - **Self-join.** `public.admin_set_self_firm_membership` adds or removes the caller as a member of an organisation **Positive Traction still owns** — never an organisation handed over to a client — and audits every attempt.
-- **Always-free.** `public.set_firm_always_free` is restricted to Positive Traction's own organisation (pinned to `4dcfd606-dce3-4674-923f-c5183ecae141`), **fails closed** if that organisation cannot be identified, requires a 3–500 character reason, and audits the change. That flag grants the *highest enabled* tier, not Standard. **Never set `is_always_free` on a client organisation.**
+- **Always-free.** `public.set_firm_always_free` is restricted to Positive Traction's own organisation (pinned to `4dcfd606-dce3-4674-923f-c5183ecae141`), **fails closed** if that organisation cannot be identified, requires a 3–500 character reason, and audits the change. That flag grants the _highest enabled_ tier, not Standard. **Never set `is_always_free` on a client organisation.**
 - **Subscriptions and comps.** `client_subscriptions` has no browser write grant; changes go through audited aal2 RPCs that require a reason.
 - **MFA reset, role changes, plan changes, audit exports** all write audit rows.
 
@@ -87,6 +88,7 @@ If a feature seems to need cross-organisation visibility, ask which path it is f
 **`ptb` is the default for client organisations**: 1 client, 1 Xero organisation, `allowed_tiers={basic}`, free.
 
 Triggers on `clients` and `xero_connections` block over-limit inserts and fire even for `service_role`. Catch and present these; never reimplement the check:
+
 - `PLAN_LIMIT_CLIENTS: this organisation's plan allows N client(s). Upgrade to add more.`
 - `PLAN_LIMIT_XERO_ORGS: this organisation's plan allows N Xero organisation(s). Upgrade to connect more.`
 
@@ -195,9 +197,9 @@ One change at a time. After anything touching auth, RLS, membership, grants, ent
 
 **Report only what you verified in this turn.** Never describe the prior state of code or database from memory or from earlier in the conversation — re-read it. Say exactly what you changed, even when it differs from what was asked.
 
-## 14. Path D — the standing viewer grant (added 12 Sep 2026, people-and-access Batch 2)
+## 14. Path D — External adviser (added 12 Sep 2026, people-and-access Batch 2)
 
-Storage: `public.firm_viewer_access` — one row per person per organisation (`unique (firm_id, user_id)`), carrying the granted `dashboard_tier`, who granted it and timestamps. RLS on; `authenticated` holds SELECT/INSERT/UPDATE/DELETE only through per-command policies naming `authenticated`, plus the restrictive `mfa_aal2_required` guard. Management is `app_private.can_manage_client_viewers(auth.uid(), firm_id)` = that organisation's **owner** (`is_org_owner`) **or** `app_private.is_practice_member_of` — an **active `firm_members` row for THAT organisation** held by someone in `public.practice_team`. A bare super admin, and a practice-team member of a different organisation, are both refused, so this is not a route back into a handed-over organisation (backlog 30 unaffected). The holder may read their own row.
+Storage: `public.firm_viewer_access` — one row per person per organisation (`unique (firm_id, user_id)`), carrying the granted `dashboard_tier`, optional display-only inviter label, who granted it and timestamps. In user-facing copy this is an **External adviser — All clients** grant. RLS on; management is `app_private.can_manage_client_viewers(auth.uid(), firm_id)` = that organisation's **owner** (`is_org_owner`) **or** `app_private.is_practice_member_of` — an **active `firm_members` row for THAT organisation** held by someone in `public.practice_team`. A bare super admin, and a practice-team member of a different organisation, are both refused, so this is not a route back into a handed-over organisation (backlog 30 unaffected). The holder may read their own row.
 
 Read path: `app_private.has_standing_client_access(user, client)` resolves the client's organisation and looks for a grant row; `app_private.has_client_read_access` = specific grant `OR` standing grant. `app_private.user_can_read_client` calls `has_client_read_access` in place of `has_client_access` — the only change to the client read check — and every viewer **SELECT** policy now names `has_client_read_access` (`clients`, `client_notes`, `client_cost_classifications`, `client_statutory_accounts`, `client_true_breakeven_inputs`, `client_xero_orgs`, `client_reports`, `loan_consolidation_accounts`, `reconciliation_snapshots`, `unreconciled_lines`, `unreconciled_uploads`, `tier_widget_config`).
 
@@ -214,11 +216,12 @@ Who may manage client viewers is one database predicate,
 the client's organisation **owner**, or a `practice_team` person holding an
 **active `firm_members` row for that same organisation**. It authorises
 `grant_client_access`, `revoke_client_access`, `set_client_access_tier`,
-`client_viewers`, `grant_firm_viewer_access`, `set_firm_viewer_tier`,
+`set_client_access_relationship`, `client_viewers`, `grant_firm_viewer_access`,
 `revoke_firm_viewer_access`, `firm_viewers`, `firm_viewer_invites` and
-`revoke_viewer_invite`, and the `client_access` INSERT/UPDATE/DELETE policies.
-Organisation **staff** may read the viewer lists and change nothing — three
-`org_staff × client_access` write rows moved from allow to deny for this.
+`revoke_viewer_invite`. Direct browser-session writes to `client_access` are now
+closed: `authenticated` has SELECT only, and no INSERT/UPDATE/DELETE policy.
+Organisation **staff** may read the viewer lists and change nothing. Every grant,
+classification and revocation goes through an aal2, caller-scoped, audited function.
 
 Viewer invites reuse `access_invites` (hashed token, email-bound, single-use,
 expiring) with `kind = 'viewer'`, `scope`, `tier` and `client_ids`. Every member
@@ -266,19 +269,19 @@ handed-over restriction are unchanged — joining still requires the
 organisation's owner to hold `super_admin`, so a practice-team person cannot
 join a handed-over organisation.
 
-### 14.3 Naming: "External adviser", and the Business owner relationship to come (13 Sep 2026)
+### 14.3 External adviser and Business owner relationship foundation (13 Sep 2026)
 
 Project Knowledge section 2 now names Path D **External adviser** and adds Path E **Business owner**, with invariant 11 forbidding a read predicate (`has_client_access`, `has_client_read_access`, `has_standing_client_access`) in any write policy, write helper or billing authorisation.
 
-Wording only, in this change:
-
 - User-facing copy says **External adviser**, with **All clients** or the number of selected clients. "Standing grant" / "standing viewer grant" are retired from screens. Internal names — `firm_viewer_access`, `client_access`, `has_standing_client_access`, matrix role keys, audit actions — are unchanged, and must stay unchanged.
-- A `client_access` row will carry a nullable `relationship` (`business_owner` | `external_adviser`); `NULL` displays as **Not set** and is read-only. Nothing is inferred or backfilled.
-- **Business owner** is self-service for one specific client only, never on an All clients grant. A client may have **several** business owners (partners, spouses), so no unique constraint on `(client_id)` for that relationship.
+- A `client_access` row and selected-client viewer invite now carry a nullable `relationship` (`business_owner` | `external_adviser`); `NULL` displays as **Not set** and is read-only. Existing rows were not inferred or backfilled. Relationship does not yet authorise a write or billing action.
+- **Business owner** is reserved for self-service on one specific client only, never on an All clients grant. A client may have **several** business owners (partners, spouses), so there is no unique constraint on `(client_id)` for that relationship.
 - **Membership governs an overlap.** After handover a person may hold both an active `firm_members` row and a `business_owner` row; membership is the broader path and the self-service capabilities are a subset of it, so the two cannot conflict. If the membership is later removed or suspended the relationship row is untouched, and the person falls back to self-service on that one client.
-- Relationship changes go only through an aal2, caller-scoped, audited database function, callable by the organisation owner or an active practice-team member of that organisation. Direct `client_access` writes are closed unconditionally in Batch 2.
+- Relationship changes go only through `public.set_client_access_relationship`, an aal2, caller-scoped, audited database function callable by the organisation owner or an active practice-team member of that organisation. Direct `client_access` writes are closed unconditionally: authenticated INSERT/UPDATE/DELETE privileges and policies were removed.
+- Optional inviter labels are trimmed, 1–80 characters, and cannot look like email addresses. They are display-only. The verified sign-in email remains the identity; no label participates in an access decision.
+- The invitation screen asks relationship first, then scope. Business owner is selected-client only. External adviser may be selected-client or All clients. New External adviser grants store the existing `multi_company` pass-through tier, but `client_entitlement` remains the authoritative cap.
 
-Nothing in this subsection is implemented yet beyond the wording; the two writes a selected-client grant can currently reach (`scenario_exclusions`, the `unreconciled_lines` comment) remain defects tracked as backlog 48 Batch 3, and §14 above still describes live behaviour.
+This is the relationship foundation only. Business-owner self-service is not enabled. The two writes a selected-client grant can currently reach (`scenario_exclusions`, the `unreconciled_lines` comment) remain defects tracked as backlog 48 Batch 3; they are not expanded by relationship or label.
 
 ## 15. Member removal (12 Sep 2026)
 
@@ -327,6 +330,7 @@ expected allow/deny from `docs/security/access-matrix.ts` by
 (role, resource, operation), and a probe with no matrix row is an error.
 
 ### What it exercises
+
 Real sessions for three accounts (owner aal2, the **same owner on aal1**, staff
 aal2, client viewer with a standing grant aal2) plus anonymous, calling
 `listClients`, `getClient`, `renameClient`, `inviteClientViewer`,
@@ -335,6 +339,7 @@ aal2, client viewer with a standing grant aal2) plus anonymous, calling
 `practice_team` row.
 
 ### Containment (each enforced in the database, never by convention)
+
 - `firms.is_test` marks the one isolated organisation, `ZZ Security Test Org`.
   It has no Xero connection, so **no Xero API call is reachable** from the suite.
 - `app_private.confine_security_test_accounts()` is a trigger on `firm_members`,
@@ -354,6 +359,7 @@ aal2, client viewer with a standing grant aal2) plus anonymous, calling
   TOTP codes are computed at run time; nothing is ever returned to a browser.
 
 ### Posture and triggering
+
 `public.test_accounts_posture()` (aal2 + super admin) reports **Action** if any
 test account can sign in outside a run, holds any membership, grant or role
 outside the test organisation, or has a session outside the run window.

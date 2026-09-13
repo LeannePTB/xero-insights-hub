@@ -3,8 +3,8 @@ import { createHash, randomBytes } from "crypto";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { findVerifiedAuthUserByEmail } from "@/lib/auth-users.server";
 import { siteUrl } from "@/lib/site-origin";
-import { ALL_TIERS } from "@/lib/tiers";
 import type { DashboardTier } from "@/lib/tiers";
+import { optionalInviterLabelSchema, type ClientAccessRelationship } from "@/lib/access-labels";
 
 /**
  * Client viewers at organisation level (People and access, Batch 3).
@@ -16,7 +16,7 @@ import type { DashboardTier } from "@/lib/tiers";
  * reads `firm_members`, `user_roles`, `client_access` or `firm_viewer_access`
  * to decide who may do what.
  *
- * A standing grant is read-only by construction: it lives in
+ * An External adviser with All clients is read-only by construction: it lives in
  * `firm_viewer_access`, which is referenced only by read predicates
  * (`app_private.has_standing_client_access` → `has_client_read_access`).
  */
@@ -33,10 +33,7 @@ function normaliseEmail(raw: string) {
   return e;
 }
 
-function assertTier(t: string): DashboardTier {
-  if (!(ALL_TIERS as readonly string[]).includes(t)) throw new Error("Invalid dashboard level.");
-  return t as DashboardTier;
-}
+const EXTERNAL_ADVISER_PASS_THROUGH_TIER: DashboardTier = "multi_company";
 
 export type StandingViewer = {
   id: string;
@@ -44,56 +41,49 @@ export type StandingViewer = {
   tier: DashboardTier;
   email: string | null;
   displayName: string | null;
+  inviterLabel: string | null;
   createdAt: string;
 };
 
-/** Standing ("every client") viewer grants for one organisation. */
+/** External advisers with All clients access for one organisation. */
 export const listStandingViewers = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
-  .handler(async ({ data, context }): Promise<{
-    viewers: StandingViewer[];
-    canManage: boolean;
-    firmName: string | null;
-  }> => {
-    const [{ data: rows, error }, { data: canManage }, { data: firm }] = await Promise.all([
-      (context.supabase as any).rpc("firm_viewers", { _firm_id: data.firmId }),
-      (context.supabase as any).rpc("me_can_manage_firm_viewers", { _firm_id: data.firmId }),
-      (context.supabase as any).from("firms").select("name").eq("id", data.firmId).maybeSingle(),
-    ]);
-    if (error) {
-      if (/cannot view/i.test(error.message)) {
-        return { viewers: [], canManage: false, firmName: (firm as any)?.name ?? null };
+  .handler(
+    async ({
+      data,
+      context,
+    }): Promise<{
+      viewers: StandingViewer[];
+      canManage: boolean;
+      firmName: string | null;
+    }> => {
+      const [{ data: rows, error }, { data: canManage }, { data: firm }] = await Promise.all([
+        (context.supabase as any).rpc("firm_viewers", { _firm_id: data.firmId }),
+        (context.supabase as any).rpc("me_can_manage_firm_viewers", { _firm_id: data.firmId }),
+        (context.supabase as any).from("firms").select("name").eq("id", data.firmId).maybeSingle(),
+      ]);
+      if (error) {
+        if (/cannot view/i.test(error.message)) {
+          return { viewers: [], canManage: false, firmName: (firm as any)?.name ?? null };
+        }
+        throw new Error(error.message);
       }
-      throw new Error(error.message);
-    }
-    return {
-      firmName: (firm as any)?.name ?? null,
-      viewers: ((rows ?? []) as any[]).map((r) => ({
-        id: r.id,
-        userId: r.user_id,
-        tier: r.tier,
-        email: r.email ?? null,
-        displayName: r.display_name ?? null,
-        createdAt: r.created_at,
-      })),
-      canManage: canManage === true,
-    };
-  });
-
-/** Change the level on a standing grant. Audited in the database. */
-export const setStandingViewerTier = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator((i: { id: string; tier: string }) => i)
-  .handler(async ({ data, context }) => {
-    const tier = assertTier(data.tier);
-    const { error } = await (context.supabase as any).rpc("set_firm_viewer_tier", {
-      _id: data.id,
-      _tier: tier,
-    });
-    if (error) throw new Error(explain(error.message));
-    return { ok: true };
-  });
+      return {
+        firmName: (firm as any)?.name ?? null,
+        viewers: ((rows ?? []) as any[]).map((r) => ({
+          id: r.id,
+          userId: r.user_id,
+          tier: r.tier,
+          email: r.email ?? null,
+          displayName: r.display_name ?? null,
+          inviterLabel: r.inviter_label ?? null,
+          createdAt: r.created_at,
+        })),
+        canManage: canManage === true,
+      };
+    },
+  );
 
 /** Remove a standing grant entirely. Specific per-client grants are untouched. */
 export const revokeStandingViewer = createServerFn({ method: "POST" })
@@ -114,9 +104,8 @@ export const revokeStandingViewer = createServerFn({ method: "POST" })
  */
 export const switchStandingToSelected = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { firmId: string; userId: string; clientIds: string[]; tier: string }) => i)
+  .inputValidator((i: { firmId: string; userId: string; clientIds: string[] }) => i)
   .handler(async ({ data, context }) => {
-    const tier = assertTier(data.tier);
     const clientIds = Array.from(new Set(data.clientIds ?? []));
     if (clientIds.length === 0) throw new Error("Tick at least one client.");
 
@@ -139,7 +128,8 @@ export const switchStandingToSelected = createServerFn({ method: "POST" })
       const { error } = await (context.supabase as any).rpc("grant_client_access", {
         _client_id: clientId,
         _user_id: data.userId,
-        _tier: tier,
+        _tier: EXTERNAL_ADVISER_PASS_THROUGH_TIER,
+        _relationship: "external_adviser",
       });
       if (error) throw new Error(explain(error.message));
     }
@@ -164,6 +154,8 @@ export type ViewerInvite = {
   email: string;
   scope: "selected" | "all_clients";
   tier: DashboardTier;
+  relationship: ClientAccessRelationship | null;
+  inviterLabel: string | null;
   clientIds: string[];
   expiresAt: string;
   createdAt: string;
@@ -186,6 +178,8 @@ export const listViewerInvites = createServerFn({ method: "POST" })
         email: r.email,
         scope: r.scope,
         tier: r.tier,
+        relationship: r.relationship ?? null,
+        inviterLabel: r.inviter_label ?? null,
         clientIds: r.client_ids ?? [],
         expiresAt: r.expires_at,
         createdAt: r.created_at,
@@ -202,8 +196,24 @@ export const cancelViewerInvite = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+/** Classify an existing selected-client row. The database authorises and audits the change. */
+export const setClientAccessRelationship = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { id: string; relationship: ClientAccessRelationship }) => i)
+  .handler(async ({ data, context }) => {
+    if (data.relationship !== "business_owner" && data.relationship !== "external_adviser") {
+      throw new Error("Choose a relationship.");
+    }
+    const { error } = await (context.supabase as any).rpc("set_client_access_relationship", {
+      _id: data.id,
+      _relationship: data.relationship,
+    });
+    if (error) throw new Error(explain(error.message));
+    return { ok: true };
+  });
+
 /**
- * One invitation carrying the scope and the level. If the person already has a
+ * One invitation carrying the relationship and scope. If the person already has a
  * verified account the grants are applied immediately; otherwise a hashed,
  * email-bound, single-use, expiring invite link is created and emailed.
  */
@@ -213,20 +223,27 @@ export const inviteViewer = createServerFn({ method: "POST" })
     (i: {
       firmId: string;
       email: string;
+      name?: string | null;
+      relationship: ClientAccessRelationship;
       scope: "selected" | "all_clients";
-      tier: string;
       clientIds?: string[] | null;
     }) => i,
   )
   .handler(async ({ data, context }) => {
     const email = normaliseEmail(data.email);
-    const tier = assertTier(data.tier);
+    const inviterLabel = optionalInviterLabelSchema.parse(data.name ?? null);
+    if (data.relationship !== "business_owner" && data.relationship !== "external_adviser") {
+      throw new Error("Choose a relationship.");
+    }
     if (data.scope !== "selected" && data.scope !== "all_clients") {
       throw new Error("Choose which clients this person should see.");
     }
     const requested = Array.from(new Set(data.clientIds ?? []));
     if (data.scope === "selected" && requested.length === 0) {
       throw new Error("Tick at least one client.");
+    }
+    if (data.relationship === "business_owner" && data.scope !== "selected") {
+      throw new Error("A Business owner must be given selected-client access.");
     }
 
     // Authorisation BEFORE any privileged step (rule 7).
@@ -263,7 +280,8 @@ export const inviteViewer = createServerFn({ method: "POST" })
         const { error } = await (context.supabase as any).rpc("grant_firm_viewer_access", {
           _firm_id: data.firmId,
           _user_id: existing.id,
-          _tier: tier,
+          _tier: EXTERNAL_ADVISER_PASS_THROUGH_TIER,
+          _inviter_label: inviterLabel,
         });
         if (error) throw new Error(explain(error.message));
       } else {
@@ -271,7 +289,9 @@ export const inviteViewer = createServerFn({ method: "POST" })
           const { error } = await (context.supabase as any).rpc("grant_client_access", {
             _client_id: clientId,
             _user_id: existing.id,
-            _tier: tier,
+            _tier: EXTERNAL_ADVISER_PASS_THROUGH_TIER,
+            _relationship: data.relationship,
+            _inviter_label: inviterLabel,
           });
           if (error) throw new Error(explain(error.message));
         }
@@ -288,7 +308,9 @@ export const inviteViewer = createServerFn({ method: "POST" })
       role: "staff",
       kind: "viewer",
       scope: data.scope,
-      tier,
+      tier: EXTERNAL_ADVISER_PASS_THROUGH_TIER,
+      relationship: data.relationship,
+      inviter_label: inviterLabel,
       client_ids: data.scope === "selected" ? validIds : [],
       token_hash: hashToken(token),
       expires_at: expiresAt,
@@ -305,7 +327,9 @@ export const inviteViewer = createServerFn({ method: "POST" })
       meta: {
         email,
         scope: data.scope,
-        tier,
+        tier: EXTERNAL_ADVISER_PASS_THROUGH_TIER,
+        relationship: data.relationship,
+        inviter_label: inviterLabel,
         client_count: data.scope === "selected" ? validIds.length : null,
       },
     });
@@ -326,7 +350,7 @@ export const inviteViewer = createServerFn({ method: "POST" })
         idempotencyKey: `viewer-invite-${data.firmId}-${token.slice(0, 8)}`,
         templateData: {
           inviteUrl,
-          role: "client viewer",
+          role: data.relationship === "business_owner" ? "business owner" : "external adviser",
           firmName: firm?.name ?? null,
           inviterName: null,
         },

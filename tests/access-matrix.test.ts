@@ -47,6 +47,9 @@ const U = {
   mixedViewer: "99990012-1111-4111-8111-111111111111",
   /** Subject of the standing-grant row probes only; holds no other access. */
   grantTarget: "99990013-1111-4111-8111-111111111111",
+  businessOwnerOne: "99990014-1111-4111-8111-111111111111",
+  businessOwnerTwo: "99990015-1111-4111-8111-111111111111",
+  handoverOwner: "99990016-1111-4111-8111-111111111111",
   supportActive: "99990005-1111-4111-8111-111111111111",
   supportExpired: "99990006-1111-4111-8111-111111111111",
   supportRevoked: "99990007-1111-4111-8111-111111111111",
@@ -100,7 +103,11 @@ const TARGET: Record<string, Record<string, string>> = {
     client_id: q(CLIENT_A),
     xero_connection_id: q(CONN_A),
   },
-  client_notes: { id: q("c0000002-1111-4111-8111-111111111111"), client_id: q(CLIENT_A), body: q("note") },
+  client_notes: {
+    id: q("c0000002-1111-4111-8111-111111111111"),
+    client_id: q(CLIENT_A),
+    body: q("note"),
+  },
   client_access: {
     id: q("c0000003-1111-4111-8111-111111111111"),
     client_id: q(CLIENT_A),
@@ -160,7 +167,12 @@ const TARGET: Record<string, Record<string, string>> = {
     payload: q("{}"),
     complete: "true",
   },
-  unreconciled_uploads: { id: q(UPLOAD_A), client_id: q(CLIENT_A), filename: q("a.csv"), line_count: "1" },
+  unreconciled_uploads: {
+    id: q(UPLOAD_A),
+    client_id: q(CLIENT_A),
+    filename: q("a.csv"),
+    line_count: "1",
+  },
   unreconciled_lines: {
     id: q("c0000011-1111-4111-8111-111111111111"),
     upload_id: q(UPLOAD_A),
@@ -380,7 +392,10 @@ async function probe(sql: string): Promise<{ ok: boolean; rows: number; error?: 
 }
 
 /** Table read/write probe scoped to the seeded Organisation A row. */
-async function tableOutcome(table: string, op: MatrixRow["operation"]): Promise<Result["detail"] | Outcome> {
+async function tableOutcome(
+  table: string,
+  op: MatrixRow["operation"],
+): Promise<Result["detail"] | Outcome> {
   const spec = TARGET[table];
   if (!spec) return "unsupported";
   const pk = pkOf(table);
@@ -445,7 +460,9 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return p.ok && p.rows > 0 ? "allow" : "deny";
   }
   if (r === "xero_connections (non-token columns)") {
-    const p = await probe(`select id, tenant_name, status from public.xero_connections where id = '${CONN_A}'`);
+    const p = await probe(
+      `select id, tenant_name, status from public.xero_connections where id = '${CONN_A}'`,
+    );
     return p.ok && p.rows > 0 ? "allow" : "deny";
   }
   if (r.startsWith("firm_support_access (")) {
@@ -533,6 +550,69 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return p.ok ? "allow" : "deny";
   }
+  if (r === "set_client_access_relationship() for own organisation") {
+    const p = await probe(
+      `select public.set_client_access_relationship('c0000003-1111-4111-8111-111111111111', 'external_adviser')`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "two Business owners on one client remain independently client-scoped") {
+    await db.exec("set local role postgres");
+    const p = await db.query<{ same_client: number; cross_client: number }>(`
+      select
+        (select count(*) from public.client_access
+          where client_id = '${CLIENT_A}'
+            and user_id in ('${U.businessOwnerOne}', '${U.businessOwnerTwo}')
+            and relationship = 'business_owner')::int as same_client,
+        (select count(*) from public.client_access
+          where (user_id = '${U.businessOwnerOne}' and client_id = '${CLIENT_B}')
+             or (user_id = '${U.businessOwnerTwo}' and client_id = '${CLIENT_NEW}'))::int as cross_client
+    `);
+    return p.rows[0]?.same_client === 2 && p.rows[0]?.cross_client === 0 ? "allow" : "deny";
+  }
+  if (r === "membership governs a simultaneous Business owner relationship") {
+    await db.exec("set local role postgres");
+    const p = await db.query<{ memberships: number; relationships: number }>(`
+      select
+        (select count(*) from public.firm_members
+          where firm_id = '${ORG_A}' and user_id = '${U.handoverOwner}'
+            and status = 'active')::int as memberships,
+        (select count(*) from public.client_access
+          where client_id = '${CLIENT_A}' and user_id = '${U.handoverOwner}'
+            and relationship = 'business_owner')::int as relationships
+    `);
+    return p.rows[0]?.memberships === 1 && p.rows[0]?.relationships === 1 ? "allow" : "deny";
+  }
+  if (r === "removing membership preserves the Business owner relationship row") {
+    await db.exec("set local role postgres");
+    await db.exec(
+      `update public.firm_members set status = 'removed'
+        where firm_id = '${ORG_A}' and user_id = '${U.handoverOwner}'`,
+    );
+    const p = await db.query<{ member: boolean; rows: number }>(`
+      select app_private.has_firm_access('${U.handoverOwner}', '${ORG_A}') as member,
+             (select count(*) from public.client_access
+               where client_id = '${CLIENT_A}' and user_id = '${U.handoverOwner}'
+                 and relationship = 'business_owner')::int as rows
+    `);
+    return p.rows[0]?.member === false && p.rows[0]?.rows === 1 ? "allow" : "deny";
+  }
+  if (r === "inviter labels do not affect identity or authorisation") {
+    await db.exec("set local role postgres");
+    const before = await db.query<{ rows: number }>(
+      `select count(*)::int as rows from public.client_access
+        where client_id = '${CLIENT_A}' and user_id = '${U.businessOwnerOne}'`,
+    );
+    await db.exec(
+      `update public.client_access set inviter_label = 'A completely different display label'
+        where client_id = '${CLIENT_A}' and user_id = '${U.businessOwnerOne}'`,
+    );
+    const after = await db.query<{ rows: number }>(
+      `select count(*)::int as rows from public.client_access
+        where client_id = '${CLIENT_A}' and user_id = '${U.businessOwnerOne}'`,
+    );
+    return before.rows[0]?.rows === 1 && after.rows[0]?.rows === 1 ? "allow" : "deny";
+  }
   // ---- member removal -------------------------------------------------
   if (r === "remove a staff member of the caller's own organisation") {
     // A THIRD person, so this row never overlaps the self-leave row.
@@ -551,7 +631,10 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return Number(left.rows[0]?.n) === 0 ? "allow" : "deny";
   }
   if (r === "remove a Traction Advisory (practice-team) staff member") {
-    await seedThenActAs(row.role, `insert into public.practice_team (user_id) values ('${U.staffA}')`);
+    await seedThenActAs(
+      row.role,
+      `insert into public.practice_team (user_id) values ('${U.staffA}')`,
+    );
     const p = await probe(`select public.remove_firm_member('${ORG_A}', '${U.staffA}')`);
     return p.ok ? "allow" : "deny";
   }
@@ -695,7 +778,9 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       );
       return check.rows[0]?.future ? "allow" : "deny";
     }
-    const p = await probe(`update public.user_presence set last_seen_at = now() where user_id = '${U.ownerA}'`);
+    const p = await probe(
+      `update public.user_presence set last_seen_at = now() where user_id = '${U.ownerA}'`,
+    );
     return p.ok && p.rows > 0 ? "allow" : "deny";
   }
   if (EXEC[r]) {
@@ -722,7 +807,10 @@ async function evaluate(row: MatrixRow): Promise<Outcome> {
 // ------------------------------------------------------------------- fixture
 beforeAll(async () => {
   db = new PGlite();
-  const fixture = fs.readFileSync(path.join(process.cwd(), "tests/fixtures/rls-schema.sql"), "utf8");
+  const fixture = fs.readFileSync(
+    path.join(process.cwd(), "tests/fixtures/rls-schema.sql"),
+    "utf8",
+  );
   await db.exec(fixture);
 
   // The fixture dump carries columns and policies, not constraints. Live
@@ -742,7 +830,10 @@ beforeAll(async () => {
       ${users.map((u, i) => `('${u}', 'u${i}@example.invalid', 'User ${i}')`).join(", ")};
     -- staffA deliberately has NO presence row, so the own-row insert probe is real.
     insert into public.user_presence(user_id, last_seen_at) values
-      ${users.filter((u) => u !== U.staffA).map((u) => `('${u}', now())`).join(", ")};
+      ${users
+        .filter((u) => u !== U.staffA)
+        .map((u) => `('${u}', now())`)
+        .join(", ")};
 
     -- Only the four platform accounts hold super_admin; none of them is a member.
     insert into public.user_roles(id, user_id, role) values
@@ -788,8 +879,15 @@ beforeAll(async () => {
     insert into public.client_subscriptions(id, client_id, subscription_type, status, dashboard_tier) values
       ('e0000004-1111-4111-8111-111111111111', '${CLIENT_NEW}', 'free_forever', 'free_forever', 'multi_company');
     -- ... and the mixed holder also has a SPECIFIC grant on it, at a lower level.
-    insert into public.client_access(id, client_id, user_id, tier) values
-      ('e0000005-1111-4111-8111-111111111111', '${CLIENT_NEW}', '${U.mixedViewer}', 'advisory');
+    -- Multiple Business owners on one client are intentional. The handover
+    -- subject holds both active membership and a specific relationship row.
+    insert into public.client_access(id, client_id, user_id, tier, relationship, inviter_label) values
+      ('e0000005-1111-4111-8111-111111111111', '${CLIENT_NEW}', '${U.mixedViewer}', 'advisory', 'external_adviser', null),
+      ('e0000006-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.businessOwnerOne}', 'multi_company', 'business_owner', 'Partner one'),
+      ('e0000007-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.businessOwnerTwo}', 'multi_company', 'business_owner', 'Partner two'),
+      ('e0000008-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.handoverOwner}', 'multi_company', 'business_owner', 'Handed-over owner');
+    insert into public.firm_members(id, firm_id, user_id, role, status) values
+      ('e0000009-1111-4111-8111-111111111111', '${ORG_A}', '${U.handoverOwner}', 'staff', 'active');
     insert into public.xero_connections(id, user_id, tenant_id, tenant_name, firm_id, status,
                                         expires_at, access_token_enc, refresh_token_enc, enc_version) values
       ('${CONN_A}', '${U.ownerA}', '${TENANT_A}', 'File A', '${ORG_A}', 'connected',
@@ -823,7 +921,8 @@ afterAll(() => {
   const failed = tested.filter((r) => r.outcome !== r.row.expect);
 
   const byResource = new Map<string, number>();
-  for (const r of liveOnly) byResource.set(r.row.resource, (byResource.get(r.row.resource) ?? 0) + 1);
+  for (const r of liveOnly)
+    byResource.set(r.row.resource, (byResource.get(r.row.resource) ?? 0) + 1);
 
   console.log(
     [
@@ -836,13 +935,25 @@ afterAll(() => {
       "",
       "KNOWN FAILURES (asserted inverted — wrong behaviour proved to still exist):",
       ...(known.length
-        ? [...new Set(known.map((r) => `  backlog ${r.row.knownFailure!.backlog}: ${r.row.knownFailure!.note}`))]
+        ? [
+            ...new Set(
+              known.map(
+                (r) => `  backlog ${r.row.knownFailure!.backlog}: ${r.row.knownFailure!.note}`,
+              ),
+            ),
+          ]
         : ["  none"]),
       `  affected rows proved here: ${known.length}`,
       ...(knownPending.length
         ? [
             "  known failures that only the live suite can prove (part 3):",
-            ...[...new Set(knownPending.map((r) => `    backlog ${r.row.knownFailure!.backlog}: ${r.row.resource}`))],
+            ...[
+              ...new Set(
+                knownPending.map(
+                  (r) => `    backlog ${r.row.knownFailure!.backlog}: ${r.row.resource}`,
+                ),
+              ),
+            ],
           ]
         : []),
       "",
@@ -879,14 +990,21 @@ describe("access matrix — PGlite layer", () => {
 
   it("proves every testable row, and reports the rest as live-only", () => {
     const failures = results
-      .filter((r) => r.outcome !== "unsupported" && !r.row.knownFailure && r.outcome !== r.row.expect)
+      .filter(
+        (r) => r.outcome !== "unsupported" && !r.row.knownFailure && r.outcome !== r.row.expect,
+      )
       .map((r) => `${label(r.row)} — expected ${r.row.expect}, got ${r.outcome}  [${r.row.rule}]`);
-    expect(failures, `Access matrix violations:\n${failures.map((f) => `  - ${f}`).join("\n")}`).toEqual([]);
+    expect(
+      failures,
+      `Access matrix violations:\n${failures.map((f) => `  - ${f}`).join("\n")}`,
+    ).toEqual([]);
   });
 
   it("still shows every known failure, and no more", () => {
     const healed = results
-      .filter((r) => r.row.knownFailure && r.outcome !== "unsupported" && r.outcome === r.row.expect)
+      .filter(
+        (r) => r.row.knownFailure && r.outcome !== "unsupported" && r.outcome === r.row.expect,
+      )
       .map((r) => `${label(r.row)} (backlog ${r.row.knownFailure!.backlog})`);
     expect(
       healed,
@@ -927,15 +1045,22 @@ describe("meta: the suite can actually detect a regression", () => {
         `select polname from pg_policy where polrelid = 'public.clients'::regclass and polpermissive`,
       );
       for (const n of names.rows) await db.exec(`drop policy "${n.polname}" on public.clients`);
-      await db.exec(`create policy tmp_leak on public.clients as permissive for select to authenticated using (true)`);
-      await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(CONTEXT.other_org_member)]);
+      await db.exec(
+        `create policy tmp_leak on public.clients as permissive for select to authenticated using (true)`,
+      );
+      await db.query(`select set_config('request.jwt.claims', $1, true)`, [
+        claims(CONTEXT.other_org_member),
+      ]);
       await db.exec("set local role authenticated");
       const p = await probe(`select 1 from public.clients where id = '${CLIENT_A}'`);
       leaked = p.rows;
     } finally {
       await db.exec("rollback");
     }
-    expect(leaked, "with the scoping policy removed the suite must observe the leak").toBeGreaterThan(0);
+    expect(
+      leaked,
+      "with the scoping policy removed the suite must observe the leak",
+    ).toBeGreaterThan(0);
 
     const after = await asRole("other_org_member", () =>
       probe(`select 1 from public.clients where id = '${CLIENT_A}'`),

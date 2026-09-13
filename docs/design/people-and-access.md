@@ -1,12 +1,12 @@
 # People and access — BUILT
 
-**Status:** BUILT, 12 Sep 2026 (batches 1–5). Path D is in Project Knowledge section 2; the data shape, read path, invites, screens, practice team and the owner viewer permission are live and covered by the access matrix.
+**Status:** Original people-and-access batches 1–5 built 12 Sep 2026. External adviser/Business owner terminology and relationship foundation built 13 Sep 2026; Business owner self-service and billing remain unbuilt.
 
 **What differs from the design as approved, and why**
 
-- The standing grant lives in its own table, `firm_viewer_access`, rather than as a flag on `client_access`. A separate table keeps specific per-client grants untouched, and lets the standing predicate be referenced by read paths only — which is what Project Knowledge section 2 now requires. Rule 2 (precedence) and rule 5 (revoke all of it at once) behave exactly as approved.
+- The All clients External adviser grant lives in its own table, `firm_viewer_access`, rather than as a flag on `client_access`. A separate table keeps specific per-client grants untouched, and lets the standing predicate be referenced by read paths only — which is what Project Knowledge section 2 requires. Rule 2 (precedence) and rule 5 (revoke all of it at once) behave exactly as approved.
 - Decision 8's badge reads "Positive Traction"/"Traction Advisory" from the `practice_team` table, not from the `super_admin` role, so the badge cannot imply access. Removing one of our people after handover IS now possible (12 Sep 2026): `public.remove_firm_member` plus a Remove control on the organisation people list. Decision 8 is genuinely true. Removal is a soft removal (`firm_members.status = 'removed'`), owner-removes-staff or remove-yourself only, refused for the owner and for the last remaining member, and it changes no viewer grant, standing grant, Xero connection, snapshot or account.
-- Rule 9's revoke wording gained a second warning the design did not anticipate: revoking one client from someone who holds "every client in this organisation" does not remove their access at all. The screen says so and offers the only real remedy — switch that person to a ticked list of clients with that client left out (backlog 44).
+- Rule 9's revoke wording gained a second warning the design did not anticipate: revoking one client from someone who holds All clients does not remove their access at all. The screen says so and offers the only real remedy — switch that person to a ticked list of clients with that client left out (backlog 44).
 - No exclusion row type was added. Two scopes only, as approved.
 
 ## Terminology and the business-owner decision (13 Sep 2026)
@@ -15,13 +15,13 @@ Owner decision, recorded in Project Knowledge section 2:
 
 - The user-facing name for a viewer grant is **External adviser**, shown as **All clients** or as the number of selected clients. "Standing grant" and "standing viewer grant" are retired from screens and from user-facing wording. Internal tables, columns, functions, matrix keys and audit action names are deliberately unchanged: `firm_viewer_access` remains the All clients scope, `client_access` the selected-client scope.
 - An External adviser is **read-only** everywhere (Path D). The two writes a selected-client grant can reach today — scenario exclusions and unreconciled comments — are defects to be removed, not behaviour to keep.
-- A new **Business owner** relationship (Path E) will let a client run their own account for one specific client while Positive Traction may still own the organisation. It is a relationship on a specific `client_access` row, never on an All clients grant, and it is not membership.
+- A new **Business owner** relationship (Path E) is now recorded on a specific `client_access` row and its selected-client invite. It will later let a client run their own account while Positive Traction may still own the organisation. It is never an All clients grant and is not membership. Batch 2 does not yet grant self-service writes.
 - **A client may have several Business owners** — business partners and spouses are normal — so no unique constraint is added for that relationship on `client_id`. Each row authorises only its own client.
 - **Handover overlap:** once a business owner becomes the organisation owner they hold both an active `firm_members` row and a `business_owner` row. **Membership governs**, because it is the broader path and the self-service capabilities are a subset of it, so the two cannot conflict. If that membership is later removed or suspended, the relationship row is left in place by design and the person falls back to self-service on that one client only.
 - Rows with no relationship recorded (`NULL`) display as **Not set** and stay read-only. Nothing is inferred or backfilled.
 - Every relationship change goes through an aal2, caller-scoped, audited database function; direct writes to `client_access` are closed.
 
-This entry is wording and intent only. No access rule, policy, grant or function changed with it.
+The relationship foundation is live: nullable enum-backed relationship fields, optional display-only labels, relationship-first invitation and People controls, audited assignment, and unconditional closure of direct authenticated `client_access` writes. Existing NULL rows remain read-only. Later self-service and billing capabilities remain separate security changes.
 
 ## Problem
 
@@ -30,8 +30,8 @@ Access today is all-or-one: an organisation member sees every client, a client v
 ## Approved design
 
 1. **Two scopes for a viewer grant**, both created from one screen and one invite:
-   - *Selected clients* — tick boxes, select-all, search once the list is long. Creates ordinary per-client grants.
-   - *Every client in this organisation* — a standing grant that automatically covers clients added later. Owner decision: standing, not a snapshot.
+   - _Selected clients_ — tick boxes, select-all, search once the list is long. Creates ordinary per-client grants.
+   - _Every client in this organisation_ — a standing grant that automatically covers clients added later. Owner decision: standing, not a snapshot.
 2. **Precedence:** a specific per-client grant overrides the standing grant for that client (so a viewer can be on a higher level for one client). The client's own entitlement always caps what is visible — a grant can never widen access beyond the client's tier.
 3. **One dashboard level applies to the whole selection at invite time, adjustable per client afterwards.**
 4. **One invite, not one per client.** The invite carries the scope and level; all grants are applied on acceptance.
@@ -40,7 +40,7 @@ Access today is all-or-one: an organisation member sees every client, a client v
 7. **Granularity stops at client level.** A viewer of a client sees all of that client's companies. If someone should see only one company of a group, split it into its own client — do not add a fourth permission level.
 8. **Positive Traction's people appear inline in the client's people list with a "Positive Traction" badge** — visible, not hidden, and removable by the owner after handover. The badge reflects that their access comes from membership, not from the super_admin role.
 9. **Practice team auto-add:** when Positive Traction creates a client organisation, the defined practice team is added as members automatically and audited, rather than anyone self-joining. Self-join stays blocked on handed-over organisations (backlog 30).
-10. **Owner-approved permission change:** an organisation owner may invite and revoke *client viewers* for clients in their own organisation. Staff may see the list but not change it. Inviting *team members* remains super-admin only until the owner decides otherwise.
+10. **Owner-approved permission change:** an organisation owner may invite and revoke _client viewers_ for clients in their own organisation. Staff may see the list but not change it. Inviting _team members_ remains super-admin only until the owner decides otherwise.
 
 ## Consequences to handle when this is built
 

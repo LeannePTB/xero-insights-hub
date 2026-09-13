@@ -2,12 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { findVerifiedAuthUserByEmail, listVerifiedAuthUsers } from "@/lib/auth-users.server";
 import { siteUrl } from "@/lib/site-origin";
 import { requireAal2 } from "@/lib/auth/require-aal2";
-import {
-  ALL_TIERS,
-  DEFAULT_TIER_WIDGETS,
-  type DashboardTier,
-  type WidgetKey,
-} from "@/lib/tiers";
+import { ALL_TIERS, DEFAULT_TIER_WIDGETS, type DashboardTier, type WidgetKey } from "@/lib/tiers";
 
 export const listClients = createServerFn({ method: "POST" })
   .middleware([requireAal2])
@@ -28,8 +23,6 @@ export const listClients = createServerFn({ method: "POST" })
       firmId = firmId ?? myFirms[0] ?? null;
       if (!firmId) return { clients: [] };
     }
-
-
 
     // Reads always go through the caller's session, so RLS scopes them to the
     // organisations the caller is actually a member of.
@@ -66,7 +59,6 @@ export const listClients = createServerFn({ method: "POST" })
       ) as Record<DashboardTier, WidgetKey[]>;
     }
 
-
     // Effective dashboard tier per client comes from public.client_entitlement,
     // read through the caller's session. It is never recomputed here, and any
     // failure resolves to Standard (fail closed) inside the helper.
@@ -91,7 +83,10 @@ export const listClients = createServerFn({ method: "POST" })
       try {
         const tier = entitlementByClient.get(c.id)?.tier as string | undefined;
         const widgets = tier
-          ? visibleWidgets(ceilingFor(ceilings, tier), exIndex.effective(tier, { firmId, clientId: c.id }))
+          ? visibleWidgets(
+              ceilingFor(ceilings, tier),
+              exIndex.effective(tier, { firmId, clientId: c.id }),
+            )
           : [];
         healthByClient.set(c.id, widgets.includes("health"));
       } catch (err) {
@@ -101,7 +96,6 @@ export const listClients = createServerFn({ method: "POST" })
     }
 
     const clients = (rows ?? []).map((c: any) => {
-
       const grantedTiers = Array.from(
         new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
       ) as DashboardTier[];
@@ -134,9 +128,8 @@ export const getClient = createServerFn({ method: "POST" })
     // call per scope per 10 minutes and never awaited, so the page renders with
     // the status we hold either way.
     {
-      const { ensureAuthorisationFresh } = await import(
-        "@/lib/xero/authorisation-freshness.server"
-      );
+      const { ensureAuthorisationFresh } =
+        await import("@/lib/xero/authorisation-freshness.server");
       ensureAuthorisationFresh({ clientId: data.clientId });
     }
 
@@ -165,7 +158,6 @@ export const getClient = createServerFn({ method: "POST" })
         .maybeSingle();
       if (adminClient) return { client: adminClient as any };
     }
-
 
     throw new Error("Client not found.");
   });
@@ -218,14 +210,12 @@ export const addClientNote = createServerFn({ method: "POST" })
       const { assertCanManageClientNotes } = await import("@/lib/notes-access.server");
       await assertCanManageClientNotes(context.userId, data.clientId);
     }
-    const { error } = await context.supabase
-      .from("client_notes")
-      .insert({
-        client_id: data.clientId,
-        body,
-        author_id: context.userId,
-        include_in_report: include,
-      });
+    const { error } = await context.supabase.from("client_notes").insert({
+      client_id: data.clientId,
+      body,
+      author_id: context.userId,
+      include_in_report: include,
+    });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -297,7 +287,6 @@ export const createClient = createServerFn({ method: "POST" })
       const first = ((mine ?? []) as any[])[0];
       firmId = first ? (typeof first === "string" ? first : (first.firm_id as string)) : null;
     }
-
 
     if (!firmId) throw new Error("No business associated with your account.");
 
@@ -386,7 +375,6 @@ export const deleteClient = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     // Authorisation for the removal itself lives in the database routine
     // called below (owner, active organisation member, or super admin).
-
 
     // Optional, opt-in: detach this client's Xero files first. Read through the
     // caller's own permissions, so someone who cannot see the client's links
@@ -492,7 +480,6 @@ export const getClientRemovalImpact = createServerFn({ method: "POST" })
       referencingClients: (row?.referencing_clients ?? []) as string[],
     };
   });
-
 
 export const renameClient = createServerFn({ method: "POST" })
   .middleware([requireAal2])
@@ -692,35 +679,13 @@ export const listClientAccess = createServerFn({ method: "POST" })
         id: r.id,
         user_id: r.user_id,
         tier: r.tier,
+        relationship: r.relationship ?? null,
+        inviter_label: r.inviter_label ?? null,
         created_at: r.created_at,
         email: r.email ?? null,
         display_name: r.display_name ?? null,
       })),
     };
-  });
-
-export const updateClientAccessTier = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator((i: { id: string; tier: DashboardTier }) => i)
-  .handler(async ({ data, context }) => {
-    // Unchanged behaviour: the tier must still be inside the client's plan.
-    // The row -> client lookup is a database function, not a table read.
-    const { data: clientId, error: lookupErr } = await (context.supabase as any).rpc(
-      "client_for_access",
-      { _id: data.id },
-    );
-    if (lookupErr) throw new Error(lookupErr.message);
-    if (clientId) {
-      const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-      await assertTierInPlanForClient(context.supabase, clientId as string, data.tier);
-    }
-    const { error } = await (context.supabase as any).rpc("set_client_access_tier", {
-      _id: data.id,
-      _tier: data.tier,
-    });
-    if (error) throw new Error(error.message);
-
-    return { ok: true };
   });
 
 export const revokeClientAccess = createServerFn({ method: "POST" })
@@ -734,10 +699,9 @@ export const revokeClientAccess = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
 export const inviteClientViewer = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { clientId: string; email: string; tier: DashboardTier }) => i)
+  .inputValidator((i: { clientId: string; email: string; name?: string | null }) => i)
   .handler(async ({ data, context }) => {
     const email = data.email.trim().toLowerCase();
     if (!email.includes("@")) throw new Error("Please enter a valid email address.");
@@ -758,8 +722,8 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
       throw new Error("You cannot manage access for this client.");
     }
 
-    const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-    await assertTierInPlanForClient(context.supabase, data.clientId, data.tier);
+    const { optionalInviterLabelSchema } = await import("@/lib/access-labels");
+    const inviterLabel = optionalInviterLabelSchema.parse(data.name ?? null);
 
     // Prove write access to this client BEFORE any privileged step (rule 7).
     const { data: canWrite, error: canErr } = await (context.supabase as any).rpc(
@@ -791,7 +755,9 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
     const { error } = await (context.supabase as any).rpc("grant_client_access", {
       _client_id: data.clientId,
       _user_id: userId,
-      _tier: data.tier,
+      _tier: "multi_company",
+      _relationship: "external_adviser",
+      _inviter_label: inviterLabel,
     });
     if (error) throw new Error(error.message);
 
@@ -808,7 +774,7 @@ function validateViewerPassword(pw: string) {
 export const createClientViewerWithPassword = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator(
-    (i: { clientId: string; email: string; password: string; tier: DashboardTier }) => i,
+    (i: { clientId: string; email: string; name?: string | null; password: string }) => i,
   )
   .handler(async ({ data, context }) => {
     const email = data.email.trim().toLowerCase();
@@ -823,8 +789,8 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
       throw new Error("Only advisors can create client viewers.");
     }
 
-    const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-    await assertTierInPlanForClient(context.supabase, data.clientId, data.tier);
+    const { optionalInviterLabelSchema } = await import("@/lib/access-labels");
+    const inviterLabel = optionalInviterLabelSchema.parse(data.name ?? null);
 
     // Write authorisation for the grant itself lives in the database
     // (public.grant_client_access). Prove it BEFORE the privileged auth.admin
@@ -845,6 +811,7 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
       email,
       password: data.password,
       email_confirm: true,
+      user_metadata: inviterLabel ? { display_name: inviterLabel } : undefined,
     });
     if (cErr) throw new Error(cErr.message);
     const userId = created?.user?.id;
@@ -853,10 +820,11 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
     const { error: aErr } = await (context.supabase as any).rpc("grant_client_access", {
       _client_id: data.clientId,
       _user_id: userId,
-      _tier: data.tier,
+      _tier: "multi_company",
+      _relationship: "external_adviser",
+      _inviter_label: inviterLabel,
     });
     if (aErr) throw new Error(aErr.message);
-
 
     return { ok: true, email };
   });

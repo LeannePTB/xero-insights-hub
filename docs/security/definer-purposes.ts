@@ -14,20 +14,27 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "app_private.assert_xero_connection_firm_match":
     "Trigger guard: a client may only be linked to a Xero file belonging to its own organisation.",
   "app_private.client_for_tenant": "Which client a Xero file belongs to, for system contexts.",
-  "app_private.client_xero_files_used": "How many Xero files a client already uses, for the plan limit.",
-  "app_private.effective_widgets_for_client": "The dashboard cards a client may see at a given plan level.",
-  "app_private.enforce_client_limit": "Trigger: refuses a new client past the organisation's plan limit.",
-  "app_private.enforce_xero_org_limit": "Trigger: refuses a new Xero file link past the plan limit.",
-  "app_private.enforce_xero_org_limit_on_move": "Trigger: same limit check when a Xero file is moved between clients.",
+  "app_private.client_xero_files_used":
+    "How many Xero files a client already uses, for the plan limit.",
+  "app_private.effective_widgets_for_client":
+    "The dashboard cards a client may see at a given plan level.",
+  "app_private.enforce_client_limit":
+    "Trigger: refuses a new client past the organisation's plan limit.",
+  "app_private.enforce_xero_org_limit":
+    "Trigger: refuses a new Xero file link past the plan limit.",
+  "app_private.enforce_xero_org_limit_on_move":
+    "Trigger: same limit check when a Xero file is moved between clients.",
   "app_private.firm_ids_for_tenant": "Which organisations a Xero file belongs to.",
   "app_private.firm_limits": "The client and Xero file limits for an organisation's plan.",
   "app_private.firm_subscription_lapsed": "Whether an organisation's subscription has lapsed.",
-  "app_private.firm_support_access_active": "Whether this person holds a live, unexpired support grant for this organisation.",
+  "app_private.firm_support_access_active":
+    "Whether this person holds a live, unexpired support grant for this organisation.",
   "app_private.get_tier_widgets": "The card list configured for one client at one plan level.",
   "app_private.get_user_firm_id": "The organisation a person belongs to.",
   "app_private.get_user_tier": "The plan level that applies to a person for a Xero file.",
   "app_private.has_client_access": "Whether a person has been granted viewer access to a client.",
-  "app_private.has_firm_access": "Whether a person may reach an organisation (membership or live support grant).",
+  "app_private.has_firm_access":
+    "Whether a person may reach an organisation (membership or live support grant).",
   "app_private.has_role": "Whether a person holds a given platform role.",
   "app_private.has_tenant_access": "Whether a person may reach a Xero file.",
   "app_private.is_advisor": "Whether a person is an advisor.",
@@ -35,7 +42,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "app_private.is_org_owner": "Whether a person owns an organisation (membership row form).",
   "app_private.is_super_admin": "Whether a person is a platform super admin.",
   "app_private.me_is_super_admin": "Whether the calling person is a platform super admin.",
-  "app_private.platform_staff_can_access_firm": "Whether platform staff hold a live support grant for this organisation.",
+  "app_private.platform_staff_can_access_firm":
+    "Whether platform staff hold a live support grant for this organisation.",
   "app_private.practice_firm_id": "The identifier of Positive Traction's own organisation.",
   "app_private.shares_firm_with": "Whether two people belong to the same organisation.",
   "app_private.tier_ceiling_widgets": "The most cards any client on a plan level may see.",
@@ -46,27 +54,36 @@ export const DEFINER_PURPOSES: Record<string, string> = {
 
   // ── public: caller-scoped authorisation helpers used by server functions.
   "public.assert_advisor": "Stops the call unless the caller is an advisor.",
-  "public.assert_client_write_access": "Stops the call unless the caller may change this client's data.",
+  "public.assert_client_write_access":
+    "Stops the call unless the caller may change this client's data.",
   "public.assert_super_admin": "Stops the call unless the caller is a platform super admin.",
-  "public.assert_tenant_belongs_to_client": "Stops the call unless the named Xero file really belongs to the named client.",
-  "public.assert_widget_access": "Stops the call unless the caller's plan allows this dashboard card for this Xero file.",
+  "public.assert_tenant_belongs_to_client":
+    "Stops the call unless the named Xero file really belongs to the named client.",
+  "public.assert_widget_access":
+    "Stops the call unless the caller's plan allows this dashboard card for this Xero file.",
   "public.me_has_role": "Whether the caller holds a given platform role.",
   "public.me_is_super_admin": "Whether the caller is a platform super admin.",
-  "public.my_client_access": "The client viewer grants the caller holds.",
+  "public.my_client_access":
+    "The selected-client grants the caller holds, including display relationship and label metadata.",
   "public.my_firm_ids": "The organisations the caller may reach.",
   "public.my_firm_memberships": "The caller's organisation memberships and roles.",
   "public.my_roles": "The caller's platform roles.",
-  "public.user_can_access_client": "Legacy alias: whether a person may reach a client (superseded by the read/write pair).",
-  "public.user_can_access_firm": "Legacy alias: whether a person may reach an organisation (superseded by the read/write pair).",
+  "public.user_can_access_client":
+    "Legacy alias: whether a person may reach a client (superseded by the read/write pair).",
+  "public.user_can_access_firm":
+    "Legacy alias: whether a person may reach an organisation (superseded by the read/write pair).",
   "public.user_can_access_tenant": "Whether the caller may read a Xero file.",
   "public.user_can_read_client": "Whether the caller may read a client.",
   "public.user_can_write_client": "Whether a person may change a client's data.",
-  "public.user_can_write_client_scenario": "Whether the caller may change a client's scenario settings.",
+  "public.user_can_write_client_scenario":
+    "Whether the caller may change a client's scenario settings.",
   "public.user_can_write_firm": "Whether a person may change an organisation's data.",
-  "public.user_can_disconnect_xero_connection": "Whether the caller may disconnect a particular Xero connection.",
+  "public.user_can_disconnect_xero_connection":
+    "Whether the caller may disconnect a particular Xero connection.",
   "public.client_for_access": "The client a viewer grant refers to.",
   "public.client_for_tenant": "The client a Xero file belongs to, refusing an ambiguous file.",
-  "public.firm_access_path": "Which access path (membership or support grant) lets a person reach an organisation.",
+  "public.firm_access_path":
+    "Which access path (membership or support grant) lets a person reach an organisation.",
 
   // ── public: clients, viewers and entitlement.
   "public.client_access_tiers": "The plan levels a client's viewers hold.",
@@ -74,9 +91,13 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.client_can_use_widget": "Whether a client's plan allows one dashboard card.",
   "public.client_entitlement": "A client's plan level and what it includes.",
   "public.client_removal_impact": "What would be lost if a client were removed.",
-  "public.client_viewers": "The people who hold viewer access to a client.",
+  "public.client_viewers":
+    "The people who hold selected-client access, with verified email and display relationship metadata.",
   "public.client_xero_files_used": "How many Xero files a client uses.",
-  "public.grant_client_access": "Gives a person viewer access to a client, audited.",
+  "public.grant_client_access":
+    "Gives a person selected-client access with relationship and optional display label, audited.",
+  "public.set_client_access_relationship":
+    "Classifies an existing selected-client row as Business owner or External adviser; aal2, caller-scoped and audited.",
   "public.revoke_client_access": "Takes away a person's viewer access to a client, audited.",
   "public.set_client_access_tier": "Changes the plan level of one viewer grant, audited.",
   "public.remove_client": "Removes a client and its links, audited.",
@@ -86,10 +107,13 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.admin_advisor_user_ids": "The user ids of all advisors, for platform administration.",
   "public.admin_firm_members": "The members of one organisation, for platform administration.",
   "public.admin_grant_advisor": "Makes a person an advisor, audited.",
-  "public.admin_list_advisors": "Lists advisors with their verified email, for platform administration.",
+  "public.admin_list_advisors":
+    "Lists advisors with their verified email, for platform administration.",
   "public.admin_remove_advisor": "Removes a person's advisor role, keeping at least one, audited.",
-  "public.admin_set_self_firm_membership": "Lets a super admin join or leave Positive Traction's own organisation, audited.",
-  "public.admin_set_super_admin": "Grants or removes the super admin role, never the last one, audited.",
+  "public.admin_set_self_firm_membership":
+    "Lets a super admin join or leave Positive Traction's own organisation, audited.",
+  "public.admin_set_super_admin":
+    "Grants or removes the super admin role, never the last one, audited.",
   "public.change_firm_plan": "Changes an organisation's plan, audited.",
   "public.firm_allowed_widgets": "The dashboard cards an organisation's plan allows.",
   "public.firm_can_use_widget": "Whether an organisation's plan allows one dashboard card.",
@@ -98,16 +122,21 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.firm_plan_limits": "An organisation's client and Xero file limits.",
   "public.firm_subscription_state": "An organisation's subscription status and period.",
   "public.firm_support_grants": "The support grants recorded against an organisation.",
-  "public.firm_support_viewer_state": "Whether the caller currently holds a support grant for an organisation.",
-  "public.firm_support_access_audit": "Trigger: records every support grant change in the audit log.",
+  "public.firm_support_viewer_state":
+    "Whether the caller currently holds a support grant for an organisation.",
+  "public.firm_support_access_audit":
+    "Trigger: records every support grant change in the audit log.",
   "public.organisation_members": "The members of an organisation with their verified email.",
   "public.plan_level_usage_count": "How many organisations or clients sit on one plan level.",
-  "public.transfer_organisation_ownership": "Moves ownership of an organisation to another member, audited.",
+  "public.transfer_organisation_ownership":
+    "Moves ownership of an organisation to another member, audited.",
   "public.remove_firm_member":
     "Removes a person from an organisation by setting firm_members.status = 'removed', audited. Owner removes staff; anyone but the owner may remove themselves; never strands an organisation.",
-  "public.set_firm_always_free": "Marks Positive Traction's own organisation as never billed, audited.",
+  "public.set_firm_always_free":
+    "Marks Positive Traction's own organisation as never billed, audited.",
   "public.set_firm_default_widgets": "Sets an organisation's default dashboard cards.",
-  "public.set_all_client_tiers": "Sets the plan level for every client in an organisation, audited.",
+  "public.set_all_client_tiers":
+    "Sets the plan level for every client in an organisation, audited.",
   "public.set_client_comp": "Marks a client as complimentary with a reason, audited.",
   "public.set_client_dashboard_tier": "Changes one client's plan level, audited.",
   "public.set_client_trial": "Puts a client on a trial for a number of days, audited.",
@@ -116,8 +145,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.set_org_widget_enabled": "Turns one dashboard card on or off for an organisation.",
   "public.set_platform_tier_widgets": "Sets the platform-wide card list for a plan level.",
   "public.set_tier_enabled": "Turns a plan level on or off platform-wide.",
-  "public.reset_org_tier_widgets": "Resets an organisation's card list for a plan level to the default.",
-  "public.set_profile_display_name_admin": "Lets a super admin correct someone's display name, audited.",
+  "public.reset_org_tier_widgets":
+    "Resets an organisation's card list for a plan level to the default.",
+  "public.set_profile_display_name_admin":
+    "Lets a super admin correct someone's display name, audited.",
   "public.revoke_firm_member_invite": "Cancels a pending team member invitation, audited.",
 
   // ── public: reports, uploads and client data.
@@ -128,13 +159,16 @@ export const DEFINER_PURPOSES: Record<string, string> = {
 
   // ── public: security posture, presence and audit.
   "public.security_posture": "The security posture checks shown on the Security card.",
-  "public.read_audit_posture": "Whether reads of client figures are being recorded as they should be.",
+  "public.read_audit_posture":
+    "Whether reads of client figures are being recorded as they should be.",
   "public.get_mfa_posture_counts": "How many people have a verified second factor.",
   "public.online_users": "Who is signed in right now, for super admins.",
-  "public.record_access_test_run": "Records the result of an access test run (for the approved live smoke suite).",
+  "public.record_access_test_run":
+    "Records the result of an access test run (for the approved live smoke suite).",
   "public.audit_table_change": "Trigger: records inserts, updates and deletes on audited tables.",
   "public.audit_user_roles_change": "Trigger: records every change to platform roles.",
-  "public.purge_expired_security_logs": "Deletes audit and sign-in rows past their retention period.",
+  "public.purge_expired_security_logs":
+    "Deletes audit and sign-in rows past their retention period.",
   "public.check_rate_limit": "Counts attempts in a time window so a public route can refuse abuse.",
   "public.handle_new_user": "Trigger: creates a profile row when a new person signs up.",
 
@@ -147,7 +181,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.xero_required_scopes": "The Xero permissions the app requires.",
   "public.xero_tenant_already_linked": "Whether a Xero file is already linked in an organisation.",
   "public.enforce_client_max_xero_orgs": "Trigger: keeps a client within its own Xero file cap.",
-  "public.enforce_client_xero_org_allowance": "Trigger: keeps an organisation within its plan's Xero file allowance.",
+  "public.enforce_client_xero_org_allowance":
+    "Trigger: keeps an organisation within its plan's Xero file allowance.",
 
   // ── public: email queue (system contexts only).
   "public.enqueue_email": "Puts an email on the sending queue.",
@@ -157,34 +192,56 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.email_queue_dispatch": "Sends the next batch of queued emails.",
   "public.email_queue_wake": "Wakes the email queue after a pause.",
 
-  // ── app_private: standing viewer grant (path D, read-only).
-  "app_private.has_standing_client_access": "Whether a person holds a standing viewer grant covering this client's organisation. READ paths only.",
-  "app_private.has_client_read_access": "Whether a person may READ this client: a specific viewer grant or a standing grant. Never used by a write path.",
-  "app_private.is_practice_member_of": "Whether a practice-team person is an active member of this particular organisation.",
-  "app_private.can_manage_client_viewers": "Whether the caller may grant or revoke viewer access in this organisation: its owner, or an active practice-team member of it.",
-  "app_private.viewer_tier": "The dashboard level a viewer sees for a client: specific grant first, then standing grant, capped by the client's own entitlement.",
+  // ── app_private: External adviser All clients grant (path D, read-only).
+  "app_private.has_standing_client_access":
+    "Whether a person holds an External adviser All clients grant covering this client's organisation. READ paths only.",
+  "app_private.has_client_read_access":
+    "Whether a person may READ this client: a selected-client grant or an All clients grant. Never used by a write path.",
+  "app_private.is_practice_member_of":
+    "Whether a practice-team person is an active member of this particular organisation.",
+  "app_private.can_manage_client_viewers":
+    "Whether the caller may grant or revoke viewer access in this organisation: its owner, or an active practice-team member of it.",
+  "app_private.viewer_tier":
+    "The dashboard level a viewer sees for a client: specific grant first, then standing grant, capped by the client's own entitlement.",
 
   // ── Viewer management and viewer invites (Batch 3). Every one asserts aal2
   // and authorises through app_private.can_manage_client_viewers.
-  "public.admin_practice_team": "The Traction Advisory practice team list, for platform admins only.",
-  "public.admin_add_practice_member": "Adds one of our own staff to the practice team; platform admins only, audited.",
-  "public.admin_remove_practice_member": "Removes someone from the practice team; platform admins only, audited.",
-  "app_private.can_manage_viewers_for_client": "Whether the caller may manage viewer access for one client: its organisation's owner, or an active practice-team member of that organisation.",
-  "public.me_can_manage_client_viewers": "Caller-scoped: may I manage viewer access for this client? UI gate only; every write re-checks.",
-  "public.me_can_manage_firm_viewers": "Caller-scoped: may I manage viewer access in this organisation? UI gate only; every write re-checks.",
-  "public.grant_firm_viewer_access": "Give one person read-only access to every client in an organisation (standing grant). Audited.",
+  "public.admin_practice_team":
+    "The Traction Advisory practice team list, for platform admins only.",
+  "public.admin_add_practice_member":
+    "Adds one of our own staff to the practice team; platform admins only, audited.",
+  "public.admin_remove_practice_member":
+    "Removes someone from the practice team; platform admins only, audited.",
+  "app_private.can_manage_viewers_for_client":
+    "Whether the caller may manage viewer access for one client: its organisation's owner, or an active practice-team member of that organisation.",
+  "public.me_can_manage_client_viewers":
+    "Caller-scoped: may I manage viewer access for this client? UI gate only; every write re-checks.",
+  "public.me_can_manage_firm_viewers":
+    "Caller-scoped: may I manage viewer access in this organisation? UI gate only; every write re-checks.",
+  "public.grant_firm_viewer_access":
+    "Give one External adviser read-only All clients access with an optional display label. Audited.",
   "public.set_firm_viewer_tier": "Change the dashboard level on a standing viewer grant. Audited.",
-  "public.revoke_firm_viewer_access": "Remove a standing viewer grant in full, leaving specific per-client grants intact. Audited.",
-  "public.firm_viewers": "List the standing viewer grants of one organisation, with the verified sign-in email.",
-  "public.firm_viewer_invites": "List the pending viewer invitations of one organisation. Never returns the token.",
+  "public.revoke_firm_viewer_access":
+    "Remove a standing viewer grant in full, leaving specific per-client grants intact. Audited.",
+  "public.firm_viewers":
+    "List one organisation's External advisers with All clients access, verified sign-in emails, and display labels.",
+  "public.firm_viewer_invites":
+    "List pending Business owner and External adviser invitations for one organisation. Never returns the token.",
   "public.revoke_viewer_invite": "Cancel a pending viewer invitation. Audited.",
-  "public.apply_viewer_invite": "System context (service role only): apply an accepted viewer invitation — role, grants, acceptance stamp and audit row in one transaction, re-validating the client ids against the organisation.",
-  "app_private.is_security_test_account": "True when a user id belongs to the live smoke suite's test accounts. Used by containment triggers and to keep test identities out of presence, posture counts and the organisation list.",
-  "app_private.security_test_firm_id": "The id of the isolated ZZ Security Test Org. The only organisation a live-suite test account may be attached to.",
-  "app_private.confine_security_test_accounts": "Trigger: refuses any attempt — including by service_role — to give a live-suite test account a membership, viewer grant, support grant, platform role, practice-team row or organisation ownership outside the test organisation.",
-  "public.record_security_attestation": "Record a human confirmation (aal2 + super admin) for a control no system can read, currently leaked-password protection only. Stamps auth.uid() and now() itself and writes an audit row; the caller supplies only the check key and an optional note.",
-  "public.security_attestations_list": "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
-  "public.test_accounts_posture": "Posture check (aal2 + super admin): Action if a test account can sign in outside a run, holds access outside the test organisation, or has a session outside the run window.",
+  "public.apply_viewer_invite":
+    "System context (service role only): apply an accepted viewer invitation — role, grants, acceptance stamp and audit row in one transaction, re-validating the client ids against the organisation.",
+  "app_private.is_security_test_account":
+    "True when a user id belongs to the live smoke suite's test accounts. Used by containment triggers and to keep test identities out of presence, posture counts and the organisation list.",
+  "app_private.security_test_firm_id":
+    "The id of the isolated ZZ Security Test Org. The only organisation a live-suite test account may be attached to.",
+  "app_private.confine_security_test_accounts":
+    "Trigger: refuses any attempt — including by service_role — to give a live-suite test account a membership, viewer grant, support grant, platform role, practice-team row or organisation ownership outside the test organisation.",
+  "public.record_security_attestation":
+    "Record a human confirmation (aal2 + super admin) for a control no system can read, currently leaked-password protection only. Stamps auth.uid() and now() itself and writes an audit row; the caller supplies only the check key and an optional note.",
+  "public.security_attestations_list":
+    "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
+  "public.test_accounts_posture":
+    "Posture check (aal2 + super admin): Action if a test account can sign in outside a run, holds access outside the test organisation, or has a session outside the run window.",
 };
 
 /**
