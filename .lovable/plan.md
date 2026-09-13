@@ -1,40 +1,32 @@
-# Practice team on the advisors page
+# Public security contact page and security.txt
 
-Security classification: **security-relevant** (touches `practice_team`, which decides
-which organisations our people are auto-added to). No access rule changes.
+Security classification: **not security-relevant to access control** — both artefacts are
+static, unauthenticated, read no data, and add no role, policy, grant, function or access
+path. It touches a public route, so the gate's public-route questions are answered here:
+no session is needed by design; there is no credential, no input, no database read.
 
 ## What changes
 
-1. **Advisors page shows and manages practice-team membership.**
-   - New server function `setPracticeMembership({ userId, onTeam })` in
-     `src/lib/practice-team.functions.ts`, aal2 middleware, calling
-     `admin_add_practice_member` / `admin_remove_practice_member` through
-     `context.supabase` only. No service role, no direct table write.
-   - The advisors page reads `listPracticeTeam` (super admin only, since the list is
-     Path C metadata) and shows a "Practice team" badge plus a toggle on each row for
-     super admins.
-   - One plain-English line on the page explaining what the list does and that it
-     grants nothing by itself.
-
-2. **One screen, not two.** `/settings/practice-team` becomes a redirect to
-   `/settings/advisors` and the sidebar link is removed. Nothing is lost: the same
-   list, add and remove actions now live on the advisors page. The email-based
-   `addPracticeMember` (its only service-role use, for email → user id) goes away
-   with it; the register row is removed.
-
-3. **No coupling.** `advisor` / `super_admin` never imply practice team. The toggle is
-   an explicit per-person choice.
-
-4. **Add the three current advisors** through `admin_add_practice_member` so each
-   write is audited.
-
-## Not changing
-
-`admin_set_self_firm_membership` and the handed-over restriction, `is_practice_member_of`
-(still requires an ACTIVE membership of that organisation), the super-admin requirement
-on either function, every existing matrix row.
+1. **`public/.well-known/security.txt`** — RFC 9116 file served as a static asset:
+   `Contact: mailto:security@tractionadvisory.com.au`, `Expires: 2027-09-13T00:00:00.000Z`
+   (12 months from build date 13 Sep 2026), `Policy: https://tractionadvisory.com.au/security`,
+   `Preferred-Languages: en`. Comment line noting annual refresh. No `Encryption` field
+   (no PGP key exists). Verified to resolve on the dev server before reporting done;
+   if the static pipeline strips dot-paths, a TanStack server route serves it instead.
+2. **`/security` public route** — the agreed wording from `docs/security/incident-register.md`,
+   verbatim, plus one honest line that the practice is a small team with no 24/7 security
+   desk. No session, no data. Styled to match the existing public auth page. Own `head()`
+   title/description.
+3. **Link** — the site has no marketing footer and no privacy-policy page; the only public
+   page is `/auth`, so the link goes there, next to the existing copyright line. Noted in
+   the report so the owner can add it to a privacy policy later.
+4. **Docs** — `docs/security/incident-register.md`: reporting address and published
+   location `[CONFIRM]` markers resolved (alias forwards to `admin@`, watched by the whole
+   team; the same fact answers the backup-contact line). Every other marker and every
+   register/drill row untouched. Backlog 39(f) page-published part closed; a new open item
+   records the annual `security.txt` `Expires:` refresh.
 
 ## Verification
 
-`bun run security:check` before/after with fingerprint, typecheck, linter, a query
-confirming `practice_team` holds exactly three rows and three audit rows exist.
+`bun run security:check` before/after with fingerprint, typecheck, linter, and a live
+`curl` of `/.well-known/security.txt` on the dev server showing `Content-Type: text/plain`.
