@@ -349,7 +349,9 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     (c) no drill performed and no incident has been recorded;
     (d) no retained scan output and no penetration test commissioned;
     (e) no retained platform attestations (SOC 2 / ISO) and no tested restore with an RPO/RTO;
-    (f) security contact page not published at `https://tractionadvisory.com.au/security`;
+    (f) **page-published part CLOSED 13 Sep 2026:** `/security` page live and linked from the
+    public sign-in page, `/.well-known/security.txt` (RFC 9116) served as `text/plain`, and the
+    `security@` → `admin@` alias confirmed live — recorded in `incident-register.md`;
     (g) first access review not performed and signed off.
     **Mechanism now exists (12 Sep 2026):** `public.security_attestations` +
     `public.record_security_attestation` (spec §17) records a dated, named,
@@ -438,6 +440,10 @@ Path D means a person can hold both a standing grant and a specific grant on the
 ## 45. Hosting region is Singapore — decision RECORDED 12 Sep 2026; disclosure actions still open
 
 The database is confirmed as Supabase managed PostgreSQL 17.6.1.127 in **Asia Pacific (Singapore)** — checked against the backend on 12 Sep 2026. Lovable Cloud offers only Americas / Europe / Asia Pacific with no country-level choice, and the region cannot be changed after creation. **Decision made and recorded in `docs/security/data-residency-decision.md`: remain on Singapore and disclose it, rather than migrate** — no Australian option exists on the platform at any price, and migration would mean a separate self-managed Supabase project, not a toggle. **Still open:** adding the disclosure wording (which lives in that file) to the privacy policy and to client terms / the engagement letter — both `[CONFIRM: date]` in the record — and confirming with a privacy adviser whether the Australian Privacy Principles, in particular APP 8 on cross-border disclosure, apply to the practice. Note plainly: payroll data means **employees' personal information** is involved, not just the client's own books, and the legal question is for a **professional adviser**, not for this project's documentation.
+
+## 46. `security.txt` `Expires:` must be refreshed annually (opened 13 Sep 2026)
+
+RFC 9116 treats a stale `security.txt` as invalid. The file at `public/.well-known/security.txt` carries `Expires: 2027-09-13T00:00:00.000Z` (12 months from its creation on 13 Sep 2026). Before that date the file must be re-issued with a fresh `Expires` roughly 12 months out, and this item rolled forward. There is no mechanism that reminds anyone — the calendar reminder belongs to the owner.
 
 ## People and access redesign — Batch 5 (done 12 Sep 2026)
 
