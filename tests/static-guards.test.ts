@@ -451,8 +451,14 @@ describe("9. relationship foundation cannot silently grant authority", () => {
         (line) => /^grant /i.test(line) && /public\.client_access to authenticated/i.test(line),
       );
     expect(grants.some((line) => /\b(insert|update|delete)\b/i.test(line))).toBe(false);
-    expect(catalogue).not.toMatch(
-      /create policy [^\n]* on public\.client_access [^\n]* for (insert|update|delete|all) to authenticated/i,
+    const policies = catalogue
+      .split("\n")
+      .filter((line) => /^create policy /i.test(line) && /on public\.client_access /i.test(line));
+    const directWritePolicies = policies.filter(
+      (line) =>
+        / for (insert|update|delete) to authenticated/i.test(line) ||
+        (/ for all to authenticated/i.test(line) && !/ as restrictive /i.test(line)),
     );
+    expect(directWritePolicies).toEqual([]);
   });
 });

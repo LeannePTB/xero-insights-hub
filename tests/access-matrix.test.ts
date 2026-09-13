@@ -586,7 +586,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
         where firm_id = '${ORG_A}' and user_id = '${U.staffA}'`,
     );
     const p = await db.query<{ member: boolean; rows: number }>(`
-      select app_private.has_firm_access('${U.handoverOwner}', '${ORG_A}') as member,
+      select app_private.has_firm_access('${U.staffA}', '${ORG_A}') as member,
              (select count(*) from public.client_access
                where client_id = '${CLIENT_A}' and user_id = '${U.staffA}'
                  and relationship = 'business_owner')::int as rows
