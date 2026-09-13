@@ -3,7 +3,15 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, Loader2, Plus, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  CreditCard,
+  Loader2,
+  Plus,
+  ShieldAlert,
+} from "lucide-react";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
@@ -91,7 +99,6 @@ function FirmSettingsPage() {
     qc.invalidateQueries({ queryKey: ["my-firms"] });
   };
 
-
   if (q.isLoading) {
     return (
       <div className="grid min-h-[50vh] place-items-center">
@@ -106,7 +113,12 @@ function FirmSettingsPage() {
         <p className="text-sm text-muted-foreground">
           You don&apos;t have access to this organisation&apos;s settings.
         </p>
-        <Button variant="ghost" size="sm" className="mt-4" onClick={() => navigate({ to: "/dashboard" })}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-4"
+          onClick={() => navigate({ to: "/dashboard" })}
+        >
           Back to organisations
         </Button>
       </main>
@@ -195,7 +207,12 @@ function FirmSettingsPage() {
               Cancellation scheduled{endLabel ? ` — access until ${endLabel}` : ""}.
             </span>
             {canManage && (
-              <Button size="sm" variant="outline" disabled={busy === "cancel"} onClick={() => doCancel(false)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy === "cancel"}
+                onClick={() => doCancel(false)}
+              >
                 {busy === "cancel" ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
                 Resume subscription
               </Button>
@@ -264,7 +281,6 @@ function FirmSettingsPage() {
               </p>
               <OrgDefaultCardsPanel firmId={firmId} />
             </div>
-
           </div>
         )}
       </section>
@@ -279,7 +295,10 @@ function FirmSettingsPage() {
             : " Connect a Xero file or set up a client manually."}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <AddClientFromXeroButton firmId={firmId} disabled={view.clientCount >= view.clientLimit} />
+          <AddClientFromXeroButton
+            firmId={firmId}
+            disabled={view.clientCount >= view.clientLimit}
+          />
           <Button
             variant="outline"
             asChild={view.clientCount < view.clientLimit}
@@ -340,8 +359,6 @@ function FirmSettingsPage() {
         </div>
       )}
 
-
-
       {/* Change plan */}
       <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
         <h2 className="text-sm font-medium">{canChangePlan ? "Change plan" : "Plans"}</h2>
@@ -350,7 +367,6 @@ function FirmSettingsPage() {
             ? "Pick the plan that suits this organisation. Changes apply straight away."
             : "Your current plan is marked below. To move to a different plan, contact Positive Traction."}
         </p>
-
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {view.plans.map((p) => {
@@ -385,7 +401,8 @@ function FirmSettingsPage() {
 
                 <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
                   <li>
-                    Clients: <strong className="text-foreground tabular-nums">{p.clientLimit}</strong>
+                    Clients:{" "}
+                    <strong className="text-foreground tabular-nums">{p.clientLimit}</strong>
                   </li>
                   <li>
                     Xero files:{" "}
@@ -411,7 +428,9 @@ function FirmSettingsPage() {
                     onClick={() => setConfirmPlan(p.key)}
                   >
                     {busy === p.key ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                    {tooSmall ? `Too small for ${view.clientCount} clients` : `Switch to ${p.label}`}
+                    {tooSmall
+                      ? `Too small for ${view.clientCount} clients`
+                      : `Switch to ${p.label}`}
                   </Button>
                 )}
               </div>
@@ -471,7 +490,9 @@ function FirmSettingsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep subscription</AlertDialogCancel>
-            <AlertDialogAction onClick={() => doCancel(true)}>Cancel subscription</AlertDialogAction>
+            <AlertDialogAction onClick={() => doCancel(true)}>
+              Cancel subscription
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

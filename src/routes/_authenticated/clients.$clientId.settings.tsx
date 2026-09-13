@@ -741,15 +741,12 @@ function ClientSettings() {
         <Section title="People access">
           <p className="text-sm text-muted-foreground">
             Invite and manage Business owners and External advisers from the organisation settings.
-            Relationship is selected before scope, and every change uses the audited access functions.
+            Relationship is selected before scope, and every change uses the audited access
+            functions.
           </p>
           {client.firm_id && (
             <Button asChild variant="outline" className="mt-3">
-              <Link
-                to="/firms/$firmId/settings"
-                params={{ firmId: client.firm_id }}
-                hash="people"
-              >
+              <Link to="/firms/$firmId/settings" params={{ firmId: client.firm_id }} hash="people">
                 Manage people and access
               </Link>
             </Button>

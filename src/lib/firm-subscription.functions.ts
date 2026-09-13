@@ -63,7 +63,6 @@ async function resolveAccess(supabase: any, firmId: string): Promise<Access> {
   };
 }
 
-
 /** Plan, status and available plan levels for one organisation. */
 export const getFirmSubscription = createServerFn({ method: "POST" })
   .middleware([requireAal2])
@@ -170,7 +169,6 @@ export const changeFirmPlan = createServerFn({ method: "POST" })
 
     return { ok: true, tier: data.planKey };
   });
-
 
 /** Owner (or super admin) cancels at period end, or resumes a pending cancellation. */
 export const setFirmCancellation = createServerFn({ method: "POST" })
