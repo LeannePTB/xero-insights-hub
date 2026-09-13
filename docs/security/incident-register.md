@@ -9,11 +9,11 @@ An assessor will ask how someone reports a vulnerability to you, and will check 
 
 | | |
 | --- | --- |
-| Reporting address | **[CONFIRM: set up `security@tractionadvisory.com.au`]** |
-| Published at | `https://tractionadvisory.com.au/security` **[CONFIRM: create this page]** |
+| Reporting address | `security@tractionadvisory.com.au` — live 13 Sep 2026; an alias that forwards to `admin@`, which the whole team watches |
+| Published at | `https://tractionadvisory.com.au/security` — live 13 Sep 2026; also served as `/.well-known/security.txt` (RFC 9116) |
 | Acknowledged within | 2 business days |
 | Owner | Leanne Ardern, Director |
-| Backup contact | **[CONFIRM: name a second person, or state plainly that the practice is one person and there is no backup]** |
+| Backup contact | No single named backup: the reporting address forwards to `admin@`, which every member of the team monitors, so cover does not depend on one person. |
 
 **Suggested page wording:**
 

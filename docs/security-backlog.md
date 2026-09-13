@@ -349,7 +349,9 @@ with an administrative connection and is recorded in `definer-purposes.ts`.
     (c) no drill performed and no incident has been recorded;
     (d) no retained scan output and no penetration test commissioned;
     (e) no retained platform attestations (SOC 2 / ISO) and no tested restore with an RPO/RTO;
-    (f) security contact page not published at `https://tractionadvisory.com.au/security`;
+    (f) **page-published part CLOSED 13 Sep 2026:** `/security` page live and linked from the
+    public sign-in page, `/.well-known/security.txt` (RFC 9116) served as `text/plain`, and the
+    `security@` → `admin@` alias confirmed live — recorded in `incident-register.md`;
     (g) first access review not performed and signed off.
     **Mechanism now exists (12 Sep 2026):** `public.security_attestations` +
     `public.record_security_attestation` (spec §17) records a dated, named,
