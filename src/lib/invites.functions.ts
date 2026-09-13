@@ -4,6 +4,7 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 import { randomBytes, createHash } from "crypto";
 import { siteUrl } from "@/lib/site-origin";
+import { optionalInviterLabelSchema } from "@/lib/access-labels";
 
 function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex");
@@ -316,10 +317,13 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
  */
 export const adminInviteFirmMember = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { firmId: string; email: string; role: "owner" | "staff" }) => i)
+  .inputValidator(
+    (i: { firmId: string; email: string; name?: string | null; role: "owner" | "staff" }) => i,
+  )
   .handler(async ({ data, context }) => {
     await assertSuperAdminDb(context.supabase);
     const email = validateEmail(data.email);
+    const inviterLabel = optionalInviterLabelSchema.parse(data.name ?? null);
     if (data.role !== "staff") {
       // Spec §4: ownership of an existing organisation only ever moves through
       // public.transfer_organisation_ownership, never by accepting an invite.
@@ -335,6 +339,7 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
       firm_id: data.firmId,
       email,
       role: data.role,
+      inviter_label: inviterLabel,
       token_hash: hashToken(token),
       expires_at: expiresAt,
       invited_by: context.userId,
@@ -342,7 +347,7 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     await logAudit("firm_invite_created", "firm", data.firmId, context.userId, {
-      firm_id: data.firmId, email, role: data.role, new_firm: false,
+      firm_id: data.firmId, email, role: data.role, inviter_label: inviterLabel, new_firm: false,
     });
 
     const { data: firm } = await (supabaseAdmin as any)
@@ -588,6 +593,7 @@ export const acceptInvite = createServerFn({ method: "POST" })
 export type PendingFirmInvite = {
   id: string;
   email: string;
+  inviterLabel: string | null;
   role: "owner" | "staff";
   expiresAt: string;
   createdAt: string;
@@ -612,6 +618,7 @@ export const listFirmMemberInvites = createServerFn({ method: "POST" })
       invites: ((rows ?? []) as any[]).map((r) => ({
         id: r.id,
         email: r.email,
+        inviterLabel: r.inviter_label ?? null,
         role: r.role,
         expiresAt: r.expires_at,
         createdAt: r.created_at,

@@ -715,7 +715,7 @@ export const revokeClientAccess = createServerFn({ method: "POST" })
 
 export const inviteClientViewer = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { clientId: string; email: string; tier: DashboardTier }) => i)
+  .inputValidator((i: { clientId: string; email: string; name?: string | null }) => i)
   .handler(async ({ data, context }) => {
     const email = data.email.trim().toLowerCase();
     if (!email.includes("@")) throw new Error("Please enter a valid email address.");
@@ -736,8 +736,8 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
       throw new Error("You cannot manage access for this client.");
     }
 
-    const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-    await assertTierInPlanForClient(context.supabase, data.clientId, data.tier);
+    const { optionalInviterLabelSchema } = await import("@/lib/access-labels");
+    const inviterLabel = optionalInviterLabelSchema.parse(data.name ?? null);
 
     // Prove write access to this client BEFORE any privileged step (rule 7).
     const { data: canWrite, error: canErr } = await (context.supabase as any).rpc(
@@ -769,7 +769,9 @@ export const inviteClientViewer = createServerFn({ method: "POST" })
     const { error } = await (context.supabase as any).rpc("grant_client_access", {
       _client_id: data.clientId,
       _user_id: userId,
-      _tier: data.tier,
+      _tier: "multi_company",
+      _relationship: "external_adviser",
+      _inviter_label: inviterLabel,
     });
     if (error) throw new Error(error.message);
 
@@ -786,7 +788,7 @@ function validateViewerPassword(pw: string) {
 export const createClientViewerWithPassword = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator(
-    (i: { clientId: string; email: string; password: string; tier: DashboardTier }) => i,
+    (i: { clientId: string; email: string; name?: string | null; password: string }) => i,
   )
   .handler(async ({ data, context }) => {
     const email = data.email.trim().toLowerCase();
@@ -801,8 +803,8 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
       throw new Error("Only advisors can create client viewers.");
     }
 
-    const { assertTierInPlanForClient } = await import("@/lib/plan-tiers.server");
-    await assertTierInPlanForClient(context.supabase, data.clientId, data.tier);
+    const { optionalInviterLabelSchema } = await import("@/lib/access-labels");
+    const inviterLabel = optionalInviterLabelSchema.parse(data.name ?? null);
 
     // Write authorisation for the grant itself lives in the database
     // (public.grant_client_access). Prove it BEFORE the privileged auth.admin
@@ -823,6 +825,7 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
       email,
       password: data.password,
       email_confirm: true,
+      user_metadata: inviterLabel ? { display_name: inviterLabel } : undefined,
     });
     if (cErr) throw new Error(cErr.message);
     const userId = created?.user?.id;
@@ -831,7 +834,9 @@ export const createClientViewerWithPassword = createServerFn({ method: "POST" })
     const { error: aErr } = await (context.supabase as any).rpc("grant_client_access", {
       _client_id: data.clientId,
       _user_id: userId,
-      _tier: data.tier,
+      _tier: "multi_company",
+      _relationship: "external_adviser",
+      _inviter_label: inviterLabel,
     });
     if (aErr) throw new Error(aErr.message);
 
