@@ -12,14 +12,21 @@ export type ClientOrgAllowance = {
 export async function getClientOrgAllowance(clientId: string): Promise<ClientOrgAllowance> {
   const [
     { data: client, error: clientError },
-    { data: access, error: accessError },
     { data: usedCount, error: countError },
     { data: levels },
   ] = await Promise.all([
-    supabaseAdmin.from("clients").select("max_xero_orgs").eq("id", clientId).maybeSingle(),
-    // Granted tiers come from the database helper, so this file holds no
-    // access-table read of its own (rule 6).
-    (supabaseAdmin as any).rpc("client_access_tiers", { _client_id: clientId }),
+    // The Xero file allowance follows the CLIENT'S OWN paid entitlement only.
+    // It must never be read from access grants: a viewer grant (Business owner
+    // or External adviser) carries a pass-through dashboard level for reading
+    // cards, and treating that as an entitlement silently raised the file limit
+    // just because someone was invited.
+    (supabaseAdmin as any)
+      .from("clients")
+      .select(
+        "max_xero_orgs, firm_id, firms(is_always_free), client_subscriptions(dashboard_tier, created_at)",
+      )
+      .eq("id", clientId)
+      .maybeSingle(),
     // One counter, in the database, shared with the allowance triggers: a
     // disconnected Xero file keeps its client link but must NOT consume the
     // allowance, or a client is capped on files they no longer use.
@@ -31,9 +38,21 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
   ]);
 
   if (clientError) throw new Error(clientError.message);
-  if (accessError) throw new Error(accessError.message);
   if (countError) throw new Error(countError.message);
   if (!client) throw new Error("Client subscription not found.");
+
+  const subs = ((client as any).client_subscriptions ?? []) as any[];
+  const latestSub = [...subs].sort((a, b) =>
+    String(b.created_at ?? "").localeCompare(String(a.created_at ?? "")),
+  )[0];
+  const alwaysFree = Boolean((client as any).firms?.is_always_free);
+  // An always-free organisation is entitled to every level; otherwise the
+  // client's own subscription level is the only source.
+  const access: string[] = alwaysFree
+    ? ["basic", "advisory", "investigate", "multi_company"]
+    : latestSub?.dashboard_tier
+      ? [String(latestSub.dashboard_tier)]
+      : [];
 
 
 

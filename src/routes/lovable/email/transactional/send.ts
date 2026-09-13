@@ -155,16 +155,19 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           return Response.json({ success: false, reason: 'email_suppressed' })
         }
 
-        // 3. Get or create unsubscribe token (one row per email address).
-        // Only the hash is stored, so a live token cannot be read back — each send
-        // mints a fresh token and the newest emailed link is the live one.
+        // 3. Mint a fresh unsubscribe token for THIS send. Only the hash is
+        // stored, so a live token can never be read back; each send gets its own
+        // row, which keeps the unsubscribe link in older emails working too.
         const normalizedEmail = effectiveRecipient.toLowerCase()
-        let unsubscribeToken: string
 
-        const { data: existingToken, error: tokenLookupError } = await supabase
+        // Safety fallback: if this address has already unsubscribed through any
+        // earlier link but is missing from the suppression list, do not send.
+        const { data: usedToken, error: tokenLookupError } = await supabase
           .from('email_unsubscribe_tokens')
-          .select('used_at')
+          .select('id')
           .eq('email', normalizedEmail)
+          .not('used_at', 'is', null)
+          .limit(1)
           .maybeSingle()
 
         if (tokenLookupError) {
@@ -179,40 +182,10 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
             status: 'failed',
             error_message: 'Failed to look up unsubscribe token',
           })
-          return Response.json(
-            { error: 'Failed to prepare email' },
-            { status: 500 }
-          )
+          return Response.json({ error: 'Failed to prepare email' }, { status: 500 })
         }
 
-        if (!existingToken || !existingToken.used_at) {
-          unsubscribeToken = generateToken()
-          const { error: tokenError } = await supabase
-            .from('email_unsubscribe_tokens')
-            .upsert(
-              { email: normalizedEmail, token_hash: hashToken(unsubscribeToken) },
-              { onConflict: 'email' }
-            )
-
-          if (tokenError) {
-            console.error('Failed to create unsubscribe token', {
-              error: tokenError,
-            })
-            await supabase.from('email_send_log').insert({
-              message_id: messageId,
-              template_name: templateName,
-              recipient_email: effectiveRecipient,
-              status: 'failed',
-              error_message: 'Failed to create unsubscribe token',
-            })
-            return Response.json(
-              { error: 'Failed to prepare email' },
-              { status: 500 }
-            )
-          }
-        } else {
-          // Token exists but is already used — email should have been caught by suppression check above.
-          // This is a safety fallback; log and skip sending.
+        if (usedToken) {
           console.warn('Unsubscribe token already used but email not suppressed', {
             email_redacted: redactEmail(normalizedEmail),
           })
@@ -225,6 +198,25 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
               'Unsubscribe token used but email missing from suppressed list',
           })
           return Response.json({ success: false, reason: 'email_suppressed' })
+        }
+
+        const unsubscribeToken = generateToken()
+        const { error: tokenError } = await supabase
+          .from('email_unsubscribe_tokens')
+          // One row per send: older emails keep their own working unsubscribe
+          // link instead of being invalidated by the newest send.
+          .insert({ email: normalizedEmail, token_hash: hashToken(unsubscribeToken) })
+
+        if (tokenError) {
+          console.error('Failed to create unsubscribe token', { error: tokenError })
+          await supabase.from('email_send_log').insert({
+            message_id: messageId,
+            template_name: templateName,
+            recipient_email: effectiveRecipient,
+            status: 'failed',
+            error_message: 'Failed to create unsubscribe token',
+          })
+          return Response.json({ error: 'Failed to prepare email' }, { status: 500 })
         }
 
         // 4. Render React Email template to HTML and plain text

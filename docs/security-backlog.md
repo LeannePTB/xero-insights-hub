@@ -539,3 +539,29 @@ Outstanding, in order, each its own security change:
 - **Batch 6 — proof and closure:** matrix rows including two business owners on one client,
   the membership-governs handover case, cross-client and cross-organisation denials, and the
   direct-write closure; fixtures, generated docs, posture, linter and the Security report.
+- **Monitoring findings fixed 13 Sep 2026 (5 of 5).**
+  1. *Xero file allowance leaked from access grants (high).* `getClientOrgAllowance` read
+     `public.client_access_tiers`, so any Business owner / External adviser grant (which carries a
+     pass-through `multi_company` dashboard level) raised the client's Xero file allowance to 5.
+     The allowance now derives from the client's own `client_subscriptions.dashboard_tier`, with
+     always-free organisations entitled to every level. The database triggers
+     (`enforce_client_xero_org_allowance`, `enforce_client_max_xero_orgs`) remain the enforcement
+     point; this path can only report, never widen. Caller IDs stay filters (invariant 4).
+  2. *Disconnecting a Xero file left other rows connected (high).* `disconnectXero` marked only the
+     picked row. It now marks every `xero_connections` row for that `tenant_id` within the same
+     `firm_id` — revoke at Xero first, fail closed, mark rather than delete, keep the client link,
+     clear token ciphertext (unchanged). Another organisation's rows are untouched.
+  3. *`client_xero_files_used` called a non-existent two-argument function (high).* Redefined to
+     call `app_private.user_can_read_client(auth.uid(), _client_id)`; caller-scoped, aal2 path and
+     `SET search_path` unchanged.
+  4. *Unsubscribe links in older emails stopped working (medium).* The unique constraint on
+     `email_unsubscribe_tokens.email` was dropped (plain index kept, `token_hash` stays unique) and
+     both send paths now insert one token row per send. Only hashes are stored; the used-token
+     safety fallback still refuses to send when the address unsubscribed via any earlier link.
+  5. *Owner invite option always failed (medium).* The Owner choice was removed from the admin
+     organisation invite dialog; invitations to an existing organisation are staff only, matching
+     `adminInviteFirmMember`. Ownership still changes only via `transfer_organisation_ownership`.
+  Verified this turn: fixture fingerprint match (255 policies), access matrix up to date, definer
+  register regenerated (153 functions), 50 tests passed, live access suite 18 passed / 0 failed /
+  0 inconclusive, typecheck clean. Supabase linter unchanged at the 90 accepted signed-in
+  SECURITY DEFINER warnings.

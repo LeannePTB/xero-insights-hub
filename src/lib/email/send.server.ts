@@ -65,10 +65,10 @@ export async function enqueueAppEmail(opts: {
   // Mint a fresh unsubscribe token for this send. Only its hash is stored, so an
   // existing token cannot be read back — the newest emailed link is the live one.
   const unsubscribeToken = generateToken();
-  await supabase.from("email_unsubscribe_tokens").upsert(
-    { email: normalized, token_hash: hashToken(unsubscribeToken) },
-    { onConflict: "email" },
-  );
+  // One row per send, so unsubscribe links in older emails keep working.
+  await supabase
+    .from("email_unsubscribe_tokens")
+    .insert({ email: normalized, token_hash: hashToken(unsubscribeToken) });
 
   // Render
   const data = opts.templateData ?? {};
