@@ -1,0 +1,7 @@
+# Traction Advisory — security contact (RFC 9116)
+# The Expires field is mandatory. Refresh this file annually; it must be
+# re-issued with a new Expires date before 2027-09-13 or it is treated as stale.
+Contact: mailto:security@tractionadvisory.com.au
+Expires: 2027-09-13T00:00:00.000Z
+Policy: https://tractionadvisory.com.au/security
+Preferred-Languages: en
