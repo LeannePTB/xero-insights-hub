@@ -169,7 +169,7 @@ Every path that shows a person a client's figures records the read through the s
 
 ## 11. Membership & invites
 
-`firm_members.status` is `active | suspended | removed`; role is `owner | staff`. Removal sets status, never hard-deletes; only `active` counts. Invites are email-bound, single-use, expiring, storing a token HASH. Team member and client viewer invitations share one screen, the organisation's People page, and each path keeps its own server function and permissions — grouping them in the UI widened nothing. An owner invite is refused for an organisation that already has an owner.
+`firm_members.status` is `active | suspended | removed`; role is `owner | staff`. Removal sets status, never hard-deletes; only `active` counts. Invites are email-bound, single-use, expiring, storing a token HASH. Team member and client viewer invitations share the People section in organisation settings, and each path keeps its own server function and permissions — grouping them in the UI widened nothing. The section renders only for an active organisation member; support access does not expose it. An owner invite is refused for an organisation that already has an owner.
 
 ## 12. Roles and identity
 

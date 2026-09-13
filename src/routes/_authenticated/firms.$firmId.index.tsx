@@ -16,16 +16,12 @@ import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { toast } from "sonner";
 import { SubscriptionExpiryBanner } from "@/components/admin/SubscriptionExpiryBanner";
 
-
-
 export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
   validateSearch: (
     search: Record<string, unknown>,
   ): { viewAs?: string; xero_onboarded?: string; xero_error?: string; xero_pick?: string } => ({
     ...(typeof search.viewAs === "string" ? { viewAs: search.viewAs } : {}),
-    ...(typeof search.xero_onboarded === "string"
-      ? { xero_onboarded: search.xero_onboarded }
-      : {}),
+    ...(typeof search.xero_onboarded === "string" ? { xero_onboarded: search.xero_onboarded } : {}),
     ...(typeof search.xero_error === "string" ? { xero_error: search.xero_error } : {}),
     ...(typeof search.xero_pick === "string" ? { xero_pick: search.xero_pick } : {}),
   }),
@@ -46,7 +42,6 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
   component: FirmPage,
 });
 
-
 function FirmPage() {
   const { firmId } = Route.useParams();
   const {
@@ -66,8 +61,6 @@ function FirmPage() {
   // Plan names come from the plan_levels catalogue, never a hardcoded map.
   const { levels: planLevels } = usePlanLevels("firm");
 
-
-
   const firmQ = useQuery({
     queryKey: ["my-firm", firmId],
     queryFn: () => fetchFirm({ data: { firmId } }),
@@ -78,8 +71,6 @@ function FirmPage() {
   // Previewing is for platform admins and advisors only.
   const previewing = requestedPreview && (ctxQ.data?.canViewAs ?? false);
   // While previewing as the organisation owner, hide platform-admin-only controls.
-
-
 
   useEffect(() => {
     if (!xeroOnboarded && !xeroError) return;
@@ -120,7 +111,6 @@ function FirmPage() {
     planName: planLevels.find((l) => l.scope === "firm" && l.key === plan.tier)?.label ?? null,
   });
 
-
   return (
     <div className="min-h-screen bg-background">
       {previewing && (
@@ -133,7 +123,9 @@ function FirmPage() {
         <SubscriptionExpiryBanner firmId={firmId} />
         {!previewing && (
           <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All organisations</Link>
+            <Link to="/dashboard">
+              <ArrowLeft className="mr-1 h-4 w-4" /> All organisations
+            </Link>
           </Button>
         )}
 
@@ -153,7 +145,7 @@ function FirmPage() {
               </Button>
             )}
             <Button variant="outline" size="sm" asChild>
-              <Link to="/firms/$firmId/people" params={{ firmId }}>
+              <Link to="/firms/$firmId/settings" params={{ firmId }} hash="people">
                 <Users className="mr-1 h-4 w-4" /> People
               </Link>
             </Button>
@@ -164,12 +156,6 @@ function FirmPage() {
             </Button>
           </div>
         </div>
-
-
-
-
-
-
 
         {xeroPick && (
           <XeroOnboardPickerDialog
@@ -187,9 +173,6 @@ function FirmPage() {
           />
         )}
 
-
-
-
         <div className="mt-8">
           <FirmClientsSection
             firmId={firmId}
@@ -199,10 +182,6 @@ function FirmPage() {
             showAddActions={false}
           />
         </div>
-
-
-
-
       </main>
     </div>
   );

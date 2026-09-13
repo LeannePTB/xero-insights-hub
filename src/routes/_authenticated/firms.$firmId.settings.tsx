@@ -3,14 +3,21 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ArrowLeft, ArrowRight, CheckCircle2, CreditCard, Loader2, Plus, ShieldAlert } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  CheckCircle2,
+  CreditCard,
+  Loader2,
+  Plus,
+  ShieldAlert,
+} from "lucide-react";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { OrgDefaultCardsPanel } from "@/components/admin/OrgDefaultCardsPanel";
-
-
+import { PeopleSection } from "@/components/people/PeopleSection";
 import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 
 import { Button } from "@/components/ui/button";
@@ -38,13 +45,17 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/settings")({
       { title: "Organisation settings — Traction Advisory" },
       {
         name: "description",
-        content: "Review your plan, change your subscription or cancel it for this organisation.",
+        content:
+          "Manage people, clients, Xero files, ownership, support access and plans for this organisation.",
       },
       { property: "og:title", content: "Organisation settings — Traction Advisory" },
       {
         property: "og:description",
-        content: "Review your plan, change your subscription or cancel it for this organisation.",
+        content:
+          "Manage people, clients, Xero files, ownership, support access and plans for this organisation.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: FirmSettingsPage,
@@ -88,7 +99,6 @@ function FirmSettingsPage() {
     qc.invalidateQueries({ queryKey: ["my-firms"] });
   };
 
-
   if (q.isLoading) {
     return (
       <div className="grid min-h-[50vh] place-items-center">
@@ -103,7 +113,12 @@ function FirmSettingsPage() {
         <p className="text-sm text-muted-foreground">
           You don&apos;t have access to this organisation&apos;s settings.
         </p>
-        <Button variant="ghost" size="sm" className="mt-4" onClick={() => navigate({ to: "/dashboard" })}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-4"
+          onClick={() => navigate({ to: "/dashboard" })}
+        >
           Back to organisations
         </Button>
       </main>
@@ -166,7 +181,7 @@ function FirmSettingsPage() {
 
       <h1 className="font-display text-3xl font-semibold">Organisation settings</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Manage the plan and subscription for {view.firm.name}.
+        Manage people, clients, Xero files and account settings for {view.firm.name}.
       </p>
 
       {/* Current plan */}
@@ -192,7 +207,12 @@ function FirmSettingsPage() {
               Cancellation scheduled{endLabel ? ` — access until ${endLabel}` : ""}.
             </span>
             {canManage && (
-              <Button size="sm" variant="outline" disabled={busy === "cancel"} onClick={() => doCancel(false)}>
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={busy === "cancel"}
+                onClick={() => doCancel(false)}
+              >
                 {busy === "cancel" ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
                 Resume subscription
               </Button>
@@ -261,7 +281,6 @@ function FirmSettingsPage() {
               </p>
               <OrgDefaultCardsPanel firmId={firmId} />
             </div>
-
           </div>
         )}
       </section>
@@ -276,7 +295,10 @@ function FirmSettingsPage() {
             : " Connect a Xero file or set up a client manually."}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
-          <AddClientFromXeroButton firmId={firmId} disabled={view.clientCount >= view.clientLimit} />
+          <AddClientFromXeroButton
+            firmId={firmId}
+            disabled={view.clientCount >= view.clientLimit}
+          />
           <Button
             variant="outline"
             asChild={view.clientCount < view.clientLimit}
@@ -300,7 +322,20 @@ function FirmSettingsPage() {
         <FirmXeroFilesCard firmId={firmId} />
       </div>
 
-
+      {/* People follows resources and precedes ownership/support governance. Active
+          membership is the same visibility boundary used by the former page. */}
+      {view.isMember && (
+        <section id="people" className="mt-8 scroll-mt-6">
+          <h2 className="font-display text-2xl font-semibold">People &amp; access</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage Team members, Business owners and External advisers. Access is shown separately
+            by relationship and scope.
+          </p>
+          <div className="mt-5">
+            <PeopleSection firmId={firmId} />
+          </div>
+        </section>
+      )}
 
       {/* Ownership handover */}
       <div className="mt-6">
@@ -324,8 +359,6 @@ function FirmSettingsPage() {
         </div>
       )}
 
-
-
       {/* Change plan */}
       <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
         <h2 className="text-sm font-medium">{canChangePlan ? "Change plan" : "Plans"}</h2>
@@ -334,7 +367,6 @@ function FirmSettingsPage() {
             ? "Pick the plan that suits this organisation. Changes apply straight away."
             : "Your current plan is marked below. To move to a different plan, contact Positive Traction."}
         </p>
-
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           {view.plans.map((p) => {
@@ -369,7 +401,8 @@ function FirmSettingsPage() {
 
                 <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
                   <li>
-                    Clients: <strong className="text-foreground tabular-nums">{p.clientLimit}</strong>
+                    Clients:{" "}
+                    <strong className="text-foreground tabular-nums">{p.clientLimit}</strong>
                   </li>
                   <li>
                     Xero files:{" "}
@@ -395,7 +428,9 @@ function FirmSettingsPage() {
                     onClick={() => setConfirmPlan(p.key)}
                   >
                     {busy === p.key ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                    {tooSmall ? `Too small for ${view.clientCount} clients` : `Switch to ${p.label}`}
+                    {tooSmall
+                      ? `Too small for ${view.clientCount} clients`
+                      : `Switch to ${p.label}`}
                   </Button>
                 )}
               </div>
@@ -455,7 +490,9 @@ function FirmSettingsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Keep subscription</AlertDialogCancel>
-            <AlertDialogAction onClick={() => doCancel(true)}>Cancel subscription</AlertDialogAction>
+            <AlertDialogAction onClick={() => doCancel(true)}>
+              Cancel subscription
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

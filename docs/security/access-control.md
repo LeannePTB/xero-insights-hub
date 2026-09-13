@@ -116,6 +116,6 @@ across all organisations, so only Positive Traction super admins may read it.
 ## Account lifecycle
 
 - Invites are email-bound, single-use and expiring, and store a token hash only. Team member and
-  client viewer invitations are issued from the organisation's People screen.
+  client viewer invitations are issued from the People section in organisation settings.
 - Password resets go through Supabase Auth with the HIBP check.
 - Super admins can reset a person's MFA factors from Admin → Security; the action is audited.

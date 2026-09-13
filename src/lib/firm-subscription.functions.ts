@@ -32,6 +32,7 @@ export type FirmSubscriptionView = {
   canManage: boolean;
   canChangePlan: boolean;
   isOwner: boolean;
+  isMember: boolean;
   isSuperAdmin: boolean;
 };
 
@@ -61,7 +62,6 @@ async function resolveAccess(supabase: any, firmId: string): Promise<Access> {
     isSuperAdmin: !!superAdmin,
   };
 }
-
 
 /** Plan, status and available plan levels for one organisation. */
 export const getFirmSubscription = createServerFn({ method: "POST" })
@@ -144,6 +144,7 @@ export const getFirmSubscription = createServerFn({ method: "POST" })
       // Plan switching is super-admin only until a real payment path exists.
       canChangePlan: access.isSuperAdmin,
       isOwner: access.isOwner,
+      isMember: access.isMember,
       isSuperAdmin: access.isSuperAdmin,
     };
   });
@@ -168,7 +169,6 @@ export const changeFirmPlan = createServerFn({ method: "POST" })
 
     return { ok: true, tier: data.planKey };
   });
-
 
 /** Owner (or super admin) cancels at period end, or resumes a pending cancellation. */
 export const setFirmCancellation = createServerFn({ method: "POST" })
