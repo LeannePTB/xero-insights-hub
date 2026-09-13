@@ -390,3 +390,44 @@ describe("8. the standing viewer grant is never a write path", () => {
     expect(readCheck && STANDING.test(readCheck)).toBe(true);
   });
 });
+
+/**
+ * 9. Batch 2 relationship metadata and inviter labels do not authorise.
+ *
+ * Relationship becomes load-bearing only in later, narrowly named Business
+ * owner capability helpers. Batch 2 must not place it—or a display label—in an
+ * existing read predicate, write helper, billing path, or identity lookup.
+ */
+describe("9. relationship foundation cannot silently grant authority", () => {
+  const catalogue = readFileSync(join(process.cwd(), "tests/fixtures/rls-schema.sql"), "utf8");
+  const protectedBodies = catalogue
+    .split(/CREATE OR REPLACE FUNCTION /)
+    .filter((body) =>
+      /^app_private\.(has_client_access|has_client_read_access|has_standing_client_access|user_can_write_client|user_can_manage_client|assert_client_write_access)\(/.test(
+        body,
+      ),
+    );
+
+  it("keeps relationship and inviter labels out of existing access predicates", () => {
+    const offenders = protectedBodies
+      .filter((body) => /\brelationship\b|\binviter_label\b/.test(body))
+      .map((body) => body.split("\n")[0]!);
+    report("access predicates naming relationship or inviter_label", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("never uses an inviter label to resolve an authentication identity", () => {
+    const offenders = FILES.filter(
+      (file) =>
+        /findVerifiedAuthUserByEmail\([^)]*inviter[_A-Z]?label/i.test(file.text) ||
+        /auth\.users[\s\S]{0,120}inviter_label|inviter_label[\s\S]{0,120}auth\.users/.test(file.text),
+    ).map((file) => file.path);
+    report("identity lookups using inviter labels", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("has no authenticated direct write privilege or write policy on client_access", () => {
+    expect(catalogue).not.toMatch(/grant (insert|update|delete)(?:,| on table) public\.client_access to authenticated/i);
+    expect(catalogue).not.toMatch(/create policy .* on public\.client_access .* for (insert|update|delete|all) to authenticated/i);
+  });
+});

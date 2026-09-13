@@ -47,6 +47,9 @@ const U = {
   mixedViewer: "99990012-1111-4111-8111-111111111111",
   /** Subject of the standing-grant row probes only; holds no other access. */
   grantTarget: "99990013-1111-4111-8111-111111111111",
+  businessOwnerOne: "99990014-1111-4111-8111-111111111111",
+  businessOwnerTwo: "99990015-1111-4111-8111-111111111111",
+  handoverOwner: "99990016-1111-4111-8111-111111111111",
   supportActive: "99990005-1111-4111-8111-111111111111",
   supportExpired: "99990006-1111-4111-8111-111111111111",
   supportRevoked: "99990007-1111-4111-8111-111111111111",
@@ -533,6 +536,63 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return p.ok ? "allow" : "deny";
   }
+  if (r === "set_client_access_relationship() for own organisation") {
+    const p = await probe(
+      `select public.set_client_access_relationship('c0000003-1111-4111-8111-111111111111', 'external_adviser')`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "two Business owners on one client remain independently client-scoped") {
+    await db.exec("set local role postgres");
+    const p = await db.query<{ same_client: number; cross_client: number }>(`
+      select
+        (select count(*) from public.client_access
+          where client_id = '${CLIENT_A}'
+            and user_id in ('${U.businessOwnerOne}', '${U.businessOwnerTwo}')
+            and relationship = 'business_owner')::int as same_client,
+        (select count(*) from public.client_access
+          where (user_id = '${U.businessOwnerOne}' and client_id = '${CLIENT_B}')
+             or (user_id = '${U.businessOwnerTwo}' and client_id = '${CLIENT_NEW}'))::int as cross_client
+    `);
+    return p.rows[0]?.same_client === 2 && p.rows[0]?.cross_client === 0 ? "allow" : "deny";
+  }
+  if (r === "membership governs a simultaneous Business owner relationship") {
+    await db.exec("set local role postgres");
+    const p = await db.query<{ member: boolean; relationship: string | null }>(`
+      select app_private.has_firm_access('${U.handoverOwner}', '${ORG_A}') as member,
+             (select relationship::text from public.client_access
+               where client_id = '${CLIENT_A}' and user_id = '${U.handoverOwner}') as relationship
+    `);
+    return p.rows[0]?.member === true && p.rows[0]?.relationship === "business_owner" ? "allow" : "deny";
+  }
+  if (r === "removing membership preserves the Business owner relationship row") {
+    await db.exec("set local role postgres");
+    await db.exec(
+      `update public.firm_members set status = 'removed'
+        where firm_id = '${ORG_A}' and user_id = '${U.handoverOwner}'`,
+    );
+    const p = await db.query<{ member: boolean; rows: number }>(`
+      select app_private.has_firm_access('${U.handoverOwner}', '${ORG_A}') as member,
+             (select count(*) from public.client_access
+               where client_id = '${CLIENT_A}' and user_id = '${U.handoverOwner}'
+                 and relationship = 'business_owner')::int as rows
+    `);
+    return p.rows[0]?.member === false && p.rows[0]?.rows === 1 ? "allow" : "deny";
+  }
+  if (r === "inviter labels do not affect identity or authorisation") {
+    await db.exec("set local role postgres");
+    const before = await db.query<{ ok: boolean }>(
+      `select app_private.has_client_access('${U.businessOwnerOne}', '${CLIENT_A}') as ok`,
+    );
+    await db.exec(
+      `update public.client_access set inviter_label = 'A completely different display label'
+        where client_id = '${CLIENT_A}' and user_id = '${U.businessOwnerOne}'`,
+    );
+    const after = await db.query<{ ok: boolean }>(
+      `select app_private.has_client_access('${U.businessOwnerOne}', '${CLIENT_A}') as ok`,
+    );
+    return before.rows[0]?.ok === true && after.rows[0]?.ok === true ? "allow" : "deny";
+  }
   // ---- member removal -------------------------------------------------
   if (r === "remove a staff member of the caller's own organisation") {
     // A THIRD person, so this row never overlaps the self-leave row.
@@ -788,8 +848,15 @@ beforeAll(async () => {
     insert into public.client_subscriptions(id, client_id, subscription_type, status, dashboard_tier) values
       ('e0000004-1111-4111-8111-111111111111', '${CLIENT_NEW}', 'free_forever', 'free_forever', 'multi_company');
     -- ... and the mixed holder also has a SPECIFIC grant on it, at a lower level.
-    insert into public.client_access(id, client_id, user_id, tier) values
-      ('e0000005-1111-4111-8111-111111111111', '${CLIENT_NEW}', '${U.mixedViewer}', 'advisory');
+    -- Multiple Business owners on one client are intentional. The handover
+    -- subject holds both active membership and a specific relationship row.
+    insert into public.client_access(id, client_id, user_id, tier, relationship, inviter_label) values
+      ('e0000005-1111-4111-8111-111111111111', '${CLIENT_NEW}', '${U.mixedViewer}', 'advisory', 'external_adviser', null),
+      ('e0000006-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.businessOwnerOne}', 'multi_company', 'business_owner', 'Partner one'),
+      ('e0000007-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.businessOwnerTwo}', 'multi_company', 'business_owner', 'Partner two'),
+      ('e0000008-1111-4111-8111-111111111111', '${CLIENT_A}', '${U.handoverOwner}', 'multi_company', 'business_owner', 'Handed-over owner');
+    insert into public.firm_members(id, firm_id, user_id, role, status) values
+      ('e0000009-1111-4111-8111-111111111111', '${ORG_A}', '${U.handoverOwner}', 'staff', 'active');
     insert into public.xero_connections(id, user_id, tenant_id, tenant_name, firm_id, status,
                                         expires_at, access_token_enc, refresh_token_enc, enc_version) values
       ('${CONN_A}', '${U.ownerA}', '${TENANT_A}', 'File A', '${ORG_A}', 'connected',

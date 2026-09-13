@@ -299,11 +299,16 @@ export const MATRIX: MatrixRow[] = [
     "pglite",
     "live",
   ]),
-  // Viewer access rows are managed by the organisation OWNER (or an active
-  // practice-team member of that organisation) only: staff may read the viewer
-  // list but never change it — app_private.can_manage_viewers_for_client.
-  ...rows(["org_owner"], ["client_access"], WRITES, "allow", "PK 2 client viewer; owner manages viewers", ["pglite", "live"]),
-  ...rows(["org_staff"], ["client_access"], WRITES, "deny", "PK 2 client viewer; staff may read the list only", ["pglite", "live"]),
+  // Direct browser writes are closed unconditionally. Owners and active
+  // practice-team members manage rows only through the audited functions.
+  ...rows(
+    ["org_owner", "org_staff"],
+    ["client_access"],
+    WRITES,
+    "deny",
+    "PK rule 11; Spec §14.3 — client_access writes use audited functions only",
+    ["pglite", "live"],
+  ),
 
   // Only an organisation OWNER manages the client list itself.
   ...rows(["org_owner"], ["clients"], WRITES, "allow", "Spec §6 (is_firm_owner)", ["pglite", "live"]),
@@ -393,6 +398,56 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
   ),
   ...rows(["client_viewer"], ["clients", "client_access"], WRITES, "deny", "Spec §3", ["pglite", "live"]),
+
+  // ---------------- Batch 2 relationship foundation (13 Sep 2026) --------
+  {
+    role: "org_owner",
+    resource: "set_client_access_relationship() for own organisation",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK paths D/E — owner classifies selected-client access through an audited function",
+    layers: ["pglite", "live"],
+  },
+  ...rows(
+    ["org_staff", "other_org_member", "support_grant_active", "super_admin_no_membership", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    ["set_client_access_relationship() for own organisation"],
+    ["execute"],
+    "deny",
+    "PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass",
+    ["pglite", "live"],
+  ),
+  {
+    role: "org_owner",
+    resource: "two Business owners on one client remain independently client-scoped",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK path E — several Business owners are valid; each exact client_access row stands alone",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "org_owner",
+    resource: "membership governs a simultaneous Business owner relationship",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK paths A/E — active membership is broader and does not conflict with the relationship row",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "org_owner",
+    resource: "removing membership preserves the Business owner relationship row",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK path E — membership removal does not silently delete independently granted client access",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "org_owner",
+    resource: "inviter labels do not affect identity or authorisation",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK rule 11; Spec §14.3 — labels are display-only",
+    layers: ["pglite", "live"],
+  },
 
   // ------------------------------------------------------------ Xero tokens
   ...rows(
