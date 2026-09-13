@@ -371,9 +371,10 @@ export const getScenarioData = createServerFn({ method: "POST" })
 
 
 /**
- * Scenario exclusions are owned by the client, but advisors, firm members and
- * super admins have no `client_access` row, so the table's RLS helper denies
- * their writes. Authorise explicitly, then write with the trusted client.
+ * One rulebook: public.user_can_write_client_scenario decides (active
+ * organisation member OR client owner, aal2). The write itself then goes
+ * through the caller's own session, which the per-command
+ * "Members manage scenario exclusions" policies admit — no admin client.
  */
 async function assertScenarioWriteAccess(supabase: any, clientId: string) {
   // One rulebook: public.user_can_write_client_scenario decides — organisation
@@ -389,8 +390,7 @@ export const setInvoiceExcluded = createServerFn({ method: "POST" })
   .inputValidator((i: { clientId: string; xeroInvoiceId: string; excluded: boolean }) => i)
   .handler(async ({ data, context }) => {
     await assertScenarioWriteAccess(context.supabase, data.clientId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const sb = supabaseAdmin as any;
+    const sb = context.supabase as any;
     if (data.excluded) {
       const { error } = await sb
         .from("scenario_exclusions")
@@ -418,8 +418,7 @@ export const setInvoicesExcludedBulk = createServerFn({ method: "POST" })
     await assertScenarioWriteAccess(context.supabase, data.clientId);
     const ids = Array.from(new Set(data.xeroInvoiceIds.filter(Boolean)));
     if (ids.length === 0) return { ok: true, count: 0 };
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const sb = supabaseAdmin as any;
+    const sb = context.supabase as any;
     if (data.excluded) {
       const rows = ids.map((id) => ({ client_id: data.clientId, xero_invoice_id: id }));
       const { error } = await sb
@@ -443,8 +442,7 @@ export const resetScenario = createServerFn({ method: "POST" })
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertScenarioWriteAccess(context.supabase, data.clientId);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await (supabaseAdmin as any)
+    const { error } = await (context.supabase as any)
       .from("scenario_exclusions")
       .delete()
       .eq("client_id", data.clientId);
