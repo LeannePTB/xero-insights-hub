@@ -209,14 +209,25 @@ export const MATRIX: MatrixRow[] = [
     "PK 3 (super_admin alone is not access to client data)",
     ["pglite", "live"],
   ),
-  ...rows(PLATFORM_ONLY_ROLES, ["firms"], ["read"], "allow", "PK 2 path C; Spec §3 (organisation list)", [
-    "pglite",
-    "live",
-  ]),
-  ...rows(PLATFORM_ONLY_ROLES, ["firm_members"], ["read"], "allow", "PK 2 path C; Spec §3", ["pglite", "live"], {
-    note:
-      "Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data.",
-  }),
+  ...rows(
+    PLATFORM_ONLY_ROLES,
+    ["firms"],
+    ["read"],
+    "allow",
+    "PK 2 path C; Spec §3 (organisation list)",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    PLATFORM_ONLY_ROLES,
+    ["firm_members"],
+    ["read"],
+    "allow",
+    "PK 2 path C; Spec §3",
+    ["pglite", "live"],
+    {
+      note: "Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data.",
+    },
+  ),
   // Backlog 27 closed 11 Sep 2026 (Phase 2 part B): 'super_admin updates firms'
   // dropped, and INSERT/UPDATE/DELETE/TRUNCATE revoked from authenticated on
   // public.firms. The flag now moves only through public.set_firm_always_free
@@ -238,7 +249,6 @@ export const MATRIX: MatrixRow[] = [
     "Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write",
     ["pglite", "live"],
   ),
-
 
   ...rows(
     PLATFORM_ONLY_ROLES,
@@ -264,26 +274,45 @@ export const MATRIX: MatrixRow[] = [
     "Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither)",
     ["pglite", "live"],
     {
-      note:
-        "Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change.",
+      note: "Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change.",
     },
   ),
-
 
   // ------------------------------------------------------------ membership (A)
   ...rows(
     ["org_owner", "org_staff"],
-    ["firms", "firm_members", ...CLIENT_DATA_TABLES.filter((t) => !["report_cache", "scenario_exclusions"].includes(t))],
+    [
+      "firms",
+      "firm_members",
+      ...CLIENT_DATA_TABLES.filter((t) => !["report_cache", "scenario_exclusions"].includes(t)),
+    ],
     ["read"],
     "allow",
     "PK 2 path A; Spec §3",
     ["pglite", "live"],
   ),
   // report_cache is per-user, not per-organisation: a member sees only their own rows.
-  { role: "org_owner", resource: "report_cache", operation: "read", expect: "allow", rule: "own cache rows", layers: ["pglite", "live"] },
-  { role: "org_staff", resource: "report_cache", operation: "read", expect: "deny", rule: "another member's cache rows", layers: ["pglite", "live"] },
+  {
+    role: "org_owner",
+    resource: "report_cache",
+    operation: "read",
+    expect: "allow",
+    rule: "own cache rows",
+    layers: ["pglite", "live"],
+  },
+  {
+    role: "org_staff",
+    resource: "report_cache",
+    operation: "read",
+    expect: "deny",
+    rule: "another member's cache rows",
+    layers: ["pglite", "live"],
+  },
   ...rows(["org_owner"], ["report_cache"], WRITES, "allow", "own cache rows", ["pglite", "live"]),
-  ...rows(["org_staff"], ["report_cache"], WRITES, "deny", "another member's cache rows", ["pglite", "live"]),
+  ...rows(["org_staff"], ["report_cache"], WRITES, "deny", "another member's cache rows", [
+    "pglite",
+    "live",
+  ]),
 
   // scenario_exclusions is written by the client viewer who owns the client.
   ...rows(
@@ -295,10 +324,14 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
   ),
 
-  ...rows(["org_owner", "org_staff"], MEMBER_MANAGED_TABLES, WRITES, "allow", "PK 2 path A; Spec §6", [
-    "pglite",
-    "live",
-  ]),
+  ...rows(
+    ["org_owner", "org_staff"],
+    MEMBER_MANAGED_TABLES,
+    WRITES,
+    "allow",
+    "PK 2 path A; Spec §6",
+    ["pglite", "live"],
+  ),
   // Direct browser writes are closed unconditionally. Owners and active
   // practice-team members manage rows only through the audited functions.
   ...rows(
@@ -311,8 +344,14 @@ export const MATRIX: MatrixRow[] = [
   ),
 
   // Only an organisation OWNER manages the client list itself.
-  ...rows(["org_owner"], ["clients"], WRITES, "allow", "Spec §6 (is_firm_owner)", ["pglite", "live"]),
-  ...rows(["org_staff"], ["clients"], WRITES, "deny", "Spec §6 (is_firm_owner only)", ["pglite", "live"]),
+  ...rows(["org_owner"], ["clients"], WRITES, "allow", "Spec §6 (is_firm_owner)", [
+    "pglite",
+    "live",
+  ]),
+  ...rows(["org_staff"], ["clients"], WRITES, "deny", "Spec §6 (is_firm_owner only)", [
+    "pglite",
+    "live",
+  ]),
   // Snapshots, reports and reconciliations are written by the server, never by a session.
   ...rows(
     ["org_owner", "org_staff"],
@@ -341,9 +380,7 @@ export const MATRIX: MatrixRow[] = [
     [
       "firms",
       "firm_members",
-      ...CLIENT_DATA_TABLES.filter(
-        (t) => !["report_cache", "scenario_exclusions"].includes(t),
-      ),
+      ...CLIENT_DATA_TABLES.filter((t) => !["report_cache", "scenario_exclusions"].includes(t)),
     ],
     ["read"],
     "allow",
@@ -366,8 +403,7 @@ export const MATRIX: MatrixRow[] = [
     "PK 5 (support grants are READ-ONLY)",
     ["pglite", "live"],
     {
-      note:
-        "Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client.",
+      note: "Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client.",
     },
   ),
   ...rows(
@@ -378,17 +414,19 @@ export const MATRIX: MatrixRow[] = [
     "PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row)",
     ["pglite", "live"],
     {
-      note:
-        "Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write.",
+      note: "Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write.",
     },
   ),
 
-
   // --------------------------------------------------------- client viewer
-  ...rows(["client_viewer"], ["clients", "client_notes"], ["read"], "allow", "Spec §3 client viewer", [
-    "pglite",
-    "live",
-  ]),
+  ...rows(
+    ["client_viewer"],
+    ["clients", "client_notes"],
+    ["read"],
+    "allow",
+    "Spec §3 client viewer",
+    ["pglite", "live"],
+  ),
   ...rows(
     ["client_viewer"],
     ["firms", "firm_members", "audit_log", "subscriptions"],
@@ -397,7 +435,10 @@ export const MATRIX: MatrixRow[] = [
     "Spec §3 client viewer sees only that client",
     ["pglite", "live"],
   ),
-  ...rows(["client_viewer"], ["clients", "client_access"], WRITES, "deny", "Spec §3", ["pglite", "live"]),
+  ...rows(["client_viewer"], ["clients", "client_access"], WRITES, "deny", "Spec §3", [
+    "pglite",
+    "live",
+  ]),
 
   // ---------------- Batch 2 relationship foundation (13 Sep 2026) --------
   {
@@ -409,7 +450,16 @@ export const MATRIX: MatrixRow[] = [
     layers: ["pglite", "live"],
   },
   ...rows(
-    ["org_staff", "other_org_member", "support_grant_active", "super_admin_no_membership", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    [
+      "org_staff",
+      "other_org_member",
+      "support_grant_active",
+      "super_admin_no_membership",
+      "client_viewer",
+      "standing_viewer",
+      "aal1_member",
+      "anonymous",
+    ],
     ["set_client_access_relationship() for own organisation"],
     ["execute"],
     "deny",
@@ -484,7 +534,13 @@ export const MATRIX: MatrixRow[] = [
 
   // ---------------------------------------------------------- append-only
   ...rows(
-    ["org_owner", "org_staff", "client_viewer", "support_grant_active", "super_admin_no_membership"],
+    [
+      "org_owner",
+      "org_staff",
+      "client_viewer",
+      "support_grant_active",
+      "super_admin_no_membership",
+    ],
     APPEND_ONLY_TABLES,
     WRITES,
     "deny",
@@ -550,8 +606,7 @@ export const MATRIX: MatrixRow[] = [
     "PK 2 path C; Spec §9 (role changes are audited)",
     ["pglite", "live"],
     {
-      note:
-        "Phase 3b closed backlog 29 for this table: the generic AFTER trigger audit_change on user_roles records insert, update and delete with the actor and the changed columns, replacing audit_user_roles_change.",
+      note: "Phase 3b closed backlog 29 for this table: the generic AFTER trigger audit_change on user_roles records insert, update and delete with the actor and the changed columns, replacing audit_user_roles_change.",
     },
   ),
   ...rows(
@@ -562,8 +617,7 @@ export const MATRIX: MatrixRow[] = [
     "PK 2 path C; Spec §9 (platform configuration changes leave an audit row)",
     ["pglite", "live"],
     {
-      note:
-        "Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns.",
+      note: "Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns.",
     },
   ),
   ...rows(
@@ -574,12 +628,9 @@ export const MATRIX: MatrixRow[] = [
     "PK 2 path C; Spec §9 (platform metadata changes leave an audit row)",
     ["pglite", "live"],
     {
-      note:
-        "Phase 3b closed backlog 29: trigger audit_change on signup_requests records the actor and the changed columns.",
+      note: "Phase 3b closed backlog 29: trigger audit_change on signup_requests records the actor and the changed columns.",
     },
   ),
-
-
 
   // ---------------------------------------------------------------- profiles
   {
@@ -655,8 +706,7 @@ export const MATRIX: MatrixRow[] = [
     expect: "deny",
     rule: "Phase 1b correction: set_presence_seen_at() trigger overwrites",
     layers: ["live"],
-    note:
-      "Denied in effect: the write succeeds but the forged value never persists. Live-only — the PGlite fixture mirrors policies and grants, not triggers.",
+    note: "Denied in effect: the write succeeds but the forged value never persists. Live-only — the PGlite fixture mirrors policies and grants, not triggers.",
   },
   {
     role: "org_staff",
@@ -857,8 +907,6 @@ export const MATRIX: MatrixRow[] = [
     note: "Phase 5 step 5: the callback presents the database's own plan-limit wording and names the refused Xero file.",
   },
 
-
-
   // --------------------------------------------------------- server functions
   ...rows(
     ["other_org_member", "super_admin_no_membership", "suspended_member", "removed_member"],
@@ -907,8 +955,7 @@ export const MATRIX: MatrixRow[] = [
     expect: "deny",
     rule: "PK 5 (support grants are READ-ONLY)",
     layers: ["live"],
-    note:
-      "Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant.",
+    note: "Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant.",
   },
   {
     role: "support_grant_active",
@@ -927,8 +974,7 @@ export const MATRIX: MatrixRow[] = [
     expect: "deny",
     rule: "Spec §4 — ownership only moves through transfer_organisation_ownership",
     layers: ["live"],
-    note:
-      "adminInviteFirmMember accepts role 'staff' only; an owner invitation to an existing organisation is refused with a pointer to ownership transfer.",
+    note: "adminInviteFirmMember accepts role 'staff' only; an owner invitation to an existing organisation is refused with a pointer to ownership transfer.",
   },
   {
     role: "anonymous",
@@ -937,8 +983,7 @@ export const MATRIX: MatrixRow[] = [
     expect: "deny",
     rule: "Spec §4 — accepting an invite never replaces a sitting owner",
     layers: ["live"],
-    note:
-      "acceptInvite sets firms.owner_user_id only while it is null (the organisation-creation flow) and writes an audit row when it does; otherwise the person joins as a member and ownership is untouched.",
+    note: "acceptInvite sets firms.owner_user_id only while it is null (the organisation-creation flow) and writes an audit row when it does; otherwise the person joins as a member and ownership is untouched.",
   },
   {
     role: "org_owner",
@@ -957,8 +1002,7 @@ export const MATRIX: MatrixRow[] = [
     expect: "allow",
     rule: "PK 8 / Spec §1 — reading client financial data must be auditable",
     layers: ["live"],
-    note:
-      "Opening a client dashboard writes one xero_data_read row per actor + client + Xero file + read key + source per five minutes, recording no figures, account names or contact names.",
+    note: "Opening a client dashboard writes one xero_data_read row per actor + client + Xero file + read key + source per five minutes, recording no figures, account names or contact names.",
   },
   {
     role: "client_viewer",
@@ -1063,7 +1107,15 @@ export const MATRIX: MatrixRow[] = [
   // Not membership: no organisation-level or platform data.
   ...rows(
     ["standing_viewer"],
-    ["firms", "firm_members", "audit_log", "subscriptions", "billing_events", "client_subscriptions", "access_invites"],
+    [
+      "firms",
+      "firm_members",
+      "audit_log",
+      "subscriptions",
+      "billing_events",
+      "client_subscriptions",
+      "access_invites",
+    ],
     ["read", ...WRITES],
     "deny",
     "PK section 2 path D — a viewer grant is not membership and carries no platform or organisation data",
@@ -1112,9 +1164,24 @@ export const MATRIX: MatrixRow[] = [
   },
   // Who may manage standing grants (policies land in Batch 2; the owner-facing
   // permission and its server functions land in Batch 5).
-  ...rows(["org_owner"], ["firm_viewer_access"], ["read", ...WRITES], "allow", "PK section 2 path D — the organisation's owner grants and revokes", ["pglite", "live"]),
   ...rows(
-    ["org_staff", "other_org_member", "super_admin_no_membership", "support_grant_active", "client_viewer", "aal1_member", "anonymous"],
+    ["org_owner"],
+    ["firm_viewer_access"],
+    ["read", ...WRITES],
+    "allow",
+    "PK section 2 path D — the organisation's owner grants and revokes",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    [
+      "org_staff",
+      "other_org_member",
+      "super_admin_no_membership",
+      "support_grant_active",
+      "client_viewer",
+      "aal1_member",
+      "anonymous",
+    ],
     ["firm_viewer_access"],
     ["read", ...WRITES],
     "deny",
@@ -1144,7 +1211,16 @@ export const MATRIX: MatrixRow[] = [
     layers: ["pglite", "live"],
   },
   ...rows(
-    ["org_staff", "other_org_member", "support_grant_active", "super_admin_no_membership", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    [
+      "org_staff",
+      "other_org_member",
+      "support_grant_active",
+      "super_admin_no_membership",
+      "client_viewer",
+      "standing_viewer",
+      "aal1_member",
+      "anonymous",
+    ],
     ["viewer management for a client in the caller's own organisation"],
     ["execute"],
     "deny",
@@ -1189,7 +1265,15 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
   ),
   ...rows(
-    ["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    [
+      "org_owner",
+      "org_staff",
+      "other_org_member",
+      "client_viewer",
+      "standing_viewer",
+      "aal1_member",
+      "anonymous",
+    ],
     ["practice_team"],
     ["read", ...WRITES],
     "deny",
@@ -1210,7 +1294,15 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
   ),
   ...rows(
-    ["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    [
+      "org_owner",
+      "org_staff",
+      "other_org_member",
+      "client_viewer",
+      "standing_viewer",
+      "aal1_member",
+      "anonymous",
+    ],
     ["manage the practice team (admin_add/remove_practice_member)"],
     ["execute"],
     "deny",
@@ -1264,7 +1356,18 @@ export const MATRIX: MatrixRow[] = [
     layers: ["pglite", "live"],
   },
   ...rows(
-    ["org_staff", "other_org_member", "support_grant_active", "super_admin_no_membership", "client_viewer", "standing_viewer", "suspended_member", "removed_member", "aal1_member", "anonymous"],
+    [
+      "org_staff",
+      "other_org_member",
+      "support_grant_active",
+      "super_admin_no_membership",
+      "client_viewer",
+      "standing_viewer",
+      "suspended_member",
+      "removed_member",
+      "aal1_member",
+      "anonymous",
+    ],
     ["remove a staff member of the caller's own organisation"],
     ["execute"],
     "deny",
@@ -1377,7 +1480,15 @@ export const MATRIX: MatrixRow[] = [
     note: "The support-grant subject in the fixture also holds the super_admin role, so this row proves the Path C rule, not a support-grant widening.",
   },
   ...rows(
-    ["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    [
+      "org_owner",
+      "org_staff",
+      "other_org_member",
+      "client_viewer",
+      "standing_viewer",
+      "aal1_member",
+      "anonymous",
+    ],
     ["record a security attestation"],
     ["execute"],
     "deny",
@@ -1417,7 +1528,15 @@ export const MATRIX: MatrixRow[] = [
     ["pglite", "live"],
   ),
   ...rows(
-    ["org_owner", "org_staff", "other_org_member", "client_viewer", "standing_viewer", "aal1_member", "anonymous"],
+    [
+      "org_owner",
+      "org_staff",
+      "other_org_member",
+      "client_viewer",
+      "standing_viewer",
+      "aal1_member",
+      "anonymous",
+    ],
     ["security_attestations"],
     ["read", ...WRITES],
     "deny",

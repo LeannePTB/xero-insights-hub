@@ -43,7 +43,8 @@ function SignupPage() {
   const [businessName, setBusinessName] = useState("");
 
   const mut = useMutation({
-    mutationFn: () => accept({ data: { token, password, displayName, businessName: businessName || null } }),
+    mutationFn: () =>
+      accept({ data: { token, password, displayName, businessName: businessName || null } }),
     onSuccess: async (res) => {
       // Sign the user in immediately so they land on dashboard.
       const { error } = await supabase.auth.signInWithPassword({ email: res.email, password });
@@ -91,7 +92,10 @@ function SignupPage() {
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">
-      <div className="hidden flex-col justify-between p-12 text-primary-foreground md:flex" style={{ background: "var(--gradient-hero)" }}>
+      <div
+        className="hidden flex-col justify-between p-12 text-primary-foreground md:flex"
+        style={{ background: "var(--gradient-hero)" }}
+      >
         <BrandMark onDark logoHeightClass="h-9" />
         <div>
           <h2 className="text-3xl font-bold leading-tight">
@@ -103,7 +107,9 @@ function SignupPage() {
             Clean Xero dashboards built around the metrics that matter.
           </p>
         </div>
-        <p className="text-xs text-primary-foreground/55">© {new Date().getFullYear()} Traction Advisory</p>
+        <p className="text-xs text-primary-foreground/55">
+          © {new Date().getFullYear()} Traction Advisory
+        </p>
       </div>
 
       <div className="flex items-center justify-center p-6">
@@ -148,7 +154,9 @@ function SignupPage() {
                   onChange={(e) => setBusinessName(e.target.value)}
                   placeholder="e.g. Smith Advisory Group"
                 />
-                <p className="text-xs text-muted-foreground">Shown across your dashboards. You can change this later.</p>
+                <p className="text-xs text-muted-foreground">
+                  Shown across your dashboards. You can change this later.
+                </p>
               </div>
             )}
 

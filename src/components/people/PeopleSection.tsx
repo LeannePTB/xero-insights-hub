@@ -35,7 +35,6 @@ import { getMyContext } from "@/lib/roles.functions";
 import type { DashboardTier } from "@/lib/tiers";
 import { relationshipLabel } from "@/lib/access-labels";
 
-
 function Panel({
   title,
   blurb,
@@ -118,7 +117,8 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   });
 
   const inviteMemberMut = useMutation({
-    mutationFn: () => inviteMember({ data: { firmId, email: memberEmail, name: memberName, role: "staff" } }),
+    mutationFn: () =>
+      inviteMember({ data: { firmId, email: memberEmail, name: memberName, role: "staff" } }),
     onSuccess: (res: any) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       setMemberLink(`${origin}/signup/${res.token}`);
@@ -151,8 +151,6 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   });
   const canManageViewers = standingQ.data?.canManage ?? false;
   const firmName = standingQ.data?.firmName ?? "this organisation";
-
-
 
   return (
     <div className="space-y-6">
@@ -189,7 +187,8 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                 Staff
               </p>
             </div>
-            <Button className="sm:col-span-2 sm:w-fit"
+            <Button
+              className="sm:col-span-2 sm:w-fit"
               onClick={() => inviteMemberMut.mutate()}
               disabled={inviteMemberMut.isPending || !memberEmail}
             >
@@ -275,7 +274,9 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                 <li key={i.id} className="flex items-center justify-between gap-3 px-3 py-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">{i.inviterLabel ?? i.email}</p>
-                    {i.inviterLabel && <p className="truncate text-xs text-muted-foreground">{i.email}</p>}
+                    {i.inviterLabel && (
+                      <p className="truncate text-xs text-muted-foreground">{i.email}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {i.role === "owner" ? "Owner" : "Staff"} · expires{" "}
                       {new Date(i.expiresAt).toLocaleDateString()}
@@ -305,8 +306,8 @@ export function PeopleSection({ firmId }: { firmId: string }) {
           <ViewerInviteForm firmId={firmId} clients={clients} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Only the organisation owner can give a Business owner or External adviser access. You can still see who
-            has access below.
+            Only the organisation owner can give a Business owner or External adviser access. You
+            can still see who has access below.
           </p>
         )}
 
@@ -318,7 +319,9 @@ export function PeopleSection({ firmId }: { firmId: string }) {
         />
 
         <div className="space-y-3">
-          <h3 className="text-sm font-medium">Business owners and External advisers — selected clients</h3>
+          <h3 className="text-sm font-medium">
+            Business owners and External advisers — selected clients
+          </h3>
           {clients.map((c) => (
             <ClientViewerList
               key={c.id}
@@ -360,8 +363,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                 <p>
                   This does not change any external adviser's access, whether All clients or
                   selected clients, does not disconnect any Xero file, and does not delete any saved
-                  figures, history or{" "}
-                  {removing?.isMe ? "your" : "their"} sign-in account.
+                  figures, history or {removing?.isMe ? "your" : "their"} sign-in account.
                 </p>
               </div>
             </AlertDialogDescription>
@@ -466,7 +468,9 @@ function ClientViewerList({
         {rows.map((a) => (
           <li key={a.id} className="flex items-center justify-between gap-3 px-3 py-2">
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{a.display_name ?? a.inviter_label ?? a.email}</p>
+              <p className="truncate text-sm font-medium">
+                {a.display_name ?? a.inviter_label ?? a.email}
+              </p>
               <p className="truncate text-xs text-muted-foreground">{a.email}</p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
@@ -484,7 +488,9 @@ function ClientViewerList({
                   }}
                   disabled={relationshipMut.isPending}
                 >
-                  <option value="not_set" disabled>Not set</option>
+                  <option value="not_set" disabled>
+                    Not set
+                  </option>
                   <option value="business_owner">Business owner</option>
                   <option value="external_adviser">External adviser</option>
                 </select>
@@ -524,8 +530,8 @@ function ClientViewerList({
               {standingFor ? (
                 <>
                   {pending?.who} will still see {clientName}, because they have access to every
-                  client in this organisation. The only way to hide this one client is to switch them
-                  to a named list of clients instead, with {clientName} left out.
+                  client in this organisation. The only way to hide this one client is to switch
+                  them to a named list of clients instead, with {clientName} left out.
                 </>
               ) : (
                 <>
@@ -538,10 +544,7 @@ function ClientViewerList({
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             {standingFor ? (
               <AlertDialogAction
-                onClick={() =>
-                  pending &&
-                  switchMut.mutate({ userId: pending.userId })
-                }
+                onClick={() => pending && switchMut.mutate({ userId: pending.userId })}
                 disabled={switchMut.isPending || otherClients === 0}
               >
                 Switch to the other {otherClients} client{otherClients === 1 ? "" : "s"}
@@ -560,4 +563,3 @@ function ClientViewerList({
     </div>
   );
 }
-

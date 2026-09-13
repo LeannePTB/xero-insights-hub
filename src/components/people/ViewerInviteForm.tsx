@@ -24,8 +24,7 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
-  const [relationship, setRelationship] =
-    useState<ClientAccessRelationship>("external_adviser");
+  const [relationship, setRelationship] = useState<ClientAccessRelationship>("external_adviser");
   const [scope, setScope] = useState<"selected" | "all_clients">("selected");
   const [picked, setPicked] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -89,7 +88,9 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
             onChange={(e) => setName(e.target.value)}
             placeholder="Their name or business"
           />
-          <p className="text-xs text-muted-foreground">A display label only. It never identifies the account or grants access.</p>
+          <p className="text-xs text-muted-foreground">
+            A display label only. It never identifies the account or grants access.
+          </p>
         </div>
         <div className="min-w-[16rem] flex-1 space-y-1.5">
           <Label htmlFor="viewer-email">Their email address</Label>
@@ -198,9 +199,7 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
 
       <Button
         onClick={() => mut.mutate()}
-        disabled={
-          mut.isPending || !email || (scope === "selected" && picked.length === 0)
-        }
+        disabled={mut.isPending || !email || (scope === "selected" && picked.length === 0)}
       >
         {mut.isPending ? (
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />

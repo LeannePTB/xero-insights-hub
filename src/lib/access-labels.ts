@@ -12,7 +12,10 @@ export const optionalInviterLabelSchema = z.preprocess(
     .string()
     .min(1)
     .max(80, "Name must be 80 characters or fewer.")
-    .refine((value) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value), "Name must not be an email address.")
+    .refine(
+      (value) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+      "Name must not be an email address.",
+    )
     .nullable(),
 );
 

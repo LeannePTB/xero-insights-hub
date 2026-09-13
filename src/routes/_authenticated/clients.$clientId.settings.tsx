@@ -19,7 +19,11 @@ import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccounts
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
 import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
-import { listTierConfig, saveClientTierWidgets, listTierSettings } from "@/lib/tier-config.functions";
+import {
+  listTierConfig,
+  saveClientTierWidgets,
+  listTierSettings,
+} from "@/lib/tier-config.functions";
 import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
 import { getMyContext } from "@/lib/roles.functions";
 
@@ -36,11 +40,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { usePersistedDisclosure, sectionStorageKey } from "@/hooks/usePersistedDisclosure";
 import {
   Select,
@@ -161,11 +161,11 @@ function ClientSettings() {
       .map((c) => [c.tenantId, c.missingScopes] as [string, string[]]),
   );
 
-
-
   // Only offer tiers the organisation's plan includes.
   const { levels: tierLevels } = usePlanLevels("dashboard");
-  const catalogueKeys = (tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]) as DashboardTier[];
+  const catalogueKeys = (
+    tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]
+  ) as DashboardTier[];
   const labelFor = (t: string) => tierLabel(t, tierLevels.find((l) => l.key === t)?.label);
   const enabledTiers = catalogueKeys.filter(
     (t) =>
@@ -303,7 +303,6 @@ function ClientSettings() {
     }
   }
 
-
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
@@ -328,7 +327,6 @@ function ClientSettings() {
       qc.invalidateQueries({ queryKey: ["xero-scope-status"] });
     } else if (status === "choose") {
       toast.info("Choose which Xero files belong to this subscription.");
-
     } else if (err) {
       toast.error(err);
     }
@@ -432,7 +430,6 @@ function ClientSettings() {
           <ClientCardsPanel clientId={clientId} />
         </Section>
 
-
         {/* Report branding */}
         <Section title="Report branding" collapsible>
           <LogoUploadCard
@@ -447,8 +444,10 @@ function ClientSettings() {
           <ReportBasisSection
             clientId={clientId}
             clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
-            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
-              ?.tenant_id}
+            tenantId={
+              linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+                ?.tenant_id
+            }
           />
         </Section>
 
@@ -458,16 +457,20 @@ function ClientSettings() {
             clientId={clientId}
             gstCycle={(client.gst_cycle as GstCycle | null) ?? null}
             paygCycle={(client.payg_withholding_cycle as PaygCycle | null) ?? null}
-            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
-              ?.tenant_id}
+            tenantId={
+              linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+                ?.tenant_id
+            }
           />
         </Section>
 
         <Section title="How this client codes GST, PAYG and super" collapsible>
           <StatutoryAccountsSection
             clientId={clientId}
-            tenantId={linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
-              ?.tenant_id}
+            tenantId={
+              linkedOrgs.find((o: any) => o.xero_connections?.tenant_id)?.xero_connections
+                ?.tenant_id
+            }
           />
         </Section>
 
@@ -525,9 +528,7 @@ function ClientSettings() {
                 const tenantName: string = o.xero_connections?.tenant_name ?? "Unknown";
                 const status: string = o.xero_connections?.status ?? "connected";
                 const isDisconnected = status === "disconnected";
-                const missingScopes = tenantId
-                  ? (missingScopesByTenant.get(tenantId) ?? [])
-                  : [];
+                const missingScopes = tenantId ? (missingScopesByTenant.get(tenantId) ?? []) : [];
                 return (
                   <li
                     key={o.id}
@@ -616,9 +617,9 @@ function ClientSettings() {
                           This connection needs reauthorising to enable additional reports.
                         </p>
                         <p className="mt-1 text-muted-foreground">
-                          Currently unavailable for this organisation: {capabilityList(missingScopes)}.
-                          Reconnecting grants read-only access only — nothing is lost, and
-                          everything working today keeps working.
+                          Currently unavailable for this organisation:{" "}
+                          {capabilityList(missingScopes)}. Reconnecting grants read-only access only
+                          — nothing is lost, and everything working today keeps working.
                         </p>
                         <div className="mt-2">
                           <ConnectWithXeroButton
@@ -631,7 +632,6 @@ function ClientSettings() {
                       </div>
                     ) : null}
                   </li>
-
                 );
               })}
             </ul>
@@ -821,7 +821,6 @@ function ClientSettings() {
             choice is offered.
           </p>
         </Section>
-
       </main>
     </div>
   );
@@ -854,7 +853,10 @@ function Section({
 
   if (!collapsible) {
     return (
-      <section id={id} className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+      <section
+        id={id}
+        className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]"
+      >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="font-display text-lg font-semibold">{title}</h2>
           {action}
@@ -866,7 +868,10 @@ function Section({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <section id={id} className="scroll-mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+      <section
+        id={id}
+        className="scroll-mt-6 rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]"
+      >
         <div className="mb-4 flex items-center justify-between">
           <CollapsibleTrigger asChild>
             <button className="group flex flex-1 items-center justify-between gap-2 text-left">
@@ -982,8 +987,8 @@ function CostClassificationSection({
         <CollapsibleContent>
           {!enabled ? (
             <p className="text-sm text-muted-foreground">
-              Cost classification is turned off. Break-Even treats all operating expenses as
-              fixed, and Cost of Sales as variable.
+              Cost classification is turned off. Break-Even treats all operating expenses as fixed,
+              and Cost of Sales as variable.
             </p>
           ) : linkedOrgs.length === 0 ? (
             <p className="text-sm text-muted-foreground">Link a Xero organisation first.</p>
@@ -1058,7 +1063,8 @@ function ReportBasisSection({
   // be read at all (a file that is not GST registered returns nothing) — an
   // ambiguous case is better shown than hidden.
   const unreadable = !xeroQ.isLoading && !xeroBasis;
-  const showControl = xeroBasis === "cash" || (!!xeroBasis && xeroBasis !== clientBasis) || unreadable;
+  const showControl =
+    xeroBasis === "cash" || (!!xeroBasis && xeroBasis !== clientBasis) || unreadable;
 
   return (
     <div className="space-y-3">
@@ -1094,7 +1100,6 @@ function ReportBasisSection({
     </div>
   );
 }
-
 
 export type GstCycle = "monthly" | "quarterly" | "annual" | "not_registered";
 export type PaygCycle = "monthly" | "quarterly" | "not_registered";

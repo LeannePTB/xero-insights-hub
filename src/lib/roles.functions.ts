@@ -54,6 +54,4 @@ export const getMyContext = createServerFn({ method: "GET" })
       firmIds,
       viewerClients,
     };
-
   });
-

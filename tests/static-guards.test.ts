@@ -48,7 +48,9 @@ describe("1. every server function requires aal2", () => {
         const chain = part.slice(0, part.indexOf(".handler(") + 1);
         if (chain.includes("requireAal2")) continue;
         if (allowed.has(`${path}::${name}`)) continue;
-        offenders.push(`${path}::${name} — add requireAal2, or ask the owner to add an allow-list entry`);
+        offenders.push(
+          `${path}::${name} — add requireAal2, or ask the owner to add an allow-list entry`,
+        );
       }
     }
 
@@ -92,11 +94,13 @@ describe("2. every supabaseAdmin use is registered and verified", () => {
     ]);
   }
 
-
   const usingAdmin = FILES.filter(({ text }) => /\bsupabaseAdmin\b/.test(text));
 
   it("has a register", () => {
-    expect(registerText.length, "docs/security/admin-client-register.md is missing").toBeGreaterThan(0);
+    expect(
+      registerText.length,
+      "docs/security/admin-client-register.md is missing",
+    ).toBeGreaterThan(0);
   });
 
   it("registers every file that uses supabaseAdmin", () => {
@@ -117,11 +121,14 @@ describe("2. every supabaseAdmin use is registered and verified", () => {
 
   it("reports rule 7 violations as known failures, never as passes", () => {
     const violations = [...registered.entries()].flatMap(([file, rows]) =>
-      rows.filter((r) => /KNOWN FAILURE/i.test(r.verdict)).map((r) => `${file}::${r.fn} — ${r.verdict}`),
+      rows
+        .filter((r) => /KNOWN FAILURE/i.test(r.verdict))
+        .map((r) => `${file}::${r.fn} — ${r.verdict}`),
     );
     // Known failures are expected to exist until the fixing phase lands. They
     // are printed every run so they can never be forgotten.
-    if (violations.length) console.warn(report("KNOWN FAILURES (rule 7, supabaseAdmin):", violations));
+    if (violations.length)
+      console.warn(report("KNOWN FAILURES (rule 7, supabaseAdmin):", violations));
     expect(
       violations.every((v) => /backlog \d+/i.test(v)),
       "every KNOWN FAILURE row must name its backlog item",
@@ -155,12 +162,12 @@ describe("3. identity and recipient decisions never use profiles.email", () => {
     }
     // Backlog 22 is closed: any hit is now a hard failure.
     const unexpected = hits.filter((h) => !KNOWN_PROFILES_EMAIL_READS.some((f) => h.startsWith(f)));
-    expect(unexpected, report("New profiles.email reads — use the verified auth.users email:", unexpected)).toEqual(
-      [],
-    );
+    expect(
+      unexpected,
+      report("New profiles.email reads — use the verified auth.users email:", unexpected),
+    ).toEqual([]);
   });
 });
-
 
 describe("4. tenant_id is never taken from the request", () => {
   it("has no server function reading tenantId from body, query string or header", () => {
@@ -168,7 +175,9 @@ describe("4. tenant_id is never taken from the request", () => {
     for (const { path, text } of FILES) {
       if (!/\.functions\.tsx?$/.test(path) && !path.startsWith("src/routes/api/")) continue;
       text.split("\n").forEach((line, i) => {
-        if (/(getRequestHeader|searchParams\.get|req(uest)?\.headers\.get)\([^)]*tenant/i.test(line))
+        if (
+          /(getRequestHeader|searchParams\.get|req(uest)?\.headers\.get)\([^)]*tenant/i.test(line)
+        )
           offenders.push(`${path}:${i + 1} — ${line.trim()}`);
       });
     }
@@ -193,7 +202,8 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
    */
   const ACCESS_TABLE_READS = (text: string): number[] => {
     const lines: number[] = [];
-    const re = /from\(\s*["'](?:user_roles|firm_members|client_access|firm_support_access)["']\s*\)/g;
+    const re =
+      /from\(\s*["'](?:user_roles|firm_members|client_access|firm_support_access)["']\s*\)/g;
     for (const m of text.matchAll(re)) {
       const after = text.slice(m.index! + m[0].length, m.index! + m[0].length + 60);
       const next = after.match(/\.\s*([a-zA-Z]+)\s*\(/);
@@ -220,7 +230,10 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
     }
     expect(
       offenders,
-      report("Converted file decides access itself — call the database function instead:", offenders),
+      report(
+        "Converted file decides access itself — call the database function instead:",
+        offenders,
+      ),
     ).toEqual([]);
   });
 
@@ -253,11 +266,14 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
       );
       const firstAdmin = code.search(/\bsupabaseAdmin\b/);
       if (!Number.isFinite(firstAuth) || firstAdmin < firstAuth)
-        offenders.push(`${path} — supabaseAdmin is not preceded by a registered DB authorisation call`);
+        offenders.push(
+          `${path} — supabaseAdmin is not preceded by a registered DB authorisation call`,
+        );
     }
-    expect(offenders, report("Unauthorised privileged access in a converted file:", offenders)).toEqual(
-      [],
-    );
+    expect(
+      offenders,
+      report("Unauthorised privileged access in a converted file:", offenders),
+    ).toEqual([]);
   });
 
   /**
@@ -296,7 +312,6 @@ describe("6. converted files decide nothing themselves (Phase 4, per batch)", ()
     ).toEqual([]);
   });
 });
-
 
 /**
  * 7. Every path that returns a client's figures records the read (Phase 6).
@@ -375,8 +390,9 @@ describe("8. the standing viewer grant is never a write path", () => {
     const offenders = bodies
       .filter(
         (b) =>
-          /^app_private\.(user_can_write_client|user_can_manage_client|assert_client_write_access)\(/.test(b) &&
-          STANDING.test(b),
+          /^app_private\.(user_can_write_client|user_can_manage_client|assert_client_write_access)\(/.test(
+            b,
+          ) && STANDING.test(b),
       )
       .map((b) => b.split("\n")[0]!);
     report("write helpers naming the standing predicate", offenders);
@@ -420,14 +436,20 @@ describe("9. relationship foundation cannot silently grant authority", () => {
     const offenders = FILES.filter(
       (file) =>
         /findVerifiedAuthUserByEmail\([^)]*inviter[_A-Z]?label/i.test(file.text) ||
-        /auth\.users[\s\S]{0,120}inviter_label|inviter_label[\s\S]{0,120}auth\.users/.test(file.text),
+        /auth\.users[\s\S]{0,120}inviter_label|inviter_label[\s\S]{0,120}auth\.users/.test(
+          file.text,
+        ),
     ).map((file) => file.path);
     report("identity lookups using inviter labels", offenders);
     expect(offenders).toEqual([]);
   });
 
   it("has no authenticated direct write privilege or write policy on client_access", () => {
-    expect(catalogue).not.toMatch(/grant (insert|update|delete)(?:,| on table) public\.client_access to authenticated/i);
-    expect(catalogue).not.toMatch(/create policy .* on public\.client_access .* for (insert|update|delete|all) to authenticated/i);
+    expect(catalogue).not.toMatch(
+      /grant (insert|update|delete)(?:,| on table) public\.client_access to authenticated/i,
+    );
+    expect(catalogue).not.toMatch(
+      /create policy .* on public\.client_access .* for (insert|update|delete|all) to authenticated/i,
+    );
   });
 });

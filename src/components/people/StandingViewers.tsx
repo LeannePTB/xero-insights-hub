@@ -94,7 +94,9 @@ export function StandingViewers({
             {rows.map((v) => (
               <li key={v.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">{v.displayName ?? v.inviterLabel ?? v.email}</p>
+                  <p className="truncate text-sm font-medium">
+                    {v.displayName ?? v.inviterLabel ?? v.email}
+                  </p>
                   <p className="truncate text-xs text-muted-foreground">{v.email}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
@@ -104,7 +106,10 @@ export function StandingViewers({
                       size="sm"
                       variant="ghost"
                       onClick={() =>
-                        setPendingRevoke({ id: v.id, who: v.displayName ?? v.inviterLabel ?? v.email ?? "This person" })
+                        setPendingRevoke({
+                          id: v.id,
+                          who: v.displayName ?? v.inviterLabel ?? v.email ?? "This person",
+                        })
                       }
                     >
                       <Trash2 className="mr-1 h-4 w-4" /> Remove
@@ -127,12 +132,15 @@ export function StandingViewers({
               <li key={i.id} className="flex items-center justify-between gap-3 px-3 py-2">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium">{i.inviterLabel ?? i.email}</p>
-                  {i.inviterLabel && <p className="truncate text-xs text-muted-foreground">{i.email}</p>}
+                  {i.inviterLabel && (
+                    <p className="truncate text-xs text-muted-foreground">{i.email}</p>
+                  )}
                   <p className="text-xs text-muted-foreground">
-                     {i.scope === "all_clients"
+                    {i.scope === "all_clients"
                       ? "All clients"
                       : `${i.clientIds.length} selected client${i.clientIds.length === 1 ? "" : "s"}`}{" "}
-                    · {i.relationship === "business_owner" ? "Business owner" : "External adviser"} · expires {new Date(i.expiresAt).toLocaleDateString()}
+                    · {i.relationship === "business_owner" ? "Business owner" : "External adviser"}{" "}
+                    · expires {new Date(i.expiresAt).toLocaleDateString()}
                   </p>
                 </div>
                 {canManage && (
@@ -151,17 +159,14 @@ export function StandingViewers({
         </div>
       )}
 
-      <AlertDialog
-        open={pendingRevoke !== null}
-        onOpenChange={(o) => !o && setPendingRevoke(null)}
-      >
+      <AlertDialog open={pendingRevoke !== null} onOpenChange={(o) => !o && setPendingRevoke(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remove their All clients access?</AlertDialogTitle>
             <AlertDialogDescription>
               {pendingRevoke?.who} will lose access to all {clientCount} client
-              {clientCount === 1 ? "" : "s"} in {firmName}, and to any client added later. Any access
-              you gave them to a single client stays as it is.
+              {clientCount === 1 ? "" : "s"} in {firmName}, and to any client added later. Any
+              access you gave them to a single client stays as it is.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
