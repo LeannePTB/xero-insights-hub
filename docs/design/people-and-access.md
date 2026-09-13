@@ -23,6 +23,27 @@ Owner decision, recorded in Project Knowledge section 2:
 
 The relationship foundation is live: nullable enum-backed relationship fields, optional display-only labels, relationship-first invitation and People controls, audited assignment, and unconditional closure of direct authenticated `client_access` writes. Existing NULL rows remain read-only. Later self-service and billing capabilities remain separate security changes.
 
+## Approved cross-organisation landing requirement (13 Sep 2026)
+
+External advisers and Business owners are not confined to one organisation. A person may hold access in several combinations at once: selected-client grants from multiple organisations; Business owner relationships for businesses held in different organisations; membership in one organisation and External adviser access in another; or All clients in one organisation and selected clients in another.
+
+Batch 4 must present these existing client-scoped access paths as one signed-in client list:
+
+- List every client the person can already reach and group the results by organisation. Show the organisation name so similarly named clients can be distinguished. If there is only one reachable client, continue directly to it as today.
+- The organisation name is presentation context only. Do not expose organisation billing, settings, members, plan, client count, Xero file list, or any other organisation-level data to someone who lacks membership in that organisation.
+- Resolve access and controls separately for every client. A team member of organisation A who is an External adviser to organisation B receives team controls only on A's clients and read-only controls on B's. Never resolve one role for the whole session or inherit the widest access held elsewhere.
+- Reveal nothing about inaccessible clients or organisations, including through group headings, counts, totals, ordering, or empty-state wording. Render an organisation group only when it contains a client returned by the caller-scoped client read.
+- When switching clients or organisations, discard selected-client, dashboard-level, and cached access context and re-resolve them for the destination client.
+
+This is an approved **presentation requirement**, not a new access path. The existing client-scoped database read decision remains authoritative; do not create an organisation-wide viewer permission, infer membership, or grant organisation data to support the landing view.
+
+Batch 4 matrix coverage must prove:
+
+1. An External adviser with grants in organisations A and B sees exactly the granted clients in both and no organisation-level data for either.
+2. A person who is a team member of A and an External adviser to B receives team controls on A's clients and read-only access on B's, determined per client rather than per session.
+3. A Business owner of a client in A and a client in B receives self-service on both exact clients and no organisation-level data in either.
+4. The landing view reveals no client or organisation the person cannot reach.
+
 ## Problem
 
 Access today is all-or-one: an organisation member sees every client, a client viewer sees exactly one. There is nothing in between and no way to grant several at once. An external accountant working across several of an organisation's clients has to be added one client at a time, and an organisation with many clients makes that unworkable.

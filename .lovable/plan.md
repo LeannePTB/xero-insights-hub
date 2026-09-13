@@ -4,7 +4,7 @@
 
 **SECURITY-RELEVANT.** This changes the meaning of a client-specific access row and will eventually add narrowly scoped write and billing capabilities.
 
-The main threats are: silently promoting legacy or unclassified viewers; letting a person change their own relationship; reusing a broad read helper for writes; crossing client or organisation boundaries; exposing organisation billing or Xero files; or allowing support grants, standing access, or `super_admin` status to gain client writes.
+The main threats are: silently promoting legacy or unclassified viewers; letting a person change their own relationship; reusing a broad read helper for writes; crossing client or organisation boundaries; exposing organisation billing or Xero files; allowing support grants, standing access, or `super_admin` status to gain client writes; or resolving a multi-organisation person's controls once per session so adviser-only access inherits membership or Business owner capabilities held elsewhere.
 
 Project Knowledge was amended on 13 September 2026: Path D (External adviser) and Path E (Business owner) are in section 2, and rule 11 forbids a read predicate in any write or billing authorisation. The precondition is met.
 
@@ -87,6 +87,16 @@ Explicitly out of scope for Business owners: organisation settings, members, vie
 - Add client-bound Xero helpers for connect/link/reconnect/disconnect. OAuth state must bind the server-resolved client and organisation; callback revalidation must reject moved or unrelated clients. Never allow a Business owner to move a connection between clients.
 - Update the role-aware client screen so Business owners see only these controls; External adviser and Not set continue to receive read-only screens. Do not turn Business owners into organisation members or “advisors” in `getMyContext`.
 
+### Cross-organisation landing in Batch 4
+
+- Add one signed-in landing view that lists **every client the caller can already reach**, grouped by organisation. Show the organisation name only as the minimum context needed to distinguish clients with similar names; expose no organisation billing, settings, members, plan, client count, Xero file list, or other organisation-level data.
+- This is presentation over existing client-scoped reads, not a new access path. Continue to derive visibility from the database's existing per-client read decision; do not add an organisation-wide viewer predicate or use an organisation identifier as a grant.
+- If exactly one client is reachable, continue directly to that client as today. If several are reachable, show the grouped landing list regardless of whether they come from one or several organisations.
+- Resolve the caller's access type and allowed controls **for each client**. Never calculate one session-wide role, reuse the broadest access held anywhere, or let membership in organisation A add controls to adviser access in organisation B.
+- Support mixed access combinations: Business owner relationships in several organisations; membership in one organisation plus External adviser access in another; and All clients in one organisation plus selected-client grants in another.
+- Do not reveal an inaccessible client or organisation through a row, heading, count, total, ordering rule, or empty-state wording. Organisation groups exist only when they contain at least one client returned by the caller-scoped client read.
+- On every client or organisation switch, clear selected-client, dashboard-level, and cached access context, then re-resolve them for the destination client. Query/cache keys must include the destination client and any organisation context used for presentation.
+
 ### Billing batch, kept separate
 
 - Replace the disabled checkout/portal `user_can_access_client` gate with a new exact Business owner billing predicate; never use a read predicate as a billing grant.
@@ -101,7 +111,7 @@ Explicitly out of scope for Business owners: organisation settings, members, vie
 1. **Rules and terminology:** owner amends Project Knowledge; update design/spec wording for Path D; finish External adviser labels, badges, and invite order without changing access.
 2. **Relationship foundation plus owner corrections:** enum/nullable columns, audited assignment and grant functions, invite propagation/revalidation, display-only inviter labels, read DTOs, unconditional direct-write closure, External adviser pass-through tiers, People-page copy/badge/summary corrections, fixture/register/docs updates. Existing rows stay Not set/read-only.
 3. **Remove accidental adviser writes:** scenario exclusions and unreconciled comments become Business-owner/member-only; preserve comment-column enforcement; add static write-helper guards.
-4. **Operational self-service:** dashboard cards, break-even inputs, statements, and exact-client Xero lifecycle; client UI controls and denial states.
+4. **Operational self-service and cross-organisation client UI:** dashboard cards, break-even inputs, statements, and exact-client Xero lifecycle; per-client controls and denial states; plus one grouped landing list of every reachable client across organisations, with single-client direct entry and state re-resolution on every switch. This landing is presentation only and creates no access path.
 5. **Billing readiness and launch:** separate approval gate, then exact-client checkout/portal and webhook lifecycle only after payment prerequisites pass.
 6. **Proof and closure:** matrix, fixtures, generated docs, backlog/roadmap, owner-screen tests, live posture, linter, typecheck, and full Security report.
 
@@ -126,6 +136,10 @@ Add roles/fixtures for specific `client_access` rows classified as Business owne
 - relationship self-change and direct-table tampering deny;
 - caller-supplied client/organisation/tenant/customer/price identifiers never grant access.
 - inviter labels never participate in an auth-user lookup, grant match, access predicate, or authorisation decision; verified email stays visible and existing unlabeled rows show email alone.
+- an External adviser with grants in organisations A and B sees exactly the granted clients in both, while receiving no organisation-level data from either;
+- a person who is a team member of organisation A and an External adviser to organisation B receives team controls on A's clients and read-only access on B's clients, with the decision proved per client rather than once per session;
+- a Business owner of one client in organisation A and one in organisation B receives exact-client self-service on both and no organisation-level data in either; and
+- the landing view reveals no inaccessible client or organisation through rows, group headings, counts, totals, ordering, or empty-state wording.
 
 ## Batch 2 implementation boundary and owner-screen corrections
 
