@@ -522,10 +522,15 @@ Outstanding, in order, each its own security change:
   Xero files and before ownership/support controls. The old People route redirects to that section;
   all application links point there. Active membership remains the visibility boundary, and the
   existing audited functions remain the only implementation.
-- **Batch 3 — remove the two accidental External adviser writes.** `scenario_exclusions`
-  per-command policies and `public.user_can_write_client_scenario`, and the
-  `unreconciled_lines` comment UPDATE, must stop naming `app_private.has_client_access`;
-  keep the comment-only column trigger; extend the static guard to invariant 11.
+- **Batch 3 — remove the accidental External adviser writes. DONE 13 Sep 2026.** The three
+  permissive `scenario_exclusions` write policies were dropped (writes already went through the
+  audited server functions, so no member write was moved to a direct REST path);
+  `public.user_can_write_client_scenario` now returns `app_private.user_can_write_client` only;
+  the `unreconciled_lines` viewer comment UPDATE policy was replaced by "Members update comments
+  for their client" on `user_can_write_client`. `enforce_unreconciled_line_viewer_columns` is kept
+  and verified live (trigger attached, BEFORE UPDATE, enabled; body still raises for any column
+  other than `client_comment`). Read predicates in write policies: 4 → 0, now enforced by static
+  guard 11 across write policies, write helpers and billing helpers.
 - **Batch 4 — Business owner self-service:** dashboard cards, break-even inputs, statement
   uploads and comments, scenario exclusions, and Xero connections bound to that exact client.
 - **Batch 5 — client-scoped billing**, behind a separate payment-readiness gate
