@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1540**. Known failures: **0**.
+Rows: **1556**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -398,6 +398,7 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| user_can_write_client_scenario() for a client outside their organisation | execute | DENY | pglite | PK 1 / PK 4 — membership in another organisation writes nothing here |  |
 
 ## Organisation A's owner, reading organisation B
 
@@ -1200,6 +1201,7 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| user_can_write_client_scenario() for a client in their organisation | execute | ALLOW | pglite | PK section 2 path A — membership or client ownership still writes scenario exclusions, unchanged by Batch 3 |  |
 
 ## Organisation staff (own organisation)
 
@@ -1344,6 +1346,7 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| user_can_write_client_scenario() for a client in their organisation | execute | ALLOW | pglite | PK section 2 path A — an active member's scenario writes are unchanged by Batch 3 |  |
 
 ## External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)
 
@@ -1399,6 +1402,13 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| scenario_exclusions | update | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| unreconciled_lines | update | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| user_can_write_client_scenario() for the client they can read | execute | DENY | pglite | PK rule 11 — the read predicate is gone from the scenario write check |  |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1617,6 +1627,12 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| scenario_exclusions | update | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| unreconciled_lines | update | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 
 ## Super admin approving their own support grant
 

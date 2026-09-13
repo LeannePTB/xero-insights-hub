@@ -1543,6 +1543,52 @@ export const MATRIX: MatrixRow[] = [
     "Spec §17 — readable by super admins only",
     ["pglite", "live"],
   ),
+
+  // ---------------- Batch 3: the accidental adviser writes are gone --------
+  // PK rule 11: app_private.has_client_access (a READ predicate) no longer
+  // appears in any permissive write policy or write helper. Before this batch a
+  // specific client_access holder could insert/update/delete scenario
+  // exclusions and update reconciliation comments directly.
+  ...rows(
+    ["client_viewer", "standing_viewer"],
+    ["scenario_exclusions", "unreconciled_lines"],
+    WRITES,
+    "deny",
+    "PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments",
+    ["pglite", "live"],
+  ),
+  {
+    role: "client_viewer",
+    resource: "user_can_write_client_scenario() for the client they can read",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK rule 11 — the read predicate is gone from the scenario write check",
+    layers: ["pglite"],
+  },
+  {
+    role: "org_owner",
+    resource: "user_can_write_client_scenario() for a client in their organisation",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK section 2 path A — membership or client ownership still writes scenario exclusions, unchanged by Batch 3",
+    layers: ["pglite"],
+  },
+  {
+    role: "org_staff",
+    resource: "user_can_write_client_scenario() for a client in their organisation",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK section 2 path A — an active member's scenario writes are unchanged by Batch 3",
+    layers: ["pglite"],
+  },
+  {
+    role: "other_org_member",
+    resource: "user_can_write_client_scenario() for a client outside their organisation",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 1 / PK 4 — membership in another organisation writes nothing here",
+    layers: ["pglite"],
+  },
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);

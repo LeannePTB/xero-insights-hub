@@ -462,3 +462,52 @@ describe("9. relationship foundation cannot silently grant authority", () => {
     expect(directWritePolicies).toEqual([]);
   });
 });
+
+/**
+ * 11. Project Knowledge invariant 11: a read predicate is never a write grant.
+ *
+ * app_private.has_client_access, has_client_read_access and
+ * has_standing_client_access answer "may this person READ this client". Batch 3
+ * removed the last four permissive write policies that used them. This guard
+ * makes the build fail if any of them returns to a write policy, a write helper
+ * or a billing authorisation.
+ */
+describe("11. read predicates never authorise a write or a payment", () => {
+  const READ_PREDICATE =
+    /has_client_access|has_client_read_access|has_standing_client_access/;
+  const catalogue = readFileSync(join(process.cwd(), "tests/fixtures/rls-schema.sql"), "utf8");
+  const policyLines = catalogue
+    .split("\n")
+    .filter((l) => l.trimStart().startsWith("create policy "));
+  const bodies = catalogue.split(/CREATE OR REPLACE FUNCTION /);
+
+  it("appears in no INSERT, UPDATE, DELETE or permissive FOR ALL policy", () => {
+    const offenders = policyLines.filter(
+      (l) =>
+        READ_PREDICATE.test(l) &&
+        (/\bfor (insert|update|delete)\b/.test(l) || /as permissive for all\b/.test(l)),
+    );
+    report("write policies naming a read predicate (invariant 11)", offenders);
+    expect(offenders.length).toBe(0);
+  });
+
+  it("appears in no write helper, including the scenario write check", () => {
+    const WRITE_HELPERS =
+      /^(app_private\.(user_can_write_client|user_can_manage_client|assert_client_write_access)|public\.(user_can_write_client_scenario|assert_client_write_access))\(/;
+    const offenders = bodies
+      .filter((b) => WRITE_HELPERS.test(b) && READ_PREDICATE.test(b))
+      .map((b) => b.split("\n")[0]!);
+    report("write helpers naming a read predicate (invariant 11)", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("appears in no billing or subscription authorisation helper", () => {
+    const offenders = bodies
+      .filter(
+        (b) => /^(app_private|public)\.\w*(billing|subscription|checkout|stripe)\w*\(/i.test(b) && READ_PREDICATE.test(b),
+      )
+      .map((b) => b.split("\n")[0]!);
+    report("billing helpers naming a read predicate (invariant 11)", offenders);
+    expect(offenders).toEqual([]);
+  });
+});
