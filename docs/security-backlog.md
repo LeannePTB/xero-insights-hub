@@ -518,6 +518,10 @@ Outstanding, in order, each its own security change:
   labels are carried through grants and invites; the verified email remains identity. The People
   screen asks relationship before scope, shows Business owner / External adviser / Not set, and
   uses selected-client counts or All clients badges. No Business owner self-service was enabled.
+  **Presentation follow-up closed 13 Sep 2026:** People now sits in organisation settings after
+  Xero files and before ownership/support controls. The old People route redirects to that section;
+  all application links point there. Active membership remains the visibility boundary, and the
+  existing audited functions remain the only implementation.
 - **Batch 3 — remove the two accidental External adviser writes.** `scenario_exclusions`
   per-command policies and `public.user_can_write_client_scenario`, and the
   `unreconciled_lines` comment UPDATE, must stop naming `app_private.has_client_access`;

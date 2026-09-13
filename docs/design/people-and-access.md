@@ -23,6 +23,12 @@ Owner decision, recorded in Project Knowledge section 2:
 
 The relationship foundation is live: nullable enum-backed relationship fields, optional display-only labels, relationship-first invitation and People controls, audited assignment, and unconditional closure of direct authenticated `client_access` writes. Existing NULL rows remain read-only. Later self-service and billing capabilities remain separate security changes.
 
+### People location decision (13 Sep 2026)
+
+People and access now lives inside organisation settings, after the client/Xero resource controls and before ownership transfer and support access. This keeps membership and viewer management with the other organisation controls without creating another implementation. The former `/firms/$firmId/people` address redirects to the People section in settings so bookmarks and old links remain useful.
+
+Visibility is unchanged: the section renders only for an active organisation member, and its existing caller-scoped functions still decide which lists and controls that member may use. A support grant may reach its existing read-only settings surfaces but does not see the People section; an External adviser or Business owner gains no organisation-settings access from this move.
+
 ## Approved cross-organisation landing requirement (13 Sep 2026)
 
 External advisers and Business owners are not confined to one organisation. A person may hold access in several combinations at once: selected-client grants from multiple organisations; Business owner relationships for businesses held in different organisations; membership in one organisation and External adviser access in another; or All clients in one organisation and selected clients in another.

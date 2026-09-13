@@ -19,9 +19,9 @@ Everything below is visible in the product — no database access needed.
 | 1 | Does every person with a login still need one? | Advisors page | Nobody who has left the practice |
 | 2 | Does everyone have multi-factor authentication? | Security page, "Everyone has a second factor" | All OK, not Warn |
 | 3 | Do the super admins still need to be super admins? | Advisors page | As few as the practice can operate with |
-| 4 | Is every organisation membership still justified? | Each organisation's People page | No leftover staff on organisations they no longer work on |
+| 4 | Is every organisation membership still justified? | Each organisation's People section in settings | No leftover staff on organisations they no longer work on |
 | 5 | Are there any active support grants? | Security page, "Active support grants" | Zero, unless one is genuinely in use right now |
-| 6 | Does every client viewer still need their access? | Each organisation's People page, viewers section | No viewers from finished engagements |
+| 6 | Does every client viewer still need their access? | Each organisation's People section in settings, viewers section | No viewers from finished engagements |
 | 7 | Does every "all clients" standing grant still need to exist? | Same page, badged "All clients" | Each one is a current arrangement, not a leftover |
 | 8 | Is every connected Xero file still a live client? | Each client's settings | No connections for departed clients |
 | 9 | Is the practice team list current? | Advisors page | Only people who should be added to new client organisations |

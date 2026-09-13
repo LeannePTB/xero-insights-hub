@@ -9,8 +9,7 @@ import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { OrgDefaultCardsPanel } from "@/components/admin/OrgDefaultCardsPanel";
-
-
+import { PeopleSection } from "@/components/people/PeopleSection";
 import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 
 import { Button } from "@/components/ui/button";
@@ -38,13 +37,17 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/settings")({
       { title: "Organisation settings — Traction Advisory" },
       {
         name: "description",
-        content: "Review your plan, change your subscription or cancel it for this organisation.",
+        content:
+          "Manage people, clients, Xero files, ownership, support access and plans for this organisation.",
       },
       { property: "og:title", content: "Organisation settings — Traction Advisory" },
       {
         property: "og:description",
-        content: "Review your plan, change your subscription or cancel it for this organisation.",
+        content:
+          "Manage people, clients, Xero files, ownership, support access and plans for this organisation.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: FirmSettingsPage,
@@ -166,7 +169,7 @@ function FirmSettingsPage() {
 
       <h1 className="font-display text-3xl font-semibold">Organisation settings</h1>
       <p className="mt-1 text-sm text-muted-foreground">
-        Manage the plan and subscription for {view.firm.name}.
+        Manage people, clients, Xero files and account settings for {view.firm.name}.
       </p>
 
       {/* Current plan */}
@@ -300,7 +303,20 @@ function FirmSettingsPage() {
         <FirmXeroFilesCard firmId={firmId} />
       </div>
 
-
+      {/* People follows resources and precedes ownership/support governance. Active
+          membership is the same visibility boundary used by the former page. */}
+      {view.isMember && (
+        <section id="people" className="mt-8 scroll-mt-6">
+          <h2 className="font-display text-2xl font-semibold">People &amp; access</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage Team members, Business owners and External advisers. Access is shown separately
+            by relationship and scope.
+          </p>
+          <div className="mt-5">
+            <PeopleSection firmId={firmId} />
+          </div>
+        </section>
+      )}
 
       {/* Ownership handover */}
       <div className="mt-6">
