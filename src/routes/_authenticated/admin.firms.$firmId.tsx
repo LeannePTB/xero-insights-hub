@@ -471,12 +471,11 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
   const invite = useServerFn(adminInviteFirmMember);
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"owner" | "staff">("staff");
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
 
   const mut = useMutation({
-    mutationFn: () => invite({ data: { firmId, email, role } }),
+    mutationFn: () => invite({ data: { firmId, email, role: "staff" as const } }),
     onSuccess: (res) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       setInviteUrl(`${origin}/signup/${res.token}`);
@@ -486,7 +485,7 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
     onError: (e: any) => toast.error(e?.message ?? "Could not create invite"),
   });
 
-  function reset() { setEmail(""); setRole("staff"); setInviteUrl(null); setEmailStatus(null); }
+  function reset() { setEmail(""); setInviteUrl(null); setEmailStatus(null); }
 
   async function copy() {
     if (!inviteUrl) return;
