@@ -34,6 +34,7 @@ Fill this in each time. The value is the date and the signature, not the prose.
 | Date | Reviewed by | Users | Super admins | Organisations | Support grants found | Viewers removed | Memberships removed | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | — | No review performed yet | — | — | — | — | — | — | — |
+| 13 Sep 2026 | Leanne Ardern | 4 real accounts (plus 3 contained test accounts) | 3 — admin@, allyce@, chantelle@ | 4 — DRTABT Projects (9 clients), Positive Traction, Bangkok On Darby, Autotek NSW; 14 clients; none handed over | 0 | 0 — no real client viewers exist | 0 | See notes below |
 
 ## Baseline as at 12 September 2026
 
@@ -49,4 +50,11 @@ Recorded here so the first review has something to compare against. Not a review
 
 ## First review
 
-**[CONFIRM: do the first one now while the numbers above are still true. It should take fifteen minutes, and it converts this from a procedure into evidence.]**
+**Performed 13 September 2026 by Leanne Ardern. Next review due 13 March 2027** (six months), or sooner if someone joins or leaves the practice.
+
+Notes from the 13 September 2026 review:
+
+- One dormant account found (`leanne@astrovisual.com.au`): no MFA, no role, no membership, last sign-in 15 June 2026. Its last remaining row (a leftover `client_viewer` role) was revoked on 13 September 2026 as a result of this review, through the audited advisor-removal function with the removal attributed to the owner in the audit trail. The account now holds no role, membership, grant or practice-team row and can reach nothing. **The login itself could not be deleted in the same pass** — the product's only account-deletion path is the advisors page, which lists advisor accounts only, and this account is not one. Recorded as a backlog item; the owner will delete the login when a path exists, and re-add it when testing requires.
+- One standing viewer grant exists, held by `zz-security-viewer@tractionadvisory.com.au` on `ZZ Security Test Org`. Test-suite data, correctly confined, retained deliberately.
+- One super admin (chantelle@) has no verified second factor. Server enforcement means she reaches no client data until she enrols, which will be required at her next sign-in. Carried forward as an open action.
+- 12 Xero connections, all connected and all assigned to an organisation.
