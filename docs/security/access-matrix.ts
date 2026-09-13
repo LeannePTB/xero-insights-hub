@@ -1583,7 +1583,7 @@ export const MATRIX: MatrixRow[] = [
   },
   {
     role: "other_org_member",
-    resource: "user_can_write_client_scenario() for another organisation's client",
+    resource: "user_can_write_client_scenario() for a client outside their organisation",
     operation: "execute",
     expect: "deny",
     rule: "PK 1 / PK 4 — membership in another organisation writes nothing here",

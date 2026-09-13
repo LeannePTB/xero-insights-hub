@@ -398,7 +398,7 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
-| user_can_write_client_scenario() for another organisation's client | execute | DENY | pglite | PK 1 / PK 4 — membership in another organisation writes nothing here |  |
+| user_can_write_client_scenario() for a client outside their organisation | execute | DENY | pglite | PK 1 / PK 4 — membership in another organisation writes nothing here |  |
 
 ## Organisation A's owner, reading organisation B
 
