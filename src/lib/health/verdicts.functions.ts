@@ -105,7 +105,11 @@ export const listClientVerdicts = createServerFn({ method: "POST" })
           snapshots: snapshots.get(clientId) ?? [],
           now,
         },
-        { statutoryOverrides: statutoryOverrideMap(overridesByClient.get(clientId) ?? []) },
+        {
+          statutoryOverrides: statutoryOverrideMap(overridesByClient.get(clientId) ?? []),
+          gstRegistered: cyclesByClient.get(clientId)?.gst !== "not_registered",
+          withholdsPayg: cyclesByClient.get(clientId)?.payg !== "not_registered",
+        },
       );
     }
 
