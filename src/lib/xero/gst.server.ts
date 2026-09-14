@@ -391,21 +391,26 @@ export async function computeGstReconciliation(
   // The pay runs whose PAYDAY falls in the period. One list call, snapshotted
   // nightly; a file without payroll withholds nothing, which is a real zero,
   // while a read we could not make stays null and says so.
-  const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
-  const runs = supabase
-    ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, conn })
-    : await fetchPayRuns(conn);
   let paygPayroll: PaygPayrollSection;
-  if (runs.status === "available") {
-    const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
-    paygPayroll = {
-      status: "available",
-      withheld: round2(inPeriodRuns.reduce((s, r) => s + r.tax, 0)),
-      payRuns: inPeriodRuns.map((r) => ({ paymentDate: r.paymentDate, tax: round2(r.tax) })),
-    };
+  if (!withholdsPayg) {
+    // "Does not withhold": no pay-run read is made at all.
+    paygPayroll = { status: "not_applicable" };
   } else {
-    paygPayroll = runs;
-    if (runs.status !== "no_payroll") complete = false;
+    const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
+    const runs = supabase
+      ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, conn })
+      : await fetchPayRuns(conn);
+    if (runs.status === "available") {
+      const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
+      paygPayroll = {
+        status: "available",
+        withheld: round2(inPeriodRuns.reduce((s, r) => s + r.tax, 0)),
+        payRuns: inPeriodRuns.map((r) => ({ paymentDate: r.paymentDate, tax: round2(r.tax) })),
+      };
+    } else {
+      paygPayroll = runs;
+      if (runs.status !== "no_payroll") complete = false;
+    }
   }
 
   const gstNet =
@@ -413,7 +418,7 @@ export async function computeGstReconciliation(
   const paygWithheldForTotal =
     paygPayroll.status === "available"
       ? paygPayroll.withheld
-      : paygPayroll.status === "no_payroll"
+      : paygPayroll.status === "no_payroll" || paygPayroll.status === "not_applicable"
         ? 0
         : null;
   const estimatedPayable =
