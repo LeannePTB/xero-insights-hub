@@ -593,3 +593,28 @@ on client data, `assert_aal2()` denied with a stale session and with no `session
 session unchanged), definer register regenerated (155 functions, `--check` OK), 54 tests passed,
 typecheck clean. Supabase linter: 91 warnings, all the one accepted category (signed-in-executable
 SECURITY DEFINER) — the +1 is `app_private.is_session_fresh()`.
+
+## Optional personal video on a monthly management report (done 14 Sep 2026)
+
+Owner requirement: a platform super admin may attach a Loom link to a DRAFT monthly report;
+everyone who can already see that report sees the player, and it must never appear in the PDF.
+
+Five nullable columns added to `client_reports` (`video_url`, `video_heading`, `video_message`,
+`video_set_by`, `video_set_at`). No RLS policy, grant or predicate changed: who may read or change
+a report is exactly as before, and the new columns travel with the row they belong to.
+
+The one write path is `setReportVideo` (`report-video.functions.ts` → `report-video.server.ts`)
+behind `requireAal2`, with BOTH gates required and neither standing in for the other:
+`assert_super_admin()` in the database, then `canWriteFirm` → `public.user_can_write_firm` on the
+`firm_id` read server-side from the stored report row. A super admin who is not an active member of
+that organisation is refused (invariant 3), and a support grant is refused (invariant 5). Only a
+draft may be changed; a supplied URL is rejected unless it parses as a `loom.com` share/embed id, so
+the embed `src` is always a Loom URL. The write itself uses the service role because
+`client_reports` has no write policy — registered in `admin-client-register.md`. The audit row
+(`client_report_video_set` / `client_report_video_cleared`) carries client, period and version and
+never the URL.
+
+The video lives OUTSIDE the frozen payload, so `MONTHLY_REPORT_PAYLOAD_VERSION` is unchanged, no
+stored report becomes stale, and the PDF — which `report-pdf.server.ts` renders from an explicit
+column list that does not include the video columns, plus the payload — cannot carry it. The
+disclaimer, verdict page and report email templates are untouched.
