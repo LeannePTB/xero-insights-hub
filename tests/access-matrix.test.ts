@@ -365,6 +365,9 @@ function claims(ctx: Ctx) {
   const c: Record<string, string> = { role: ctx.dbRole };
   if (ctx.uid) c["sub"] = ctx.uid;
   if (ctx.aal) c["aal"] = ctx.aal;
+  // The daily 3am sign-in cut-off resolves the session's start time, so every
+  // signed-in context needs a session_id backed by a fresh auth.sessions row.
+  if (ctx.uid) c["session_id"] = ctx.uid;
   return JSON.stringify(c);
 }
 
@@ -830,6 +833,8 @@ beforeAll(async () => {
   await db.exec(`
     insert into auth.users(id, email) values
       ${users.map((u, i) => `('${u}', 'u${i}@example.invalid')`).join(", ")};
+    insert into auth.sessions(id, user_id, created_at) values
+      ${users.map((u) => `('${u}', '${u}', now())`).join(", ")};
     insert into auth.mfa_factors(user_id, status) values
       ${users.map((u) => `('${u}', 'verified')`).join(", ")};
     insert into public.profiles(id, email, display_name) values
