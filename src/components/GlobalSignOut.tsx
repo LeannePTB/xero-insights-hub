@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
+import { useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/lib/use-sign-out";
 
@@ -12,15 +13,17 @@ import { useSignOut } from "@/lib/use-sign-out";
  */
 export function GlobalSignOut() {
   const signOut = useSignOut();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-    // Run after paint so page headers have mounted.
+    // Run after paint so the page's own header (if any) has mounted.
     const id = window.setTimeout(() => {
       setShow(!document.querySelector("[data-app-header]"));
     }, 0);
     return () => window.clearTimeout(id);
-  });
+  }, [pathname]);
+
 
   if (!show) return null;
 
