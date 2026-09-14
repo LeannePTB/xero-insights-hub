@@ -93,6 +93,8 @@ export type GstResult = {
   expectedClosing: number | null;
   difference: number | null;
   ties: boolean;
+  /** Plain-language reasons the figures might not tie. Empty when they tie. */
+  tieReasons: string[];
   complete: boolean;
   issues: string[];
   /** Balance-derived, preparer-only. The front page uses `paygPayroll`. */
@@ -319,6 +321,34 @@ export async function computeGstReconciliation(
   const ties = difference !== null && Math.abs(difference) < NEAR_ZERO;
   if (journalsMissing && !ties) complete = false;
 
+  // Why it might not tie. Each reason is derived from signals already computed
+  // above — no extra Xero calls — so the card can explain the gap instead of
+  // calling it "unexplained".
+  const tieReasons: string[] = [];
+  if (!ties && difference !== null) {
+    if (journalsMissing) {
+      tieReasons.push(
+        "Manual journals posted straight to the GST account are not included — Xero does not let us read manual journals for this organisation, so any journal touching the GST account shows up as part of this difference.",
+      );
+    }
+    if (
+      gstOnSales !== null &&
+      gstOnPurchases !== null &&
+      Math.abs(gstOnSales - gstOnPurchases - (Math.floor(gstOnSales) - Math.floor(gstOnPurchases))) >
+        0.004
+    ) {
+      tieReasons.push(
+        "Rounding on the lodged form — the activity statement rounds each box down to whole dollars, while these figures keep the cents.",
+      );
+    }
+    const latePayments = movements.filter((m) => m.date && m.date > to).length;
+    if (latePayments > 0) {
+      tieReasons.push(
+        "Timing — a payment to the ATO was dated after the end of this period, so it sits on the balance sheet but outside this period's figures.",
+      );
+    }
+  }
+
   // --- PAYG withholding ----------------------------------------------------
   // Accounts come from the ONE resolver: the per-client statutory mapping,
   // with name matching as the fallback. No hardcoded names or codes, and no
@@ -441,6 +471,7 @@ export async function computeGstReconciliation(
     expectedClosing,
     difference,
     ties,
+    tieReasons,
     complete,
     issues,
     payg,

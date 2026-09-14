@@ -618,3 +618,14 @@ The video lives OUTSIDE the frozen payload, so `MONTHLY_REPORT_PAYLOAD_VERSION` 
 stored report becomes stale, and the PDF — which `report-pdf.server.ts` renders from an explicit
 column list that does not include the video columns, plus the payload — cannot carry it. The
 disclaimer, verdict page and report email templates are untouched.
+
+## "Doesn't tie" reasons on the activity-statement card (done 14 Sep 2026)
+
+Presentation and derived data only. The red "unexplained" chip on the GST reconciliation card is
+replaced by "doesn't tie by $X" plus a plain-language reasons list (`tieReasons`) computed inside
+`computeGstReconciliation` from signals already in hand: the manual-journals gap, whole-dollar
+rounding on the lodged form, and ATO payments dated after period end. No new Xero calls, no new
+table, policy, grant or predicate; the reasons travel through the existing `getGstReconciliation`
+server function behind its existing `requireAal2` and read gate. Clients (non-advisors) see a
+single client-safe note with no balances, arithmetic or transaction detail. Verified: typecheck
+clean, 54/54 tests, live access 18/0/0.

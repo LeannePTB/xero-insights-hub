@@ -248,6 +248,20 @@ export function GstReconciliationWidget({
             </div>
           </div>
 
+          {/* Client view: a plain-language note when the figures don't tie.
+              No balances, arithmetic or transaction detail are shown here. */}
+          {!showWarnings && !data.ties && (data.tieReasons?.length ?? 0) > 0 && (
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              <p className="font-medium">
+                These figures don't fully tie to the balance sheet — most likely because of manual
+                journals we're not able to read. Your adviser can see the detail.
+              </p>
+            </div>
+          )}
+
+
+
 
 
           {showWarnings && !data.complete && (
@@ -275,7 +289,7 @@ export function GstReconciliationWidget({
                     </span>
                   ) : (
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-medium text-destructive">
-                      <AlertTriangle className="h-3.5 w-3.5" /> {fmt(data.difference)} unexplained
+                      <AlertTriangle className="h-3.5 w-3.5" /> Doesn't tie by {fmt(data.difference)}
                     </span>
                   )}
                   <ChevronDown
@@ -338,6 +352,19 @@ export function GstReconciliationWidget({
                       </div>
                     )}
                   </div>
+
+                  {!data.ties && (data.tieReasons?.length ?? 0) > 0 && (
+                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-700/50 dark:bg-amber-950/30">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-100">
+                        Why it doesn't tie
+                      </p>
+                      <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-amber-900 dark:text-amber-100">
+                        {data.tieReasons.map((r, i) => (
+                          <li key={i}>{r}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
 
                   <p className="text-[11px] text-muted-foreground">
                     Xero's API does not expose the Activity Statement, so these figures are rebuilt
