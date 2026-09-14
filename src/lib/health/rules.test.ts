@@ -365,7 +365,11 @@ describe("statutory registration settings", () => {
         { name: "Superannuation Payable", amount: 10_000, accountId: "super-1" },
       ]),
     });
-    const r = ruleProtectedMoneyVsCash(superOnly, accountRow(), undefined, undefined, false);
+    const r = ruleProtectedMoneyVsCash(superOnly, accountRow(), undefined, undefined, {
+      gst: false,
+      payg: false,
+      super: true,
+    });
     assert.strictEqual(r.finding, null);
     assert.strictEqual(r.unavailable, undefined);
   });
