@@ -671,3 +671,19 @@ PAYG applies. Separately, the "We are available to talk this through with you
 when it suits." closing line was removed from the issues verdict (owner
 request; presentation only). Verified: typecheck clean, 54/54 tests (one new),
 live access 18/0/0.
+
+## All-clear verdict reworded and respects GST/PAYG registration (14 Sep 2026)
+
+The "Nothing required attention this month" detail no longer says "We reviewed
+protected money held against cash at bank, the statutory balances carried on
+the Balance Sheet, and the ageing and concentration of the debtor book."
+Instead, `evaluateFromRows` builds the sentence from the client's registration
+settings: GST-and-PAYG-registered clients see "the money set aside for tax and
+super against cash at bank, and the ageing and concentration of the debtors";
+GST-only clients see only "the GST set aside against cash at bank"; PAYG-only
+clients see only "the tax withheld from wages and super against cash at bank";
+clients registered for neither GST nor PAYG see only the debtors clause. No
+protected money is claimed when none is expected. "debtor book" replaced with
+"debtors" in this sentence. Presentation/derived-data only — no new table,
+policy, grant or predicate. Verified: typecheck clean, 54/54 tests (three new),
+live access 18/0/0.
