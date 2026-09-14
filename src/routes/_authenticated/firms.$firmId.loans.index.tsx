@@ -312,22 +312,54 @@ function LoanMatrixTab() {
         </p>
       )}
 
-      {reconQ.isLoading && (
+      {openSnapshotId && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+          <p className="text-foreground">
+            Viewing a saved report
+            {openSnapshot ? (
+              <>
+                {" "}— balances as at {openSnapshot.asAt}
+                {openSnapshot.label ? ` · ${openSnapshot.label}` : ""}, saved{" "}
+                {new Date(openSnapshot.generatedAt).toLocaleString("en-AU")}
+              </>
+            ) : (
+              "…"
+            )}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setOpenSnapshotId(null)}>
+            Back to live figures
+          </Button>
+        </div>
+      )}
+
+      {openSnapshotId && openSnapshotQ.isLoading && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Opening saved report…
+        </p>
+      )}
+      {openSnapshotId && openSnapshotQ.error && (
+        <p className="flex items-center gap-2 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4" /> {(openSnapshotQ.error as Error).message}
+        </p>
+      )}
+
+      {!openSnapshotId && reconQ.isLoading && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading balances from Xero…
         </p>
       )}
-      {reconQ.error && (
+      {!openSnapshotId && reconQ.error && (
         <p className="flex items-center gap-2 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4" /> {(reconQ.error as Error).message}
         </p>
       )}
 
-      {recon && sections.length === 0 && (
+      {!openSnapshotId && recon && sections.length === 0 && (
         <p className="rounded-xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
           No loan accounts set up for this group yet. Use the Accounts tab to pair them.
         </p>
       )}
+
 
       {sections.map((file: any) => {
         const totalNet = file.rows.reduce((s: number, r: ReconRow) => s + (r.net ?? 0), 0);
