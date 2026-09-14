@@ -324,6 +324,8 @@ function LoanMatrixTab() {
                     <TableHead className="w-10 text-base font-semibold text-foreground">Dir</TableHead>
                     <TableHead className="border-l border-border text-right text-base font-semibold text-foreground">Net</TableHead>
                     <TableHead className="text-base font-semibold text-foreground">Status</TableHead>
+                    <TableHead className="w-64 text-base font-semibold text-foreground">Notes</TableHead>
+
                   </TableRow>
                 </TableHeader>
 
