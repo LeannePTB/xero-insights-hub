@@ -152,10 +152,11 @@ function LoanMatrixTab() {
   });
 
   const saveMut = useMutation({
-    mutationFn: () => saveFn({ data: { groupId: groupId!, tenantId, asAt } }),
+    mutationFn: () => saveFn({ data: { groupId: groupId!, tenantId, asAt, notes } }),
     onSuccess: () => toast.success("Report saved"),
     onError: (e: any) => toast.error(e.message),
   });
+
 
   // Unpaired accounts are excluded from the matrix — pair them on the Accounts tab.
   const sections = (recon?.files ?? [])
