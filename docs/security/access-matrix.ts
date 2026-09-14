@@ -1590,7 +1590,7 @@ export const MATRIX: MatrixRow[] = [
   // browser gate can only deny earlier; they are never the enforcement point.
   {
     role: "stale_session_member",
-    resource: "client_notes for a client in their own organisation",
+    resource: "client_notes",
     operation: "read",
     expect: "deny",
     rule: "PK 2 — aal2 now also means signed in since the most recent 3am Sydney",
@@ -1614,7 +1614,7 @@ export const MATRIX: MatrixRow[] = [
   },
   {
     role: "org_owner",
-    resource: "client_notes for a client in their own organisation, session begun after the cut-off",
+    resource: "client_notes",
     operation: "read",
     expect: "allow",
     rule: "PK 2 path A — a session begun after 3am Sydney is unaffected",

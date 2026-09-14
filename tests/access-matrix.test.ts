@@ -472,6 +472,18 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
 
+  if (r === "assert_aal2() with a session older than the cut-off") {
+    const p = await probe(`select app_private.assert_aal2()`);
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "assert_aal2() with no session_id claim") {
+    // Same person, same aal2 claim, no session_id: fail closed.
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [
+      JSON.stringify({ role: "authenticated", sub: U.staffA, aal: "aal2" }),
+    ]);
+    const p = await probe(`select app_private.assert_aal2()`);
+    return p.ok ? "allow" : "deny";
+  }
   if (r === "xero_connections.access_token_enc" || r === "xero_connections.refresh_token_enc") {
     const col = r.split(".")[1]!;
     const p = await probe(`select ${col} from public.xero_connections where id = '${CONN_A}'`);

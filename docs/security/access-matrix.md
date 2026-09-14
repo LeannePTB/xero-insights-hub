@@ -1202,7 +1202,7 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | user_can_write_client_scenario() for a client in their organisation | execute | ALLOW | pglite | PK section 2 path A — membership or client ownership still writes scenario exclusions, unchanged by Batch 3 |  |
-| client_notes for a client in their own organisation, session begun after the cut-off | read | ALLOW | pglite | PK 2 path A — a session begun after 3am Sydney is unaffected |  |
+| client_notes | read | ALLOW | pglite | PK 2 path A — a session begun after 3am Sydney is unaffected |  |
 
 ## Organisation staff (own organisation)
 
@@ -1653,6 +1653,6 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
-| client_notes for a client in their own organisation | read | DENY | pglite | PK 2 — aal2 now also means signed in since the most recent 3am Sydney |  |
+| client_notes | read | DENY | pglite | PK 2 — aal2 now also means signed in since the most recent 3am Sydney |  |
 | assert_aal2() with a session older than the cut-off | execute | DENY | pglite | PK 2 — SESSION_EXPIRED, raised before the MFA check |  |
 | assert_aal2() with no session_id claim | execute | DENY | pglite | PK 1 deny by default — an unverifiable session is stale (fail closed) |  |
