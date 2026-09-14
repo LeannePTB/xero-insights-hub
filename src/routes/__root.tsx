@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { logLogin } from "@/lib/login-log-write.functions";
 import { Toaster } from "@/components/ui/sonner";
+import { clearSignInMark, markSignInNow } from "@/lib/session-cutoff";
+
 
 function NotFoundComponent() {
   return (
