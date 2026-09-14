@@ -629,3 +629,16 @@ table, policy, grant or predicate; the reasons travel through the existing `getG
 server function behind its existing `requireAal2` and read gate. Clients (non-advisors) see a
 single client-safe note with no balances, arithmetic or transaction detail. Verified: typecheck
 clean, 54/54 tests, live access 18/0/0.
+
+## Audit honours the client's GST / PAYG settings (14 Sep 2026)
+
+The Xero file audit's GST rules ("Income coded as BAS Excluded / No GST", both
+wrong-direction tax-rate checks) fired even for a client set to "Not registered"
+for GST. `runXeroAudit` now reads the client's `gst_cycle` and
+`payg_withholding_cycle` under the caller's own session and passes them into the
+rules: GST not registered silences the three BAS/GST tax rules, and registered
+for neither GST nor PAYG withholding silences the statutory-trace rule (no
+activity statement is ever lodged). Presentation/derived-data only — no new
+table, policy, grant or predicate; the audit's existing requireAal2, membership
+and widget gates are unchanged. Verified: typecheck clean, 54/54 tests, live
+access 18/0/0.
