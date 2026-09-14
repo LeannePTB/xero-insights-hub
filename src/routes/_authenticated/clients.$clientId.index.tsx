@@ -392,18 +392,32 @@ function ClientDashboard() {
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
           <div className="min-w-0">
             {isAdvisor && (
-              <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-                {sourceFirmId || client.firm_id ? (
-                  <Link
-                    to="/firms/$firmId"
-                    params={{ firmId: sourceFirmId ?? (client.firm_id as string) }}
-                  >
-                    <ArrowLeft className="mr-1 h-4 w-4" /> All clients
-                  </Link>
-                ) : (
-                  <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
-                )}
-              </Button>
+              <div className="flex flex-wrap items-center gap-x-4">
+                <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
+                  {sourceFirmId || client.firm_id ? (
+                    <Link
+                      to="/firms/$firmId"
+                      params={{ firmId: sourceFirmId ?? (client.firm_id as string) }}
+                    >
+                      <ArrowLeft className="mr-1 h-4 w-4" /> Back to organisation
+                    </Link>
+                  ) : (
+                    <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back to organisation</Link>
+                  )}
+                </Button>
+                <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
+                  {sourceFirmId || client.firm_id ? (
+                    <Link
+                      to="/firms/$firmId"
+                      params={{ firmId: sourceFirmId ?? (client.firm_id as string) }}
+                    >
+                      <ArrowLeft className="mr-1 h-4 w-4" /> All clients
+                    </Link>
+                  ) : (
+                    <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
+                  )}
+                </Button>
+              </div>
             )}
             <h1 className="truncate font-display text-2xl font-semibold sm:text-3xl">{client.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
