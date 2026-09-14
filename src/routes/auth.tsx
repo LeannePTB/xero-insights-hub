@@ -14,6 +14,8 @@ import { startXeroSignIn } from "@/lib/xero/signin.functions";
 import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
 import { useSignOut } from "@/lib/use-sign-out";
+import { takeSignInExpired } from "@/lib/session-cutoff";
+
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
