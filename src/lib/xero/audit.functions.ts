@@ -116,6 +116,19 @@ export const runXeroAudit = createServerFn({ method: "POST" })
         auditClientId,
         tenantId,
       );
+      // The client's own "How often this client lodges" settings, read under
+      // the caller's session. A client not registered for GST has no BAS, so
+      // the GST direction and BAS-exclusion rules stay silent; one registered
+      // for neither GST nor PAYG never lodges an activity statement, so the
+      // statutory-trace rule stays silent too.
+      const { data: clientRow, error: clientError } = await (context.supabase as any)
+        .from("clients")
+        .select("gst_cycle, payg_withholding_cycle")
+        .eq("id", auditClientId)
+        .maybeSingle();
+      if (clientError) throw new Error(clientError.message);
+      const gstRegistered = clientRow?.gst_cycle !== "not_registered";
+      const withholdsPayg = clientRow?.payg_withholding_cycle !== "not_registered";
       const balances = parseBalanceSheetBalances(balanceSheetRes?.Reports?.[0] ?? null);
 
 
@@ -143,12 +156,12 @@ export const runXeroAudit = createServerFn({ method: "POST" })
       };
 
       const findings = [
-        ...ruleCoaHygiene(accounts, shortCode, balances, statutoryOverrides),
+        ...ruleCoaHygiene(accounts, shortCode, balances, statutoryOverrides, { gstRegistered }),
         ...ruleBank(accounts, shortCode, balances),
         ...ruleArAp(invoices, creditNotes, shortCode),
         ...(await rulePayments(payments, shortCode, fetchDocTotals)),
-        
-        ...ruleStatutoryTrace(invoices, accounts, shortCode, statutoryOverrides),
+
+        ...ruleStatutoryTrace(invoices, accounts, shortCode, statutoryOverrides, { gstRegistered, withholdsPayg }),
       ];
 
       // Persist findings.
