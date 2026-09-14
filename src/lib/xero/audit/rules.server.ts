@@ -260,7 +260,7 @@ export function ruleCoaHygiene(
         findingKey: key("coa.wrong_tax_direction_expense", [a.AccountID]),
       });
     }
-    if (isRev && /BASEXCLUDED|NONE/.test(tax)) {
+    if (gstRegistered && isRev && /BASEXCLUDED|NONE/.test(tax)) {
       out.push({
         ruleId: "coa.income_bas_excluded",
         category: "tax",
@@ -745,7 +745,12 @@ export function ruleStatutoryTrace(
   accounts: XAccount[],
   shortCode?: string | null,
   overrides?: StatutoryOverrides,
+  opts?: { gstRegistered?: boolean; withholdsPayg?: boolean },
 ): Finding[] {
+  // A client registered for neither GST nor PAYG withholding never lodges an
+  // activity statement, so an untraceable ATO bill is not a statutory
+  // bookkeeping finding for them.
+  if (opts?.gstRegistered === false && opts?.withholdsPayg === false) return [];
   const statutory = new Set(
     accounts
       .filter((a) => {
