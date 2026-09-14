@@ -18,6 +18,7 @@ import {
   analyseAtoPayables,
   billsFromPayload,
   buildProtectedMoneySplit,
+  type AtoPayablesAnalysis,
   type ProtectedMoneySplit,
 } from "@/lib/xero/ato-payables";
 import {
@@ -209,16 +210,28 @@ export function ruleProtectedMoneyVsCash(
     .map((l) => l.accountId)
     .filter((id): id is string => typeof id === "string");
 
-  const atoAnalysis = analyseAtoPayables({
-    bills: payables ? billsFromPayload(payables.payload) : null,
-    complete: payables ? payables.complete : false,
-    periodEnd: balanceSheet.as_at,
-    statutoryAccountIds,
-    accountsById: accountRefsById(accounts?.payload),
-    balancesByAccountId: balancesByAccountId(balanceSheet.payload),
-  });
+  // A client registered for neither GST nor PAYG withholding never lodges an
+  // activity statement, so there is no lodged-and-owing split to establish.
+  // Skipping the analysis also keeps its refusal wording off the report.
+  const atoAnalysis: AtoPayablesAnalysis = !statutoryExpected
+    ? { status: "not_applicable", pattern: "direct" }
+    : analyseAtoPayables({
+        bills: payables ? billsFromPayload(payables.payload) : null,
+        complete: payables ? payables.complete : false,
+        periodEnd: balanceSheet.as_at,
+        statutoryAccountIds,
+        accountsById: accountRefsById(accounts?.payload),
+        balancesByAccountId: balancesByAccountId(balanceSheet.payload),
+      });
   const split = buildProtectedMoneySplit(protectedMoney.total, atoAnalysis);
   const splitGap = split.refusal ?? undefined;
+
+  // An unmatched GST or PAYG component is the expected position for a client
+  // registered for neither — not a gap. Super is owed whenever anyone is
+  // employed, so it is never filtered out.
+  const unresolved = statutoryExpected
+    ? protectedMoney.unresolved
+    : protectedMoney.unresolved.filter((k) => k === "super");
 
   // Nothing resolved at all. Counting components rather than hard-coding three:
   // a combined ATO account replaces the separate GST and PAYG components, so
@@ -258,10 +271,10 @@ export function ruleProtectedMoneyVsCash(
   if (!severity) {
     // An unmatched component is not a zero. If the rule would otherwise stay
     // quiet, report the gap rather than implying the client is fine.
-    if (protectedMoney.unresolved.length > 0) {
+    if (unresolved.length > 0) {
       return {
         finding: null,
-        unavailable: `Protected money is incomplete: ${protectedMoney.unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
+        unavailable: `Protected money is incomplete: ${unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
         splitGap,
         split,
         debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
@@ -271,8 +284,8 @@ export function ruleProtectedMoneyVsCash(
   }
 
   const gap =
-    protectedMoney.unresolved.length > 0
-      ? ` ${protectedMoney.unresolved.length} component(s) could not be matched, so the true figure is higher.`
+    unresolved.length > 0
+      ? ` ${unresolved.length} component(s) could not be matched, so the true figure is higher.`
       : "";
 
   // Where the split was refused, the lodged and total lines are suppressed
