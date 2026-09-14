@@ -80,8 +80,9 @@ export async function listReportsForClient(supabase: any, clientId: string) {
   const { data, error } = await supabase
     .from("client_reports")
     .select(
-      "id, period_end, version, status, title, complete, payload_version, generated_at, generated_by, sent_at, finalised_at",
+      "id, period_end, version, status, title, complete, payload_version, generated_at, generated_by, sent_at, finalised_at, video_url, video_heading, video_message, video_set_by, video_set_at",
     )
+
     .eq("client_id", clientId)
     .eq("report_key", MONTHLY_REPORT_KEY)
     .order("period_end", { ascending: false })
@@ -132,7 +133,10 @@ export async function saveDraftReport(opts: {
 
   const { data: existing, error } = await (supabaseAdmin as any)
     .from("client_reports")
-    .select("id, version, status, payload_version")
+    .select(
+      "id, version, status, payload_version, video_url, video_heading, video_message, video_set_by, video_set_at",
+    )
+
     .eq("client_id", opts.ctx.clientId)
     .eq("report_key", MONTHLY_REPORT_KEY)
     .eq("period_end", opts.periodEnd)
@@ -181,9 +185,22 @@ export async function saveDraftReport(opts: {
   }
 
   const nextVersion = (Number(latest?.version ?? 0) || 0) + 1;
+  // A personal video belongs to the PERIOD, not the version: a new version for
+  // the same period_end keeps it, so regenerating never silently drops the
+  // adviser's message. A new period starts with none.
+  const carriedVideo = latest
+    ? {
+        video_url: latest.video_url ?? null,
+        video_heading: latest.video_heading ?? null,
+        video_message: latest.video_message ?? null,
+        video_set_by: latest.video_set_by ?? null,
+        video_set_at: latest.video_set_at ?? null,
+      }
+    : {};
   const { data, error: insErr } = await (supabaseAdmin as any)
     .from("client_reports")
-    .insert({ ...row, version: nextVersion })
+    .insert({ ...row, ...carriedVideo, version: nextVersion })
+
     .select("id, version")
     .single();
   if (insErr) throw new Error(insErr.message);

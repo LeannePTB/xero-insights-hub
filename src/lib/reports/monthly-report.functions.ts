@@ -59,7 +59,10 @@ export const getStoredMonthlyReport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { data: row, error } = await context.supabase
       .from("client_reports")
-      .select("id, client_id, period_end, version, status, title, complete, payload, payload_version, generated_at")
+      .select(
+        "id, client_id, period_end, version, status, title, complete, payload, payload_version, generated_at, video_url, video_heading, video_message, video_set_by, video_set_at",
+      )
+
       .eq("id", data.reportId)
       .maybeSingle();
     if (error) throw new Error(error.message);

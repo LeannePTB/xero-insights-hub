@@ -365,7 +365,10 @@ async function resolveToken(token: string): Promise<{ recipient: Recipient; repo
 
   const { data: report } = await (supabaseAdmin as any)
     .from("client_reports")
-    .select("id, client_id, firm_id, title, period_end, version, status, payload, pdf_path")
+    .select(
+      "id, client_id, firm_id, title, period_end, version, status, payload, pdf_path, video_url, video_heading, video_message",
+    )
+
     .eq("id", rec.report_id)
     .maybeSingle();
   // Deleting a report revokes its links, but check anyway: the token must never
