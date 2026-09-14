@@ -93,7 +93,7 @@ function ReportsPage() {
     queryFn: () => listFn({ data: { clientId } }),
   });
 
-  const isAdvisor = ctxQ.data?.isAdvisor ?? false;
+  const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
 
   const client = clientQ.data?.client as any;
   const orgs: { tenantId: string; tenantName: string }[] = (client?.client_xero_orgs ?? [])
@@ -228,9 +228,29 @@ function ReportsPage() {
               version={preview.version}
               showWarnings={isAdvisor}
               showWorkflowDetails={isAdvisor}
+              video={shownVideo}
             />
+
+            {/* Super-admin only: attach or remove the personal video while the
+                shown report is still a draft. The server re-checks. */}
+            {isSuperAdmin && shownRow && shownRow.status === "draft" ? (
+              <ReportVideoEditor
+                report={shownRow}
+                onSaved={() => {
+                  qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
+                  if (selectedId) openMut.mutate({ reportId: selectedId, source: "opened" });
+                }}
+              />
+            ) : null}
+            {isSuperAdmin && shownRow && shownRow.status !== "draft" && shownVideo ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                This report has been finalised, so its video is locked. Generate a new version
+                for the period if the message needs to change.
+              </p>
+            ) : null}
           </section>
         ) : null}
+
 
         {/* Generate — preparer-only; the server refuses generation for viewers. */}
         {isAdvisor && (
