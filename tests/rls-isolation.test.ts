@@ -45,12 +45,23 @@ const ORG_B_ROW_PREDICATE: Record<string, string> = {
 
 let db: PGlite;
 
+/** One fresh session per test user: the daily 3am cut-off refuses a stale one. */
+function sessionIdFor(uid: string): string {
+  return `55555555-${uid.slice(9, 13)}-4555-8555-${uid.slice(24)}`;
+}
+
 async function asUser<T>(uid: string | null, fn: () => Promise<T>): Promise<T> {
   await db.exec("begin");
   await db.query(`select set_config('request.jwt.claims', $1, true)`, [
     // aal2: every data table now carries the RESTRICTIVE mfa_aal2_required
     // policy, so an aal1 claim would make every case below pass vacuously.
-    JSON.stringify({ sub: uid, role: "authenticated", aal: "aal2" }),
+    // session_id: the 3am sign-in cut-off resolves the session's start time.
+    JSON.stringify({
+      sub: uid,
+      role: "authenticated",
+      aal: "aal2",
+      ...(uid ? { session_id: sessionIdFor(uid) } : {}),
+    }),
   ]);
   await db.exec("set local role authenticated");
   try {
@@ -73,6 +84,8 @@ beforeAll(async () => {
   await db.exec(`
     insert into auth.users(id, email) values
       ('${USER_1}', 'user1@example.invalid'), ('${USER_NONE}', 'nobody@example.invalid'), ('${USER_B}', 'userb@example.invalid');
+    insert into auth.sessions(id, user_id, created_at) values
+      ('${sessionIdFor(USER_1)}', '${USER_1}', now()), ('${sessionIdFor(USER_NONE)}', '${USER_NONE}', now()), ('${sessionIdFor(USER_B)}', '${USER_B}', now());
     insert into public.firms(id, name, owner_user_id) values
       ('${ORG_A}', 'Org A', '${USER_1}'), ('${ORG_B}', 'Org B', '${USER_B}');
     insert into public.firm_members(id, firm_id, user_id, role, status) values

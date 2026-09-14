@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ import {
   getGroupLoanReconciliation,
   downloadGroupLoanReconciliation,
   saveGroupLoanSnapshot,
+  getLatestGroupLoanNotes,
   type ReconRow,
   type ReconRowSide,
 } from "@/lib/loan-consolidation.functions";
@@ -114,6 +115,7 @@ function LoanMatrixTab() {
   const fetchRecon = useServerFn(getGroupLoanReconciliation);
   const exportFn = useServerFn(downloadGroupLoanReconciliation);
   const saveFn = useServerFn(saveGroupLoanSnapshot);
+  const fetchNotes = useServerFn(getLatestGroupLoanNotes);
 
   const [tenantId, setTenantId] = useState<string>(ALL_FILES);
   const [asAt, setAsAt] = useState<string>(todayISO());
@@ -144,6 +146,24 @@ function LoanMatrixTab() {
   });
   const recon = reconQ.data;
 
+  // Notes typed against each loan pairing. Saved with the report and re-pulled
+  // from the group's most recent saved report so a new date range keeps them.
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const notesQ = useQuery({
+    queryKey: ["group-loan-notes", groupId],
+    queryFn: () => fetchNotes({ data: { groupId: groupId! } }),
+    enabled: !!groupId,
+  });
+  const loadedNotesGroup = useRef<string | null>(null);
+  useEffect(() => {
+    if (!groupId) return;
+    if (loadedNotesGroup.current === groupId) return;
+    if (!notesQ.data) return;
+    loadedNotesGroup.current = groupId;
+    setNotes(notesQ.data.notes ?? {});
+  }, [groupId, notesQ.data]);
+
+
   const exportMut = useMutation({
     mutationFn: (format: "pdf" | "xlsx") =>
       exportFn({ data: { groupId: groupId!, tenantId, asAt, format } }),
@@ -152,10 +172,11 @@ function LoanMatrixTab() {
   });
 
   const saveMut = useMutation({
-    mutationFn: () => saveFn({ data: { groupId: groupId!, tenantId, asAt } }),
+    mutationFn: () => saveFn({ data: { groupId: groupId!, tenantId, asAt, notes } }),
     onSuccess: () => toast.success("Report saved"),
     onError: (e: any) => toast.error(e.message),
   });
+
 
   // Unpaired accounts are excluded from the matrix — pair them on the Accounts tab.
   const sections = (recon?.files ?? [])
@@ -303,13 +324,15 @@ function LoanMatrixTab() {
                     <TableHead className="w-10 text-base font-semibold text-foreground">Dir</TableHead>
                     <TableHead className="border-l border-border text-right text-base font-semibold text-foreground">Net</TableHead>
                     <TableHead className="text-base font-semibold text-foreground">Status</TableHead>
+                    <TableHead className="w-64 text-base font-semibold text-foreground">Notes</TableHead>
+
                   </TableRow>
                 </TableHeader>
 
                 <TableBody>
                   {file.rows.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                         No loan accounts configured for this Xero file.
                       </TableCell>
                     </TableRow>
@@ -376,6 +399,17 @@ function LoanMatrixTab() {
                         <TableCell>
                           <Badge className={`${badge.cls} uppercase tracking-wide`}>{badge.label}</Badge>
                         </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Input
+                            value={notes[row.id] ?? ""}
+                            placeholder="Add a note…"
+                            maxLength={500}
+                            onChange={(e) =>
+                              setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
+                            }
+                            className="h-8 text-sm"
+                          />
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -386,6 +420,7 @@ function LoanMatrixTab() {
                         Total net
                       </TableCell>
                       <TableCell className="tabular-nums font-semibold text-primary">{num(totalNet)}</TableCell>
+                      <TableCell />
                     </TableRow>
                   )}
 

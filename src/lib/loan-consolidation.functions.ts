@@ -755,24 +755,80 @@ export const downloadGroupLoanReconciliation = createServerFn({ method: "POST" }
     };
   });
 
+/** Row notes typed on the matrix. Caller text — trimmed, capped, keyed by row id. */
+function sanitiseNotes(input: unknown): Record<string, string> {
+  if (!input || typeof input !== "object") return {};
+  const out: Record<string, string> = {};
+  let n = 0;
+  for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+    if (n >= 500) break;
+    if (typeof k !== "string" || k.length > 64) continue;
+    if (typeof v !== "string") continue;
+    const text = v.trim().slice(0, 500);
+    if (!text) continue;
+    out[k] = text;
+    n++;
+  }
+  return out;
+}
+
 export const saveGroupLoanSnapshot = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string }) => i)
+  .inputValidator((i: { groupId: string; tenantId?: string | null; asAt: string; notes?: Record<string, string> }) => i)
   .handler(async ({ data, context }) => {
     const group = await resolveLoanGroup(context.supabase, context.userId, data.groupId);
     const recon = await runGroupRecon(group, data.tenantId ?? null, data.asAt);
+    const notes = sanitiseNotes(data.notes);
     const all = !data.tenantId || data.tenantId === ALL_FILES;
+    const withNotes = {
+      ...recon,
+      notes,
+      files: (recon.files as any[]).map((f) => ({
+        ...f,
+        rows: (f.rows as any[]).map((r) => ({ ...r, note: notes[r.id] ?? null })),
+      })),
+    };
     const supabaseAdmin = await getSupabaseAdmin();
     const { error } = await supabaseAdmin.from("loan_consolidation_snapshots").insert({
       group_id: data.groupId,
       as_at: data.asAt,
       label: all ? "All Xero files" : ((recon.tenant as any).clientName ?? recon.tenant.tenantName),
-      payload: recon as any,
+      payload: withNotes as any,
       generated_by: context.userId,
     });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+/** Notes from the group's most recent saved report, so a new date range starts where the last one left off. */
+export const getLatestGroupLoanNotes = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { groupId: string }) => i)
+  .handler(async ({ data, context }) => {
+    await resolveLoanGroup(context.supabase, context.userId, data.groupId, { allowSupportRead: true });
+    const supabaseAdmin = await getSupabaseAdmin();
+    const { data: rows } = await supabaseAdmin
+      .from("loan_consolidation_snapshots")
+      .select("payload, generated_at")
+      .eq("group_id", data.groupId)
+      .order("generated_at", { ascending: false })
+      .limit(5);
+    for (const r of (rows ?? []) as any[]) {
+      const payload = r.payload ?? {};
+      const direct = sanitiseNotes(payload.notes);
+      if (Object.keys(direct).length > 0) return { notes: direct };
+      const fromRows: Record<string, string> = {};
+      for (const f of (payload.files ?? []) as any[]) {
+        for (const row of (f.rows ?? []) as any[]) {
+          if (typeof row?.note === "string" && row.note.trim()) fromRows[row.id] = row.note;
+        }
+      }
+      const cleaned = sanitiseNotes(fromRows);
+      if (Object.keys(cleaned).length > 0) return { notes: cleaned };
+    }
+    return { notes: {} as Record<string, string> };
+  });
+
 
 export const listGroupLoanSnapshots = createServerFn({ method: "POST" })
   .middleware([requireAal2])

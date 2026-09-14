@@ -68,6 +68,9 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.my_firm_ids": "The organisations the caller may reach.",
   "public.my_firm_memberships": "The caller's organisation memberships and roles.",
   "public.my_roles": "The caller's platform roles.",
+  "public.session_fresh":
+    "Whether the caller's own session began after the most recent daily 3am sign-in cut-off.",
+
   "public.user_can_access_client":
     "Legacy alias: whether a person may reach a client (superseded by the read/write pair).",
   "public.user_can_access_firm":
