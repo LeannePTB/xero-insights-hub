@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { MonthlyReportPreview } from "@/components/reports/MonthlyReportPreview";
 import { describeReportLink, openReportLink } from "@/lib/reports/report-link.functions";
+import { reportVideoFrom } from "@/lib/reports/report-video";
+
 
 export const Route = createFileRoute("/report/$token")({
   ssr: false,
@@ -116,7 +118,9 @@ function ReportLinkPage() {
           payload={opened.report.payload as any}
           status={opened.report.status}
           version={opened.report.version}
+          video={reportVideoFrom(opened.report)}
         />
+
       </Shell>
     );
   }

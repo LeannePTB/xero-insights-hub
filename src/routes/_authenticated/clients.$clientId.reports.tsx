@@ -26,6 +26,9 @@ import {
 import { getMonthlyReportPdfUrl } from "@/lib/reports/report-pdf.functions";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION, wasRateLimited } from "@/lib/reports/monthly-report";
+import { reportVideoFrom } from "@/lib/reports/report-video";
+import { ReportVideoEditor } from "@/components/reports/ReportVideoEditor";
+
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/reports")({
   head: () => ({
@@ -137,6 +140,11 @@ function ReportsPage() {
   });
 
   const reports: any[] = listQ.data?.reports ?? [];
+  // The row for the report currently shown. The video columns live on the row,
+  // not in the payload, so both the player and the editor read them from here.
+  const shownRow = reports.find((r) => r.id === selectedId) ?? null;
+  const shownVideo = reportVideoFrom(shownRow);
+
   // Auto-load the most recent stored report (period_end desc, version desc — the
   // order the list already comes back in). Never recomputes; reads the snapshot only.
   const autoLoadedFor = useRef<string | null>(null);
