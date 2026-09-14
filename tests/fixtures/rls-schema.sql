@@ -966,6 +966,7 @@ AS $function$
            nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'aal',
            ''
          ) = 'aal2'
+         and app_private.is_session_fresh()
   end
 $function$
 ;
@@ -975,44 +976,13 @@ CREATE OR REPLACE FUNCTION app_private.assert_aal2()
  STABLE
  SET search_path TO ''
 AS $function$
-declare
-  _claims jsonb;
-  _session_id uuid;
-  _signed_in_at timestamptz;
-  _cutoff timestamptz;
 begin
+  if not app_private.is_session_fresh() then
+    raise exception 'SESSION_EXPIRED' using errcode = 'insufficient_privilege';
+  end if;
+
   if not app_private.is_aal2() then
     raise exception 'MFA_REQUIRED' using errcode = 'insufficient_privilege';
-  end if;
-
-  _claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
-
-  -- No request context or service role: system context, cut-off does not apply.
-  if _claims is null or coalesce(_claims ->> 'role', '') = 'service_role' then
-    return true;
-  end if;
-
-  _session_id := nullif(_claims ->> 'session_id', '')::uuid;
-  if _session_id is null then
-    raise exception 'SESSION_EXPIRED' using errcode = 'insufficient_privilege';
-  end if;
-
-  select s.created_at into _signed_in_at
-  from auth.sessions s
-  where s.id = _session_id;
-
-  if _signed_in_at is null then
-    raise exception 'SESSION_EXPIRED' using errcode = 'insufficient_privilege';
-  end if;
-
-  -- Most recent 3am Australia/Sydney, expressed in UTC. AT TIME ZONE on a
-  -- local timestamp interprets it as Sydney wall-clock time, so AEST/AEDT
-  -- transitions are handled by the tz database.
-  _cutoff := ((timezone('Australia/Sydney', now())::date + interval '3 hours')
-              at time zone 'Australia/Sydney');
-
-  if _signed_in_at < _cutoff then
-    raise exception 'SESSION_EXPIRED' using errcode = 'insufficient_privilege';
   end if;
 
   return true;
@@ -1548,6 +1518,49 @@ begin
   values (auth.uid(), _firm, 'client_viewer_relationship_changed', 'client', _client::text,
           jsonb_build_object('user_id', _user, 'previous_relationship', _previous,
                              'relationship', _relationship));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.is_session_fresh()
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  _claims jsonb;
+  _session_id uuid;
+  _signed_in_at timestamptz;
+  _cutoff timestamptz;
+begin
+  _claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+
+  -- No request context (cron, migrations, maintenance) or service role
+  -- (webhooks, OAuth callback, email queue): system contexts, not a person.
+  if _claims is null or coalesce(_claims ->> 'role', '') = 'service_role' then
+    return true;
+  end if;
+
+  _session_id := nullif(_claims ->> 'session_id', '')::uuid;
+  if _session_id is null then
+    return false;
+  end if;
+
+  select s.created_at into _signed_in_at
+  from auth.sessions s
+  where s.id = _session_id;
+
+  if _signed_in_at is null then
+    return false;
+  end if;
+
+  -- Most recent 3am Australia/Sydney, in UTC. AT TIME ZONE interprets the
+  -- local timestamp as Sydney wall-clock, so AEST/AEDT is handled by the tz
+  -- database.
+  _cutoff := ((timezone('Australia/Sydney', now())::date + interval '3 hours')
+              at time zone 'Australia/Sydney');
+
+  return _signed_in_at >= _cutoff;
 end;
 $function$
 ;
@@ -2592,4 +2605,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 0253986a8edd9c35a03dca1f4fbb1547ec27a86f9d9dfaf1ef1cf05c29e45ad8
+-- catalogue-fingerprint: b10fcea6114e280453d792248f91ed7c0f72cd1d1e65c0694407801246ffca3f
