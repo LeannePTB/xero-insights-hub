@@ -144,6 +144,24 @@ function LoanMatrixTab() {
   });
   const recon = reconQ.data;
 
+  // Notes typed against each loan pairing. Saved with the report and re-pulled
+  // from the group's most recent saved report so a new date range keeps them.
+  const [notes, setNotes] = useState<Record<string, string>>({});
+  const notesQ = useQuery({
+    queryKey: ["group-loan-notes", groupId],
+    queryFn: () => fetchNotes({ data: { groupId: groupId! } }),
+    enabled: !!groupId,
+  });
+  const loadedNotesGroup = useRef<string | null>(null);
+  useEffect(() => {
+    if (!groupId) return;
+    if (loadedNotesGroup.current === groupId) return;
+    if (!notesQ.data) return;
+    loadedNotesGroup.current = groupId;
+    setNotes(notesQ.data.notes ?? {});
+  }, [groupId, notesQ.data]);
+
+
   const exportMut = useMutation({
     mutationFn: (format: "pdf" | "xlsx") =>
       exportFn({ data: { groupId: groupId!, tenantId, asAt, format } }),
