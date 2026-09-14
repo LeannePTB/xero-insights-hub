@@ -17,7 +17,7 @@ type Props = {
  * logo · divider · wordmark on the left, actions / bell / avatar / sign out on the right.
  */
 export function AppHeader({ actions }: Props) {
-  const navigate = useNavigate();
+  const handleSignOut = useSignOut();
   const [initial, setInitial] = useState("");
 
   useEffect(() => {
@@ -32,15 +32,6 @@ export function AppHeader({ actions }: Props) {
     };
   }, []);
 
-  async function handleSignOut() {
-    try {
-      await logAuthEvent({ data: { action: "signed_out" } });
-    } catch {
-      /* audit is best-effort */
-    }
-    await supabase.auth.signOut();
-    navigate({ to: "/auth" });
-  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/60 bg-card">
