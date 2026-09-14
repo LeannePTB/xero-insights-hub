@@ -224,14 +224,6 @@ function ReportsPage() {
                     : "Stored report (as generated)"}
               </p>
             )}
-            <MonthlyReportPreview
-              payload={preview.payload}
-              status={preview.status}
-              version={preview.version}
-              showWarnings={isAdvisor}
-              showWorkflowDetails={isAdvisor}
-              video={shownVideo}
-            />
 
             {/* Super-admin only: attach or remove the personal video while the
                 shown report is still a draft. The server re-checks. */}
@@ -240,16 +232,24 @@ function ReportsPage() {
                 report={shownRow}
                 onSaved={() => {
                   qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
-                  if (selectedId) openMut.mutate({ reportId: selectedId, source: "opened" });
                 }}
               />
             ) : null}
             {isSuperAdmin && shownRow && shownRow.status !== "draft" && shownVideo ? (
-              <p className="mt-3 text-xs text-muted-foreground">
+              <p className="mb-3 text-xs text-muted-foreground">
                 This report has been finalised, so its video is locked. Generate a new version
                 for the period if the message needs to change.
               </p>
             ) : null}
+
+            <MonthlyReportPreview
+              payload={preview.payload}
+              status={preview.status}
+              version={preview.version}
+              showWarnings={isAdvisor}
+              showWorkflowDetails={isAdvisor}
+              video={shownVideo}
+            />
           </section>
         ) : null}
 
