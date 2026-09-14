@@ -183,7 +183,15 @@ export function ruleProtectedMoneyVsCash(
   }
 
   const unavailable = taxExtractionUnavailable(analysed.taxLines);
-  if (unavailable) return { finding: null, unavailable };
+  if (unavailable) {
+    // Absence is only a gap when a statutory balance could be expected. A
+    // client registered for neither GST nor PAYG withholding, with no super
+    // balance either, correctly shows nothing — silence, not a partial review.
+    if (analysed.taxLines.status === "absent" && !statutoryExpected) {
+      return { finding: null };
+    }
+    return { finding: null, unavailable };
+  }
 
   const protectedMoney = buildProtectedMoney(balanceSheet.as_at, analysed.taxLines.lines);
   const cash = analysed.cashAtBank.status === "assessed" ? analysed.cashAtBank.total : null;
