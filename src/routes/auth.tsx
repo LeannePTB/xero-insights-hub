@@ -61,7 +61,11 @@ function AuthPage() {
     if (params.get("xero") === "signedin") {
       toast.success("Signed in with Xero");
     }
+    if (takeSignInExpired()) {
+      toast.info("Daily sign-in required — please sign in again.");
+    }
   }, []);
+
 
   useEffect(() => {
     (async () => {
