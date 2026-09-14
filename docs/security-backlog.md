@@ -794,3 +794,23 @@ observed this turn (it runs behind aal2 in the live app). Its inputs were
 verified directly: `curl -D -` on the published origin and the custom domain
 shows HSTS, nosniff, referrer-policy, `x-frame-options: DENY`,
 permissions-policy and report-only CSP.
+
+## 15 Sep 2026 — Two monitoring findings closed
+
+- **CLOSED — Xero connection save failed with 42703.**
+  `app_private.assert_xero_connection_firm_match()` resolved the connection id
+  with one CASE expression referencing `NEW.xero_connection_id`; plpgsql plans
+  the whole expression, so the trigger on `xero_connections` (AFTER UPDATE OF
+  firm_id) raised `record "new" has no field "xero_connection_id"` and the
+  callback redirected with `xero_error=db`. Rewritten with IF/ELSE so each field
+  reference is parsed only in its own branch. No signature, grant, policy or
+  trigger definition change; the organisation-match rule itself is unchanged and
+  still fires on both tables. Verified by behaviour: `SET CONSTRAINTS ALL
+  IMMEDIATE` plus a no-op `firm_id` update now succeeds. Fixture regenerated
+  (255 policies, fingerprint MATCH).
+- **CLOSED — client-facing GST note named the wrong cause.** The note asserted
+  manual journals whatever the calculation found. `GstResult` now carries
+  `tieReasonCodes` ("journals" | "rounding" | "timing") alongside the existing
+  adviser wording, and the client note names only the reasons found, in the same
+  order as the adviser list. Presentation and derived data only — no new Xero
+  calls, no policy, grant or predicate change.
