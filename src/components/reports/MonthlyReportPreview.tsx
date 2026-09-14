@@ -237,9 +237,17 @@ export function MonthlyReportPreview({
               </p>
             ) : null}
             <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg bg-background">
+              {/* APPROVED IFRAME BUILDER — the only iframe in the app. The src
+                  is rebuilt from parseLoomId()'s alphanumeric id, never from
+                  the stored string, and the frame is sandboxed so a compromised
+                  embed cannot navigate the page, open popups or read our
+                  storage. A static guard fails the build on any other iframe. */}
               <iframe
                 src={`https://www.loom.com/embed/${loomId}`}
                 title={video?.heading?.trim() || DEFAULT_VIDEO_HEADING}
+                sandbox="allow-scripts allow-same-origin allow-presentation"
+                allow="fullscreen; picture-in-picture"
+                referrerPolicy="strict-origin-when-cross-origin"
                 allowFullScreen
                 className="h-full w-full border-0"
               />

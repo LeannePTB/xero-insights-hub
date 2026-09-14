@@ -6,6 +6,7 @@ import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { writeAudit } from "@/lib/audit.server";
 import { READ_ACTION_REPORT, READ_ACTION_XERO } from "@/lib/audit/read-keys";
+import { csvCell } from "@/lib/csv";
 
 function requestIp(): string | null {
   return (
@@ -180,11 +181,7 @@ export const getAuditAnomalies = createServerFn({ method: "GET" })
     return { anomalies, generatedAt: new Date().toISOString() };
   });
 
-function csvCell(v: unknown): string {
-  if (v === null || v === undefined) return "";
-  const s = typeof v === "object" ? JSON.stringify(v) : String(v);
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
+// The CSV cell escaper lives in @/lib/csv — one implementation, formula-safe.
 
 /**
  * Super-admin CSV export of the audit trail for auditors.

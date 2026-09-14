@@ -141,9 +141,21 @@ export const uploadStatementLines = createServerFn({ method: "POST" })
     }
     if (!data.csv?.trim()) throw new Error("Empty file.");
     if (data.csv.length > 5_000_000) throw new Error("File too large (max 5MB).");
+    // Malformed or hostile input is bounded before it is parsed: a file of one
+    // enormous line, or of a million short ones, must fail fast rather than
+    // occupy the worker.
+    if (data.csv.split("\n").length > 50_000) {
+      throw new Error("That file has too many rows (max 50,000). Export a shorter date range.");
+    }
+    if (data.csv.split("\n").some((line) => line.length > 10_000)) {
+      throw new Error("That file has a line that is too long to be a bank statement row.");
+    }
 
     const parsed = parseStatementCsv(data.csv);
     if (parsed.length === 0) throw new Error("No statement lines found in this file.");
+    if (parsed.length > 20_000) {
+      throw new Error("That file has too many statement lines (max 20,000).");
+    }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 

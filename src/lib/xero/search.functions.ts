@@ -30,8 +30,14 @@ function fmtDate(s?: string) {
   return d ? d.toISOString().slice(0, 10) : null;
 }
 function esc(q: string) {
-  // Escape double-quotes for Xero where clause
-  return q.replace(/"/g, '\\"');
+  // The search term is interpolated into a Xero `where` expression, so it is
+  // treated as hostile: control characters and backslashes are dropped (a
+  // trailing backslash would otherwise escape our own closing quote and let the
+  // rest of the term become expression syntax), then double-quotes are escaped.
+  return q
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f\\]/g, " ")
+    .replace(/"/g, '\\"');
 }
 
 export type UnavailableOrg = { tenantId: string; tenantName: string; reason: string };
