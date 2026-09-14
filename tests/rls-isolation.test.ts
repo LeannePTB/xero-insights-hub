@@ -173,17 +173,36 @@ describe("cross-organisation isolation", () => {
     }
   }
 
-  it("a session that began before the most recent 3am Sydney is refused", async () => {
+  it("a session that began before the most recent 3am Sydney sees no client data", async () => {
     // Same person, same organisation, same aal2 claim — only the session is old.
     await db.exec(
       `insert into auth.sessions(id, user_id, created_at) values
          ('${STALE_SESSION}', '${USER_1}', now() - interval '3 days')
        on conflict (id) do update set created_at = now() - interval '3 days'`,
     );
+    const visible = await asStaleUser(() => countVisible("client_notes", `client_id = '${CLIENT_A}'`));
+    expect(visible).toBe(0);
+  });
+
+  it("a stale session is refused by the server-side aal2 assertion", async () => {
     await expect(
-      asStaleUser(() => countVisible("client_notes", `client_id = '${CLIENT_A}'`)),
+      asStaleUser(() => db.query(`select app_private.assert_aal2()`)),
     ).rejects.toThrow(/SESSION_EXPIRED/);
   });
+
+  it("a session with no session_id claim is treated as stale", async () => {
+    await db.exec("begin");
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [
+      JSON.stringify({ sub: USER_1, role: "authenticated", aal: "aal2" }),
+    ]);
+    await db.exec("set local role authenticated");
+    try {
+      expect(await countVisible("client_notes", `client_id = '${CLIENT_A}'`)).toBe(0);
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+
 
   it("a session that began after the most recent 3am Sydney is accepted", async () => {
     const visible = await asUser(USER_1, () =>
