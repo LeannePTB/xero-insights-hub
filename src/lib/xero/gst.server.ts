@@ -336,7 +336,10 @@ export async function computeGstReconciliation(
   }
 
   let payg: PaygSection;
-  if (paygAccounts.length === 0) {
+  if (!withholdsPayg) {
+    // The client says it does not withhold: honour it by not looking.
+    payg = { status: "not_applicable" };
+  } else if (paygAccounts.length === 0) {
     payg = {
       status: "unresolved",
       reason:
