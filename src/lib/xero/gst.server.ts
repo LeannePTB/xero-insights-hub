@@ -78,6 +78,9 @@ export type PaygPayrollSection =
   | { status: "not_authorised"; reason: string }
   | { status: "unavailable"; reason: string };
 
+/** Why the GST figures might not tie, as a machine code. */
+export type GstTieReasonCode = "journals" | "rounding" | "timing";
+
 export type GstResult = {
   asAt: string;
   window: ReconWindow;
@@ -95,6 +98,9 @@ export type GstResult = {
   ties: boolean;
   /** Plain-language reasons the figures might not tie. Empty when they tie. */
   tieReasons: string[];
+  /** The same reasons as machine codes, so a client-facing summary can name
+   *  the actual cause instead of assuming one. Same order as `tieReasons`. */
+  tieReasonCodes: GstTieReasonCode[];
   complete: boolean;
   issues: string[];
   /** Balance-derived, preparer-only. The front page uses `paygPayroll`. */
@@ -325,11 +331,13 @@ export async function computeGstReconciliation(
   // above — no extra Xero calls — so the card can explain the gap instead of
   // calling it "unexplained".
   const tieReasons: string[] = [];
+  const tieReasonCodes: GstTieReasonCode[] = [];
   if (!ties && difference !== null) {
     if (journalsMissing) {
       tieReasons.push(
         "Manual journals posted straight to the GST account are not included — Xero does not let us read manual journals for this organisation, so any journal touching the GST account shows up as part of this difference.",
       );
+      tieReasonCodes.push("journals");
     }
     if (
       gstOnSales !== null &&
@@ -340,12 +348,14 @@ export async function computeGstReconciliation(
       tieReasons.push(
         "Rounding on the lodged form — the activity statement rounds each box down to whole dollars, while these figures keep the cents.",
       );
+      tieReasonCodes.push("rounding");
     }
     const latePayments = movements.filter((m) => m.date && m.date > to).length;
     if (latePayments > 0) {
       tieReasons.push(
         "Timing — a payment to the ATO was dated after the end of this period, so it sits on the balance sheet but outside this period's figures.",
       );
+      tieReasonCodes.push("timing");
     }
   }
 
@@ -472,6 +482,7 @@ export async function computeGstReconciliation(
     difference,
     ties,
     tieReasons,
+    tieReasonCodes,
     complete,
     issues,
     payg,
