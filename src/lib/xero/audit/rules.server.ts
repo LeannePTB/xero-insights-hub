@@ -232,7 +232,7 @@ export function ruleCoaHygiene(
       });
       continue;
     }
-    if (isRev && /EXEMPTEXPENSES|INPUT|GSTONCAPITAL|GSTONIMPORTS/.test(tax)) {
+    if (gstRegistered && isRev && /EXEMPTEXPENSES|INPUT|GSTONCAPITAL|GSTONIMPORTS/.test(tax)) {
       out.push({
         ruleId: "coa.wrong_tax_direction_income",
         category: "tax",
@@ -246,7 +246,7 @@ export function ruleCoaHygiene(
         findingKey: key("coa.wrong_tax_direction_income", [a.AccountID]),
       });
     }
-    if (isExp && /OUTPUT|EXEMPTOUTPUT|BASEXCLUDED.*INCOME/.test(tax)) {
+    if (gstRegistered && isExp && /OUTPUT|EXEMPTOUTPUT|BASEXCLUDED.*INCOME/.test(tax)) {
       out.push({
         ruleId: "coa.wrong_tax_direction_expense",
         category: "tax",
