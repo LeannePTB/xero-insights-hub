@@ -157,6 +157,41 @@ describe("cross-organisation isolation", () => {
       }
     });
   });
+  // ---------------------------------- daily 3am sign-in cut-off
+  const STALE_SESSION = "66666666-6666-4666-8666-666666666666";
+
+  async function asStaleUser<T>(fn: () => Promise<T>): Promise<T> {
+    await db.exec("begin");
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [
+      JSON.stringify({ sub: USER_1, role: "authenticated", aal: "aal2", session_id: STALE_SESSION }),
+    ]);
+    await db.exec("set local role authenticated");
+    try {
+      return await fn();
+    } finally {
+      await db.exec("rollback");
+    }
+  }
+
+  it("a session that began before the most recent 3am Sydney is refused", async () => {
+    // Same person, same organisation, same aal2 claim — only the session is old.
+    await db.exec(
+      `insert into auth.sessions(id, user_id, created_at) values
+         ('${STALE_SESSION}', '${USER_1}', now() - interval '3 days')
+       on conflict (id) do update set created_at = now() - interval '3 days'`,
+    );
+    await expect(
+      asStaleUser(() => countVisible("client_notes", `client_id = '${CLIENT_A}'`)),
+    ).rejects.toThrow(/SESSION_EXPIRED/);
+  });
+
+  it("a session that began after the most recent 3am Sydney is accepted", async () => {
+    const visible = await asUser(USER_1, () =>
+      countVisible("client_notes", `client_id = '${CLIENT_A}'`),
+    );
+    expect(visible).toBe(1);
+  });
+
 
   it("no policy on a data table is USING (true)", async () => {
     // The only permitted USING (true) policies, all owner-recorded:
