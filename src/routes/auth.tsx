@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { logFailedSignIn } from "@/lib/audit.functions";
-import { Loader2 } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { startXeroSignIn } from "@/lib/xero/signin.functions";
 import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
+import { useSignOut } from "@/lib/use-sign-out";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
