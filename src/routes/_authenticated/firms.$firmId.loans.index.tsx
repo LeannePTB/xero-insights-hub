@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, ExternalLink, FileDown, Save, AlertTriangle } from "lucide-react";
+import { Loader2, ExternalLink, FileDown, Save, AlertTriangle, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -32,9 +32,13 @@ import {
   downloadGroupLoanReconciliation,
   saveGroupLoanSnapshot,
   getLatestGroupLoanNotes,
+  listGroupLoanSnapshots,
+  getGroupLoanSnapshot,
+  deleteGroupLoanSnapshot,
   type ReconRow,
   type ReconRowSide,
 } from "@/lib/loan-consolidation.functions";
+
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/loans/")({
   component: LoanMatrixTab,
@@ -116,6 +120,10 @@ function LoanMatrixTab() {
   const exportFn = useServerFn(downloadGroupLoanReconciliation);
   const saveFn = useServerFn(saveGroupLoanSnapshot);
   const fetchNotes = useServerFn(getLatestGroupLoanNotes);
+  const fetchSnapshots = useServerFn(listGroupLoanSnapshots);
+  const fetchSnapshot = useServerFn(getGroupLoanSnapshot);
+  const deleteFn = useServerFn(deleteGroupLoanSnapshot);
+
 
   const [tenantId, setTenantId] = useState<string>(ALL_FILES);
   const [asAt, setAsAt] = useState<string>(todayISO());
@@ -164,6 +172,27 @@ function LoanMatrixTab() {
   }, [groupId, notesQ.data]);
 
 
+  // Saved reports for this group, and the one being viewed (if any). Opening a
+  // saved report shows its stored figures and notes instead of the live pull.
+  const [openSnapshotId, setOpenSnapshotId] = useState<string | null>(null);
+  useEffect(() => {
+    setOpenSnapshotId(null);
+  }, [groupId]);
+
+  const snapshotsQ = useQuery({
+    queryKey: ["group-loan-snapshots", groupId],
+    queryFn: () => fetchSnapshots({ data: { groupId: groupId! } }),
+    enabled: !!groupId,
+  });
+  const snapshots = snapshotsQ.data?.snapshots ?? [];
+
+  const openSnapshotQ = useQuery({
+    queryKey: ["group-loan-snapshot", groupId, openSnapshotId],
+    queryFn: () => fetchSnapshot({ data: { groupId: groupId!, snapshotId: openSnapshotId! } }),
+    enabled: !!groupId && !!openSnapshotId,
+  });
+  const openSnapshot = openSnapshotId ? openSnapshotQ.data : undefined;
+
   const exportMut = useMutation({
     mutationFn: (format: "pdf" | "xlsx") =>
       exportFn({ data: { groupId: groupId!, tenantId, asAt, format } }),
@@ -173,15 +202,32 @@ function LoanMatrixTab() {
 
   const saveMut = useMutation({
     mutationFn: () => saveFn({ data: { groupId: groupId!, tenantId, asAt, notes } }),
-    onSuccess: () => toast.success("Report saved"),
+    onSuccess: () => {
+      toast.success("Report saved");
+      snapshotsQ.refetch();
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (snapshotId: string) => deleteFn({ data: { groupId: groupId!, snapshotId } }),
+    onSuccess: (_r, snapshotId) => {
+      if (openSnapshotId === snapshotId) setOpenSnapshotId(null);
+      toast.success("Saved report deleted");
+      snapshotsQ.refetch();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   // Unpaired accounts are excluded from the matrix — pair them on the Accounts tab.
-  const sections = (recon?.files ?? [])
-    .map((f: any) => ({ ...f, rows: f.rows.filter((r: ReconRow) => r.status !== "unpaired") }))
+  const shownFiles = openSnapshot ? ((openSnapshot.payload as any)?.files ?? []) : (recon?.files ?? []);
+  const shownNotes: Record<string, string> = openSnapshot
+    ? ((openSnapshot.payload as any)?.notes ?? {})
+    : notes;
+  const sections = (shownFiles as any[])
+    .map((f: any) => ({ ...f, rows: (f.rows ?? []).filter((r: ReconRow) => r.status !== "unpaired") }))
     .filter((f: any) => f.rows.length > 0);
+
 
   return (
     <div className="space-y-6">
@@ -203,10 +249,11 @@ function LoanMatrixTab() {
               <FileDown className="mr-2 h-4 w-4" /> Download Excel
             </Button>
           </div>
-          <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !groupId}>
+          <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !groupId || !!openSnapshotId}>
             {saveMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save report
           </Button>
+
         </div>
       </div>
 
@@ -265,22 +312,54 @@ function LoanMatrixTab() {
         </p>
       )}
 
-      {reconQ.isLoading && (
+      {openSnapshotId && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm">
+          <p className="text-foreground">
+            Viewing a saved report
+            {openSnapshot ? (
+              <>
+                {" "}— balances as at {openSnapshot.asAt}
+                {openSnapshot.label ? ` · ${openSnapshot.label}` : ""}, saved{" "}
+                {new Date(openSnapshot.generatedAt).toLocaleString("en-AU")}
+              </>
+            ) : (
+              "…"
+            )}
+          </p>
+          <Button variant="outline" size="sm" onClick={() => setOpenSnapshotId(null)}>
+            Back to live figures
+          </Button>
+        </div>
+      )}
+
+      {openSnapshotId && openSnapshotQ.isLoading && (
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Opening saved report…
+        </p>
+      )}
+      {openSnapshotId && openSnapshotQ.error && (
+        <p className="flex items-center gap-2 text-sm text-destructive">
+          <AlertTriangle className="h-4 w-4" /> {(openSnapshotQ.error as Error).message}
+        </p>
+      )}
+
+      {!openSnapshotId && reconQ.isLoading && (
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" /> Loading balances from Xero…
         </p>
       )}
-      {reconQ.error && (
+      {!openSnapshotId && reconQ.error && (
         <p className="flex items-center gap-2 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4" /> {(reconQ.error as Error).message}
         </p>
       )}
 
-      {recon && sections.length === 0 && (
+      {!openSnapshotId && recon && sections.length === 0 && (
         <p className="rounded-xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
           No loan accounts set up for this group yet. Use the Accounts tab to pair them.
         </p>
       )}
+
 
       {sections.map((file: any) => {
         const totalNet = file.rows.reduce((s: number, r: ReconRow) => s + (r.net ?? 0), 0);
@@ -400,16 +479,23 @@ function LoanMatrixTab() {
                           <Badge className={`${badge.cls} uppercase tracking-wide`}>{badge.label}</Badge>
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Input
-                            value={notes[row.id] ?? ""}
-                            placeholder="Add a note…"
-                            maxLength={500}
-                            onChange={(e) =>
-                              setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
-                            }
-                            className="h-8 text-sm"
-                          />
+                          {openSnapshotId ? (
+                            <p className="text-sm text-muted-foreground">
+                              {shownNotes[row.id] ?? "—"}
+                            </p>
+                          ) : (
+                            <Input
+                              value={shownNotes[row.id] ?? ""}
+                              placeholder="Add a note…"
+                              maxLength={500}
+                              onChange={(e) =>
+                                setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
+                              }
+                              className="h-8 text-sm"
+                            />
+                          )}
                         </TableCell>
+
                       </TableRow>
                     );
                   })}
@@ -437,6 +523,70 @@ function LoanMatrixTab() {
         );
       })}
 
+      {groupId && (
+        <section className="space-y-3">
+          <h3 className="font-display text-lg font-semibold">Past reports</h3>
+          {snapshotsQ.isLoading && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading saved reports…
+            </p>
+          )}
+          {!snapshotsQ.isLoading && snapshots.length === 0 && (
+            <p className="rounded-xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+              No saved reports yet. Press “Save report” to keep a snapshot of these balances and notes.
+            </p>
+          )}
+          {snapshots.length > 0 && (
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-border bg-primary/5 hover:bg-primary/5">
+                    <TableHead>Balances as at</TableHead>
+                    <TableHead>Xero file</TableHead>
+                    <TableHead>Saved</TableHead>
+                    <TableHead className="w-40 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {snapshots.map((s) => (
+                    <TableRow key={s.id} className={openSnapshotId === s.id ? "bg-primary/5" : ""}>
+                      <TableCell className="font-medium">{s.asAt}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{s.label || "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(s.generatedAt).toLocaleString("en-AU")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setOpenSnapshotId(s.id);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                          >
+                            Open
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteMut.mutate(s.id)}
+                            disabled={deleteMut.isPending}
+                            aria-label="Delete saved report"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
+      )}
+
       <MismatchDetailDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -447,3 +597,4 @@ function LoanMatrixTab() {
     </div>
   );
 }
+
