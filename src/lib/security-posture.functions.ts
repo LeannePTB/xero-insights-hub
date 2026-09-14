@@ -125,6 +125,64 @@ async function serverConfigChecks(attestations: Attestation[]): Promise<PostureC
     });
   }
 
+  // Browser-side response headers — read from the headers actually served on
+  // the canonical public origin, never assumed from the middleware source.
+  // Added by the injection review (14 Sep 2026).
+  try {
+    const res = await fetch(origin, { method: "HEAD", signal: AbortSignal.timeout(5000) });
+    const get = (n: string) => res.headers.get(n);
+    const cspEnforced = get("content-security-policy");
+    const cspReportOnly = get("content-security-policy-report-only");
+    const csp = cspEnforced ?? cspReportOnly;
+    const nosniff = (get("x-content-type-options") ?? "").toLowerCase().includes("nosniff");
+    const referrer = get("referrer-policy");
+    const frameOptions = get("x-frame-options");
+    const frameAncestors = csp && /frame-ancestors/.test(csp);
+    const framingBlocked = Boolean(frameOptions) || Boolean(frameAncestors);
+
+    const missing: string[] = [];
+    if (!nosniff) missing.push("x-content-type-options: nosniff");
+    if (!referrer) missing.push("referrer-policy");
+    if (!framingBlocked) missing.push("x-frame-options or CSP frame-ancestors");
+
+    const permissive: string[] = [];
+    if (csp && !cspEnforced) permissive.push("CSP is report-only, so nothing is blocked");
+    if (csp && /'unsafe-inline'/.test(csp)) permissive.push("CSP allows 'unsafe-inline'");
+    if (csp && /'unsafe-eval'/.test(csp)) permissive.push("CSP allows 'unsafe-eval'");
+
+    const status: PostureStatus =
+      !csp || missing.length > 0 ? "action" : permissive.length > 0 ? "warn" : "ok";
+
+    out.push({
+      id: "http_headers",
+      title: "Browser response headers",
+      status,
+      detail: !csp
+        ? "No Content-Security-Policy is served, so the browser has no injection backstop."
+        : missing.length > 0
+          ? `Missing on the public origin: ${missing.join("; ")}.`
+          : permissive.length > 0
+            ? `Headers are served, with weaknesses: ${permissive.join("; ")}.`
+            : "The public site sends an enforced Content-Security-Policy, nosniff, a referrer policy and framing protection.",
+      evidence: `HEAD ${origin} → ${res.status}; content-security-policy: ${
+        cspEnforced ? "enforced" : cspReportOnly ? "report-only" : "absent"
+      }; x-content-type-options: ${get("x-content-type-options") ?? "absent"}; referrer-policy: ${
+        referrer ?? "absent"
+      }; x-frame-options: ${frameOptions ?? "absent"}; frame-ancestors: ${
+        frameAncestors ? "present" : "absent"
+      }`,
+    });
+  } catch {
+    out.push({
+      id: "http_headers",
+      title: "Browser response headers",
+      status: "warn",
+      detail: `Not verified — the server could not read the headers served at ${origin}.`,
+      evidence: "HEAD request to the public origin failed",
+    });
+  }
+
+
   // Leaked-password protection is an auth provider setting the app cannot read.
   // There is no machine-readable source, so the only honest evidence is a
   // recorded human confirmation (see ATTESTABLE_CHECKS). The attestation NEVER
