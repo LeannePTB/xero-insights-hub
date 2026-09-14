@@ -7,13 +7,14 @@ import { getMyContext } from "@/lib/roles.functions";
 import { recordPresence } from "@/lib/security-posture.functions";
 import { AdminNavShell } from "@/components/admin/AdminNavShell";
 import { GlobalSignOut } from "@/components/GlobalSignOut";
-import { clearSignInMark, isSessionStale, markSignInExpired } from "@/lib/session-cutoff";
+import { clearSignInMark, isSessionStale, isTokenStale, markSignInExpired } from "@/lib/session-cutoff";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
+    const { data: sessionData } = await supabase.auth.getSession();
 
     // MFA enforcement: every authenticated user must have a verified TOTP
     // factor and the current session must be at AAL2.
@@ -28,7 +29,10 @@ export const Route = createFileRoute("/_authenticated")({
     // Australia/Sydney is finished with. This is the UX half — the database
     // (app_private.assert_aal2) and the server middleware are the enforcement,
     // so a tampered browser hint buys nothing but a broken page.
-    if (isSessionStale()) {
+    if (
+      isTokenStale(sessionData.session?.access_token) ||
+      isSessionStale()
+    ) {
       clearSignInMark();
       markSignInExpired();
       await supabase.auth.signOut();

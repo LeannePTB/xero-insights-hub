@@ -52,18 +52,64 @@ export function clearSignInMark() {
 }
 
 /**
- * True when the browser has no record of a sign-in after the most recent 3am
- * Sydney. Missing record = stale (fail closed; a genuine fresh sign-in always
- * writes the mark via the SIGNED_IN listener).
+ * When the SESSION behind an access token began, in ms. Read from the token's
+ * `amr` entries (the password and MFA steps), which survive hourly refreshes;
+ * `iat` is only a last-resort fallback. Mirrors the server middleware. The
+ * signature is never checked here: this can only ever DENY earlier than the
+ * database, which applies the same cut-off against auth.sessions.
+ */
+export function sessionStartedAtMsFromToken(accessToken: string): number | null {
+  const parts = accessToken.split(".");
+  if (parts.length !== 3) return null;
+  try {
+    const b64 = parts[1]!.replace(/-/g, "+").replace(/_/g, "/");
+    const json = JSON.parse(atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, "="))) as {
+      iat?: unknown;
+      amr?: unknown;
+    };
+    const stamps = Array.isArray(json.amr)
+      ? json.amr
+          .map((e) =>
+            e && typeof e === "object" && typeof (e as { timestamp?: unknown }).timestamp === "number"
+              ? (e as { timestamp: number }).timestamp
+              : null,
+          )
+          .filter((n): n is number => n !== null)
+      : [];
+    if (stamps.length > 0) return Math.min(...stamps) * 1000;
+    return typeof json.iat === "number" ? json.iat * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * True when the session behind this access token began before the most recent
+ * 3am Sydney. The token itself is the source of truth, so a lost or cleared
+ * browser hint can never lock a freshly signed-in person out. A token we cannot
+ * read at all is treated as fresh here and refused by the server and database
+ * instead — the browser layer may only deny earlier, never be the control.
+ */
+export function isTokenStale(accessToken: string | null | undefined, now: Date = new Date()) {
+  if (!accessToken) return false;
+  const startedAt = sessionStartedAtMsFromToken(accessToken);
+  if (startedAt === null) return false;
+  return startedAt < dailySignInCutoff(now).getTime();
+}
+
+/**
+ * Legacy browser-hint check, kept for the sign-in timestamp written at
+ * SIGNED_IN. Only consulted as a secondary signal now: a missing hint is NOT
+ * treated as stale, because preview/partitioned storage can lose it.
  */
 export function isSessionStale(now: Date = new Date()): boolean {
   let signedInAt = NaN;
   try {
     signedInAt = Number(window.localStorage.getItem(SIGN_IN_AT_KEY));
   } catch {
-    return true;
+    return false;
   }
-  if (!Number.isFinite(signedInAt)) return true;
+  if (!Number.isFinite(signedInAt) || signedInAt <= 0) return false;
   return signedInAt < dailySignInCutoff(now).getTime();
 }
 
