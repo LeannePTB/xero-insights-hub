@@ -249,10 +249,11 @@ function LoanMatrixTab() {
               <FileDown className="mr-2 h-4 w-4" /> Download Excel
             </Button>
           </div>
-          <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !groupId}>
+          <Button size="sm" onClick={() => saveMut.mutate()} disabled={saveMut.isPending || !groupId || !!openSnapshotId}>
             {saveMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
             Save report
           </Button>
+
         </div>
       </div>
 
