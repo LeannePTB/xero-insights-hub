@@ -511,3 +511,103 @@ describe("11. read predicates never authorise a write or a payment", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * 12. Injection review (14 Sep 2026) — the sinks stay closed.
+ *
+ * Each guard below is the check that would have caught one of the audit's
+ * findings. They read the source tree, so a new change that reopens a sink
+ * fails `bun run security:check` without anyone remembering to look.
+ */
+describe("12. untrusted text never reaches a raw-HTML sink", () => {
+  /** Raw-HTML sinks are allowed only with a reason recorded here. */
+  const RAW_HTML_ALLOWLIST: Array<{ file: string; reason: string }> = [];
+
+  it("has no dangerouslySetInnerHTML or innerHTML outside the allow-list", () => {
+    const allowed = new Set(RAW_HTML_ALLOWLIST.map((a) => a.file));
+    const offenders = FILES.filter(
+      (f) =>
+        !allowed.has(f.path) &&
+        /dangerouslySetInnerHTML|\.innerHTML|\.outerHTML|insertAdjacentHTML|document\.write\(/.test(
+          f.text,
+        ),
+    ).map((f) => f.path);
+    report("raw-HTML sinks with no recorded reason", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("has no allow-list entry for a file that no longer exists", () => {
+    const paths = new Set(FILES.map((f) => f.path));
+    const stale = RAW_HTML_ALLOWLIST.filter((a) => !paths.has(a.file)).map((a) => a.file);
+    expect(stale).toEqual([]);
+  });
+
+  it("renders markdown without raw HTML (no rehype-raw)", () => {
+    const offenders = FILES.filter((f) => /rehype-raw|rehypeRaw/.test(f.text)).map((f) => f.path);
+    report("markdown rendering with raw HTML enabled", offenders);
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("12b. every iframe src comes from the approved builder", () => {
+  const APPROVED_SRC = "src={`https://www.loom.com/embed/${loomId}`}";
+
+  it("has no iframe whose src is not the Loom embed builder", () => {
+    const offenders: string[] = [];
+    for (const f of FILES) {
+      for (const frame of f.text.match(/<iframe[\s\S]*?\/>/g) ?? []) {
+        if (!frame.includes(APPROVED_SRC)) offenders.push(`${f.path}: ${frame.slice(0, 120)}`);
+      }
+    }
+    report("iframes with a src not built by parseLoomId", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("keeps the one approved iframe sandboxed", () => {
+    const frames = FILES.flatMap((f) =>
+      (f.text.match(/<iframe[\s\S]*?\/>/g) ?? []).map((frame) => ({ path: f.path, frame })),
+    );
+    expect(frames.length).toBe(1);
+    const offenders = frames
+      .filter(({ frame }) => !/sandbox=/.test(frame) || !/referrerPolicy=/.test(frame))
+      .map(({ path }) => path);
+    report("approved iframe missing sandbox or referrerPolicy", offenders);
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("12c. no SQL is built by string concatenation in app code", () => {
+  it("has no dynamic SQL execution or concatenated statement in src", () => {
+    const PATTERNS = [
+      /execute\s+format\s*\(/i,
+      /\b(select|insert into|update|delete from)\b[^\n`'"]*(\$\{|"\s*\+|'\s*\+)/i,
+      /rpc\(\s*["'](exec|exec_sql|execute_sql|run_sql|query)["']/i,
+    ];
+    const offenders = FILES.filter((f) => PATTERNS.some((p) => p.test(f.text))).map((f) => f.path);
+    report("app code building SQL from strings", offenders);
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe("12d. every CSV or spreadsheet export escapes its own cells", () => {
+  it("uses the shared cell escaper wherever CSV is produced", () => {
+    const offenders = FILES.filter((f) => {
+      if (f.path === "src/lib/csv.ts") return false;
+      const producesCsv = /text\/csv/.test(f.text) || /\bcsv\b\s*[:=]\s*lines|lines\.join\("\\n"\)/.test(f.text);
+      if (!producesCsv) return false;
+      // A component that only downloads a server-built string is fine.
+      const buildsCells = /\.join\(","\)/.test(f.text);
+      return buildsCells && !/from "@\/lib\/csv"/.test(f.text);
+    }).map((f) => f.path);
+    report("CSV writers not using @/lib/csv csvCell", offenders);
+    expect(offenders).toEqual([]);
+  });
+
+  it("has no second implementation of a CSV cell escaper", () => {
+    const offenders = FILES.filter(
+      (f) => f.path !== "src/lib/csv.ts" && /function csvCell|const csvCell\s*=/.test(f.text),
+    ).map((f) => f.path);
+    report("duplicate CSV cell escapers (invariant 6: one implementation)", offenders);
+    expect(offenders).toEqual([]);
+  });
+});

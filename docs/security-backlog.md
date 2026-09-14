@@ -717,3 +717,80 @@ matching `auth.sessions` row, is still stale; no request context and
 
 No policy, grant or predicate changed. Backend linter 91 -> 90 warnings, all the
 one accepted category (the -1 is the dropped function).
+
+---
+
+## 14 Sep 2026 — Injection review (first as its own piece of work)
+
+Security-relevant. Audit of every injection class, with the automated check
+left behind for each finding. Full coverage list: `docs/security/automated-checks.md`.
+
+### Clean, with evidence
+
+- **Cross-site scripting.** No `dangerouslySetInnerHTML`, `innerHTML`,
+  `outerHTML`, `insertAdjacentHTML` or `document.write` anywhere in `src`
+  (guard 12 now fails the build on a new one). Client names, `client_notes`,
+  `unreconciled_lines.client_comment`, `source_comment`, inviter labels,
+  `profiles.display_name`, organisation names and report content all render as
+  JSX text. `react-markdown` is used once, on repository documentation, with
+  `remark-gfm` and no `rehype-raw`, so embedded HTML is not rendered. The public
+  `/report/$token` route renders the same escaped components and no raw HTML.
+- **SQL.** No string-built SQL in app code (guard 12c). All 154 SECURITY DEFINER
+  functions carry `SET search_path` — confirmed by catalogue query, not assumed.
+  Eleven definer bodies contain `||`; each concatenates arrays, JSONB or evidence
+  text and none of them EXECUTEs it. Dynamic SQL exists only in migration DO
+  blocks, over catalogue names, through `format(%I)`.
+- **Uploads and storage.** Logos: PNG/JPEG content-type allow-list, 2 MB cap,
+  server-generated filename (`branding/organisation/<firm>/logo-<ts>.<ext>`, or
+  `<client>/branding/...`), private `client-reports` bucket, read back only via a
+  300-second signed URL. Nothing user-named and nothing served from an origin
+  that would execute it.
+
+### Fixed this turn
+
+1. **Formula injection in the audit CSV export.** The old local `csvCell` escaped
+   quotes, commas and newlines but not a leading `=`, `+`, `-`, `@`, tab or CR, so
+   an attacker-controlled value (contact name, user agent, audit `meta`) became a
+   live formula for the auditor who opened the file. One shared escaper now lives
+   in `src/lib/csv.ts` and neutralises those; guard 12d forbids a second copy or a
+   writer that bypasses it.
+2. **Loom iframe hardening.** The validator was already sound; the frame was not
+   sandboxed. It now carries `sandbox="allow-scripts allow-same-origin
+   allow-presentation"`, `allow="fullscreen; picture-in-picture"` and
+   `referrerPolicy="strict-origin-when-cross-origin"`. Guard 12b keeps it that way
+   and forbids any other iframe.
+3. **Statement upload bounds.** Added a 50,000-line cap, a 10,000-character
+   per-line cap and a 20,000 parsed-line cap on top of the existing 5 MB cap, so
+   malformed or hostile input fails fast instead of occupying the worker.
+4. **Search term escaping.** `esc()` in `src/lib/xero/search.functions.ts` escaped
+   only `"`; a trailing backslash could escape our own closing quote in the Xero
+   `where` expression. Control characters and backslashes are now dropped first.
+   (Term already trimmed and capped at 200 characters; dates regex-checked; paging
+   clamped.)
+
+### Opened
+
+**48. Zod validation on server-function inputs — High, 90 days.**
+65 modules use `createServerFn`; only 5 import Zod. The rest use typed
+pass-through `inputValidator`s, which are compile-time only, so a hostile client
+can send any shape. Every one is behind `requireAal2` and a database
+authorisation call, and every id is a filter rather than a grant, which is why
+this is High and not Critical. Remediate module by module, highest-value first:
+`unreconciled`, `viewers`, `invites`, `billing-checkout`, `branding`,
+`report-delivery`, `search`.
+
+**49. Enforce Content-Security-Policy — Medium, 180 days.**
+The live origin serves CSP in **report-only** mode with `script-src
+'unsafe-inline'` (read by `curl` on `https://tractionadvisory.com.au`), so it
+blocks nothing today. Move to an enforced policy and remove `unsafe-inline`
+(needs a nonce or hash path through the SSR entry). The new `http_headers`
+posture check reports this as Warn until then, and would report Action if the
+header disappeared entirely.
+
+### Not verified from the sandbox
+
+The `http_headers` posture check's rendering on the Security card was not
+observed this turn (it runs behind aal2 in the live app). Its inputs were
+verified directly: `curl -D -` on the published origin and the custom domain
+shows HSTS, nosniff, referrer-policy, `x-frame-options: DENY`,
+permissions-policy and report-only CSP.
