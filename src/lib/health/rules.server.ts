@@ -323,7 +323,12 @@ export function ruleStatutoryMagnitude(
   }
 
   const unavailable = taxExtractionUnavailable(analysed.taxLines);
-  if (unavailable) return { finding: null, unavailable };
+  if (unavailable) {
+    if (analysed.taxLines.status === "absent" && !statutoryExpected) {
+      return { finding: null };
+    }
+    return { finding: null, unavailable };
+  }
 
   const lines = analysed.taxLines.lines;
   const statutory = lines
