@@ -495,7 +495,11 @@ export async function openLink(token: string, email: string, ip: string | null, 
       version: report.version as number,
       status: report.status as string,
       payload: report.payload,
+      video_url: (report.video_url as string | null) ?? null,
+      video_heading: (report.video_heading as string | null) ?? null,
+      video_message: (report.video_message as string | null) ?? null,
     },
     pdfUrl,
   };
 }
+
