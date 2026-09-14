@@ -163,6 +163,12 @@ export function ruleProtectedMoneyVsCash(
   accounts?: SnapshotRow,
   payables?: SnapshotRow,
   overrides?: StatutoryOverrides,
+  /**
+   * False when the client is registered for neither GST nor PAYG withholding.
+   * No statutory balance is then expected on the Balance Sheet, so its absence
+   * is the correct position — not a coverage gap.
+   */
+  statutoryExpected = true,
 ): {
   finding: Finding | null;
   unavailable?: string;
