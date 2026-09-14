@@ -689,11 +689,26 @@ export function evaluateFromRows(
     };
   }
 
+  const debtorsClause = "the ageing and concentration of the debtors";
+  const parts: string[] = [];
+  if (expected.gst && expected.payg) {
+    parts.push("the money set aside for tax and super against cash at bank");
+  } else if (expected.gst) {
+    parts.push("the GST set aside against cash at bank");
+  } else if (expected.payg) {
+    parts.push("the tax withheld from wages and super against cash at bank");
+  }
+  parts.push(debtorsClause);
+
+  const detail =
+    parts.length === 1
+      ? `This month we checked ${parts[0]}. Nothing needed attention.`
+      : `This month we checked ${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}. Nothing needed attention.`;
+
   return {
     state: "ok",
     label: "Nothing required attention this month",
-    detail:
-      "We reviewed protected money held against cash at bank, the statutory balances carried on the Balance Sheet, and the ageing and concentration of the debtor book. Nothing in those checks required attention.",
+    detail,
     findings: [],
   };
 }
