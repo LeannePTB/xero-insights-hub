@@ -38,11 +38,15 @@ async function routeAfterAuth(navigate: (opts: { to: string; replace?: boolean }
 
 function AuthPage() {
   const navigate = useNavigate();
+  const signOut = useSignOut();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [xeroLoading, setXeroLoading] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -59,12 +63,12 @@ function AuthPage() {
     }
   }, []);
 
-
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
-      if (!data.session) return;
-      await routeAfterAuth(navigate);
+      setHasSession(!!data.session);
+      setSignedInEmail(data.session?.user?.email ?? null);
+      setCheckingSession(false);
     })();
   }, [navigate]);
 
