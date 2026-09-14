@@ -94,10 +94,18 @@ function AuthenticatedLayout() {
   // every route behind it keeps its own unchanged guard.
   const showAdminMenu = ctxQ.data?.isSuperAdmin === true && !ownsAdminMenu(pathname);
 
-  if (!showAdminMenu) return <Outlet />;
+  if (!showAdminMenu)
+    return (
+      <>
+        <Outlet />
+        <GlobalSignOut />
+      </>
+    );
   return (
     <AdminNavShell>
       <Outlet />
+      <GlobalSignOut />
     </AdminNavShell>
   );
 }
+
