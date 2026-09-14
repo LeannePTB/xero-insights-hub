@@ -34,9 +34,12 @@ export type GstTransaction = {
 };
 
 /** The PAYG withholding side of the activity statement.
+ *  `not_applicable` means the client is set to "Does not withhold" on the
+ *  client settings page, so PAYG was not looked for at all.
  *  `unresolved` means no account could be identified as holding PAYG
  *  withholding — the total is then GST only, and says so. */
 export type PaygSection =
+  | { status: "not_applicable" }
   | { status: "unresolved"; reason: string }
   | {
       status: "resolved";
@@ -69,6 +72,7 @@ export type CombinedAtoSection = {
  * so it belongs on the activity statement front page.
  */
 export type PaygPayrollSection =
+  | { status: "not_applicable" }
   | { status: "available"; withheld: number; payRuns: { paymentDate: string | null; tax: number }[] }
   | { status: "no_payroll" }
   | { status: "not_authorised"; reason: string }
@@ -187,6 +191,10 @@ export async function computeGstReconciliation(
   /** Caller's own session, used only to read the stored nightly pay-run
    *  snapshot. Omitted, the pay-run list is read live once. */
   supabase?: unknown,
+  /** The client's own setting from the client settings page. `false` ("Does
+   *  not withhold") means PAYG is not looked for at all: no account hunt, no
+   *  pay-run read, no issue line, and the estimated total is GST alone. */
+  withholdsPayg = true,
 ): Promise<GstResult> {
 
 
@@ -328,7 +336,10 @@ export async function computeGstReconciliation(
   }
 
   let payg: PaygSection;
-  if (paygAccounts.length === 0) {
+  if (!withholdsPayg) {
+    // The client says it does not withhold: honour it by not looking.
+    payg = { status: "not_applicable" };
+  } else if (paygAccounts.length === 0) {
     payg = {
       status: "unresolved",
       reason:
@@ -380,21 +391,26 @@ export async function computeGstReconciliation(
   // The pay runs whose PAYDAY falls in the period. One list call, snapshotted
   // nightly; a file without payroll withholds nothing, which is a real zero,
   // while a read we could not make stays null and says so.
-  const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
-  const runs = supabase
-    ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, conn })
-    : await fetchPayRuns(conn);
   let paygPayroll: PaygPayrollSection;
-  if (runs.status === "available") {
-    const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
-    paygPayroll = {
-      status: "available",
-      withheld: round2(inPeriodRuns.reduce((s, r) => s + r.tax, 0)),
-      payRuns: inPeriodRuns.map((r) => ({ paymentDate: r.paymentDate, tax: round2(r.tax) })),
-    };
+  if (!withholdsPayg) {
+    // "Does not withhold": no pay-run read is made at all.
+    paygPayroll = { status: "not_applicable" };
   } else {
-    paygPayroll = runs;
-    if (runs.status !== "no_payroll") complete = false;
+    const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
+    const runs = supabase
+      ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, conn })
+      : await fetchPayRuns(conn);
+    if (runs.status === "available") {
+      const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
+      paygPayroll = {
+        status: "available",
+        withheld: round2(inPeriodRuns.reduce((s, r) => s + r.tax, 0)),
+        payRuns: inPeriodRuns.map((r) => ({ paymentDate: r.paymentDate, tax: round2(r.tax) })),
+      };
+    } else {
+      paygPayroll = runs;
+      if (runs.status !== "no_payroll") complete = false;
+    }
   }
 
   const gstNet =
@@ -402,7 +418,7 @@ export async function computeGstReconciliation(
   const paygWithheldForTotal =
     paygPayroll.status === "available"
       ? paygPayroll.withheld
-      : paygPayroll.status === "no_payroll"
+      : paygPayroll.status === "no_payroll" || paygPayroll.status === "not_applicable"
         ? 0
         : null;
   const estimatedPayable =
