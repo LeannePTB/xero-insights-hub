@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -31,6 +31,7 @@ import {
   getGroupLoanReconciliation,
   downloadGroupLoanReconciliation,
   saveGroupLoanSnapshot,
+  getLatestGroupLoanNotes,
   type ReconRow,
   type ReconRowSide,
 } from "@/lib/loan-consolidation.functions";
@@ -114,6 +115,7 @@ function LoanMatrixTab() {
   const fetchRecon = useServerFn(getGroupLoanReconciliation);
   const exportFn = useServerFn(downloadGroupLoanReconciliation);
   const saveFn = useServerFn(saveGroupLoanSnapshot);
+  const fetchNotes = useServerFn(getLatestGroupLoanNotes);
 
   const [tenantId, setTenantId] = useState<string>(ALL_FILES);
   const [asAt, setAsAt] = useState<string>(todayISO());
