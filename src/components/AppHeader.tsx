@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { logAuthEvent } from "@/lib/audit.functions";
+import { useSignOut } from "@/lib/use-sign-out";
 import ptLogo from "@/assets/traction-advisory-logo.png";
+
 
 type Props = {
   /** Optional actions rendered before the notification / account cluster. */
