@@ -34,9 +34,12 @@ export type GstTransaction = {
 };
 
 /** The PAYG withholding side of the activity statement.
+ *  `not_applicable` means the client is set to "Does not withhold" on the
+ *  client settings page, so PAYG was not looked for at all.
  *  `unresolved` means no account could be identified as holding PAYG
  *  withholding — the total is then GST only, and says so. */
 export type PaygSection =
+  | { status: "not_applicable" }
   | { status: "unresolved"; reason: string }
   | {
       status: "resolved";
@@ -69,6 +72,7 @@ export type CombinedAtoSection = {
  * so it belongs on the activity statement front page.
  */
 export type PaygPayrollSection =
+  | { status: "not_applicable" }
   | { status: "available"; withheld: number; payRuns: { paymentDate: string | null; tax: number }[] }
   | { status: "no_payroll" }
   | { status: "not_authorised"; reason: string }
