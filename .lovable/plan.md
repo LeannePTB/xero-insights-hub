@@ -15,9 +15,9 @@ Classification: not security-relevant — verdict wording and which checks are n
 In `src/lib/health/rules.server.ts` (`evaluateFromRows`), build the "ok" detail from the `expected` settings already computed there:
 
 - **All clients** — keep the label "Nothing required attention this month", but reword the detail plainly.
-- **Registered for GST or withholding PAYG:** "This month we checked the money set aside for tax and super against cash at bank, and the ageing and concentration of the accounting file. Nothing needed attention."
-- **Registered for neither:** the protected-money clause is dropped entirely: "This month we checked the ageing and concentration of the accounting file. Nothing needed attention."
-- **GST registered, PAYG not withheld** (or vice versa): only the applicable item is named — "the GST set aside against cash at bank" or "the tax withheld from wages and super against cash at bank".
+- **Registered for GST or withholding PAYG:** "This month we checked the money set aside for tax and super against cash at bank, and the ageing and concentration of the debtors. Nothing needed attention."
+- **Registered for neither:** the protected-money clause is dropped entirely: "This month we checked the ageing and concentration of the debtors. Nothing needed attention."
+- **GST registered, PAYG not withheld** (or vice versa): only the applicable item is named — "the GST set aside against cash at bank" or "the tax withheld from wages and super against cash at bank" — plus the debtors clause.
 
 No mention of protected money appears when none is expected. The "partial" and "issues" verdicts are untouched.
 
