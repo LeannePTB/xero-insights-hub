@@ -34,6 +34,13 @@ create table auth.mfa_factors(
   created_at timestamptz default now()
 );
 
+create table auth.sessions(
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 create or replace function auth.uid() returns uuid language sql stable as $fn$
   select nullif(current_setting('request.jwt.claims', true)::json->>'sub','')::uuid $fn$;
 create or replace function auth.role() returns text language sql stable as $fn$
@@ -42,7 +49,7 @@ create or replace function auth.jwt() returns jsonb language sql stable as $fn$
   select coalesce(current_setting('request.jwt.claims', true),'{}')::jsonb $fn$;
 
 grant usage on schema public, app_private, auth to anon, authenticated, service_role;
-grant select on auth.users, auth.mfa_factors to service_role;
+grant select on auth.users, auth.mfa_factors, auth.sessions to service_role;
 set check_function_bodies = off;
 create type public.app_role as enum ('advisor', 'client_viewer', 'super_admin', 'firm_owner', 'firm_staff');
 create type public.client_access_relationship as enum ('business_owner', 'external_adviser');
