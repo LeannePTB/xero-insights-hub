@@ -40,7 +40,6 @@ export function LoanConsolidationWidget({
 
   const rows: ReconRow[] = data?.rows ?? [];
   const mismatches = rows.filter((r) => r.status === "mismatch");
-  const unpaired = rows.filter((r) => r.status === "unpaired" || r.status === "missing");
   const balanced = rows.filter((r) => r.status === "balanced");
   const totalOut = mismatches.reduce((sum, r) => sum + Math.abs(r.net), 0);
 
@@ -83,10 +82,9 @@ export function LoanConsolidationWidget({
         </div>
       ) : (
         <>
-          <div className="mt-6 grid grid-cols-3 gap-3">
+          <div className="mt-6 grid grid-cols-2 gap-3">
             <Stat label="Balanced" value={String(balanced.length)} tone="text-emerald-600" />
             <Stat label="Out of balance" value={String(mismatches.length)} tone={mismatches.length ? "text-rose-600" : "text-muted-foreground"} />
-            <Stat label="Unpaired" value={String(unpaired.length)} tone={unpaired.length ? "text-amber-600" : "text-muted-foreground"} />
           </div>
 
           <div className="mt-3 rounded-lg border border-border/60 bg-background p-4">
