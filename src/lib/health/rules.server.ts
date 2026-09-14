@@ -310,6 +310,8 @@ export function ruleStatutoryMagnitude(
   balanceSheet: SnapshotRow,
   accounts?: SnapshotRow,
   overrides?: StatutoryOverrides,
+  /** See `ruleProtectedMoneyVsCash` — false means absence is expected. */
+  statutoryExpected = true,
 ): {
   finding: Finding | null;
   unavailable?: string;
@@ -497,6 +499,14 @@ export type EvaluateOptions = {
    * `classifyTaxLine`; absent means name matching, exactly as before.
    */
   statutoryOverrides?: StatutoryOverrides;
+  /**
+   * The client's registration settings, from `clients.gst_cycle` and
+   * `clients.payg_withholding_cycle`. Undefined means "unknown", which is
+   * treated as registered — the historical behaviour. When BOTH are false, no
+   * statutory balance is expected and R01/R05 stay silent on its absence.
+   */
+  gstRegistered?: boolean;
+  withholdsPayg?: boolean;
 };
 
 /** Evaluate against stored snapshot rows (the staff badge). */
@@ -583,14 +593,26 @@ export function evaluateFromRows(
     const apState = keyState(apRow, "invoices_accpay_open", now, skipFreshness);
     const ap = apState === "usable" ? apRow : undefined;
 
-    const r01 = ruleProtectedMoneyVsCash(bs, accounts, ap, options.statutoryOverrides);
+    // A client registered for neither GST nor PAYG withholding is not expected
+    // to carry any statutory balance (super aside, and super alone does not
+    // make a file "expected"): its absence is the correct position.
+    const statutoryExpected =
+      options.gstRegistered !== false || options.withholdsPayg !== false;
+
+    const r01 = ruleProtectedMoneyVsCash(
+      bs,
+      accounts,
+      ap,
+      options.statutoryOverrides,
+      statutoryExpected,
+    );
     if (r01.finding) findings.push(r01.finding);
     else if (r01.unavailable) gaps.push(r01.unavailable);
     // A refused lodged-and-owing split is reported even when R01 itself fired:
     // the reader must know the total was not established.
     if (r01.splitGap) gaps.push(r01.splitGap);
 
-    const r05 = ruleStatutoryMagnitude(bs, accounts, options.statutoryOverrides);
+    const r05 = ruleStatutoryMagnitude(bs, accounts, options.statutoryOverrides, statutoryExpected);
     if (r05.finding) findings.push(r05.finding);
     else if (r05.unavailable) gaps.push(r05.unavailable);
 
