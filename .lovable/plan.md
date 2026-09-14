@@ -6,7 +6,7 @@ The all-clear verdict on the monthly report always says:
 
 > "We reviewed protected money held against cash at bank, the statutory balances carried on the Balance Sheet, and the ageing and concentration of the debtor book."
 
-For a client not registered for GST or PAYG there is no protected money to review, so the sentence is wrong for them — and the wording is stilted for everyone.
+For a client not registered for GST or PAYG there is no protected money to review, so the sentence is wrong for them — and the wording is stilted for everyone. The user also wants "debtor book" replaced with "debtors".
 
 ## Change
 
