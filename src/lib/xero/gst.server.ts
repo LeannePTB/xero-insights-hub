@@ -78,6 +78,9 @@ export type PaygPayrollSection =
   | { status: "not_authorised"; reason: string }
   | { status: "unavailable"; reason: string };
 
+/** Why the GST figures might not tie, as a machine code. */
+export type GstTieReasonCode = "journals" | "rounding" | "timing";
+
 export type GstResult = {
   asAt: string;
   window: ReconWindow;
@@ -479,6 +482,7 @@ export async function computeGstReconciliation(
     difference,
     ties,
     tieReasons,
+    tieReasonCodes,
     complete,
     issues,
     payg,
