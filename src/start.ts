@@ -115,5 +115,5 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => 
 
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
-  requestMiddleware: [errorMiddleware, securityHeadersMiddleware],
+  requestMiddleware: [errorMiddleware, dailySignInMiddleware, securityHeadersMiddleware],
 }));
