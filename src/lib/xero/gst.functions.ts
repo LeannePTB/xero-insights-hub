@@ -48,6 +48,16 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
     // It feeds the ONE resolver inside the engine — the report, the health
     // rules and the audit rules all classify accounts the same way.
     const overrides = await getStatutoryOverrides(context.supabase as any, data.clientId, data.tenantId);
+    // The client's own "How often this client lodges" setting, read under the
+    // caller's session. "Does not withhold" means the engine does not look
+    // for PAYG at all — no account hunt, no pay-run read, no issue line.
+    const { data: clientRow, error: clientError } = await (context.supabase as any)
+      .from("clients")
+      .select("payg_withholding_cycle")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    if (clientError) throw new Error(clientError.message);
+    const withholdsPayg = clientRow?.payg_withholding_cycle !== "not_registered";
     return runReconciliation({
       supabase: context.supabase as any,
       userId: context.userId,
@@ -58,7 +68,14 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
       reportKey: REPORT_KEYS[data.window ?? "month"]!,
       widget: "gst_reconciliation",
       compute: (conn) =>
-        computeGstReconciliation(conn, data.asAt, data.window ?? "month", overrides, context.supabase),
+        computeGstReconciliation(
+          conn,
+          data.asAt,
+          data.window ?? "month",
+          overrides,
+          context.supabase,
+          withholdsPayg,
+        ),
 
     });
   });
