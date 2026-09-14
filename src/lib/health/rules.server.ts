@@ -229,12 +229,18 @@ export function ruleProtectedMoneyVsCash(
   const split = buildProtectedMoneySplit(protectedMoney.total, atoAnalysis);
   const splitGap = split.refusal ?? undefined;
 
-  // An unmatched GST or PAYG component is the expected position for a client
-  // registered for neither — not a gap. Super is owed whenever anyone is
-  // employed, so it is never filtered out.
-  const unresolved = statutoryExpected
-    ? protectedMoney.unresolved
-    : protectedMoney.unresolved.filter((k) => k === "super");
+  // An unmatched component the client is not expected to carry is the correct
+  // position, not a gap — it is filtered before any wording is built, so the
+  // report never names a tax that does not apply to this client.
+  const unresolved = protectedMoney.unresolved.filter((k) =>
+    k === "gst"
+      ? expected.gst
+      : k === "payg"
+        ? expected.payg
+        : k === "super"
+          ? expected.super
+          : expected.gst || expected.payg,
+  );
 
   // Nothing resolved at all. Counting components rather than hard-coding three:
   // a combined ATO account replaces the separate GST and PAYG components, so
