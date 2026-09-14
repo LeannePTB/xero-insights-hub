@@ -466,6 +466,11 @@ export type Database = {
           tenant_id: string | null
           title: string | null
           version: number
+          video_heading: string | null
+          video_message: string | null
+          video_set_at: string | null
+          video_set_by: string | null
+          video_url: string | null
         }
         Insert: {
           client_id: string
@@ -486,6 +491,11 @@ export type Database = {
           tenant_id?: string | null
           title?: string | null
           version?: number
+          video_heading?: string | null
+          video_message?: string | null
+          video_set_at?: string | null
+          video_set_by?: string | null
+          video_url?: string | null
         }
         Update: {
           client_id?: string
@@ -506,6 +516,11 @@ export type Database = {
           tenant_id?: string | null
           title?: string | null
           version?: number
+          video_heading?: string | null
+          video_message?: string | null
+          video_set_at?: string | null
+          video_set_by?: string | null
+          video_url?: string | null
         }
         Relationships: [
           {
