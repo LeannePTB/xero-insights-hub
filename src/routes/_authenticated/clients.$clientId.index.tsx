@@ -279,8 +279,14 @@ function ClientDashboard() {
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
       // Structural hide: a file that has never run a pay run. Missing payroll
-      // permission is not the same thing, and never hides it.
-      if (widgets.includes("payg_withholding") && !structurallyHidden(tenantId, "payg_withholding"))
+      // permission is not the same thing, and never hides it. A client set to
+      // "Does not withhold" never sees the card: the setting is honoured by
+      // not looking at all.
+      if (
+        widgets.includes("payg_withholding") &&
+        !structurallyHidden(tenantId, "payg_withholding") &&
+        client?.payg_withholding_cycle !== "not_registered"
+      )
         block.payg = <PaygWithholdingWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} />;
 
 
