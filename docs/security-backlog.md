@@ -642,3 +642,19 @@ activity statement is ever lodged). Presentation/derived-data only — no new
 table, policy, grant or predicate; the audit's existing requireAal2, membership
 and widget gates are unchanged. Verified: typecheck clean, 54/54 tests, live
 access 18/0/0.
+
+## Report verdict honours the client's GST / PAYG settings (14 Sep 2026)
+
+The health rules engine (R01 protected money, R05 statutory magnitude) treated a
+Balance Sheet with no statutory balances as a coverage gap even for a client
+registered for neither GST nor PAYG withholding — the monthly report then read
+"completed in part … protected money could not be assessed" for a file where
+none is expected. `evaluateFromRows` now takes `gstRegistered` /
+`withholdsPayg` (undefined = unknown = registered, the historical behaviour);
+when both are false, R01/R05 stay silent on an absent or GST/PAYG-only-unmatched
+extraction and the lodged-and-owing split analysis is skipped entirely (no
+activity statement is ever lodged). Super is never filtered out. Both callers
+thread the settings read under the caller's own session: the report verdict
+builder and the staff badge (`listClientVerdicts`). Presentation/derived-data
+only — no new table, policy, grant or predicate. Verified: typecheck clean,
+54/54 tests (four new), live access 18/0/0.
