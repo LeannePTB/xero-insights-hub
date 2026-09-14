@@ -415,14 +415,20 @@ function LoanMatrixTab() {
                   })}
                   {file.rows.length > 0 && (
                     <TableRow className="border-t-2 border-primary/30 bg-primary/5 hover:bg-primary/5">
-                      <TableCell colSpan={6} />
-                      <TableCell className="border-l border-border text-right text-xs font-semibold uppercase tracking-wider text-primary">
+                      <TableCell
+                        colSpan={6}
+                        className="text-right text-xs font-semibold uppercase tracking-wider text-primary"
+                      >
                         Total net
                       </TableCell>
-                      <TableCell className="tabular-nums font-semibold text-primary">{num(totalNet)}</TableCell>
+                      <TableCell className="border-l border-border text-right tabular-nums font-semibold text-primary">
+                        {num(totalNet)}
+                      </TableCell>
+                      <TableCell />
                       <TableCell />
                     </TableRow>
                   )}
+
 
                 </TableBody>
               </Table>
