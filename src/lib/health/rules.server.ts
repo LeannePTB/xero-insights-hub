@@ -473,7 +473,7 @@ export function ruleDebtors(row: SnapshotRow): { finding: Finding | null; unavai
         // Canonical document wording: descriptive, no judgement. The staff
         // badge abbreviates this in badge-wording.ts.
         title: "Most of the debtor book is more than 90 days past due",
-        detail: `${money(over90)} of ${money(total)} owing is more than ${t.over90Days} days past its due date (${Math.round(over90Share * 100)}% of the book).`,
+        detail: `${money(over90)} of ${money(total)} owing is more than ${t.over90Days} days past its due date (${Math.round(over90Share * 100)}% of the accounting file).`,
         severity: "critical",
         consequenceScore: t.consequence.critical,
         daysToConsequence: t.daysToConsequence.critical,
@@ -485,7 +485,7 @@ export function ruleDebtors(row: SnapshotRow): { finding: Finding | null; unavai
       finding: {
         ruleId: "R06",
         title: "Most of the debtor book is overdue",
-        detail: `${money(overdue)} of ${money(total)} owing is past its due date (${Math.round(overdueShare * 100)}% of the book).`,
+        detail: `${money(overdue)} of ${money(total)} owing is past its due date (${Math.round(overdueShare * 100)}% of the accounting file).`,
         severity: "warning",
         consequenceScore: t.consequence.warning,
         daysToConsequence: t.daysToConsequence.warning,
@@ -497,7 +497,7 @@ export function ruleDebtors(row: SnapshotRow): { finding: Finding | null; unavai
       finding: {
         ruleId: "R06",
         title: "Debtors are concentrated in one customer",
-        detail: `${topName} owes ${money(topAmount)} of ${money(total)} (${Math.round(concentration * 100)}% of the book).`,
+        detail: `${topName} owes ${money(topAmount)} of ${money(total)} (${Math.round(concentration * 100)}% of the accounting file).`,
         severity: "watch",
         consequenceScore: t.consequence.watch,
         daysToConsequence: t.daysToConsequence.watch,
