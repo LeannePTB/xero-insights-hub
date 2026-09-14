@@ -332,7 +332,7 @@ function LoanMatrixTab() {
                 <TableBody>
                   {file.rows.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                      <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                         No loan accounts configured for this Xero file.
                       </TableCell>
                     </TableRow>
@@ -399,6 +399,17 @@ function LoanMatrixTab() {
                         <TableCell>
                           <Badge className={`${badge.cls} uppercase tracking-wide`}>{badge.label}</Badge>
                         </TableCell>
+                        <TableCell onClick={(e) => e.stopPropagation()}>
+                          <Input
+                            value={notes[row.id] ?? ""}
+                            placeholder="Add a note…"
+                            maxLength={500}
+                            onChange={(e) =>
+                              setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
+                            }
+                            className="h-8 text-sm"
+                          />
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -409,6 +420,7 @@ function LoanMatrixTab() {
                         Total net
                       </TableCell>
                       <TableCell className="tabular-nums font-semibold text-primary">{num(totalNet)}</TableCell>
+                      <TableCell />
                     </TableRow>
                   )}
 
