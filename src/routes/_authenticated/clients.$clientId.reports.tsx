@@ -93,7 +93,9 @@ function ReportsPage() {
     queryFn: () => listFn({ data: { clientId } }),
   });
 
+  const isAdvisor = ctxQ.data?.isAdvisor ?? false;
   const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
+
 
   const client = clientQ.data?.client as any;
   const orgs: { tenantId: string; tenantName: string }[] = (client?.client_xero_orgs ?? [])
