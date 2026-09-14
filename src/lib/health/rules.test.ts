@@ -398,6 +398,68 @@ describe("statutory registration settings", () => {
     assert.strictEqual(v.state, "ok");
     assert.deepStrictEqual((v as { gaps?: string[] }).gaps ?? [], []);
   });
+
+  it("uses plain wording and names the debtors in the all-clear verdict", () => {
+    const v = evaluateFromRows(
+      {
+        clientId: "c1",
+        connections: CONNECTED,
+        snapshots: [
+          row({ report_key: "balance_sheet", payload: { Reports: [balanceSheet(500_000, FULL_TAX)] } }),
+          accountRow(),
+          HEALTHY_DEBTORS,
+        ],
+        now: NOW,
+      },
+      { skipFreshness: true },
+    );
+    assert.strictEqual(v.state, "ok");
+    assert.match(v.detail, /money set aside for tax and super/i);
+    assert.match(v.detail, /ageing and concentration of the debtors/i);
+    assert.doesNotMatch(v.detail, /debtor book/i);
+    assert.doesNotMatch(v.detail, /We reviewed protected money/i);
+  });
+
+  it("drops protected money wording when the client is not registered for GST or PAYG", () => {
+    const v = evaluateFromRows(
+      {
+        clientId: "c1",
+        connections: CONNECTED,
+        snapshots: [
+          row({ report_key: "balance_sheet", payload: balanceSheet(500_000, []) }),
+          accountRow(),
+          HEALTHY_DEBTORS,
+        ],
+        now: NOW,
+      },
+      { skipFreshness: true, gstRegistered: false, withholdsPayg: false },
+    );
+    assert.strictEqual(v.state, "ok");
+    assert.match(v.detail, /This month we checked the ageing and concentration of the debtors\. Nothing needed attention\./);
+    assert.doesNotMatch(v.detail, /protected money|GST|PAYG|super|tax/i);
+  });
+
+  it("names only GST in the all-clear when PAYG withholding is not registered", () => {
+    const v = evaluateFromRows(
+      {
+        clientId: "c1",
+        connections: CONNECTED,
+        snapshots: [
+          row({
+            report_key: "balance_sheet",
+            payload: balanceSheet(500_000, [{ name: "GST", amount: 2_000, accountId: "gst-1" }]),
+          }),
+          accountRow(),
+          HEALTHY_DEBTORS,
+        ],
+        now: NOW,
+      },
+      { skipFreshness: true, gstRegistered: true, withholdsPayg: false },
+    );
+    assert.strictEqual(v.state, "ok");
+    assert.match(v.detail, /GST set aside against cash at bank/i);
+    assert.doesNotMatch(v.detail, /tax withheld from wages|super/i);
+  });
 });
 
 describe("R06 debtors", () => {
