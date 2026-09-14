@@ -59,6 +59,26 @@ function netGst(data: GstResponse) {
   return { net: sales - purchases, sales, purchases };
 }
 
+/**
+ * The client-safe half-sentence naming why the figures don't tie. It reports
+ * only the reasons the calculation actually found, in the same order the
+ * adviser detail lists them, so the two views never contradict each other.
+ */
+function clientTieCause(codes: GstResponse["tieReasonCodes"] | undefined) {
+  const phrases: Record<string, string> = {
+    journals: "manual journals we're not able to read",
+    rounding: "the whole-dollar rounding on the lodged activity statement",
+    timing: "a payment to the ATO dated after this period ended",
+  };
+  const list = (codes ?? []).map((c) => phrases[c]).filter(Boolean);
+  if (list.length === 0) return "";
+  const joined =
+    list.length === 1
+      ? list[0]
+      : `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}`;
+  return ` — because of ${joined}`;
+}
+
 export type GstCycle = "monthly" | "quarterly" | "annual" | "not_registered";
 
 /** The period the card opens on for a lodgement cycle. `null` (cycle not
@@ -248,14 +268,15 @@ export function GstReconciliationWidget({
             </div>
           </div>
 
-          {/* Client view: a plain-language note when the figures don't tie.
-              No balances, arithmetic or transaction detail are shown here. */}
+          {/* Client view: a plain-language note when the figures don't tie. It
+              names the reasons the calculation actually found — never assumes
+              manual journals. No balances, arithmetic or transaction detail. */}
           {!showWarnings && !data.ties && (data.tieReasons?.length ?? 0) > 0 && (
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <p className="font-medium">
-                These figures don't fully tie to the balance sheet — most likely because of manual
-                journals we're not able to read. Your adviser can see the detail.
+                These figures don't fully tie to the balance sheet
+                {clientTieCause(data.tieReasonCodes)}. Your adviser can see the detail.
               </p>
             </div>
           )}
