@@ -158,18 +158,21 @@ function cashUnavailable(cash: CashExtraction): string | null {
   return null;
 }
 
+/**
+ * Which statutory components this client is expected to carry, from its
+ * registration settings. An unmatched component that is not expected is the
+ * correct position — never a coverage gap, never mentioned on the report.
+ */
+export type ExpectedStatutory = { gst: boolean; payg: boolean; super: boolean };
+const ALL_EXPECTED: ExpectedStatutory = { gst: true, payg: true, super: true };
+
 /** Returns a finding, or a reason the rule could not be evaluated. */
 export function ruleProtectedMoneyVsCash(
   balanceSheet: SnapshotRow,
   accounts?: SnapshotRow,
   payables?: SnapshotRow,
   overrides?: StatutoryOverrides,
-  /**
-   * False when the client is registered for neither GST nor PAYG withholding.
-   * No statutory balance is then expected on the Balance Sheet, so its absence
-   * is the correct position — not a coverage gap.
-   */
-  statutoryExpected = true,
+  expected: ExpectedStatutory = ALL_EXPECTED,
 ): {
   finding: Finding | null;
   unavailable?: string;
@@ -185,10 +188,10 @@ export function ruleProtectedMoneyVsCash(
 
   const unavailable = taxExtractionUnavailable(analysed.taxLines);
   if (unavailable) {
-    // Absence is only a gap when a statutory balance could be expected. A
-    // client registered for neither GST nor PAYG withholding, with no super
-    // balance either, correctly shows nothing — silence, not a partial review.
-    if (analysed.taxLines.status === "absent" && !statutoryExpected) {
+    // Absence is only a gap when a statutory balance could be expected. When
+    // no component is expected at all, the file correctly shows nothing —
+    // silence, not a partial review.
+    if (analysed.taxLines.status === "absent" && !expected.gst && !expected.payg && !expected.super) {
       return { finding: null };
     }
     return { finding: null, unavailable };
@@ -213,7 +216,7 @@ export function ruleProtectedMoneyVsCash(
   // A client registered for neither GST nor PAYG withholding never lodges an
   // activity statement, so there is no lodged-and-owing split to establish.
   // Skipping the analysis also keeps its refusal wording off the report.
-  const atoAnalysis: AtoPayablesAnalysis = !statutoryExpected
+  const atoAnalysis: AtoPayablesAnalysis = !expected.gst && !expected.payg
     ? { status: "not_applicable", pattern: "direct" }
     : analyseAtoPayables({
         bills: payables ? billsFromPayload(payables.payload) : null,
