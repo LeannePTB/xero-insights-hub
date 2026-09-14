@@ -588,7 +588,7 @@ who can read existing rows is that a session left open past 3am Sydney reads not
 person signs in again, which is the requirement.
 
 Verified this turn: fixture regenerated and fingerprint MATCH (255 policies,
-`b10fcea6…`), access matrix rendered and `--check` up to date (four new rows: stale session denied
+`b10fcea6…`), access matrix rendered and `--check` up to date, 1,560 rows / 1,483 proved / 0 failures (four new rows, all proved: stale session denied
 on client data, `assert_aal2()` denied with a stale session and with no `session_id` claim, fresh
 session unchanged), definer register regenerated (155 functions, `--check` OK), 54 tests passed,
 typecheck clean. Supabase linter: 91 warnings, all the one accepted category (signed-in-executable
