@@ -658,3 +658,16 @@ thread the settings read under the caller's own session: the report verdict
 builder and the staff badge (`listClientVerdicts`). Presentation/derived-data
 only — no new table, policy, grant or predicate. Verified: typecheck clean,
 54/54 tests (four new), live access 18/0/0.
+
+## Verdict wording per-component + closing line removed (14 Sep 2026)
+
+Follow-up to the entry above: the settings check is now per component, not
+all-or-nothing. A GST-registered client that does not withhold PAYG is never
+told PAYG or super "could not be matched" — unmatched components are filtered
+against what the client is expected to carry before any wording is built
+(super follows PAYG withholding: no wages withheld means no super accrues).
+The lodged-and-owing split analysis is still skipped only when neither GST nor
+PAYG applies. Separately, the "We are available to talk this through with you
+when it suits." closing line was removed from the issues verdict (owner
+request; presentation only). Verified: typecheck clean, 54/54 tests (one new),
+live access 18/0/0.
