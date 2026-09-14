@@ -26,6 +26,9 @@ import {
 import { getMonthlyReportPdfUrl } from "@/lib/reports/report-pdf.functions";
 import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION, wasRateLimited } from "@/lib/reports/monthly-report";
+import { reportVideoFrom } from "@/lib/reports/report-video";
+import { ReportVideoEditor } from "@/components/reports/ReportVideoEditor";
+
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/reports")({
   head: () => ({
@@ -91,6 +94,8 @@ function ReportsPage() {
   });
 
   const isAdvisor = ctxQ.data?.isAdvisor ?? false;
+  const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
+
 
   const client = clientQ.data?.client as any;
   const orgs: { tenantId: string; tenantName: string }[] = (client?.client_xero_orgs ?? [])
@@ -137,6 +142,11 @@ function ReportsPage() {
   });
 
   const reports: any[] = listQ.data?.reports ?? [];
+  // The row for the report currently shown. The video columns live on the row,
+  // not in the payload, so both the player and the editor read them from here.
+  const shownRow = reports.find((r) => r.id === selectedId) ?? null;
+  const shownVideo = reportVideoFrom(shownRow);
+
   // Auto-load the most recent stored report (period_end desc, version desc — the
   // order the list already comes back in). Never recomputes; reads the snapshot only.
   const autoLoadedFor = useRef<string | null>(null);
@@ -220,9 +230,29 @@ function ReportsPage() {
               version={preview.version}
               showWarnings={isAdvisor}
               showWorkflowDetails={isAdvisor}
+              video={shownVideo}
             />
+
+            {/* Super-admin only: attach or remove the personal video while the
+                shown report is still a draft. The server re-checks. */}
+            {isSuperAdmin && shownRow && shownRow.status === "draft" ? (
+              <ReportVideoEditor
+                report={shownRow}
+                onSaved={() => {
+                  qc.invalidateQueries({ queryKey: ["monthly-reports", clientId] });
+                  if (selectedId) openMut.mutate({ reportId: selectedId, source: "opened" });
+                }}
+              />
+            ) : null}
+            {isSuperAdmin && shownRow && shownRow.status !== "draft" && shownVideo ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                This report has been finalised, so its video is locked. Generate a new version
+                for the period if the message needs to change.
+              </p>
+            ) : null}
           </section>
         ) : null}
+
 
         {/* Generate — preparer-only; the server refuses generation for viewers. */}
         {isAdvisor && (

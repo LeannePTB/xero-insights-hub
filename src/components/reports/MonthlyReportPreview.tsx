@@ -20,6 +20,12 @@ import {
   toneClass,
   type Polarity,
 } from "@/lib/reports/variance-polarity";
+import {
+  DEFAULT_VIDEO_HEADING,
+  parseLoomId,
+  type ReportVideo,
+} from "@/lib/reports/report-video";
+
 
 function fmtDate(iso: string) {
   try {
@@ -181,6 +187,7 @@ export function MonthlyReportPreview({
   version,
   showWarnings = false,
   showWorkflowDetails = false,
+  video = null,
 }: {
   payload: MonthlyReportPayload;
   status?: string;
@@ -190,10 +197,13 @@ export function MonthlyReportPreview({
   /** Preparer-facing workflow details: version/status/payload line and the
       draft-comment note. Default hidden so any new caller is client-safe. */
   showWorkflowDetails?: boolean;
+  /** Optional personal video. Lives outside the payload, so never in the PDF. */
+  video?: ReportVideo | null;
 }) {
   const m = payload.meta;
   const shownFailures = renderableFailedSections(payload);
   const failed = new Map(shownFailures.map((f) => [f.section, f.message]));
+  const loomId = parseLoomId(video?.url);
 
   return (
     <div className="space-y-6">
@@ -215,7 +225,29 @@ export function MonthlyReportPreview({
           {showWorkflowDetails && status ? ` · ${status}` : ""}
           {showWorkflowDetails ? ` · payload v${payload.payloadVersion}` : ""} · amounts in {m.currency}
         </p>
+
+        {loomId ? (
+          <div className="mt-5 rounded-xl border border-primary/30 bg-primary/5 p-4">
+            <h3 className="font-display text-base font-semibold">
+              {video?.heading?.trim() || DEFAULT_VIDEO_HEADING}
+            </h3>
+            {video?.message?.trim() ? (
+              <p className="mt-1 whitespace-pre-line text-sm text-muted-foreground">
+                {video.message.trim()}
+              </p>
+            ) : null}
+            <div className="mt-3 aspect-video w-full overflow-hidden rounded-lg bg-background">
+              <iframe
+                src={`https://www.loom.com/embed/${loomId}`}
+                title={video?.heading?.trim() || DEFAULT_VIDEO_HEADING}
+                allowFullScreen
+                className="h-full w-full border-0"
+              />
+            </div>
+          </div>
+        ) : null}
       </header>
+
 
       {!payload.complete && shownFailures.length > 0 && (
         <div className="rounded-2xl border border-destructive/40 bg-destructive/5 p-4 text-sm">

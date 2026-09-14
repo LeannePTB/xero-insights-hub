@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1560**. Known failures: **0**.
+Rows: **1566**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -252,6 +252,7 @@ None.
 | server fn: write client data | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: invite a member | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: transfer ownership | execute | DENY | live | PK 2 (requireAal2) |  |
+| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -846,6 +847,7 @@ None.
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: set a report's personal video | execute | DENY | live | PK 3 (super admin alone grants ZERO client data) + PK 5 | setReportVideo runs assert_super_admin AND canWriteFirm (public.user_can_write_firm) on the report's own firm_id, read server-side from the stored row. A super admin who is not an active member of that organisation is refused. Finalised or sent reports are refused outright; the video never enters the payload, so it cannot reach the rendered PDF. |
 | server fn: invite an owner to an existing organisation | execute | DENY | live | Spec §4 — ownership only moves through transfer_organisation_ownership | adminInviteFirmMember accepts role 'staff' only; an owner invitation to an existing organisation is refused with a pointer to ownership transfer. |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -1176,6 +1178,7 @@ None.
 | server fn: list clients for an organisation | execute | ALLOW | live | PK 2 path A |  |
 | server fn: write client data | execute | ALLOW | live | PK 2 path A |  |
 | server fn: invite a member | execute | ALLOW | live | PK 2 path A |  |
+| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | server fn: list pending member invitations | execute | DENY | live | PK section 2 path C — invitations stay platform metadata; inviting is super admin only | public.firm_member_invites requires aal2 + super admin; the People section hides the forms for everyone else. |
 | PLAN_LIMIT_CLIENTS counts clients, not standing grants | execute | ALLOW | pglite, live | PK section 2 path D — a standing grant never counts toward plan limits |  |
 | firm_viewer_access | read | ALLOW | pglite, live | PK section 2 path D — the organisation's owner grants and revokes |  |
@@ -1328,6 +1331,7 @@ None.
 | public.transfer_organisation_ownership() | execute | DENY | pglite, live | Spec §4 (current owner only) |  |
 | public.set_profile_display_name_admin() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
 | public.security_posture() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
+| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — reading client financial data must be auditable | Opening a client dashboard writes one xero_data_read row per actor + client + Xero file + read key + source per five minutes, recording no figures, account names or contact names. |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
 | firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -1385,6 +1389,7 @@ None.
 | tier_settings | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — every reader is recorded, not only staff | A client viewer's dashboard read writes the same row with their own user id as the actor. |
 | clients (client added after the grant) | read | DENY | pglite, live | PK section 2 client viewer — a specific grant covers that client only |  |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
@@ -1515,6 +1520,7 @@ None.
 | xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
+| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | server fn: change organisation or client branding | execute | DENY | live | PK 5 (support grants are READ-ONLY) | branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK section 2 path B — support reads are read-only AND recorded | meta.access_path comes from public.firm_access_path, so a support read is distinguishable from a member read. |
 | firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
