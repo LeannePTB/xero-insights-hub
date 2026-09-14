@@ -14,7 +14,7 @@ import { startXeroSignIn } from "@/lib/xero/signin.functions";
 import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
 import { useSignOut } from "@/lib/use-sign-out";
-import { takeSignInExpired } from "@/lib/session-cutoff";
+import { clearSignInMark, isTokenStale, takeSignInExpired } from "@/lib/session-cutoff";
 
 
 export const Route = createFileRoute("/auth")({
@@ -72,6 +72,18 @@ function AuthPage() {
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
+      // Daily 3am cut-off: yesterday's session is finished with, so end it here
+      // and show the sign-in form. Without this the page offers "Continue",
+      // the signed-in gate refuses it, and the person can never reach the form.
+      if (data.session && isTokenStale(data.session.access_token)) {
+        clearSignInMark();
+        await supabase.auth.signOut();
+        toast.info("Daily sign-in required — please sign in again.");
+        setHasSession(false);
+        setSignedInEmail(null);
+        setCheckingSession(false);
+        return;
+      }
       setHasSession(!!data.session);
       setSignedInEmail(data.session?.user?.email ?? null);
       setCheckingSession(false);
