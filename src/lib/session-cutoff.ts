@@ -66,3 +66,25 @@ export function isSessionStale(now: Date = new Date()): boolean {
   if (!Number.isFinite(signedInAt)) return true;
   return signedInAt < dailySignInCutoff(now).getTime();
 }
+
+/**
+ * One-shot hint that the last session ended because of the daily cut-off, so
+ * the sign-in page can explain why. Display text only — never a credential.
+ */
+export const SIGN_IN_EXPIRED_KEY = "ta:signin-expired";
+
+export function markSignInExpired() {
+  try {
+    window.localStorage.setItem(SIGN_IN_EXPIRED_KEY, "1");
+  } catch {}
+}
+
+export function takeSignInExpired(): boolean {
+  try {
+    const had = window.localStorage.getItem(SIGN_IN_EXPIRED_KEY) === "1";
+    window.localStorage.removeItem(SIGN_IN_EXPIRED_KEY);
+    return had;
+  } catch {
+    return false;
+  }
+}

@@ -40,7 +40,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "app_private.is_advisor": "Whether a person is an advisor.",
   "app_private.is_firm_owner": "Whether a person owns an organisation.",
   "app_private.is_org_owner": "Whether a person owns an organisation (membership row form).",
+  "app_private.is_session_fresh":
+    "Whether the calling session began after the most recent daily 3am Australia/Sydney sign-in cut-off; system and service contexts pass, anything unverifiable is stale.",
   "app_private.is_super_admin": "Whether a person is a platform super admin.",
+
   "app_private.me_is_super_admin": "Whether the calling person is a platform super admin.",
   "app_private.platform_staff_can_access_firm":
     "Whether platform staff hold a live support grant for this organisation.",

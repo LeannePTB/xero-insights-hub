@@ -6,6 +6,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { getMyContext } from "@/lib/roles.functions";
 import { recordPresence } from "@/lib/security-posture.functions";
 import { AdminNavShell } from "@/components/admin/AdminNavShell";
+import { GlobalSignOut } from "@/components/GlobalSignOut";
+import { clearSignInMark, isSessionStale, markSignInExpired } from "@/lib/session-cutoff";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
@@ -22,10 +24,22 @@ export const Route = createFileRoute("/_authenticated")({
     if (!hasVerified) throw redirect({ to: "/auth/mfa-enroll" });
     if (aalData?.currentLevel !== "aal2") throw redirect({ to: "/auth/mfa-verify" });
 
+    // Daily sign-in cut-off: a session that began before the most recent 3am
+    // Australia/Sydney is finished with. This is the UX half — the database
+    // (app_private.assert_aal2) and the server middleware are the enforcement,
+    // so a tampered browser hint buys nothing but a broken page.
+    if (isSessionStale()) {
+      clearSignInMark();
+      markSignInExpired();
+      await supabase.auth.signOut();
+      throw redirect({ to: "/auth" });
+    }
+
     return { user: data.user };
   },
   component: AuthenticatedLayout,
 });
+
 
 /** Routes that already render the admin menu through AdminShell. */
 function ownsAdminMenu(pathname: string) {
@@ -80,10 +94,18 @@ function AuthenticatedLayout() {
   // every route behind it keeps its own unchanged guard.
   const showAdminMenu = ctxQ.data?.isSuperAdmin === true && !ownsAdminMenu(pathname);
 
-  if (!showAdminMenu) return <Outlet />;
+  if (!showAdminMenu)
+    return (
+      <>
+        <Outlet />
+        <GlobalSignOut />
+      </>
+    );
   return (
     <AdminNavShell>
       <Outlet />
+      <GlobalSignOut />
     </AdminNavShell>
   );
 }
+

@@ -17,6 +17,7 @@
 export type Role =
   | "anonymous"
   | "aal1_member"
+  | "stale_session_member"
   | "org_owner"
   | "org_staff"
   | "other_org_member"
@@ -58,6 +59,8 @@ export type MatrixRow = {
 export const ROLE_LABELS: Record<Role, string> = {
   anonymous: "Anonymous (no session)",
   aal1_member: "Active member, aal1 session only",
+  stale_session_member:
+    "Active member on aal2 whose session began before the most recent 3am Australia/Sydney cut-off",
   org_owner: "Organisation owner (own organisation)",
   org_staff: "Organisation staff (own organisation)",
   other_org_member: "Active member of a DIFFERENT organisation",
@@ -1577,6 +1580,44 @@ export const MATRIX: MatrixRow[] = [
     operation: "execute",
     expect: "deny",
     rule: "PK 1 / PK 4 — membership in another organisation writes nothing here",
+    layers: ["pglite"],
+  },
+  // ------------------------------- Daily 3am Sydney sign-in cut-off (14 Sep 2026)
+  // app_private.is_session_fresh() is consulted by app_private.is_aal2(), so the
+  // RESTRICTIVE mfa_aal2_required policy on every data table hides rows from a
+  // session left open overnight, and app_private.assert_aal2() raises
+  // SESSION_EXPIRED before the MFA check. Layer 3 (request middleware) and the
+  // browser gate can only deny earlier; they are never the enforcement point.
+  {
+    role: "stale_session_member",
+    resource: "client_notes",
+    operation: "read",
+    expect: "deny",
+    rule: "PK 2 — aal2 now also means signed in since the most recent 3am Sydney",
+    layers: ["pglite"],
+  },
+  {
+    role: "stale_session_member",
+    resource: "assert_aal2() with a session older than the cut-off",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 2 — SESSION_EXPIRED, raised before the MFA check",
+    layers: ["pglite"],
+  },
+  {
+    role: "stale_session_member",
+    resource: "assert_aal2() with no session_id claim",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 1 deny by default — an unverifiable session is stale (fail closed)",
+    layers: ["pglite"],
+  },
+  {
+    role: "org_owner",
+    resource: "client_notes",
+    operation: "read",
+    expect: "allow",
+    rule: "PK 2 path A — a session begun after 3am Sydney is unaffected",
     layers: ["pglite"],
   },
 ];

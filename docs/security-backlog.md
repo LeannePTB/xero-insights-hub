@@ -565,3 +565,31 @@ Outstanding, in order, each its own security change:
   register regenerated (153 functions), 50 tests passed, live access suite 18 passed / 0 failed /
   0 inconclusive, typecheck clean. Supabase linter unchanged at the 90 accepted signed-in
   SECURITY DEFINER warnings.
+
+## Daily 3am sign-in cut-off and missing sign-out (done 14 Sep 2026)
+
+Owner requirement: everyone must sign in again after 3am Australia/Sydney each day, and
+several pages offered no way to sign out at all.
+
+Enforced in the database, which is the only enforcement point (invariant 6). New
+`app_private.is_session_fresh()` (SECURITY DEFINER, `SET search_path`, `EXECUTE` revoked from
+`PUBLIC`, registered in `definer-register.md`) compares the session's `auth.sessions.created_at`
+against the most recent 3am Sydney; system and `service_role` contexts pass, and a missing
+`session_id` claim or unknown session row is treated as stale (fail closed). `app_private.is_aal2()`
+now requires it, so the RESTRICTIVE `mfa_aal2_required` policy on every data table hides all rows
+from a stale session; `app_private.assert_aal2()` raises `SESSION_EXPIRED` before the MFA check.
+The request middleware in `src/start.ts` and the `_authenticated` browser gate can only deny
+earlier — neither is relied upon. Sign-out is now reachable everywhere: the shared `useSignOut`
+hook, `AppHeader`, a floating `GlobalSignOut` on the routes with no header, and on `/auth` for an
+already signed-in visitor.
+
+No policy, grant or predicate changed who may see what once signed in fresh; the only change to
+who can read existing rows is that a session left open past 3am Sydney reads nothing until the
+person signs in again, which is the requirement.
+
+Verified this turn: fixture regenerated and fingerprint MATCH (255 policies,
+`b10fcea6…`), access matrix rendered and `--check` up to date, 1,560 rows / 1,483 proved / 0 failures (four new rows, all proved: stale session denied
+on client data, `assert_aal2()` denied with a stale session and with no `session_id` claim, fresh
+session unchanged), definer register regenerated (155 functions, `--check` OK), 54 tests passed,
+typecheck clean. Supabase linter: 91 warnings, all the one accepted category (signed-in-executable
+SECURITY DEFINER) — the +1 is `app_private.is_session_fresh()`.

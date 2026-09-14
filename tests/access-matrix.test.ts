@@ -58,11 +58,26 @@ const U = {
   removed: "99990010-1111-4111-8111-111111111111",
 };
 
-type Ctx = { uid: string | null; dbRole: "anon" | "authenticated"; aal: "aal1" | "aal2" | null };
+type Ctx = {
+  uid: string | null;
+  dbRole: "anon" | "authenticated";
+  aal: "aal1" | "aal2" | null;
+  /** Overrides the session_id claim; used for the stale-session context. */
+  sessionId?: string;
+};
+
+/** A session row deliberately created before the most recent 3am Sydney cut-off. */
+const STALE_SESSION = "77777777-1111-4111-8111-111111111111";
 
 const CONTEXT: Record<Role, Ctx> = {
   anonymous: { uid: null, dbRole: "anon", aal: null },
   aal1_member: { uid: U.staffA, dbRole: "authenticated", aal: "aal1" },
+  stale_session_member: {
+    uid: U.staffA,
+    dbRole: "authenticated",
+    aal: "aal2",
+    sessionId: STALE_SESSION,
+  },
   org_owner: { uid: U.ownerA, dbRole: "authenticated", aal: "aal2" },
   org_staff: { uid: U.staffA, dbRole: "authenticated", aal: "aal2" },
   other_org_member: { uid: U.ownerB, dbRole: "authenticated", aal: "aal2" },
@@ -367,7 +382,7 @@ function claims(ctx: Ctx) {
   if (ctx.aal) c["aal"] = ctx.aal;
   // The daily 3am sign-in cut-off resolves the session's start time, so every
   // signed-in context needs a session_id backed by a fresh auth.sessions row.
-  if (ctx.uid) c["session_id"] = ctx.uid;
+  if (ctx.uid) c["session_id"] = ctx.sessionId ?? ctx.uid;
   return JSON.stringify(c);
 }
 
@@ -457,6 +472,18 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
 
+  if (r === "assert_aal2() with a session older than the cut-off") {
+    const p = await probe(`select app_private.assert_aal2()`);
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "assert_aal2() with no session_id claim") {
+    // Same person, same aal2 claim, no session_id: fail closed.
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [
+      JSON.stringify({ role: "authenticated", sub: U.staffA, aal: "aal2" }),
+    ]);
+    const p = await probe(`select app_private.assert_aal2()`);
+    return p.ok ? "allow" : "deny";
+  }
   if (r === "xero_connections.access_token_enc" || r === "xero_connections.refresh_token_enc") {
     const col = r.split(".")[1]!;
     const p = await probe(`select ${col} from public.xero_connections where id = '${CONN_A}'`);
@@ -834,7 +861,8 @@ beforeAll(async () => {
     insert into auth.users(id, email) values
       ${users.map((u, i) => `('${u}', 'u${i}@example.invalid')`).join(", ")};
     insert into auth.sessions(id, user_id, created_at) values
-      ${users.map((u) => `('${u}', '${u}', now())`).join(", ")};
+      ${users.map((u) => `('${u}', '${u}', now())`).join(", ")},
+      ('${STALE_SESSION}', '${U.staffA}', now() - interval '3 days');
     insert into auth.mfa_factors(user_id, status) values
       ${users.map((u) => `('${u}', 'verified')`).join(", ")};
     insert into public.profiles(id, email, display_name) values

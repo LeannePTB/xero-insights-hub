@@ -14,6 +14,8 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { logLogin } from "@/lib/login-log-write.functions";
 import { Toaster } from "@/components/ui/sonner";
+import { clearSignInMark, markSignInNow } from "@/lib/session-cutoff";
+
 
 function NotFoundComponent() {
   return (
@@ -123,10 +125,15 @@ function RootComponent() {
       if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
       if (event === "SIGNED_OUT") {
         try { window.sessionStorage.clear(); } catch {}
+        clearSignInMark();
       }
       if (event === "SIGNED_IN") {
+        // Records when this sign-in happened, for the daily 3am cut-off.
+        // A UX hint only — the server and database enforce the cut-off.
+        markSignInNow();
         logLogin().catch((e) => console.warn("logLogin failed", e));
       }
+
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);
