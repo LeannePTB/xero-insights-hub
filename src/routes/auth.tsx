@@ -72,6 +72,19 @@ function AuthPage() {
     })();
   }, [navigate]);
 
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setHasSession(false);
+        setSignedInEmail(null);
+      } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        setHasSession(!!session);
+        setSignedInEmail(session?.user?.email ?? null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
   async function handleSignIn() {
     setLoading(true);
     try {
