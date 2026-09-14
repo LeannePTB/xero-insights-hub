@@ -950,6 +950,26 @@ export const MATRIX: MatrixRow[] = [
     layers: ["live"],
     note: "Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant.",
   },
+  // Personal video on a monthly report (client_reports.video_* columns). Both
+  // gates are required and neither substitutes for the other.
+  ...rows(
+    ["org_owner", "org_staff", "support_grant_active", "aal1_member", "client_viewer"],
+    ["server fn: set a report's personal video"],
+    ["execute"],
+    "deny",
+    "PK 2 (requireAal2) + platform super admin only (assert_super_admin)",
+    ["live"],
+  ),
+  {
+    role: "super_admin_no_membership",
+    resource: "server fn: set a report's personal video",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 3 (super admin alone grants ZERO client data) + PK 5",
+    layers: ["live"],
+    note: "setReportVideo runs assert_super_admin AND canWriteFirm (public.user_can_write_firm) on the report's own firm_id, read server-side from the stored row. A super admin who is not an active member of that organisation is refused. Finalised or sent reports are refused outright; the video never enters the payload, so it cannot reach the rendered PDF.",
+  },
+
   {
     role: "support_grant_active",
     resource: "server fn: change organisation or client branding",
