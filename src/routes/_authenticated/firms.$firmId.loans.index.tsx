@@ -120,6 +120,10 @@ function LoanMatrixTab() {
   const exportFn = useServerFn(downloadGroupLoanReconciliation);
   const saveFn = useServerFn(saveGroupLoanSnapshot);
   const fetchNotes = useServerFn(getLatestGroupLoanNotes);
+  const fetchSnapshots = useServerFn(listGroupLoanSnapshots);
+  const fetchSnapshot = useServerFn(getGroupLoanSnapshot);
+  const deleteFn = useServerFn(deleteGroupLoanSnapshot);
+
 
   const [tenantId, setTenantId] = useState<string>(ALL_FILES);
   const [asAt, setAsAt] = useState<string>(todayISO());
