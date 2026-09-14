@@ -72,6 +72,18 @@ export const listClientVerdicts = createServerFn({ method: "POST" })
       overridesByClient.set(row.client_id, list);
     }
 
+    // Registration settings per client: a client registered for neither GST
+    // nor PAYG withholding is expected to show no statutory balance, so its
+    // absence is not a gap (same rule as the monthly report verdict).
+    const { data: clientRows } = await context.supabase
+      .from("clients")
+      .select("id, gst_cycle, payg_withholding_cycle")
+      .in("id", clientIds);
+    const cyclesByClient = new Map<string, { gst: string | null; payg: string | null }>();
+    for (const row of (clientRows ?? []) as any[]) {
+      cyclesByClient.set(row.id, { gst: row.gst_cycle, payg: row.payg_withholding_cycle });
+    }
+
     const now = new Date();
     const verdicts: Record<string, Verdict> = {};
     for (const clientId of clientIds) {
