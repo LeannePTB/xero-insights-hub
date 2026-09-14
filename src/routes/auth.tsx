@@ -7,12 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { logFailedSignIn } from "@/lib/audit.functions";
-import { Loader2 } from "lucide-react";
+import { Loader2, LogOut } from "lucide-react";
 import { BrandMark } from "@/components/BrandMark";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
 import { startXeroSignIn } from "@/lib/xero/signin.functions";
 import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
+import { useSignOut } from "@/lib/use-sign-out";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -37,11 +38,15 @@ async function routeAfterAuth(navigate: (opts: { to: string; replace?: boolean }
 
 function AuthPage() {
   const navigate = useNavigate();
+  const signOut = useSignOut();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [resetLoading, setResetLoading] = useState(false);
   const [xeroLoading, setXeroLoading] = useState(false);
+  const [hasSession, setHasSession] = useState(false);
+  const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -58,14 +63,27 @@ function AuthPage() {
     }
   }, []);
 
-
   useEffect(() => {
     (async () => {
       const { data } = await supabase.auth.getSession();
-      if (!data.session) return;
-      await routeAfterAuth(navigate);
+      setHasSession(!!data.session);
+      setSignedInEmail(data.session?.user?.email ?? null);
+      setCheckingSession(false);
     })();
   }, [navigate]);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setHasSession(false);
+        setSignedInEmail(null);
+      } else if (event === "SIGNED_IN" || event === "USER_UPDATED") {
+        setHasSession(!!session);
+        setSignedInEmail(session?.user?.email ?? null);
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, []);
 
   async function handleSignIn() {
     setLoading(true);
@@ -147,63 +165,83 @@ function AuthPage() {
 
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
-          <h1 className="font-display text-2xl font-semibold">Welcome</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Sign in to your dashboards.</p>
-
-
-          <div className="space-y-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          {checkingSession ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+          ) : hasSession ? (
+            <div className="space-y-4 text-center">
+              <h1 className="font-display text-2xl font-semibold">You are signed in</h1>
+              {signedInEmail ? (
+                <p className="text-sm text-muted-foreground">{signedInEmail}</p>
+              ) : null}
+              <Button className="w-full" onClick={() => routeAfterAuth(navigate)}>
+                Continue to dashboards
+              </Button>
+              <Button variant="outline" className="w-full" onClick={signOut}>
+                <LogOut className="mr-2 h-4 w-4" /> Sign out
+              </Button>
             </div>
-            <Button className="w-full" onClick={handleSignIn} disabled={loading || !email || !password}>
-              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Sign in
-            </Button>
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              disabled={resetLoading}
-              className="w-full pt-1 text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
-            >
-              {resetLoading ? "Sending…" : "Forgot password?"}
-            </button>
-            <div className="relative my-2">
-              <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">or</span>
+          ) : (
+            <>
+              <h1 className="font-display text-2xl font-semibold">Welcome</h1>
+              <p className="mt-1 text-sm text-muted-foreground">Sign in to your dashboards.</p>
+
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="password">Password</Label>
+                  <Input id="password" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
+                </div>
+                <Button className="w-full" onClick={handleSignIn} disabled={loading || !email || !password}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Sign in
+                </Button>
+                <button
+                  type="button"
+                  onClick={handleForgotPassword}
+                  disabled={resetLoading}
+                  className="w-full pt-1 text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
+                >
+                  {resetLoading ? "Sending…" : "Forgot password?"}
+                </button>
+                <div className="relative my-2">
+                  <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">or</span>
+                  </div>
+                </div>
+                <ConnectWithXeroButton
+                  variant="signin"
+                  className="w-full"
+                  disabled={xeroLoading}
+                  onClick={async () => {
+                    setXeroLoading(true);
+                    try {
+                      const { authorizeUrl } = await startXeroSignIn({
+                        data: { origin: window.location.origin },
+                      });
+                      window.location.href = authorizeUrl;
+                    } catch (e: any) {
+                      toast.error(e?.message ?? "Could not start Sign in with Xero.");
+                      setXeroLoading(false);
+                    }
+                  }}
+                />
+                <p className="pt-1 text-center text-xs text-muted-foreground">
+                  Access is invite-only. Contact Traction Advisory.
+                </p>
+                <p className="text-center text-xs text-muted-foreground">
+                  <Link to="/security" className="underline-offset-2 hover:text-foreground hover:underline">
+                    Report a security issue
+                  </Link>
+                </p>
               </div>
-            </div>
-            <ConnectWithXeroButton
-              variant="signin"
-              className="w-full"
-              disabled={xeroLoading}
-              onClick={async () => {
-                setXeroLoading(true);
-                try {
-                  const { authorizeUrl } = await startXeroSignIn({
-                    data: { origin: window.location.origin },
-                  });
-                  window.location.href = authorizeUrl;
-                } catch (e: any) {
-                  toast.error(e?.message ?? "Could not start Sign in with Xero.");
-                  setXeroLoading(false);
-                }
-              }}
-            />
-            <p className="pt-1 text-center text-xs text-muted-foreground">
-              Access is invite-only. Contact Traction Advisory.
-            </p>
-            <p className="text-center text-xs text-muted-foreground">
-              <Link to="/security" className="underline-offset-2 hover:text-foreground hover:underline">
-                Report a security issue
-              </Link>
-            </p>
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>
