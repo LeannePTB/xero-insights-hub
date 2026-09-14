@@ -13,12 +13,12 @@ can say what it is for; the risk is a function nobody can explain.
 
 | | count |
 | --- | --- |
-| SECURITY DEFINER functions in `public` + `app_private` | **155** |
-| in `public` | 114 |
+| SECURITY DEFINER functions in `public` + `app_private` | **154** |
+| in `public` | 113 |
 | in `app_private` | 41 |
-| callable by signed-in users (EXECUTE to `authenticated`/`anon`/PUBLIC) | **118** |
+| callable by signed-in users (EXECUTE to `authenticated`/`anon`/PUBLIC) | **117** |
 | callable and asserting aal2 in the body | 89 |
-| callable WITHOUT an aal2 assertion (each must be justified below) | 29 |
+| callable WITHOUT an aal2 assertion (each must be justified below) | 28 |
 | without `SET search_path` | 0 |
 | with no caller found | **8** |
 
@@ -57,7 +57,6 @@ they are not callable by signed-in users, and every policy that uses them sits b
 | `app_private.user_can_manage_client(_user_id uuid, _client_id uuid)` | internal helper or trigger function, not reachable as a signed-in call path; the tables it guards carry the restrictive aal2 policy |
 | `app_private.user_can_read_client(_user_id uuid, _client_id uuid)` | internal helper or trigger function, not reachable as a signed-in call path; the tables it guards carry the restrictive aal2 policy |
 | `app_private.viewer_tier(_user_id uuid, _client_id uuid)` | internal helper or trigger function, not reachable as a signed-in call path; the tables it guards carry the restrictive aal2 policy |
-| `public.session_fresh()` | approved exception — returns no organisation, client or personal data |
 | `public.xero_required_scopes()` | approved exception — returns no organisation, client or personal data |
 
 ## Functions with no caller found
@@ -164,7 +163,6 @@ PostgREST request logs cannot be read from here, so this is not proof that nothi
 | `revoke_viewer_invite(_id uuid)` | Cancel a pending viewer invitation. Audited. | authenticated, postgres, service_role | yes | yes | `src/lib/viewers.functions.ts` |
 | `security_attestations_list()` | List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when. | authenticated, postgres, service_role | yes | yes | `src/lib/security-posture.functions.ts` |
 | `security_posture()` | The security posture checks shown on the Security card. | authenticated, postgres, service_role | yes | yes | `src/lib/security-posture.functions.ts` |
-| `session_fresh()` | Whether the caller's own session began after the most recent daily 3am sign-in cut-off. | authenticated, postgres, service_role | yes | no | fn `app_private.assert_aal2`<br>fn `app_private.is_aal2` |
 | `set_all_client_tiers(_firm_id uuid, _tier dashboard_tier, _include_billed boolean, _reason text)` | Sets the plan level for every client in an organisation, audited. | authenticated, postgres, service_role | yes | yes | `src/components/admin/SetAllClientTiersDialog.tsx`<br>`src/lib/billing.functions.ts`<br>`tests/access-matrix.test.ts` |
 | `set_client_access_relationship(_id uuid, _relationship client_access_relationship)` | Classifies an existing selected-client row as Business owner or External adviser; aal2, caller-scoped and audited. | authenticated, postgres, service_role | yes | yes | `src/lib/viewers.functions.ts`<br>`tests/access-matrix.test.ts` |
 | `set_client_access_tier(_id uuid, _tier text)` | Changes the plan level of one viewer grant, audited. | authenticated, postgres, service_role | yes | yes | none found |
