@@ -191,6 +191,10 @@ export async function computeGstReconciliation(
   /** Caller's own session, used only to read the stored nightly pay-run
    *  snapshot. Omitted, the pay-run list is read live once. */
   supabase?: unknown,
+  /** The client's own setting from the client settings page. `false` ("Does
+   *  not withhold") means PAYG is not looked for at all: no account hunt, no
+   *  pay-run read, no issue line, and the estimated total is GST alone. */
+  withholdsPayg = true,
 ): Promise<GstResult> {
 
 
