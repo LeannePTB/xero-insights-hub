@@ -18,6 +18,7 @@ import {
   analyseAtoPayables,
   billsFromPayload,
   buildProtectedMoneySplit,
+  type AtoPayablesAnalysis,
   type ProtectedMoneySplit,
 } from "@/lib/xero/ato-payables";
 import {
@@ -163,6 +164,12 @@ export function ruleProtectedMoneyVsCash(
   accounts?: SnapshotRow,
   payables?: SnapshotRow,
   overrides?: StatutoryOverrides,
+  /**
+   * False when the client is registered for neither GST nor PAYG withholding.
+   * No statutory balance is then expected on the Balance Sheet, so its absence
+   * is the correct position — not a coverage gap.
+   */
+  statutoryExpected = true,
 ): {
   finding: Finding | null;
   unavailable?: string;
@@ -177,7 +184,15 @@ export function ruleProtectedMoneyVsCash(
   }
 
   const unavailable = taxExtractionUnavailable(analysed.taxLines);
-  if (unavailable) return { finding: null, unavailable };
+  if (unavailable) {
+    // Absence is only a gap when a statutory balance could be expected. A
+    // client registered for neither GST nor PAYG withholding, with no super
+    // balance either, correctly shows nothing — silence, not a partial review.
+    if (analysed.taxLines.status === "absent" && !statutoryExpected) {
+      return { finding: null };
+    }
+    return { finding: null, unavailable };
+  }
 
   const protectedMoney = buildProtectedMoney(balanceSheet.as_at, analysed.taxLines.lines);
   const cash = analysed.cashAtBank.status === "assessed" ? analysed.cashAtBank.total : null;
@@ -195,16 +210,28 @@ export function ruleProtectedMoneyVsCash(
     .map((l) => l.accountId)
     .filter((id): id is string => typeof id === "string");
 
-  const atoAnalysis = analyseAtoPayables({
-    bills: payables ? billsFromPayload(payables.payload) : null,
-    complete: payables ? payables.complete : false,
-    periodEnd: balanceSheet.as_at,
-    statutoryAccountIds,
-    accountsById: accountRefsById(accounts?.payload),
-    balancesByAccountId: balancesByAccountId(balanceSheet.payload),
-  });
+  // A client registered for neither GST nor PAYG withholding never lodges an
+  // activity statement, so there is no lodged-and-owing split to establish.
+  // Skipping the analysis also keeps its refusal wording off the report.
+  const atoAnalysis: AtoPayablesAnalysis = !statutoryExpected
+    ? { status: "not_applicable", pattern: "direct" }
+    : analyseAtoPayables({
+        bills: payables ? billsFromPayload(payables.payload) : null,
+        complete: payables ? payables.complete : false,
+        periodEnd: balanceSheet.as_at,
+        statutoryAccountIds,
+        accountsById: accountRefsById(accounts?.payload),
+        balancesByAccountId: balancesByAccountId(balanceSheet.payload),
+      });
   const split = buildProtectedMoneySplit(protectedMoney.total, atoAnalysis);
   const splitGap = split.refusal ?? undefined;
+
+  // An unmatched GST or PAYG component is the expected position for a client
+  // registered for neither — not a gap. Super is owed whenever anyone is
+  // employed, so it is never filtered out.
+  const unresolved = statutoryExpected
+    ? protectedMoney.unresolved
+    : protectedMoney.unresolved.filter((k) => k === "super");
 
   // Nothing resolved at all. Counting components rather than hard-coding three:
   // a combined ATO account replaces the separate GST and PAYG components, so
@@ -244,10 +271,10 @@ export function ruleProtectedMoneyVsCash(
   if (!severity) {
     // An unmatched component is not a zero. If the rule would otherwise stay
     // quiet, report the gap rather than implying the client is fine.
-    if (protectedMoney.unresolved.length > 0) {
+    if (unresolved.length > 0) {
       return {
         finding: null,
-        unavailable: `Protected money is incomplete: ${protectedMoney.unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
+        unavailable: `Protected money is incomplete: ${unresolved.join(", ")} could not be matched on the Balance Sheet, so the total is understated.`,
         splitGap,
         split,
         debug: { protectedMoneyTotal: total, cashAtBank: cashAmount },
@@ -257,8 +284,8 @@ export function ruleProtectedMoneyVsCash(
   }
 
   const gap =
-    protectedMoney.unresolved.length > 0
-      ? ` ${protectedMoney.unresolved.length} component(s) could not be matched, so the true figure is higher.`
+    unresolved.length > 0
+      ? ` ${unresolved.length} component(s) could not be matched, so the true figure is higher.`
       : "";
 
   // Where the split was refused, the lodged and total lines are suppressed
@@ -296,6 +323,8 @@ export function ruleStatutoryMagnitude(
   balanceSheet: SnapshotRow,
   accounts?: SnapshotRow,
   overrides?: StatutoryOverrides,
+  /** See `ruleProtectedMoneyVsCash` — false means absence is expected. */
+  statutoryExpected = true,
 ): {
   finding: Finding | null;
   unavailable?: string;
@@ -307,7 +336,12 @@ export function ruleStatutoryMagnitude(
   }
 
   const unavailable = taxExtractionUnavailable(analysed.taxLines);
-  if (unavailable) return { finding: null, unavailable };
+  if (unavailable) {
+    if (analysed.taxLines.status === "absent" && !statutoryExpected) {
+      return { finding: null };
+    }
+    return { finding: null, unavailable };
+  }
 
   const lines = analysed.taxLines.lines;
   const statutory = lines
@@ -316,6 +350,9 @@ export function ruleStatutoryMagnitude(
   if (
     !lines.some((l) => l.category !== "super")
   ) {
+    // Only super matched. For a client registered for neither GST nor PAYG
+    // withholding, that is the expected position — not a gap.
+    if (!statutoryExpected) return { finding: null };
     return {
       finding: null,
       unavailable: "No GST, PAYG withholding or tax account could be matched on the Balance Sheet.",
@@ -483,6 +520,14 @@ export type EvaluateOptions = {
    * `classifyTaxLine`; absent means name matching, exactly as before.
    */
   statutoryOverrides?: StatutoryOverrides;
+  /**
+   * The client's registration settings, from `clients.gst_cycle` and
+   * `clients.payg_withholding_cycle`. Undefined means "unknown", which is
+   * treated as registered — the historical behaviour. When BOTH are false, no
+   * statutory balance is expected and R01/R05 stay silent on its absence.
+   */
+  gstRegistered?: boolean;
+  withholdsPayg?: boolean;
 };
 
 /** Evaluate against stored snapshot rows (the staff badge). */
@@ -569,14 +614,26 @@ export function evaluateFromRows(
     const apState = keyState(apRow, "invoices_accpay_open", now, skipFreshness);
     const ap = apState === "usable" ? apRow : undefined;
 
-    const r01 = ruleProtectedMoneyVsCash(bs, accounts, ap, options.statutoryOverrides);
+    // A client registered for neither GST nor PAYG withholding is not expected
+    // to carry any statutory balance (super aside, and super alone does not
+    // make a file "expected"): its absence is the correct position.
+    const statutoryExpected =
+      options.gstRegistered !== false || options.withholdsPayg !== false;
+
+    const r01 = ruleProtectedMoneyVsCash(
+      bs,
+      accounts,
+      ap,
+      options.statutoryOverrides,
+      statutoryExpected,
+    );
     if (r01.finding) findings.push(r01.finding);
     else if (r01.unavailable) gaps.push(r01.unavailable);
     // A refused lodged-and-owing split is reported even when R01 itself fired:
     // the reader must know the total was not established.
     if (r01.splitGap) gaps.push(r01.splitGap);
 
-    const r05 = ruleStatutoryMagnitude(bs, accounts, options.statutoryOverrides);
+    const r05 = ruleStatutoryMagnitude(bs, accounts, options.statutoryOverrides, statutoryExpected);
     if (r05.finding) findings.push(r05.finding);
     else if (r05.unavailable) gaps.push(r05.unavailable);
 

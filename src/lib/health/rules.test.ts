@@ -315,6 +315,62 @@ describe("Balance Sheet extraction", () => {
   });
 });
 
+describe("statutory registration settings", () => {
+  const NO_TAX_BS = row({ report_key: "balance_sheet", payload: balanceSheet(50_000, []) });
+
+  it("reports a gap when statutory balances are absent and registration is unknown", () => {
+    const v = evaluateFromRows(
+      {
+        clientId: "c1",
+        connections: CONNECTED,
+        snapshots: [NO_TAX_BS, accountRow(), HEALTHY_DEBTORS],
+        now: NOW,
+      },
+      { skipFreshness: true },
+    );
+    assert.strictEqual(v.state, "partial");
+    assert.match((v as { gaps?: string[] }).gaps?.join(" ") ?? "", /protected money/i);
+  });
+
+  it("stays silent when the client is registered for neither GST nor PAYG withholding", () => {
+    const v = evaluateFromRows(
+      {
+        clientId: "c1",
+        connections: CONNECTED,
+        snapshots: [NO_TAX_BS, accountRow(), HEALTHY_DEBTORS],
+        now: NOW,
+      },
+      { skipFreshness: true, gstRegistered: false, withholdsPayg: false },
+    );
+    assert.strictEqual(v.state, "ok");
+  });
+
+  it("still reports the gap when only one registration is switched off", () => {
+    const v = evaluateFromRows(
+      {
+        clientId: "c1",
+        connections: CONNECTED,
+        snapshots: [NO_TAX_BS, accountRow(), HEALTHY_DEBTORS],
+        now: NOW,
+      },
+      { skipFreshness: true, gstRegistered: false, withholdsPayg: true },
+    );
+    assert.strictEqual(v.state, "partial");
+  });
+
+  it("does not treat an unmatched GST/PAYG component as a gap when neither is expected", () => {
+    const superOnly = row({
+      report_key: "balance_sheet",
+      payload: balanceSheet(500_000, [
+        { name: "Superannuation Payable", amount: 10_000, accountId: "super-1" },
+      ]),
+    });
+    const r = ruleProtectedMoneyVsCash(superOnly, accountRow(), undefined, undefined, false);
+    assert.strictEqual(r.finding, null);
+    assert.strictEqual(r.unavailable, undefined);
+  });
+});
+
 describe("R06 debtors", () => {
   it("does not fire on a truncated (complete = false) invoice payload", () => {
     const payload = invoicePayload([

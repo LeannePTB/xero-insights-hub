@@ -260,6 +260,15 @@ export async function buildReportVerdict(opts: BuildVerdictOptions): Promise<Rep
     opts.tenantId,
   );
 
+  // The client's registration settings decide whether a missing statutory
+  // balance is a gap at all: a client registered for neither GST nor PAYG
+  // withholding is EXPECTED to show none.
+  const { data: clientRow } = await opts.supabase
+    .from("clients")
+    .select("gst_cycle, payg_withholding_cycle")
+    .eq("id", opts.clientId)
+    .maybeSingle();
+
   const verdict = evaluateFromRows(
     {
       clientId: opts.clientId,
@@ -267,7 +276,12 @@ export async function buildReportVerdict(opts: BuildVerdictOptions): Promise<Rep
       snapshots: rows,
       now: new Date(),
     },
-    { skipFreshness: true, statutoryOverrides },
+    {
+      skipFreshness: true,
+      statutoryOverrides,
+      gstRegistered: clientRow?.gst_cycle !== "not_registered",
+      withholdsPayg: clientRow?.payg_withholding_cycle !== "not_registered",
+    },
   );
 
   const priors = await loadPriorVerdicts(opts.supabase, opts.clientId, opts.periodEnd);
