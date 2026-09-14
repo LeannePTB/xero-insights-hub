@@ -479,16 +479,23 @@ function LoanMatrixTab() {
                           <Badge className={`${badge.cls} uppercase tracking-wide`}>{badge.label}</Badge>
                         </TableCell>
                         <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Input
-                            value={notes[row.id] ?? ""}
-                            placeholder="Add a note…"
-                            maxLength={500}
-                            onChange={(e) =>
-                              setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
-                            }
-                            className="h-8 text-sm"
-                          />
+                          {openSnapshotId ? (
+                            <p className="text-sm text-muted-foreground">
+                              {shownNotes[row.id] ?? "—"}
+                            </p>
+                          ) : (
+                            <Input
+                              value={shownNotes[row.id] ?? ""}
+                              placeholder="Add a note…"
+                              maxLength={500}
+                              onChange={(e) =>
+                                setNotes((prev) => ({ ...prev, [row.id]: e.target.value }))
+                              }
+                              className="h-8 text-sm"
+                            />
+                          )}
                         </TableCell>
+
                       </TableRow>
                     );
                   })}
