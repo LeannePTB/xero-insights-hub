@@ -523,6 +523,70 @@ function LoanMatrixTab() {
         );
       })}
 
+      {groupId && (
+        <section className="space-y-3">
+          <h3 className="font-display text-lg font-semibold">Past reports</h3>
+          {snapshotsQ.isLoading && (
+            <p className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading saved reports…
+            </p>
+          )}
+          {!snapshotsQ.isLoading && snapshots.length === 0 && (
+            <p className="rounded-xl border border-dashed border-border bg-card p-6 text-sm text-muted-foreground">
+              No saved reports yet. Press “Save report” to keep a snapshot of these balances and notes.
+            </p>
+          )}
+          {snapshots.length > 0 && (
+            <div className="overflow-hidden rounded-2xl border border-border bg-card">
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-b border-border bg-primary/5 hover:bg-primary/5">
+                    <TableHead>Balances as at</TableHead>
+                    <TableHead>Xero file</TableHead>
+                    <TableHead>Saved</TableHead>
+                    <TableHead className="w-40 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {snapshots.map((s) => (
+                    <TableRow key={s.id} className={openSnapshotId === s.id ? "bg-primary/5" : ""}>
+                      <TableCell className="font-medium">{s.asAt}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{s.label || "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(s.generatedAt).toLocaleString("en-AU")}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setOpenSnapshotId(s.id);
+                              window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                          >
+                            Open
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteMut.mutate(s.id)}
+                            disabled={deleteMut.isPending}
+                            aria-label="Delete saved report"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </section>
+      )}
+
       <MismatchDetailDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -533,3 +597,4 @@ function LoanMatrixTab() {
     </div>
   );
 }
+
