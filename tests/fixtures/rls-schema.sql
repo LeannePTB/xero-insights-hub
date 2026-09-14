@@ -72,7 +72,7 @@ create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text,
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
-create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[]);
+create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
 create table public.client_statutory_accounts (id uuid, client_id uuid, tenant_id text, account_name text, category statutory_category, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_subscriptions (id uuid, client_id uuid, stripe_customer_id text, stripe_subscription_id text, plan_name text, subscription_type client_subscription_type, status client_subscription_status, current_period_end timestamp with time zone, trial_end timestamp with time zone, past_due_since timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, dashboard_tier dashboard_tier, promotion_code text, coupon_id text, comp_reason text, comped_by uuid, comped_at timestamp with time zone);
 create table public.client_true_breakeven_inputs (id uuid, client_id uuid, tenant_id text, loan_principal numeric, credit_card_interest numeric, owner_drawings numeric, tax_payments numeric, ato_payment_plan numeric, equipment_finance numeric, other numeric, notes text, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -1531,6 +1531,8 @@ declare
   _claims jsonb;
   _session_id uuid;
   _signed_in_at timestamptz;
+  _now_syd timestamp;
+  _cutoff_date date;
   _cutoff timestamptz;
 begin
   _claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
@@ -1554,11 +1556,17 @@ begin
     return false;
   end if;
 
-  -- Most recent 3am Australia/Sydney, in UTC. AT TIME ZONE interprets the
+  -- Most recent 3am Australia/Sydney that has ALREADY passed. Between midnight
+  -- and 3am local time that is yesterday's 3am, not today's (which is still in
+  -- the future and would make every session stale). AT TIME ZONE interprets the
   -- local timestamp as Sydney wall-clock, so AEST/AEDT is handled by the tz
   -- database.
-  _cutoff := ((timezone('Australia/Sydney', now())::date + interval '3 hours')
-              at time zone 'Australia/Sydney');
+  _now_syd := timezone('Australia/Sydney', now());
+  _cutoff_date := _now_syd::date;
+  if _now_syd::time < time '03:00' then
+    _cutoff_date := _cutoff_date - 1;
+  end if;
+  _cutoff := ((_cutoff_date + interval '3 hours') at time zone 'Australia/Sydney');
 
   return _signed_in_at >= _cutoff;
 end;
@@ -2605,4 +2613,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: b10fcea6114e280453d792248f91ed7c0f72cd1d1e65c0694407801246ffca3f
+-- catalogue-fingerprint: 1fe69a9eccf51567333459eaef2c370b0e0fbb863c70ff48b241aa023cc68513

@@ -687,3 +687,33 @@ protected money is claimed when none is expected. "debtor book" replaced with
 "debtors" in this sentence. Presentation/derived-data only — no new table,
 policy, grant or predicate. Verified: typecheck clean, 54/54 tests (three new),
 live access 18/0/0.
+
+---
+
+## 14 Sep 2026 — "Guarded SECURITY DEFINER functions" Action cleared, and the
+## nightly cut-off lockout fixed (CLOSED)
+
+Security-relevant. The posture check `definer_guards` reported one callable
+`public` definer function with no `assert_aal2` / `is_aal2` reference:
+`public.session_fresh()`. It returned a single boolean about the caller's own
+session and no organisation, client or personal data, and it could not reference
+the guard because the guard itself consults the freshness check. Nothing in the
+app called it (the only reference was the generated types file), so it was
+**dropped** rather than kept as a permanent scanner exception.
+`app_private.is_session_fresh()` remains the single implementation, consulted by
+`app_private.is_aal2()` and `app_private.assert_aal2()`.
+
+While verifying it, a real defect was found in the cut-off arithmetic shared by
+both functions: the cut-off was computed as today's Sydney date + 3 hours, which
+between midnight and 3am local time is a *future* timestamp. In those three
+hours every session was stale, so the RESTRICTIVE `mfa_aal2_required` policy
+hid every row on every data table and `assert_aal2()` raised `SESSION_EXPIRED`
+— signing in again did not help. `app_private.is_session_fresh()` now uses the
+most recent 3am that has already passed (yesterday's when the local time is
+before 3am). Fail-closed behaviour unchanged: no `session_id` claim, or no
+matching `auth.sessions` row, is still stale; no request context and
+`service_role` still pass. Signature unchanged, so `is_aal2()` /
+`assert_aal2()` needed no edit.
+
+No policy, grant or predicate changed. Backend linter 91 -> 90 warnings, all the
+one accepted category (the -1 is the dropped function).
