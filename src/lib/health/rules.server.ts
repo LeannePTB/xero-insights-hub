@@ -337,6 +337,9 @@ export function ruleStatutoryMagnitude(
   if (
     !lines.some((l) => l.category !== "super")
   ) {
+    // Only super matched. For a client registered for neither GST nor PAYG
+    // withholding, that is the expected position — not a gap.
+    if (!statutoryExpected) return { finding: null };
     return {
       finding: null,
       unavailable: "No GST, PAYG withholding or tax account could be matched on the Balance Sheet.",
