@@ -110,9 +110,6 @@ function coverageSentence(gaps: string[]): string {
 
 /** Points to a conversation. Never a decision, never a deadline. */
 function nextStepFor(state: Verdict["state"]): string | null {
-  if (state === "issues") {
-    return "We are available to talk this through with you when it suits.";
-  }
   if (state === "partial" || state === "disconnected" || state === "no_data" || state === "stale") {
     return "We are available to talk through what is needed to complete this review.";
   }
