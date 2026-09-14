@@ -135,7 +135,12 @@ export function ruleCoaHygiene(
   shortCode?: string | null,
   balances?: AccountBalances,
   overrides?: StatutoryOverrides,
+  opts?: { gstRegistered?: boolean },
 ): Finding[] {
+  // A client set to "Not registered" for GST has no BAS: the GST direction
+  // and BAS-exclusion checks below would accuse a file that is coded
+  // correctly for a non-registered business, so they stay silent.
+  const gstRegistered = opts?.gstRegistered !== false;
   const out: Finding[] = [];
 
   // Duplicate names within same Type+Class
