@@ -433,7 +433,7 @@ function newId(literal: string): string {
 /** Re-points the current transaction at another user, for a cross-user assertion. */
 async function actAs(uid: string) {
   await db.query(`select set_config('request.jwt.claims', $1, true)`, [
-    JSON.stringify({ role: "authenticated", sub: uid, aal: "aal2" }),
+    JSON.stringify({ role: "authenticated", sub: uid, aal: "aal2", session_id: uid }),
   ]);
 }
 
