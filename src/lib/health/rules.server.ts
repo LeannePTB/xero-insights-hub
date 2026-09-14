@@ -611,6 +611,16 @@ export function evaluateFromRows(
   const findings: Finding[] = [];
   const gaps: string[] = [];
 
+  // Which statutory components this client is expected to carry, from its
+  // registration settings. A client that does not withhold PAYG has no
+  // wages withheld from — and no wages means no super accrues, so super
+  // follows PAYG withholding (there is no separate super setting).
+  const expected: ExpectedStatutory = {
+    gst: options.gstRegistered !== false,
+    payg: options.withholdsPayg !== false,
+    super: options.withholdsPayg !== false,
+  };
+
   const bsState = states.get("balance_sheet");
   const bs = byKey.get("balance_sheet");
   if (bs && (bsState === "usable" || bsState === "partial")) {
@@ -622,16 +632,6 @@ export function evaluateFromRows(
     const apRow = byKey.get("invoices_accpay_open");
     const apState = keyState(apRow, "invoices_accpay_open", now, skipFreshness);
     const ap = apState === "usable" ? apRow : undefined;
-
-    // Which statutory components this client is expected to carry, from its
-    // registration settings. A client that does not withhold PAYG has no
-    // wages withheld from — and no wages means no super accrues, so super
-    // follows PAYG withholding (there is no separate super setting).
-    const expected: ExpectedStatutory = {
-      gst: options.gstRegistered !== false,
-      payg: options.withholdsPayg !== false,
-      super: options.withholdsPayg !== false,
-    };
 
     const r01 = ruleProtectedMoneyVsCash(
       bs,
