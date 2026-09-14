@@ -168,6 +168,27 @@ function LoanMatrixTab() {
   }, [groupId, notesQ.data]);
 
 
+  // Saved reports for this group, and the one being viewed (if any). Opening a
+  // saved report shows its stored figures and notes instead of the live pull.
+  const [openSnapshotId, setOpenSnapshotId] = useState<string | null>(null);
+  useEffect(() => {
+    setOpenSnapshotId(null);
+  }, [groupId]);
+
+  const snapshotsQ = useQuery({
+    queryKey: ["group-loan-snapshots", groupId],
+    queryFn: () => fetchSnapshots({ data: { groupId: groupId! } }),
+    enabled: !!groupId,
+  });
+  const snapshots = snapshotsQ.data?.snapshots ?? [];
+
+  const openSnapshotQ = useQuery({
+    queryKey: ["group-loan-snapshot", groupId, openSnapshotId],
+    queryFn: () => fetchSnapshot({ data: { groupId: groupId!, snapshotId: openSnapshotId! } }),
+    enabled: !!groupId && !!openSnapshotId,
+  });
+  const openSnapshot = openSnapshotId ? openSnapshotQ.data : undefined;
+
   const exportMut = useMutation({
     mutationFn: (format: "pdf" | "xlsx") =>
       exportFn({ data: { groupId: groupId!, tenantId, asAt, format } }),
@@ -177,15 +198,32 @@ function LoanMatrixTab() {
 
   const saveMut = useMutation({
     mutationFn: () => saveFn({ data: { groupId: groupId!, tenantId, asAt, notes } }),
-    onSuccess: () => toast.success("Report saved"),
+    onSuccess: () => {
+      toast.success("Report saved");
+      snapshotsQ.refetch();
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
+  const deleteMut = useMutation({
+    mutationFn: (snapshotId: string) => deleteFn({ data: { groupId: groupId!, snapshotId } }),
+    onSuccess: (_r, snapshotId) => {
+      if (openSnapshotId === snapshotId) setOpenSnapshotId(null);
+      toast.success("Saved report deleted");
+      snapshotsQ.refetch();
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
 
   // Unpaired accounts are excluded from the matrix — pair them on the Accounts tab.
-  const sections = (recon?.files ?? [])
-    .map((f: any) => ({ ...f, rows: f.rows.filter((r: ReconRow) => r.status !== "unpaired") }))
+  const shownFiles = openSnapshot ? ((openSnapshot.payload as any)?.files ?? []) : (recon?.files ?? []);
+  const shownNotes: Record<string, string> = openSnapshot
+    ? ((openSnapshot.payload as any)?.notes ?? {})
+    : notes;
+  const sections = (shownFiles as any[])
+    .map((f: any) => ({ ...f, rows: (f.rows ?? []).filter((r: ReconRow) => r.status !== "unpaired") }))
     .filter((f: any) => f.rows.length > 0);
+
 
   return (
     <div className="space-y-6">
