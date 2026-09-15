@@ -36,7 +36,8 @@ fns as (
         'record_security_attestation','security_attestations_list',
         'admin_add_practice_member','admin_remove_practice_member',
         'set_client_access_relationship','user_can_write_client_scenario',
-        'touch_session_activity','session_is_active'))
+        'touch_session_activity','session_is_active',
+        'admin_assert_can_sign_out_user','record_sign_out_all_devices'))
     )
 ),
 stmts as (
