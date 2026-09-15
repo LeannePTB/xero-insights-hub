@@ -253,6 +253,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Records that the calling session had real interaction; caller-scoped, session taken from the verified token and the time from the server clock.",
   "public.record_sign_out_other_devices":
     "Audits a person signing out their own other devices; records who and when, never a token or device detail.",
+  "public.admin_assert_can_sign_out_user":
+    "Authorises a super admin (aal2) to sign another person out of every device; refuses their own account and refuses the last remaining super admin. Holds no revocation itself.",
+  "public.record_sign_out_all_devices":
+    "Audits a super admin signing another person out of every device, recording actor, subject, time and the mechanism used; never a password or token.",
   "public.security_attestations_list":
     "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
   "public.test_accounts_posture":

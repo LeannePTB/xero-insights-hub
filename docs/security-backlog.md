@@ -834,14 +834,30 @@ permissions-policy and report-only CSP.
 - **DONE — sign out my other devices (self-service).** `scope: "others"` proven
   to revoke server-side (204, and the revoked refresh token stops working);
   audited by `public.record_sign_out_other_devices()`.
-- **50. Signing another person out remotely — OWNER DECISION NEEDED.**
-  Priority: Medium. Due: 15 Dec 2026. The authentication service exposes no
-  administrative sign-out endpoint on this platform (`POST
-  /admin/users/{id}/logout` and `DELETE /admin/users/{id}/sessions` both 404,
-  verified 15 Sep 2026). `admin_sign_out_all_devices()` was written and then
-  **dropped** rather than shipped, because an audited function that cannot carry
-  out what it records is worse than no function. The only remaining path is
-  deleting `auth.sessions` rows with the service role, which writes to the
-  managed `auth` schema. Not done without an owner decision. Mitigation today:
-  suspending or removing a member ends their access on the next query, and the
-  30-minute timeout plus the daily 3am cut-off bound every session's life.
+- **DONE (50) — signing another person out remotely (stolen device).** Resolved
+  15 Sep 2026 after testing every mechanism against a REAL user id on the
+  contained staff test account, three live sessions open:
+  - `POST /auth/v1/admin/users/{id}/logout` → 404 `404 page not found`;
+    `DELETE /auth/v1/admin/users/{id}/sessions` → 404; `POST
+    /auth/v1/admin/users/{id}/sessions/logout` → 404. The earlier 404
+    `user_not_found` for a fake id was NOT evidence the route exists: the user
+    lookup runs before routing, so a real id falls through to the router's plain
+    404. Sessions still worked afterwards (access 200, refresh 200).
+  - `admin.signOut(jwt, 'global')` needs the victim's own token, which an admin
+    does not hold — not usable as an admin control.
+  - **Ban is not a sign-out.** `ban_duration: "300s"` blocked the live session
+    while it lasted (access 403, refresh 400) but did **not** delete it:
+    `auth.sessions` stayed at 5 rows, and after `ban_duration: "none"` the same
+    refresh token worked again (200). Shipping a brief ban as "sign out all
+    devices" would have handed the stolen device its session back.
+  - **An admin credential change does genuinely revoke.** After
+    `updateUserById({ password })`, `auth.sessions` for that person went **5 → 0**
+    and every one of the three sessions was refused (access 403, refresh 400).
+  Implemented on that mechanism: `public.admin_assert_can_sign_out_user(uuid)`
+  (aal2 + super admin, refuses the caller's own account, refuses the last
+  remaining super admin) authorises; the server function sets a random password
+  nobody holds, emails a reset link, then `public.record_sign_out_all_devices`
+  writes the `sessions_revoked_all` audit row — only after the revocation
+  succeeded, and never carrying a password or token. Control sits on
+  Settings → Advisors per person and states the password consequence before
+  confirming. No `auth`-schema write was needed and none was made.
