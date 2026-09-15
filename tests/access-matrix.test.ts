@@ -68,6 +68,8 @@ type Ctx = {
 
 /** A session signed in today whose last recorded activity is 40 minutes ago. */
 const IDLE_SESSION = "77777777-2222-4222-8222-222222222222";
+/** A session seconds old with NO activity row: the just-completed-MFA case. */
+const FRESH_SESSION = "77777777-3333-4333-8333-333333333333";
 
 const CONTEXT: Record<Role, Ctx> = {
   anonymous: { uid: null, dbRole: "anon", aal: null },
