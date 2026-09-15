@@ -380,8 +380,8 @@ function claims(ctx: Ctx) {
   const c: Record<string, string> = { role: ctx.dbRole };
   if (ctx.uid) c["sub"] = ctx.uid;
   if (ctx.aal) c["aal"] = ctx.aal;
-  // The daily 3am sign-in cut-off resolves the session's start time, so every
-  // signed-in context needs a session_id backed by a fresh auth.sessions row.
+  // The inactivity timeout resolves the session's activity from its session id,
+  // so every signed-in context needs a session_id backed by an auth.sessions row.
   if (ctx.uid) c["session_id"] = ctx.sessionId ?? ctx.uid;
   return JSON.stringify(c);
 }
