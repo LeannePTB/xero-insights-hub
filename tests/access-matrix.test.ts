@@ -525,7 +525,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   }
   if (r === "xero_error_breakdown()") {
     const p = await probe(`select * from public.xero_error_breakdown(7)`);
-    if (!p.ok) console.log("XERO_BREAKDOWN_ERROR:", p.error);
     return p.ok ? "allow" : "deny";
   }
   if (r === "touch_session_activity()") {
