@@ -205,3 +205,42 @@ export const copyClientCardSetup = createServerFn({ method: "POST" })
     }
     return { copied: Number(n ?? 0) };
   });
+
+/**
+ * Purchase options for several organisations at once, for the Organisations
+ * table. One guarded database call per organisation — each re-checks aal2 and
+ * the caller's own path to that organisation, so this cannot widen anything.
+ * An organisation the caller cannot read is simply absent from the result.
+ */
+export const listOrgPurchases = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { firmIds: string[] }) => ({
+    firmIds: Array.from(new Set((i?.firmIds ?? []).filter((id) => typeof id === "string" && id))).slice(0, 200),
+  }))
+  .handler(async ({ data, context }) => {
+    const db: any = context.supabase;
+    const results = await Promise.all(
+      data.firmIds.map(async (firmId) => {
+        const { data: rows, error } = await db.rpc("org_purchase", { _firm_id: firmId });
+        if (error) return null;
+        const r = (rows ?? [])[0];
+        if (!r) return null;
+        const purchase: OrgPurchase = {
+          firmId: r.firm_id as string,
+          clientLimit: Number(r.client_limit ?? 0),
+          advisory: !!r.advisory_enabled,
+          consolidation: !!r.consolidation_enabled,
+          billingMode: (r.billing_mode === "external" ? "external" : "bookkeeping") as
+            | "bookkeeping"
+            | "external",
+          clientCount: Number(r.client_count ?? 0),
+        };
+        return purchase;
+      }),
+    );
+    const { data: model } = await db.rpc("card_model_active");
+    return {
+      purchases: results.filter((p): p is OrgPurchase => !!p),
+      modelActive: model === "v2",
+    };
+  });

@@ -3295,6 +3295,10 @@ export type Database = {
         Returns: undefined
       }
       record_sign_out_other_devices: { Args: never; Returns: undefined }
+      record_view_as: {
+        Args: { _client_id?: string; _firm_id: string; _mode?: string }
+        Returns: undefined
+      }
       remove_client: {
         Args: { _client_id: string }
         Returns: {
@@ -3491,6 +3495,20 @@ export type Database = {
       user_can_write_firm: {
         Args: { _firm_id: string; _user_id: string }
         Returns: boolean
+      }
+      xero_error_breakdown: {
+        Args: { _days?: number }
+        Returns: {
+          firm_id: string
+          firm_name: string
+          first_seen: string
+          http_status: number
+          last_seen: string
+          occurrences: number
+          path: string
+          rate_limited: number
+          tenant_name: string
+        }[]
       }
       xero_missing_scopes: {
         Args: { _connection_id: string }

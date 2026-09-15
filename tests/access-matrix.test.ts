@@ -515,6 +515,18 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     if (!p.ok) expect(String(p.error)).toContain("SESSION_IDLE");
     return p.ok ? "allow" : "deny";
   }
+  if (r.startsWith("record_view_as(")) {
+    // View As is a presentation filter, but recording it is the control: if the
+    // record is refused the preview never opens. ORG_A for "their own", ORG_B
+    // for the organisation a super admin only reaches by being a super admin.
+    const org = r.includes("not a member of") ? ORG_B : ORG_A;
+    const p = await probe(`select public.record_view_as('${org}'::uuid, null, 'owner')`);
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "xero_error_breakdown()") {
+    const p = await probe(`select * from public.xero_error_breakdown(7)`);
+    return p.ok ? "allow" : "deny";
+  }
   if (r === "touch_session_activity()") {
     const p = await probe(`select public.touch_session_activity()`);
     return p.ok ? "allow" : "deny";

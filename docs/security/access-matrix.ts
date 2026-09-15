@@ -914,6 +914,63 @@ export const MATRIX: MatrixRow[] = [
     note: "Phase 5 step 5: the callback presents the database's own plan-limit wording and names the refused Xero file.",
   },
 
+  // ---------------------------------------------------- View as (impersonation)
+  // View As is a PRESENTATION filter: the preview renders through the caller's
+  // own session and RLS, so it can never show a row the caller could not
+  // already read. It resolves against PK 3 by refusing to record — and so
+  // refusing to open — for an organisation the caller only reaches by being a
+  // super admin. Every accepted preview writes an audit_log row naming who
+  // previewed whom, which organisation and when.
+  {
+    role: "super_admin_no_membership",
+    resource: "record_view_as(an organisation they are not a member of)",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 3 — super_admin alone grants no organisation access, so it cannot preview one either",
+    layers: ["pglite"],
+    note: "Added 16 Sep 2026 with the audited View as action on the Organisations table. Before this, view-as was a URL parameter with no audit row and no database check.",
+  },
+  {
+    role: "org_owner",
+    resource: "record_view_as(their own organisation)",
+    operation: "execute",
+    expect: "deny",
+    rule: "Platform operations only (assert_super_admin) — an organisation owner has no impersonation action",
+    layers: ["pglite"],
+  },
+  {
+    role: "aal1_member",
+    resource: "record_view_as(their own organisation)",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 2 (aal2 required before anything else)",
+    layers: ["pglite"],
+  },
+  {
+    role: "client_viewer",
+    resource: "record_view_as(their own organisation)",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 2 path D — a viewer grant is read-only and never platform operations",
+    layers: ["pglite"],
+  },
+  {
+    role: "super_admin_no_membership",
+    resource: "xero_error_breakdown()",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 path C — Xero telemetry is platform metadata: status codes and endpoints, never client data",
+    layers: ["pglite"],
+  },
+  {
+    role: "org_owner",
+    resource: "xero_error_breakdown()",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 2 path C is platform operations only; an organisation reads its own Xero errors elsewhere",
+    layers: ["pglite"],
+  },
+
   // --------------------------------------------------------- server functions
   ...rows(
     ["other_org_member", "super_admin_no_membership", "suspended_member", "removed_member"],

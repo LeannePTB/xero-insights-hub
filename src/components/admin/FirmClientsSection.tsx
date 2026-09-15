@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
 import { getMyContext } from "@/lib/roles.functions";
+import { recordViewAs } from "@/lib/view-as.functions";
 import { listClientVerdicts } from "@/lib/health/verdicts.functions";
 
 
@@ -122,6 +123,20 @@ export function FirmClientsSection({
 
 
 
+
+  // Previewing a client's dashboard is recorded before it opens. The database
+  // function is the control (aal2 + platform super admin + an access path this
+  // person already holds); if it refuses, no preview opens.
+  const navigate = useNavigate();
+  const recordPreview = useServerFn(recordViewAs);
+  async function startClientPreview(clientId: string, tier: DashboardTier) {
+    try {
+      await recordPreview({ data: { firmId, clientId, mode: "client" } });
+      navigate({ to: "/clients/$clientId", params: { clientId }, search: { viewAs: tier } });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not start the preview.");
+    }
+  }
 
   const clientsQ = useQuery({
     queryKey: ["clients", firmId],
@@ -433,13 +448,14 @@ export function FirmClientsSection({
                               )}
                               {[effectiveTier, ...previewTiers].map((t) =>
                                 canOpenClientData ? (
-                                  <DropdownMenuItem key={`view-as-${t}`} asChild>
-                                    <Link to="/clients/$clientId" params={{ clientId: c.id }} search={{ viewAs: t }}>
-                                      <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
-                                      {t !== effectiveTier && (
-                                        <span className="ml-1 text-xs text-muted-foreground">(preview)</span>
-                                      )}
-                                    </Link>
+                                  <DropdownMenuItem
+                                    key={`view-as-${t}`}
+                                    onSelect={() => void startClientPreview(c.id, t as DashboardTier)}
+                                  >
+                                    <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
+                                    {t !== effectiveTier && (
+                                      <span className="ml-1 text-xs text-muted-foreground">(preview)</span>
+                                    )}
                                   </DropdownMenuItem>
                                 ) : (
                                   <DropdownMenuItem
