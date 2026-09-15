@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyContext } from "@/lib/roles.functions";
 import { savePlanLevel, deletePlanLevel, type PlanLevel, type PlanScope } from "@/lib/plan-levels.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
+import { getCardModel } from "@/lib/card-model.functions";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,11 @@ function PlanLevelsPage() {
   const fetchCtx = useServerFn(getMyContext);
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const levelsQ = usePlanLevels();
+  // While the purchase + ticked-list model is live these levels decide no
+  // card. Fail closed to read-only if we cannot tell.
+  const fetchModel = useServerFn(getCardModel);
+  const modelQ = useQuery({ queryKey: ["card-model"], queryFn: () => fetchModel() });
+  const legacy = modelQ.data?.active !== false;
   const [draft, setDraft] = useState<Draft | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PlanLevel | null>(null);
 
