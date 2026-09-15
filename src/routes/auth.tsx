@@ -15,10 +15,12 @@ import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
 import { useSignOut } from "@/lib/use-sign-out";
 import {
-  IDLE_SIGN_OUT_MESSAGE,
   clearIdleDeadline,
-  takeSignedOutIdle,
+  signOutMessage,
+  takeSignOutReason,
+  type SignOutReason,
 } from "@/lib/session-cutoff";
+import { sessionIsActive } from "@/lib/session-activity.functions";
 
 
 export const Route = createFileRoute("/auth")({
@@ -53,7 +55,7 @@ function AuthPage() {
   const [hasSession, setHasSession] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [idleNotice, setIdleNotice] = useState(false);
+  const [endedReason, setEndedReason] = useState<SignOutReason | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
