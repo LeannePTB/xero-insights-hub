@@ -47,3 +47,13 @@
 - [ ] Distinct SESSION_IDLE code end to end (never MFA_REQUIRED); /auth idle message
 - [ ] Remote sign-out: super admin all devices; self other devices; both audited
 - [ ] Posture check session_controls, matrix rows, docs (spec, Xero inputs, registers, backlog)
+
+## Session controls (15 Sep 2026) — DONE except backlog 50
+- [x] Verified real tokens carry session_id before building
+- [x] 30 minute inactivity timeout enforced in the database (server-held timestamp)
+- [x] SESSION_IDLE distinct from MFA_REQUIRED end to end
+- [x] 29 minute warning, Stay signed in, cross-tab absolute deadline
+- [x] Request-layer deny-only idle check
+- [x] Self-service "sign out my other devices" (server-side revocation, audited)
+- [x] session_controls posture check, matrix rows, spec § 0c, docs, backlog
+- [ ] Backlog 50: signing another person out remotely — no auth endpoint exists; owner decision
