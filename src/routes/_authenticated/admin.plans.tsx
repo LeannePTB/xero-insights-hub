@@ -131,10 +131,24 @@ function PlanLevelsPage() {
             <SuperAdminBadge />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add, rename or retire the plans organisations subscribe to. Client dashboard tiers are managed in{" "}
+            {legacy
+              ? "Historical record only. These levels no longer decide which cards a client sees."
+              : "Add, rename or retire the plans organisations subscribe to."}{" "}
             <Link to="/settings/tiers" className="underline underline-offset-2">Tier widgets</Link>.
           </p>
         </header>
+
+        {legacy && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+            <p className="font-medium">Legacy screen — these levels control nothing.</p>
+            <p className="mt-1 text-muted-foreground">
+              Cards are decided by what each organisation has bought (Clients, Advisory,
+              Consolidation) on its admin page, and by each client's own ticked card list on the
+              client settings page. Editing a level here would change no dashboard, so it is
+              read-only. The levels are kept for history and for plan limits and billing wording.
+            </p>
+          </div>
+        )}
 
         <LevelSection
           title="Organisation plans"
@@ -142,6 +156,7 @@ function PlanLevelsPage() {
           scope="firm"
           levels={firmLevels}
           tierLevels={dashLevels}
+          readOnly={legacy}
           onNew={() => setDraft(EMPTY("firm"))}
           onEdit={(l) => setDraft({ ...l, id: l.id })}
           onDuplicate={(l) => setDraft(duplicateOf(l))}
