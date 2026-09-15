@@ -33,7 +33,7 @@ function SortableItem({ id, children, fullWidth }: { id: string; children: React
     <div
       ref={setNodeRef}
       style={style}
-      className={`relative${fullWidth ? " [column-span:all]" : ""}`}
+      className={`relative min-w-0${fullWidth ? " lg:col-span-2" : ""}`}
     >
       <button
         type="button"
