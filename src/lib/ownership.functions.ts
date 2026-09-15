@@ -103,6 +103,8 @@ function explainRemovalError(message: string): string {
   if (/NOT_A_MEMBER_TARGET/.test(message)) return "That person is no longer in this organisation.";
   if (/NOT_A_MEMBER|NOT_PERMITTED|insufficient/i.test(message))
     return "You don't have permission to remove people from this organisation.";
+  if (/SESSION_IDLE/i.test(message))
+    return "You were signed out after 30 minutes of inactivity. Please sign in again.";
   if (/MFA_REQUIRED|aal2/i.test(message))
     return "Please verify your second factor and try again.";
   return "Could not remove that person.";

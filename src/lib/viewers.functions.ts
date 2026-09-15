@@ -368,6 +368,8 @@ function explain(message: string): string {
   if (/NOT_PERMITTED/i.test(message)) return "You cannot manage viewers for this organisation.";
   if (/INVITE_NOT_FOUND/i.test(message)) return "That invitation no longer exists.";
   if (/ALREADY_ACCEPTED/i.test(message)) return "That invitation has already been used.";
+  if (/SESSION_IDLE/i.test(message))
+    return "You were signed out after 30 minutes of inactivity. Please sign in again.";
   if (/MFA_REQUIRED/i.test(message)) return "Please verify your second factor and try again.";
   return message;
 }
