@@ -122,11 +122,18 @@ export const PATH_C_METADATA = [
   "user_roles",
   "audit_log",
   "xero_api_errors",
+  "xero_rate_limits",
   "billing_events",
 ] as const;
 
 /** Tables that must never be written from a browser session at all. */
-export const APPEND_ONLY_TABLES = ["audit_log", "login_events", "xero_api_errors"] as const;
+export const APPEND_ONLY_TABLES = [
+  "audit_log",
+  "login_events",
+  "xero_api_errors",
+  "xero_rate_limits",
+] as const;
+
 
 const WRITES: Operation[] = ["insert", "update", "delete"];
 

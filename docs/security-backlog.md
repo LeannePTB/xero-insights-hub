@@ -928,3 +928,56 @@ Open item carried into Batch 4: `public.assert_widget_access` still derives
 cards from `client_access.tier` via `app_private.effective_widgets_for_client`.
 That is the second card gate and it must be switched to `client_visible_cards`
 in the same change that flips reads.
+
+## 54. Xero rate-limit visibility — CLOSED 15 September 2026
+
+Owner asked to know when Xero API usage approaches the limits. The daily cap was
+never the real risk: 12 connected files at 5,000 calls a day each is far above
+current use (136, 129, 1,257 and 469 grouped reads on 12–15 Sep, the 1,257 being
+the owner's own development work). The real risks are a burst tripping the
+60-per-minute cap — a consolidated view fanning across DRTABT's nine entities,
+or a nightly refresh — and a runaway retry loop burning one file's daily quota
+and locking that client out of their own figures.
+
+Built:
+
+- `public.xero_rate_limits` — telemetry, shaped on `xero_api_errors`: one row per
+  Xero file per UTC day, updated in place, holding the lowest remaining figure
+  Xero reported for each limit and when, calls observed, rate-limit rejections
+  with the problem and retry-after, the current hour's count and the day's peak
+  hour. 30-day retention pruned on write. RLS on, platform defaults revoked from
+  `anon` and `authenticated`, restrictive aal2 guard, one `SELECT` policy naming
+  `authenticated` and requiring super admin (Path C metadata). No write policy at
+  all: the only write path is `public.log_xero_rate_limit`, `SECURITY DEFINER`
+  with EXECUTE revoked from `PUBLIC`, `anon` and `authenticated`, called with the
+  service role from the server. Nothing is written to `audit_log`; no token,
+  header or client data is stored.
+- Capture on every Xero response in `src/lib/xero/api.server.ts` — accounting,
+  assets, payroll and the token-refresh path, which covers the nightly snapshot
+  refresh because it runs through the same helpers. Xero's own headers are
+  recorded rather than a local counter, which would drift from Xero's and be
+  wrong exactly when it matters. Failures are swallowed and logged, exactly as
+  `xero_api_errors` does. Identity endpoints (`/connections`) are not
+  tenant-scoped and are deliberately not attributed to a file.
+- `public.xero_rate_limit_posture()` — Warn under 20% remaining on any limit,
+  Action under 5%, on any rejection in the last 24 hours, or when one file
+  exceeded 300 calls in an hour. Figures computed live from the table.
+- `public.xero_rate_limit_usage()` and a per-file card on Admin → Organisations.
+- 429 behaviour: a `day` problem now stops immediately with its own wording; a
+  `minute` problem keeps the existing Retry-After-honouring backoff.
+
+Burst threshold justification: 300 calls for one file in one hour is ~6% of that
+file's daily quota in an hour and only 5 calls a minute, so it cannot itself trip
+Xero's minute cap, yet it is an order of magnitude above any legitimate refresh
+at current volumes. A runaway loop passes it within minutes.
+
+Rate-limit rejections in the last 7 days: 1 of the 48 `xero_api_errors` rows —
+Positive Traction, `Payroll/PayRuns`, HTTP 429, 4 occurrences between 06:17 and
+06:30 UTC on 8 September 2026. No other file.
+
+Checks: fixture fingerprint MATCH (dbc62b4f…), access matrix and definer
+register regenerated, 95 tests passed, live access 18 passed / 0 failed. Linter:
+two new WARN rows of the existing accepted "signed-in users can execute
+SECURITY DEFINER function" class, for the two new read functions, which assert
+aal2 and super admin themselves — the same pattern as every other posture
+function. No change to the card-model migration.

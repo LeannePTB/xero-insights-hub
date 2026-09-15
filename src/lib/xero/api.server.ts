@@ -117,7 +117,10 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
       refresh_token: conn.refresh_token,
     }),
   });
+  // The token endpoint counts against the same limits, so it is captured too.
+  await recordXeroLimits(conn, res);
   if (!res.ok) {
+
     const body = await res.text();
     const { data: latest } = await supabaseAdmin
       .from("xero_connections")
@@ -329,8 +332,26 @@ export async function missingScopesForConnection(connectionId: string): Promise<
 export const XERO_RATE_LIMIT_MESSAGE =
   "Xero has paused requests for this organisation because too many were sent. Wait about a minute, then try again.";
 
+/**
+ * A DAILY limit rejection is different from a per-minute one: it cannot recover
+ * inside a request, and every retry spends quota that is already exhausted. It
+ * gets its own wording so the person is told to come back later, not to retry.
+ */
+export const XERO_DAY_LIMIT_MESSAGE =
+  "Xero has used up today's request allowance for this organisation. It resets within 24 hours — figures already saved still show.";
+
 export function isXeroRateLimitMessage(message: string | null | undefined): boolean {
-  return !!message && message.includes("Xero has paused requests for this organisation");
+  return (
+    !!message &&
+    (message.includes("Xero has paused requests for this organisation") ||
+      message.includes("Xero has used up today's request allowance"))
+  );
+}
+
+/** Which limit Xero says was exceeded: `minute`, `day` or null. */
+function rateLimitProblem(res: Response): string | null {
+  const raw = res.headers.get("x-rate-limit-problem");
+  return raw ? raw.trim().toLowerCase() : null;
 }
 
 /**
@@ -343,6 +364,63 @@ async function waitForRateLimit(res: Response, attempt: number) {
   const seconds = Number.isFinite(header) && header > 0 ? header : Math.pow(2, attempt);
   await new Promise((r) => setTimeout(r, Math.min(seconds, 60) * 1000));
 }
+
+function headerInt(res: Response, name: string): number | null {
+  const n = parseInt(res.headers.get(name) || "", 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Record what Xero itself reported about the remaining quota.
+ *
+ * Xero returns `X-DayLimit-Remaining`, `X-MinLimit-Remaining` and
+ * `X-AppMinLimit-Remaining` on every response, and `X-Rate-Limit-Problem` plus
+ * `Retry-After` on a 429. We store those numbers rather than counting calls
+ * ourselves — a local counter would drift from Xero's and be wrong exactly when
+ * it matters.
+ *
+ * Operational telemetry only: public.xero_rate_limits via a service-role
+ * definer function, one row per file per day, pruned at 30 days. Never
+ * audit_log, never a token, header or anything from the client's data. Failures
+ * are swallowed and logged so capturing a header can never break a Xero call.
+ */
+async function recordXeroLimits(
+  conn: {
+    id?: string;
+    tenant_id: string;
+    tenant_name?: string | null;
+    firm_id?: string | null;
+  },
+  res: Response,
+) {
+  try {
+    const rateLimited = res.status === 429;
+    const day = headerInt(res, "x-daylimit-remaining");
+    const minute = headerInt(res, "x-minlimit-remaining");
+    const appMinute = headerInt(res, "x-appminlimit-remaining");
+    // Nothing to learn from a response that carries no quota headers and was
+    // not a rejection (e.g. a network-level failure surfaced as a Response).
+    if (day === null && minute === null && appMinute === null && !rateLimited) return;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await (supabaseAdmin as any).rpc("log_xero_rate_limit", {
+      _firm_id: conn.firm_id ?? null,
+      _connection_id: conn.id ?? null,
+      _tenant_id: conn.tenant_id ?? null,
+      _tenant_name: conn.tenant_name ?? null,
+      _day_remaining: day,
+      _min_remaining: minute,
+      _app_min_remaining: appMinute,
+      _rate_limited: rateLimited,
+      _problem: rateLimited ? rateLimitProblem(res) : null,
+      _retry_after: rateLimited ? headerInt(res, "retry-after") : null,
+    });
+    if (error) console.warn("[xero] failed to record rate-limit telemetry", error.message);
+  } catch (e) {
+    console.warn("[xero] failed to record rate-limit telemetry", e);
+  }
+}
+
 
 /**
  * Public entry point. Identical signature, return type and failure behaviour
@@ -399,8 +477,14 @@ async function xeroGetUncached<T = unknown>(
       Accept: "application/json",
     },
   });
+  await recordXeroLimits(conn, res);
   // Rate limiting is transient — retry it on its own budget, so it never eats
-  // the single token-refresh retry (and vice versa).
+  // the single token-refresh retry (and vice versa). A DAILY limit rejection is
+  // the exception: it cannot recover inside a request and retrying it spends
+  // the same exhausted quota, so it stops immediately.
+  if (res.status === 429 && rateLimitProblem(res) === "day") {
+    throw new Error(XERO_DAY_LIMIT_MESSAGE);
+  }
   if (res.status === 429 && rateRetries > 0) {
     await waitForRateLimit(res, 4 - rateRetries);
     return xeroGetUncached<T>(conn, path, params, retries, rateRetries - 1);
@@ -408,6 +492,7 @@ async function xeroGetUncached<T = unknown>(
   if (res.status === 429) {
     throw new Error(XERO_RATE_LIMIT_MESSAGE);
   }
+
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
     return xeroGetUncached<T>(refreshed, path, params, retries - 1, rateRetries);
@@ -509,11 +594,16 @@ async function xeroGetAssetsUncached<T = unknown>(
       Accept: "application/json",
     },
   });
+  await recordXeroLimits(conn, res);
+  if (res.status === 429 && rateLimitProblem(res) === "day") {
+    throw new Error(XERO_DAY_LIMIT_MESSAGE);
+  }
   if (res.status === 429 && retries > 0) {
     const retryAfter = Math.min(parseInt(res.headers.get("retry-after") || "5", 10), 10);
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
     return xeroGetAssetsUncached<T>(conn, path, params, retries - 1);
   }
+
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
     return xeroGetAssetsUncached<T>(refreshed, path, params, retries - 1);
@@ -590,11 +680,16 @@ async function xeroGetPayrollUncached<T = unknown>(
       Accept: "application/json",
     },
   });
+  await recordXeroLimits(conn, res);
+  if (res.status === 429 && rateLimitProblem(res) === "day") {
+    throw new Error(XERO_DAY_LIMIT_MESSAGE);
+  }
   if (res.status === 429 && retries > 0) {
     const retryAfter = Math.min(parseInt(res.headers.get("retry-after") || "5", 10), 10);
     await new Promise((r) => setTimeout(r, retryAfter * 1000));
     return xeroGetPayrollUncached<T>(conn, path, params, retries - 1);
   }
+
   if (res.status === 401 && retries > 0) {
     const refreshed = await refreshAccessToken(conn);
     return xeroGetPayrollUncached<T>(refreshed, path, params, retries - 1);

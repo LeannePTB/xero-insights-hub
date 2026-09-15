@@ -302,6 +302,19 @@ const TARGET: Record<string, Record<string, string>> = {
     last_seen: "now()",
     day: "current_date",
   },
+  xero_rate_limits: {
+    tenant_id: q("11111111-2222-4222-8222-222222222222"),
+    day: "current_date",
+    firm_id: q(ORG_A),
+    tenant_name: q("Seed File"),
+    calls_observed: "1",
+    rate_limited_count: "0",
+    hour_calls: "1",
+    peak_hour_calls: "1",
+    first_seen: "now()",
+    last_seen: "now()",
+  },
+
   subscriptions: {
     id: q("d0000004-1111-4111-8111-111111111111"),
     firm_id: q(ORG_A),
@@ -368,7 +381,14 @@ const TARGET: Record<string, Record<string, string>> = {
 };
 
 /** Primary key column used for the row-scoped read/update/delete probe. */
-const PK: Record<string, string> = { tier_settings: "tier", security_attestations: "check_key" };
+const PK: Record<string, string> = {
+  tier_settings: "tier",
+  security_attestations: "check_key",
+  // Keyed by (tenant_id, day); the probe scopes on the tenant, which is unique
+  // within the seeded day.
+  xero_rate_limits: "tenant_id",
+};
+
 const pkOf = (t: string) => PK[t] ?? "id";
 
 /** Database functions callable in the fixture, with a synthetic argument set. */

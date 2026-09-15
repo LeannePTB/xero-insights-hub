@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1578**. Known failures: **0**.
+Rows: **1594**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -815,6 +815,9 @@ None.
 | xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | admin_firm_overview | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
 | plan_levels | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
 | tier_settings | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
@@ -823,6 +826,7 @@ None.
 | user_roles | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
 | audit_log | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
 | xero_api_errors | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| xero_rate_limits | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
 | billing_events | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
 | xero_snapshots | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
 | client_reports | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
@@ -1170,6 +1174,9 @@ None.
 | xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | audit_log | read | DENY | pglite, live | Backlog 26 — Spec §3 promises the organisation its own audit rows; only super_admin can read today | Fails closed, so it is a gap rather than an incident. Recorded, not fixed in Phase 2. |
 | public.user_can_disconnect_xero_connection() | execute | ALLOW | live | Path A — membership, own organisation |  |
 | public.client_xero_files_used() | execute | ALLOW | live | Path A — membership; disconnected files do not consume the allowance | Phase 5: shared with the client allowance triggers, so a disconnected Xero file keeps its client link without counting toward the plan limit. |
@@ -1313,6 +1320,9 @@ None.
 | xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | plan_levels | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | plan_levels | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | plan_levels | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
@@ -1386,6 +1396,9 @@ None.
 | xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | plan_levels | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | plan_levels | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | plan_levels | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
@@ -1522,6 +1535,9 @@ None.
 | xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
 | server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |

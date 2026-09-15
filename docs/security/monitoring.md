@@ -21,6 +21,8 @@
 - **Xero data access**: every successful Accounting API read is recorded as `xero_data_read` with the endpoint and organisation, de-duplicated to one entry per user/organisation/endpoint per 5 minutes so the trail stays readable.
 - **Administrative actions**: role grants and revocations, plan changes, security-contact edits and audit exports (`audit_log_exported`).
 - Provider errors are logged server-side (`xero_api_error`); user-facing errors do not leak upstream payloads.
+- **Xero request allowance** (added 15 Sep 2026): every Xero response — accounting, assets, payroll and the token endpoint — is read for `X-DayLimit-Remaining`, `X-MinLimit-Remaining` and `X-AppMinLimit-Remaining`, and a 429 additionally for `X-Rate-Limit-Problem` and `Retry-After`. Those figures are recorded in `public.xero_rate_limits` as operational telemetry (one row per Xero file per UTC day, 30-day retention pruned on write, write path `public.log_xero_rate_limit` with the service role only). Never in `audit_log`, and no token, header or client data is stored. Surfaced by the `xero_rate_limits` posture check and a per-file card on Admin → Organisations (super admin only). A daily-limit rejection stops immediately with its own message instead of retrying, because retrying spends quota that is already exhausted.
+
 
 ## Anomaly review
 

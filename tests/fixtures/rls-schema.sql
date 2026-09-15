@@ -122,6 +122,7 @@ create table public.xero_api_errors (id uuid, firm_id uuid, xero_connection_id u
 create table public.xero_assessment_contact (id text, legal_name text, trading_name text, abn_acn text, address text, website text, app_name text, xero_client_id text, contact_name text, contact_role text, contact_email text, contact_phone text, assessment_date text, api_usage_description text, updated_at timestamp with time zone);
 create table public.xero_connections (id uuid, user_id uuid, tenant_id text, tenant_name text, tenant_type text, expires_at timestamp with time zone, scopes text, created_at timestamp with time zone, updated_at timestamp with time zone, firm_id uuid, access_token_enc bytea, refresh_token_enc bytea, enc_version smallint, status text, disconnected_at timestamp with time zone, base_currency text, disconnected_reason text, authorisation_checked_at timestamp with time zone);
 create table public.xero_oauth_states (state text, user_id uuid, code_verifier text, created_at timestamp with time zone, return_origin text, expires_at timestamp with time zone, client_id uuid, flow text, known_tenant_ids text[], pending_tenant_ids text[], completed_at timestamp with time zone, firm_id uuid);
+create table public.xero_rate_limits (tenant_id text, day date, firm_id uuid, xero_connection_id uuid, tenant_name text, day_remaining_low integer, day_low_at timestamp with time zone, min_remaining_low integer, min_low_at timestamp with time zone, app_min_remaining_low integer, app_min_low_at timestamp with time zone, calls_observed integer, rate_limited_count integer, last_problem text, last_retry_after_seconds integer, last_rate_limited_at timestamp with time zone, hour_start timestamp with time zone, hour_calls integer, peak_hour_calls integer, peak_hour_start timestamp with time zone, first_seen timestamp with time zone, last_seen timestamp with time zone);
 create table public.xero_snapshot_runs (id uuid, client_id uuid, firm_id uuid, tenant_id text, trigger text, status text, reports_requested integer, reports_succeeded integer, reports_failed integer, error text, started_at timestamp with time zone, finished_at timestamp with time zone, duration_ms integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.xero_snapshots (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, params_hash text, params jsonb, source_endpoint text, payload jsonb, payload_version integer, as_at timestamp with time zone, fetched_at timestamp with time zone, complete boolean, run_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 CREATE OR REPLACE FUNCTION app_private.has_role(_user_id uuid, _role app_role)
@@ -1876,6 +1877,7 @@ alter table public.xero_api_errors enable row level security;
 alter table public.xero_assessment_contact enable row level security;
 alter table public.xero_connections enable row level security;
 alter table public.xero_oauth_states enable row level security;
+alter table public.xero_rate_limits enable row level security;
 alter table public.xero_snapshot_runs enable row level security;
 alter table public.xero_snapshots enable row level security;
 grant DELETE on table public.access_invites to authenticated;
@@ -2424,6 +2426,14 @@ grant SELECT on table public.xero_oauth_states to service_role;
 grant TRIGGER on table public.xero_oauth_states to service_role;
 grant TRUNCATE on table public.xero_oauth_states to service_role;
 grant UPDATE on table public.xero_oauth_states to service_role;
+grant SELECT on table public.xero_rate_limits to authenticated;
+grant DELETE on table public.xero_rate_limits to service_role;
+grant INSERT on table public.xero_rate_limits to service_role;
+grant REFERENCES on table public.xero_rate_limits to service_role;
+grant SELECT on table public.xero_rate_limits to service_role;
+grant TRIGGER on table public.xero_rate_limits to service_role;
+grant TRUNCATE on table public.xero_rate_limits to service_role;
+grant UPDATE on table public.xero_rate_limits to service_role;
 grant SELECT on table public.xero_snapshot_runs to authenticated;
 grant DELETE on table public.xero_snapshot_runs to service_role;
 grant INSERT on table public.xero_snapshot_runs to service_role;
@@ -2829,6 +2839,8 @@ create policy "Users manage own oauth states (insert)" on public.xero_oauth_stat
 create policy "Users manage own oauth states (select)" on public.xero_oauth_states as permissive for select to authenticated using ((auth.uid() = user_id));
 create policy "Users manage own oauth states (update)" on public.xero_oauth_states as permissive for update to authenticated using ((auth.uid() = user_id)) with check ((auth.uid() = user_id));
 create policy mfa_aal2_required on public.xero_oauth_states as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.xero_rate_limits as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "read xero rate limits as super admin" on public.xero_rate_limits as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
 create policy "entitled users read snapshot runs" on public.xero_snapshot_runs as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "entitled users read client snapshots" on public.xero_snapshots as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
@@ -2842,4 +2854,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 47c72a9a722c1b8f03c68ead67fea0aaa1c9deb76594620f0249e55a102765cf
+-- catalogue-fingerprint: d18f2215199eae8ed262b4db4f6725d6b0d7739d32f217e825ac7d5d10f0ca1a

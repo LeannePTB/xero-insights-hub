@@ -18,6 +18,8 @@ import {
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { XeroApiErrorsSheet } from "@/components/admin/XeroApiErrorsSheet";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
+import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
+
 import { listXeroScopeStatus } from "@/lib/xero/scope-status.functions";
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
@@ -165,6 +167,8 @@ function AdminPage() {
           </div>
         )}
 
+        {isSuper && <XeroUsageCard />}
+
         {isSuper && (
           <OrphanXeroConnectionsCard
             firms={((firmsQ.data?.firms as FirmRow[] | undefined) ?? []).map((f) => ({
@@ -173,6 +177,7 @@ function AdminPage() {
             }))}
           />
         )}
+
 
         {isSuper && (
           <p className="text-sm text-muted-foreground">
