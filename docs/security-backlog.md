@@ -814,3 +814,34 @@ permissions-policy and report-only CSP.
   adviser wording, and the client note names only the reasons found, in the same
   order as the adviser list. Presentation and derived data only — no new Xero
   calls, no policy, grant or predicate change.
+
+## 15 Sep 2026 — Session controls: inactivity timeout and remote sign-out
+
+- **DONE — 30 minute inactivity timeout, enforced server-side.** Verified first
+  that real sign-in tokens carry a `session_id` claim (on both aal1 and aal2
+  sessions, using a contained test account that was re-banned afterwards), so the
+  design keys on a claim that exists rather than an assumption.
+  `public.session_activity` (server-held `last_activity_at`, no client write
+  privilege), `app_private.is_session_active()` consulted by
+  `app_private.is_aal2()`, `SESSION_IDLE` raised before `MFA_REQUIRED`,
+  `public.touch_session_activity()` as the only writer (aal2, caller-scoped),
+  `inactivityMiddleware` as a deny-only request layer, and `SessionIdleGuard` for
+  the 29-minute warning with a cross-tab absolute deadline. Spec § 0c.
+  **Performance:** the lookup is a primary-key hit on `session_activity_pkey`
+  (index-only scan, 0.006 ms measured) and `is_session_active()`,
+  `is_session_fresh()` and `is_aal2()` are all `STABLE`, so the planner evaluates
+  the gate once per query rather than per row; no measurable dashboard change.
+- **DONE — sign out my other devices (self-service).** `scope: "others"` proven
+  to revoke server-side (204, and the revoked refresh token stops working);
+  audited by `public.record_sign_out_other_devices()`.
+- **50. Signing another person out remotely — OWNER DECISION NEEDED.**
+  Priority: Medium. Due: 15 Dec 2026. The authentication service exposes no
+  administrative sign-out endpoint on this platform (`POST
+  /admin/users/{id}/logout` and `DELETE /admin/users/{id}/sessions` both 404,
+  verified 15 Sep 2026). `admin_sign_out_all_devices()` was written and then
+  **dropped** rather than shipped, because an audited function that cannot carry
+  out what it records is worse than no function. The only remaining path is
+  deleting `auth.sessions` rows with the service role, which writes to the
+  managed `auth` schema. Not done without an owner decision. Mitigation today:
+  suspending or removing a member ends their access on the next query, and the
+  30-minute timeout plus the daily 3am cut-off bound every session's life.
