@@ -3,64 +3,14 @@ import { getRequestHeader } from "@tanstack/react-start/server";
 
 import { renderErrorPage } from "./lib/error-page";
 import { attachSupabaseAuth } from "@/integrations/supabase/auth-attacher";
-import { dailySignInCutoff } from "@/lib/session-cutoff";
 
 /**
- * Layer 3 — daily sign-in cut-off.
- *
- * A request carrying a user bearer token is refused when the SESSION behind
- * that token began before the most recent 3am Australia/Sydney, so nobody
- * keeps working on yesterday's sign-in. The reply is a generic 401.
- *
- * Session start comes from the token's `amr` entries (when the password and
- * MFA steps happened); those survive hourly token refreshes, unlike `iat`,
- * which is why `iat` is only a last-resort fallback.
- *
- * The signature is deliberately not verified here: this middleware can only
- * ever DENY, and it is never the sole enforcement —
- * `app_private.assert_aal2()` applies the same cut-off inside the database
- * against `auth.sessions`, so a forged token gains nothing.
+ * The daily sign-in cut-off that used to live here (Layer 3) was REMOVED by
+ * owner decision on 15 September 2026: the inactivity timeout below addresses
+ * the stolen-device threat directly, while a daily forced sign-in added
+ * friction without covering it. A session is no longer refused for having
+ * begun yesterday.
  */
-function sessionStartedAtMs(bearer: string): number | null {
-  const parts = bearer.split(".");
-  if (parts.length !== 3) return null;
-  try {
-    const b64 = parts[1]!.replace(/-/g, "+").replace(/_/g, "/");
-    const json = JSON.parse(
-      new TextDecoder().decode(
-        Uint8Array.from(atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, "=")), (c) =>
-          c.charCodeAt(0),
-        ),
-      ),
-    ) as { iat?: unknown; amr?: unknown };
-
-    const stamps = Array.isArray(json.amr)
-      ? json.amr
-          .map((e) =>
-            e && typeof e === "object" && typeof (e as { timestamp?: unknown }).timestamp === "number"
-              ? (e as { timestamp: number }).timestamp
-              : null,
-          )
-          .filter((n): n is number => n !== null)
-      : [];
-    if (stamps.length > 0) return Math.min(...stamps) * 1000;
-    return typeof json.iat === "number" ? json.iat * 1000 : null;
-  } catch {
-    return null;
-  }
-}
-
-const dailySignInMiddleware = createMiddleware().server(async ({ next }) => {
-  const header = getRequestHeader("authorization") ?? "";
-  const bearer = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
-  if (bearer) {
-    const startedAt = sessionStartedAtMs(bearer);
-    if (startedAt !== null && startedAt < dailySignInCutoff().getTime()) {
-      return new Response("Unauthorized", { status: 401 });
-    }
-  }
-  return await next();
-});
 
 
 

@@ -68,9 +68,6 @@ function AuthPage() {
     if (params.get("xero") === "signedin") {
       toast.success("Signed in with Xero");
     }
-    if (takeSignInExpired()) {
-      toast.info("Daily sign-in required — please sign in again.");
-    }
     // Inactivity timeout: say so plainly. This is NOT a second-factor prompt,
     // so nobody is sent to their authenticator app when they simply need to
     // sign in again.
@@ -83,19 +80,10 @@ function AuthPage() {
 
   useEffect(() => {
     (async () => {
+      // No daily cut-off (owner decision, 15 Sep 2026): an existing session is
+      // simply offered back. An idle one is refused by the server and the
+      // database, and SessionIdleGuard has already signed it out here.
       const { data } = await supabase.auth.getSession();
-      // Daily 3am cut-off: yesterday's session is finished with, so end it here
-      // and show the sign-in form. Without this the page offers "Continue",
-      // the signed-in gate refuses it, and the person can never reach the form.
-      if (data.session && isTokenStale(data.session.access_token)) {
-        clearSignInMark();
-        await supabase.auth.signOut();
-        toast.info("Daily sign-in required — please sign in again.");
-        setHasSession(false);
-        setSignedInEmail(null);
-        setCheckingSession(false);
-        return;
-      }
       setHasSession(!!data.session);
       setSignedInEmail(data.session?.user?.email ?? null);
       setCheckingSession(false);
