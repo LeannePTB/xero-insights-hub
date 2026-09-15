@@ -107,19 +107,31 @@ ends after **30 minutes without real activity**, with a warning at 29 minutes.
   `auth.sessions` row is gone, so the token is refused everywhere.
   `public.record_sign_out_other_devices()` audits who and when — never a token or
   device detail.
-- **Signing another person out remotely is NOT available.** The authentication
-  service exposes no administrative sign-out endpoint on this platform (both
-  documented admin logout routes return 404, verified 15 Sep 2026). The audited
-  `admin_sign_out_all_devices()` function was therefore **dropped rather than
-  shipped**, because it would have recorded an intent it could not carry out. The
-  only remaining path is deleting `auth.sessions` rows directly with the service
-  role, which writes to the managed `auth` schema and needs an owner decision:
-  backlog 50.
-- **Lockout assessment.** Revoking sessions never touches credentials or enrolled
-  factors, so a super admin who signs their own devices out simply signs back in
-  with password plus TOTP. There is no path by which these controls can lock the
-  platform out of itself, and therefore no bypass, break-glass role or exception
-  was added.
+- **Sign another person out of every device (super admin, stolen device).**
+  Mechanism, stated plainly: this platform's authentication service has **no**
+  administrative sign-out endpoint (`POST /admin/users/{id}/logout`, `DELETE
+  /admin/users/{id}/sessions` and `POST /admin/users/{id}/sessions/logout` all
+  return 404 against a **real** user id, verified 15 Sep 2026 with three live
+  sessions still working afterwards), and a temporary ban is **not** a sign-out —
+  it blocks while it lasts (403/400) but leaves the `auth.sessions` rows intact and
+  the same refresh token works again once lifted. The one mechanism that genuinely
+  ends every session is an admin credential change: measured taking that person's
+  `auth.sessions` from **5 → 0**, all three sessions refused. So the control sets a
+  random password nobody holds and emails a reset link; the person chooses a new
+  password before signing in again, and the on-screen confirmation says so.
+  Authorisation is in the database: `public.admin_assert_can_sign_out_user(uuid)`
+  (aal2 + super admin, refuses `auth.uid()` as its own subject — use the self
+  control — and refuses the last remaining super admin).
+  `public.record_sign_out_all_devices(uuid, text)` writes the
+  `sessions_revoked_all` audit row with actor, subject, time and mechanism, only
+  after the revocation succeeded, never a password or token. No `auth`-schema
+  write is involved. Control: `Settings → Advisors`, per person.
+- **Lockout assessment.** Revoking sessions never touches enrolled factors, so a
+  super admin who signs their own devices out simply signs back in with password
+  plus TOTP. The remote control does change the subject's password, which is why it
+  refuses the last remaining super admin and refuses the caller's own account.
+  There is no path by which these controls can lock the platform out of itself, and
+  therefore no bypass, break-glass role or exception was added.
 
 ## 1. Naming and language
 
