@@ -967,6 +967,10 @@ AS $function$
            nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'aal',
            ''
          ) = 'aal2'
+         -- Inactivity timeout (owner decision, 15 Sep 2026): re-enabled once a
+         -- real session was proven to record activity and an actively used
+         -- session was proven to still be accepted after 30 minutes.
+         and app_private.is_session_active()
   end
 $function$
 ;
@@ -977,6 +981,12 @@ CREATE OR REPLACE FUNCTION app_private.assert_aal2()
  SET search_path TO ''
 AS $function$
 begin
+  -- Idle is not an MFA problem: answer it distinctly and first, so no caller
+  -- ever shows an authenticator prompt to someone who was simply away.
+  if not app_private.is_session_active() then
+    raise exception 'SESSION_IDLE' using errcode = 'insufficient_privilege';
+  end if;
+
   if not app_private.is_aal2() then
     raise exception 'MFA_REQUIRED' using errcode = 'insufficient_privilege';
   end if;
@@ -2713,4 +2723,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: e239659777a4c833c4fd8ee1879baa9eb127f7f8fe5c8c556a2a04f5c4de26c6
+-- catalogue-fingerprint: be8e650aa47184c8d897608f981cf1a66b771d2a6e5259579848964d28c9d5d2

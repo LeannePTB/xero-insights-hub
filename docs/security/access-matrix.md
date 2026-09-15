@@ -1663,10 +1663,10 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
-| client_notes | read | ALLOW | pglite | PK 2 — MFA only; inactivity is not enforced in the database while suspended |  |
-| assert_aal2() with an idle session | execute | ALLOW | pglite | PK 2 — MFA only; inactivity is not enforced in the database while suspended |  |
-| touch_session_activity() | execute | ALLOW | pglite | PK 2 — a signed-in aal2 session records its own activity, caller-scoped |  |
-| assert_aal2() with no session_id claim | execute | ALLOW | pglite | PK 2 — MFA only; the session id is not consulted while suspended |  |
+| client_notes | read | DENY | pglite | PK 2 — the aal2 gate requires activity inside the 30 minute window |  |
+| assert_aal2() with an idle session | execute | DENY | pglite | PK 2 — raises SESSION_IDLE before any MFA answer |  |
+| touch_session_activity() | execute | DENY | pglite | PK 2 — an idle session cannot revive itself: the aal2 assertion fails first |  |
+| assert_aal2() with no session_id claim | execute | DENY | pglite | PK 2 — an unverifiable session id fails closed |  |
 | session_activity | update | DENY | pglite | PK 1 — activity timestamps are server-written only; no client write path |  |
 
 ## Active member who has just completed MFA: an aal2 session seconds old with no activity row written yet
