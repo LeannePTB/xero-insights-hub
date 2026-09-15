@@ -139,9 +139,9 @@ function AccountSettings() {
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] space-y-4">
           <h2 className="font-display text-lg font-semibold">Sessions</h2>
           <p className="text-sm text-muted-foreground">
-            You are signed out automatically after 30 minutes without activity, and again
-            each day at 3am Sydney time. If you have signed in on a phone or another
-            computer, you can end those sessions here. This device stays signed in.
+            You are signed out automatically after 30 minutes without activity. If you
+            have signed in on a phone or another computer, you can end those sessions
+            here. This device stays signed in.
           </p>
           <Button variant="outline" onClick={() => othersMut.mutate()} disabled={othersMut.isPending}>
             {othersMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
