@@ -1627,43 +1627,43 @@ export const MATRIX: MatrixRow[] = [
   // timeout still ends a session at 30 minutes and can only ever end it
   // EARLIER than the server would.
   //
-  // These rows record the CURRENT truth: an aal2 session is not refused for
-  // having no recorded activity. Database enforcement is restored only in a
-  // change that also proves (a) a real session writes an activity row, (b) a
-  // session actively used for over 30 minutes is still accepted, and (c) a
-  // genuinely idle session is refused.
+  // Enforcement RESTORED 15 Sep 2026, 04:50 UTC, in the same change as the
+  // positive proof (see `active_session_member` below): an aal2 session with no
+  // activity for longer than the window is refused in the database, and the
+  // refusal is SESSION_IDLE, never MFA_REQUIRED.
   {
     role: "idle_session_member",
     resource: "client_notes",
     operation: "read",
-    expect: "allow",
-    rule: "PK 2 — MFA only; inactivity is not enforced in the database while suspended",
+    expect: "deny",
+    rule: "PK 2 — the aal2 gate requires activity inside the 30 minute window",
     layers: ["pglite"],
   },
   {
     role: "idle_session_member",
     resource: "assert_aal2() with an idle session",
     operation: "execute",
-    expect: "allow",
-    rule: "PK 2 — MFA only; inactivity is not enforced in the database while suspended",
+    expect: "deny",
+    rule: "PK 2 — raises SESSION_IDLE before any MFA answer",
     layers: ["pglite"],
   },
   {
     role: "idle_session_member",
     resource: "touch_session_activity()",
     operation: "execute",
-    expect: "allow",
-    rule: "PK 2 — a signed-in aal2 session records its own activity, caller-scoped",
+    expect: "deny",
+    rule: "PK 2 — an idle session cannot revive itself: the aal2 assertion fails first",
     layers: ["pglite"],
   },
   {
     role: "idle_session_member",
     resource: "assert_aal2() with no session_id claim",
     operation: "execute",
-    expect: "allow",
-    rule: "PK 2 — MFA only; the session id is not consulted while suspended",
+    expect: "deny",
+    rule: "PK 2 — an unverifiable session id fails closed",
     layers: ["pglite"],
   },
+
   // Regression, 15 Sep 2026: a person who has just completed MFA has a session
   // seconds old and NO activity row yet, because the browser writes the first
   // one after sign-in. is_session_active() therefore falls back to the
