@@ -1613,46 +1613,52 @@ export const MATRIX: MatrixRow[] = [
   // refuses a session for having begun yesterday.
 
 
-  // -------------------------- 30 minute inactivity timeout (15 Sep 2026)
-  // app_private.is_session_active() compares the SERVER-HELD
-  // public.session_activity.last_activity_at with a 30 minute window and is
-  // consulted by app_private.is_aal2(), so an idle session sees no rows on any
-  // data table and assert_aal2() raises SESSION_IDLE (never MFA_REQUIRED)
-  // before the MFA check. The request middleware and the browser warning can
-  // only deny earlier; they are never the enforcement point. Activity is
-  // written only by public.touch_session_activity() — aal2, caller-scoped,
-  // session taken from the verified token and the time from the server clock,
-  // so no caller can extend its own session by supplying a value.
+  // ------------- 30 minute inactivity timeout — SERVER ENFORCEMENT SUSPENDED
+  // OUTAGE, 15 Sep 2026. Nothing in the published app was recording activity, so
+  // public.session_activity held no row for any live session and
+  // app_private.is_session_active() fell back to the sign-in time — refusing
+  // every person whose session was over 30 minutes old, however actively they
+  // were working. The check was therefore removed from app_private.is_aal2()
+  // and app_private.assert_aal2(), and switched off at the request layer. The
+  // table and its functions remain in place and unchanged; the browser-side
+  // timeout still ends a session at 30 minutes and can only ever end it
+  // EARLIER than the server would.
+  //
+  // These rows record the CURRENT truth: an aal2 session is not refused for
+  // having no recorded activity. Database enforcement is restored only in a
+  // change that also proves (a) a real session writes an activity row, (b) a
+  // session actively used for over 30 minutes is still accepted, and (c) a
+  // genuinely idle session is refused.
   {
     role: "idle_session_member",
     resource: "client_notes",
     operation: "read",
-    expect: "deny",
-    rule: "PK 2 — aal2 also means active within the last 30 minutes",
+    expect: "allow",
+    rule: "PK 2 — MFA only; inactivity is not enforced in the database while suspended",
     layers: ["pglite"],
   },
   {
     role: "idle_session_member",
     resource: "assert_aal2() with an idle session",
     operation: "execute",
-    expect: "deny",
-    rule: "PK 2 — SESSION_IDLE, raised before the MFA check",
+    expect: "allow",
+    rule: "PK 2 — MFA only; inactivity is not enforced in the database while suspended",
     layers: ["pglite"],
   },
   {
     role: "idle_session_member",
     resource: "touch_session_activity()",
     operation: "execute",
-    expect: "deny",
-    rule: "PK 1 deny by default — an expired session cannot revive itself",
+    expect: "allow",
+    rule: "PK 2 — a signed-in aal2 session records its own activity, caller-scoped",
     layers: ["pglite"],
   },
   {
     role: "idle_session_member",
     resource: "assert_aal2() with no session_id claim",
     operation: "execute",
-    expect: "deny",
-    rule: "PK 1 deny by default — an unverifiable session is inactive (fail closed)",
+    expect: "allow",
+    rule: "PK 2 — MFA only; the session id is not consulted while suspended",
     layers: ["pglite"],
   },
   // Regression, 15 Sep 2026: a person who has just completed MFA has a session
