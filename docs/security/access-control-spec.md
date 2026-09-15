@@ -68,6 +68,14 @@ ends after **30 minutes without real activity**, with a warning at 29 minutes.
   find (including one revoked in the authentication service), is idle.
   `app_private.is_aal2()` requires it, so the RESTRICTIVE `mfa_aal2_required`
   policy hides every row on every data table from an idle session.
+  **Documented exclusion, not an exemption:** `public.session_activity` itself and
+  `public.session_is_active()` are named exclusions in the `aal2_tables` and
+  `definer_guards` posture checks, because the aal2 gate reads that table and that
+  function to decide whether a session is idle — requiring aal2 of them would be
+  circular. Both exclusions are printed in the evidence text on the Security page.
+  The table's own protection is unchanged: RLS on, no `anon` privilege, own-row
+  read only, no INSERT/UPDATE/DELETE privilege for signed-in users, and a session
+  id, user id and timestamp are the only data it holds.
 - **A distinct reason code.** `app_private.assert_aal2()` raises `SESSION_EXPIRED`
   (daily cut-off), then **`SESSION_IDLE`**, then `MFA_REQUIRED`. An idle session
   must never report `MFA_REQUIRED` — that sends a person to their authenticator
