@@ -892,3 +892,7 @@ auth.uid())` — and `has_table_privilege('authenticated', …, 'UPDATE')` is fa
 so the only write path remains `public.touch_session_activity()`. The unguarded
 callable-definer count and the missing-aal2-policy table count are both 0 with
 only the two named exclusions applied.
+
+## 52. Subscriptions and dashboard cards — approved design, NOT scheduled (opened 15 Sep 2026)
+
+Approved design recorded in `docs/design/subscriptions-and-cards.md`. The current card configuration data is self-contradictory; the cleanup is part of the rebuild, not a separate fix. **No payment system is in scope.** Build only when the product goes to market outside Positive Traction.
