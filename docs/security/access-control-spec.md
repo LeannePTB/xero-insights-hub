@@ -95,8 +95,8 @@ without real activity**, with a warning at 29 minutes.
   The table's own protection is unchanged: RLS on, no `anon` privilege, own-row
   read only, no INSERT/UPDATE/DELETE privilege for signed-in users, and a session
   id, user id and timestamp are the only data it holds.
-- **A distinct reason code.** `app_private.assert_aal2()` raises `SESSION_EXPIRED`
-  (daily cut-off), then **`SESSION_IDLE`**, then `MFA_REQUIRED`. An idle session
+- **A distinct reason code.** `app_private.assert_aal2()` raises **`SESSION_IDLE`**
+  and then `MFA_REQUIRED` (the `SESSION_EXPIRED` branch went with § 0b). An idle session
   must never report `MFA_REQUIRED` — that sends a person to their authenticator
   app when they need to sign in again. The two places that translate the MFA code
   for people (`explain()` in `src/lib/ownership.functions.ts` and
