@@ -877,6 +877,9 @@ BEGIN
   ON CONFLICT (client_id, tier) WHERE client_id IS NOT NULL
   DO UPDATE SET excluded_widgets = _excl, updated_at = now();
 
+  -- Batch 3 dual write: mirror the same intent into the new single ticked list.
+  PERFORM app_private.set_client_card(_client_id, _widget, _enabled);
+
   INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
   VALUES (_uid, _firm, 'client_widget_toggled', 'client', _client_id::text,
           jsonb_build_object('widget',_widget,'enabled',_enabled,'tier',_tier));
@@ -1729,6 +1732,43 @@ AS $function$
     ) as x
     order by x
   ), '{}'::text[])
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.set_client_cards(_client_id uuid, _cards text[])
+ RETURNS void
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  insert into public.client_cards (client_id, cards)
+  values (_client_id, coalesce(array(select distinct x from unnest(_cards) x order by x), '{}'::text[]))
+  on conflict (client_id) do update
+    set cards = excluded.cards, updated_at = now();
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.set_client_card(_client_id uuid, _card text, _enabled boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _base text[];
+begin
+  select cc.cards into _base from public.client_cards cc where cc.client_id = _client_id;
+  if _base is null then
+    -- No stored list yet: start from everything the purchase allows, so a single
+    -- toggle never collapses the dashboard to one card.
+    _base := app_private.client_available_cards(_client_id);
+  end if;
+
+  if _enabled then
+    _base := _base || array[_card];
+  else
+    _base := array_remove(_base, _card);
+  end if;
+
+  perform app_private.set_client_cards(_client_id, _base);
+end;
 $function$
 ;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
@@ -2802,4 +2842,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: b2aa7600994a2db968e59b9c36146730ad46bea0d7ece15de8578faf59e86a74
+-- catalogue-fingerprint: 47c72a9a722c1b8f03c68ead67fea0aaa1c9deb76594620f0249e55a102765cf
