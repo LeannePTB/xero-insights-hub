@@ -17,9 +17,6 @@ import { useSignOut } from "@/lib/use-sign-out";
 import {
   IDLE_SIGN_OUT_MESSAGE,
   clearIdleDeadline,
-  clearSignInMark,
-  isTokenStale,
-  takeSignInExpired,
   takeSignedOutIdle,
 } from "@/lib/session-cutoff";
 
