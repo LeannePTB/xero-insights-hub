@@ -639,15 +639,23 @@ $function$
 ;
 CREATE OR REPLACE FUNCTION public.client_allowed_widgets(_client_id uuid)
  RETURNS text[]
- LANGUAGE sql
+ LANGUAGE plpgsql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select app_private.assert_aal2();
+declare result text[];
+begin
+  perform app_private.assert_aal2();
 
-  select case when auth.uid() is not null
-               and not app_private.user_can_read_client(auth.uid(), _client_id)
-          then '{}'::text[] else (
+  if auth.uid() is not null
+     and not app_private.user_can_read_client(auth.uid(), _client_id) then
+    return '{}'::text[];
+  end if;
+
+  if app_private.setting_bool('card_model_v2') then
+    return app_private.client_cards_v2(_client_id);
+  end if;
+
   with ent as (select tier::text as tier from public.client_entitlement(_client_id)),
   fm as (select firm_id from public.clients where id = _client_id),
   ceiling as (
@@ -675,8 +683,10 @@ AS $function$
     select distinct x from unnest((select c.w from ceiling c)) as x
     except
     select e from unnest((select ex.w from excluded ex)) as e
-  ),'{}'::text[])
-  ) end
+  ),'{}'::text[]) into result;
+
+  return result;
+end;
 $function$
 ;
 CREATE OR REPLACE FUNCTION public.client_can_use_widget(_client_id uuid, _widget text)
@@ -1772,6 +1782,33 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.client_cards_v2(_client_id uuid)
+ RETURNS text[]
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  available text[];
+  ticked text[];
+begin
+  available := app_private.client_available_cards(_client_id);
+  select cc.cards into ticked from public.client_cards cc where cc.client_id = _client_id;
+
+  -- No stored list is treated as "all available": a fault shows a staff member
+  -- too much rather than a blank dashboard, and never more than the purchase.
+  if ticked is null then
+    return available;
+  end if;
+
+  return coalesce(array(
+    select distinct x from unnest(available) as x
+    where x = any(ticked)
+    order by x
+  ), '{}'::text[]);
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2854,4 +2891,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: d18f2215199eae8ed262b4db4f6725d6b0d7739d32f217e825ac7d5d10f0ca1a
+-- catalogue-fingerprint: 52ec75ca3c07af60842833b34d86f6106a7519895a108e44c047ea5ef1346486

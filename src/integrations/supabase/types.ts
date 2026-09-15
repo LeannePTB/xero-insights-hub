@@ -2910,6 +2910,7 @@ export type Database = {
         Args: { _tenant_id: string; _widget: string }
         Returns: boolean
       }
+      card_model_active: { Args: never; Returns: string }
       change_firm_plan: {
         Args: { _firm_id: string; _plan_key: string }
         Returns: undefined
@@ -2930,6 +2931,10 @@ export type Database = {
       }
       client_access_tiers: { Args: { _client_id: string }; Returns: string[] }
       client_allowed_widgets: {
+        Args: { _client_id: string }
+        Returns: string[]
+      }
+      client_available_cards: {
         Args: { _client_id: string }
         Returns: string[]
       }

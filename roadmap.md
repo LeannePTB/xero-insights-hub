@@ -66,8 +66,9 @@
 - [x] Batch 1 — pre-migration snapshot file and consolidation-count baseline
 - [x] Batch 2 — new tables, card-group helper and `client_visible_cards`, read by nothing yet
 - [x] Batch 3 — backfill (5 organisation purchase rows, 14 client card lists, all allowed cards on), dual write from both per-client card writers, and a card list written when a client is created. Reads still on the old model.
-- [ ] Batch 4 — settle the overlap in code as well as in the plan: `client_allowed_widgets` returns `client_visible_cards` behind the switch, and `assert_widget_access` / `app_private.effective_widgets_for_client` stop deciding cards from `client_access.tier`. Owner decision needed: after cutover a viewer's tier no longer narrows cards.
-- [ ] Batch 4 — flip reads behind `app_private.platform_settings` switch
+- [x] Batch 4 — overlap settled in code, 15 Sep 2026. Behind `app_private.platform_settings.card_model_v2`, all four readers move to the purchase + ticked-list model in one reversible change: `public.client_allowed_widgets` → `app_private.client_cards_v2`; `public.assert_widget_access` → `client_cards_v2`, dropping `app_private.effective_widgets_for_client` and with it `client_access.tier` as a card narrowing (owner decision 15 Sep: an adviser sees what the client sees, capped by the purchase, read-only); `public.firm_has_consolidation` and `public.firm_allowed_widgets` → `org_subscription_options`, so Consolidation has one answer; `src/lib/widget-resolve.server.ts` forwards to the database (`card_model_active`, `client_visible_cards`, `client_available_cards`) instead of mirroring the rule. Lapsed-organisation check kept in both models. `client_entitlement` keeps plan limits and billing display only. Proof with the switch ON, in a transaction that always rolls back: `scripts/card-model-v2-proof.sql` — A/B/C/D all passed, counts 56/9/1/1 unchanged.
+- [ ] Batch 4 — flip the switch to true (owner confirmation pending; the switch is still `false`)
+
 - [ ] Batch 5 — matrix rows (three purchasable options, newly created client has a usable dashboard), posture check, docs, backlog
 - [ ] Recommended follow-up: "copy this client's card setup to the other entities" action
 
