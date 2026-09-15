@@ -71,3 +71,12 @@
 - [ ] Batch 5 — matrix rows (three purchasable options, newly created client has a usable dashboard), posture check, docs, backlog
 - [ ] Recommended follow-up: "copy this client's card setup to the other entities" action
 
+
+## Xero request allowance monitoring (done 15 Sep 2026)
+
+- [x] Capture Xero's own quota headers on every call (accounting, assets, payroll, token refresh); telemetry in `public.xero_rate_limits`, 30-day retention, service-role write path only, never `audit_log`.
+- [x] `xero_rate_limits` posture check — Warn under 20% remaining, Action under 5%, on any 429 in 24h, or on a burst above 300 calls per file per hour.
+- [x] Per-file usage card on Admin → Organisations (super admin only).
+- [x] A daily-limit rejection stops with its own message instead of retrying.
+
+Separate from the card-model migration; no file or object shared with it.
