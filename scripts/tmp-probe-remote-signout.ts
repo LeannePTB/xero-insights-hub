@@ -137,6 +137,14 @@ async function main() {
     return;
   }
 
+  if (stage === "pwchange") {
+    const acct = await staffAccount();
+    const r = await admin.auth.admin.updateUserById(st.userId, { password: acct.password } as any);
+    console.log("admin password re-set error:", r.error?.message ?? "none");
+    console.log("session b access:", await userStatus(st.sessions.b!), "refresh:", await refreshStatus(st.sessions.b!));
+    return;
+  }
+
   if (stage === "ban") {
     const r = await admin.auth.admin.updateUserById(st.userId, { ban_duration: "1s" } as any);
     console.log("ban 1s error:", r.error?.message ?? "none");
