@@ -68,6 +68,8 @@ type Ctx = {
 
 /** A session signed in today whose last recorded activity is 40 minutes ago. */
 const IDLE_SESSION = "77777777-2222-4222-8222-222222222222";
+/** A session seconds old with NO activity row: the just-completed-MFA case. */
+const FRESH_SESSION = "77777777-3333-4333-8333-333333333333";
 
 const CONTEXT: Record<Role, Ctx> = {
   anonymous: { uid: null, dbRole: "anon", aal: null },
@@ -77,6 +79,12 @@ const CONTEXT: Record<Role, Ctx> = {
     dbRole: "authenticated",
     aal: "aal2",
     sessionId: IDLE_SESSION,
+  },
+  fresh_mfa_session_member: {
+    uid: U.staffA,
+    dbRole: "authenticated",
+    aal: "aal2",
+    sessionId: FRESH_SESSION,
   },
   org_owner: { uid: U.ownerA, dbRole: "authenticated", aal: "aal2" },
   org_staff: { uid: U.staffA, dbRole: "authenticated", aal: "aal2" },
@@ -495,6 +503,12 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return p.ok ? "allow" : "deny";
   }
+  if (r === "assert_aal2() immediately after MFA (no activity row yet)") {
+    // Regression: no session_activity row exists yet for this session, so
+    // is_session_active() must fall back to its start time in auth.sessions.
+    const p = await probe(`select app_private.assert_aal2()`);
+    return p.ok ? "allow" : "deny";
+  }
   if (r === "assert_aal2() with no session_id claim") {
     // Same person, same aal2 claim, no session_id: fail closed.
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [
@@ -886,7 +900,9 @@ beforeAll(async () => {
     insert into auth.sessions(id, user_id, created_at) values
       ${users.map((u) => `('${u}', '${u}', now())`).join(", ")},
       
-      ('${IDLE_SESSION}', '${U.staffA}', now());
+      ('${IDLE_SESSION}', '${U.staffA}', now()),
+      -- Just completed MFA: seconds old, and deliberately NO activity row.
+      ('${FRESH_SESSION}', '${U.staffA}', now() - interval '5 seconds');
     -- Signed in today, but the SERVER-held activity timestamp is 40 minutes old.
     insert into public.session_activity(session_id, user_id, last_activity_at, created_at) values
       ('${IDLE_SESSION}', '${U.staffA}', now() - interval '40 minutes', now() - interval '40 minutes');

@@ -89,12 +89,17 @@ export function SessionIdleGuard() {
       const since = Date.now() - lastTouchRef.current;
       if (opts.force || since >= TOUCH_MIN_INTERVAL_MS) {
         lastTouchRef.current = Date.now();
-        void touch({ data: undefined } as never).catch(() => {
-          /* the server is the control; a failed ping never grants time */
+        void touch({} as never).catch((err: unknown) => {
+          // The server is the control; a failed ping never grants time. But if
+          // the server says the session is already idle, end it here rather than
+          // leaving the person on a page whose every query is refused.
+          if (/SESSION_IDLE/i.test(String((err as { message?: string })?.message ?? err))) {
+            void endSession();
+          }
         });
       }
     },
-    [touch],
+    [touch, endSession],
   );
 
   // One shared channel and one starting deadline for this tab.
