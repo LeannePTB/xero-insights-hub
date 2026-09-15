@@ -367,6 +367,35 @@ export type Database = {
           },
         ]
       }
+      client_cards: {
+        Row: {
+          cards: string[]
+          client_id: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          cards?: string[]
+          client_id: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          cards?: string[]
+          client_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_cards_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: true
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_cost_classifications: {
         Row: {
           account_name: string
@@ -1371,6 +1400,51 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: []
+      }
+      org_subscription_options: {
+        Row: {
+          advisory_enabled: boolean
+          billing_mode: string
+          client_limit: number
+          consolidation_enabled: boolean
+          created_at: string
+          firm_id: string
+          updated_at: string
+        }
+        Insert: {
+          advisory_enabled?: boolean
+          billing_mode?: string
+          client_limit?: number
+          consolidation_enabled?: boolean
+          created_at?: string
+          firm_id: string
+          updated_at?: string
+        }
+        Update: {
+          advisory_enabled?: boolean
+          billing_mode?: string
+          client_limit?: number
+          consolidation_enabled?: boolean
+          created_at?: string
+          firm_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_subscription_options_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "org_subscription_options_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       plan_levels: {
         Row: {
@@ -2797,6 +2871,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      client_visible_cards: { Args: { _client_id: string }; Returns: string[] }
       client_xero_files_used: { Args: { _client_id: string }; Returns: number }
       delete_client_report: {
         Args: { _reason?: string; _report_id: string }
