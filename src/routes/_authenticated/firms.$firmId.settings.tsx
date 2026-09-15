@@ -17,6 +17,7 @@ import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { OrgDefaultCardsPanel } from "@/components/admin/OrgDefaultCardsPanel";
+import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { PeopleSection } from "@/components/people/PeopleSection";
 import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 
@@ -284,6 +285,11 @@ function FirmSettingsPage() {
           </div>
         )}
       </section>
+
+      <div className="mt-6">
+        <OrgPurchaseCard firmId={firmId} />
+      </div>
+
 
       {/* Add clients */}
       <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
