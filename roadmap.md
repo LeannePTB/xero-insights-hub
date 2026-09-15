@@ -57,3 +57,7 @@
 - [x] Self-service "sign out my other devices" (server-side revocation, audited)
 - [x] session_controls posture check, matrix rows, spec § 0c, docs, backlog
 - [x] Backlog 50 CLOSED: signing another person out of every device. No admin logout endpoint exists (three paths 404 against a real user id) and a ban leaves sessions intact (5 rows survive, refresh works again after unban); an admin credential change genuinely deletes every session (5 → 0). Shipped on that mechanism: `admin_assert_can_sign_out_user` (aal2 + super admin, refuses self and the last super admin) authorises, random password + reset email revokes, `record_sign_out_all_devices` audits. Control on `/settings/advisors`.
+
+## Subscriptions and dashboard cards (approved 15 Sep 2026, NOT scheduled)
+
+- Approved design recorded in `docs/design/subscriptions-and-cards.md`. **No payment system is in scope** — build only when the product goes to market outside Positive Traction.
