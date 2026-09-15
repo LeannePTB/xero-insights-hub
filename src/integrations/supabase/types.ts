@@ -2910,6 +2910,13 @@ export type Database = {
         Args: { _tenant_id: string; _widget: string }
         Returns: boolean
       }
+      card_group_list: {
+        Args: never
+        Returns: {
+          card_group: string
+          cards: string[]
+        }[]
+      }
       card_model_active: { Args: never; Returns: string }
       change_firm_plan: {
         Args: { _firm_id: string; _plan_key: string }
@@ -2975,6 +2982,10 @@ export type Database = {
       }
       client_visible_cards: { Args: { _client_id: string }; Returns: string[] }
       client_xero_files_used: { Args: { _client_id: string }; Returns: number }
+      copy_client_cards: {
+        Args: { _from_client_id: string; _to_client_ids: string[] }
+        Returns: number
+      }
       delete_client_report: {
         Args: { _reason?: string; _report_id: string }
         Returns: {
@@ -3227,6 +3238,17 @@ export type Database = {
         }[]
       }
       org_addon_widgets: { Args: never; Returns: string[] }
+      org_purchase: {
+        Args: { _firm_id: string }
+        Returns: {
+          advisory_enabled: boolean
+          billing_mode: string
+          client_count: number
+          client_limit: number
+          consolidation_enabled: boolean
+          firm_id: string
+        }[]
+      }
       organisation_members: {
         Args: { _firm_id: string }
         Returns: {
@@ -3331,6 +3353,10 @@ export type Database = {
         Args: { _id: string; _tier: string }
         Returns: undefined
       }
+      set_client_card_enabled: {
+        Args: { _card: string; _client_id: string; _enabled: boolean }
+        Returns: string[]
+      }
       set_client_comp: {
         Args: { _client_id: string; _comped: boolean; _reason: string }
         Returns: boolean
@@ -3376,6 +3402,16 @@ export type Database = {
         Args: {
           _id: string
           _tier: Database["public"]["Enums"]["dashboard_tier"]
+        }
+        Returns: undefined
+      }
+      set_org_purchase: {
+        Args: {
+          _advisory: boolean
+          _billing_mode: string
+          _client_limit: number
+          _consolidation: boolean
+          _firm_id: string
         }
         Returns: undefined
       }
