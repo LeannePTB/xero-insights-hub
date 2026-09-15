@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1572**. Known failures: **0**.
+Rows: **1575**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1668,3 +1668,11 @@ None.
 | touch_session_activity() | execute | DENY | pglite | PK 1 deny by default — an expired session cannot revive itself |  |
 | assert_aal2() with no session_id claim | execute | DENY | pglite | PK 1 deny by default — an unverifiable session is inactive (fail closed) |  |
 | session_activity | update | DENY | pglite | PK 1 — activity timestamps are server-written only; no client write path |  |
+
+## Active member who has just completed MFA: an aal2 session seconds old with no activity row written yet
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| client_notes | read | ALLOW | pglite | PK 2 — a brand-new session with no activity row is active from its start time |  |
+| assert_aal2() immediately after MFA (no activity row yet) | execute | ALLOW | pglite | PK 2 — completing MFA is never refused as idle |  |
+| touch_session_activity() | execute | ALLOW | pglite | PK 2 — the first activity write of a new session succeeds |  |
