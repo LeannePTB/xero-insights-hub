@@ -123,6 +123,20 @@ async function main() {
     return;
   }
 
+  if (stage === "banlong") {
+    const r = await admin.auth.admin.updateUserById(st.userId, { ban_duration: "300s" } as any);
+    console.log("ban 300s error:", r.error?.message ?? "none");
+    console.log("WHILE BANNED session b access:", await userStatus(st.sessions.b!), "refresh:", await refreshStatus(st.sessions.b!));
+    return;
+  }
+
+  if (stage === "unban") {
+    const r = await admin.auth.admin.updateUserById(st.userId, { ban_duration: "none" } as any);
+    console.log("unban error:", r.error?.message ?? "none");
+    console.log("AFTER UNBAN session b access:", await userStatus(st.sessions.b!), "refresh:", await refreshStatus(st.sessions.b!));
+    return;
+  }
+
   if (stage === "ban") {
     const r = await admin.auth.admin.updateUserById(st.userId, { ban_duration: "1s" } as any);
     console.log("ban 1s error:", r.error?.message ?? "none");
