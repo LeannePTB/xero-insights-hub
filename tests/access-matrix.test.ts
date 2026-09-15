@@ -66,20 +66,12 @@ type Ctx = {
   sessionId?: string;
 };
 
-/** A session row deliberately created before the most recent 3am Sydney cut-off. */
-const STALE_SESSION = "77777777-1111-4111-8111-111111111111";
 /** A session signed in today whose last recorded activity is 40 minutes ago. */
 const IDLE_SESSION = "77777777-2222-4222-8222-222222222222";
 
 const CONTEXT: Record<Role, Ctx> = {
   anonymous: { uid: null, dbRole: "anon", aal: null },
   aal1_member: { uid: U.staffA, dbRole: "authenticated", aal: "aal1" },
-  stale_session_member: {
-    uid: U.staffA,
-    dbRole: "authenticated",
-    aal: "aal2",
-    sessionId: STALE_SESSION,
-  },
   idle_session_member: {
     uid: U.staffA,
     dbRole: "authenticated",
@@ -388,8 +380,8 @@ function claims(ctx: Ctx) {
   const c: Record<string, string> = { role: ctx.dbRole };
   if (ctx.uid) c["sub"] = ctx.uid;
   if (ctx.aal) c["aal"] = ctx.aal;
-  // The daily 3am sign-in cut-off resolves the session's start time, so every
-  // signed-in context needs a session_id backed by a fresh auth.sessions row.
+  // The inactivity timeout resolves the session's activity from its session id,
+  // so every signed-in context needs a session_id backed by an auth.sessions row.
   if (ctx.uid) c["session_id"] = ctx.sessionId ?? ctx.uid;
   return JSON.stringify(c);
 }
@@ -480,10 +472,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
 
-  if (r === "assert_aal2() with a session older than the cut-off") {
-    const p = await probe(`select app_private.assert_aal2()`);
-    return p.ok ? "allow" : "deny";
-  }
   if (r === "assert_aal2() with an idle session") {
     const p = await probe(`select app_private.assert_aal2()`);
     // The code must be SESSION_IDLE: an idle session is not an MFA problem, and
@@ -897,7 +885,7 @@ beforeAll(async () => {
       ${users.map((u, i) => `('${u}', 'u${i}@example.invalid')`).join(", ")};
     insert into auth.sessions(id, user_id, created_at) values
       ${users.map((u) => `('${u}', '${u}', now())`).join(", ")},
-      ('${STALE_SESSION}', '${U.staffA}', now() - interval '3 days'),
+      
       ('${IDLE_SESSION}', '${U.staffA}', now());
     -- Signed in today, but the SERVER-held activity timestamp is 40 minutes old.
     insert into public.session_activity(session_id, user_id, last_activity_at, created_at) values

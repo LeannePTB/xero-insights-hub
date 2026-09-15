@@ -19,7 +19,6 @@ import {
   INACTIVITY_WINDOW_MS,
   SESSION_CHANNEL,
   clearIdleDeadline,
-  clearSignInMark,
   markSignedOutIdle,
   readIdleDeadline,
   writeIdleDeadline,
@@ -65,7 +64,6 @@ export function SessionIdleGuard() {
     endingRef.current = true;
     clearIdleDeadline();
     markSignedOutIdle();
-    clearSignInMark();
     try {
       channelRef.current?.postMessage({ type: "expired" });
     } catch {}

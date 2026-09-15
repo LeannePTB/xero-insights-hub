@@ -8,14 +8,13 @@ import { recordPresence } from "@/lib/security-posture.functions";
 import { AdminNavShell } from "@/components/admin/AdminNavShell";
 import { GlobalSignOut } from "@/components/GlobalSignOut";
 import { SessionIdleGuard } from "@/components/SessionIdleGuard";
-import { clearSignInMark, isSessionStale, isTokenStale, markSignInExpired } from "@/lib/session-cutoff";
+
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,
   beforeLoad: async () => {
     const { data, error } = await supabase.auth.getUser();
     if (error || !data.user) throw redirect({ to: "/auth" });
-    const { data: sessionData } = await supabase.auth.getSession();
 
     // MFA enforcement: every authenticated user must have a verified TOTP
     // factor and the current session must be at AAL2.
@@ -26,20 +25,9 @@ export const Route = createFileRoute("/_authenticated")({
     if (!hasVerified) throw redirect({ to: "/auth/mfa-enroll" });
     if (aalData?.currentLevel !== "aal2") throw redirect({ to: "/auth/mfa-verify" });
 
-    // Daily sign-in cut-off: a session that began before the most recent 3am
-    // Australia/Sydney is finished with. This is the UX half — the database
-    // (app_private.assert_aal2) and the server middleware are the enforcement,
-    // so a tampered browser hint buys nothing but a broken page.
-    if (
-      isTokenStale(sessionData.session?.access_token) ||
-      isSessionStale()
-    ) {
-      clearSignInMark();
-      markSignInExpired();
-      await supabase.auth.signOut();
-      throw redirect({ to: "/auth" });
-    }
-
+    // There is no daily sign-in cut-off (owner decision, 15 Sep 2026). The only
+    // automatic end to a session is inactivity, handled by SessionIdleGuard in
+    // the browser and enforced by the database and the request middleware.
     return { user: data.user };
   },
   component: AuthenticatedLayout,
