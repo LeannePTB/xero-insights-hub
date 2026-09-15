@@ -70,6 +70,8 @@ type Ctx = {
 const IDLE_SESSION = "77777777-2222-4222-8222-222222222222";
 /** A session seconds old with NO activity row: the just-completed-MFA case. */
 const FRESH_SESSION = "77777777-3333-4333-8333-333333333333";
+/** Signed in 90 minutes ago and STILL BEING USED: activity 2 minutes ago. */
+const ACTIVE_SESSION = "77777777-4444-4444-8444-444444444444";
 
 const CONTEXT: Record<Role, Ctx> = {
   anonymous: { uid: null, dbRole: "anon", aal: null },
@@ -85,6 +87,12 @@ const CONTEXT: Record<Role, Ctx> = {
     dbRole: "authenticated",
     aal: "aal2",
     sessionId: FRESH_SESSION,
+  },
+  active_session_member: {
+    uid: U.staffA,
+    dbRole: "authenticated",
+    aal: "aal2",
+    sessionId: ACTIVE_SESSION,
   },
   org_owner: { uid: U.ownerA, dbRole: "authenticated", aal: "aal2" },
   org_staff: { uid: U.staffA, dbRole: "authenticated", aal: "aal2" },
