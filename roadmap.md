@@ -58,6 +58,15 @@
 - [x] session_controls posture check, matrix rows, spec § 0c, docs, backlog
 - [x] Backlog 50 CLOSED: signing another person out of every device. No admin logout endpoint exists (three paths 404 against a real user id) and a ban leaves sessions intact (5 rows survive, refresh works again after unban); an admin credential change genuinely deletes every session (5 → 0). Shipped on that mechanism: `admin_assert_can_sign_out_user` (aal2 + super admin, refuses self and the last super admin) authorises, random password + reset email revokes, `record_sign_out_all_devices` audits. Control on `/settings/advisors`.
 
-## Subscriptions and dashboard cards (approved 15 Sep 2026, NOT scheduled)
+## Subscriptions and dashboard cards (approved 15 Sep 2026, IN PROGRESS)
 
-- Approved design recorded in `docs/design/subscriptions-and-cards.md`. **No payment system is in scope** — build only when the product goes to market outside Positive Traction.
+- Approved design recorded in `docs/design/subscriptions-and-cards.md`. **No payment system is in scope.**
+- Migration plan in `.lovable/plan.md`, approved 15 Sep 2026 with three additions (new clients get a card list in the same transaction; the organisation's purchase governs cards and entitlement stops gating them; rollback switch is a settings row, no migration to flip).
+- Owner amendment 15 Sep: dashboards may change — backfill switches every allowed card on and the owner unticks afterwards. Positive Traction loses `loan_consolidation`, no grandfathered exception.
+- [x] Batch 1 — pre-migration snapshot file and consolidation-count baseline
+- [x] Batch 2 — new tables, card-group helper and `client_visible_cards`, read by nothing yet
+- [ ] Batch 3 — backfill every client to all allowed cards, plus dual write (NOT started; owner reports first)
+- [ ] Batch 4 — flip reads behind `app_private.platform_settings` switch
+- [ ] Batch 5 — matrix rows (three purchasable options, newly created client has a usable dashboard), posture check, docs, backlog
+- [ ] Recommended follow-up: "copy this client's card setup to the other entities" action
+
