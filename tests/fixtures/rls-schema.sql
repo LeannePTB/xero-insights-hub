@@ -1711,6 +1711,10 @@ CREATE OR REPLACE FUNCTION public.record_sign_out_all_devices(_user_id uuid, _me
  SET search_path TO 'public'
 AS $function$
 begin
+  -- Stated explicitly as the first statement (harmless duplication of the
+  -- assertion inside admin_assert_can_sign_out_user) so the posture check can
+  -- see the guard rather than infer it from the call below.
+  perform app_private.assert_aal2();
   perform public.admin_assert_can_sign_out_user(_user_id);
   if _method not in ('credential_reset') then
     raise exception 'Unknown revocation method';
@@ -2772,4 +2776,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 099eed8fc27b6b0365457e90ad2bda8e6295afa19d43a250b7294b7144f1e1c9
+-- catalogue-fingerprint: 9a5e1fb1398c3bed0bdf798aa259eef2ceda9dc7bcdf1cec5c19d5838c3cdcc7
