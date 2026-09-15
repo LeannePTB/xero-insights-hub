@@ -20,6 +20,7 @@ export type Role =
   
   | "idle_session_member"
   | "fresh_mfa_session_member"
+  | "active_session_member"
   | "org_owner"
   | "org_staff"
   | "other_org_member"
@@ -65,6 +66,8 @@ export const ROLE_LABELS: Record<Role, string> = {
     "Active member on aal2, signed in today, with no recorded activity for more than 30 minutes",
   fresh_mfa_session_member:
     "Active member who has just completed MFA: an aal2 session seconds old with no activity row written yet",
+  active_session_member:
+    "Active member being ACTIVELY USED: an aal2 session that began 90 minutes ago whose last recorded activity is 2 minutes ago",
   org_owner: "Organisation owner (own organisation)",
   org_staff: "Organisation staff (own organisation)",
   other_org_member: "Active member of a DIFFERENT organisation",
