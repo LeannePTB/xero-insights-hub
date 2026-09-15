@@ -259,8 +259,15 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Reads one boolean platform switch from app_private.platform_settings, which has no grants to authenticated. Used for the card-model cutover switch so it can be reversed instantly without a migration. Read-only, no caller-supplied identity.",
   "app_private.client_available_cards":
     "Derives which cards an organisation's purchase makes available for one client (standard always, advisory and consolidation only when purchased, consolidation only with more than one client, nothing extra while the organisation is lapsed). Reads org_subscription_options, which authenticated cannot read for another organisation. Authorisation is enforced by the caller, public.client_visible_cards.",
+  "app_private.set_client_cards":
+    "Records the single ticked card list for one client (Batch 3 dual write). Execute revoked from PUBLIC, anon and authenticated: it is only reachable from public wrappers that have already asserted aal2 and organisation membership, or from the after-insert trigger on public.clients. Holds no authorisation of its own and cannot widen what a card list is read against.",
+  "app_private.set_client_card":
+    "Switches one card on or off in a client's ticked list, starting from every purchase-available card when no list exists yet so a single toggle can never collapse a dashboard. Same reachability as app_private.set_client_cards: revoked from PUBLIC, anon and authenticated, authorisation enforced by the caller public.set_client_widget_enabled.",
+  "app_private.tg_client_cards_default":
+    "After-insert trigger on public.clients: writes the new client's card list in the same transaction, defaulting to every card its organisation's purchase allows, so a client created after cutover never has a blank dashboard. Revoked from PUBLIC, anon and authenticated; the INSERT it follows is itself authorised.",
   "public.client_visible_cards":
     "Returns the cards one client shows: aal2 first, then refuses unless the caller already has read access to that client, then intersects the purchase-available set with the client's ticked list. A missing ticked list means all available cards, never none, so a recording fault fails visible rather than blank. Never returns a card the purchase does not allow.",
+
   "public.security_attestations_list":
 
     "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
