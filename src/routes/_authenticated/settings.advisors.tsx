@@ -18,6 +18,7 @@ import {
 } from "@/lib/advisors.functions";
 import { listPracticeTeam, setPracticeMembership } from "@/lib/practice-team.functions";
 import { updateProfileNameAsAdmin } from "@/lib/profile.functions";
+import { adminSignOutAllDevices } from "@/lib/session-activity.functions";
 import { displayNameSchema, isRealDisplayName } from "@/lib/profile-name";
 import { getMyContext } from "@/lib/roles.functions";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users } from "lucide-react";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { AdminShell } from "@/components/admin/AdminShell";
@@ -58,6 +59,7 @@ function AdvisorSettings() {
   const setPwFn = useServerFn(setAdvisorPassword);
   const setSuperFn = useServerFn(setAdvisorSuperAdmin);
   const setNameFn = useServerFn(updateProfileNameAsAdmin);
+  const signOutAllFn = useServerFn(adminSignOutAllDevices);
   const fetchPracticeTeam = useServerFn(listPracticeTeam);
   const setPracticeFn = useServerFn(setPracticeMembership);
 
@@ -181,6 +183,15 @@ function AdvisorSettings() {
       toast.success("Name updated and recorded in the audit log");
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const signOutAllMut = useMutation({
+    mutationFn: (userId: string) => signOutAllFn({ data: { userId } }),
+    onSuccess: (r) =>
+      toast.success(
+        `${r.email} is signed out on every device. They've been emailed a link to choose a new password.`,
+      ),
+    onError: (e: any) => toast.error(e.message),
   });
 
   const [resetTarget, setResetTarget] = useState<{ userId: string; label: string } | null>(null);
@@ -468,6 +479,24 @@ function AdvisorSettings() {
                           className={a.is_super_admin ? "text-amber-600" : undefined}
                         >
                           <Crown className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {viewerIsSuperAdmin && !a.is_self && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const label = a.email ?? a.display_name ?? a.user_id;
+                            const msg =
+                              `Sign ${label} out of every device now?\n\n` +
+                              `This ends all their sessions immediately, including a lost or stolen device. ` +
+                              `Because it works by resetting their password, they'll be emailed a link to choose a new one before they can sign in again.`;
+                            if (confirm(msg)) signOutAllMut.mutate(a.user_id);
+                          }}
+                          disabled={signOutAllMut.isPending}
+                          title="Sign out of every device (resets their password)"
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
                         </Button>
                       )}
                       <Button
