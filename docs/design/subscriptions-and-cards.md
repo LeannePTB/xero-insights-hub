@@ -38,12 +38,20 @@ This is a deliberate commercial decision. A multi-entity group is the customer m
 - **One stored list per client: the cards that are ON.** No exclusion list, ever. The current model stores both an include and an exclude list, and they contradict each other — see below.
 - A card not covered by the purchase does not appear on the client's list at all.
 - **Ticking Advisory switches its cards on for every client immediately** (owner decision, 15 Sep 2026). Per-client ticks are for exceptions afterwards.
-- Un-ticking Advisory switches those cards off everywhere. Decide at build time whether previous per-client exceptions are remembered if Advisory is later re-ticked, or reset — record whichever you choose.
+> **Per-client exceptions survive Advisory being switched off and on again** (owner decision, 15 September 2026). Turning Advisory off hides its cards everywhere but does not erase which ones were individually switched off; turning it back on restores each client to exactly the state it was in, not to "everything on".
+>
+> Implications for the build:
+> - The per-client card list must persist while the feature is off. Do not delete rows on downgrade — mark the cards unavailable and keep the stored preferences.
+> - **Clients added while Advisory was off have no remembered state.** They take the default — all Advisory cards on — when it is switched back on. Make that visible in the confirmation rather than leaving it to be discovered.
+> - The confirmation when switching Advisory back on should say what will happen: which clients return to a previous arrangement, and which are new and will get everything.
+> - The same rule applies to Consolidation.
 
-**Starting card grouping — to be confirmed before build:**
+**Card grouping — confirmed 15 September 2026**
 - **Standard:** health, receivables, payables, profit & loss, notes, unreconciled, bank reconciliation
 - **Advisory:** cash flow, cash flow scenario, accounting break-even, true break-even, tax liability, GST reconciliation, superannuation, PAYG withholding, Xero audit, transaction search, loan consolidation
 - **Consolidation:** the consolidated multi-company views
+
+The Standard set is confirmed by the owner as the right free/included baseline. It is what a business owner needs to answer "am I alright?" without paying more.
 
 The Standard/Advisory line is a pricing decision, not a technical one: too much in Standard and nobody upgrades; too little and Standard looks thin.
 
