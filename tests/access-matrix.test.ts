@@ -302,6 +302,19 @@ const TARGET: Record<string, Record<string, string>> = {
     last_seen: "now()",
     day: "current_date",
   },
+  xero_rate_limits: {
+    tenant_id: q("11111111-2222-4222-8222-222222222222"),
+    day: "current_date",
+    firm_id: q(ORG_A),
+    tenant_name: q("Seed File"),
+    calls_observed: "1",
+    rate_limited_count: "0",
+    hour_calls: "1",
+    peak_hour_calls: "1",
+    first_seen: "now()",
+    last_seen: "now()",
+  },
+
   subscriptions: {
     id: q("d0000004-1111-4111-8111-111111111111"),
     firm_id: q(ORG_A),
