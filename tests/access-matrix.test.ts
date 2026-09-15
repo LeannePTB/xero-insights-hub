@@ -910,10 +910,15 @@ beforeAll(async () => {
       
       ('${IDLE_SESSION}', '${U.staffA}', now()),
       -- Just completed MFA: seconds old, and deliberately NO activity row.
-      ('${FRESH_SESSION}', '${U.staffA}', now() - interval '5 seconds');
+      ('${FRESH_SESSION}', '${U.staffA}', now() - interval '5 seconds'),
+      -- Signed in 90 minutes ago and still in use: well past the window on age
+      -- alone, so only the recorded activity below can keep it active.
+      ('${ACTIVE_SESSION}', '${U.staffA}', now() - interval '90 minutes');
     -- Signed in today, but the SERVER-held activity timestamp is 40 minutes old.
     insert into public.session_activity(session_id, user_id, last_activity_at, created_at) values
-      ('${IDLE_SESSION}', '${U.staffA}', now() - interval '40 minutes', now() - interval '40 minutes');
+      ('${IDLE_SESSION}', '${U.staffA}', now() - interval '40 minutes', now() - interval '40 minutes'),
+      -- Actively used: last interaction 2 minutes ago on a 90 minute old session.
+      ('${ACTIVE_SESSION}', '${U.staffA}', now() - interval '2 minutes', now() - interval '90 minutes');
     insert into auth.mfa_factors(user_id, status) values
       ${users.map((u) => `('${u}', 'verified')`).join(", ")};
     insert into public.profiles(id, email, display_name) values
