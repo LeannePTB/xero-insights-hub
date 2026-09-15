@@ -2552,6 +2552,103 @@ export type Database = {
           },
         ]
       }
+      xero_rate_limits: {
+        Row: {
+          app_min_low_at: string | null
+          app_min_remaining_low: number | null
+          calls_observed: number
+          day: string
+          day_low_at: string | null
+          day_remaining_low: number | null
+          firm_id: string | null
+          first_seen: string
+          hour_calls: number
+          hour_start: string | null
+          last_problem: string | null
+          last_rate_limited_at: string | null
+          last_retry_after_seconds: number | null
+          last_seen: string
+          min_low_at: string | null
+          min_remaining_low: number | null
+          peak_hour_calls: number
+          peak_hour_start: string | null
+          rate_limited_count: number
+          tenant_id: string
+          tenant_name: string | null
+          xero_connection_id: string | null
+        }
+        Insert: {
+          app_min_low_at?: string | null
+          app_min_remaining_low?: number | null
+          calls_observed?: number
+          day: string
+          day_low_at?: string | null
+          day_remaining_low?: number | null
+          firm_id?: string | null
+          first_seen?: string
+          hour_calls?: number
+          hour_start?: string | null
+          last_problem?: string | null
+          last_rate_limited_at?: string | null
+          last_retry_after_seconds?: number | null
+          last_seen?: string
+          min_low_at?: string | null
+          min_remaining_low?: number | null
+          peak_hour_calls?: number
+          peak_hour_start?: string | null
+          rate_limited_count?: number
+          tenant_id: string
+          tenant_name?: string | null
+          xero_connection_id?: string | null
+        }
+        Update: {
+          app_min_low_at?: string | null
+          app_min_remaining_low?: number | null
+          calls_observed?: number
+          day?: string
+          day_low_at?: string | null
+          day_remaining_low?: number | null
+          firm_id?: string | null
+          first_seen?: string
+          hour_calls?: number
+          hour_start?: string | null
+          last_problem?: string | null
+          last_rate_limited_at?: string | null
+          last_retry_after_seconds?: number | null
+          last_seen?: string
+          min_low_at?: string | null
+          min_remaining_low?: number | null
+          peak_hour_calls?: number
+          peak_hour_start?: string | null
+          rate_limited_count?: number
+          tenant_id?: string
+          tenant_name?: string | null
+          xero_connection_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "xero_rate_limits_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "xero_rate_limits_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "xero_rate_limits_xero_connection_id_fkey"
+            columns: ["xero_connection_id"]
+            isOneToOne: false
+            referencedRelation: "xero_connections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       xero_snapshot_runs: {
         Row: {
           client_id: string
@@ -3042,6 +3139,21 @@ export type Database = {
         }
         Returns: undefined
       }
+      log_xero_rate_limit: {
+        Args: {
+          _app_min_remaining: number
+          _connection_id: string
+          _day_remaining: number
+          _firm_id: string
+          _min_remaining: number
+          _problem: string
+          _rate_limited: boolean
+          _retry_after: number
+          _tenant_id: string
+          _tenant_name: string
+        }
+        Returns: undefined
+      }
       me_can_manage_client_viewers: {
         Args: { _client_id: string }
         Returns: boolean
@@ -3342,6 +3454,26 @@ export type Database = {
       xero_missing_scopes: {
         Args: { _connection_id: string }
         Returns: string[]
+      }
+      xero_rate_limit_posture: { Args: never; Returns: Json }
+      xero_rate_limit_usage: {
+        Args: never
+        Returns: {
+          app_min_remaining_low: number
+          calls_observed: number
+          day: string
+          day_remaining_low: number
+          last_problem: string
+          last_rate_limited_at: string
+          last_seen: string
+          min_remaining_low: number
+          organisation: string
+          peak_hour_calls: number
+          peak_hour_start: string
+          rate_limited_count: number
+          tenant_id: string
+          tenant_name: string
+        }[]
       }
       xero_required_scopes: { Args: never; Returns: string[] }
       xero_tenant_already_linked: {

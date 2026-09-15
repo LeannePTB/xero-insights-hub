@@ -1,83 +1,78 @@
-# Subscription and card model — migration plan (amended: fidelity requirement dropped)
+# Xero rate-limit visibility
 
-Classification: **security-relevant**. It touches `client_entitlement`, `client_allowed_widgets`, `client_can_use_widget`, `firm_allowed_widgets` and `firm_has_consolidation` — all on the access path. Design authority: `docs/design/subscriptions-and-cards.md` (settled). Owner amendment, 15 September 2026: dashboards may change; she will adjust them afterwards.
+Separate from the card-model migration. No file it touches is shared: this is
+`src/lib/xero/*`, a new telemetry table and a new posture card. Batch 3 of the
+card model stays as it is.
 
-Governing constraint: **no restore test, so safety comes from never deleting anything.** Strictly additive; every batch states its one-migration undo.
+Classification: **SECURITY-RELEVANT** — new table holding Xero telemetry, new
+definer functions, `supabaseAdmin` write path, Path C read.
 
-**Why the drop is safe — verified 15 September:** `client_access` has **0 rows**; `firm_viewer_access` has **1 row**, which is the security-test viewer on the ZZ Security Test Org, not a business owner; there are no pending invites. The only people who see these dashboards today are Positive Traction staff, and the staff screens keep working off the same resolution either way.
+## What Xero gives us (confirmed from Xero's current documentation)
 
----
+Every successful response carries `X-DayLimit-Remaining`, `X-MinLimit-Remaining`
+and `X-AppMinLimit-Remaining`. A 429 carries `X-Rate-Limit-Problem` (`minute` or
+`day`) and `Retry-After` in seconds. Limits are 60 calls/minute and 5,000
+calls/day per organisation, 10,000/minute across all organisations.
 
-## Step 1 — Snapshot for reference only (short)
+We record what Xero reports. We never maintain our own counter of the quota.
 
-- Save the current stored configuration — `tier_widget_config` rows, `firms.default_widgets`, `clients.dashboard_widgets`, `plan_levels.widgets` — to one file (`docs/design/card-model-pre-migration-snapshot.md`) as a manual reference. No derivation of "what each client sees today".
-- One short note naming which configuration conflicts existed (already known, confirmed live this morning: `health` in both lists on the platform `multi_company` row; Positive Traction's dead `basic`/`advisory` rows; Autotek's empty org row silently cancelling the platform `transaction_search` exclusion; DRTABT's nine stale per-client lists and `firms.default_widgets` row). No resolution of each.
-- Record the four consolidation counts (56 / 9 / 1 / 1) as the baseline for every later assertion.
+## 1. Table `public.xero_rate_limits` — telemetry, shaped like `xero_api_errors`
 
-## Step 2 — New shape (additive only)
+One row per Xero file per UTC day, updated in place: lowest remaining seen for
+each of the three limits and when each low point occurred, calls observed,
+rate-limit rejections, last problem and last retry-after, plus a rolling
+current-hour counter and the peak hour of the day (for the burst check).
+30-day retention pruned on write. Nothing from a client's data, no tokens, no
+headers stored verbatim beyond the numbers.
 
-- `public.org_subscription_options` (one row per organisation): `firm_id` PK, `client_limit`, `advisory_enabled`, `consolidation_enabled`, `billing_mode` ('bookkeeping' | 'external'), timestamps. RLS on; `revoke all from anon, authenticated`, then grant only what per-command policies need; writes only through aal2 definer functions.
-- `public.client_cards` (one row per client): `client_id` PK, `cards text[]` — the single ON list. No exclusion mechanism, ever.
-- New reader `public.client_visible_cards(_client_id)`: aal2, caller-scoped; `available = standard ∪ (advisory if on) ∪ (consolidation if on and organisation has >1 client)`; `visible = available ∩ client_cards.cards`. Card groupings per the design doc, in one definer helper.
-- **Turning Advisory or Consolidation off updates `org_subscription_options` only** — `client_cards` rows are never deleted, so per-client ticks survive off-and-on, as the design requires.
-- Existing tables (`plan_levels`, `subscriptions`, `client_subscriptions`, `tier_widget_config`, `firms.default_widgets`, `clients.dashboard_widgets`): read during backfill, then left alone. Nothing dropped, renamed or repurposed.
+RLS on, all privileges revoked from `anon` and `authenticated`, one `SELECT`
+policy `to authenticated` requiring aal2 and super admin (Path C metadata).
+No insert/update/delete policy at all — the only write path is the definer
+function below.
 
-## Step 3 — Backfill (simple)
+## 2. Write path
 
-- Every client gets **all cards its organisation's purchase allows, switched on**. No attempt to preserve current exclusions.
-- Organisation mapping from the design doc: DRTABT Projects (9 clients, Advisory on, Consolidation on, bookkeeping); Positive Traction (1, Advisory on, Consolidation off — single client, bookkeeping); Bangkok On Darby and Autotek NSW (1 each, Advisory off, bookkeeping). ZZ Security Test Org backfilled like any other so the access matrix keeps working.
-- `loan_consolidation` is a Consolidation card, so it lands only on DRTABT's nine lists. **Owner decision, accepted:** Positive Traction loses it, no grandfathered exception.
-- **New clients created after cutover** (addition 1): the client-creation function writes the `client_cards` row **in the same transaction**, defaulting to every card the organisation's purchase allows. Belt and braces: `client_visible_cards` treats a **missing row as "all available"**, never as "none" — a failure there shows too much to a staff member rather than a blank dashboard, and never more than the purchase allows.
-- Stop condition: any step that seems to need deleting data halts and reports instead.
+`public.log_xero_rate_limit(...)` — `SECURITY DEFINER`, execute revoked from
+`PUBLIC`, `anon` and `authenticated`, called only through `supabaseAdmin` from
+the Xero request helpers. Same swallow-and-log discipline as
+`log_xero_api_error`: a telemetry failure never breaks a Xero call. Nothing is
+written to `audit_log`.
 
-## Step 3a — Which system governs cards (addition 2)
+## 3. Capture points
 
-After cutover, **the organisation's purchase governs which cards exist, and entitlement stops being a card gate entirely.** I agree with you, and the reason is precisely the drift we are migrating away from: today `client_entitlement` picks a tier, `plan_levels.widgets` turns that into a ceiling, and `tier_widget_config` subtracts from it — three places, three sources, contradictions nobody could resolve. Two gates cannot be kept honest.
+`src/lib/xero/api.server.ts` only — the accounting, assets and payroll helpers
+and the token-refresh path. Every response, success or failure, including the
+nightly snapshot refresh which runs through the same helpers. Identity endpoints
+(`/connections`) are not tenant-scoped and are noted, not attributed.
 
-What that means concretely:
-- `client_allowed_widgets` / `client_can_use_widget` / `firm_allowed_widgets` resolve **only** from `org_subscription_options` + `client_cards`. No tier appears in card resolution.
-- `client_entitlement` and `client_subscriptions.dashboard_tier` are **not deleted and not repurposed** — they keep doing plan/limit and billing-state work (lapsed organisation, trial expiry, plan limits) and stop deciding cards.
-- The viewer cap is unchanged and stays where it is: a viewer still sees no more than the client shows, because it goes through the same caller-scoped read check. What changes is that a viewer's *tier* no longer subtracts cards — the organisation's purchase and the client's ticks do.
-- One consequence to accept knowingly: a lapsed organisation currently collapses to Standard cards through entitlement. Under the new model that must be expressed as the purchase itself (Advisory off), so Batch 4 includes a lapsed check in `client_available_cards` rather than relying on the tier.
+## 4. Reads
 
-## Step 4 — Cutover
+- `public.xero_rate_limit_posture()` — aal2 + super admin, returns the posture
+  card: Warn under 20% remaining on any limit, Action under 5%, on any rejection
+  in the last 24 hours, or on a burst. Figures come from the table.
+- `public.xero_rate_limit_usage()` — aal2 + super admin, per-file rows for a new
+  card on the admin screen.
 
-1. Dual-write: the admin card screens write `client_cards` alongside the old tables; reads unchanged.
-2. Reads flip on `app_private.platform_settings` key `card_model_v2` (addition 3) — a settings row read by `client_allowed_widgets`, so it flips **instantly, with no migration**, through an aal2 super-admin audited function.
-3. **Reverse in seconds:** set that row false. Old tables are untouched and still current.
+## 5. Burst threshold
 
-## Step 5 — Verification
+Proposed **300 calls per file per hour** as an Action. Today's real usage is
+~130 grouped reads a day across 12 files; the one heavy day (1,257) was the
+owner's own development work. 300 in one hour for a single file is roughly 6% of
+that file's daily quota in an hour, an order of magnitude above any legitimate
+refresh, and still only 5 calls a minute so it never trips Xero's own minute
+cap. A runaway retry loop passes it within minutes.
 
-- Every client has exactly one card list, no contradictions, no exclusion mechanism consulted anywhere in resolution.
-- No client shows a card its organisation's purchase does not allow.
-- Entitlement still caps what any viewer sees (existing matrix rows all pass).
-- New matrix rows: an organisation without Advisory, and one without Consolidation, refused a card from that group via dashboard read, direct URL, server function and a saved report link; **and a newly created client has a usable dashboard**.
-- The four consolidation counts asserted unchanged before and after every migration.
-- `bun run security:check`, `public.security_posture()`, linter — no new Action or Warn.
+## 6. Behaviour on a 429
 
+Today: the accounting helper retries up to three times, honouring `Retry-After`
+capped at 60 seconds, otherwise 2/4/8 seconds; assets and payroll retry once,
+capped at 10 seconds. Change: record the rejection, and when
+`X-Rate-Limit-Problem` is `day` stop immediately with a clear message rather
+than retrying — a daily-limit rejection cannot recover inside a request and
+retrying it burns the same quota.
 
-**Cascade check (done):** `loan_consolidation_accounts -> clients`, `consolidation_group_members -> clients`/`-> consolidation_groups`, `consolidation_groups -> firms`, `loan_consolidation_snapshots -> consolidation_groups` are all `ON DELETE CASCADE`. No migration in this work deletes a row from `clients`, `firms` or `consolidation_groups`.
+## Verification
 
-## Batches — riskiest first, each shippable and reversible
-
-| # | Batch | Undo in one migration |
-| --- | --- | --- |
-| 1 | Snapshot file + consolidation-count baseline (read-only) | nothing to undo |
-| 2 | New tables, RLS, grants, `client_visible_cards`, grouping helper — unread | leave in place, or revoke execute |
-| 3 | Backfill + dual write from admin screens | stop writing; rows ignored |
-| 4 | Flip reads behind the switch | set switch false |
-| 5 | New matrix rows, posture check, docs, backlog | evidence only |
-
-## Owner decisions (with my recommendation)
-
-1. **Positive Traction's `loan_consolidation` card** — Consolidation is n/a for a single client, so under the new model that card would come off your own dashboard. Recommend: accept that (you see the consolidated views through DRTABT anyway), rather than building a grandfathered exception. Say the word if you'd rather keep it.
-2. **Autotek's `transaction_search`** — disappears when Advisory comes on for them later unless ticked. No decision needed today.
-3. **Retiring the old tables** — no earlier than one month after batch 4, as its own decision, and never by deletion inside this work.
-
-## What you'll need to do after cutover
-
-One pass per client unticking what's not needed: 14 clients, 9 of them DRTABT entities that will almost certainly be identical — realistically under an hour including checking. A "copy this client's card setup to the other entities in the organisation" action would cut that to minutes and I recommend building it as a small follow-up; I won't build it unasked.
-
-## Credit estimate
-
-Roughly 25–35 credits now the fidelity work is gone: batch 1 ~2, batch 2 ~8, batch 3 ~6, batch 4 ~8, batch 5 ~5, plus verification reruns.
+`bun run security:check` (fingerprint, register, tests, live access), typecheck,
+Supabase linter, matrix rows unchanged, backlog and docs updated in the same
+change.

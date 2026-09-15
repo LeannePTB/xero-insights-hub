@@ -263,6 +263,15 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
     const sessRes = await (context.supabase as any).rpc("session_controls_posture");
     if (!sessRes.error && sessRes.data) sessionControls = [sessRes.data as PostureCheck];
 
+    // Xero request allowance, computed live from the quota Xero itself reports
+    // back on every response (public.xero_rate_limits). Warns before a file runs
+    // low and flags a burst — a runaway loop shows up here long before the daily
+    // limit is reached.
+    let xeroLimits: PostureCheck[] = [];
+    const xeroRes = await (context.supabase as any).rpc("xero_rate_limit_posture");
+    if (!xeroRes.error && xeroRes.data) xeroLimits = [xeroRes.data as PostureCheck];
+
+
     // Recorded human confirmations, read through context.supabase so the
     // super-admin-only rule is the database's, not this file's.
     let attestations: Attestation[] = [];
@@ -273,8 +282,10 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
       ...((data?.checks ?? []) as PostureCheck[]),
       ...readAudit,
       ...sessionControls,
+      ...xeroLimits,
       ...(await serverConfigChecks(attestations)),
     ];
+
     return {
       generatedAt: (data?.generated_at as string) ?? new Date().toISOString(),
       checks,
