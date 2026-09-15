@@ -967,7 +967,6 @@ AS $function$
            nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'aal',
            ''
          ) = 'aal2'
-         and app_private.is_session_active()
   end
 $function$
 ;
@@ -2720,4 +2719,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 6970a11665755dbd87742fa47569fecb007267d956638e1157b9cd2d4939b911
+-- catalogue-fingerprint: 6fa3bcef652bab8921189ce64e19230339713e16a742554e2e6c932ad9036ed5
