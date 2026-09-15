@@ -70,12 +70,13 @@ function AuthPage() {
     if (params.get("xero") === "signedin") {
       toast.success("Signed in with Xero");
     }
-    // Inactivity timeout: say so plainly. This is NOT a second-factor prompt,
-    // so nobody is sent to their authenticator app when they simply need to
-    // sign in again.
-    if (takeSignedOutIdle()) {
-      setIdleNotice(true);
-      toast.info(IDLE_SIGN_OUT_MESSAGE);
+    // The session ended: say so plainly. This is NOT a second-factor prompt, so
+    // nobody is sent to their authenticator app when they simply need to sign in
+    // again, and it never blames access.
+    const reason = takeSignOutReason();
+    if (reason) {
+      setEndedReason(reason);
+      toast.info(signOutMessage(reason));
     }
   }, []);
 
@@ -124,7 +125,7 @@ function AuthPage() {
         throw error;
       }
       clearIdleDeadline();
-      setIdleNotice(false);
+      setEndedReason(null);
       toast.success("Welcome back");
       await routeAfterAuth(navigate);
     } catch (e: any) {
@@ -213,9 +214,11 @@ function AuthPage() {
           ) : (
             <>
               <h1 className="font-display text-2xl font-semibold">Welcome</h1>
-              {idleNotice ? (
+              {endedReason ? (
                 <p className="mt-1 text-sm text-muted-foreground" role="status">
-                  {IDLE_SIGN_OUT_MESSAGE}. Please sign in again.
+                  {endedReason === "idle"
+                    ? `${signOutMessage("idle")}. Please sign in again.`
+                    : signOutMessage("ended")}
                 </p>
               ) : (
                 <p className="mt-1 text-sm text-muted-foreground">Sign in to your dashboards.</p>
