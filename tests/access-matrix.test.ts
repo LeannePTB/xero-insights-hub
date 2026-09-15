@@ -381,7 +381,14 @@ const TARGET: Record<string, Record<string, string>> = {
 };
 
 /** Primary key column used for the row-scoped read/update/delete probe. */
-const PK: Record<string, string> = { tier_settings: "tier", security_attestations: "check_key" };
+const PK: Record<string, string> = {
+  tier_settings: "tier",
+  security_attestations: "check_key",
+  // Keyed by (tenant_id, day); the probe scopes on the tenant, which is unique
+  // within the seeded day.
+  xero_rate_limits: "tenant_id",
+};
+
 const pkOf = (t: string) => PK[t] ?? "id";
 
 /** Database functions callable in the fixture, with a synthetic argument set. */
