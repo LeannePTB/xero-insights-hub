@@ -13,7 +13,7 @@
  * NOTE: this module is imported from client-reachable code, so `process.env`
  * is accessed defensively — it does not exist in the browser.
  *
- * The email SENDING identity (notify.tractionadvisory.com.au) is deliberately
+ * The email SENDING identity (notify.tractionadvisory.app) is deliberately
  * a different domain and is NOT configured here.
  */
 
