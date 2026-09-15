@@ -65,7 +65,8 @@
 - Owner amendment 15 Sep: dashboards may change — backfill switches every allowed card on and the owner unticks afterwards. Positive Traction loses `loan_consolidation`, no grandfathered exception.
 - [x] Batch 1 — pre-migration snapshot file and consolidation-count baseline
 - [x] Batch 2 — new tables, card-group helper and `client_visible_cards`, read by nothing yet
-- [ ] Batch 3 — backfill every client to all allowed cards, plus dual write (NOT started; owner reports first)
+- [x] Batch 3 — backfill (5 organisation purchase rows, 14 client card lists, all allowed cards on), dual write from both per-client card writers, and a card list written when a client is created. Reads still on the old model.
+- [ ] Batch 4 — settle the overlap in code as well as in the plan: `client_allowed_widgets` returns `client_visible_cards` behind the switch, and `assert_widget_access` / `app_private.effective_widgets_for_client` stop deciding cards from `client_access.tier`. Owner decision needed: after cutover a viewer's tier no longer narrows cards.
 - [ ] Batch 4 — flip reads behind `app_private.platform_settings` switch
 - [ ] Batch 5 — matrix rows (three purchasable options, newly created client has a usable dashboard), posture check, docs, backlog
 - [ ] Recommended follow-up: "copy this client's card setup to the other entities" action

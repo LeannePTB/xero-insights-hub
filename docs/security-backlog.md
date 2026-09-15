@@ -898,3 +898,33 @@ only the two named exclusions applied.
 ## 52. Subscriptions and dashboard cards — approved design, NOT scheduled (opened 15 Sep 2026)
 
 Approved design recorded in `docs/design/subscriptions-and-cards.md`. The current card configuration data is self-contradictory; the cleanup is part of the rebuild, not a separate fix. **No payment system is in scope.** Build only when the product goes to market outside Positive Traction.
+
+## 54. Card model Batch 3 — dual write live, reads unchanged (opened and closed 15 Sep 2026)
+
+Classification: SECURITY-RELEVANT (entitlement and card visibility). No policy,
+grant, role or access path changed; nothing reads `client_cards` or
+`org_subscription_options` yet (`app_private.platform_settings.card_model_v2` =
+`false`).
+
+Added `app_private.set_client_cards`, `app_private.set_client_card` and the
+after-insert trigger `client_cards_default` on `public.clients`, all
+`SECURITY DEFINER` with EXECUTE revoked from `PUBLIC`, `anon` and
+`authenticated`, registered in `docs/security/definer-purposes.ts`. Both
+per-client card writers (`set_client_widget_enabled`,
+`set_client_tier_widgets`) keep their existing aal2 + membership gates and now
+mirror the same intent into the one ticked list.
+
+Backfill: 5 organisation purchase rows (Advisory on for DRTABT Projects and
+Positive Traction, Consolidation on for DRTABT Projects only, all
+`bookkeeping`), 14 client card lists set to every purchase-available card.
+Positive Traction has no `loan_consolidation`, per the owner's decision.
+
+Consolidation working data asserted before and after: 56 / 9 / 1 / 1, unchanged.
+`bun run security:check`: fingerprint MATCH (47c72a9a…), 166 definer functions
+registered, 95 tests passed, live access 18 passed / 0 failed. Linter unchanged
+at the accepted set.
+
+Open item carried into Batch 4: `public.assert_widget_access` still derives
+cards from `client_access.tier` via `app_private.effective_widgets_for_client`.
+That is the second card gate and it must be switched to `client_visible_cards`
+in the same change that flips reads.
