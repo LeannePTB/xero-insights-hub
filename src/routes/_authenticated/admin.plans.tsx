@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getMyContext } from "@/lib/roles.functions";
 import { savePlanLevel, deletePlanLevel, type PlanLevel, type PlanScope } from "@/lib/plan-levels.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
+import { getCardModel } from "@/lib/card-model.functions";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,11 @@ function PlanLevelsPage() {
   const fetchCtx = useServerFn(getMyContext);
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const levelsQ = usePlanLevels();
+  // While the purchase + ticked-list model is live these levels decide no
+  // card. Fail closed to read-only if we cannot tell.
+  const fetchModel = useServerFn(getCardModel);
+  const modelQ = useQuery({ queryKey: ["card-model"], queryFn: () => fetchModel() });
+  const legacy = modelQ.data?.active !== false;
   const [draft, setDraft] = useState<Draft | null>(null);
   const [pendingDelete, setPendingDelete] = useState<PlanLevel | null>(null);
 
@@ -131,10 +137,24 @@ function PlanLevelsPage() {
             <SuperAdminBadge />
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
-            Add, rename or retire the plans organisations subscribe to. Client dashboard tiers are managed in{" "}
+            {legacy
+              ? "Historical record only. These levels no longer decide which cards a client sees."
+              : "Add, rename or retire the plans organisations subscribe to."}{" "}
             <Link to="/settings/tiers" className="underline underline-offset-2">Tier widgets</Link>.
           </p>
         </header>
+
+        {legacy && (
+          <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+            <p className="font-medium">Legacy screen — these levels control nothing.</p>
+            <p className="mt-1 text-muted-foreground">
+              Cards are decided by what each organisation has bought (Clients, Advisory,
+              Consolidation) on its admin page, and by each client's own ticked card list on the
+              client settings page. Editing a level here would change no dashboard, so it is
+              read-only. The levels are kept for history and for plan limits and billing wording.
+            </p>
+          </div>
+        )}
 
         <LevelSection
           title="Organisation plans"
@@ -142,6 +162,7 @@ function PlanLevelsPage() {
           scope="firm"
           levels={firmLevels}
           tierLevels={dashLevels}
+          readOnly={legacy}
           onNew={() => setDraft(EMPTY("firm"))}
           onEdit={(l) => setDraft({ ...l, id: l.id })}
           onDuplicate={(l) => setDraft(duplicateOf(l))}
@@ -343,6 +364,7 @@ function LevelSection({
   onEdit,
   onDuplicate,
   onDelete,
+  readOnly,
 }: {
   title: string;
   hint: string;
@@ -353,6 +375,7 @@ function LevelSection({
   onEdit: (l: PlanLevel) => void;
   onDuplicate: (l: PlanLevel) => void;
   onDelete: (l: PlanLevel) => void;
+  readOnly?: boolean;
 }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -361,12 +384,15 @@ function LevelSection({
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-muted-foreground" />
             <h2 className="font-display text-lg font-semibold">{title}</h2>
+            {readOnly && <Badge variant="outline">legacy · read-only</Badge>}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
         </div>
-        <Button size="sm" variant="outline" onClick={onNew}>
-          <Plus className="mr-2 h-4 w-4" /> New level
-        </Button>
+        {!readOnly && (
+          <Button size="sm" variant="outline" onClick={onNew}>
+            <Plus className="mr-2 h-4 w-4" /> New level
+          </Button>
+        )}
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-md border">
@@ -437,17 +463,21 @@ function LevelSection({
                   <td className="px-4 py-3 text-muted-foreground">{l.widgets.length} selected</td>
                 )}
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button size="sm" variant="outline" onClick={() => onEdit(l)}>
-                      <Pencil className="mr-1 h-3 w-3" /> Edit
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => onDuplicate(l)}>
-                      <Copy className="mr-1 h-3 w-3" /> Duplicate
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => onDelete(l)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  {readOnly ? (
+                    <p className="text-right text-xs text-muted-foreground">Read-only</p>
+                  ) : (
+                    <div className="flex items-center justify-end gap-2">
+                      <Button size="sm" variant="outline" onClick={() => onEdit(l)}>
+                        <Pencil className="mr-1 h-3 w-3" /> Edit
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => onDuplicate(l)}>
+                        <Copy className="mr-1 h-3 w-3" /> Duplicate
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => onDelete(l)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}

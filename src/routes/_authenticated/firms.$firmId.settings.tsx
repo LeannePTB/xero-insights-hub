@@ -17,6 +17,7 @@ import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { OrgDefaultCardsPanel } from "@/components/admin/OrgDefaultCardsPanel";
+import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { PeopleSection } from "@/components/people/PeopleSection";
 import { getFirmPlanSummary } from "@/lib/tier-config.functions";
 
@@ -277,13 +278,22 @@ function FirmSettingsPage() {
 
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Cards included by default
+                Cards included by default (legacy)
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Kept for history. What each client shows is decided below by what this organisation
+                has bought, and by that client's own ticked card list.
               </p>
               <OrgDefaultCardsPanel firmId={firmId} />
             </div>
           </div>
         )}
       </section>
+
+      <div className="mt-6">
+        <OrgPurchaseCard firmId={firmId} />
+      </div>
+
 
       {/* Add clients */}
       <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">

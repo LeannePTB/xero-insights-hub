@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { getClientWidgetMatrix, setClientWidget } from "@/lib/tier-config.functions";
+import { getCardModel } from "@/lib/card-model.functions";
+import { ClientCardSetupPanel } from "@/components/billing/ClientCardSetupPanel";
 import { WIDGET_LABEL, toggleableWidgets, widgetKeyGroup, type WidgetKey } from "@/lib/tiers";
 
 /**
@@ -18,17 +20,40 @@ import { WIDGET_LABEL, toggleableWidgets, widgetKeyGroup, type WidgetKey } from 
  * organisation has switched off cannot be switched back on here — those rows
  * are shown without a working switch instead.
  */
-export function ClientCardsPanel({ clientId }: { clientId: string }) {
+export function ClientCardsPanel({
+  clientId,
+  firmId,
+}: {
+  clientId: string;
+  firmId?: string | null;
+}) {
   const qc = useQueryClient();
   const fetchMatrix = useServerFn(getClientWidgetMatrix);
   const toggle = useServerFn(setClientWidget);
+  const fetchModel = useServerFn(getCardModel);
   const [busy, setBusy] = useState<string | null>(null);
+
+  // Under the purchase + ticked-list model the client has ONE list, capped by
+  // what the organisation bought — the deny-list panel below is the old model.
+  const modelQ = useQuery({ queryKey: ["card-model"], queryFn: () => fetchModel() });
 
   const q = useQuery({
     queryKey: ["client-widget-matrix", clientId],
     queryFn: () => fetchMatrix({ data: { clientId } }),
+    enabled: modelQ.data?.active === false,
     retry: false,
   });
+
+  if (modelQ.isLoading) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        <Loader2 className="mr-2 inline h-3 w-3 animate-spin" /> Loading cards…
+      </p>
+    );
+  }
+  if (modelQ.data?.active) {
+    return <ClientCardSetupPanel clientId={clientId} firmId={firmId ?? null} />;
+  }
 
   if (q.isLoading) {
     return (
