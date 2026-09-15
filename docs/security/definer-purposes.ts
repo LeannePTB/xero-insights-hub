@@ -42,6 +42,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "app_private.is_org_owner": "Whether a person owns an organisation (membership row form).",
   "app_private.is_session_fresh":
     "Whether the calling session began after the most recent daily 3am Australia/Sydney sign-in cut-off; system and service contexts pass, anything unverifiable is stale.",
+  "app_private.is_session_active":
+    "Whether the calling session has had real activity within the last 30 minutes, read from the server-held session_activity timestamp; system and service contexts pass, anything unverifiable is idle.",
   "app_private.is_super_admin": "Whether a person is a platform super admin.",
 
   "app_private.me_is_super_admin": "Whether the calling person is a platform super admin.",
@@ -243,6 +245,14 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Trigger: refuses any attempt — including by service_role — to give a live-suite test account a membership, viewer grant, support grant, platform role, practice-team row or organisation ownership outside the test organisation.",
   "public.record_security_attestation":
     "Record a human confirmation (aal2 + super admin) for a control no system can read, currently leaked-password protection only. Stamps auth.uid() and now() itself and writes an audit row; the caller supplies only the check key and an optional note.",
+  "public.session_controls_posture":
+    "Super-admin security reading: reports the live inactivity window and whether the aal2 gate still consults the idle and daily-cut-off checks.",
+  "public.session_is_active":
+    "Whether the caller's own session is still inside the inactivity window; used by the request layer to refuse an idle session early.",
+  "public.touch_session_activity":
+    "Records that the calling session had real interaction; caller-scoped, session taken from the verified token and the time from the server clock.",
+  "public.record_sign_out_other_devices":
+    "Audits a person signing out their own other devices; records who and when, never a token or device detail.",
   "public.security_attestations_list":
     "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
   "public.test_accounts_posture":

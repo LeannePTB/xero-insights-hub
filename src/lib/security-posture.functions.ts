@@ -256,6 +256,13 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
     // itself, so it must NOT be fetched again here — doing so rendered
     // "Security test accounts are contained" twice on the card.
 
+    // Session timeout controls, read live from the enforcement objects
+    // themselves (the activity helper and the aal2 gate), so removing the idle
+    // check from the gate turns this red rather than going unnoticed.
+    let sessionControls: PostureCheck[] = [];
+    const sessRes = await (context.supabase as any).rpc("session_controls_posture");
+    if (!sessRes.error && sessRes.data) sessionControls = [sessRes.data as PostureCheck];
+
     // Recorded human confirmations, read through context.supabase so the
     // super-admin-only rule is the database's, not this file's.
     let attestations: Attestation[] = [];
@@ -265,6 +272,7 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
     const checks: PostureCheck[] = [
       ...((data?.checks ?? []) as PostureCheck[]),
       ...readAudit,
+      ...sessionControls,
       ...(await serverConfigChecks(attestations)),
     ];
     return {

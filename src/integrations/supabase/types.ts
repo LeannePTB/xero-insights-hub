@@ -1859,6 +1859,27 @@ export type Database = {
         }
         Relationships: []
       }
+      session_activity: {
+        Row: {
+          created_at: string
+          last_activity_at: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          last_activity_at?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          last_activity_at?: string
+          session_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       signup_requests: {
         Row: {
           contact_name: string
@@ -3051,6 +3072,7 @@ export type Database = {
         Args: { _check_key: string; _note?: string }
         Returns: undefined
       }
+      record_sign_out_other_devices: { Args: never; Returns: undefined }
       remove_client: {
         Args: { _client_id: string }
         Returns: {
@@ -3083,6 +3105,8 @@ export type Database = {
         }[]
       }
       security_posture: { Args: never; Returns: Json }
+      session_controls_posture: { Args: never; Returns: Json }
+      session_is_active: { Args: never; Returns: boolean }
       set_all_client_tiers: {
         Args: {
           _firm_id: string
@@ -3179,6 +3203,7 @@ export type Database = {
         Returns: undefined
       }
       test_accounts_posture: { Args: never; Returns: Json }
+      touch_session_activity: { Args: never; Returns: undefined }
       transfer_organisation_ownership: {
         Args: {
           _firm_id: string

@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1566**. Known failures: **0**.
+Rows: **1572**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1352,6 +1352,8 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | user_can_write_client_scenario() for a client in their organisation | execute | ALLOW | pglite | PK section 2 path A — an active member's scenario writes are unchanged by Batch 3 |  |
+| touch_session_activity() | execute | ALLOW | pglite | PK 2 — a live aal2 session records its own activity, caller-scoped |  |
+| session_activity | update | DENY | pglite | PK 1 — read-only to signed-in users; only the definer function writes |  |
 
 ## External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)
 
@@ -1662,3 +1664,12 @@ None.
 | client_notes | read | DENY | pglite | PK 2 — aal2 now also means signed in since the most recent 3am Sydney |  |
 | assert_aal2() with a session older than the cut-off | execute | DENY | pglite | PK 2 — SESSION_EXPIRED, raised before the MFA check |  |
 | assert_aal2() with no session_id claim | execute | DENY | pglite | PK 1 deny by default — an unverifiable session is stale (fail closed) |  |
+
+## Active member on aal2, signed in today, with no recorded activity for more than 30 minutes
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| client_notes | read | DENY | pglite | PK 2 — aal2 also means active within the last 30 minutes |  |
+| assert_aal2() with an idle session | execute | DENY | pglite | PK 2 — SESSION_IDLE, raised before the MFA check |  |
+| touch_session_activity() | execute | DENY | pglite | PK 1 deny by default — an expired session cannot revive itself |  |
+| session_activity | update | DENY | pglite | PK 1 — activity timestamps are server-written only; no client write path |  |

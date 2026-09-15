@@ -134,3 +134,70 @@ export function takeSignInExpired(): boolean {
     return false;
   }
 }
+
+/**
+ * Inactivity timeout (owner decision, 15 September 2026). Thirty minutes of no
+ * real interaction ends the session; the warning appears one minute before.
+ *
+ * These are the browser-side mirror of the SAME window enforced inside the
+ * database by `app_private.is_session_active()` and by the request middleware
+ * against the server-held `session_activity.last_activity_at`. The browser may
+ * only ever sign out EARLIER — it is never the control.
+ */
+export const INACTIVITY_WINDOW_MINUTES = 30;
+export const INACTIVITY_WARN_AT_MINUTES = 29;
+export const INACTIVITY_WINDOW_MS = INACTIVITY_WINDOW_MINUTES * 60_000;
+export const INACTIVITY_WARN_AT_MS = INACTIVITY_WARN_AT_MINUTES * 60_000;
+
+/** Shared absolute deadline, so every tab of one session expires together. */
+export const IDLE_DEADLINE_KEY = "ta:idle-deadline";
+/** Cross-tab channel: activity extends, expiry ends, in every open tab. */
+export const SESSION_CHANNEL = "ta:session";
+
+/**
+ * One-shot reason hint so the sign-in page can say why the session ended.
+ * Display text only, never a credential and never a grant. Deliberately
+ * DISTINCT from the daily cut-off hint and from any MFA prompt: an idle
+ * session needs a fresh sign-in, not an authenticator code.
+ */
+export const SIGN_IN_IDLE_KEY = "ta:signout-reason-idle";
+
+export function markSignedOutIdle() {
+  try {
+    window.localStorage.setItem(SIGN_IN_IDLE_KEY, "1");
+  } catch {}
+}
+
+export function takeSignedOutIdle(): boolean {
+  try {
+    const had = window.localStorage.getItem(SIGN_IN_IDLE_KEY) === "1";
+    window.localStorage.removeItem(SIGN_IN_IDLE_KEY);
+    return had;
+  } catch {
+    return false;
+  }
+}
+
+/** Text shown on the sign-in page after an inactivity sign-out. */
+export const IDLE_SIGN_OUT_MESSAGE = `Signed out after ${INACTIVITY_WINDOW_MINUTES} minutes of inactivity`;
+
+export function readIdleDeadline(): number | null {
+  try {
+    const raw = Number(window.localStorage.getItem(IDLE_DEADLINE_KEY));
+    return Number.isFinite(raw) && raw > 0 ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeIdleDeadline(at: number) {
+  try {
+    window.localStorage.setItem(IDLE_DEADLINE_KEY, String(at));
+  } catch {}
+}
+
+export function clearIdleDeadline() {
+  try {
+    window.localStorage.removeItem(IDLE_DEADLINE_KEY);
+  } catch {}
+}

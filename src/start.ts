@@ -64,6 +64,57 @@ const dailySignInMiddleware = createMiddleware().server(async ({ next }) => {
 
 
 
+/**
+ * Layer 3b - inactivity timeout at the request layer.
+ *
+ * The control is the SERVER-HELD timestamp: `public.session_is_active()` reads
+ * `session_activity.last_activity_at` (written only by the aal2, caller-scoped
+ * `touch_session_activity()`) and compares it with the 30 minute window. Nothing
+ * from the browser is trusted here - only the bearer token is passed through, and
+ * the database answers.
+ *
+ * A positive answer is cached for 15 seconds per isolate to keep dashboards
+ * quick; a refusal is never cached, and the same check runs again inside the
+ * database on every query and every definer function, so caching can only ever
+ * delay a refusal by seconds, never prevent one.
+ */
+const activeCache = new Map<string, number>();
+const ACTIVE_CACHE_MS = 15_000;
+
+async function sessionIsActiveForBearer(bearer: string): Promise<boolean> {
+  const url = process.env['SUPABASE_URL'];
+  const key = process.env['SUPABASE_PUBLISHABLE_KEY'];
+  if (!url || !key) return true; // no way to ask: the database still enforces
+  const cached = activeCache.get(bearer);
+  if (cached !== undefined && cached > Date.now()) return true;
+  try {
+    const res = await fetch(`${url}/rest/v1/rpc/session_is_active`, {
+      method: "POST",
+      headers: { apikey: key, authorization: `Bearer ${bearer}`, "content-type": "application/json" },
+      body: "{}",
+    });
+    if (!res.ok) return true; // unreachable or not applicable: the database enforces
+    const active = (await res.text()).trim() === "true";
+    if (active) {
+      activeCache.set(bearer, Date.now() + ACTIVE_CACHE_MS);
+      if (activeCache.size > 500) activeCache.clear();
+    }
+    return active;
+  } catch {
+    return true;
+  }
+}
+
+const inactivityMiddleware = createMiddleware().server(async ({ next }) => {
+  const header = getRequestHeader("authorization") ?? "";
+  const bearer = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
+  if (bearer && !(await sessionIsActiveForBearer(bearer))) {
+    // A distinct marker: idle is not an MFA problem.
+    return new Response("SESSION_IDLE", { status: 401, headers: { "x-session-state": "idle" } });
+  }
+  return await next();
+});
+
 const errorMiddleware = createMiddleware().server(async ({ next }) => {
   try {
     return await next();
@@ -115,5 +166,5 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => 
 
 export const startInstance = createStart(() => ({
   functionMiddleware: [attachSupabaseAuth],
-  requestMiddleware: [errorMiddleware, dailySignInMiddleware, securityHeadersMiddleware],
+  requestMiddleware: [errorMiddleware, dailySignInMiddleware, inactivityMiddleware, securityHeadersMiddleware],
 }));

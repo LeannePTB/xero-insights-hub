@@ -9,7 +9,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Loader2, KeyRound, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Loader2, KeyRound, Eye, EyeOff, LogOut } from "lucide-react";
+import { recordSignOutOtherDevices } from "@/lib/session-activity.functions";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/settings/account")({
@@ -22,6 +23,7 @@ function AccountSettings() {
   const changePwFn = useServerFn(changeMyPassword);
   const getNameFn = useServerFn(getMyProfileName);
   const updateNameFn = useServerFn(updateMyProfileName);
+  const recordOthersSignOutFn = useServerFn(recordSignOutOtherDevices);
   const navigate = useNavigate();
 
   const [currentPassword, setCurrent] = useState("");
@@ -47,6 +49,25 @@ function AccountSettings() {
       toast.success("Name updated");
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  // Sign out my other devices. The revocation is real and server-side: the
+  // authentication service deletes this person's OTHER sessions, so those
+  // devices cannot refresh and the database refuses their tokens. This session
+  // is untouched. The audit row records who did it and when - never a token,
+  // never a device fingerprint.
+  const othersMut = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.auth.signOut({ scope: "others" });
+      if (error) throw new Error(error.message);
+      try {
+        await recordOthersSignOutFn({ data: undefined } as never);
+      } catch {
+        /* the sign-out already happened; the audit row is best-effort */
+      }
+    },
+    onSuccess: () => toast.success("Your other devices have been signed out"),
+    onError: (e: Error) => toast.error(e.message || "Could not sign out your other devices."),
   });
 
   const valid =
@@ -112,6 +133,19 @@ function AccountSettings() {
           >
             {nameMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save name
+          </Button>
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)] space-y-4">
+          <h2 className="font-display text-lg font-semibold">Sessions</h2>
+          <p className="text-sm text-muted-foreground">
+            You are signed out automatically after 30 minutes without activity, and again
+            each day at 3am Sydney time. If you have signed in on a phone or another
+            computer, you can end those sessions here. This device stays signed in.
+          </p>
+          <Button variant="outline" onClick={() => othersMut.mutate()} disabled={othersMut.isPending}>
+            {othersMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <LogOut className="mr-2 h-4 w-4" />}
+            Sign out my other devices
           </Button>
         </section>
 

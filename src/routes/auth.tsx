@@ -14,7 +14,14 @@ import { startXeroSignIn } from "@/lib/xero/signin.functions";
 import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
 import { useSignOut } from "@/lib/use-sign-out";
-import { clearSignInMark, isTokenStale, takeSignInExpired } from "@/lib/session-cutoff";
+import {
+  IDLE_SIGN_OUT_MESSAGE,
+  clearIdleDeadline,
+  clearSignInMark,
+  isTokenStale,
+  takeSignInExpired,
+  takeSignedOutIdle,
+} from "@/lib/session-cutoff";
 
 
 export const Route = createFileRoute("/auth")({
@@ -49,6 +56,7 @@ function AuthPage() {
   const [hasSession, setHasSession] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [idleNotice, setIdleNotice] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -65,6 +73,13 @@ function AuthPage() {
     }
     if (takeSignInExpired()) {
       toast.info("Daily sign-in required — please sign in again.");
+    }
+    // Inactivity timeout: say so plainly. This is NOT a second-factor prompt,
+    // so nobody is sent to their authenticator app when they simply need to
+    // sign in again.
+    if (takeSignedOutIdle()) {
+      setIdleNotice(true);
+      toast.info(IDLE_SIGN_OUT_MESSAGE);
     }
   }, []);
 
@@ -115,6 +130,8 @@ function AuthPage() {
         }
         throw error;
       }
+      clearIdleDeadline();
+      setIdleNotice(false);
       toast.success("Welcome back");
       await routeAfterAuth(navigate);
     } catch (e: any) {
@@ -203,7 +220,13 @@ function AuthPage() {
           ) : (
             <>
               <h1 className="font-display text-2xl font-semibold">Welcome</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Sign in to your dashboards.</p>
+              {idleNotice ? (
+                <p className="mt-1 text-sm text-muted-foreground" role="status">
+                  {IDLE_SIGN_OUT_MESSAGE}. Please sign in again.
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">Sign in to your dashboards.</p>
+              )}
 
               <div className="space-y-3">
                 <div className="space-y-1.5">

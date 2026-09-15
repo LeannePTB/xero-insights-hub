@@ -68,6 +68,8 @@ type Ctx = {
 
 /** A session row deliberately created before the most recent 3am Sydney cut-off. */
 const STALE_SESSION = "77777777-1111-4111-8111-111111111111";
+/** A session signed in today whose last recorded activity is 40 minutes ago. */
+const IDLE_SESSION = "77777777-2222-4222-8222-222222222222";
 
 const CONTEXT: Record<Role, Ctx> = {
   anonymous: { uid: null, dbRole: "anon", aal: null },
@@ -77,6 +79,12 @@ const CONTEXT: Record<Role, Ctx> = {
     dbRole: "authenticated",
     aal: "aal2",
     sessionId: STALE_SESSION,
+  },
+  idle_session_member: {
+    uid: U.staffA,
+    dbRole: "authenticated",
+    aal: "aal2",
+    sessionId: IDLE_SESSION,
   },
   org_owner: { uid: U.ownerA, dbRole: "authenticated", aal: "aal2" },
   org_staff: { uid: U.staffA, dbRole: "authenticated", aal: "aal2" },
@@ -476,6 +484,17 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`select app_private.assert_aal2()`);
     return p.ok ? "allow" : "deny";
   }
+  if (r === "assert_aal2() with an idle session") {
+    const p = await probe(`select app_private.assert_aal2()`);
+    // The code must be SESSION_IDLE: an idle session is not an MFA problem, and
+    // sending people to their authenticator app would be the wrong instruction.
+    if (!p.ok) expect(String(p.error)).toContain("SESSION_IDLE");
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "touch_session_activity()") {
+    const p = await probe(`select public.touch_session_activity()`);
+    return p.ok ? "allow" : "deny";
+  }
   if (r === "assert_aal2() with no session_id claim") {
     // Same person, same aal2 claim, no session_id: fail closed.
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [
@@ -856,13 +875,21 @@ beforeAll(async () => {
   // application object changes.
   await db.exec(`alter table public.practice_team add primary key (user_id);`);
 
+  // Same fidelity fix: live `session_activity` has a primary key on session_id
+  // (verified 15 Sep 2026) and `touch_session_activity` upserts on it.
+  await db.exec(`alter table public.session_activity add primary key (session_id);`);
+
   const users = Object.values(U);
   await db.exec(`
     insert into auth.users(id, email) values
       ${users.map((u, i) => `('${u}', 'u${i}@example.invalid')`).join(", ")};
     insert into auth.sessions(id, user_id, created_at) values
       ${users.map((u) => `('${u}', '${u}', now())`).join(", ")},
-      ('${STALE_SESSION}', '${U.staffA}', now() - interval '3 days');
+      ('${STALE_SESSION}', '${U.staffA}', now() - interval '3 days'),
+      ('${IDLE_SESSION}', '${U.staffA}', now());
+    -- Signed in today, but the SERVER-held activity timestamp is 40 minutes old.
+    insert into public.session_activity(session_id, user_id, last_activity_at, created_at) values
+      ('${IDLE_SESSION}', '${U.staffA}', now() - interval '40 minutes', now() - interval '40 minutes');
     insert into auth.mfa_factors(user_id, status) values
       ${users.map((u) => `('${u}', 'verified')`).join(", ")};
     insert into public.profiles(id, email, display_name) values
