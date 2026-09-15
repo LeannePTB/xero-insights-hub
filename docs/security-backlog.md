@@ -861,3 +861,30 @@ permissions-policy and report-only CSP.
   succeeded, and never carrying a password or token. Control sits on
   Settings → Advisors per person and states the password consequence before
   confirming. No `auth`-schema write was needed and none was made.
+
+## 15 Sep 2026 — Two posture Actions from the session-controls work (CLOSED)
+
+Both were false positives; neither check was silenced.
+
+- `definer_guards` flagged `public.record_sign_out_all_devices`. It was already
+  guarded — its first statement calls `public.admin_assert_can_sign_out_user`,
+  which asserts aal2 and super admin — but the check reads function source text
+  and could not see it. Fixed honestly by adding
+  `perform app_private.assert_aal2();` as its own first line (the same harmless
+  duplication already applied to `admin_set_super_admin` and others), not by
+  excluding the function.
+- `definer_guards` also flagged `public.session_is_active()`, and `aal2_tables`
+  flagged `public.session_activity`. Neither can carry the aal2 guard:
+  `app_private.is_aal2()` reads that table and calls that function to decide
+  whether a session is idle, so requiring aal2 of them is circular. Both are now
+  documented exclusions in the same style as `xero_required_scopes`, with the
+  reason printed inline in each card's evidence text. No exclusion was widened
+  beyond these two names.
+
+Verified after the change, from the live database: `session_activity` has RLS
+enabled, grants nothing to `anon` (0 of 7 privileges), carries exactly one
+policy — `session_activity_select_own SELECT to authenticated USING (user_id =
+auth.uid())` — and `has_table_privilege('authenticated', …, 'UPDATE')` is false,
+so the only write path remains `public.touch_session_activity()`. The unguarded
+callable-definer count and the missing-aal2-policy table count are both 0 with
+only the two named exclusions applied.
