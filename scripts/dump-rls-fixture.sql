@@ -35,7 +35,8 @@ fns as (
         'xero_missing_scopes','xero_required_scopes','has_role',
         'record_security_attestation','security_attestations_list',
         'admin_add_practice_member','admin_remove_practice_member',
-        'set_client_access_relationship','user_can_write_client_scenario'))
+        'set_client_access_relationship','user_can_write_client_scenario',
+        'touch_session_activity','session_is_active'))
     )
 ),
 stmts as (

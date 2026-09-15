@@ -1625,6 +1625,50 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.touch_session_activity()
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  _claims jsonb;
+  _session_id uuid;
+begin
+  perform app_private.assert_aal2();
+
+  _claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+  _session_id := nullif(_claims ->> 'session_id', '')::uuid;
+  if _session_id is null or auth.uid() is null then
+    raise exception 'SESSION_IDLE' using errcode = 'insufficient_privilege';
+  end if;
+
+  -- Caller-scoped: the session and the person come from the verified token, and
+  -- the time comes from the server. Nothing here is caller supplied.
+  update public.session_activity
+     set last_activity_at = now()
+   where session_id = _session_id
+     and user_id = auth.uid();
+
+  if not found then
+    insert into public.session_activity (session_id, user_id, last_activity_at)
+    values (_session_id, auth.uid(), now())
+    on conflict (session_id) do update
+      set last_activity_at = now()
+      where public.session_activity.user_id = auth.uid();
+  end if;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.session_is_active()
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select app_private.is_session_active()
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
