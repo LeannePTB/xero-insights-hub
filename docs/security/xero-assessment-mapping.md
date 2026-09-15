@@ -50,3 +50,13 @@ See [vulnerability-management.md](./vulnerability-management.md).
 ## Section 8 — Security monitoring & incident lookback
 
 See [monitoring.md](./monitoring.md) and [incident-response.md](./incident-response.md).
+
+API usage against Xero's own limits is monitored from the headers Xero returns
+(`X-DayLimit-Remaining`, `X-MinLimit-Remaining`, `X-AppMinLimit-Remaining`, and
+`X-Rate-Limit-Problem` / `Retry-After` on a 429), recorded as telemetry in
+`public.xero_rate_limits` and surfaced by the `xero_rate_limits` posture check —
+Warn under 20% remaining, Action under 5%, on any rejection in 24 hours, or on a
+burst above 300 calls per file per hour. A daily-limit rejection stops rather
+than retrying. Telemetry only: no tokens, headers or client data, and never in
+`audit_log`.
+
