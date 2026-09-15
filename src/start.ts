@@ -56,14 +56,16 @@ async function sessionIsActiveForBearer(bearer: string): Promise<boolean> {
 }
 
 /**
- * SUSPENDED 15 Sep 2026 (outage). Nothing was recording activity, so this check
- * — like the database one — refused people who were actively using the app the
- * moment their sign-in passed 30 minutes. It is left here, deliberately inert,
- * and will be switched back on in the same change that proves an actively used
- * session is still accepted after 30 minutes. Until then the inactivity timeout
- * is browser-side only, and the browser can only ever end a session EARLIER.
+ * RE-ENABLED 15 Sep 2026 (owner decision), after the four proofs held: a real
+ * signed-in session writes and keeps updating its activity row; an actively used
+ * session is still accepted 90 minutes after sign-in (positive regression test,
+ * `active_session_member`); a genuinely idle session beyond the window is
+ * refused; and a brand-new session with no row yet is accepted from its own
+ * start time. Deny-only: the database remains the enforcing layer, this layer
+ * can only ever refuse earlier, never grant.
  */
-const ENFORCE_INACTIVITY_AT_REQUEST_LAYER = false;
+const ENFORCE_INACTIVITY_AT_REQUEST_LAYER = true;
+
 
 const inactivityMiddleware = createMiddleware().server(async ({ next }) => {
   if (!ENFORCE_INACTIVITY_AT_REQUEST_LAYER) return await next();
