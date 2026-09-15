@@ -2717,10 +2717,6 @@ export type Database = {
         Args: { _make: boolean; _user_id: string }
         Returns: boolean
       }
-      admin_sign_out_all_devices: {
-        Args: { _user_id: string }
-        Returns: undefined
-      }
       apply_viewer_invite: {
         Args: { _invite_id: string; _user_id: string }
         Returns: Json
