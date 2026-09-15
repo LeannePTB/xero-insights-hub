@@ -81,9 +81,31 @@ function AuthPage() {
   useEffect(() => {
     (async () => {
       // No daily cut-off (owner decision, 15 Sep 2026): an existing session is
-      // simply offered back. An idle one is refused by the server and the
-      // database, and SessionIdleGuard has already signed it out here.
+      // offered back — but never offer back a session the app will refuse.
+      // NEVER A DEAD END: if the server says this session is past the
+      // inactivity window, sign it out here and show the sign-in form with the
+      // plain reason, rather than a "Continue" button that leads nowhere.
       const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        let active = false;
+        try {
+          const { sessionIsActive } = await import("@/lib/session-activity.functions");
+          const res = await sessionIsActive({} as never);
+          active = res?.active === true;
+        } catch {
+          // Unverifiable: treat as inactive. This layer can only deny earlier.
+          active = false;
+        }
+        if (!active) {
+          await supabase.auth.signOut();
+          clearIdleDeadline();
+          setHasSession(false);
+          setSignedInEmail(null);
+          setIdleNotice(true);
+          setCheckingSession(false);
+          return;
+        }
+      }
       setHasSession(!!data.session);
       setSignedInEmail(data.session?.user?.email ?? null);
       setCheckingSession(false);

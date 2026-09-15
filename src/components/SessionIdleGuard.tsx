@@ -99,7 +99,7 @@ export function SessionIdleGuard() {
         });
       }
     },
-    [touch],
+    [touch, endSession],
   );
 
   // One shared channel and one starting deadline for this tab.
