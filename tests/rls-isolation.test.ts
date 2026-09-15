@@ -45,7 +45,7 @@ const ORG_B_ROW_PREDICATE: Record<string, string> = {
 
 let db: PGlite;
 
-/** One fresh session per test user: the daily 3am cut-off refuses a stale one. */
+/** One live session per test user: the inactivity check refuses an idle one. */
 function sessionIdFor(uid: string): string {
   return `55555555-${uid.slice(9, 13)}-4555-8555-${uid.slice(24)}`;
 }
@@ -55,7 +55,7 @@ async function asUser<T>(uid: string | null, fn: () => Promise<T>): Promise<T> {
   await db.query(`select set_config('request.jwt.claims', $1, true)`, [
     // aal2: every data table now carries the RESTRICTIVE mfa_aal2_required
     // policy, so an aal1 claim would make every case below pass vacuously.
-    // session_id: the 3am sign-in cut-off resolves the session's start time.
+    // session_id: the inactivity check resolves the session's activity time.
     JSON.stringify({
       sub: uid,
       role: "authenticated",
@@ -157,40 +157,12 @@ describe("cross-organisation isolation", () => {
       }
     });
   });
-  // ---------------------------------- daily 3am sign-in cut-off
-  const STALE_SESSION = "66666666-6666-4666-8666-666666666666";
-
-  async function asStaleUser<T>(fn: () => Promise<T>): Promise<T> {
-    await db.exec("begin");
-    await db.query(`select set_config('request.jwt.claims', $1, true)`, [
-      JSON.stringify({ sub: USER_1, role: "authenticated", aal: "aal2", session_id: STALE_SESSION }),
-    ]);
-    await db.exec("set local role authenticated");
-    try {
-      return await fn();
-    } finally {
-      await db.exec("rollback");
-    }
-  }
-
-  it("a session that began before the most recent 3am Sydney sees no client data", async () => {
-    // Same person, same organisation, same aal2 claim — only the session is old.
-    await db.exec(
-      `insert into auth.sessions(id, user_id, created_at) values
-         ('${STALE_SESSION}', '${USER_1}', now() - interval '3 days')
-       on conflict (id) do update set created_at = now() - interval '3 days'`,
-    );
-    const visible = await asStaleUser(() => countVisible("client_notes", `client_id = '${CLIENT_A}'`));
-    expect(visible).toBe(0);
-  });
-
-  it("a stale session is refused by the server-side aal2 assertion", async () => {
-    await expect(
-      asStaleUser(() => db.query(`select app_private.assert_aal2()`)),
-    ).rejects.toThrow(/SESSION_EXPIRED/);
-  });
-
-  it("a session with no session_id claim is treated as stale", async () => {
+  // ---------------------------------- session controls
+  // The daily 3am sign-in cut-off was removed on 15 Sep 2026 (owner decision);
+  // the inactivity timeout is the only automatic end to a session and is
+  // covered by tests/access-matrix.test.ts. What remains proven here is the
+  // fail-closed rule the two controls share.
+  it("a session with no session_id claim is treated as inactive", async () => {
     await db.exec("begin");
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [
       JSON.stringify({ sub: USER_1, role: "authenticated", aal: "aal2" }),
@@ -203,13 +175,13 @@ describe("cross-organisation isolation", () => {
     }
   });
 
-
-  it("a session that began after the most recent 3am Sydney is accepted", async () => {
+  it("a session that is signed in and active reads its own client data", async () => {
     const visible = await asUser(USER_1, () =>
       countVisible("client_notes", `client_id = '${CLIENT_A}'`),
     );
     expect(visible).toBe(1);
   });
+
 
 
   it("no policy on a data table is USING (true)", async () => {

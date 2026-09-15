@@ -885,7 +885,7 @@ beforeAll(async () => {
       ${users.map((u, i) => `('${u}', 'u${i}@example.invalid')`).join(", ")};
     insert into auth.sessions(id, user_id, created_at) values
       ${users.map((u) => `('${u}', '${u}', now())`).join(", ")},
-      ('${STALE_SESSION}', '${U.staffA}', now() - interval '3 days'),
+      
       ('${IDLE_SESSION}', '${U.staffA}', now());
     -- Signed in today, but the SERVER-held activity timestamp is 40 minutes old.
     insert into public.session_activity(session_id, user_id, last_activity_at, created_at) values
