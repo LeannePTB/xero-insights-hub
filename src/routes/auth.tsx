@@ -56,6 +56,7 @@ function AuthPage() {
   const [hasSession, setHasSession] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
+  const [idleNotice, setIdleNotice] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -129,6 +130,8 @@ function AuthPage() {
         }
         throw error;
       }
+      clearIdleDeadline();
+      setIdleNotice(false);
       toast.success("Welcome back");
       await routeAfterAuth(navigate);
     } catch (e: any) {
@@ -217,7 +220,13 @@ function AuthPage() {
           ) : (
             <>
               <h1 className="font-display text-2xl font-semibold">Welcome</h1>
-              <p className="mt-1 text-sm text-muted-foreground">Sign in to your dashboards.</p>
+              {idleNotice ? (
+                <p className="mt-1 text-sm text-muted-foreground" role="status">
+                  {IDLE_SIGN_OUT_MESSAGE}. Please sign in again.
+                </p>
+              ) : (
+                <p className="mt-1 text-sm text-muted-foreground">Sign in to your dashboards.</p>
+              )}
 
               <div className="space-y-3">
                 <div className="space-y-1.5">
