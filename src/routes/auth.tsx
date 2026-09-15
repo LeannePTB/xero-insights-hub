@@ -86,7 +86,11 @@ function AuthPage() {
       // inactivity window, sign it out here and show the sign-in form with the
       // plain reason, rather than a "Continue" button that leads nowhere.
       const { data } = await supabase.auth.getSession();
-      if (data.session) {
+      // Only an already-aal2 session is checked here. A session part-way through
+      // its second factor has not finished signing in and must be allowed to
+      // continue to the code screen — it is not an idle session.
+      const { data: aalData } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (data.session && aalData?.currentLevel === "aal2") {
         let active = false;
         try {
           const { sessionIsActive } = await import("@/lib/session-activity.functions");
