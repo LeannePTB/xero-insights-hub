@@ -48,7 +48,7 @@
 - [ ] Remote sign-out: super admin all devices; self other devices; both audited
 - [ ] Posture check session_controls, matrix rows, docs (spec, Xero inputs, registers, backlog)
 
-## Session controls (15 Sep 2026) — DONE except backlog 50
+## Session controls (15 Sep 2026) — DONE
 - [x] Verified real tokens carry session_id before building
 - [x] 30 minute inactivity timeout enforced in the database (server-held timestamp)
 - [x] SESSION_IDLE distinct from MFA_REQUIRED end to end
@@ -56,4 +56,4 @@
 - [x] Request-layer deny-only idle check
 - [x] Self-service "sign out my other devices" (server-side revocation, audited)
 - [x] session_controls posture check, matrix rows, spec § 0c, docs, backlog
-- [ ] Backlog 50: signing another person out remotely — no auth endpoint exists; owner decision
+- [x] Backlog 50 CLOSED: signing another person out of every device. No admin logout endpoint exists (three paths 404 against a real user id) and a ban leaves sessions intact (5 rows survive, refresh works again after unban); an admin credential change genuinely deletes every session (5 → 0). Shipped on that mechanism: `admin_assert_can_sign_out_user` (aal2 + super admin, refuses self and the last super admin) authorises, random password + reset email revokes, `record_sign_out_all_devices` audits. Control on `/settings/advisors`.
