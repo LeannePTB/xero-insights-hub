@@ -18,6 +18,7 @@ export type Role =
   | "anonymous"
   | "aal1_member"
   | "stale_session_member"
+  | "idle_session_member"
   | "org_owner"
   | "org_staff"
   | "other_org_member"
@@ -61,6 +62,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   aal1_member: "Active member, aal1 session only",
   stale_session_member:
     "Active member on aal2 whose session began before the most recent 3am Australia/Sydney cut-off",
+  idle_session_member:
+    "Active member on aal2, signed in today, with no recorded activity for more than 30 minutes",
   org_owner: "Organisation owner (own organisation)",
   org_staff: "Organisation staff (own organisation)",
   other_org_member: "Active member of a DIFFERENT organisation",
@@ -1638,6 +1641,65 @@ export const MATRIX: MatrixRow[] = [
     operation: "read",
     expect: "allow",
     rule: "PK 2 path A — a session begun after 3am Sydney is unaffected",
+    layers: ["pglite"],
+  },
+
+  // -------------------------- 30 minute inactivity timeout (15 Sep 2026)
+  // app_private.is_session_active() compares the SERVER-HELD
+  // public.session_activity.last_activity_at with a 30 minute window and is
+  // consulted by app_private.is_aal2(), so an idle session sees no rows on any
+  // data table and assert_aal2() raises SESSION_IDLE (never MFA_REQUIRED)
+  // before the MFA check. The request middleware and the browser warning can
+  // only deny earlier; they are never the enforcement point. Activity is
+  // written only by public.touch_session_activity() — aal2, caller-scoped,
+  // session taken from the verified token and the time from the server clock,
+  // so no caller can extend its own session by supplying a value.
+  {
+    role: "idle_session_member",
+    resource: "client_notes",
+    operation: "read",
+    expect: "deny",
+    rule: "PK 2 — aal2 also means active within the last 30 minutes",
+    layers: ["pglite"],
+  },
+  {
+    role: "idle_session_member",
+    resource: "assert_aal2() with an idle session",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 2 — SESSION_IDLE, raised before the MFA check",
+    layers: ["pglite"],
+  },
+  {
+    role: "idle_session_member",
+    resource: "touch_session_activity()",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 1 deny by default — an expired session cannot revive itself",
+    layers: ["pglite"],
+  },
+  {
+    role: "org_staff",
+    resource: "touch_session_activity()",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 — a live aal2 session records its own activity, caller-scoped",
+    layers: ["pglite"],
+  },
+  {
+    role: "idle_session_member",
+    resource: "session_activity",
+    operation: "update",
+    expect: "deny",
+    rule: "PK 1 — activity timestamps are server-written only; no client write path",
+    layers: ["pglite"],
+  },
+  {
+    role: "org_staff",
+    resource: "session_activity",
+    operation: "update",
+    expect: "deny",
+    rule: "PK 1 — read-only to signed-in users; only the definer function writes",
     layers: ["pglite"],
   },
 ];
