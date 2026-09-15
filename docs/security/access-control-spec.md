@@ -75,6 +75,22 @@ the request-layer check and the distinct `SESSION_IDLE` code are all untouched.
 This is the **only** automatic end to a session: it ends after **30 minutes
 without real activity**, with a warning at 29 minutes.
 
+**Enforcement history.** Database and request-layer enforcement were suspended
+15 Sep 2026 at 02:24 during the lockout described in backlog 51 (nothing was
+recording activity, so every session was resolved from its sign-in time alone)
+and **re-enabled the same day, 04:50 UTC**, only once all four owner-required
+proofs held: (1) a real signed-in session writes an activity row and keeps
+updating it (owner's live session, sign-in 02:35, activity updating to the second
+of the check); (2) a session actively used well past the window is still
+accepted — positive regression role `active_session_member` (session 90 minutes
+old, activity 2 minutes old) asserted on a client-scoped read, on
+`assert_aal2()` and on its own activity write, failing with "this is the lockout
+condition"; (3) a genuinely idle session beyond the window is refused; (4) a
+brand-new session with no activity row is accepted from its own start time.
+Sessions that began before the corrected recording code was published carry no
+activity history and are treated as idle: those people sign in once more.
+
+
 - **Database (the enforcement point).** `public.session_activity` holds one row
   per session: `session_id` (primary key), `user_id`, `last_activity_at`. RLS on;
   `anon` and `authenticated` hold no write privilege at all — signed-in people may
