@@ -875,6 +875,10 @@ beforeAll(async () => {
   // application object changes.
   await db.exec(`alter table public.practice_team add primary key (user_id);`);
 
+  // Same fidelity fix: live `session_activity` has a primary key on session_id
+  // (verified 15 Sep 2026) and `touch_session_activity` upserts on it.
+  await db.exec(`alter table public.session_activity add primary key (session_id);`);
+
   const users = Object.values(U);
   await db.exec(`
     insert into auth.users(id, email) values
