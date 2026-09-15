@@ -278,7 +278,11 @@ function FirmSettingsPage() {
 
             <div>
               <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Cards included by default
+                Cards included by default (legacy)
+              </p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                Kept for history. What each client shows is decided below by what this organisation
+                has bought, and by that client's own ticked card list.
               </p>
               <OrgDefaultCardsPanel firmId={firmId} />
             </div>

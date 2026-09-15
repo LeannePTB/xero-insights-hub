@@ -279,6 +279,16 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Switches one card on or off in a client's ticked list, starting from every purchase-available card when no list exists yet so a single toggle can never collapse a dashboard. Same reachability as app_private.set_client_cards: revoked from PUBLIC, anon and authenticated, authorisation enforced by the caller public.set_client_widget_enabled.",
   "app_private.tg_client_cards_default":
     "After-insert trigger on public.clients: writes the new client's card list in the same transaction, defaulting to every card its organisation's purchase allows, so a client created after cutover never has a blank dashboard. Revoked from PUBLIC, anon and authenticated; the INSERT it follows is itself authorised.",
+  "public.card_group_list":
+    "Returns the card groupings (Standard, Advisory, Consolidation) for the configuration screens so the grouping is never mirrored in TypeScript. aal2-guarded, holds no client, organisation or personal data.",
+  "public.org_purchase":
+    "Returns one organisation's purchase options (client number, Advisory, Consolidation, billing mode) and its client count for the admin and organisation settings screens. aal2 first, then refuses unless the caller is a member of that organisation, platform staff with a path to it, or a super admin reading plan metadata (Path C). No client or Xero data.",
+  "public.set_org_purchase":
+    "Records what an organisation has bought: client number, Advisory on/off, Consolidation on/off (refused unless Advisory is on) and billing mode. aal2 + super admin via public.assert_super_admin, validated inputs, audited. Switching an option on ticks its cards for every client in that organisation; switching it off writes no ticks, so each client's arrangement returns intact. Never grants access to anything and never reads client data.",
+  "public.set_client_card_enabled":
+    "Ticks or unticks one card in one client's list under the purchase + ticked-list model. Authorisation is public.assert_client_write_access (aal2 + ownership or active organisation membership — never a read-only support or adviser grant), a card outside the organisation's purchase is refused, and the change is audited.",
+  "public.copy_client_cards":
+    "Copies one client's ticked card list onto other clients in the SAME organisation, for organisations with many entities. Requires write access to the source and to every target, refuses any target in another organisation, and audits one row per target. What each target then shows is still capped by its organisation's purchase.",
   "public.client_visible_cards":
     "Returns the cards one client shows: aal2 first, then refuses unless the caller already has read access to that client, then intersects the purchase-available set with the client's ticked list. A missing ticked list means all available cards, never none, so a recording fault fails visible rather than blank. Never returns a card the purchase does not allow.",
 
