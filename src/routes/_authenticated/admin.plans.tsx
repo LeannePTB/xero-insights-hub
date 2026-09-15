@@ -343,6 +343,7 @@ function LevelSection({
   onEdit,
   onDuplicate,
   onDelete,
+  readOnly,
 }: {
   title: string;
   hint: string;
