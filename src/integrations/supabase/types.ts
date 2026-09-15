@@ -2670,6 +2670,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      admin_assert_can_sign_out_user: {
+        Args: { _user_id: string }
+        Returns: undefined
+      }
       admin_firm_members: {
         Args: { _firm_id: string }
         Returns: {
@@ -3070,6 +3074,10 @@ export type Database = {
       }
       record_security_attestation: {
         Args: { _check_key: string; _note?: string }
+        Returns: undefined
+      }
+      record_sign_out_all_devices: {
+        Args: { _method: string; _user_id: string }
         Returns: undefined
       }
       record_sign_out_other_devices: { Args: never; Returns: undefined }
