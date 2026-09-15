@@ -427,7 +427,7 @@ function ClientSettings() {
 
         {/* Cards — per-client switches within the tier */}
         <Section title="Cards" id="cards" collapsible>
-          <ClientCardsPanel clientId={clientId} />
+          <ClientCardsPanel clientId={clientId} firmId={client.firm_id ?? null} />
         </Section>
 
         {/* Report branding */}
