@@ -31,29 +31,57 @@ export const SESSION_CHANNEL = "ta:session";
 /**
  * One-shot reason hint so the sign-in page can say why the session ended.
  * Display text only, never a credential and never a grant. Deliberately
- * DISTINCT from any MFA prompt: an idle session needs a fresh sign-in, not an
+ * DISTINCT from any MFA prompt: an ended session needs a fresh sign-in, not an
  * authenticator code.
+ *
+ * Two reasons, because they are two different truths:
+ * - "idle": the browser counted 30 minutes without interaction and ended it.
+ * - "ended": the SERVER refused the session (SESSION_IDLE). This covers the
+ *   case the owner hit during a client demo — a session the database would no
+ *   longer accept, previously surfacing as "Admin access required" or a
+ *   generic failure. It must never be a dead end and never blame access.
  */
 export const SIGN_IN_IDLE_KEY = "ta:signout-reason-idle";
 
-export function markSignedOutIdle() {
+export type SignOutReason = "idle" | "ended";
+
+function markSignedOut(reason: SignOutReason) {
   try {
-    window.localStorage.setItem(SIGN_IN_IDLE_KEY, "1");
+    window.localStorage.setItem(SIGN_IN_IDLE_KEY, reason);
   } catch {}
 }
 
-export function takeSignedOutIdle(): boolean {
+export function markSignedOutIdle() {
+  markSignedOut("idle");
+}
+
+/** The server refused this session; we cannot always tell why, only that it ended. */
+export function markSessionEnded() {
+  markSignedOut("ended");
+}
+
+export function takeSignOutReason(): SignOutReason | null {
   try {
-    const had = window.localStorage.getItem(SIGN_IN_IDLE_KEY) === "1";
+    const raw = window.localStorage.getItem(SIGN_IN_IDLE_KEY);
     window.localStorage.removeItem(SIGN_IN_IDLE_KEY);
-    return had;
+    if (raw === "ended") return "ended";
+    // "1" is the pre-existing marker written by older cached builds.
+    if (raw === "idle" || raw === "1") return "idle";
+    return null;
   } catch {
-    return false;
+    return null;
   }
 }
 
 /** Text shown on the sign-in page after an inactivity sign-out. */
 export const IDLE_SIGN_OUT_MESSAGE = `Signed out after ${INACTIVITY_WINDOW_MINUTES} minutes of inactivity`;
+
+/** Text shown when the server ended the session, whatever the underlying reason. */
+export const SESSION_ENDED_MESSAGE = "Your session ended — please sign in again.";
+
+export function signOutMessage(reason: SignOutReason): string {
+  return reason === "idle" ? IDLE_SIGN_OUT_MESSAGE : SESSION_ENDED_MESSAGE;
+}
 
 export function readIdleDeadline(): number | null {
   try {
