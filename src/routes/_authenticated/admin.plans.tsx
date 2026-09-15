@@ -353,6 +353,7 @@ function LevelSection({
   onEdit: (l: PlanLevel) => void;
   onDuplicate: (l: PlanLevel) => void;
   onDelete: (l: PlanLevel) => void;
+  readOnly?: boolean;
 }) {
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -361,12 +362,15 @@ function LevelSection({
           <div className="flex items-center gap-2">
             <Layers className="h-4 w-4 text-muted-foreground" />
             <h2 className="font-display text-lg font-semibold">{title}</h2>
+            {readOnly && <Badge variant="outline">legacy · read-only</Badge>}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
         </div>
-        <Button size="sm" variant="outline" onClick={onNew}>
-          <Plus className="mr-2 h-4 w-4" /> New level
-        </Button>
+        {!readOnly && (
+          <Button size="sm" variant="outline" onClick={onNew}>
+            <Plus className="mr-2 h-4 w-4" /> New level
+          </Button>
+        )}
       </div>
 
       <div className="mt-4 overflow-x-auto rounded-md border">
@@ -437,17 +441,21 @@ function LevelSection({
                   <td className="px-4 py-3 text-muted-foreground">{l.widgets.length} selected</td>
                 )}
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-2">
-                    <Button size="sm" variant="outline" onClick={() => onEdit(l)}>
-                      <Pencil className="mr-1 h-3 w-3" /> Edit
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => onDuplicate(l)}>
-                      <Copy className="mr-1 h-3 w-3" /> Duplicate
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => onDelete(l)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  {readOnly ? (
+                    <p className="text-right text-xs text-muted-foreground">Read-only</p>
+                  ) : (
+                    <div className="flex items-center justify-end gap-2">
+                      <Button size="sm" variant="outline" onClick={() => onEdit(l)}>
+                        <Pencil className="mr-1 h-3 w-3" /> Edit
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => onDuplicate(l)}>
+                        <Copy className="mr-1 h-3 w-3" /> Duplicate
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => onDelete(l)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
