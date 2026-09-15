@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1575**. Known failures: **0**.
+Rows: **1572**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1207,7 +1207,6 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | user_can_write_client_scenario() for a client in their organisation | execute | ALLOW | pglite | PK section 2 path A — membership or client ownership still writes scenario exclusions, unchanged by Batch 3 |  |
-| client_notes | read | ALLOW | pglite | PK 2 path A — a session begun after 3am Sydney is unaffected |  |
 
 ## Organisation staff (own organisation)
 
@@ -1660,14 +1659,6 @@ None.
 | a platform role (user_roles) | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
 | practice_team membership | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
 
-## Active member on aal2 whose session began before the most recent 3am Australia/Sydney cut-off
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| client_notes | read | DENY | pglite | PK 2 — aal2 now also means signed in since the most recent 3am Sydney |  |
-| assert_aal2() with a session older than the cut-off | execute | DENY | pglite | PK 2 — SESSION_EXPIRED, raised before the MFA check |  |
-| assert_aal2() with no session_id claim | execute | DENY | pglite | PK 1 deny by default — an unverifiable session is stale (fail closed) |  |
-
 ## Active member on aal2, signed in today, with no recorded activity for more than 30 minutes
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
@@ -1675,4 +1666,5 @@ None.
 | client_notes | read | DENY | pglite | PK 2 — aal2 also means active within the last 30 minutes |  |
 | assert_aal2() with an idle session | execute | DENY | pglite | PK 2 — SESSION_IDLE, raised before the MFA check |  |
 | touch_session_activity() | execute | DENY | pglite | PK 1 deny by default — an expired session cannot revive itself |  |
+| assert_aal2() with no session_id claim | execute | DENY | pglite | PK 1 deny by default — an unverifiable session is inactive (fail closed) |  |
 | session_activity | update | DENY | pglite | PK 1 — activity timestamps are server-written only; no client write path |  |

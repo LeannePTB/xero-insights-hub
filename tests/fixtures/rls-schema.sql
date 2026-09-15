@@ -967,7 +967,6 @@ AS $function$
            nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'aal',
            ''
          ) = 'aal2'
-         and app_private.is_session_fresh()
          and app_private.is_session_active()
   end
 $function$
@@ -979,10 +978,6 @@ CREATE OR REPLACE FUNCTION app_private.assert_aal2()
  SET search_path TO ''
 AS $function$
 begin
-  if not app_private.is_session_fresh() then
-    raise exception 'SESSION_EXPIRED' using errcode = 'insufficient_privilege';
-  end if;
-
   -- Idle is not an MFA problem: a distinct code so the person is asked to sign
   -- in again, never sent to their authenticator app.
   if not app_private.is_session_active() then
@@ -1526,57 +1521,6 @@ begin
   values (auth.uid(), _firm, 'client_viewer_relationship_changed', 'client', _client::text,
           jsonb_build_object('user_id', _user, 'previous_relationship', _previous,
                              'relationship', _relationship));
-end;
-$function$
-;
-CREATE OR REPLACE FUNCTION app_private.is_session_fresh()
- RETURNS boolean
- LANGUAGE plpgsql
- STABLE SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-declare
-  _claims jsonb;
-  _session_id uuid;
-  _signed_in_at timestamptz;
-  _now_syd timestamp;
-  _cutoff_date date;
-  _cutoff timestamptz;
-begin
-  _claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
-
-  -- No request context (cron, migrations, maintenance) or service role
-  -- (webhooks, OAuth callback, email queue): system contexts, not a person.
-  if _claims is null or coalesce(_claims ->> 'role', '') = 'service_role' then
-    return true;
-  end if;
-
-  _session_id := nullif(_claims ->> 'session_id', '')::uuid;
-  if _session_id is null then
-    return false;
-  end if;
-
-  select s.created_at into _signed_in_at
-  from auth.sessions s
-  where s.id = _session_id;
-
-  if _signed_in_at is null then
-    return false;
-  end if;
-
-  -- Most recent 3am Australia/Sydney that has ALREADY passed. Between midnight
-  -- and 3am local time that is yesterday's 3am, not today's (which is still in
-  -- the future and would make every session stale). AT TIME ZONE interprets the
-  -- local timestamp as Sydney wall-clock, so AEST/AEDT is handled by the tz
-  -- database.
-  _now_syd := timezone('Australia/Sydney', now());
-  _cutoff_date := _now_syd::date;
-  if _now_syd::time < time '03:00' then
-    _cutoff_date := _cutoff_date - 1;
-  end if;
-  _cutoff := ((_cutoff_date + interval '3 hours') at time zone 'Australia/Sydney');
-
-  return _signed_in_at >= _cutoff;
 end;
 $function$
 ;
@@ -2776,4 +2720,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 9a5e1fb1398c3bed0bdf798aa259eef2ceda9dc7bcdf1cec5c19d5838c3cdcc7
+-- catalogue-fingerprint: 6970a11665755dbd87742fa47569fecb007267d956638e1157b9cd2d4939b911
