@@ -80,6 +80,12 @@ const CONTEXT: Record<Role, Ctx> = {
     aal: "aal2",
     sessionId: IDLE_SESSION,
   },
+  fresh_mfa_session_member: {
+    uid: U.staffA,
+    dbRole: "authenticated",
+    aal: "aal2",
+    sessionId: FRESH_SESSION,
+  },
   org_owner: { uid: U.ownerA, dbRole: "authenticated", aal: "aal2" },
   org_staff: { uid: U.staffA, dbRole: "authenticated", aal: "aal2" },
   other_org_member: { uid: U.ownerB, dbRole: "authenticated", aal: "aal2" },
@@ -495,6 +501,12 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(
       `select public.admin_assert_can_sign_out_user('${U.superAdmin}'::uuid)`,
     );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "assert_aal2() immediately after MFA (no activity row yet)") {
+    // Regression: no session_activity row exists yet for this session, so
+    // is_session_active() must fall back to its start time in auth.sessions.
+    const p = await probe(`select app_private.assert_aal2()`);
     return p.ok ? "allow" : "deny";
   }
   if (r === "assert_aal2() with no session_id claim") {
