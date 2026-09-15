@@ -495,6 +495,18 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`select public.touch_session_activity()`);
     return p.ok ? "allow" : "deny";
   }
+  if (r === "admin_assert_can_sign_out_user(another person)") {
+    const p = await probe(
+      `select public.admin_assert_can_sign_out_user('${U.staffA}'::uuid)`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "admin_assert_can_sign_out_user(their own account)") {
+    const p = await probe(
+      `select public.admin_assert_can_sign_out_user('${U.superAdmin}'::uuid)`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
   if (r === "assert_aal2() with no session_id claim") {
     // Same person, same aal2 claim, no session_id: fail closed.
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [

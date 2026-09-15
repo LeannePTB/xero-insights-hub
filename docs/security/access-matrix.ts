@@ -1702,6 +1702,36 @@ export const MATRIX: MatrixRow[] = [
     rule: "PK 1 — read-only to signed-in users; only the definer function writes",
     layers: ["pglite"],
   },
+
+  // Signing ANOTHER person out of every device (stolen device). The
+  // authentication service has no admin logout endpoint on this platform and a
+  // temporary ban leaves the session intact, so the control works by an admin
+  // credential change, which was measured deleting every auth.sessions row.
+  // Authorisation is in the database and nowhere else.
+  {
+    role: "super_admin_no_membership",
+    resource: "admin_assert_can_sign_out_user(another person)",
+    operation: "execute",
+    expect: "allow",
+    rule: "Path C — platform operations; aal2 + super admin, audited, no client data",
+    layers: ["pglite"],
+  },
+  {
+    role: "super_admin_no_membership",
+    resource: "admin_assert_can_sign_out_user(their own account)",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 1 — the caller uses Sign out my other devices for themselves",
+    layers: ["pglite"],
+  },
+  {
+    role: "org_staff",
+    resource: "admin_assert_can_sign_out_user(another person)",
+    operation: "execute",
+    expect: "deny",
+    rule: "Invariant 3/6 — only a super admin may sign another person out",
+    layers: ["pglite"],
+  },
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);
