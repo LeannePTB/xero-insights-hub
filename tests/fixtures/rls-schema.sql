@@ -967,7 +967,6 @@ AS $function$
            nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'aal',
            ''
          ) = 'aal2'
-         and app_private.is_session_active()
   end
 $function$
 ;
@@ -978,12 +977,6 @@ CREATE OR REPLACE FUNCTION app_private.assert_aal2()
  SET search_path TO ''
 AS $function$
 begin
-  -- Idle is not an MFA problem: a distinct code so the person is asked to sign
-  -- in again, never sent to their authenticator app.
-  if not app_private.is_session_active() then
-    raise exception 'SESSION_IDLE' using errcode = 'insufficient_privilege';
-  end if;
-
   if not app_private.is_aal2() then
     raise exception 'MFA_REQUIRED' using errcode = 'insufficient_privilege';
   end if;
@@ -2720,4 +2713,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 6970a11665755dbd87742fa47569fecb007267d956638e1157b9cd2d4939b911
+-- catalogue-fingerprint: e239659777a4c833c4fd8ee1879baa9eb127f7f8fe5c8c556a2a04f5c4de26c6

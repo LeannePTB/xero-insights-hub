@@ -162,10 +162,13 @@ describe("cross-organisation isolation", () => {
   // the inactivity timeout is the only automatic end to a session and is
   // covered by tests/access-matrix.test.ts. What remains proven here is the
   // fail-closed rule the two controls share.
-  it("a session with no session_id claim is treated as inactive", async () => {
+  it("an aal1 session still sees nothing (MFA is the gate that remains)", async () => {
+    // Server-side inactivity enforcement is SUSPENDED (outage, 15 Sep 2026), so a
+    // token with no session_id is no longer refused. What must still hold — and
+    // what this proves — is that MFA remains the gate on every data table.
     await db.exec("begin");
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [
-      JSON.stringify({ sub: USER_1, role: "authenticated", aal: "aal2" }),
+      JSON.stringify({ sub: USER_1, role: "authenticated", aal: "aal1" }),
     ]);
     await db.exec("set local role authenticated");
     try {
