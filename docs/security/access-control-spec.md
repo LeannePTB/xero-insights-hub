@@ -90,6 +90,37 @@ brand-new session with no activity row is accepted from its own start time.
 Sessions that began before the corrected recording code was published carry no
 activity history and are treated as idle: those people sign in once more.
 
+**Cannot-tell handling (owner decision, 15 September 2026).** Three cases,
+deliberately answered differently, and **none of them changed what the database
+accepts** — the answers below are the answers that were already given:
+
+1. **Unreadable session identity** (no `session_id` claim): refused. An
+   unverifiable claim is what an attacker supplies; no legitimate session is in
+   this state.
+2. **Readable identity, no activity record, session older than the window:**
+   refused, as before. Treating it as active would make the control bypassable by
+   simply preventing the write. What changed is only the experience and the
+   visibility: the person is signed out cleanly and told "Your session ended —
+   please sign in again" — never "Admin access required" (which the owner was
+   shown during a client demo), never a generic failure and never a dead end.
+   Any `SESSION_IDLE` answer reaching the browser is handled once at the query
+   client (`src/lib/session-ended.ts`), so no page can mistranslate it, and
+   `/auth` asks the server before offering an existing session back.
+3. **The request layer cannot reach the database to ask:** it does not refuse —
+   it logs that it could not tell and passes the request on, because the database
+   itself answers the same question on every query and every guarded function a
+   moment later. This layer is deny-only and never the control.
+
+Failures are visible, never swallowed: a failed activity write logs its reason
+server-side and in the browser (never a token, session id or email), a
+request-layer refusal is logged, and `session_controls_posture()` reports live
+sessions past the window with **no** activity record — zero is healthy, any count
+raises a Warn naming the number and the oldest. That single signal is what was
+missing on 15 September: the recorder was broken for hours and the first
+indication was people being locked out.
+
+
+
 
 - **Database (the enforcement point).** `public.session_activity` holds one row
   per session: `session_id` (primary key), `user_id`, `last_activity_at`. RLS on;
