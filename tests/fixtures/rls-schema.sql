@@ -106,6 +106,7 @@ create table public.security_settings (singleton boolean, audit_retention_days i
 create table public.security_test_accounts (user_id uuid, label text, email text, password_enc bytea, totp_secret_enc bytea, factor_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.security_test_run_state (id boolean, running boolean, run_id uuid, started_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.security_test_runs (id uuid, ran_at timestamp with time zone, ran_by uuid, layer text, passed integer, failed integer, known_failures jsonb, fingerprint_match boolean, details jsonb, created_at timestamp with time zone);
+create table public.session_activity (session_id uuid, user_id uuid, last_activity_at timestamp with time zone, created_at timestamp with time zone);
 create table public.signup_requests (id uuid, firm_name text, contact_name text, email text, note text, status text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.subscriptions (id uuid, firm_id uuid, stripe_customer_id text, stripe_subscription_id text, tier text, status subscription_status, trial_ends_at timestamp with time zone, current_period_end timestamp with time zone, cancel_at_period_end boolean, created_at timestamp with time zone, updated_at timestamp with time zone, client_limit_override integer, consolidation_enabled boolean, wip_enabled boolean);
 create table public.suppressed_emails (id uuid, email text, reason text, metadata jsonb, created_at timestamp with time zone);
@@ -967,6 +968,7 @@ AS $function$
            ''
          ) = 'aal2'
          and app_private.is_session_fresh()
+         and app_private.is_session_active()
   end
 $function$
 ;
@@ -979,6 +981,12 @@ AS $function$
 begin
   if not app_private.is_session_fresh() then
     raise exception 'SESSION_EXPIRED' using errcode = 'insufficient_privilege';
+  end if;
+
+  -- Idle is not an MFA problem: a distinct code so the person is asked to sign
+  -- in again, never sent to their authenticator app.
+  if not app_private.is_session_active() then
+    raise exception 'SESSION_IDLE' using errcode = 'insufficient_privilege';
   end if;
 
   if not app_private.is_aal2() then
@@ -1572,6 +1580,51 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.is_session_active()
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare
+  _window constant interval := interval '30 minutes';
+  _claims jsonb;
+  _session_id uuid;
+  _signed_in_at timestamptz;
+  _last timestamptz;
+begin
+  _claims := nullif(current_setting('request.jwt.claims', true), '')::jsonb;
+
+  -- No request context (cron, migrations, maintenance) or service role
+  -- (webhooks, OAuth callback, email queue): system contexts, not a person.
+  if _claims is null or coalesce(_claims ->> 'role', '') = 'service_role' then
+    return true;
+  end if;
+
+  _session_id := nullif(_claims ->> 'session_id', '')::uuid;
+  if _session_id is null then
+    return false; -- unverifiable: fail closed
+  end if;
+
+  -- Primary key lookup on a revoked-session-aware table.
+  select s.created_at into _signed_in_at
+  from auth.sessions s
+  where s.id = _session_id;
+
+  if _signed_in_at is null then
+    return false; -- revoked or unknown session: fail closed
+  end if;
+
+  -- Primary key lookup. Sign-in itself counts as activity until the first
+  -- recorded interaction; after that the server-held timestamp is the control.
+  select a.last_activity_at into _last
+  from public.session_activity a
+  where a.session_id = _session_id;
+
+  return coalesce(_last, _signed_in_at) > now() - _window;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1661,6 +1714,7 @@ alter table public.security_settings enable row level security;
 alter table public.security_test_accounts enable row level security;
 alter table public.security_test_run_state enable row level security;
 alter table public.security_test_runs enable row level security;
+alter table public.session_activity enable row level security;
 alter table public.signup_requests enable row level security;
 alter table public.subscriptions enable row level security;
 alter table public.suppressed_emails enable row level security;
@@ -2072,6 +2126,14 @@ grant SELECT on table public.security_test_runs to service_role;
 grant TRIGGER on table public.security_test_runs to service_role;
 grant TRUNCATE on table public.security_test_runs to service_role;
 grant UPDATE on table public.security_test_runs to service_role;
+grant SELECT on table public.session_activity to authenticated;
+grant DELETE on table public.session_activity to service_role;
+grant INSERT on table public.session_activity to service_role;
+grant REFERENCES on table public.session_activity to service_role;
+grant SELECT on table public.session_activity to service_role;
+grant TRIGGER on table public.session_activity to service_role;
+grant TRUNCATE on table public.session_activity to service_role;
+grant UPDATE on table public.session_activity to service_role;
 grant SELECT on table public.signup_requests to authenticated;
 grant UPDATE on table public.signup_requests to authenticated;
 grant DELETE on table public.signup_requests to service_role;
@@ -2515,6 +2577,7 @@ create policy "test run state service select" on public.security_test_run_state 
 create policy "test run state service update" on public.security_test_run_state as permissive for update to service_role using (true) with check (true);
 create policy "Super admins read access test runs" on public.security_test_runs as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy mfa_aal2_required on public.security_test_runs as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy session_activity_select_own on public.session_activity as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy mfa_aal2_required on public.signup_requests as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "super_admin reads signup_requests" on public.signup_requests as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
 create policy "super_admin updates signup_requests" on public.signup_requests as permissive for update to authenticated using (app_private.is_super_admin(auth.uid())) with check (app_private.is_super_admin(auth.uid()));
@@ -2613,4 +2676,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: c692040e349806916e29789c427433cedc155eea40169b9033e94ea9a2ab16b0
+-- catalogue-fingerprint: 35f340c6cb4746e454242292b62914635f3dfef68161fcf604d2132e7d62e135
