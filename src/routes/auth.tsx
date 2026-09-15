@@ -15,10 +15,12 @@ import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
 import { useSignOut } from "@/lib/use-sign-out";
 import {
-  IDLE_SIGN_OUT_MESSAGE,
   clearIdleDeadline,
-  takeSignedOutIdle,
+  signOutMessage,
+  takeSignOutReason,
+  type SignOutReason,
 } from "@/lib/session-cutoff";
+import { sessionIsActive } from "@/lib/session-activity.functions";
 
 
 export const Route = createFileRoute("/auth")({
@@ -53,7 +55,7 @@ function AuthPage() {
   const [hasSession, setHasSession] = useState(false);
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
-  const [idleNotice, setIdleNotice] = useState(false);
+  const [endedReason, setEndedReason] = useState<SignOutReason | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -68,12 +70,13 @@ function AuthPage() {
     if (params.get("xero") === "signedin") {
       toast.success("Signed in with Xero");
     }
-    // Inactivity timeout: say so plainly. This is NOT a second-factor prompt,
-    // so nobody is sent to their authenticator app when they simply need to
-    // sign in again.
-    if (takeSignedOutIdle()) {
-      setIdleNotice(true);
-      toast.info(IDLE_SIGN_OUT_MESSAGE);
+    // The session ended: say so plainly. This is NOT a second-factor prompt, so
+    // nobody is sent to their authenticator app when they simply need to sign in
+    // again, and it never blames access.
+    const reason = takeSignOutReason();
+    if (reason) {
+      setEndedReason(reason);
+      toast.info(signOutMessage(reason));
     }
   }, []);
 
@@ -81,15 +84,32 @@ function AuthPage() {
   useEffect(() => {
     (async () => {
       // No daily cut-off (owner decision, 15 Sep 2026): an existing session is
-      // offered back — but never offer back a session the app will refuse.
-      // NEVER A DEAD END: if the server says this session is past the
-      // inactivity window, sign it out here and show the sign-in form with the
-      // plain reason, rather than a "Continue" button that leads nowhere.
-      // SUSPENDED 15 Sep 2026 (outage): while server-side inactivity enforcement
-      // is switched off, this page must NOT sign a session out for looking idle
-      // — the same missing activity records that caused the outage would sign
-      // out people who are working. Restored together with the server check.
+      // offered back — but NEVER a dead end. If the server no longer accepts
+      // this session, sign it out here and show the sign-in form with the plain
+      // reason, rather than a "Continue" button that leads to a page whose every
+      // query is refused. The SERVER answers; this page never decides.
       const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        let stillActive = true;
+        try {
+          const res = await sessionIsActive();
+          stillActive = res.active !== false;
+        } catch (err) {
+          // A refusal answered as SESSION_IDLE means ended; anything else
+          // (offline, transient) leaves the session alone — this page must not
+          // sign people out because a request failed.
+          stillActive = !/SESSION_IDLE/i.test(String((err as { message?: string })?.message ?? err));
+        }
+        if (!stillActive) {
+          clearIdleDeadline();
+          await supabase.auth.signOut();
+          setEndedReason("ended");
+          setHasSession(false);
+          setSignedInEmail(null);
+          setCheckingSession(false);
+          return;
+        }
+      }
       setHasSession(!!data.session);
       setSignedInEmail(data.session?.user?.email ?? null);
       setCheckingSession(false);
@@ -122,7 +142,7 @@ function AuthPage() {
         throw error;
       }
       clearIdleDeadline();
-      setIdleNotice(false);
+      setEndedReason(null);
       toast.success("Welcome back");
       await routeAfterAuth(navigate);
     } catch (e: any) {
@@ -211,9 +231,11 @@ function AuthPage() {
           ) : (
             <>
               <h1 className="font-display text-2xl font-semibold">Welcome</h1>
-              {idleNotice ? (
+              {endedReason ? (
                 <p className="mt-1 text-sm text-muted-foreground" role="status">
-                  {IDLE_SIGN_OUT_MESSAGE}. Please sign in again.
+                  {endedReason === "idle"
+                    ? `${signOutMessage("idle")}. Please sign in again.`
+                    : signOutMessage("ended")}
                 </p>
               ) : (
                 <p className="mt-1 text-sm text-muted-foreground">Sign in to your dashboards.</p>

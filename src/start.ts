@@ -34,7 +34,12 @@ const ACTIVE_CACHE_MS = 15_000;
 async function sessionIsActiveForBearer(bearer: string): Promise<boolean> {
   const url = process.env['SUPABASE_URL'];
   const key = process.env['SUPABASE_PUBLISHABLE_KEY'];
-  if (!url || !key) return true; // no way to ask: the database still enforces
+  if (!url || !key) {
+    // Cannot ask. Log it: an unresolvable case must be visible rather than
+    // quietly deciding anything. The database still enforces on every query.
+    console.warn("[session-idle] cannot evaluate: missing backend configuration");
+    return true;
+  }
   const cached = activeCache.get(bearer);
   if (cached !== undefined && cached > Date.now()) return true;
   try {
@@ -43,14 +48,21 @@ async function sessionIsActiveForBearer(bearer: string): Promise<boolean> {
       headers: { apikey: key, authorization: `Bearer ${bearer}`, "content-type": "application/json" },
       body: "{}",
     });
-    if (!res.ok) return true; // unreachable or not applicable: the database enforces
+    if (!res.ok) {
+      console.warn("[session-idle] cannot evaluate: backend answered", res.status);
+      return true; // unreachable or not applicable: the database enforces
+    }
     const active = (await res.text()).trim() === "true";
     if (active) {
       activeCache.set(bearer, Date.now() + ACTIVE_CACHE_MS);
       if (activeCache.size > 500) activeCache.clear();
     }
     return active;
-  } catch {
+  } catch (err) {
+    console.warn(
+      "[session-idle] cannot evaluate:",
+      err instanceof Error ? err.message : "request failed",
+    );
     return true;
   }
 }
@@ -72,7 +84,9 @@ const inactivityMiddleware = createMiddleware().server(async ({ next }) => {
   const header = getRequestHeader("authorization") ?? "";
   const bearer = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
   if (bearer && !(await sessionIsActiveForBearer(bearer))) {
-    // A distinct marker: idle is not an MFA problem.
+    // A distinct marker: idle is not an MFA problem. Logged (no token, session
+    // id or email) so refusals are countable rather than only felt by a person.
+    console.warn("[session-idle] refused: server-held activity outside the window");
     return new Response("SESSION_IDLE", { status: 401, headers: { "x-session-state": "idle" } });
   }
   return await next();

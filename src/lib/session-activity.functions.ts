@@ -23,6 +23,15 @@ export const touchSessionActivity = createServerFn({ method: "POST" })
       // SESSION_IDLE is the normal answer for a session that already expired.
       // It is NOT an MFA problem, so it is reported as itself.
       if (/SESSION_IDLE/i.test(error.message)) throw new Error("SESSION_IDLE");
+      // A SWALLOWED failure here is what caused the 15 Sep 2026 outage: nothing
+      // was recorded and nobody knew until people were locked out. Log the
+      // reason (never the token, session id or email) so a broken recorder is
+      // visible in minutes.
+      console.error(
+        "[session-activity] could not record activity:",
+        error.code ?? "",
+        error.message ?? "",
+      );
       throw new Error("Could not record activity.");
     }
     return { ok: true };

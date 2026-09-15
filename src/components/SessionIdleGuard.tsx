@@ -93,8 +93,13 @@ export function SessionIdleGuard() {
           // The server is the control; a failed ping never grants time. But if
           // the server says the session is already idle, end it here rather than
           // leaving the person on a page whose every query is refused.
-          if (/SESSION_IDLE/i.test(String((err as { message?: string })?.message ?? err))) {
+          const message = String((err as { message?: string })?.message ?? err);
+          if (/SESSION_IDLE/i.test(message)) {
             void endSession();
+          } else {
+            // NEVER SILENT: a swallowed failure here recorded nothing for hours
+            // on 15 Sep 2026 and ended in a lockout.
+            console.error("[session-activity] activity was not recorded:", message);
           }
         });
       }
