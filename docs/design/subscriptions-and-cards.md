@@ -8,17 +8,24 @@ Nine plans in `plan_levels`, three per-client tiers, and four layers of card con
 
 ## The model
 
-An organisation's subscription is **three fields**:
+An organisation's subscription is **four fields**:
 
 | Field | Values | Notes |
 | --- | --- | --- |
 | **Clients** | a number | Xero file capacity follows it — one file per client |
 | **Advisory** | on / off | Applies to every client in the organisation |
+| **Consolidation** | on / off | Separately chargeable. Requires Advisory |
 | **Billing** | `bookkeeping` / `external` | `bookkeeping` = absorbed in Positive Traction's fees. `external` = they pay us directly |
 
 That is the whole thing. Nine plans collapse into three fields, and every combination is expressible without inventing a plan name.
 
-**Consolidation is a sub-option of Advisory, not a separate purchase.** It only appears when Advisory is on AND the organisation has more than one client — with one client the consolidated cards show nothing useful. It is kept as a distinct sub-option rather than folded in silently, so it can be priced separately later. A multi-entity group is exactly the customer most likely to pay more for it.
+**Consolidation is a separately chargeable option.** It is not included in Advisory and does not switch itself on. The rules:
+- It can only be purchased when **Advisory is on** — it extends Advisory rather than standing alone.
+- It is only meaningful with **more than one client**. With a single client the consolidated cards have nothing to consolidate, so the option is shown but unavailable, with a short explanation rather than a silent absence.
+- Turning **Advisory off also turns Consolidation off**, since it depends on it. Warn before doing so rather than removing it silently.
+- The consolidated cards become available to every client in the organisation once it is on, following the same rule as Advisory.
+
+This is a deliberate commercial decision. A multi-entity group is the customer most likely to pay more, and consolidation is the most valuable thing the product offers them — folding it into Advisory would give it away.
 
 ## Cards
 
@@ -53,10 +60,10 @@ Nobody can currently say with confidence which cards a given client will see. Th
 
 | Organisation | Clients | Advisory | Consolidation | Billing |
 | --- | --- | --- | --- | --- |
-| Bangkok On Darby | 1 | off | n/a | bookkeeping |
-| Autotek NSW | 1 | off | n/a | bookkeeping |
+| Bangkok On Darby | 1 | off | n/a — single client | bookkeeping |
+| Autotek NSW | 1 | off | n/a — single client | bookkeeping |
 | DRTABT Projects | 9 | on | on | bookkeeping |
-| Positive Traction | 1 | on | n/a | bookkeeping |
+| Positive Traction | 1 | on | n/a — single client | bookkeeping |
 
 No organisation is `external` yet. That is why this is the right moment to change the model — there are no paying customers to migrate.
 
@@ -67,4 +74,4 @@ No organisation is `external` yet. That is why this is the right moment to chang
 
 ## When this is built
 
-It changes what every dashboard shows, so it is a Security Gate change: entitlement caps what a viewer can see, and `client_entitlement` plus the tier helpers are part of the access path. Plan it, do not bolt it on.
+It changes what every dashboard shows, so it is a Security Gate change: entitlement caps what a viewer can see, and `client_entitlement` plus the tier helpers are part of the access path. Plan it, do not bolt it on. The three purchasable options are Clients, Advisory and Consolidation, and each must be independently provable in the access matrix — an organisation without Consolidation must not reach a consolidated card by any route, including a direct URL or a saved report link.
