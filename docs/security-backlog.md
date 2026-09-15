@@ -1052,3 +1052,64 @@ Linter unchanged at the accepted set (1 deliberate RLS-enabled-no-policy on
 Open, for Batch 5: matrix rows for the three purchasable options and for a newly
 created client having a usable dashboard, the posture check, and the final
 verification once the owner flips the switch.
+
+## 56. Admin UI for the purchase + ticked-list card model — CLOSED 15 September 2026
+
+`plan_levels` stopped deciding card visibility when `card_model_v2` was flipped
+on, but the Subscription levels screen still edited it as though it did. Two
+things were needed: somewhere to set what an organisation has actually bought,
+and a per-client ticked card list; and the old screen must stop implying it
+controls cards.
+
+**New guarded database functions** (all revoked from `PUBLIC` and `anon`,
+`EXECUTE` to `authenticated` only, aal2 asserted first, registered in
+`docs/security/definer-purposes.ts`):
+
+- `public.card_group_list()` — the Standard / Advisory / Consolidation groupings,
+  so the UI never mirrors the grouping rule (invariant 6). No client data.
+- `public.org_purchase(firm)` — one organisation's purchase options and its
+  client count. Members, platform staff with a path, or a super admin reading
+  plan metadata (Path C). No client or Xero data.
+- `public.set_org_purchase(firm, clients, advisory, consolidation, billing)` —
+  `public.assert_super_admin()` (aal2 re-checked inside), validated inputs,
+  Consolidation refused unless Advisory is on, audited with the previous values.
+  Switching an option ON ticks its cards for every client in the organisation;
+  switching it OFF writes no ticks, so each client's arrangement returns intact.
+- `public.set_client_card_enabled(client, card, enabled)` —
+  `public.assert_client_write_access` (aal2 + ownership or active membership;
+  never a read-only adviser or support grant, invariant 11), a card outside the
+  purchase is refused, audited.
+- `public.copy_client_cards(from, to[])` — write access to source and to every
+  target, any target in another organisation refused, one audit row per target.
+
+**Invariants.** No policy, grant, role, table or access path was altered — the
+migration is additive functions only. Card visibility still has exactly one
+implementation, in the database; the new screens read it and never re-derive it.
+Reading a purchase is Path C metadata; `super_admin` alone still reaches no
+client or Xero data. Nothing new writes to `audit_log` beyond these three
+audited actions (`org_purchase_set`, `client_card_toggled`,
+`client_cards_copied`).
+
+**Proof, as a real signed-in aal2 super-admin caller, in a transaction that
+always rolls back** (DRTABT Projects, 9 clients): reading another
+organisation's client cards refused with `CLIENT_ACCESS_DENIED`;
+`app_private.client_cards_v2` refused to `authenticated` (`permission denied`);
+ticking a card the purchase does not allow refused; Consolidation without
+Advisory refused; Advisory + Consolidation on → visible 7 → 18 with ticks
+unchanged at 18; unticking Cash Flow → 17 visible; switching both off → ticks
+kept at 17, visible back to 7; copy to the 8 sibling clients → all 8 match the
+source. Live data unchanged afterwards (`org_subscription_options.updated_at`
+still 06:20). Consolidation counts before and after: 56 / 9 / 1 / 1.
+
+**UI.** `Subscription levels` (`/admin/plans`) is read-only with a legacy notice
+while `card_model_v2` is on, and fails closed to read-only if the model cannot be
+read. `plan_levels` is not deleted and keeps its plan-limit and billing-wording
+jobs. The organisation settings "Cards included by default" panel is labelled
+legacy.
+
+`bun run security:check`: fixture fingerprint MATCH
+(fe19566fb38214e7ab1b17eaf7ad65433c83a8e3712557bde4c41982f42e739d), 177 definer
+functions registered, 1509 access rows proved (0 failed), 95 tests passed, live
+access 18 passed / 0 failed. Typecheck clean. Linter unchanged in kind: the
+deliberate `app_private.platform_settings` RLS-enabled-no-policy INFO plus the
+accepted self-guarded definer set, now including the five functions above.

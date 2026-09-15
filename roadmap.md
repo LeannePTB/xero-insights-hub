@@ -70,7 +70,8 @@
 - [ ] Batch 4 — flip the switch to true (owner confirmation pending; the switch is still `false`)
 
 - [ ] Batch 5 — matrix rows (three purchasable options, newly created client has a usable dashboard), posture check, docs, backlog
-- [ ] Recommended follow-up: "copy this client's card setup to the other entities" action
+- [x] Admin UI for the new model (15 Sep 2026): organisation purchase editor (Clients, Advisory, Consolidation, Billing) on the admin organisation page and organisation settings; per-client ticked card list grouped Standard / Advisory / Consolidation; "copy this card setup to other clients"; Subscription levels marked legacy and read-only while `card_model_v2` is on. Backlog 56.
+- [x] Recommended follow-up: "copy this client's card setup to the other entities" action — built as part of the admin UI above.
 
 
 ## Xero request allowance monitoring (done 15 Sep 2026)
