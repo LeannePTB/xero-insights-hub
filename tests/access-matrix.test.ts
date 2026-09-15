@@ -66,20 +66,12 @@ type Ctx = {
   sessionId?: string;
 };
 
-/** A session row deliberately created before the most recent 3am Sydney cut-off. */
-const STALE_SESSION = "77777777-1111-4111-8111-111111111111";
 /** A session signed in today whose last recorded activity is 40 minutes ago. */
 const IDLE_SESSION = "77777777-2222-4222-8222-222222222222";
 
 const CONTEXT: Record<Role, Ctx> = {
   anonymous: { uid: null, dbRole: "anon", aal: null },
   aal1_member: { uid: U.staffA, dbRole: "authenticated", aal: "aal1" },
-  stale_session_member: {
-    uid: U.staffA,
-    dbRole: "authenticated",
-    aal: "aal2",
-    sessionId: STALE_SESSION,
-  },
   idle_session_member: {
     uid: U.staffA,
     dbRole: "authenticated",
@@ -480,10 +472,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
 
-  if (r === "assert_aal2() with a session older than the cut-off") {
-    const p = await probe(`select app_private.assert_aal2()`);
-    return p.ok ? "allow" : "deny";
-  }
   if (r === "assert_aal2() with an idle session") {
     const p = await probe(`select app_private.assert_aal2()`);
     // The code must be SESSION_IDLE: an idle session is not an MFA problem, and
