@@ -107,7 +107,7 @@ export function SortableCardGrid({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
       <SortableContext items={localOrder} strategy={rectSortingStrategy}>
-        <div className="columns-1 gap-6 lg:columns-2 [&>*]:mb-6 [&>*]:break-inside-avoid">
+        <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           {localOrder.map((id) => {
             const card = cards.find((c) => c.id === id);
             const node = cardById.get(id);
