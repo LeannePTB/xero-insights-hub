@@ -70,6 +70,7 @@ create table public.audit_log (id uuid, actor_user_id uuid, firm_id uuid, action
 create table public.audit_runs (id uuid, tenant_id text, run_at timestamp with time zone, run_by uuid, summary jsonb, duration_ms integer, error text);
 create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text, type text, payload jsonb, occurred_at timestamp with time zone, client_id uuid);
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
+create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
@@ -92,6 +93,7 @@ create table public.firms (id uuid, name text, owner_user_id uuid, is_always_fre
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
+create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -1672,6 +1674,63 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.setting_bool(_key text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce((select s.value = 'true' from app_private.platform_settings s where s.key = _key), false)
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.card_group_cards(_group text)
+ RETURNS text[]
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public'
+AS $function$
+  select case _group
+    when 'standard' then array['health','receivables','payables','pnl','notes','unreconciled','bank_reconciliation']
+    when 'advisory' then array['cashflow','cashflow_scenario','accounting_breakeven','true_breakeven','tax_liability','gst_reconciliation','superannuation','payg_withholding','xero_audit','transaction_search']
+    when 'consolidation' then array['loan_consolidation']
+    else '{}'::text[]
+  end
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.client_available_cards(_client_id uuid)
+ RETURNS text[]
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  with c as (
+    select cl.firm_id from public.clients cl where cl.id = _client_id
+  ),
+  o as (
+    select opt.advisory_enabled, opt.consolidation_enabled
+    from public.org_subscription_options opt
+    where opt.firm_id = (select firm_id from c)
+  ),
+  siblings as (
+    select count(*) as n from public.clients cl where cl.firm_id = (select firm_id from c)
+  ),
+  lapsed as (
+    select app_private.firm_subscription_lapsed((select firm_id from c)) as v
+  )
+  select coalesce(array(
+    select distinct x from unnest(
+      app_private.card_group_cards('standard')
+      || case when coalesce((select advisory_enabled from o), false) and not (select v from lapsed)
+              then app_private.card_group_cards('advisory') else '{}'::text[] end
+      || case when coalesce((select consolidation_enabled from o), false)
+                   and not (select v from lapsed)
+                   and (select n from siblings) > 1
+              then app_private.card_group_cards('consolidation') else '{}'::text[] end
+    ) as x
+    order by x
+  ), '{}'::text[])
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -1725,6 +1784,7 @@ alter table public.audit_log enable row level security;
 alter table public.audit_runs enable row level security;
 alter table public.billing_events enable row level security;
 alter table public.client_access enable row level security;
+alter table public.client_cards enable row level security;
 alter table public.client_cost_classifications enable row level security;
 alter table public.client_notes enable row level security;
 alter table public.client_reports enable row level security;
@@ -1747,6 +1807,7 @@ alter table public.firms enable row level security;
 alter table public.loan_consolidation_accounts enable row level security;
 alter table public.loan_consolidation_snapshots enable row level security;
 alter table public.login_events enable row level security;
+alter table public.org_subscription_options enable row level security;
 alter table public.plan_levels enable row level security;
 alter table public.practice_team enable row level security;
 alter table public.profiles enable row level security;
@@ -1839,6 +1900,14 @@ grant SELECT on table public.client_access to service_role;
 grant TRIGGER on table public.client_access to service_role;
 grant TRUNCATE on table public.client_access to service_role;
 grant UPDATE on table public.client_access to service_role;
+grant SELECT on table public.client_cards to authenticated;
+grant DELETE on table public.client_cards to service_role;
+grant INSERT on table public.client_cards to service_role;
+grant REFERENCES on table public.client_cards to service_role;
+grant SELECT on table public.client_cards to service_role;
+grant TRIGGER on table public.client_cards to service_role;
+grant TRUNCATE on table public.client_cards to service_role;
+grant UPDATE on table public.client_cards to service_role;
 grant DELETE on table public.client_cost_classifications to authenticated;
 grant INSERT on table public.client_cost_classifications to authenticated;
 grant SELECT on table public.client_cost_classifications to authenticated;
@@ -2056,6 +2125,14 @@ grant SELECT on table public.login_events to service_role;
 grant TRIGGER on table public.login_events to service_role;
 grant TRUNCATE on table public.login_events to service_role;
 grant UPDATE on table public.login_events to service_role;
+grant SELECT on table public.org_subscription_options to authenticated;
+grant DELETE on table public.org_subscription_options to service_role;
+grant INSERT on table public.org_subscription_options to service_role;
+grant REFERENCES on table public.org_subscription_options to service_role;
+grant SELECT on table public.org_subscription_options to service_role;
+grant TRIGGER on table public.org_subscription_options to service_role;
+grant TRUNCATE on table public.org_subscription_options to service_role;
+grant UPDATE on table public.org_subscription_options to service_role;
 grant DELETE on table public.plan_levels to authenticated;
 grant INSERT on table public.plan_levels to authenticated;
 grant SELECT on table public.plan_levels to authenticated;
@@ -2380,6 +2457,7 @@ create policy "super_admin reads billing events" on public.billing_events as per
 create policy "manage client access by firm (read)" on public.client_access as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "viewers read own access" on public.client_access as permissive for select to authenticated using ((user_id = auth.uid()));
+create policy "client cards readable by client read access" on public.client_cards as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.user_can_read_client(auth.uid(), client_id)));
 create policy "Manage cost classifications by firm (delete)" on public.client_cost_classifications as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_cost_classifications.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -2573,6 +2651,7 @@ create policy mfa_aal2_required on public.loan_consolidation_snapshots as restri
 create policy "Advisors read same-firm login events" on public.login_events as permissive for select to authenticated using ((app_private.is_advisor(auth.uid()) AND (user_id IS NOT NULL) AND app_private.shares_firm_with(auth.uid(), user_id)));
 create policy "Users read own login events" on public.login_events as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy mfa_aal2_required on public.login_events as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "org options readable by organisation access" on public.org_subscription_options as permissive for select to authenticated using ((app_private.is_aal2() AND (app_private.has_firm_access(auth.uid(), firm_id) OR app_private.platform_staff_can_access_firm(auth.uid(), firm_id))));
 create policy plan_levels_read on public.plan_levels as permissive for select to authenticated using (true);
 create policy "plan_levels_write (delete)" on public.plan_levels as permissive for delete to authenticated using (app_private.me_is_super_admin());
 create policy "plan_levels_write (insert)" on public.plan_levels as permissive for insert to authenticated with check (app_private.me_is_super_admin());
@@ -2723,4 +2802,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 292d3c22aae83d7c941fd6849733f33881b296b99dd7d0fc887b391643765026
+-- catalogue-fingerprint: b2aa7600994a2db968e59b9c36146730ad46bea0d7ece15de8578faf59e86a74
