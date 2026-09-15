@@ -19,6 +19,7 @@ export type Role =
   | "aal1_member"
   
   | "idle_session_member"
+  | "fresh_mfa_session_member"
   | "org_owner"
   | "org_staff"
   | "other_org_member"
@@ -62,6 +63,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   aal1_member: "Active member, aal1 session only",
   idle_session_member:
     "Active member on aal2, signed in today, with no recorded activity for more than 30 minutes",
+  fresh_mfa_session_member:
+    "Active member who has just completed MFA: an aal2 session seconds old with no activity row written yet",
   org_owner: "Organisation owner (own organisation)",
   org_staff: "Organisation staff (own organisation)",
   other_org_member: "Active member of a DIFFERENT organisation",
@@ -1650,6 +1653,35 @@ export const MATRIX: MatrixRow[] = [
     operation: "execute",
     expect: "deny",
     rule: "PK 1 deny by default — an unverifiable session is inactive (fail closed)",
+    layers: ["pglite"],
+  },
+  // Regression, 15 Sep 2026: a person who has just completed MFA has a session
+  // seconds old and NO activity row yet, because the browser writes the first
+  // one after sign-in. is_session_active() therefore falls back to the
+  // session's own start time in auth.sessions. If it did not, everyone would be
+  // refused the moment they finished their second factor.
+  {
+    role: "fresh_mfa_session_member",
+    resource: "client_notes",
+    operation: "read",
+    expect: "allow",
+    rule: "PK 2 — a brand-new session with no activity row is active from its start time",
+    layers: ["pglite"],
+  },
+  {
+    role: "fresh_mfa_session_member",
+    resource: "assert_aal2() immediately after MFA (no activity row yet)",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 — completing MFA is never refused as idle",
+    layers: ["pglite"],
+  },
+  {
+    role: "fresh_mfa_session_member",
+    resource: "touch_session_activity()",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 — the first activity write of a new session succeeds",
     layers: ["pglite"],
   },
   {
