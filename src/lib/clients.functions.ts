@@ -39,10 +39,28 @@ export const listClients = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const clientIds = (rows ?? []).map((c: any) => c.id);
-    // Cards per tier come from the deny-list model: plan ceiling minus the
-    // organisation's exclusions, plus each client's own exclusions.
-    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
-      await import("@/lib/widget-resolve.server");
+    // Cards per client. Under the purchase + ticked-list model the database is
+    // the only implementation: one list per client, the same whatever tier is
+    // asked for. Under the legacy model it is the plan ceiling minus the
+    // organisation's exclusions plus each client's own.
+    const {
+      tierCeilings,
+      ceilingFor,
+      fetchExclusions,
+      ExclusionIndex,
+      visibleWidgets,
+      cardModelV2,
+      visibleCardsV2,
+    } = await import("@/lib/widget-resolve.server");
+    const v2 = await cardModelV2(context.supabase);
+    const v2Cards = new Map<string, WidgetKey[]>();
+    if (v2) {
+      await Promise.all(
+        clientIds.map(async (id: string) => {
+          v2Cards.set(id, await visibleCardsV2(context.supabase, id));
+        }),
+      );
+    }
     const ceilings = await tierCeilings(context.supabase);
     const exIndex = new ExclusionIndex(
       clientIds.length
@@ -54,10 +72,13 @@ export const listClients = createServerFn({ method: "POST" })
       return Object.fromEntries(
         tierKeys.map((t) => [
           t,
-          visibleWidgets(ceilingFor(ceilings, t), exIndex.effective(t, { firmId, clientId })),
+          v2
+            ? (v2Cards.get(clientId) ?? [])
+            : visibleWidgets(ceilingFor(ceilings, t), exIndex.effective(t, { firmId, clientId })),
         ]),
       ) as Record<DashboardTier, WidgetKey[]>;
     }
+
 
     // Effective dashboard tier per client comes from public.client_entitlement,
     // read through the caller's session. It is never recomputed here, and any
@@ -72,28 +93,31 @@ export const listClients = createServerFn({ method: "POST" })
       ),
     );
 
-    // Business Health entitlement per client, keyed by client id — never by
-    // position. It reuses the deny-list reads already made above (plan ceiling,
-    // organisation and client exclusions), so it costs no extra round trip and
-    // mirrors public.client_allowed_widgets, so this can under-permit but
-    // never over-permit. Any failure resolves to false for that
-    // client and never fails the list.
+    // Business Health per client, keyed by client id — never by position. Under
+    // the new model it comes from the client's own list (the database's single
+    // implementation); under the legacy model it reuses the deny-list reads
+    // already made above, so it costs no extra round trip and can under-permit
+    // but never over-permit. Any failure resolves to false for that client and
+    // never fails the list.
     const healthByClient = new Map<string, boolean>();
     for (const c of (rows ?? []) as any[]) {
       try {
         const tier = entitlementByClient.get(c.id)?.tier as string | undefined;
-        const widgets = tier
-          ? visibleWidgets(
-              ceilingFor(ceilings, tier),
-              exIndex.effective(tier, { firmId, clientId: c.id }),
-            )
-          : [];
+        const widgets = v2
+          ? (v2Cards.get(c.id) ?? [])
+          : tier
+            ? visibleWidgets(
+                ceilingFor(ceilings, tier),
+                exIndex.effective(tier, { firmId, clientId: c.id }),
+              )
+            : [];
         healthByClient.set(c.id, widgets.includes("health"));
       } catch (err) {
         console.error("[listClients] health entitlement failed", { clientId: c.id, err });
         healthByClient.set(c.id, false);
       }
     }
+
 
     const clients = (rows ?? []).map((c: any) => {
       const grantedTiers = Array.from(

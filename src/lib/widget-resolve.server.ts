@@ -1,15 +1,54 @@
-// Server-only resolution of dashboard cards from the deny-list model.
+// Server-only resolution of dashboard cards.
 //
-// `tier_widget_config.widgets` (an allow-list) is retired. The live model is:
+// KNOWN INVARIANT 6 VIOLATION, being retired. Everything below the v2 helpers
+// is a TypeScript mirror of the database's old deny-list rule (ceiling from
+// plan_levels minus tier_widget_config exclusions). It exists only for the
+// legacy card model and for the configuration screens that write the old rows.
+// It is NOT the card gate: the gate is public.assert_widget_access, and the list
+// is public.client_allowed_widgets, both in the database.
+//
+// The new model has ONE implementation, in the database, and this file only
+// forwards to it:
+//   cardModelV2()        -> public.card_model_active()
+//   visibleCardsV2()     -> public.client_visible_cards()   (purchase ∩ ticked)
+//   availableCardsV2()   -> public.client_available_cards()  (purchase only)
+// Every caller that shows "what this client sees" must ask cardModelV2() first
+// and use these when it answers true. Nothing here re-derives the new rule.
+//
+// Legacy model (switch off):
 //   ceiling  = plan_levels.widgets for the dashboard tier
 //   excluded = organisation row if present, ELSE platform row (precedence,
 //              not union), PLUS the client row's own exclusions
 //   visible  = ceiling − excluded
-//
-// A card added to a tier's plan is therefore ON everywhere by default.
-// Mirrors public.client_allowed_widgets — never diverge from it.
+// Mirrors public.client_allowed_widgets' v1 branch — never diverge from it.
 
 import { ALL_WIDGETS, DEFAULT_TIER_WIDGETS, type WidgetKey } from "@/lib/tiers";
+
+/** True once the purchase + ticked-list model is switched on. Fails closed. */
+export async function cardModelV2(supabase: any): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.rpc("card_model_active");
+    if (error) return false;
+    return data === "v2";
+  } catch {
+    return false;
+  }
+}
+
+/** The cards this client sees: the organisation's purchase ∩ the ticked list. */
+export async function visibleCardsV2(supabase: any, clientId: string): Promise<WidgetKey[]> {
+  const { data, error } = await supabase.rpc("client_visible_cards", { _client_id: clientId });
+  if (error) return [];
+  return sanitizeWidgets((data ?? []) as string[]);
+}
+
+/** The cards the organisation's purchase allows for this client, before ticks. */
+export async function availableCardsV2(supabase: any, clientId: string): Promise<WidgetKey[]> {
+  const { data, error } = await supabase.rpc("client_available_cards", { _client_id: clientId });
+  if (error) return [];
+  return sanitizeWidgets((data ?? []) as string[]);
+}
+
 
 export function sanitizeWidgets(widgets: readonly string[] | null | undefined): WidgetKey[] {
   return (widgets ?? []).filter((w): w is WidgetKey => (ALL_WIDGETS as readonly string[]).includes(w));

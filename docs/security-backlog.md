@@ -981,3 +981,74 @@ two new WARN rows of the existing accepted "signed-in users can execute
 SECURITY DEFINER function" class, for the two new read functions, which assert
 aal2 and super admin themselves — the same pattern as every other posture
 function. No change to the card-model migration.
+
+## 55. Card model Batch 4 — the overlap settled in code (opened and closed 15 Sep 2026)
+
+Classification: SECURITY-RELEVANT (card visibility, definer functions). No
+policy, grant, role or access path changed. The switch
+`app_private.platform_settings.card_model_v2` is still `false`, so live
+behaviour is byte-for-byte as before this change.
+
+**The defect being closed.** Two systems decided card visibility: the tier
+chain (`client_entitlement` → `plan_levels.widgets` → `tier_widget_config`
+exclusions, via `public.client_allowed_widgets`) and the dashboard gate
+(`public.assert_widget_access` → `effective_tier_for_tenant` →
+`app_private.effective_widgets_for_client`, deciding from `client_access.tier`).
+Consolidation had two answers as well: `subscriptions.consolidation_enabled` at
+organisation level and the purchase row at client level. Divergence between
+these layers is what produced the self-contradictory `tier_widget_config` data.
+
+**Change, all behind the one switch.** With it true: `client_allowed_widgets`
+returns `app_private.client_cards_v2`; `assert_widget_access` checks
+`client_cards_v2` for staff and external advisers alike and no longer calls
+`effective_widgets_for_client`; `firm_has_consolidation` reads
+`org_subscription_options`; `firm_allowed_widgets` unions the clients' own
+lists plus the organisation add-on cards only when Consolidation is purchased.
+Nothing in the card path then reads `client_entitlement`,
+`client_subscriptions.tier`, `plan_levels` or `tier_widget_config`. The
+lapsed-organisation check is kept in both models — that is billing state, not
+entitlement. `client_entitlement` keeps plan limits and billing display.
+
+**Owner decision, 15 Sep 2026:** an external adviser's own `client_access.tier`
+stops narrowing cards. Consistent with removing the Dashboard level from the
+External adviser invite: an adviser sees what the client sees, capped by the
+organisation's purchase, read-only (read-only is enforced by the write policies
+and write helpers, untouched here). Only `zz-security-viewer@` holds a viewer
+row today, and no business owner has a login.
+
+**Invariant 6.** `src/lib/widget-resolve.server.ts` was, and for the legacy
+model still is, a TypeScript mirror of a database rule — a pre-existing
+violation, now labelled as such in the file. Its new-model path only forwards to
+the database: `public.card_model_active`, `public.client_visible_cards`,
+`public.client_available_cards`. Every caller that shows "what this client sees"
+(`listClients`, `listTierConfig`, `getEffectiveWidgets`, `getUpgradeOptions`,
+`getClientWidgetMatrix`) asks the model first. Checked for other mirrors: the
+remaining `plan_levels` reads in `src/` are plan limits, plan catalogues and
+billing display, not card visibility. `getOrgWidgetMatrix` still renders the old
+organisation exclusion rows — a configuration display that decides nothing, to
+be retired with the old tables.
+
+**New definer functions** (aal2 first, caller-scoped, revoked from `PUBLIC` and
+`anon`, registered): `public.card_model_active`, `public.client_available_cards`,
+`app_private.client_cards_v2` (also revoked from `authenticated`).
+
+**Proof, with the switch ON, never in production.**
+`scripts/card-model-v2-proof.sql` flips the switch inside one transaction that
+always rolls back. Result: A — every client's list equals ticked ∩ purchase and
+equals what the gate resolves; B — no client shows an Advisory card without
+Advisory or a consolidated card without Consolidation; C — no organisation
+offers consolidation without the purchase; D — as a real signed-in aal2 staff
+caller on a Standard-only organisation's Xero file, `health` allowed,
+`cashflow` and `loan_consolidation` refused with "This widget is not enabled for
+your dashboard." That is the single gate every route uses (dashboard read,
+direct URL, server function, saved report link). Consolidation counts before and
+after: 56 / 9 / 1 / 1, unchanged. Switch verified `false` afterwards by query.
+
+`bun run security:check`: fixture fingerprint MATCH, 172 definer functions
+registered, 95 tests passed, live access 18 passed / 0 failed. Typecheck clean.
+Linter unchanged at the accepted set (1 deliberate RLS-enabled-no-policy on
+`app_private.platform_settings`, plus the self-guarded definer INFO/WARN set).
+
+Open, for Batch 5: matrix rows for the three purchasable options and for a newly
+created client having a usable dashboard, the posture check, and the final
+verification once the owner flips the switch.

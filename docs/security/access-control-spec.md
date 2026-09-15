@@ -572,3 +572,44 @@ human confirmation — which is what an assessor expects for such a control.
   `expires_after_days`; **Warn — "not verified"** with none.
 - No access path, role or organisation-scoped rule is touched: this is platform
   metadata (Path C), and it holds no organisation or client data.
+
+## 20. Dashboard cards — one rule, one switch (Batch 4, 15 September 2026)
+
+Two card models exist in the database, selected by
+`app_private.platform_settings.card_model_v2` (currently `false`). One of them
+decides, never both.
+
+**v2 — the organisation's purchase decides which cards exist.** Inputs, in
+order: aal2; can this person read this client
+(`app_private.user_can_read_client`); the organisation's purchase row
+(`public.org_subscription_options` — Advisory on/off, Consolidation on/off,
+Consolidation also requiring more than one client in the organisation); the
+lapsed-organisation check (`app_private.firm_subscription_lapsed`, billing state,
+not entitlement); and the client's single ticked list (`public.client_cards`,
+no stored row meaning all available). The one implementation is
+`app_private.client_cards_v2`, used by `public.client_visible_cards`,
+`public.client_allowed_widgets`, `public.assert_widget_access` and
+`public.firm_allowed_widgets`. Nothing in this path reads
+`public.client_entitlement`, `client_subscriptions.tier`, `plan_levels` or
+`tier_widget_config`. `client_entitlement` keeps plan limits and billing display
+only.
+
+An external adviser's own `client_access.tier` does not narrow cards
+(owner decision, 15 September 2026, matching the removal of the Dashboard level
+from the External adviser invite): an adviser sees what the client sees, capped
+by the purchase, and read-only — read-only is enforced by the write policies and
+write helpers, never by the card list.
+
+**v1 — legacy, retiring.** `client_entitlement` gives a dashboard tier, the
+ceiling is `plan_levels.widgets` for that tier, and the organisation row of
+`tier_widget_config` (replacing the platform row, not unioned) plus the client's
+own row are subtracted; the dashboard gate separately derived cards from
+`client_access.tier` through `app_private.effective_widgets_for_client`.
+
+`src/lib/widget-resolve.server.ts` is a known invariant 6 violation kept for the
+legacy model and the old configuration screens. Under v2 it only forwards to the
+database (`public.card_model_active`, `public.client_visible_cards`,
+`public.client_available_cards`); it never re-derives the new rule.
+
+Proof with the switch on, run inside a transaction that always rolls back:
+`scripts/card-model-v2-proof.sql`.

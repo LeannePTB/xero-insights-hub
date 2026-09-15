@@ -264,8 +264,15 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Audits a super admin signing another person out of every device, recording actor, subject, time and the mechanism used; never a password or token.",
   "app_private.setting_bool":
     "Reads one boolean platform switch from app_private.platform_settings, which has no grants to authenticated. Used for the card-model cutover switch so it can be reversed instantly without a migration. Read-only, no caller-supplied identity.",
+  "public.card_model_active":
+    "Reports which card model is live ('v1' or 'v2') so no TypeScript has to re-derive a database rule. aal2-guarded, reads one platform switch, no client data, no caller-supplied identity.",
+  "public.client_available_cards":
+    "Returns the cards one client's organisation purchase makes available, before the client's own ticks, for the card-configuration screen. aal2-guarded and caller-scoped: refuses unless the caller can already read that client.",
+  "app_private.client_cards_v2":
+    "The single implementation of the purchase + ticked-list card model: available cards intersected with the client's ticked list, with no stored list treated as all available. Execute revoked from PUBLIC, anon and authenticated; every caller (client_visible_cards, client_allowed_widgets, assert_widget_access, firm_allowed_widgets) authorises the read first.",
   "app_private.client_available_cards":
     "Derives which cards an organisation's purchase makes available for one client (standard always, advisory and consolidation only when purchased, consolidation only with more than one client, nothing extra while the organisation is lapsed). Reads org_subscription_options, which authenticated cannot read for another organisation. Authorisation is enforced by the caller, public.client_visible_cards.",
+
   "app_private.set_client_cards":
     "Records the single ticked card list for one client (Batch 3 dual write). Execute revoked from PUBLIC, anon and authenticated: it is only reachable from public wrappers that have already asserted aal2 and organisation membership, or from the after-insert trigger on public.clients. Holds no authorisation of its own and cannot widen what a card list is read against.",
   "app_private.set_client_card":

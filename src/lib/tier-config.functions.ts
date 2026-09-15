@@ -17,8 +17,16 @@ export const listTierConfig = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId?: string | null }) => i)
   .handler(async ({ data, context }) => {
-    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
-      await import("@/lib/widget-resolve.server");
+    const {
+      tierCeilings,
+      ceilingFor,
+      fetchExclusions,
+      ExclusionIndex,
+      visibleWidgets,
+      cardModelV2,
+      visibleCardsV2,
+    } = await import("@/lib/widget-resolve.server");
+
 
     let firmId: string | null = null;
     if (data.clientId) {
@@ -43,17 +51,26 @@ export const listTierConfig = createServerFn({ method: "POST" })
       tierKeys.map((t) => [t, visibleWidgets(ceilingFor(ceilings, t), index.base(t, null))]),
     ) as Record<DashboardTier, WidgetKey[]>;
 
+    // Under the purchase + ticked-list model a client has ONE list, whatever
+    // tier is asked for, and it comes from the database.
+    const v2 = data.clientId ? await cardModelV2(context.supabase) : false;
+    const v2Cards =
+      v2 && data.clientId ? await visibleCardsV2(context.supabase, data.clientId) : [];
+
     const client = data.clientId
       ? (Object.fromEntries(
           tierKeys.map((t) => [
             t,
-            visibleWidgets(
-              ceilingFor(ceilings, t),
-              index.effective(t, { firmId, clientId: data.clientId }),
-            ),
+            v2
+              ? v2Cards
+              : visibleWidgets(
+                  ceilingFor(ceilings, t),
+                  index.effective(t, { firmId, clientId: data.clientId }),
+                ),
           ]),
         ) as Record<DashboardTier, WidgetKey[] | null>)
       : null;
+
 
     return { global, client };
   });
@@ -173,13 +190,27 @@ export const saveClientTierWidgets = createServerFn({ method: "POST" })
 
 
 
-// Resolves the cards a client sees on a tier (ceiling − organisation/client exclusions).
+// Resolves the cards a client sees. Under the purchase + ticked-list model the
+// tier is ignored and the answer comes from the database; under the legacy model
+// it is ceiling − organisation/client exclusions.
 export const getEffectiveWidgets = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tier: DashboardTier }) => i)
   .handler(async ({ data, context }) => {
-    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
-      await import("@/lib/widget-resolve.server");
+    const {
+      tierCeilings,
+      ceilingFor,
+      fetchExclusions,
+      ExclusionIndex,
+      visibleWidgets,
+      cardModelV2,
+      visibleCardsV2,
+    } = await import("@/lib/widget-resolve.server");
+
+    if (await cardModelV2(context.supabase)) {
+      return { widgets: await visibleCardsV2(context.supabase, data.clientId) };
+    }
+
     const { data: c } = await context.supabase
       .from("clients")
       .select("firm_id")
@@ -197,6 +228,7 @@ export const getEffectiveWidgets = createServerFn({ method: "POST" })
     );
     return { widgets };
   });
+
 
 /**
  * Organisation card matrix for the "Cards included by default" panel: one row
@@ -395,24 +427,38 @@ export const getUpgradeOptions = createServerFn({ method: "POST" })
     const enabledMap = Object.fromEntries(ALL_TIERS.map((t) => [t, true])) as Record<DashboardTier, boolean>;
     for (const r of settingsRows ?? []) enabledMap[(r as any).tier as DashboardTier] = !!(r as any).enabled;
 
-    // Resolved cards per tier: plan ceiling − organisation/client exclusions.
-    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex, visibleWidgets } =
-      await import("@/lib/widget-resolve.server");
+    // Cards per tier. Under the purchase + ticked-list model tiers no longer
+    // decide cards, so every tier resolves to the client's one list from the
+    // database; under the legacy model it is ceiling − exclusions.
+    const {
+      tierCeilings,
+      ceilingFor,
+      fetchExclusions,
+      ExclusionIndex,
+      visibleWidgets,
+      cardModelV2,
+      visibleCardsV2,
+    } = await import("@/lib/widget-resolve.server");
     const { data: clientRow } = await context.supabase
       .from("clients")
       .select("firm_id")
       .eq("id", data.clientId)
       .maybeSingle();
     const upgradeFirmId = ((clientRow as any)?.firm_id as string | null) ?? null;
+    const upgradeV2 = await cardModelV2(context.supabase);
+    const upgradeV2Cards = upgradeV2 ? await visibleCardsV2(context.supabase, data.clientId) : [];
     const ceilings = await tierCeilings(context.supabase);
     const exIndex = new ExclusionIndex(
       await fetchExclusions(context.supabase, { firmId: upgradeFirmId, clientIds: [data.clientId] }),
     );
     const resolve = (t: DashboardTier): WidgetKey[] =>
-      visibleWidgets(
-        ceilingFor(ceilings, t),
-        exIndex.effective(t, { firmId: upgradeFirmId, clientId: data.clientId }),
-      );
+      upgradeV2
+        ? upgradeV2Cards
+        : visibleWidgets(
+            ceilingFor(ceilings, t),
+            exIndex.effective(t, { firmId: upgradeFirmId, clientId: data.clientId }),
+          );
+
 
 
     const currentWidgets = new Set<WidgetKey>(resolve(data.currentTier));
@@ -648,24 +694,43 @@ export const saveFirmDefaultWidgets = createServerFn({ method: "POST" })
 
 // ---------------------------------------------------------------------------
 // Per-client card toggles.
-// Reads: public.client_allowed_widgets (what the client actually sees) plus
-// the tier ceiling and the organisation/client exclusion rows, purely so the
-// UI can explain WHY a card is off. Writes go through
-// public.set_client_widget_enabled — never tier_widget_config directly, and
-// never the retired clients.dashboard_widgets.
-// Resolution is platform -> organisation -> client, each only ADDING
-// exclusions, so a client-level switch can never grant a card back that the
-// organisation has switched off.
+// Purchase + ticked-list model: the rows are the cards the organisation's
+// purchase makes available (public.client_available_cards) and "on" is the
+// client's ticked list (public.client_visible_cards). No exclusions, no tier.
+// Legacy model: public.client_allowed_widgets plus the tier ceiling and the
+// organisation/client exclusion rows, purely so the UI can explain WHY a card
+// is off. Writes go through public.set_client_widget_enabled — never
+// tier_widget_config directly, and never the retired clients.dashboard_widgets.
 // ---------------------------------------------------------------------------
 
 export const getClientWidgetMatrix = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string }) => i)
   .handler(async ({ data, context }) => {
-    const { tierCeilings, ceilingFor, fetchExclusions, ExclusionIndex } =
-      await import("@/lib/widget-resolve.server");
+    const {
+      tierCeilings,
+      ceilingFor,
+      fetchExclusions,
+      ExclusionIndex,
+      cardModelV2,
+      visibleCardsV2,
+      availableCardsV2,
+    } = await import("@/lib/widget-resolve.server");
     const { clientEntitlement } = await import("@/lib/entitlement.server");
     const { clientAllowedWidgets } = await import("@/lib/widget-access.server");
+
+    if (await cardModelV2(context.supabase)) {
+      const available = await availableCardsV2(context.supabase, data.clientId);
+      const ticked = new Set<string>(await visibleCardsV2(context.supabase, data.clientId));
+      return {
+        tier: "",
+        rows: available.map((w) => ({
+          widget: w,
+          on: ticked.has(w),
+          reason: ticked.has(w) ? "on" : "client",
+        })),
+      };
+    }
 
     const { data: c } = await context.supabase
       .from("clients")
@@ -699,6 +764,7 @@ export const getClientWidgetMatrix = createServerFn({ method: "POST" })
 
     return { tier, rows };
   });
+
 
 export const setClientWidget = createServerFn({ method: "POST" })
   .middleware([requireAal2])
