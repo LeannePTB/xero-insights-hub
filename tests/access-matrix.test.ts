@@ -517,6 +517,18 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`select app_private.assert_aal2()`);
     return p.ok ? "allow" : "deny";
   }
+  if (r === "assert_aal2() after 90 minutes of continuous use") {
+    // POSITIVE proof. The session began 90 minutes ago, so its age alone is well
+    // past the window; only the recorded activity from 2 minutes ago can keep it
+    // active. This must NEVER refuse — refusing it is the outage of 15 Sep 2026.
+    const p = await probe(`select app_private.assert_aal2()`);
+    if (!p.ok) {
+      throw new Error(
+        `An actively used session was refused — this is the lockout condition: ${p.error}`,
+      );
+    }
+    return "allow";
+  }
   if (r === "assert_aal2() with no session_id claim") {
     // Same person, same aal2 claim, no session_id: fail closed.
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [
