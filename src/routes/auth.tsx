@@ -84,15 +84,32 @@ function AuthPage() {
   useEffect(() => {
     (async () => {
       // No daily cut-off (owner decision, 15 Sep 2026): an existing session is
-      // offered back — but never offer back a session the app will refuse.
-      // NEVER A DEAD END: if the server says this session is past the
-      // inactivity window, sign it out here and show the sign-in form with the
-      // plain reason, rather than a "Continue" button that leads nowhere.
-      // SUSPENDED 15 Sep 2026 (outage): while server-side inactivity enforcement
-      // is switched off, this page must NOT sign a session out for looking idle
-      // — the same missing activity records that caused the outage would sign
-      // out people who are working. Restored together with the server check.
+      // offered back — but NEVER a dead end. If the server no longer accepts
+      // this session, sign it out here and show the sign-in form with the plain
+      // reason, rather than a "Continue" button that leads to a page whose every
+      // query is refused. The SERVER answers; this page never decides.
       const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        let stillActive = true;
+        try {
+          const res = await sessionIsActive();
+          stillActive = res.active !== false;
+        } catch (err) {
+          // A refusal answered as SESSION_IDLE means ended; anything else
+          // (offline, transient) leaves the session alone — this page must not
+          // sign people out because a request failed.
+          stillActive = !/SESSION_IDLE/i.test(String((err as { message?: string })?.message ?? err));
+        }
+        if (!stillActive) {
+          clearIdleDeadline();
+          await supabase.auth.signOut();
+          setEndedReason("ended");
+          setHasSession(false);
+          setSignedInEmail(null);
+          setCheckingSession(false);
+          return;
+        }
+      }
       setHasSession(!!data.session);
       setSignedInEmail(data.session?.user?.email ?? null);
       setCheckingSession(false);
