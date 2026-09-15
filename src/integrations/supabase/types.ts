@@ -3109,6 +3109,7 @@ export type Database = {
         }[]
       }
       security_posture: { Args: never; Returns: Json }
+      session_is_active: { Args: never; Returns: boolean }
       set_all_client_tiers: {
         Args: {
           _firm_id: string
