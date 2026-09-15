@@ -900,7 +900,9 @@ beforeAll(async () => {
     insert into auth.sessions(id, user_id, created_at) values
       ${users.map((u) => `('${u}', '${u}', now())`).join(", ")},
       
-      ('${IDLE_SESSION}', '${U.staffA}', now());
+      ('${IDLE_SESSION}', '${U.staffA}', now()),
+      -- Just completed MFA: seconds old, and deliberately NO activity row.
+      ('${FRESH_SESSION}', '${U.staffA}', now() - interval '5 seconds');
     -- Signed in today, but the SERVER-held activity timestamp is 40 minutes old.
     insert into public.session_activity(session_id, user_id, last_activity_at, created_at) values
       ('${IDLE_SESSION}', '${U.staffA}', now() - interval '40 minutes', now() - interval '40 minutes');
