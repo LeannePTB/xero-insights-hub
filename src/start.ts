@@ -84,7 +84,9 @@ const inactivityMiddleware = createMiddleware().server(async ({ next }) => {
   const header = getRequestHeader("authorization") ?? "";
   const bearer = header.toLowerCase().startsWith("bearer ") ? header.slice(7).trim() : "";
   if (bearer && !(await sessionIsActiveForBearer(bearer))) {
-    // A distinct marker: idle is not an MFA problem.
+    // A distinct marker: idle is not an MFA problem. Logged (no token, session
+    // id or email) so refusals are countable rather than only felt by a person.
+    console.warn("[session-idle] refused: server-held activity outside the window");
     return new Response("SESSION_IDLE", { status: 401, headers: { "x-session-state": "idle" } });
   }
   return await next();
