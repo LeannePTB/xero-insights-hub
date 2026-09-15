@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1572**. Known failures: **0**.
+Rows: **1575**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -866,6 +866,8 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| admin_assert_can_sign_out_user(another person) | execute | ALLOW | pglite | Path C — platform operations; aal2 + super admin, audited, no client data |  |
+| admin_assert_can_sign_out_user(their own account) | execute | DENY | pglite | PK 1 — the caller uses Sign out my other devices for themselves |  |
 
 ## Support-grant holder, grant expired
 
@@ -1354,6 +1356,7 @@ None.
 | user_can_write_client_scenario() for a client in their organisation | execute | ALLOW | pglite | PK section 2 path A — an active member's scenario writes are unchanged by Batch 3 |  |
 | touch_session_activity() | execute | ALLOW | pglite | PK 2 — a live aal2 session records its own activity, caller-scoped |  |
 | session_activity | update | DENY | pglite | PK 1 — read-only to signed-in users; only the definer function writes |  |
+| admin_assert_can_sign_out_user(another person) | execute | DENY | pglite | Invariant 3/6 — only a super admin may sign another person out |  |
 
 ## External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)
 
