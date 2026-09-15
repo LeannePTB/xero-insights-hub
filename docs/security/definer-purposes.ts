@@ -255,7 +255,14 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Authorises a super admin (aal2) to sign another person out of every device; refuses their own account and refuses the last remaining super admin. Holds no revocation itself.",
   "public.record_sign_out_all_devices":
     "Audits a super admin signing another person out of every device, recording actor, subject, time and the mechanism used; never a password or token.",
+  "app_private.setting_bool":
+    "Reads one boolean platform switch from app_private.platform_settings, which has no grants to authenticated. Used for the card-model cutover switch so it can be reversed instantly without a migration. Read-only, no caller-supplied identity.",
+  "app_private.client_available_cards":
+    "Derives which cards an organisation's purchase makes available for one client (standard always, advisory and consolidation only when purchased, consolidation only with more than one client, nothing extra while the organisation is lapsed). Reads org_subscription_options, which authenticated cannot read for another organisation. Authorisation is enforced by the caller, public.client_visible_cards.",
+  "public.client_visible_cards":
+    "Returns the cards one client shows: aal2 first, then refuses unless the caller already has read access to that client, then intersects the purchase-available set with the client's ticked list. A missing ticked list means all available cards, never none, so a recording fault fails visible rather than blank. Never returns a card the purchase does not allow.",
   "public.security_attestations_list":
+
     "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
   "public.test_accounts_posture":
     "Posture check (aal2 + super admin): Action if a test account can sign in outside a run, holds access outside the test organisation, or has a session outside the run window.",
