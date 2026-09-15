@@ -82,3 +82,10 @@
 - [x] A daily-limit rejection stops with its own message instead of retrying.
 
 Separate from the card-model migration; no file or object shared with it.
+
+## Admin Organisations table (done 15 Sep 2026)
+
+- [x] Plan column reads the organisation purchase (`org_purchase`) instead of the old per-client tier.
+- [x] Xero failure count moved off the Organisations row into Security & compliance, per organisation and per Xero file (`xero_error_breakdown`).
+- [x] Clients link and super-admin-only View As on each row; View As now aal2 + super admin + existing membership, checked in the database, and audited (`view_as_started`). Previously an unaudited URL filter — recorded as a defect in backlog 57.
+- [x] Legacy notices on Subscription levels, `/settings/tiers` and the client dashboard-tier control.
