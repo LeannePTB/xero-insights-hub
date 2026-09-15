@@ -75,6 +75,26 @@ Nobody can currently say with confidence which cards a given client will see. Th
 
 No organisation is `external` yet. That is why this is the right moment to change the model — there are no paying customers to migrate.
 
+## Data that must survive the rebuild — non-negotiable
+
+The owner's constraint: **the consolidation working data must not be lost.** It is hand-built and would be expensive to recreate. Verified live on 15 September 2026:
+
+| Table | Rows | What it is |
+| --- | --- | --- |
+| `loan_consolidation_accounts` | 56 | Account mappings behind loan consolidation reporting. The bulk of the manual work. |
+| `consolidation_group_members` | 9 | DRTABT Projects' nine entities grouped together |
+| `consolidation_groups` | 1 | The group itself |
+| `loan_consolidation_snapshots` | 1 | Stored consolidation output |
+
+None of this sits in `plan_levels`, `subscriptions`, `client_subscriptions` or `tier_widget_config`, so a correctly scoped change to the subscription and card model should not touch it. That is not sufficient assurance for hand-built data.
+
+**Rules for the build:**
+- **Record the four counts above before any migration runs, and assert them unchanged afterwards.** Any change is a stop condition, not something to reconcile later.
+- No migration in this work may `delete`, `truncate` or `cascade` into any of these tables. Check foreign keys for `ON DELETE CASCADE` reaching them from anything being altered — that is exactly how the Xero client links were being destroyed before Phase 5 found it.
+- **Turning Consolidation off must hide the cards, never delete the groupings or mappings.** Turning it back on restores the same working data, in line with the rule that per-client exceptions are remembered.
+- The same applies in principle to all client-entered data — notes, cost classifications, statutory accounts, break-even inputs, scenario exclusions — but the consolidation tables are called out explicitly because the owner named them and because the mapping work is the hardest to redo.
+- Take a verified backup before the first migration of this work, and confirm it restores. `docs/security/backup-and-restore.md` records that no restore has ever been tested — do not let this be the first time it matters.
+
 ## Explicitly out of scope
 
 - Any payment, checkout, Stripe or invoicing work. Revisit when taking the product to market.
@@ -83,3 +103,5 @@ No organisation is `external` yet. That is why this is the right moment to chang
 ## When this is built
 
 It changes what every dashboard shows, so it is a Security Gate change: entitlement caps what a viewer can see, and `client_entitlement` plus the tier helpers are part of the access path. Plan it, do not bolt it on. The three purchasable options are Clients, Advisory and Consolidation, and each must be independently provable in the access matrix — an organisation without Consolidation must not reach a consolidated card by any route, including a direct URL or a saved report link.
+
+The migration plan must begin by establishing what each of the 14 existing clients currently sees, given that `tier_widget_config` is self-contradictory, so nothing changes unexpectedly when it moves to the new model. That reconciliation is the risky part of this work, not the new screens.
