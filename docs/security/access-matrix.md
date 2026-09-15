@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1594**. Known failures: **0**.
+Rows: **1600**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -247,6 +247,7 @@ None.
 | public.set_profile_display_name_admin() | execute | DENY | pglite, live | PK 2 (assert_aal2 guard is the first statement) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
+| record_view_as(their own organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: write client data | execute | DENY | live | PK 2 (requireAal2) |  |
@@ -846,6 +847,8 @@ None.
 | public.set_all_client_tiers() | execute | DENY | live | PK 3 — needs the organisation's data, super admin alone is not access | Backlog 19 records that this now gates on is_super_admin; revisit when the shared gate rule is decided. |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
+| record_view_as(an organisation they are not a member of) | execute | DENY | pglite | PK 3 — super_admin alone grants no organisation access, so it cannot preview one either | Added 16 Sep 2026 with the audited View as action on the Organisations table. Before this, view-as was a URL parameter with no audit row and no database check. |
+| xero_error_breakdown() | execute | ALLOW | pglite | PK 2 path C — Xero telemetry is platform metadata: status codes and endpoints, never client data |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
@@ -1184,6 +1187,8 @@ None.
 | public.xero_connections (firm_id null) | insert | DENY | live | PK 4 — a Xero connection cannot exist without an organisation (firm_id NOT NULL) | Phase 5 step 5: the connect callback refuses a tenant it cannot place instead of storing it unassigned; the database refuses it as well. |
 | public.client_xero_orgs (client in another organisation) | insert | DENY | live | PK 4 — a Xero file must belong to the same organisation as the client it is linked to | Phase 5 step 5: deferred constraint triggers on client_xero_orgs and xero_connections.firm_id. |
 | public.xero_connections (tenant over the plan's Xero file limit) | insert | DENY | live | Plan limit trigger PLAN_LIMIT_XERO_ORGS — refused and reported, never stored unassigned | Phase 5 step 5: the callback presents the database's own plan-limit wording and names the refused Xero file. |
+| record_view_as(their own organisation) | execute | DENY | pglite | Platform operations only (assert_super_admin) — an organisation owner has no impersonation action |  |
+| xero_error_breakdown() | execute | DENY | pglite | PK 2 path C is platform operations only; an organisation reads its own Xero errors elsewhere |  |
 | server fn: list clients for an organisation | execute | ALLOW | live | PK 2 path A |  |
 | server fn: write client data | execute | ALLOW | live | PK 2 path A |  |
 | server fn: invite a member | execute | ALLOW | live | PK 2 path A |  |
@@ -1406,6 +1411,7 @@ None.
 | tier_settings | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| record_view_as(their own organisation) | execute | DENY | pglite | PK 2 path D — a viewer grant is read-only and never platform operations |  |
 | server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — every reader is recorded, not only staff | A client viewer's dashboard read writes the same row with their own user id as the actor. |
 | clients (client added after the grant) | read | DENY | pglite, live | PK section 2 client viewer — a specific grant covers that client only |  |

@@ -169,6 +169,11 @@ function TierSettings() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Turn each tier on or off and pick the widgets it shows. Disabled tiers won't appear when inviting viewers or assigning access.
               </p>
+              <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+                <span className="font-semibold">Legacy — no longer decides what a client sees.</span>{" "}
+                Cards now come from what the organisation has bought and the tick list on each
+                client. Tier names here are still used as labels when inviting viewers.
+              </div>
             </div>
             {isSuperAdmin && (
               <Button

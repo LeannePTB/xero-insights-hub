@@ -17,6 +17,11 @@ import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { tierLabel, type DashboardTier } from "@/lib/tiers";
 
 /**
+ * Legacy under the purchase + ticked-list model: this sets the dashboard tier
+ * label on the client's subscription, which no longer decides which cards
+ * appear. Cards come from the organisation's purchase intersected with the
+ * client's tick list.
+ *
  * Which dashboard a client sees. Lives with the other "what this client sees"
  * settings — the billing state (comps, trials, Stripe) stays in the
  * Subscription card. Choices come from the plan_levels catalogue, filtered to

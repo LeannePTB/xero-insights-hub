@@ -16,7 +16,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
-import { XeroApiErrorsSheet } from "@/components/admin/XeroApiErrorsSheet";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
 import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
 
@@ -25,6 +24,9 @@ import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ExpiringOrganisationsNotice } from "@/components/admin/ExpiringOrganisationsNotice";
 import { listSubscriptionStates } from "@/lib/subscription-state.functions";
+import { listOrgPurchases, type OrgPurchase } from "@/lib/card-model.functions";
+import { recordViewAs } from "@/lib/view-as.functions";
+import { toast } from "sonner";
 import { countdownLabel, formatEndDate, type SubscriptionState } from "@/lib/subscription-state";
 
 
@@ -135,15 +137,6 @@ function AdminPage() {
             {isSuper ? <SuperAdminBadge /> : <Badge variant="outline">advisor admin</Badge>}
           </div>
           <div className="flex items-center gap-2">
-            {isSuper && (
-              <XeroApiErrorsSheet
-                trigger={
-                  <Button variant="outline" size="sm">
-                    Xero API errors (7 days)
-                  </Button>
-                }
-              />
-            )}
             {isSuper && <AddOrganisationDialog onCreated={() => firmsQ.refetch()} />}
           </div>
         </div>
@@ -181,8 +174,9 @@ function AdminPage() {
 
         {isSuper && (
           <p className="text-sm text-muted-foreground">
-            Organisation name, tier, usage, billing and error counts only. No balances or client
-            data are visible from this page — enforced at the database level.
+            Organisation name, what each has bought, usage, billing state and Xero connection
+            counts only. Xero failures are in Security &amp; compliance. No balances or client data
+            are visible from this page — enforced at the database level.
           </p>
         )}
 
@@ -208,7 +202,6 @@ function OrganisationsSection({
   onCreated: () => void;
 }) {
   const navigate = useNavigate();
-  const ownFirmIds = new Set(myFirms.map((firm) => firm.id));
   // One query for every connection the caller can see (RLS decides), grouped
   // by organisation — not a query per row.
   const fetchScopeStatus = useServerFn(listXeroScopeStatus);
@@ -257,6 +250,20 @@ function OrganisationsSection({
   });
   const stateByFirm = new Map<string, SubscriptionState>(
     (statesQ.data?.states ?? []).map((st) => [st.firmId, st]),
+  );
+
+  // What each organisation has actually bought (org_subscription_options via
+  // public.org_purchase). This — not the per-client dashboard tiers — is what
+  // decides cards while the purchase + ticked-list model is live.
+  const fetchPurchases = useServerFn(listOrgPurchases);
+  const purchasesQ = useQuery({
+    queryKey: ["admin-org-purchases", firmIds.join(",")],
+    queryFn: () => fetchPurchases({ data: { firmIds } }),
+    enabled: firmIds.length > 0,
+  });
+  const modelActive = purchasesQ.data?.modelActive ?? false;
+  const purchaseByFirm = new Map<string, OrgPurchase>(
+    (purchasesQ.data?.purchases ?? []).map((p) => [p.firmId, p]),
   );
 
 
@@ -357,7 +364,13 @@ function OrganisationsSection({
                   <OrganisationCell name={f.firm_name} alwaysFree={f.is_always_free} />
                 </td>
                 <td className="px-4 py-3">
-                  <PlanCell label={planLabel(f.tier)} usage={usage} dashboardLabel={dashboardLabel} />
+                  <PlanCell
+                    label={planLabel(f.tier)}
+                    usage={usage}
+                    dashboardLabel={dashboardLabel}
+                    purchase={purchaseByFirm.get(f.firm_id)}
+                    modelActive={modelActive}
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <CapacityCell usage={usage} />
@@ -366,11 +379,11 @@ function OrganisationsSection({
                   <StatusCell firm={f} state={state} />
                 </td>
                 <td className="px-4 py-3">
-                  <XeroCell firm={f} missing={scope?.missing} total={scope?.total} />
+                  <XeroCell missing={scope?.missing} total={scope?.total} />
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-                    <RowActions firmId={f.firm_id} showClients={ownFirmIds.has(f.firm_id)} />
+                    <RowActions firmId={f.firm_id} organisationName={f.firm_name} isSuper={isSuper} />
                   </div>
                 </td>
               </tr>
@@ -400,12 +413,18 @@ function OrganisationsSection({
             <div className="flex items-start justify-between gap-3">
               <OrganisationCell name={f.firm_name} alwaysFree={f.is_always_free} />
               <div onClick={(e) => e.stopPropagation()}>
-                <RowActions firmId={f.firm_id} showClients={ownFirmIds.has(f.firm_id)} />
+                <RowActions firmId={f.firm_id} organisationName={f.firm_name} isSuper={isSuper} />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3 text-sm">
               <Field label="Plan">
-                <PlanCell label={planLabel(f.tier)} usage={usage} dashboardLabel={dashboardLabel} />
+                <PlanCell
+                    label={planLabel(f.tier)}
+                    usage={usage}
+                    dashboardLabel={dashboardLabel}
+                    purchase={purchaseByFirm.get(f.firm_id)}
+                    modelActive={modelActive}
+                  />
               </Field>
               <Field label="Capacity">
                 <CapacityCell usage={usage} />
@@ -414,7 +433,7 @@ function OrganisationsSection({
                 <StatusCell firm={f} state={state} />
               </Field>
               <Field label="Xero">
-                <XeroCell firm={f} missing={scope?.missing} total={scope?.total} />
+                <XeroCell missing={scope?.missing} total={scope?.total} />
               </Field>
             </div>
           </div>
@@ -454,16 +473,67 @@ function OrganisationCell({ name, alwaysFree }: { name: string; alwaysFree: bool
   );
 }
 
-/** Plan label with the dashboards actually in use underneath. */
+/**
+ * What the organisation has bought.
+ *
+ * Under the purchase + ticked-list model this reads org_subscription_options
+ * (through public.org_purchase) and nothing else. The old line here counted
+ * per-client dashboard tiers, which stopped deciding anything when the model
+ * went live — it was describing a system no longer in use, which is worse than
+ * showing nothing. The legacy dashboard-tier line is kept only while the old
+ * model is still the live one.
+ */
 function PlanCell({
   label,
   usage,
   dashboardLabel,
+  purchase,
+  modelActive,
 }: {
   label: string;
   usage: OrganisationUsage | undefined;
   dashboardLabel: (key: string) => string;
+  purchase: OrgPurchase | undefined;
+  modelActive: boolean;
 }) {
+  if (modelActive) {
+    if (!purchase) {
+      return (
+        <div className="leading-tight">
+          <div className="text-muted-foreground">—</div>
+          <div className="text-xs text-muted-foreground">billing plan: {label}</div>
+        </div>
+      );
+    }
+    const consolidationBlocked = purchase.advisory && purchase.clientCount <= 1;
+    return (
+      <div className="leading-tight space-y-0.5">
+        <div className="whitespace-nowrap tabular-nums">
+          {purchase.clientLimit >= 9999 ? "Unlimited" : purchase.clientLimit} client
+          {purchase.clientLimit === 1 ? "" : "s"}
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          <OptionPill on={purchase.advisory} label="Advisory" />
+          <OptionPill
+            on={purchase.consolidation}
+            label="Consolidation"
+            offNote={
+              !purchase.advisory
+                ? "needs Advisory"
+                : consolidationBlocked
+                  ? "single client"
+                  : undefined
+            }
+          />
+        </div>
+        <div className="text-xs text-muted-foreground whitespace-nowrap">
+          {purchase.billingMode === "external" ? "billed externally" : "billed with bookkeeping"}
+          {" · "}
+          billing plan: {label}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="leading-tight">
       <div>{label}</div>
@@ -471,6 +541,22 @@ function PlanCell({
         <DashboardsInUseCell usage={usage} label={dashboardLabel} />
       </div>
     </div>
+  );
+}
+
+/** "Advisory on" / "Advisory off", with the reason it cannot be on when there is one. */
+function OptionPill({ on, label, offNote }: { on: boolean; label: string; offNote?: string }) {
+  return (
+    <span
+      className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
+        on
+          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-medium"
+          : "bg-muted text-muted-foreground"
+      }`}
+    >
+      {label} {on ? "on" : "off"}
+      {!on && offNote ? ` · ${offNote}` : ""}
+    </span>
   );
 }
 
@@ -548,33 +634,44 @@ function StatusCell({ firm, state }: { firm: FirmRow; state?: SubscriptionState 
   );
 }
 
-/** Connection health, with the 7-day error count only when there is one. */
-function XeroCell({ firm, missing, total }: { firm: FirmRow; missing?: number; total?: number }) {
+/**
+ * Connection health only — how many Xero files are connected and whether any
+ * are missing permissions. That is capacity, so it belongs here. The 7-day
+ * failure count moved to Security & compliance → Xero API failures, where it
+ * sits with the rest of the monitoring and breaks down per Xero file.
+ */
+function XeroCell({ missing, total }: { missing?: number; total?: number }) {
   return (
     <div className="leading-tight">
       <XeroScopeHealthCell missing={missing} total={total} />
-      {firm.recent_error_count > 0 && (
-        <div className="mt-1 text-xs" onClick={(e) => e.stopPropagation()}>
-          <XeroApiErrorsSheet
-            firmId={firm.firm_id}
-            organisationName={firm.firm_name}
-            trigger={
-              <button
-                type="button"
-                className="text-destructive font-medium underline underline-offset-4 tabular-nums whitespace-nowrap"
-                title="Xero API errors in the last 7 days"
-              >
-                {firm.recent_error_count} error{firm.recent_error_count === 1 ? "" : "s"} (7 days)
-              </button>
-            }
-          />
-        </div>
-      )}
     </div>
   );
 }
 
-function RowActions({ firmId, showClients }: { firmId: string; showClients: boolean }) {
+function RowActions({
+  firmId,
+  organisationName,
+  isSuper,
+}: {
+  firmId: string;
+  organisationName: string;
+  isSuper: boolean;
+}) {
+  const navigate = useNavigate();
+  const record = useServerFn(recordViewAs);
+
+  // Previewing is recorded before it starts. The database function is the
+  // control (aal2 + super admin + an access path this person already holds);
+  // if it refuses, no preview opens.
+  async function startPreview() {
+    try {
+      await record({ data: { firmId, mode: "owner" } });
+      navigate({ to: "/firms/$firmId", params: { firmId }, search: { viewAs: "owner" } });
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not start the preview.");
+    }
+  }
+
   return (
     <div className="flex items-center gap-2">
       <Button size="sm" variant="outline" asChild>
@@ -589,18 +686,16 @@ function RowActions({ firmId, showClients }: { firmId: string; showClients: bool
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          {showClients && (
-            <DropdownMenuItem asChild>
-              <Link to="/firms/$firmId" params={{ firmId }}>
-                <Users className="h-4 w-4 mr-2" /> Clients
-              </Link>
-            </DropdownMenuItem>
-          )}
           <DropdownMenuItem asChild>
-            <Link to="/firms/$firmId" params={{ firmId }} search={{ viewAs: "owner" }}>
-              <Eye className="h-4 w-4 mr-2" /> View as
+            <Link to="/firms/$firmId" params={{ firmId }}>
+              <Users className="h-4 w-4 mr-2" /> Clients
             </Link>
           </DropdownMenuItem>
+          {isSuper && (
+            <DropdownMenuItem onSelect={() => void startPreview()}>
+              <Eye className="h-4 w-4 mr-2" /> View as {organisationName}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>

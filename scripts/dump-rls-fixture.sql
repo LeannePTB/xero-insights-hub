@@ -37,7 +37,9 @@ fns as (
         'admin_add_practice_member','admin_remove_practice_member',
         'set_client_access_relationship','user_can_write_client_scenario',
         'touch_session_activity','session_is_active',
-        'admin_assert_can_sign_out_user','record_sign_out_all_devices'))
+        'admin_assert_can_sign_out_user','record_sign_out_all_devices',
+        'assert_super_admin','user_can_read_client',
+        'record_view_as','xero_error_breakdown'))
     )
 ),
 stmts as (

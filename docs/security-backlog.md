@@ -1113,3 +1113,60 @@ functions registered, 1509 access rows proved (0 failed), 95 tests passed, live
 access 18 passed / 0 failed. Typecheck clean. Linter unchanged in kind: the
 deliberate `app_private.platform_settings` RLS-enabled-no-policy INFO plus the
 accepted self-guarded definer set, now including the five functions above.
+
+## 57 — Admin Organisations table: purchase-based plan column, audited View As, Xero failures moved (done 15 Sep 2026)
+
+**Classification: SECURITY-RELEVANT** (impersonation, audit, platform metadata).
+
+**Plan column.** The Organisations table described each organisation from the
+old per-client tier (`plan_levels` / `client_entitlement`), which no longer
+decides anything under `card_model_v2`. It now reads
+`public.org_purchase(firm_id)` — client limit, Advisory on/off, Consolidation
+on/off, billing mode — with the billing plan name kept only as a subtitle. The
+legacy tier line still shows while the old model is live.
+
+**View As was a defect.** It was a URL query parameter (`?viewAs=`) read by the
+firm and client pages — a UI filter, with no server check of its own beyond the
+existing `canViewAs` gate, and **no audit row at all**. Fixed: new definer
+function `public.record_view_as(_firm_id, _client_id, _mode)` — `assert_aal2()`
+then `assert_super_admin()`, then the caller must already be an **active member**
+of that organisation (`app_private.has_firm_access`); for a client it must also
+pass `public.user_can_read_client`. It grants nothing: every read still goes
+through the same policies as before, so invariant 3 holds — `super_admin` alone
+still reaches no client data, and View As only re-presents what the caller's
+membership already allows. Support grants (path B) are deliberately **not**
+accepted: this function writes an audit row and support access is read-only
+(invariant 5); support-grant holders read the organisation through the ordinary
+screens. Every use writes an `audit_log` row `view_as_started` naming actor,
+organisation, client and mode. The on-screen banner now reads "VIEWING AS".
+Matrix rows added for `record_view_as` (deny: super admin with no membership,
+organisation owner, aal1 member, client viewer) and for
+`xero_error_breakdown()` (allow: super admin, path C metadata; deny: owner).
+
+**Xero failures moved.** The "N errors (7 days)" count is out of the
+Organisations row (the "N OK" connection count stays — that is capacity). New
+super-admin-only `public.xero_error_breakdown(_days)` (aal2 + super admin,
+status codes / endpoints / counts only, no payloads) feeds a per-organisation,
+per-Xero-file card in Security & compliance.
+
+**Stale screens found and marked legacy:** `/settings/tiers` (edits
+`tier_widget_config`, which no longer gates cards; tier names remain viewer
+labels) and `ClientDashboardTierControl` (dashboard tier is now only a label).
+`admin-plan-usage.server.ts` still counts per-client `client_entitlement` tiers
+— now shown only as the legacy subtitle.
+
+**Two posture Actions from the earlier card-model batches closed in the same
+change:** `org_subscription_options` and `client_cards` were missing the
+restrictive `mfa_aal2_required` policy (added; proved aal1 reads 0 rows, aal2
+reads unchanged 12 / 4), and `set_client_card_enabled`, `copy_client_cards`,
+`set_org_purchase` now assert `app_private.assert_aal2()` explicitly as their
+first statement instead of only via their write guards.
+
+`public.security_posture()`: no Action remains; one pre-existing Warn (1 of 4
+people without a verified TOTP factor). Supabase linter unchanged in kind and
+count (109: the deliberate `app_private.platform_settings` INFO plus the
+accepted self-guarded definer set). `bun run security:check`: fingerprint MATCH
+bf72506f2bb6218ec18a85299aedd71df714aeb8664c602e07b2877ed1c3c7d7, 1600 matrix
+rows / 1515 proved (0 failed), 95 tests passed, live access 18 passed / 0
+failed. Typecheck clean. Not verified: authenticated browser screenshots — the
+minted test session cannot pass the MFA gate.

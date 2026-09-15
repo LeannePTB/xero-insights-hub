@@ -283,6 +283,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Returns the card groupings (Standard, Advisory, Consolidation) for the configuration screens so the grouping is never mirrored in TypeScript. aal2-guarded, holds no client, organisation or personal data.",
   "public.org_purchase":
     "Returns one organisation's purchase options (client number, Advisory, Consolidation, billing mode) and its client count for the admin and organisation settings screens. aal2 first, then refuses unless the caller is a member of that organisation, platform staff with a path to it, or a super admin reading plan metadata (Path C). No client or Xero data.",
+  "public.record_view_as":
+    "Records that a platform super admin previewed an organisation or client dashboard: aal2, super admin, and an access path already held. Never a grant.",
+  "public.xero_error_breakdown":
+    "Xero API failures grouped per organisation and Xero file, for the security monitoring section. Super admin only, telemetry only.",
   "public.set_org_purchase":
     "Records what an organisation has bought: client number, Advisory on/off, Consolidation on/off (refused unless Advisory is on) and billing mode. aal2 + super admin via public.assert_super_admin, validated inputs, audited. Switching an option on ticks its cards for every client in that organisation; switching it off writes no ticks, so each client's arrangement returns intact. Never grants access to anything and never reads client data.",
   "public.set_client_card_enabled":

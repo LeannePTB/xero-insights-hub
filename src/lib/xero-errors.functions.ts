@@ -55,3 +55,45 @@ export const listXeroApiErrors = createServerFn({ method: "POST" })
     return { days: data.days, groups };
   });
 
+
+export type XeroErrorBreakdownRow = {
+  key: string;
+  firmId: string | null;
+  organisation: string;
+  xeroFile: string;
+  path: string;
+  status: number | null;
+  count: number;
+  rateLimited: number;
+  firstSeen: string;
+  lastSeen: string;
+};
+
+/**
+ * Xero API failures grouped per organisation and per Xero file, for the
+ * security and monitoring section. Path C platform metadata: the database
+ * function re-checks aal2 and the super-admin role itself. Telemetry only —
+ * status codes and endpoint paths, never payloads, tokens or client figures.
+ */
+export const getXeroErrorBreakdown = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { days?: number }) => ({ days: i?.days === 30 ? 30 : 7 }))
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await (context.supabase as any).rpc("xero_error_breakdown", {
+      _days: data.days,
+    });
+    if (error) throw new Error(error.message);
+    const breakdown: XeroErrorBreakdownRow[] = ((rows ?? []) as any[]).map((r, i) => ({
+      key: `${r.firm_id ?? "none"}-${r.tenant_name ?? "none"}-${r.path}-${r.http_status}-${i}`,
+      firmId: (r.firm_id as string | null) ?? null,
+      organisation: (r.firm_name as string | null) ?? "Unattributed",
+      xeroFile: (r.tenant_name as string | null) ?? "Unattributed",
+      path: (r.path as string) ?? "unknown",
+      status: r.http_status == null ? null : Number(r.http_status),
+      count: Number(r.occurrences ?? 0),
+      rateLimited: Number(r.rate_limited ?? 0),
+      firstSeen: r.first_seen as string,
+      lastSeen: r.last_seen as string,
+    }));
+    return { days: data.days, breakdown };
+  });

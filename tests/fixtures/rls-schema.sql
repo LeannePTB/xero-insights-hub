@@ -1204,6 +1204,33 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.user_can_read_client(_client_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null or _client_id is null then return false; end if;
+  return app_private.user_can_read_client(auth.uid(), _client_id);
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.assert_super_admin()
+ RETURNS void
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if not app_private.me_is_super_admin() then
+    raise exception 'Forbidden';
+  end if;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION app_private.client_xero_files_used(_client_id uuid, _exclude_link_id uuid DEFAULT NULL::uuid)
  RETURNS integer
  LANGUAGE sql
@@ -1806,6 +1833,86 @@ begin
     where x = any(ticked)
     order by x
   ), '{}'::text[]);
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.record_view_as(_firm_id uuid, _client_id uuid DEFAULT NULL::uuid, _mode text DEFAULT 'owner'::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _client_firm uuid;
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+
+  if _firm_id is null then
+    raise exception 'INVALID_ORGANISATION' using errcode = 'check_violation';
+  end if;
+  if coalesce(_mode,'') not in ('owner','client') then
+    raise exception 'INVALID_MODE' using errcode = 'check_violation';
+  end if;
+
+  -- Never a grant: the caller must already be an active member of this
+  -- organisation (path A). Invariant 3 — super_admin alone is not enough.
+  -- A support grant (path B) is deliberately NOT accepted here: this function
+  -- writes an audit row, and support grants stay strictly read-only
+  -- (invariant 5). Support-grant holders read the organisation through the
+  -- ordinary read-only screens instead.
+  if not app_private.has_firm_access(auth.uid(), _firm_id) then
+    raise exception 'FORBIDDEN' using errcode = 'insufficient_privilege';
+  end if;
+
+  if _client_id is not null then
+    select c.firm_id into _client_firm from public.clients c where c.id = _client_id;
+    if _client_firm is null or _client_firm <> _firm_id then
+      raise exception 'CLIENT_NOT_IN_ORGANISATION' using errcode = 'check_violation';
+    end if;
+    -- The same read predicate the client dashboard itself resolves through.
+    if not public.user_can_read_client(_client_id) then
+      raise exception 'FORBIDDEN' using errcode = 'insufficient_privilege';
+    end if;
+  end if;
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (
+    auth.uid(),
+    _firm_id,
+    'view_as_started',
+    case when _client_id is null then 'firm' else 'client' end,
+    coalesce(_client_id::text, _firm_id::text),
+    jsonb_build_object('mode', _mode, 'firm_id', _firm_id, 'client_id', _client_id, 'at', now())
+  );
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.xero_error_breakdown(_days integer DEFAULT 7)
+ RETURNS TABLE(firm_id uuid, firm_name text, tenant_name text, path text, http_status integer, occurrences bigint, rate_limited bigint, first_seen timestamp with time zone, last_seen timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+
+  return query
+  select e.firm_id,
+         f.name,
+         coalesce(e.tenant_name, 'Unattributed'),
+         e.path,
+         e.http_status,
+         sum(e.occurrences)::bigint,
+         sum(case when e.http_status = 429 then e.occurrences else 0 end)::bigint,
+         min(e.first_seen),
+         max(e.last_seen)
+    from public.xero_api_errors e
+    left join public.firms f on f.id = e.firm_id
+   where e.last_seen > now() - make_interval(days => greatest(1, least(90, coalesce(_days, 7))))
+   group by e.firm_id, f.name, coalesce(e.tenant_name, 'Unattributed'), e.path, e.http_status
+   order by sum(e.occurrences) desc;
 end;
 $function$
 ;
@@ -2545,6 +2652,7 @@ create policy "manage client access by firm (read)" on public.client_access as p
 create policy mfa_aal2_required on public.client_access as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "viewers read own access" on public.client_access as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy "client cards readable by client read access" on public.client_cards as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.user_can_read_client(auth.uid(), client_id)));
+create policy mfa_aal2_required on public.client_cards as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Manage cost classifications by firm (delete)" on public.client_cost_classifications as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_cost_classifications.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
@@ -2738,6 +2846,7 @@ create policy mfa_aal2_required on public.loan_consolidation_snapshots as restri
 create policy "Advisors read same-firm login events" on public.login_events as permissive for select to authenticated using ((app_private.is_advisor(auth.uid()) AND (user_id IS NOT NULL) AND app_private.shares_firm_with(auth.uid(), user_id)));
 create policy "Users read own login events" on public.login_events as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy mfa_aal2_required on public.login_events as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.org_subscription_options as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "org options readable by organisation access" on public.org_subscription_options as permissive for select to authenticated using ((app_private.is_aal2() AND (app_private.has_firm_access(auth.uid(), firm_id) OR app_private.platform_staff_can_access_firm(auth.uid(), firm_id))));
 create policy plan_levels_read on public.plan_levels as permissive for select to authenticated using (true);
 create policy "plan_levels_write (delete)" on public.plan_levels as permissive for delete to authenticated using (app_private.me_is_super_admin());
@@ -2891,4 +3000,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: fe19566fb38214e7ab1b17eaf7ad65433c83a8e3712557bde4c41982f42e739d
+-- catalogue-fingerprint: bf72506f2bb6218ec18a85299aedd71df714aeb8664c602e07b2877ed1c3c7d7
