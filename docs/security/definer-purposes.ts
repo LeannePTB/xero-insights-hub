@@ -182,6 +182,13 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.upsert_xero_snapshot": "Stores a Xero report snapshot for a client.",
   "public.prune_xero_snapshot_runs": "Removes old and abandoned snapshot runs.",
   "public.log_xero_api_error": "Records a Xero API failure as telemetry.",
+  "public.log_xero_rate_limit":
+    "Records the request allowance Xero reported on a call, as telemetry. Service role only; execute revoked from anon and authenticated.",
+  "public.xero_rate_limit_usage":
+    "Per-file Xero request allowance for the admin screen. Asserts aal2 and super admin (Path C metadata).",
+  "public.xero_rate_limit_posture":
+    "Posture check: how close each Xero file is to its request limits, computed live. Asserts aal2 and super admin.",
+
   "public.xero_missing_scopes": "Which Xero permissions a connection is missing.",
   "public.xero_required_scopes": "The Xero permissions the app requires.",
   "public.xero_tenant_already_linked": "Whether a Xero file is already linked in an organisation.",
