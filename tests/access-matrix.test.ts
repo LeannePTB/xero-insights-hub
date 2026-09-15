@@ -70,6 +70,8 @@ type Ctx = {
 const IDLE_SESSION = "77777777-2222-4222-8222-222222222222";
 /** A session seconds old with NO activity row: the just-completed-MFA case. */
 const FRESH_SESSION = "77777777-3333-4333-8333-333333333333";
+/** Signed in 90 minutes ago and STILL BEING USED: activity 2 minutes ago. */
+const ACTIVE_SESSION = "77777777-4444-4444-8444-444444444444";
 
 const CONTEXT: Record<Role, Ctx> = {
   anonymous: { uid: null, dbRole: "anon", aal: null },
@@ -85,6 +87,12 @@ const CONTEXT: Record<Role, Ctx> = {
     dbRole: "authenticated",
     aal: "aal2",
     sessionId: FRESH_SESSION,
+  },
+  active_session_member: {
+    uid: U.staffA,
+    dbRole: "authenticated",
+    aal: "aal2",
+    sessionId: ACTIVE_SESSION,
   },
   org_owner: { uid: U.ownerA, dbRole: "authenticated", aal: "aal2" },
   org_staff: { uid: U.staffA, dbRole: "authenticated", aal: "aal2" },
@@ -509,6 +517,18 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`select app_private.assert_aal2()`);
     return p.ok ? "allow" : "deny";
   }
+  if (r === "assert_aal2() after 90 minutes of continuous use") {
+    // POSITIVE proof. The session began 90 minutes ago, so its age alone is well
+    // past the window; only the recorded activity from 2 minutes ago can keep it
+    // active. This must NEVER refuse — refusing it is the outage of 15 Sep 2026.
+    const p = await probe(`select app_private.assert_aal2()`);
+    if (!p.ok) {
+      throw new Error(
+        `An actively used session was refused — this is the lockout condition: ${p.error}`,
+      );
+    }
+    return "allow";
+  }
   if (r === "assert_aal2() with no session_id claim") {
     // Same person, same aal2 claim, no session_id: fail closed.
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [
@@ -902,10 +922,15 @@ beforeAll(async () => {
       
       ('${IDLE_SESSION}', '${U.staffA}', now()),
       -- Just completed MFA: seconds old, and deliberately NO activity row.
-      ('${FRESH_SESSION}', '${U.staffA}', now() - interval '5 seconds');
+      ('${FRESH_SESSION}', '${U.staffA}', now() - interval '5 seconds'),
+      -- Signed in 90 minutes ago and still in use: well past the window on age
+      -- alone, so only the recorded activity below can keep it active.
+      ('${ACTIVE_SESSION}', '${U.staffA}', now() - interval '90 minutes');
     -- Signed in today, but the SERVER-held activity timestamp is 40 minutes old.
     insert into public.session_activity(session_id, user_id, last_activity_at, created_at) values
-      ('${IDLE_SESSION}', '${U.staffA}', now() - interval '40 minutes', now() - interval '40 minutes');
+      ('${IDLE_SESSION}', '${U.staffA}', now() - interval '40 minutes', now() - interval '40 minutes'),
+      -- Actively used: last interaction 2 minutes ago on a 90 minute old session.
+      ('${ACTIVE_SESSION}', '${U.staffA}', now() - interval '2 minutes', now() - interval '90 minutes');
     insert into auth.mfa_factors(user_id, status) values
       ${users.map((u) => `('${u}', 'verified')`).join(", ")};
     insert into public.profiles(id, email, display_name) values

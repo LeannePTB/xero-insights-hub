@@ -20,6 +20,7 @@ export type Role =
   
   | "idle_session_member"
   | "fresh_mfa_session_member"
+  | "active_session_member"
   | "org_owner"
   | "org_staff"
   | "other_org_member"
@@ -65,6 +66,8 @@ export const ROLE_LABELS: Record<Role, string> = {
     "Active member on aal2, signed in today, with no recorded activity for more than 30 minutes",
   fresh_mfa_session_member:
     "Active member who has just completed MFA: an aal2 session seconds old with no activity row written yet",
+  active_session_member:
+    "Active member being ACTIVELY USED: an aal2 session that began 90 minutes ago whose last recorded activity is 2 minutes ago",
   org_owner: "Organisation owner (own organisation)",
   org_staff: "Organisation staff (own organisation)",
   other_org_member: "Active member of a DIFFERENT organisation",
@@ -1688,6 +1691,38 @@ export const MATRIX: MatrixRow[] = [
     operation: "execute",
     expect: "allow",
     rule: "PK 2 — the first activity write of a new session succeeds",
+    layers: ["pglite"],
+  },
+  // POSITIVE PROOF, added 15 Sep 2026. The outage happened because every row
+  // here proved the inactivity check REFUSES and none proved it ALLOWS. These
+  // three rows are that missing half: a session whose sign-in is well past the
+  // 30 minute window but whose recorded activity is recent must be accepted —
+  // for a client-scoped read, for the aal2 assertion, and for its own activity
+  // write. They must hold both while database enforcement is suspended and
+  // after it is restored, so a future suspension or restoration cannot silently
+  // lock out people who are working.
+  {
+    role: "active_session_member",
+    resource: "client_notes",
+    operation: "read",
+    expect: "allow",
+    rule: "PK 2 — recent recorded activity keeps a long-lived session active, whatever its age",
+    layers: ["pglite"],
+  },
+  {
+    role: "active_session_member",
+    resource: "assert_aal2() after 90 minutes of continuous use",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 — an actively used session is never refused as idle",
+    layers: ["pglite"],
+  },
+  {
+    role: "active_session_member",
+    resource: "touch_session_activity()",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 — an actively used session keeps recording its own activity, caller-scoped",
     layers: ["pglite"],
   },
   {
