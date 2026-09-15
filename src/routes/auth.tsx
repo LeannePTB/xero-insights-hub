@@ -14,7 +14,14 @@ import { startXeroSignIn } from "@/lib/xero/signin.functions";
 import heroImage from "@/assets/hero-construction.jpg";
 import { siteUrl } from "@/lib/site-origin";
 import { useSignOut } from "@/lib/use-sign-out";
-import { clearSignInMark, isTokenStale, takeSignInExpired } from "@/lib/session-cutoff";
+import {
+  IDLE_SIGN_OUT_MESSAGE,
+  clearIdleDeadline,
+  clearSignInMark,
+  isTokenStale,
+  takeSignInExpired,
+  takeSignedOutIdle,
+} from "@/lib/session-cutoff";
 
 
 export const Route = createFileRoute("/auth")({
@@ -65,6 +72,13 @@ function AuthPage() {
     }
     if (takeSignInExpired()) {
       toast.info("Daily sign-in required — please sign in again.");
+    }
+    // Inactivity timeout: say so plainly. This is NOT a second-factor prompt,
+    // so nobody is sent to their authenticator app when they simply need to
+    // sign in again.
+    if (takeSignedOutIdle()) {
+      setIdleNotice(true);
+      toast.info(IDLE_SIGN_OUT_MESSAGE);
     }
   }, []);
 

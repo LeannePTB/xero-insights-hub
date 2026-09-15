@@ -7,6 +7,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { recordPresence } from "@/lib/security-posture.functions";
 import { AdminNavShell } from "@/components/admin/AdminNavShell";
 import { GlobalSignOut } from "@/components/GlobalSignOut";
+import { SessionIdleGuard } from "@/components/SessionIdleGuard";
 import { clearSignInMark, isSessionStale, isTokenStale, markSignInExpired } from "@/lib/session-cutoff";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -103,12 +104,14 @@ function AuthenticatedLayout() {
       <>
         <Outlet />
         <GlobalSignOut />
+        <SessionIdleGuard />
       </>
     );
   return (
     <AdminNavShell>
       <Outlet />
       <GlobalSignOut />
+      <SessionIdleGuard />
     </AdminNavShell>
   );
 }
