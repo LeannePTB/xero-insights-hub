@@ -51,6 +51,76 @@ Every signed-in person must sign in again after 3am **Australia/Sydney** each da
 - **Browser (UX only).** The `_authenticated` gate signs the person out and redirects to `/auth` with a one-shot "Daily sign-in required" notice when the locally recorded sign-in timestamp (`ta:signin-at`, written on `SIGNED_IN`, cleared on `SIGNED_OUT`) is before the cut-off. No mark means stale, so the fallback is a forced sign-in. The timestamp is a hint, never a grant.
 - **Sign out.** `useSignOut` (`src/lib/use-sign-out.ts`) records the event best-effort, clears the local mark and returns to `/auth`. `AppHeader` carries the button and marks itself `data-app-header`; `GlobalSignOut` supplies a floating button on the routes that render no such header (including the `AdminShell` pages), and the public `/auth` page offers Sign out to an already signed-in visitor.
 
+## 0c. 30 minute inactivity timeout and remote sign-out (15 Sep 2026, owner decision)
+
+The daily 3am cut-off (0b) is unchanged and still applies. In addition, a session
+ends after **30 minutes without real activity**, with a warning at 29 minutes.
+
+- **Database (the enforcement point).** `public.session_activity` holds one row
+  per session: `session_id` (primary key), `user_id`, `last_activity_at`. RLS on;
+  `anon` and `authenticated` hold no write privilege at all — signed-in people may
+  only read their own row. `app_private.is_session_active()` (STABLE SECURITY
+  DEFINER, `SET search_path`, registered) reads the `session_id` claim and returns
+  `coalesce(last_activity_at, auth.sessions.created_at) > now() - interval '30
+  minutes'`, so signing in counts as activity until the first recorded
+  interaction. No request context and `service_role` are system contexts and pass.
+  It **fails closed**: a missing `session_id` claim, or a session row it cannot
+  find (including one revoked in the authentication service), is idle.
+  `app_private.is_aal2()` requires it, so the RESTRICTIVE `mfa_aal2_required`
+  policy hides every row on every data table from an idle session.
+- **A distinct reason code.** `app_private.assert_aal2()` raises `SESSION_EXPIRED`
+  (daily cut-off), then **`SESSION_IDLE`**, then `MFA_REQUIRED`. An idle session
+  must never report `MFA_REQUIRED` — that sends a person to their authenticator
+  app when they need to sign in again. The two places that translate the MFA code
+  for people (`explain()` in `src/lib/ownership.functions.ts` and
+  `src/lib/viewers.functions.ts`) carry a `SESSION_IDLE` branch **before** the MFA
+  branch; nothing else keys off the MFA string.
+- **Writing activity.** Only `public.touch_session_activity()` writes
+  `last_activity_at`: SECURITY DEFINER, asserts aal2, takes the session from the
+  verified token claim (never a parameter) and the time from the server clock, and
+  upserts only where `user_id = auth.uid()`. An idle session cannot revive itself,
+  because the aal2 assertion fails first. No caller-supplied session, user or
+  timestamp is accepted anywhere.
+- **What counts as activity.** Real interaction only: `pointerdown`, `keydown` and
+  route navigation, debounced to at most one server call a minute. Deliberately
+  **excluded**: the presence heartbeat, dashboard snapshot refresh, token refresh
+  and every polling query. A tab left open on a dashboard therefore still times
+  out, and a closed laptop is already expired when it wakes.
+- **Request layer (Layer 3b, deny-only).** `inactivityMiddleware` in
+  `src/start.ts` asks `public.session_is_active()` with the caller's own bearer
+  token and returns a 401 carrying `x-session-state: idle`. A positive answer is
+  cached 15 seconds per isolate; a refusal is never cached. If the database cannot
+  be reached this layer allows and the database still refuses — it can only ever
+  deny earlier, never grant.
+- **Browser (UX only).** `SessionIdleGuard` keeps an **absolute** deadline in
+  `localStorage` (`ta:idle-deadline`) shared across tabs over a
+  `BroadcastChannel` (`ta:session`), so activity in one tab extends all of them
+  and expiry ends all of them. At 29 minutes it shows a countdown with "Stay
+  signed in" (which calls `touch_session_activity()`) and "Sign out now". On
+  expiry it signs out and lands on `/auth`, which shows "Signed out after 30
+  minutes of inactivity" — never an MFA prompt.
+- **Sign out my other devices (self-service).** `Settings → Account` calls
+  `supabase.auth.signOut({ scope: "others" })`, which deletes the person's other
+  sessions in the authentication service; the current device is untouched. This is
+  true server-side revocation, not browser clearing: the revoked session's refresh
+  token stops working, and `is_session_active()` fails closed once the
+  `auth.sessions` row is gone, so the token is refused everywhere.
+  `public.record_sign_out_other_devices()` audits who and when — never a token or
+  device detail.
+- **Signing another person out remotely is NOT available.** The authentication
+  service exposes no administrative sign-out endpoint on this platform (both
+  documented admin logout routes return 404, verified 15 Sep 2026). The audited
+  `admin_sign_out_all_devices()` function was therefore **dropped rather than
+  shipped**, because it would have recorded an intent it could not carry out. The
+  only remaining path is deleting `auth.sessions` rows directly with the service
+  role, which writes to the managed `auth` schema and needs an owner decision:
+  backlog 50.
+- **Lockout assessment.** Revoking sessions never touches credentials or enrolled
+  factors, so a super admin who signs their own devices out simply signs back in
+  with password plus TOTP. There is no path by which these controls can lock the
+  platform out of itself, and therefore no bypass, break-glass role or exception
+  was added.
+
 ## 1. Naming and language
 
 **Never use "firm" in user-facing copy.** The user-facing term is **"organisation"** (matching Xero). `firm` / `firm_id` / `firms` are internal identifiers only — tables, columns, functions, RPC parameter names, TypeScript symbols, routes, query keys. Do not rename them.

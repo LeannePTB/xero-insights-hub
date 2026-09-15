@@ -49,6 +49,7 @@ nobody remembers is not a control.
 | Check | Reads | Action / Warn |
 | ----- | ----- | ------------- |
 | `tls_hsts` | `HEAD` on the canonical public origin | Warn when HTTPS or HSTS is not observed |
+| `session_controls` | `public.session_controls_posture()` reads the live source of `app_private.is_session_active`, `is_aal2` and `assert_aal2` | **Action** when the inactivity window cannot be read, when the aal2 gate no longer consults the idle or daily-cut-off check, when `assert_aal2` no longer raises `SESSION_IDLE`, or when `touch_session_activity` is not a definer function |
 | `http_headers` | `HEAD` on the canonical public origin | **Action** when no CSP at all, or when nosniff, referrer-policy or framing protection is missing; **Warn** when CSP is present but report-only or allows `'unsafe-inline'` / `'unsafe-eval'` |
 | `aal2_tables`, `definer_guards`, `read_audit_posture`, `test_accounts_posture`, … | Live catalogue and audit trail | See `supabase/migrations` (`public.security_posture()`) |
 
