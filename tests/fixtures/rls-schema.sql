@@ -93,7 +93,7 @@ create table public.firms (id uuid, name text, owner_user_id uuid, is_always_fre
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
-create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone);
+create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -1924,7 +1924,7 @@ end;
 $function$
 ;
 CREATE OR REPLACE FUNCTION app_private.org_effective_options(_firm_id uuid)
- RETURNS TABLE(advisory boolean, consolidation boolean, purchased_advisory boolean, purchased_consolidation boolean, trial_advisory boolean, trial_consolidation boolean, trial_ends_at timestamp with time zone, trial_active boolean)
+ RETURNS TABLE(advisory boolean, consolidation boolean, branding boolean, purchased_advisory boolean, purchased_consolidation boolean, purchased_branding boolean, trial_advisory boolean, trial_consolidation boolean, trial_branding boolean, trial_ends_at timestamp with time zone, trial_active boolean)
  LANGUAGE sql
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
@@ -1932,8 +1932,10 @@ AS $function$
   with o as (
     select coalesce(opt.advisory_enabled, false) as p_adv,
            coalesce(opt.consolidation_enabled, false) as p_con,
+           coalesce(opt.branding_enabled, false) as p_brand,
            coalesce(opt.trial_advisory_enabled, false) as t_adv,
            coalesce(opt.trial_consolidation_enabled, false) as t_con,
+           coalesce(opt.trial_branding_enabled, false) as t_brand,
            opt.trial_ends_at as t_end
       from public.org_subscription_options opt
      where opt.firm_id = _firm_id
@@ -1941,8 +1943,10 @@ AS $function$
   r as (
     select coalesce((select p_adv from o), false) as p_adv,
            coalesce((select p_con from o), false) as p_con,
+           coalesce((select p_brand from o), false) as p_brand,
            coalesce((select t_adv from o), false) as t_adv,
            coalesce((select t_con from o), false) as t_con,
+           coalesce((select t_brand from o), false) as t_brand,
            (select t_end from o) as t_end
   ),
   live as (
@@ -1952,11 +1956,27 @@ AS $function$
     (live.p_adv or (live.t_live and live.t_adv)) as advisory,
     (live.p_con or (live.t_live and live.t_con))
       and (live.p_adv or (live.t_live and live.t_adv)) as consolidation,
-    live.p_adv, live.p_con, live.t_adv, live.t_con, live.t_end, live.t_live
+    (live.p_brand or (live.t_live and live.t_brand))
+      and (live.p_adv or (live.t_live and live.t_adv)) as branding,
+    live.p_adv, live.p_con, live.p_brand,
+    live.t_adv, live.t_con, live.t_brand,
+    live.t_end, live.t_live
   from live
 $function$
 ;
-CREATE OR REPLACE FUNCTION public.set_org_trial(_firm_id uuid, _advisory boolean, _consolidation boolean, _ends_at timestamp with time zone, _reason text)
+CREATE OR REPLACE FUNCTION app_private.firm_branding_enabled(_firm_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(
+    (select e.branding from app_private.org_effective_options(_firm_id) e),
+    false
+  ) and not app_private.firm_subscription_lapsed(_firm_id)
+$function$
+;
+CREATE OR REPLACE FUNCTION public.set_org_trial(_firm_id uuid, _advisory boolean, _consolidation boolean, _branding boolean, _ends_at timestamp with time zone, _reason text)
  RETURNS timestamp with time zone
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -1966,6 +1986,7 @@ declare
   _prev record;
   _adv boolean := coalesce(_advisory, false);
   _con boolean := coalesce(_consolidation, false);
+  _brand boolean := coalesce(_branding, false);
   _end timestamptz := _ends_at;
   _touched integer;
 begin
@@ -1980,11 +2001,14 @@ begin
   end if;
 
   -- Ending a trial: no grants, no end date.
-  if not _adv and not _con then
-    _adv := false; _con := false; _end := null;
+  if not _adv and not _con and not _brand then
+    _adv := false; _con := false; _brand := false; _end := null;
   else
     if _con and not _adv then
       raise exception 'CONSOLIDATION_REQUIRES_ADVISORY' using errcode = 'check_violation';
+    end if;
+    if _brand and not _adv then
+      raise exception 'BRANDING_REQUIRES_ADVISORY' using errcode = 'check_violation';
     end if;
     if _end is null or _end <= now() then
       raise exception 'TRIAL_END_MUST_BE_FUTURE' using errcode = 'check_violation';
@@ -1996,6 +2020,7 @@ begin
 
   select coalesce(o.trial_advisory_enabled, false) as t_adv,
          coalesce(o.trial_consolidation_enabled, false) as t_con,
+         coalesce(o.trial_branding_enabled, false) as t_brand,
          o.trial_ends_at as t_end
     into _prev
     from public.org_subscription_options o
@@ -2005,6 +2030,7 @@ begin
   update public.org_subscription_options o
      set trial_advisory_enabled = _adv,
          trial_consolidation_enabled = _con,
+         trial_branding_enabled = _brand,
          trial_ends_at = _end,
          updated_at = now()
    where o.firm_id = _firm_id;
@@ -2012,8 +2038,8 @@ begin
 
   if _touched = 0 then
     insert into public.org_subscription_options
-      (firm_id, trial_advisory_enabled, trial_consolidation_enabled, trial_ends_at)
-    values (_firm_id, _adv, _con, _end);
+      (firm_id, trial_advisory_enabled, trial_consolidation_enabled, trial_branding_enabled, trial_ends_at)
+    values (_firm_id, _adv, _con, _brand, _end);
   end if;
 
   insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
@@ -2024,11 +2050,13 @@ begin
       'previous', jsonb_build_object(
         'advisory', coalesce(_prev.t_adv, false),
         'consolidation', coalesce(_prev.t_con, false),
+        'branding', coalesce(_prev.t_brand, false),
         'ends_at', _prev.t_end
       ),
       'new', jsonb_build_object(
         'advisory', _adv,
         'consolidation', _con,
+        'branding', _brand,
         'ends_at', _end
       )
     )
@@ -3122,4 +3150,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: a98ef12b72a5293f65e390705bed610eac2af83769ff45d8e2285e70012ad214
+-- catalogue-fingerprint: b89b51a7488e22607cfd6df424924634f7819c2750f68b1d8b92c1ea6add56e1
