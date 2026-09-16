@@ -672,3 +672,26 @@ describe("12e. every posture check is wired into security_posture()", () => {
     );
   });
 });
+
+describe("12f. payroll calls honour the client's explicit setting", () => {
+  it("keeps raw pay-run reads behind an explicit registered-only argument", () => {
+    const payroll = readFileSync(join(ROOT, "src/lib/xero/payroll.server.ts"), "utf8");
+    expect(payroll).toContain('setting: "registered"');
+    expect(payroll).toContain('payrollSettingForClient(opts.supabase, opts.tenantId, opts.clientId)');
+  });
+
+  it("gates scheduled payroll before report fetching", () => {
+    const refresh = readFileSync(join(ROOT, "src/lib/xero/snapshot-refresh.server.ts"), "utf8");
+    expect(refresh).toContain('payrollSetting !== "registered"');
+    expect(refresh.indexOf('payrollSetting !== "registered"')).toBeLessThan(
+      refresh.indexOf("fetchReport(conn, report, budget)"),
+    );
+  });
+
+  it("treats only null cycles as missing in the client list", () => {
+    const list = readFileSync(join(ROOT, "src/components/admin/FirmClientsSection.tsx"), "utf8");
+    expect(list).toContain("c.gst_cycle == null");
+    expect(list).toContain("c.payg_withholding_cycle == null");
+    expect(list).not.toMatch(/missing(?:Gst|Payg)[^\n]*not_registered/);
+  });
+});

@@ -442,7 +442,7 @@ export async function computeGstReconciliation(
     const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
     const runs = supabase
       ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, clientId, conn })
-      : await fetchPayRuns(conn);
+      : await fetchPayRuns(conn, "registered");
     if (runs.status === "available") {
       const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
       paygPayroll = {

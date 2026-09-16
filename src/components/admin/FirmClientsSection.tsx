@@ -359,7 +359,7 @@ export function FirmClientsSection({
                         : null;
                   // Only a super admin may preview a tier the client is not on,
                   // and only within what the organisation's plan permits.
-                  const previewTiers = (isSuperAdmin ? enabledTiers : []).filter(
+                  const previewTiers = (isSuperAdmin && c.cardModelActive !== true ? enabledTiers : []).filter(
                     (t) => t !== effectiveTier,
                   );
 
@@ -472,13 +472,13 @@ export function FirmClientsSection({
                                   </DropdownMenuItem>
                                 </>
                               )}
-                              {[effectiveTier, ...previewTiers].map((t) =>
+                              {(c.cardModelActive === true ? [effectiveTier] : [effectiveTier, ...previewTiers]).map((t) =>
                                 canOpenClientData ? (
                                   <DropdownMenuItem
                                     key={`view-as-${t}`}
                                     onSelect={() => void startClientPreview(c.id, t as DashboardTier)}
                                   >
-                                    <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
+                                    <Eye className="mr-2 h-4 w-4" /> View as {c.cardModelActive === true ? "client" : `${labelFor(t)} client`}
                                     {t !== effectiveTier && (
                                       <span className="ml-1 text-xs text-muted-foreground">(preview)</span>
                                     )}

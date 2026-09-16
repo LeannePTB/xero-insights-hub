@@ -151,7 +151,7 @@ async function fetchReport(
     // the same budget so the per-run ceiling still holds.
     const { fetchPayRuns } = await import("./payroll.server");
     budget.spend();
-    const payload = await withSlot(() => fetchPayRuns(conn));
+    const payload = await withSlot(() => fetchPayRuns(conn, "registered"));
     // A read that could not be made is not a stored zero (invariant 8).
     if (payload.status === "unavailable") throw new Error(payload.reason);
     return { payload, truncated: payload.status === "available" && payload.truncated };

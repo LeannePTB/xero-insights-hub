@@ -59,7 +59,11 @@ const PAGE_SIZE = 100;
  * call per hundred pay runs, so three pages covers about eleven years of
  * fortnightly payroll.
  */
-export async function fetchPayRuns(conn: Connection, maxPages = 3): Promise<PayrollPayRuns> {
+export async function fetchPayRuns(
+  conn: Connection,
+  setting: "registered",
+  maxPages = 3,
+): Promise<PayrollPayRuns> {
   const { xeroGetPayroll, XeroScopeMissingError } = await import("./api.server");
   const out: PayRunSummary[] = [];
   let truncated = false;
@@ -121,7 +125,7 @@ export async function loadPayRuns(opts: {
     return { ...(hit.payload as PayrollPayRuns), fromSnapshot: true, fetchedAt: hit.source.fetchedAt };
   }
   const conn = opts.conn ?? (await (await import("./api.server")).getConnectionByTenant(opts.tenantId));
-  return { ...(await fetchPayRuns(conn)), fromSnapshot: false };
+  return { ...(await fetchPayRuns(conn, "registered")), fromSnapshot: false };
 }
 
 /** Pay runs whose PAYDAY falls inside the period. Payday is the BAS trigger. */
