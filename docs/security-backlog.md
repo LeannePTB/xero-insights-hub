@@ -1363,3 +1363,14 @@ functions newer than the generated file) defeats them.
 No access rule, policy, grant or column changed. Nothing was written by the
 failed attempts: every organisation still has all trial fields false and
 `trial_ends_at` null, and `audit_log` holds no `org_trial_set` row.
+
+## Cosmetic-trial guard on the purchase card (16 September 2026) — DONE
+Starting a trial on an organisation whose purchase already grants the same
+option produced a trial that granted nothing and expired with no effect. The
+trial editor now names the overlap and offers to clear the purchase in the same
+step. Both writes go through the existing aal2 + super-admin audited functions
+`public.set_org_purchase` and `public.set_org_trial` — no new function, policy,
+grant or column, and no new access path. Switching an option off changes no
+`client_cards` row (verified in the live function body), so per-client ticks
+survive and re-purchasing restores each client exactly. `bun run security:check`:
+106 passed, 18 live access tests, 0 failed.
