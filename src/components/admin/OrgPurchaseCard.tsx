@@ -419,6 +419,7 @@ function OrgTrialBlock({
                 mut.mutate({
                   advisory: tAdvisory,
                   consolidation: tConsolidation,
+                  branding: tBranding,
                   endsAt: endsAt || null,
                 })
               }
