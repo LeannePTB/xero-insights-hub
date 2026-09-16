@@ -93,16 +93,7 @@ export const getOrgPurchase = createServerFn({ method: "POST" })
     if (error) throw rpcError(error.message);
     const r = (rows ?? [])[0];
     if (!r) throw rpcError("Organisation not found");
-    const purchase: OrgPurchase = {
-      firmId: r.firm_id as string,
-      clientLimit: Number(r.client_limit ?? 0),
-      advisory: !!r.advisory_enabled,
-      consolidation: !!r.consolidation_enabled,
-      billingMode: (r.billing_mode === "external" ? "external" : "bookkeeping") as
-        | "bookkeeping"
-        | "external",
-      clientCount: Number(r.client_count ?? 0),
-    };
+    const purchase: OrgPurchase = mapPurchase(r);
     const { data: model } = await db.rpc("card_model_active");
     return { purchase, groups: await readGroups(db), modelActive: model === "v2" };
   });
