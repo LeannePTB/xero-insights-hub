@@ -11,7 +11,6 @@ import { recordViewAs } from "@/lib/view-as.functions";
 import { listClientVerdicts } from "@/lib/health/verdicts.functions";
 
 
-import type { DashboardTier } from "@/lib/tiers";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { Button } from "@/components/ui/button";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
@@ -105,7 +104,7 @@ export function FirmClientsSection({
   async function startClientPreview(clientId: string) {
     try {
       await recordPreview({ data: { firmId, clientId, mode: "client" } });
-      navigate({ to: "/clients/$clientId", params: { clientId }, search: { viewAs: "client" } });
+      navigate({ to: "/clients/$clientId", params: { clientId }, search: { viewAs: "basic" } });
     } catch (e: any) {
       toast.error(e?.message ?? "Could not start the preview.");
     }
@@ -159,7 +158,7 @@ export function FirmClientsSection({
           <div className="flex items-center gap-3">
             {atLimit && (
               <span className="text-xs text-muted-foreground">
-                Client limit reached — upgrade the plan to add more.
+                Client limit reached — increase the organisation&apos;s client allowance to add more.
               </span>
             )}
             <AddClientFromXeroButton firmId={firmId} disabled={atLimit} />
