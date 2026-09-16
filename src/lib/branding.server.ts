@@ -49,6 +49,24 @@ async function assertClientWriter(userId: string, clientId: string) {
   await assertClientWriteAccess(userId, clientId);
 }
 
+/**
+ * ENTITLEMENT gate for the per-client logo. Branding is a purchasable option on
+ * org_subscription_options; the rule lives in public.client_branding_enabled
+ * (aal2 + user_can_read_client + effective branding + not lapsed) and this only
+ * calls it. Never a grant: it narrows what an already-authorised caller may do.
+ */
+export async function clientBrandingEnabled(supabase: any, clientId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("client_branding_enabled", { _client_id: clientId });
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
+async function assertClientBranding(supabase: any, clientId: string) {
+  if (!(await clientBrandingEnabled(supabase, clientId))) {
+    throw new Error("Report branding is not part of this organisation's plan.");
+  }
+}
+
 async function upload(path: string, bytes: Uint8Array, contentType: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await (supabaseAdmin as any).storage
