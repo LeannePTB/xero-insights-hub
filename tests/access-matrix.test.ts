@@ -535,7 +535,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(
       `select public.set_org_trial('${org}'::uuid, true, false, now() + interval '30 days', 'matrix probe')`,
     );
-    if (!p.ok) console.log("SET_ORG_TRIAL_ERR:", p.error);
     return p.ok ? "allow" : "deny";
   }
   if (r === "purchased Advisory keeps its cards with no trial or an expired trial") {
