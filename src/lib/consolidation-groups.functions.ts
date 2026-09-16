@@ -50,16 +50,18 @@ async function assertFirmAccess(
     if (!allowed) throw new Error("You don't have access to this organisation.");
   }
 
-
   // Consolidation groups are part of the organisation-level consolidation
   // feature — the plan decides. Fails closed.
   const { assertFirmWidget } = await import("@/lib/widget-access.server");
   await assertFirmWidget(supabase, firmId, "loan_consolidation");
 }
 
-
 async function firmIdForGroup(admin: any, groupId: string): Promise<string> {
-  const { data } = await admin.from("consolidation_groups").select("firm_id").eq("id", groupId).maybeSingle();
+  const { data } = await admin
+    .from("consolidation_groups")
+    .select("firm_id")
+    .eq("id", groupId)
+    .maybeSingle();
   if (!data) throw new Error("Consolidation group not found.");
   return data.firm_id as string;
 }
@@ -68,27 +70,30 @@ export const listConsolidationGroups = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)
   .handler(async ({ data, context }): Promise<ConsolidationGroupsView> => {
-    await assertFirmAccess(context.supabase, context.userId, data.firmId, { allowSupportRead: true });
+    await assertFirmAccess(context.supabase, context.userId, data.firmId, {
+      allowSupportRead: true,
+    });
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [{ data: firm }, { data: options }, { data: clients }, { data: groups }] = await Promise.all([
-      supabaseAdmin.from("firms").select("id, name").eq("id", data.firmId).maybeSingle(),
-      supabaseAdmin
-        .from("org_subscription_options")
-        .select("client_limit")
-        .eq("firm_id", data.firmId)
-        .maybeSingle(),
-      supabaseAdmin
-        .from("clients")
-        .select("id, name, client_xero_orgs(xero_connections(tenant_name))")
-        .eq("firm_id", data.firmId)
-        .order("name"),
-      supabaseAdmin
-        .from("consolidation_groups")
-        .select("id, name, consolidation_group_members(client_id)")
-        .eq("firm_id", data.firmId)
-        .order("created_at"),
-    ]);
+    const [{ data: firm }, { data: options }, { data: clients }, { data: groups }] =
+      await Promise.all([
+        supabaseAdmin.from("firms").select("id, name").eq("id", data.firmId).maybeSingle(),
+        supabaseAdmin
+          .from("org_subscription_options")
+          .select("client_limit")
+          .eq("firm_id", data.firmId)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("clients")
+          .select("id, name, client_xero_orgs(xero_connections(tenant_name))")
+          .eq("firm_id", data.firmId)
+          .order("name"),
+        supabaseAdmin
+          .from("consolidation_groups")
+          .select("id, name, consolidation_group_members(client_id)")
+          .eq("firm_id", data.firmId)
+          .order("created_at"),
+      ]);
     if (!firm) throw new Error("Organisation not found.");
 
     const limit = Number((options as any)?.client_limit ?? 0);
@@ -119,7 +124,11 @@ export const listConsolidationGroups = createServerFn({ method: "POST" })
       clients: (g.consolidation_group_members ?? [])
         .map((m: any) => byId.get(m.client_id))
         .filter(Boolean)
-        .map((c: GroupClient) => ({ clientId: c.clientId, clientName: c.clientName, tenantNames: c.tenantNames })),
+        .map((c: GroupClient) => ({
+          clientId: c.clientId,
+          clientName: c.clientName,
+          tenantNames: c.tenantNames,
+        })),
     }));
 
     return {
@@ -170,7 +179,10 @@ export const saveConsolidationGroup = createServerFn({ method: "POST" })
     if (groupId) {
       const firmId = await firmIdForGroup(supabaseAdmin, groupId);
       if (firmId !== data.firmId) throw new Error("Consolidation group not found.");
-      const { error } = await supabaseAdmin.from("consolidation_groups").update({ name }).eq("id", groupId);
+      const { error } = await supabaseAdmin
+        .from("consolidation_groups")
+        .update({ name })
+        .eq("id", groupId);
       if (error) throw new Error(error.message);
       await supabaseAdmin.from("consolidation_group_members").delete().eq("group_id", groupId);
     } else {
@@ -184,7 +196,10 @@ export const saveConsolidationGroup = createServerFn({ method: "POST" })
     }
 
     // A client can only sit in one group, so clear any prior membership first.
-    await supabaseAdmin.from("consolidation_group_members").delete().in("client_id", data.clientIds);
+    await supabaseAdmin
+      .from("consolidation_group_members")
+      .delete()
+      .in("client_id", data.clientIds);
     const { error: memberError } = await supabaseAdmin
       .from("consolidation_group_members")
       .insert(data.clientIds.map((clientId) => ({ group_id: groupId!, client_id: clientId })));
@@ -200,7 +215,10 @@ export const deleteConsolidationGroup = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const firmId = await firmIdForGroup(supabaseAdmin, data.groupId);
     await assertFirmAccess(context.supabase, context.userId, firmId);
-    const { error } = await supabaseAdmin.from("consolidation_groups").delete().eq("id", data.groupId);
+    const { error } = await supabaseAdmin
+      .from("consolidation_groups")
+      .delete()
+      .eq("id", data.groupId);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -214,8 +232,15 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
     await assertFirmAccess(context.supabase, context.userId, firmId, { allowSupportRead: true });
 
     const [{ data: group }, { data: members }, { data: isSuperAdminRaw }] = await Promise.all([
-      supabaseAdmin.from("consolidation_groups").select("id, name").eq("id", data.groupId).maybeSingle(),
-      supabaseAdmin.from("consolidation_group_members").select("client_id").eq("group_id", data.groupId),
+      supabaseAdmin
+        .from("consolidation_groups")
+        .select("id, name")
+        .eq("id", data.groupId)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("consolidation_group_members")
+        .select("client_id")
+        .eq("group_id", data.groupId),
       (context.supabase as any).rpc("me_is_super_admin"),
     ]);
     const clientIds = ((members ?? []) as any[]).map((m) => m.client_id as string);
@@ -246,15 +271,16 @@ export const getConsolidationGroup = createServerFn({ method: "POST" })
       // them only while the organisation has granted support access.
       canSeeFigures: member ? true : isSuperAdmin ? grantActive : true,
 
-
-
       clients: ((clients ?? []) as any[]).map((c) => ({
         clientId: c.id as string,
         clientName: c.name as string,
         orgs: (c.client_xero_orgs ?? [])
           .map((o: any) => o?.xero_connections)
           .filter(Boolean)
-          .map((t: any) => ({ tenantId: t.tenant_id as string, tenantName: (t.tenant_name as string) ?? "Unknown" })),
+          .map((t: any) => ({
+            tenantId: t.tenant_id as string,
+            tenantName: (t.tenant_name as string) ?? "Unknown",
+          })),
       })),
     };
   });

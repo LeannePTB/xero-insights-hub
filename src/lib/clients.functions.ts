@@ -79,7 +79,6 @@ export const listClients = createServerFn({ method: "POST" })
       ) as Record<DashboardTier, WidgetKey[]>;
     }
 
-
     // Effective dashboard tier per client comes from public.client_entitlement,
     // read through the caller's session. It is never recomputed here, and any
     // failure resolves to Standard (fail closed) inside the helper.
@@ -117,7 +116,6 @@ export const listClients = createServerFn({ method: "POST" })
         healthByClient.set(c.id, false);
       }
     }
-
 
     const clients = (rows ?? []).map((c: any) => {
       const grantedTiers = Array.from(
@@ -334,11 +332,7 @@ export const createClient = createServerFn({ method: "POST" })
     const [{ data: firmRow }, { data: subRow }, { data: options }, { count: usedCount }] =
       await Promise.all([
         supabaseAdmin.from("firms").select("is_always_free").eq("id", firmId).maybeSingle(),
-        supabaseAdmin
-          .from("subscriptions")
-          .select("status")
-          .eq("firm_id", firmId)
-          .maybeSingle(),
+        supabaseAdmin.from("subscriptions").select("status").eq("firm_id", firmId).maybeSingle(),
         supabaseAdmin
           .from("org_subscription_options")
           .select("client_limit")
