@@ -346,6 +346,9 @@ export function FirmClientsSection({
                         <div className="space-y-2">
                           <span className="text-sm tabular-nums">
                             {c.visibleCardCount ?? 0} card{c.visibleCardCount === 1 ? "" : "s"} enabled
+                            {(c.pendingCardCount ?? 0) > 0
+                              ? ` · ${c.pendingCardCount} ticked, not built yet`
+                              : ""}
                           </span>
                           {canOpenClientData && missingLabel && (
                               <Link
