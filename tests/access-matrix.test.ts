@@ -540,7 +540,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
         (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
       values ('${ORG_B}'::uuid, 10, true, false, 'bookkeeping');
     `);
-    await applyContext(CONTEXT.super_admin_no_membership);
     const changed = await probe(
       `select public.set_org_trial('${ORG_B}'::uuid, true, false, false, now() + interval '30 days', 'matrix overlap conversion')`,
     );
