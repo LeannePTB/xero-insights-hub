@@ -1,56 +1,143 @@
-# Audit View As and remember payroll availability
+# Move trials to the organisation
 
-## Classification
+## Classification and current answer
 
-**SECURITY-RELEVANT.** View As touches impersonation, MFA, roles and audit records. Payroll capability touches Xero connection metadata and client-facing financial cards. No access path will be widened.
+**SECURITY-RELEVANT.** Trials change commercial entitlement and therefore which financial cards people may read. The change must preserve AAL2, database authorisation, tenant isolation, audit evidence, and the rule that `super_admin` alone grants no organisation or client-data access.
 
-## Current behaviour established before changes
+With `card_model_v2` active, the per-client trial is **inert for card visibility**:
 
-- **View As is audited now.** `public.record_view_as` checks AAL2, then super-admin status, then requires an existing active organisation membership; client previews additionally use the normal client-read predicate. Only after those checks does it write `audit_log.action = 'view_as_started'` with actor, organisation, optional client, mode and database time. It does not change identity, roles, membership or RLS, so `super_admin` alone still grants no organisation or client data.
-- The live audit log currently contains **zero** `view_as_started` rows. Earlier View As was only a URL filter and was not audited, so there is no record of any use before the audited control was introduced.
-- The screen already shows a sticky amber **VIEWING AS** banner with an **Exit preview** control.
-- Payroll calls currently key only off granted OAuth scopes. All affected files have the payroll scope string even when the Xero organisation has no payroll product/access, so the nightly refresh and live fallback keep trying `Payroll/PayRuns`.
-- A payroll 401 is treated as a possibly expired token: the shared helper refreshes the token and retries once. A 429 also retries once. Separate dashboard/card/capability/manual-refresh requests have separate request-local memoisation, so repeated invocations can each issue their own initial call and retry. That is how development activity produced the 24-call burst; the nightly job then repeated one failed report per affected file each day.
+- The live card gate (`client_visible_cards`, `client_allowed_widgets`, and direct widget access) uses the organisation purchase from `org_subscription_options`, intersected with each client’s stored ticks.
+- The v2 availability function does not read `client_subscriptions` or `client_entitlement`; it reads purchased Advisory/Consolidation and the organisation’s lapsed billing state.
+- `client_entitlement` still evaluates each old client trial at read time and falls back to Standard after expiry. Remaining legacy display and upgrade code can therefore change labels or recommendations, but it does not remove cards under v2.
+- DRTABT Projects currently has purchased Advisory **on**, purchased Consolidation **on**, and an active organisation subscription. Therefore the old client trials ending will not remove its cards.
+- Live data contains nine DRTABT client trial rows, but it does **not** contain one uniform date: eight end on **6 December 2026** and `X16 X17 & X18 Enterprises Pty Ltd` ends on **14 October 2026**. Neither expiry currently changes v2 card access.
 
-## Corrected implementation
+So, on 6 December, the eight old entitlement rows fall back to Standard metadata on their next read, but DRTABT’s cards remain available from the organisation purchase. This is “something in between”: no card loss, but stale legacy labels/readers can disagree with the real card model until removed from active v2 presentation.
 
-The owner correction supersedes capability-first discovery: the client’s existing PAYG setting is authoritative for whether payroll may be queried. Persisted refusal state remains only as a fallback when a client marked registered is refused by Xero.
+## Proposed organisation trial model
 
-### 1. Preserve and strengthen View As evidence
+### Storage: purchased and trialled remain separate
 
-- Keep the existing database function and its AAL2, super-admin, existing-membership, same-organisation and normal client-read checks unchanged.
-- Expand matrix coverage so staff, support-grant holders, external advisers, business owners/owners, AAL1 sessions and super admins without membership are explicitly refused; prove an eligible super-admin member succeeds and that exactly one audit row is written with no client data in `meta`.
-- Keep the existing obvious banner and Exit preview control. No authorisation or visibility change.
+Add nullable trial fields to `org_subscription_options` without deleting or repurposing existing fields:
 
-### 2. Honour the client setting before every payroll path
+- `trial_advisory_enabled boolean not null default false`
+- `trial_consolidation_enabled boolean not null default false`
+- `trial_ends_at timestamptz null`
 
-- Centralise a server-side payroll gate that resolves the client linked to the connection; caller-provided IDs remain filters, never grants.
-- If `payg_withholding_cycle = not_registered`, make no payroll call. If it is null, also make no payroll call and return `setting_required`: null means “we do not know”, never permission to guess.
-- Apply the gate to every path found: nightly/manual/first-link snapshots, file-capability reads, PAYG card reads, superannuation card reads, and GST reconciliation’s optional PAYG calculation.
-- The GST card itself already avoids calls when `gst_cycle = not_registered`; confirm and retain that behavior. Tighten its server function too so a direct request cannot bypass the screen-level gate. Null GST remains its existing explicit setup-needed state.
+The existing `advisory_enabled` and `consolidation_enabled` remain the purchased facts. Trial fields never overwrite them.
 
-### 3. Persist payroll refusal as a fallback
+Create one database resolver for effective organisation options:
 
-- Add connection metadata fields for payroll access: `unknown`, `available`, or `unavailable`, plus checked time and a non-sensitive status/reason. Tokens and payroll payloads are never stored there.
-- A successful PayRuns response records `available`. A definitive 401/403 records `unavailable`, immediately stops the payroll request, and does not change the accounting connection’s connected status.
-- Skip known-unavailable connections until a **7-day** recheck is due. This finds newly enabled payroll within a week without repeating a known refusal every night. A successful reconnect resets it to `unknown` for immediate re-check.
-- Remove the payroll-specific 401 replay. Tokens are already refreshed before calls when near expiry; replaying a refused payroll request doubled failures and allowed concurrent/ repeated page requests to amplify the incident.
+```text
+effective Advisory = purchased Advisory
+                  OR (trial Advisory AND trial_ends_at > database now)
 
-### 4. Show explicit card states
+effective Consolidation = purchased Consolidation
+                       OR (trial Consolidation AND trial_ends_at > database now)
+```
 
-- Keep PAYG withholding and superannuation cards visible when purchased and ticked.
-- For a file known to lack payroll, show a clear neutral message: **“This Xero file does not have payroll, so payroll figures are not available.”** Do not show zero, an error/retry prompt, or silently hide the cards.
-- Balance-sheet information may still render where meaningful, but payroll-derived explanations/monthly figures use the explicit unavailable state.
+The resolver will:
 
-### 5. Burst protection and verification
+- evaluate expiry on every read; no scheduled expiry job;
+- enforce that effective Consolidation requires effective Advisory;
+- return purchased, trialled, effective, end date, active/ending-soon state separately;
+- cap trial grants to the known purchasable Advisory and Consolidation groups only;
+- resolve the organisation from the client in the database, so a caller ID is never a grant;
+- retain the existing organisation-lapsed billing check as the final cap.
 
-- Keep Xero’s normal rate-limit telemetry and add tests proving unregistered/unset clients make no payroll call, and a known payroll-unavailable file makes no call before the seven-day recheck.
-- Verify the hourly posture check still raises Action above 300 calls per file in an hour. Note: its telemetry began after the 8 September incident, so historical rows cannot retroactively populate that counter; the same pattern now would be counted on every response and caught within the hour once it crosses 300.
-- Run `bun run security:check`, verify the access-matrix fingerprint and totals, run the database linter and `public.security_posture()`, and update the security backlog with the root cause, interval decision, card behaviour and evidence.
+Update the single v2 card-availability implementation to use the effective resolver. Card visibility remains:
 
-## Security invariants
+```text
+effective organisation options ∩ stored per-client ticks
+```
 
-- View As remains a presentation filter only; `super_admin` alone grants zero organisation/client access.
-- No support, adviser, staff or business-owner access changes.
-- Xero tokens and payroll data remain server-only; capability metadata contains no payroll payload or personal information.
-- `audit_log` receives only the View As security event, never Xero operational telemetry.
+Expiry therefore hides trial-only Advisory/Consolidation cards on the next request while leaving every `client_cards.cards` value untouched. Purchasing later restores each client’s remembered selection.
+
+`client_entitlement` and the old client subscription rows remain unchanged for the v1 rollback path. Active v2 code will no longer use them to describe trials or card state.
+
+## Trial administration, audit, and owner experience
+
+Add one caller-scoped database function for starting, extending, changing, or ending an organisation trial. It will:
+
+- assert AAL2 first;
+- require `super_admin` in the database;
+- require a non-empty reason;
+- verify the organisation exists and update only that organisation;
+- reject Consolidation without Advisory;
+- reject unknown grant types and invalid/past end dates for starts/extensions;
+- write one append-only `audit_log` event with actor, organisation, action time, reason, previous trial fields, new trial fields, and end date—no client or financial data;
+- leave purchased fields unchanged unless the separately approved DRTABT migration explicitly reclassifies the existing backfill.
+
+Expose this through the existing organisation purchase editor, not client settings. Show purchased and trialled state as distinct controls/readouts so “what is paid for?” remains answerable.
+
+On the Organisations list:
+
+- show `Trial: Advisory` or `Trial: Advisory + Consolidation` with the exact end date;
+- show an amber “ends in N days” warning during the final 14 days;
+- distinguish trial-granted options from purchased options rather than simply saying “on”;
+- stop showing expired trials as active; retain history in the audit log.
+
+Remove per-client trial controls and trial labels from active v2 screens. Keep the old controls and `set_client_trial` available only when the v1 switch is active, clearly labelled legacy, so rollback remains possible. Do not delete or rewrite `client_subscriptions`.
+
+## Migration and rollback
+
+Before migration, record and assert:
+
+- all DRTABT purchase, client-trial, and per-client tick values;
+- the 56 consolidation account mappings, 9 group members, 1 group, and 1 snapshot;
+- current effective and visible-card counts for every DRTABT client.
+
+Then, in one reversible migration:
+
+1. Add the organisation trial fields and effective resolver.
+2. Backfill DRTABT Projects with an Advisory + Consolidation organisation trial ending **6 December 2026**, as directed by the owner.
+3. Leave all nine per-client trial rows untouched, including the one currently ending 14 October.
+4. Switch v2 card reads to effective purchased-or-trialled options.
+5. Assert every client’s visible-card count and all protected consolidation counts are unchanged immediately after migration.
+
+The migration needs an explicit commercial classification for DRTABT’s existing `advisory_enabled=true` and `consolidation_enabled=true` values:
+
+- **Recommended:** treat those values as the earlier migration’s representation of the trial, set the purchased flags to false while setting matching trial flags true in the same transaction. Effective access remains unchanged until 6 December; after that, trial-only cards become unavailable as intended.
+- **Safer but semantically inert alternative:** leave purchased flags true and add the trial flags. Nothing changes on 6 December because `purchased OR trialled` remains true. This preserves current storage but does not create a meaningful trial.
+
+Because changing purchased flags is a commercial-data correction, implementation will stop unless approval of this plan is taken as approval of the recommended reclassification. No payment, Stripe, invoicing, or pricing work is included.
+
+Rollback restores the previous v2 resolver and DRTABT purchased flags while leaving additive columns and legacy client rows intact. The `card_model_v2` switch can still return to v1.
+
+## Verification and matrix evidence
+
+Add matrix and regression cases proving:
+
+- an authorised member of a trialled organisation sees its trialled Advisory cards;
+- trialled Consolidation is available only for the same organisation, with Advisory, and where consolidation is meaningful;
+- immediately after database-time expiry, trial-only cards are denied through list reads, direct widget assertions, reports, and saved/direct routes;
+- purchased options survive trial expiry;
+- per-client ticks are byte-for-byte unchanged through start, extension, end, and expiry, and restore on later purchase;
+- no client or other organisation is affected;
+- only an AAL2 super admin can start, extend, change, or end a trial; AAL1, staff, support, advisers, business owners, organisation owners, and unrelated super admins cannot;
+- each accepted change creates exactly one audit row with actor, organisation, reason, before/after state, and database time;
+- direct table writes remain denied;
+- v1 behaviour remains available when the switch is off.
+
+Run the full security check, live posture, linter, access matrix, typecheck, and targeted expiry-boundary tests. Update the access-control specification, function register, security backlog, and owner-facing model documentation in the same change.
+
+## Plan conclusion
+
+### What a trial does today and what happens on 6 December
+
+The old per-client trials still change `client_entitlement` metadata and legacy labels, but they do not control v2 cards. Eight DRTABT trials lapse on 6 December; one lapses on 14 October. DRTABT’s purchased Advisory and Consolidation currently keep all eligible cards available, so 6 December will not silently remove cards today.
+
+### The new shape
+
+Store purchased and trialled Advisory/Consolidation separately on `org_subscription_options`; resolve effective state as purchased OR unexpired trial at read time; keep organisation lapse as a cap; preserve per-client ticks when trial-only cards become unavailable.
+
+### The migration
+
+Create one DRTABT organisation trial for Advisory + Consolidation ending 6 December 2026, leave all nine client rows intact, preserve every tick and consolidation record, and assert before/after card counts. Remove client trial controls from active v2 presentation while retaining the legacy path for switch-off rollback.
+
+### Owner decisions with recommendation
+
+1. **DRTABT purchase classification:** recommend reclassifying its current Advisory/Consolidation flags from purchased to trialled in the same transaction; otherwise the new trial will expire without effect.
+2. **Warning window:** recommend amber warnings from 14 days before expiry, with the exact date visible from trial start.
+3. **Maximum duration:** recommend retaining the existing 120-day maximum unless the owner approves a different commercial limit.
+4. **Legacy controls:** recommend hiding them entirely while v2 is active and exposing them only in clearly marked v1 rollback mode.
