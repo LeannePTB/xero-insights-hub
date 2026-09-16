@@ -35,10 +35,24 @@ import { SecurityPostureCard } from "@/components/admin/SecurityPostureCard";
 import { AuditMonitoringCard } from "@/components/admin/AuditMonitoringCard";
 import { XeroErrorBreakdownCard } from "@/components/admin/XeroErrorBreakdownCard";
 import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
-import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 
 export const Route = createFileRoute("/_authenticated/admin/security")({
-  head: () => ({ meta: [{ title: "Security & Compliance · Admin" }] }),
+  head: () => ({
+    meta: [
+      { title: "Security & Compliance — Traction Advisory" },
+      {
+        name: "description",
+        content: "Review Traction Advisory security posture, monitoring and compliance records.",
+      },
+      { property: "og:title", content: "Security & Compliance — Traction Advisory" },
+      {
+        property: "og:description",
+        content: "Review Traction Advisory security posture, monitoring and compliance records.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: SecurityDocsPage,
 });
 
@@ -236,10 +250,7 @@ function SecurityDocsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-semibold">Security &amp; Compliance</h1>
-        {isSuper && <SuperAdminBadge />}
-      </div>
+      <h1 className="text-2xl font-semibold">Security &amp; Compliance</h1>
 
 
       <div className="flex items-start justify-between gap-4 flex-wrap">

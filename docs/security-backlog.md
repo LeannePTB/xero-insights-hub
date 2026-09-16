@@ -1122,8 +1122,8 @@ accepted self-guarded definer set, now including the five functions above.
 old per-client tier (`plan_levels` / `client_entitlement`), which no longer
 decides anything under `card_model_v2`. It now reads
 `public.org_purchase(firm_id)` — client limit, Advisory on/off, Consolidation
-on/off, billing mode — with the billing plan name kept only as a subtitle. The
-legacy tier line still shows while the old model is live.
+on/off and billing mode. The obsolete `plan_levels` name is not shown while the
+new model is live. The legacy tier line still shows while the old model is live.
 
 **View As was a defect.** It was a URL query parameter (`?viewAs=`) read by the
 firm and client pages — a UI filter, with no server check of its own beyond the
@@ -1143,17 +1143,26 @@ Matrix rows added for `record_view_as` (deny: super admin with no membership,
 organisation owner, aal1 member, client viewer) and for
 `xero_error_breakdown()` (allow: super admin, path C metadata; deny: owner).
 
-**Xero failures moved.** The "N errors (7 days)" count is out of the
-Organisations row (the "N OK" connection count stays — that is capacity). New
-super-admin-only `public.xero_error_breakdown(_days)` (aal2 + super admin,
-status codes / endpoints / counts only, no payloads) feeds a per-organisation,
-per-Xero-file card in Security & compliance.
+**Xero moved.** The entire Xero column, connection-health count and Xero-file
+capacity line are out of the Organisations table. Xero health and failures live
+on the dedicated Xero and Security & compliance screens. The super-admin-only
+`public.xero_error_breakdown(_days)` (aal2 + super admin, status codes /
+endpoints / counts only, no payloads) feeds a per-organisation, per-Xero-file
+card in Security & compliance.
+
+**Presentation correction, 16 Sep 2026.** `Plan & members`, `Clients` and the
+super-admin-only `View As` control are visible directly in every organisation
+row; they are no longer hidden in an overflow menu. The Security & compliance
+page and Xero request-allowance card no longer repeat the Super Admin badge or
+audience tint. No visibility, database guard or authorisation rule changed;
+severity colour remains reserved for Action and Warn states.
 
 **Stale screens found and marked legacy:** `/settings/tiers` (edits
 `tier_widget_config`, which no longer gates cards; tier names remain viewer
 labels) and `ClientDashboardTierControl` (dashboard tier is now only a label).
 `admin-plan-usage.server.ts` still counts per-client `client_entitlement` tiers
-— now shown only as the legacy subtitle.
+for legacy-mode fallback and capacity calculations, but its plan name is not
+shown while `card_model_v2` is active.
 
 **Two posture Actions from the earlier card-model batches closed in the same
 change:** `org_subscription_options` and `client_cards` were missing the
@@ -1170,6 +1179,15 @@ bf72506f2bb6218ec18a85299aedd71df714aeb8664c602e07b2877ed1c3c7d7, 1600 matrix
 rows / 1515 proved (0 failed), 95 tests passed, live access 18 passed / 0
 failed. Typecheck clean. Not verified: authenticated browser screenshots — the
 minted test session cannot pass the MFA gate.
+
+**Presentation-only correction verified 16 Sep 2026:** no authorisation or
+visibility code changed. Live `record_view_as` still calls `assert_aal2()` then
+`assert_super_admin()`, requires an existing active organisation membership,
+and inserts `view_as_started` with actor, organisation, optional client, mode
+and time before navigation. `bun run security:check`: fingerprint unchanged at
+`28d4211f347db410d39b53cdacc6fdf7412552dd8af0b235e69d5212865ce4a6`, 1600
+matrix rows / 1515 proved (0 failed), 97 tests passed, live access 18 passed / 0
+failed. Database linter unchanged: 109 findings in the same two accepted types.
 
 ## 58. Posture checks built but never wired in (found and fixed 16 Sep 2026)
 

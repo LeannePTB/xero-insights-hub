@@ -9,7 +9,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Badge } from "@/components/ui/badge";
-import { SuperAdminSection } from "@/components/admin/SuperAdminOnly";
+import { Card, CardContent } from "@/components/ui/card";
 import { listXeroRateLimits } from "@/lib/xero-rate-limits.functions";
 
 // Xero's published per-organisation limits, used only to show a remaining
@@ -42,8 +42,10 @@ export function XeroUsageCard() {
   const today = new Date().toISOString().slice(0, 10);
 
   return (
-    <SuperAdminSection title="Xero request allowance">
-      <div className="px-3 pb-3">
+    <Card>
+      <CardContent className="space-y-4 p-6">
+        <div>
+          <h2 className="text-lg font-semibold">Xero request allowance</h2>
         <p className="mb-3 text-xs text-muted-foreground">
           What Xero itself reports as remaining for each connected file — {DAY_LIMIT.toLocaleString()}{" "}
           requests a day and {MINUTE_LIMIT} a minute per file. The lowest point reached is shown, not
@@ -51,6 +53,7 @@ export function XeroUsageCard() {
           {BURST_LIMIT.toLocaleString()} requests for one file in an hour usually means something is
           looping.
         </p>
+        </div>
 
         {q.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {q.error && (
@@ -120,7 +123,7 @@ export function XeroUsageCard() {
             })}
           </ul>
         )}
-      </div>
-    </SuperAdminSection>
+      </CardContent>
+    </Card>
   );
 }
