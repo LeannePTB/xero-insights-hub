@@ -282,7 +282,11 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.card_group_list":
     "Returns the card groupings (Standard, Advisory, Consolidation) for the configuration screens so the grouping is never mirrored in TypeScript. aal2-guarded, holds no client, organisation or personal data.",
   "public.org_purchase":
-    "Returns one organisation's purchase options (client number, Advisory, Consolidation, billing mode) and its client count for the admin and organisation settings screens. aal2 first, then refuses unless the caller is a member of that organisation, platform staff with a path to it, or a super admin reading plan metadata (Path C). No client or Xero data.",
+    "Returns one organisation's purchase options (client number, Advisory, Consolidation, billing mode), its trial options and end date, its effective options (purchased OR unexpired trial) and its client count for the admin and organisation settings screens. aal2 first, then refuses unless the caller is a member of that organisation, platform staff with a path to it, or a super admin reading plan metadata (Path C). No client or Xero data.",
+  "app_private.org_effective_options":
+    "Resolves one organisation's effective options at read time as purchased OR unexpired trial, keeping the two stored separately so an expiring trial reverts to exactly what was bought and can never remove a purchase. Execute revoked from PUBLIC, anon and authenticated: it is only reachable from app_private.client_available_cards and public.org_purchase, both of which have already authorised the caller. Holds no authorisation of its own and returns no client data.",
+  "public.set_org_trial":
+    "Starts, extends or ends an organisation trial of Advisory (and Consolidation, refused without Advisory). aal2 + super admin via public.assert_super_admin, a written reason required, end date must be in the future and at most 120 days out, and every accepted change is audited with the previous and new state. It never touches the purchased flags and never rewrites any client's ticked card list, so ending a trial restores the purchase exactly. Grants access to nothing and reads no client data.",
   "public.record_view_as":
     "Records that a platform super admin previewed an organisation or client dashboard: aal2, super admin, and an access path already held. Never a grant.",
   "public.xero_error_breakdown":
