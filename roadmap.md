@@ -129,3 +129,5 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Organisation trial state visible on the purchase editor and Organisations list, with a 14-day amber warning and the exact end date.
 - [x] Remove legacy trial labels from active v2 screens entirely rather than correcting dates; legacy per-client trial controls only in v1 rollback.
 - [x] Matrix row proving purchased Advisory with a null or expired trial keeps its cards; plus trial-grant, expiry and tick-preservation rows.
+
+- [x] Branding is a fourth purchasable option (16 Sep 2026): tick on the organisation purchase card, requires Advisory, gates the per-client report logo. Organisation logo stays free. Logos hidden, never deleted.
