@@ -12,12 +12,8 @@ import { WIDGET_LABEL, toggleableWidgets, widgetKeyGroup, type WidgetKey } from 
 /**
  * Per-client card toggles.
  *
- * The list is the cards in this client's effective tier; the current state
- * comes from public.client_allowed_widgets. Every write goes through
- * public.set_client_widget_enabled. Exclusions resolve platform ->
- * organisation -> client, each only adding to the deny list, so a card the
- * organisation has switched off cannot be switched back on here — those rows
- * are shown without a working switch instead.
+ * The v2 path delegates to the purchase + per-client card editor. The
+ * deny-list implementation below remains solely for rollback to v1.
  */
 export function ClientCardsPanel({
   clientId,
@@ -91,7 +87,7 @@ export function ClientCardsPanel({
       }
       await Promise.all([
         qc.invalidateQueries({ queryKey: ["client-widget-matrix", clientId] }),
-        // The dashboard reads ["client-widgets", clientId, <preview tier>].
+        // Retained v1 cache keys for rollback only.
         qc.invalidateQueries({ queryKey: ["client-widgets", clientId] }),
         qc.invalidateQueries({ queryKey: ["effective-widgets", clientId] }),
         qc.invalidateQueries({ queryKey: ["tier-config"] }),

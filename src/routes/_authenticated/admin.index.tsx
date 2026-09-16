@@ -198,7 +198,7 @@ function OrganisationsSection({
   );
 
   // What each organisation has actually bought (org_subscription_options via
-  // public.org_purchase). This — not the per-client dashboard tiers — is what
+  // public.org_purchase). This is what
   // decides cards while the purchase + ticked-list model is live.
   const fetchPurchases = useServerFn(listOrgPurchases);
   const purchasesQ = useQuery({
@@ -426,10 +426,8 @@ function abnormalStatus(state: SubscriptionState | undefined, status: string | n
  *
  * Under the purchase + ticked-list model this reads org_subscription_options
  * (through public.org_purchase) and nothing else. The old line here counted
- * per-client dashboard tiers, which stopped deciding anything when the model
- * went live — it was describing a system no longer in use, which is worse than
- * showing nothing. The legacy dashboard-tier line is kept only while the old
- * model is still the live one.
+ * legacy per-client settings, which stopped deciding anything when the model
+ * went live.
  */
 function PlanCell({
   usage,
