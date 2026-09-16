@@ -1115,7 +1115,25 @@ export const MATRIX: MatrixRow[] = [
     expect: "deny",
     rule: "PK 5 (support grants are READ-ONLY)",
     layers: ["live"],
-    note: "branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant.",
+    note: "branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. The Branding entitlement gate added on top narrows further and never widens: assertClientWriter still runs first.",
+  },
+  {
+    role: "firm_staff",
+    resource: "server fn: set a client logo when the organisation has not bought Branding",
+    operation: "execute",
+    expect: "deny",
+    rule: "Spec §5 — Branding is a purchasable option; an entitlement is never a grant",
+    layers: ["live"],
+    note: "setClientLogo calls public.client_branding_enabled (aal2 + user_can_read_client + effective branding + NOT lapsed) after the write gate. A direct upload call is refused, and getClientLogo returns no path or signed URL, so an existing report link cannot render the logo either.",
+  },
+  {
+    role: "firm_staff",
+    resource: "server fn: set a client logo when the organisation has bought Branding",
+    operation: "execute",
+    expect: "allow",
+    rule: "Path A — membership writes within its own organisation",
+    layers: ["live"],
+    note: "With effective branding on (purchased OR unexpired trial that explicitly includes Branding) and the organisation not lapsed, an active member may upload, replace and clear the client logo. Switching Branding off hides the logo; storage and clients.logo_path are untouched, so it returns when Branding comes back.",
   },
   // ------------------------------------------- invitations and ownership (People)
   {
