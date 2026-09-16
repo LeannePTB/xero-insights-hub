@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ImageUp, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  getClientBrandingEnabled,
   getClientLogoUrl,
   getOrganisationLogoUrl,
   removeClientLogo,
