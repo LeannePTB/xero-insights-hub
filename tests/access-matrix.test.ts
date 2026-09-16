@@ -601,7 +601,11 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       };
     };
     await db.exec("set local role postgres");
+    // The fixture copies columns only, so the real function's upsert needs the
+    // live unique key on firm_id. Created inside the rolled-back transaction.
     await db.exec(`
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
       delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
       insert into public.client_cards (client_id, cards)
       values ('${CLIENT_A}'::uuid, array['cashflow','loan_consolidation']);
