@@ -15,7 +15,7 @@ import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { PeopleSection } from "@/components/people/PeopleSection";
 import { Button } from "@/components/ui/button";
-import { getFirmSubscription } from "@/lib/firm-subscription.functions";
+import { getFirmSettingsSummary } from "@/lib/firm-subscription.functions";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings")({
   head: () => ({
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/settings")({
 function FirmSettingsPage() {
   const { firmId } = Route.useParams();
   const navigate = useNavigate();
-  const fetchSub = useServerFn(getFirmSubscription);
+  const fetchSub = useServerFn(getFirmSettingsSummary);
   const q = useQuery({
     queryKey: ["firm-subscription", firmId],
     queryFn: () => fetchSub({ data: { firmId } }),
