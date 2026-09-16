@@ -525,14 +525,7 @@ function OptionPill({ on, label, offNote }: { on: boolean; label: string; offNot
 
 function CapacityCell({ usage }: { usage: OrganisationUsage | undefined }) {
   return (
-    <div className="leading-tight space-y-0.5">
-      <div>
-        <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} unit="clients" />
-      </div>
-      <div className="text-xs">
-        {usage?.clientsUsed === 1 ? "client in use" : "clients in use"}
-      </div>
-    </div>
+    <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} unit="clients" />
   );
 }
 
