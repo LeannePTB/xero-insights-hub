@@ -93,7 +93,10 @@ export async function setupChecklists(
 
   const [clientsRes, statutoryRes, countsRes] = await Promise.all([
     supabase.from("clients").select(CLIENT_COLUMNS).in("id", clientIds),
-    supabase.from("client_statutory_accounts").select("client_id, category").in("client_id", clientIds),
+    supabase
+      .from("client_statutory_accounts")
+      .select("client_id, category")
+      .in("client_id", clientIds),
     supabase.rpc("client_setup_account_counts", { _client_ids: clientIds }),
   ]);
   if (clientsRes.error) throw new Error(clientsRes.error.message);

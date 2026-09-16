@@ -132,7 +132,6 @@ function ClientSettings() {
       .map((c) => [c.tenantId, c.missingScopes] as [string, string[]]),
   );
 
-
   const [name, setName] = useState("");
   const [selectedXeroIds, setSelectedXeroIds] = useState<Set<string>>(new Set());
   const [xeroAllowance, setXeroAllowance] = useState(1);
@@ -433,7 +432,9 @@ function ClientSettings() {
             {allowance ? (
               <p className="pb-2 text-xs text-muted-foreground">
                 {allowance.used} of {allowance.allowance} linked
-                {allowance.isMulti ? ` · allowance ${allowance.allowance} Xero files` : " · single Xero file"}
+                {allowance.isMulti
+                  ? ` · allowance ${allowance.allowance} Xero files`
+                  : " · single Xero file"}
               </p>
             ) : null}
           </div>
@@ -567,8 +568,8 @@ function ClientSettings() {
           )}
           {chooserState && availableConns.length > 0 && (allowance?.remaining ?? 0) < 1 && (
             <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-              This client is using {allowance?.used ?? 0} of {allowance?.allowance ?? 0} allowed Xero
-              file{(allowance?.allowance ?? 0) === 1 ? "" : "s"}, so no more can be linked.
+              This client is using {allowance?.used ?? 0} of {allowance?.allowance ?? 0} allowed
+              Xero file{(allowance?.allowance ?? 0) === 1 ? "" : "s"}, so no more can be linked.
             </p>
           )}
           {chooserState && availableConns.length > 0 && (allowance?.remaining ?? 0) >= 1 && (

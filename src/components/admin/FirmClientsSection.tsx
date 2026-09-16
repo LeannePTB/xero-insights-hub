@@ -3,13 +3,21 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { AlertTriangle, Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import {
+  AlertTriangle,
+  Building2,
+  ChevronRight,
+  Eye,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { listClients, deleteClient, getClientRemovalImpact } from "@/lib/clients.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { recordViewAs } from "@/lib/view-as.functions";
 import { listClientVerdicts } from "@/lib/health/verdicts.functions";
-
 
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { Button } from "@/components/ui/button";
@@ -81,7 +89,6 @@ export function FirmClientsSection({
       ? impactNames[0]
       : `${impactNames.slice(0, -1).join(", ")} and ${impactNames[impactNames.length - 1]}`;
 
-
   const supportQ = useQuery({
     queryKey: ["support-access", firmId],
     queryFn: () => fetchSupportAccess({ data: { firmId } }),
@@ -92,9 +99,6 @@ export function FirmClientsSection({
   const fetchMyContext = useServerFn(getMyContext);
   const meQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
   const isSuperAdmin = !!meQ.data?.isSuperAdmin;
-
-
-
 
   // Previewing a client's dashboard is recorded before it opens. The database
   // function is the control (aal2 + platform super admin + an access path this
@@ -158,13 +162,16 @@ export function FirmClientsSection({
           <div className="flex items-center gap-3">
             {atLimit && (
               <span className="text-xs text-muted-foreground">
-                Client limit reached — increase the organisation&apos;s client allowance to add more.
+                Client limit reached — increase the organisation&apos;s client allowance to add
+                more.
               </span>
             )}
             <AddClientFromXeroButton firmId={firmId} disabled={atLimit} />
             <Button variant="outline" asChild={!atLimit} disabled={atLimit}>
               {atLimit ? (
-                <span><Plus className="mr-2 h-4 w-4" /> New client</span>
+                <span>
+                  <Plus className="mr-2 h-4 w-4" /> New client
+                </span>
               ) : (
                 <Link to="/clients/new" search={{ firmId } as any}>
                   <Plus className="mr-2 h-4 w-4" /> New client
@@ -208,12 +215,10 @@ export function FirmClientsSection({
                   <p>
                     {nameList}{" "}
                     {impactNames.length === 1 ? "has loan accounts" : "have loan accounts"} matched
-                    to this client. Removing it leaves those loans unmatched in their
-                    consolidation.
+                    to this client. Removing it leaves those loans unmatched in their consolidation.
                   </p>
                 )}
               </div>
-
             </DialogDescription>
           </DialogHeader>
 
@@ -236,7 +241,9 @@ export function FirmClientsSection({
           </label>
 
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => setPendingDelete(null)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setPendingDelete(null)}>
+              Cancel
+            </Button>
             <Button
               variant="destructive"
               disabled={deleteMut.isPending}
@@ -320,13 +327,16 @@ export function FirmClientsSection({
                           {tenantNames || "No Xero org linked"}
                         </div>
                         {canOpenClientData && showHealth && c.healthAllowed && (
-                            <ClientHealthBadge verdict={verdictsQ.data?.verdicts?.[c.id]} />
-                          )}
+                          <ClientHealthBadge verdict={verdictsQ.data?.verdicts?.[c.id]} />
+                        )}
                       </div>
                     </>
                   );
                   return (
-                    <tr key={c.id} className="border-t border-border/60 hover:bg-muted/30 transition-colors">
+                    <tr
+                      key={c.id}
+                      className="border-t border-border/60 hover:bg-muted/30 transition-colors"
+                    >
                       <td className="px-5 py-4">
                         {canOpenClientData ? (
                           <Link
@@ -340,27 +350,27 @@ export function FirmClientsSection({
                         ) : (
                           <div className="flex items-center gap-3">{nameBlock}</div>
                         )}
-
                       </td>
                       <td className="px-5 py-4">
                         <div className="space-y-2">
                           <span className="text-sm tabular-nums">
-                            {c.visibleCardCount ?? 0} card{c.visibleCardCount === 1 ? "" : "s"} enabled
+                            {c.visibleCardCount ?? 0} card{c.visibleCardCount === 1 ? "" : "s"}{" "}
+                            enabled
                             {(c.pendingCardCount ?? 0) > 0
                               ? ` · ${c.pendingCardCount} ticked, not built yet`
                               : ""}
                           </span>
                           {canOpenClientData && missingLabel && (
-                              <Link
-                                to="/clients/$clientId/settings"
-                                params={{ clientId: c.id }}
-                                hash="setup"
-                                title={setupTitles.join(" · ")}
-                                className="flex w-fit items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <AlertTriangle className="h-3 w-3" /> {missingLabel}
-                              </Link>
+                            <Link
+                              to="/clients/$clientId/settings"
+                              params={{ clientId: c.id }}
+                              hash="setup"
+                              title={setupTitles.join(" · ")}
+                              className="flex w-fit items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <AlertTriangle className="h-3 w-3" /> {missingLabel}
+                            </Link>
                           )}
                         </div>
                       </td>
@@ -379,7 +389,12 @@ export function FirmClientsSection({
                           )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Actions for ${c.name}`}>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label={`Actions for ${c.name}`}
+                              >
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -387,21 +402,31 @@ export function FirmClientsSection({
                               {canOpenClientData && (
                                 <>
                                   <DropdownMenuItem asChild>
-                                    <Link to="/clients/$clientId" params={{ clientId: c.id }}>Open</Link>
+                                    <Link to="/clients/$clientId" params={{ clientId: c.id }}>
+                                      Open
+                                    </Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem asChild>
-                                    <Link to="/clients/$clientId/settings" params={{ clientId: c.id }}>Client settings</Link>
+                                    <Link
+                                      to="/clients/$clientId/settings"
+                                      params={{ clientId: c.id }}
+                                    >
+                                      Client settings
+                                    </Link>
                                   </DropdownMenuItem>
                                 </>
                               )}
                               <DropdownMenuItem
                                 disabled={!canOpenClientData || !isSuperAdmin}
-                                title={!canOpenClientData ? "This organisation hasn't granted support access" : undefined}
+                                title={
+                                  !canOpenClientData
+                                    ? "This organisation hasn't granted support access"
+                                    : undefined
+                                }
                                 onSelect={() => void startClientPreview(c.id)}
                               >
                                 <Eye className="mr-2 h-4 w-4" /> View as client
                               </DropdownMenuItem>
-
 
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive"
