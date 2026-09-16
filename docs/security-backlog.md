@@ -1380,3 +1380,32 @@ grant or column, and no new access path. Switching an option off changes no
 `client_cards` row (verified in the live function body), so per-client ticks
 survive and re-purchasing restores each client exactly. `bun run security:check`:
 106 passed, 18 live access tests, 0 failed.
+
+## Consolidation working data survives the option being switched off (16 September 2026) — DONE
+
+The owner's largest concern about the purchase model: does switching Consolidation
+off destroy the consolidation work? Proved, not argued.
+
+**Inspection.** `public.set_org_purchase` only ever writes
+`org_subscription_options`, `client_cards` (adding cards when an option is switched
+ON) and `audit_log`. It contains no delete, update or null of
+`consolidation_groups`, `consolidation_group_members`,
+`loan_consolidation_accounts` or `loan_consolidation_snapshots`. The only triggers
+on those four tables are `tg_set_updated_at`. Their only cascading foreign keys are
+`ON DELETE CASCADE` from `firms`, `clients` and `consolidation_groups` — deleting a
+firm, client or group, never an entitlement flag. `org_subscription_options` has
+just two triggers: `tg_set_updated_at` and
+`enforce_consolidation_requires_advisory`, which raises and writes nothing.
+
+**Harness demonstration (PGlite, synthetic data, production untouched).** New
+permanent matrix row, run on every check: seeds a group, a member, a loan account
+mapping and a snapshot, then drives the real `set_org_purchase` off and back on as
+a super admin. Counts before / during / after: groups 1 / 1 / 1, members 1 / 1 / 1,
+loan accounts 1 / 1 / 1, snapshots 1 / 1 / 1. The `loan_consolidation` card is
+available, then hidden, then available again; the per-client ticks keep
+`loan_consolidation` throughout. The case throws with the three count sets printed
+if any table ever moves.
+
+The fixture dump now includes `public.set_org_purchase` so the real function body is
+the thing under test. `bun run security:check`: 106 passed, 18 live access tests,
+0 failed, fingerprint 85007f7430cb2fcd4d911b6ebac8e35aeab43c185f75ca6501918102039fcaa7.

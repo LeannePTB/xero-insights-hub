@@ -1976,6 +1976,92 @@ AS $function$
   ) and not app_private.firm_subscription_lapsed(_firm_id)
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.set_org_purchase(_firm_id uuid, _client_limit integer, _advisory boolean, _consolidation boolean, _branding boolean, _billing_mode text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _prev_advisory boolean := false;
+  _prev_consolidation boolean := false;
+  _prev_branding boolean := false;
+  _existed boolean := false;
+  _siblings int;
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+
+  if _billing_mode is null or _billing_mode not in ('bookkeeping','external') then
+    raise exception 'INVALID_BILLING_MODE' using errcode = 'check_violation';
+  end if;
+  if _client_limit is null or _client_limit < 0 or _client_limit > 9999 then
+    raise exception 'INVALID_CLIENT_LIMIT' using errcode = 'check_violation';
+  end if;
+  if coalesce(_consolidation, false) and not coalesce(_advisory, false) then
+    raise exception 'CONSOLIDATION_REQUIRES_ADVISORY' using errcode = 'check_violation';
+  end if;
+  if coalesce(_branding, false) and not coalesce(_advisory, false) then
+    raise exception 'BRANDING_REQUIRES_ADVISORY' using errcode = 'check_violation';
+  end if;
+  if not exists (select 1 from public.firms f where f.id = _firm_id) then
+    raise exception 'NO_SUCH_ORGANISATION' using errcode = 'no_data_found';
+  end if;
+
+  select true, o.advisory_enabled, o.consolidation_enabled, o.branding_enabled
+    into _existed, _prev_advisory, _prev_consolidation, _prev_branding
+    from public.org_subscription_options o
+   where o.firm_id = _firm_id;
+
+  insert into public.org_subscription_options
+    (firm_id, client_limit, advisory_enabled, consolidation_enabled, branding_enabled, billing_mode)
+  values (_firm_id, _client_limit, coalesce(_advisory,false), coalesce(_consolidation,false),
+          coalesce(_branding,false), _billing_mode)
+  on conflict (firm_id) do update
+    set client_limit = excluded.client_limit,
+        advisory_enabled = excluded.advisory_enabled,
+        consolidation_enabled = excluded.consolidation_enabled,
+        branding_enabled = excluded.branding_enabled,
+        billing_mode = excluded.billing_mode,
+        updated_at = now();
+
+  if coalesce(_advisory,false) and not coalesce(_prev_advisory,false) then
+    update public.client_cards cc
+       set cards = array(select distinct x
+                           from unnest(cc.cards || app_private.card_group_cards('advisory')) x
+                          order by x),
+           updated_at = now()
+     where cc.client_id in (select c.id from public.clients c where c.firm_id = _firm_id);
+  end if;
+
+  select count(*) into _siblings from public.clients c where c.firm_id = _firm_id;
+  if coalesce(_consolidation,false) and not coalesce(_prev_consolidation,false) and _siblings > 1 then
+    update public.client_cards cc
+       set cards = array(select distinct x
+                           from unnest(cc.cards || app_private.card_group_cards('consolidation')) x
+                          order by x),
+           updated_at = now()
+     where cc.client_id in (select c.id from public.clients c where c.firm_id = _firm_id);
+  end if;
+
+  -- Branding is not a card: switching it off changes no client_cards row and
+  -- deletes no logo. Stored logos simply stop being served.
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm_id, 'org_purchase_set', 'firm', _firm_id::text,
+          jsonb_build_object(
+            'existed', coalesce(_existed,false),
+            'client_limit', _client_limit,
+            'advisory', coalesce(_advisory,false),
+            'consolidation', coalesce(_consolidation,false),
+            'branding', coalesce(_branding,false),
+            'billing_mode', _billing_mode,
+            'previous_advisory', coalesce(_prev_advisory,false),
+            'previous_consolidation', coalesce(_prev_consolidation,false),
+            'previous_branding', coalesce(_prev_branding,false)));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.set_org_trial(_firm_id uuid, _advisory boolean, _consolidation boolean, _branding boolean, _ends_at timestamp with time zone, _reason text)
  RETURNS timestamp with time zone
  LANGUAGE plpgsql

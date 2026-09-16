@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1619**. Known failures: **0**.
+Rows: **1620**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -853,6 +853,7 @@ None.
 | xero_error_breakdown() | execute | ALLOW | pglite | PK 2 path C — Xero telemetry is platform metadata: status codes and endpoints, never client data |  |
 | set_org_trial(any organisation) | execute | ALLOW | pglite | PK 2 path C — plan and billing metadata is platform operations; no client data is read or returned | Added 16 Sep 2026 when trials moved from the client to the organisation. |
 | starting a trial over purchased Advisory converts the purchase and keeps ticks | execute | ALLOW | pglite | The audited trial change is atomic: selected purchased options become trialled while client card selections remain untouched | Added 16 Sep 2026 after a purchase-plus-trial overlap could create a cosmetic trial that granted nothing. |
+| toggling Consolidation off and on preserves all consolidation working data | execute | ALLOW | pglite | Availability is an entitlement filter, never a data operation — switching an option off hides cards and deletes nothing | Added 16 Sep 2026 at the owner's direction — her single biggest concern about this model. Proves, on every check, that set_org_purchase with Consolidation false leaves consolidation_groups, consolidation_group_members, loan_consolidation_accounts and loan_consolidation_snapshots row-for-row unchanged, that the loan_consolidation card stops being available while it is off, and that switching it back on restores the card with the working data and the per-client ticks intact. No foreign key or trigger on those four tables references the option: their only cascades are from deleting a firm, client or group. |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |

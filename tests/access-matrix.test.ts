@@ -570,6 +570,104 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return p.ok ? "allow" : "deny";
   }
+  if (r === "toggling Consolidation off and on preserves all consolidation working data") {
+    // The owner's biggest concern: does switching Consolidation off destroy the
+    // consolidation work? Counts the four working-data tables before, during and
+    // after, and proves the card leaves and returns while they never move.
+    const counts = async () => {
+      const res = await db.query<{
+        groups: number;
+        members: number;
+        accounts: number;
+        snapshots: number;
+        card: boolean;
+        ticks: string[];
+      }>(`
+        select (select count(*) from public.consolidation_groups) as groups,
+               (select count(*) from public.consolidation_group_members) as members,
+               (select count(*) from public.loan_consolidation_accounts) as accounts,
+               (select count(*) from public.loan_consolidation_snapshots) as snapshots,
+               app_private.client_available_cards('${CLIENT_A}'::uuid)
+                 @> array['loan_consolidation'] as card,
+               (select cards from public.client_cards where client_id = '${CLIENT_A}'::uuid) as ticks
+      `);
+      const row = res.rows[0]!;
+      return {
+        ...row,
+        groups: Number(row.groups),
+        members: Number(row.members),
+        accounts: Number(row.accounts),
+        snapshots: Number(row.snapshots),
+      };
+    };
+    await db.exec("set local role postgres");
+    // The fixture copies columns only, so the real function's upsert needs the
+    // live unique key on firm_id. Created inside the rolled-back transaction.
+    await db.exec(`
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      values ('${CLIENT_A}'::uuid, array['cashflow','loan_consolidation']);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, true, true, 'bookkeeping');
+    `);
+    const before = await counts();
+    // The purchase control itself, run as this row's role (a super admin).
+    const ctx = CONTEXT[row.role];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+    await db.exec(`set local role ${ctx.dbRole}`);
+    // A savepoint keeps a refusal from poisoning the rest of the case.
+    const guarded = async (sql: string) => {
+      await db.exec("savepoint toggle_sp");
+      const p = await probe(sql);
+      await db.exec(p.ok ? "release savepoint toggle_sp" : "rollback to savepoint toggle_sp");
+      if (!p.ok) console.log(`  consolidation toggle — refused: ${p.error}`);
+      return p;
+    };
+    const off = await guarded(
+      `select public.set_org_purchase('${ORG_A}'::uuid, 10, true, false, false, 'bookkeeping')`,
+    );
+    await db.exec("set local role postgres");
+    const during = await counts();
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+    await db.exec(`set local role ${ctx.dbRole}`);
+    const on = await guarded(
+      `select public.set_org_purchase('${ORG_A}'::uuid, 10, true, true, false, 'bookkeeping')`,
+    );
+    await db.exec("set local role postgres");
+    const after = await counts();
+
+    const dataUnchanged = (a: typeof before, b: typeof before) =>
+      a.groups === b.groups &&
+      a.members === b.members &&
+      a.accounts === b.accounts &&
+      a.snapshots === b.snapshots;
+    const shape = (c: typeof before) =>
+      `groups ${c.groups} / members ${c.members} / loan accounts ${c.accounts} / snapshots ${c.snapshots} — card ${c.card ? "available" : "hidden"}, ticks [${(c.ticks ?? []).join(",")}]`;
+    console.log(`  consolidation toggle — before:  ${shape(before)}`);
+    console.log(`  consolidation toggle — during:  ${shape(during)}`);
+    console.log(`  consolidation toggle — after:   ${shape(after)}`);
+
+    const preserved =
+      off.ok &&
+      on.ok &&
+      dataUnchanged(before, during) &&
+      dataUnchanged(before, after) &&
+      before.card === true &&
+      during.card === false &&
+      after.card === true &&
+      (during.ticks ?? []).includes("loan_consolidation") &&
+      (after.ticks ?? []).includes("loan_consolidation");
+    if (!preserved) {
+      throw new Error(
+        `Switching Consolidation off must never touch consolidation working data. before: ${shape(before)}; during: ${shape(during)}; after: ${shape(after)}`,
+      );
+    }
+    return "allow";
+  }
   if (r === "purchased Advisory keeps its cards with no trial or an expired trial") {
     // The case that protects an organisation whose Advisory is granted rather
     // than trialled: purchased true, trial absent, then an expired trial.

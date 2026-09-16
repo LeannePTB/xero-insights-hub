@@ -161,3 +161,9 @@ Separate from the card-model migration; no file or object shared with it.
 
 - [x] Starting a trial on an organisation that already purchased the same option now names the overlap, explains that the purchase makes the trial cosmetic, and offers to clear the purchase and start the trial in one step (default on).
 - [x] Purchase clearing runs first, through the existing audited `set_org_purchase`; no new access path, no new function. Per-client card ticks are untouched by switching an option off, so re-purchasing restores every client.
+
+## Consolidation data-safety proof (16 Sep 2026)
+
+- [x] Inspected every trigger and foreign key on the four consolidation tables: nothing on the consolidation-off path deletes, cascades into or nulls any of them.
+- [x] Permanent matrix row proves, on every check, that toggling Consolidation off and on leaves all consolidation working data unchanged and restores the card and ticks.
+- [x] DRTABT confirmed on a genuine trial: purchased flags off, trial flags on, ends 30 Nov 2026, audited with a reason; 9 clients, 162 ticked cards, 18 of 18 visible each, consolidation counts 56/9/1/1 untouched.

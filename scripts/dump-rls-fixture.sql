@@ -39,7 +39,7 @@ fns as (
         'touch_session_activity','session_is_active',
         'admin_assert_can_sign_out_user','record_sign_out_all_devices',
         'assert_super_admin','user_can_read_client',
-        'record_view_as','xero_error_breakdown','set_org_trial'))
+        'record_view_as','xero_error_breakdown','set_org_trial','set_org_purchase'))
     )
 ),
 stmts as (
