@@ -173,6 +173,8 @@ export const listClients = createServerFn({ method: "POST" })
         cardModelActive: v2,
         visibleCardCount: v2 ? (v2Cards.get(c.id) ?? []).length : null,
         pendingCardCount: v2 ? (pendingCardsByClient.get(c.id) ?? 0) : null,
+        setupOutstanding: setupByClient.get(c.id)?.outstanding ?? 0,
+        setupTitles: setupByClient.get(c.id)?.outstandingTitles ?? [],
       };
     });
     return { clients };
