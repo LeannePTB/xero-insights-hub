@@ -274,8 +274,8 @@ export const listOrgPurchases = createServerFn({ method: "POST" })
  * Start, extend or end an organisation trial. Commercial change: the database
  * function re-checks aal2 and super admin, insists on a reason, refuses
  * Consolidation without Advisory, caps the trial at 120 days, and audits every
- * accepted change. It never touches purchased flags or any client's ticked
- * cards, so an expiry reverts to exactly what the organisation has bought.
+ * accepted change. When a selected option is already purchased, the database
+ * atomically moves it to trialled; it never touches any client's ticked cards.
  */
 export const saveOrgTrial = createServerFn({ method: "POST" })
   .middleware([requireAal2])

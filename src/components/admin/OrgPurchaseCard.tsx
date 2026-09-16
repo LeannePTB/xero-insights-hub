@@ -271,7 +271,6 @@ function OrgTrialBlock({
 }) {
   const qc = useQueryClient();
   const saveTrial = useServerFn(saveOrgTrial);
-  const savePurchase = useServerFn(saveOrgPurchase);
   const status = trialStatus(purchase);
 
   const [open, setOpen] = useState(false);
@@ -282,10 +281,9 @@ function OrgTrialBlock({
     purchase.trialEndsAt ? purchase.trialEndsAt.slice(0, 10) : "",
   );
   const [reason, setReason] = useState("");
-  const [clearPurchased, setClearPurchased] = useState(true);
-
   // A trial of something the organisation has already bought grants nothing new
-  // and nothing happens when it ends. Name the overlap plainly.
+  // and nothing happens when it ends. The guarded database function atomically
+  // moves overlapping options from purchased to trialled when the trial starts.
   const overlap = [
     tAdvisory && purchase.advisory ? "Advisory" : null,
     tConsolidation && purchase.consolidation ? "Consolidation" : null,
@@ -299,22 +297,7 @@ function OrgTrialBlock({
       consolidation: boolean;
       branding: boolean;
       endsAt: string | null;
-      clearPurchased?: boolean;
     }) => {
-      // Clear the purchase first, so there is never a moment where the trial is
-      // live while the purchase still grants everything anyway.
-      if (vars.clearPurchased) {
-        await savePurchase({
-          data: {
-            firmId,
-            clientLimit: purchase.clientLimit,
-            advisory: purchase.advisory && !vars.advisory,
-            consolidation: purchase.consolidation && !vars.consolidation,
-            branding: purchase.branding && !vars.branding,
-            billingMode: purchase.billingMode,
-          },
-        });
-      }
       return await saveTrial({
         data: {
           firmId,
@@ -432,28 +415,13 @@ function OrgTrialBlock({
               <p className="font-medium">This organisation has already bought {overlapLabel}.</p>
               <p>
                 A trial of something already purchased grants nothing new, and nothing changes when
-                it ends. For the trial to mean anything, the purchase of {overlapLabel} has to be
-                cleared.
+                it ends. Starting this trial moves {overlapLabel} from purchased to trialled in one
+                audited change.
               </p>
-              <label className="flex items-start gap-2">
-                <input
-                  type="checkbox"
-                  className="mt-1"
-                  checked={clearPurchased}
-                  onChange={(e) => setClearPurchased(e.target.checked)}
-                />
-                <span>
-                  Clear the purchase of {overlapLabel} and start the trial in one step. Every
-                  client's ticked cards are remembered, so buying it again later restores each
-                  client exactly as it is now.
-                </span>
-              </label>
-              {!clearPurchased && (
-                <p className="font-medium">
-                  Left ticked as purchased, this trial will be cosmetic — the cards stay available
-                  after the end date.
-                </p>
-              )}
+              <p>
+                Every client's ticked cards are remembered, so buying it again later restores each
+                client exactly as it is now.
+              </p>
             </div>
           )}
           <div className="space-y-1.5">
@@ -490,7 +458,6 @@ function OrgTrialBlock({
                   consolidation: tConsolidation,
                   branding: tBranding,
                   endsAt: endsAt || null,
-                  clearPurchased: overlap.length > 0 && clearPurchased,
                 })
               }
             >
