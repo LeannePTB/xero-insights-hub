@@ -108,6 +108,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     Number(clientLimit || 0) !== purchase.clientLimit ||
     advisory !== purchase.advisory ||
     consolidation !== purchase.consolidation ||
+    branding !== purchase.branding ||
     billingMode !== purchase.billingMode;
 
   return (
