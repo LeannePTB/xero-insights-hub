@@ -173,7 +173,6 @@ function FirmPage() {
             firmId={firmId}
             firmName={firm.name}
             clientLimit={plan.clientLimit}
-            planLabel={planV.planLabel}
             showAddActions={false}
           />
         </div>
