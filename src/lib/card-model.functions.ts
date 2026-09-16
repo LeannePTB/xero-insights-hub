@@ -26,16 +26,20 @@ export type OrgPurchase = {
   /** What the organisation has purchased. Never merged with a trial. */
   advisory: boolean;
   consolidation: boolean;
+  /** Report branding: the per-client logo. Extends Advisory, charged separately. */
+  branding: boolean;
   billingMode: "bookkeeping" | "external";
   clientCount: number;
   /** Trial grants, stored separately so an expiry reverts to the purchase. */
   trialAdvisory: boolean;
   trialConsolidation: boolean;
+  trialBranding: boolean;
   trialEndsAt: string | null;
   trialActive: boolean;
   /** Purchased OR unexpired trial — what the database actually allows today. */
   effectiveAdvisory: boolean;
   effectiveConsolidation: boolean;
+  effectiveBranding: boolean;
 };
 
 /** Maps one `public.org_purchase` row. The database decides every value here. */
@@ -45,16 +49,19 @@ function mapPurchase(r: any): OrgPurchase {
     clientLimit: Number(r.client_limit ?? 0),
     advisory: !!r.advisory_enabled,
     consolidation: !!r.consolidation_enabled,
+    branding: !!r.branding_enabled,
     billingMode: (r.billing_mode === "external" ? "external" : "bookkeeping") as
       | "bookkeeping"
       | "external",
     clientCount: Number(r.client_count ?? 0),
     trialAdvisory: !!r.trial_advisory_enabled,
     trialConsolidation: !!r.trial_consolidation_enabled,
+    trialBranding: !!r.trial_branding_enabled,
     trialEndsAt: (r.trial_ends_at as string | null) ?? null,
     trialActive: !!r.trial_active,
     effectiveAdvisory: !!r.effective_advisory,
     effectiveConsolidation: !!r.effective_consolidation,
+    effectiveBranding: !!r.effective_branding,
   };
 }
 
