@@ -102,6 +102,25 @@ export function LogoUploadCard({
 
   const url = q.data?.url ?? null;
 
+  if (scope === "client" && entitlement.isLoading) {
+    return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+  }
+
+  if (!brandingOn) {
+    return (
+      <div className="space-y-2">
+        {title && <h3 className="font-display text-base font-semibold">{title}</h3>}
+        <p className="text-sm text-muted-foreground">
+          Client logos on reports are part of Branding, which this organisation has not taken up.
+          Reports use the Traction Advisory heading instead.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Any logo uploaded before is kept — it simply is not used, and returns if Branding is added.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {title && <h3 className="font-display text-base font-semibold">{title}</h3>}
