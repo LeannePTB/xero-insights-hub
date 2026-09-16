@@ -32,6 +32,7 @@ import { Switch } from "@/components/ui/switch";
 import { Loader2, KeyRound, Mail, ShieldAlert, History, Users, Building2, Check, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
+import { BillingLifecycleCard } from "@/components/admin/BillingLifecycleCard";
 
 
 export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
@@ -157,6 +158,13 @@ function FirmDetailPage() {
         />
 
         <OrgPurchaseCard firmId={firmId} />
+
+        <BillingLifecycleCard
+          firmId={firmId}
+          subscription={detailQ.data?.subscription ?? null}
+          isAlwaysFree={firm.is_always_free}
+          onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
+        />
 
         <MembersSection
           firmId={firmId}
