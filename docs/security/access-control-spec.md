@@ -233,7 +233,7 @@ If a feature seems to need cross-organisation visibility, ask which path it is f
 
 ## 4. Organisation lifecycle
 
-**Creation** must, atomically: insert `firm_members` for the creator (`role='owner'`, `status='active'`); set `firms.owner_user_id`; insert `subscriptions` with `tier='ptb'`, `status='active'`; write an `audit_log` row. If any step fails, roll everything back. An organisation with no members and no owner is **stranded** — nobody can approve anything. This happened to "Autotek NSW" and needed manual repair.
+**Creation** must, atomically: insert `firm_members` for the creator (`role='owner'`, `status='active'`); set `firms.owner_user_id`; insert an inert rollback `subscriptions` row; insert `org_subscription_options` with the starting client allowance, purchase flags and billing mode; write an `audit_log` row. If any step fails, roll everything back. An organisation with no members and no owner is **stranded** — nobody can approve anything. This happened to "Autotek NSW" and needed manual repair.
 
 **Handover** goes only through `public.transfer_organisation_ownership(_firm_id, _new_owner_user_id, _keep_previous_as_staff default true)`: caller must be current owner, new owner must already be an active member, previous owner is demoted to `staff` or removed. Writes its own audit row. Never transfer ownership by direct UPDATE, and never through a super-admin path — `authenticated` holds no UPDATE grant on `firms` at all. Assigning an owner where there is none (first acceptance) is allowed only when `owner_user_id` is null, and is audited, refusals included.
 
@@ -246,11 +246,11 @@ If a feature seems to need cross-organisation visibility, ask which path it is f
 - **Subscriptions and comps.** `client_subscriptions` has no browser write grant; changes go through audited aal2 RPCs that require a reason.
 - **MFA reset, role changes, plan changes, audit exports** all write audit rows.
 
-## 5. Plans and limits — enforced by database triggers
+## 5. Organisation options and limits — enforced by database triggers
 
-`plan_levels` (scope `firm`) holds `client_limit`, `xero_org_limit`, `allows_multi_org`, `is_free`, `allowed_tiers`, `enabled`. An organisation's plan is `subscriptions.tier` → `plan_levels.key`. `subscriptions.client_limit_override` wins over `client_limit`.
+While `card_model_v2` is active, `org_subscription_options.client_limit` is the single source for both the client and Xero-file allowances. `app_private.firm_limits()` reads that field directly; `subscriptions.client_limit_override` and `plan_levels` remain inert rollback data and must not be presented or written by active screens.
 
-**`ptb` is the default for client organisations**: 1 client, 1 Xero organisation, `allowed_tiers={basic}`, free.
+New organisations start with a client allowance of 1, Advisory and Consolidation off, and bookkeeping billing. Purchased Advisory and Consolidation remain distinct from time-limited organisation trial grants.
 
 Triggers on `clients` and `xero_connections` block over-limit inserts and fire even for `service_role`. Catch and present these; never reimplement the check:
 

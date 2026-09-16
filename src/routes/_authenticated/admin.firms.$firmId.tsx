@@ -36,7 +36,16 @@ import { BillingLifecycleCard } from "@/components/admin/BillingLifecycleCard";
 
 
 export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
-  head: () => ({ meta: [{ title: "Organisation — Admin" }] }),
+  head: () => ({
+    meta: [
+      { title: "Organisation Admin — Traction Advisory" },
+      { name: "description", content: "Manage an organisation's options, billing lifecycle, members and clients." },
+      { property: "og:title", content: "Organisation Admin — Traction Advisory" },
+      { property: "og:description", content: "Manage an organisation's options, billing lifecycle, members and clients." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: FirmDetailPage,
 });
 
