@@ -271,6 +271,7 @@ function OrgTrialBlock({
 }) {
   const qc = useQueryClient();
   const saveTrial = useServerFn(saveOrgTrial);
+  const savePurchase = useServerFn(saveOrgPurchase);
   const status = trialStatus(purchase);
 
   const [open, setOpen] = useState(false);
@@ -281,15 +282,40 @@ function OrgTrialBlock({
     purchase.trialEndsAt ? purchase.trialEndsAt.slice(0, 10) : "",
   );
   const [reason, setReason] = useState("");
+  const [clearPurchased, setClearPurchased] = useState(true);
+
+  // A trial of something the organisation has already bought grants nothing new
+  // and nothing happens when it ends. Name the overlap plainly.
+  const overlap = [
+    tAdvisory && purchase.advisory ? "Advisory" : null,
+    tConsolidation && purchase.consolidation ? "Consolidation" : null,
+    tBranding && purchase.branding ? "Branding" : null,
+  ].filter(Boolean) as string[];
+  const overlapLabel = overlap.join(", ").replace(/, ([^,]*)$/, " and $1");
 
   const mut = useMutation({
-    mutationFn: (vars: {
+    mutationFn: async (vars: {
       advisory: boolean;
       consolidation: boolean;
       branding: boolean;
       endsAt: string | null;
-    }) =>
-      saveTrial({
+      clearPurchased?: boolean;
+    }) => {
+      // Clear the purchase first, so there is never a moment where the trial is
+      // live while the purchase still grants everything anyway.
+      if (vars.clearPurchased) {
+        await savePurchase({
+          data: {
+            firmId,
+            clientLimit: purchase.clientLimit,
+            advisory: purchase.advisory && !vars.advisory,
+            consolidation: purchase.consolidation && !vars.consolidation,
+            branding: purchase.branding && !vars.branding,
+            billingMode: purchase.billingMode,
+          },
+        });
+      }
+      return await saveTrial({
         data: {
           firmId,
           advisory: vars.advisory,
@@ -298,7 +324,8 @@ function OrgTrialBlock({
           endsAt: vars.endsAt,
           reason,
         },
-      }),
+      });
+    },
     onSuccess: () => {
       toast.success("Trial updated");
       setOpen(false);
@@ -308,6 +335,9 @@ function OrgTrialBlock({
       qc.invalidateQueries({ queryKey: ["client-card-setup"] });
       qc.invalidateQueries({ queryKey: ["client-widgets"] });
       qc.invalidateQueries({ queryKey: ["effective-widgets"] });
+      qc.invalidateQueries({ queryKey: ["client-branding"] });
+      qc.invalidateQueries({ queryKey: ["report-logo"] });
+      qc.invalidateQueries({ queryKey: ["client-org-trial"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not update the trial"),
   });
