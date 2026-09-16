@@ -432,7 +432,14 @@ function OrgTrialBlock({
                 size="sm"
                 variant="outline"
                 disabled={mut.isPending || reason.trim().length < 3}
-                onClick={() => mut.mutate({ advisory: false, consolidation: false, endsAt: null })}
+                onClick={() =>
+                  mut.mutate({
+                    advisory: false,
+                    consolidation: false,
+                    branding: false,
+                    endsAt: null,
+                  })
+                }
               >
                 End trial now
               </Button>
