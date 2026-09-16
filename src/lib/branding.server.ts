@@ -214,8 +214,9 @@ export async function clearOrganisationLogo(userId: string, firmId: string) {
 
 }
 
-export async function clearClientLogo(userId: string, clientId: string) {
+export async function clearClientLogo(userId: string, clientId: string, supabase?: any) {
   await assertClientWriter(userId, clientId);
+  if (supabase) await assertClientBranding(supabase, clientId);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: client } = await (supabaseAdmin as any)
     .from("clients")
