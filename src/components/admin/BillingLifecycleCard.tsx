@@ -127,14 +127,16 @@ export function BillingLifecycleCard({
         </div>
 
         <div className="space-y-1.5">
-          <Label>Trial ends</Label>
+          <Label>Billing starts on</Label>
           <Input
             type="date"
             value={trialEnds}
             onChange={(event) => setTrialEnds(event.target.value)}
           />
           <p className="text-xs text-muted-foreground">
-            Used only when the billing status is Trialling.
+            Billing only. Used when the status above is &quot;Billing not started yet&quot;: after this
+            date the organisation counts as lapsed. Nothing to do with the Advisory trial on the
+            purchase card above.
           </p>
         </div>
 
