@@ -44,7 +44,6 @@ import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 
 import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getClientWidgets } from "@/lib/tier-config.functions";
-import { UpgradeOptions } from "@/components/dashboard/UpgradeOptions";
 import { RefreshSnapshotsButton } from "@/components/dashboard/RefreshSnapshotsButton";
 import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLapsedNotice";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
@@ -373,8 +372,8 @@ function ClientDashboard() {
     <div className="min-h-screen bg-background">
       {previewing && (
         <ViewAsBanner
-          label={`${client.name} — as a ${catalogueTierLabel} client`}
-          note="Layout and tier gating only; data access is unchanged"
+          label={`${client.name} — client preview`}
+          note="Preview only; data access is unchanged"
         />
       )}
       <AppHeader />
@@ -513,9 +512,6 @@ function ClientDashboard() {
         </div>
 
 
-        {!isAdvisor && orgs.length > 0 && (
-          <UpgradeOptions clientId={clientId} clientName={client.name} currentTier={tier} />
-        )}
         {/* /SubscriptionGate */}
       </main>
     </div>
