@@ -154,3 +154,8 @@ Separate from the card-model migration; no file or object shared with it.
 
 - [x] `public.client_org_trial(_client_id)`: aal2-guarded, returns the organisation's live trial (end date, days remaining) only to organisation members and the client's business owner; everyone else gets no rows.
 - [x] `ClientTrialNotice` on the client dashboard: shows the trial end date to the business owner and staff, neutral styling until the last 14 days (amber), disappears by itself when the trial ends.
+
+## Genuine vs cosmetic trial (16 Sep 2026)
+
+- [x] Starting a trial on an organisation that already purchased the same option now names the overlap, explains that the purchase makes the trial cosmetic, and offers to clear the purchase and start the trial in one step (default on).
+- [x] Purchase clearing runs first, through the existing audited `set_org_purchase`; no new access path, no new function. Per-client card ticks are untouched by switching an option off, so re-purchasing restores every client.
