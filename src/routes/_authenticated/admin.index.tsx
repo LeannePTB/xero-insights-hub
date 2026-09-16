@@ -432,26 +432,19 @@ function abnormalStatus(state: SubscriptionState | undefined, status: string | n
  * model is still the live one.
  */
 function PlanCell({
-  label,
   usage,
-  dashboardLabel,
   purchase,
-  modelActive,
 }: {
-  label: string;
   usage: OrganisationUsage | undefined;
-  dashboardLabel: (key: string) => string;
   purchase: OrgPurchase | undefined;
-  modelActive: boolean;
 }) {
-  if (modelActive) {
-    if (!purchase) {
-      return (
-        <div className="leading-tight">
-          <div className="text-muted-foreground">—</div>
-        </div>
-      );
-    }
+  if (!purchase) {
+    return (
+      <div className="leading-tight">
+        <div className="text-muted-foreground">—</div>
+      </div>
+    );
+  }
     const consolidationBlocked = purchase.advisory && purchase.clientCount <= 1;
     return (
       <div className="leading-tight space-y-0.5">
@@ -492,15 +485,6 @@ function PlanCell({
         </div>
       </div>
     );
-  }
-  return (
-    <div className="leading-tight">
-      <div>{label}</div>
-      <div className="text-xs text-muted-foreground">
-        <DashboardsInUseCell usage={usage} label={dashboardLabel} />
-      </div>
-    </div>
-  );
 }
 
 /** "Advisory on" / "Advisory off", with the reason it cannot be on when there is one. */
