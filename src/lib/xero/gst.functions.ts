@@ -53,11 +53,20 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
     // for PAYG at all — no account hunt, no pay-run read, no issue line.
     const { data: clientRow, error: clientError } = await (context.supabase as any)
       .from("clients")
-      .select("payg_withholding_cycle")
+      .select("gst_cycle, payg_withholding_cycle")
       .eq("id", data.clientId)
       .maybeSingle();
     if (clientError) throw new Error(clientError.message);
-    const withholdsPayg = clientRow?.payg_withholding_cycle !== "not_registered";
+    if (!clientRow?.gst_cycle || clientRow.gst_cycle === "not_registered") {
+      throw new Error(
+        clientRow?.gst_cycle === "not_registered"
+          ? "This client is not registered for GST."
+          : "Set this client's GST lodgement cycle before loading GST figures.",
+      );
+    }
+    const withholdsPayg =
+      clientRow?.payg_withholding_cycle != null &&
+      clientRow.payg_withholding_cycle !== "not_registered";
     return runReconciliation({
       supabase: context.supabase as any,
       userId: context.userId,
@@ -75,6 +84,7 @@ export const getGstReconciliation = createServerFn({ method: "POST" })
           overrides,
           context.supabase,
           withholdsPayg,
+          data.clientId,
         ),
 
     });

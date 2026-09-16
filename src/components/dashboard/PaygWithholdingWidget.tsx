@@ -85,6 +85,10 @@ export function PaygWithholdingWidget({
         <p className="mt-6 text-sm text-muted-foreground">
           {data.reason === "no_payroll"
             ? "No wages have been paid through payroll in this organisation, so there is no PAYG withholding to report by month."
+            : data.reason === "not_registered"
+              ? "This client is not registered for PAYG withholding."
+              : data.reason === "setting_required"
+                ? "Set how often this client lodges PAYG withholding before payroll figures can be shown."
             : data.reason === "not_authorised"
               ? "Payroll access has not been authorised in Xero for this organisation, so the monthly PAYG withheld cannot be read. Reconnecting it grants read-only access only."
               : "This organisation's pay runs could not be read just now, so the monthly PAYG withheld is not available."}

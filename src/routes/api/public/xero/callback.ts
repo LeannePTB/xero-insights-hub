@@ -533,6 +533,9 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               disconnected_at: null,
               disconnected_reason: null,
               firm_id: targetFirmId,
+              payroll_access_status: "unknown",
+              payroll_access_checked_at: null,
+              payroll_access_http_status: null,
             },
             { onConflict: "user_id,tenant_id" },
           );

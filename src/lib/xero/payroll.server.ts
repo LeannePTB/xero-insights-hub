@@ -35,6 +35,8 @@ export type PayrollPayRuns =
   | { status: "available"; payRuns: PayRunSummary[]; truncated: boolean }
   /** The list read fine and this file has never run a pay run. */
   | { status: "no_payroll" }
+  | { status: "not_registered" }
+  | { status: "setting_required" }
   /** Payroll access has not been authorised on this connection yet. */
   | { status: "not_authorised"; reason: string }
   /** Something else went wrong — never treat as zero. */
@@ -57,7 +59,11 @@ const PAGE_SIZE = 100;
  * call per hundred pay runs, so three pages covers about eleven years of
  * fortnightly payroll.
  */
-export async function fetchPayRuns(conn: Connection, maxPages = 3): Promise<PayrollPayRuns> {
+export async function fetchPayRuns(
+  conn: Connection,
+  setting: "registered",
+  maxPages = 3,
+): Promise<PayrollPayRuns> {
   const { xeroGetPayroll, XeroScopeMissingError } = await import("./api.server");
   const out: PayRunSummary[] = [];
   let truncated = false;
@@ -105,6 +111,9 @@ export async function loadPayRuns(opts: {
   clientId?: string | null;
   conn?: Connection;
 }): Promise<PayrollPayRuns & { fromSnapshot: boolean; fetchedAt?: string | null }> {
+  const { payrollSettingForClient } = await import("./payroll-setting.server");
+  const setting = await payrollSettingForClient(opts.supabase, opts.tenantId, opts.clientId);
+  if (setting !== "registered") return { status: setting, fromSnapshot: false };
   const { readSnapshot } = await import("./snapshot-read.server");
   const hit = await readSnapshot({
     supabase: opts.supabase,
@@ -116,7 +125,7 @@ export async function loadPayRuns(opts: {
     return { ...(hit.payload as PayrollPayRuns), fromSnapshot: true, fetchedAt: hit.source.fetchedAt };
   }
   const conn = opts.conn ?? (await (await import("./api.server")).getConnectionByTenant(opts.tenantId));
-  return { ...(await fetchPayRuns(conn)), fromSnapshot: false };
+  return { ...(await fetchPayRuns(conn, "registered")), fromSnapshot: false };
 }
 
 /** Pay runs whose PAYDAY falls inside the period. Payday is the BAS trigger. */

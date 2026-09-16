@@ -31,7 +31,7 @@ export const listClients = createServerFn({ method: "POST" })
     let q = db
       .from("clients")
       .select(
-        "id, name, firm_id, created_at, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
+        "id, name, firm_id, created_at, gst_cycle, payg_withholding_cycle, client_xero_orgs(id, xero_connection_id, xero_connections(tenant_id, tenant_name)), client_access(tier)",
       )
       .order("name");
     if (firmId) q = q.eq("firm_id", firmId);
@@ -138,6 +138,8 @@ export const listClients = createServerFn({ method: "POST" })
         entitlement: entitlementByClient.get(c.id) ?? null,
         tierWidgets: resolveTierWidgets(c.id),
         healthAllowed: healthByClient.get(c.id) === true,
+        cardModelActive: v2,
+        visibleCardCount: v2 ? (v2Cards.get(c.id) ?? []).length : null,
       };
     });
     return { clients };

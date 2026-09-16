@@ -151,7 +151,7 @@ async function fetchReport(
     // the same budget so the per-run ceiling still holds.
     const { fetchPayRuns } = await import("./payroll.server");
     budget.spend();
-    const payload = await withSlot(() => fetchPayRuns(conn));
+    const payload = await withSlot(() => fetchPayRuns(conn, "registered"));
     // A read that could not be made is not a stored zero (invariant 8).
     if (payload.status === "unavailable") throw new Error(payload.reason);
     return { payload, truncated: payload.status === "available" && payload.truncated };
@@ -258,11 +258,21 @@ export async function refreshTenant(
     const { getConnectionByTenant } = await import("./api.server");
     const conn = await getConnectionByTenant(target.tenantId);
 
+    const { payrollSettingForClient } = await import("./payroll-setting.server");
+    const payrollSetting = await payrollSettingForClient(
+      supabaseAdmin,
+      target.tenantId,
+      target.clientId,
+    );
+
     const grantedScopes = (conn.scopes ?? "").split(/\s+/).filter(Boolean);
     for (const report of reports) {
       // Payroll is opt-in per organisation: skip it silently where the
       // connection never granted it, rather than failing the run nightly.
-      if (report.api === "payroll" && !grantedScopes.includes("payroll.payruns.read")) continue;
+      if (
+        report.api === "payroll" &&
+        (payrollSetting !== "registered" || !grantedScopes.includes("payroll.payruns.read"))
+      ) continue;
       try {
         const { payload, truncated } = await fetchReport(conn, report, budget);
         await writeSnapshot({

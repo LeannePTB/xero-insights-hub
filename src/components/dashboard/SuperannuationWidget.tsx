@@ -94,6 +94,14 @@ export function SuperannuationWidget({
           This organisation has no superannuation account on its balance sheet, so there is nothing
           to report here.
         </p>
+      ) : data?.status === "payroll_not_registered" ? (
+        <p className="mt-6 text-sm text-muted-foreground">
+          This client is not registered for PAYG withholding, so payroll figures are not requested.
+        </p>
+      ) : data?.status === "payroll_setting_required" ? (
+        <p className="mt-6 text-sm text-muted-foreground">
+          Set how often this client lodges PAYG withholding before payroll figures can be shown.
+        </p>
       ) : isPaidUp ? (
         <div className="mt-6 flex items-start gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-900 dark:bg-emerald-950/40">
           <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600 dark:text-emerald-400" />

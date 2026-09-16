@@ -15,6 +15,7 @@ export type OrganisationUsage = {
   dashboards: Record<string, number>;
   /** True when we could not see every client of the organisation. */
   dashboardsPartial: boolean;
+  unsetLodgementCycles: number;
 };
 
 async function limitsFor(supabase: any, firmId: string) {
@@ -52,10 +53,10 @@ export async function organisationUsage(
 
   const [limitRows, clientsRes] = await Promise.all([
     Promise.all(ids.map((id) => limitsFor(supabase, id))),
-    supabase.from("clients").select("id, firm_id").in("firm_id", ids),
+    supabase.from("clients").select("id, firm_id, gst_cycle, payg_withholding_cycle").in("firm_id", ids),
   ]);
 
-  const clients = ((clientsRes?.data ?? []) as Array<{ id: string; firm_id: string }>).filter(
+  const clients = ((clientsRes?.data ?? []) as Array<{ id: string; firm_id: string; gst_cycle: string | null; payg_withholding_cycle: string | null }>).filter(
     (c) => c.firm_id,
   );
   const tiers = await Promise.all(clients.map((c) => entitlementTier(supabase, c.id)));
@@ -83,6 +84,9 @@ export async function organisationUsage(
       xeroOrgLimit: l?.xero_org_limit ?? null,
       dashboards: byFirm.get(firmId) ?? {},
       dashboardsPartial: clientsUsed != null && visible < clientsUsed,
+      unsetLodgementCycles: clients.filter(
+        (c) => c.firm_id === firmId && (c.gst_cycle == null || c.payg_withholding_cycle == null),
+      ).length,
     };
   });
 }

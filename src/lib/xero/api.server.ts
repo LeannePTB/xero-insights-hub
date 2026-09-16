@@ -38,6 +38,9 @@ export type Connection = {
   expires_at: string;
   scopes: string | null;
   firm_id: string | null;
+  payroll_access_status: "unknown" | "available" | "unavailable";
+  payroll_access_checked_at: string | null;
+  payroll_access_http_status: number | null;
 };
 
 // Raw shape pulled from the DB — encrypted-only since plaintext columns were dropped.
@@ -51,10 +54,13 @@ type ConnectionRow = {
   expires_at: string;
   scopes: string | null;
   firm_id: string | null;
+  payroll_access_status: "unknown" | "available" | "unavailable";
+  payroll_access_checked_at: string | null;
+  payroll_access_http_status: number | null;
 };
 
 const CONNECTION_COLUMNS =
-  "id, user_id, tenant_id, tenant_name, access_token_enc, refresh_token_enc, expires_at, scopes, firm_id";
+  "id, user_id, tenant_id, tenant_name, access_token_enc, refresh_token_enc, expires_at, scopes, firm_id, payroll_access_status, payroll_access_checked_at, payroll_access_http_status";
 
 function basicAuth() {
   const clientId = process.env.XERO_CLIENT_ID;
@@ -102,6 +108,9 @@ async function materializeConnection(row: ConnectionRow): Promise<Connection> {
     expires_at: row.expires_at,
     scopes: row.scopes,
     firm_id: row.firm_id ?? null,
+    payroll_access_status: row.payroll_access_status ?? "unknown",
+    payroll_access_checked_at: row.payroll_access_checked_at ?? null,
+    payroll_access_http_status: row.payroll_access_http_status ?? null,
   };
 }
 
@@ -290,11 +299,13 @@ const PATH_SCOPE: Record<string, string> = {
 export class XeroScopeMissingError extends Error {
   readonly scope: string;
   readonly tenantId: string;
-  constructor(scope: string, tenantId: string, message: string) {
+  readonly httpStatus: number | null;
+  constructor(scope: string, tenantId: string, message: string, httpStatus: number | null = null) {
     super(message);
     this.name = "XeroScopeMissingError";
     this.scope = scope;
     this.tenantId = tenantId;
+    this.httpStatus = httpStatus;
   }
 }
 
@@ -631,6 +642,7 @@ async function xeroGetAssetsUncached<T = unknown>(
 // Xero exposes NO record of superannuation being paid to a fund, so nothing
 // built on this helper may claim a payday was paid on time.
 const PAYROLL_BASE = "https://api.xero.com/payroll.xro/1.0";
+const PAYROLL_RECHECK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Which payroll scope each path needs; used to refuse before calling Xero. */
 const PAYROLL_PATH_SCOPE: Record<string, string> = {
@@ -657,6 +669,18 @@ async function xeroGetPayrollUncached<T = unknown>(
   params: Record<string, string | undefined> = {},
   retries = 1,
 ): Promise<T> {
+  if (
+    conn.payroll_access_status === "unavailable" &&
+    conn.payroll_access_checked_at &&
+    Date.now() - new Date(conn.payroll_access_checked_at).getTime() < PAYROLL_RECHECK_MS
+  ) {
+    throw new XeroScopeMissingError(
+      "payroll.payruns.read",
+      conn.tenant_id,
+      "This Xero file does not currently provide payroll data.",
+      conn.payroll_access_http_status,
+    );
+  }
   // The payroll scopes are deliberately NOT in `xero_required_scopes()` (that
   // list drives the "needs attention" worklist), so this reads what the
   // connection was actually GRANTED and refuses before spending a Xero call.
@@ -690,21 +714,36 @@ async function xeroGetPayrollUncached<T = unknown>(
     return xeroGetPayrollUncached<T>(conn, path, params, retries - 1);
   }
 
-  if (res.status === 401 && retries > 0) {
-    const refreshed = await refreshAccessToken(conn);
-    return xeroGetPayrollUncached<T>(refreshed, path, params, retries - 1);
-  }
   if (!res.ok) {
     const body = await res.text();
     await logXeroApiError(conn, `Payroll/${path}`, res.status, body.slice(0, 500));
     if (res.status === 401 || res.status === 403) {
+      await (supabaseAdmin as any)
+        .from("xero_connections")
+        .update({
+          payroll_access_status: "unavailable",
+          payroll_access_checked_at: new Date().toISOString(),
+          payroll_access_http_status: res.status,
+        })
+        .eq("id", conn.id);
       throw new XeroScopeMissingError(
         requiredScope ?? "payroll.payruns.read",
         conn.tenant_id,
-        "Xero needs payroll read permission for this organisation. Reconnect it and approve the updated read-only permissions.",
+        "This Xero file does not currently provide payroll data.",
+        res.status,
       );
     }
     throw new Error(`Xero Payroll/${path}: ${res.status} ${body}`);
+  }
+  if (conn.payroll_access_status !== "available") {
+    await (supabaseAdmin as any)
+      .from("xero_connections")
+      .update({
+        payroll_access_status: "available",
+        payroll_access_checked_at: new Date().toISOString(),
+        payroll_access_http_status: null,
+      })
+      .eq("id", conn.id);
   }
   const { logXeroRead } = await import("@/lib/audit.server");
   await logXeroRead(conn, `Payroll/${path}`);

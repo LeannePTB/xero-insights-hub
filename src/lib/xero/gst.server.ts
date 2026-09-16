@@ -73,6 +73,8 @@ export type CombinedAtoSection = {
  */
 export type PaygPayrollSection =
   | { status: "not_applicable" }
+  | { status: "not_registered" }
+  | { status: "setting_required" }
   | { status: "available"; withheld: number; payRuns: { paymentDate: string | null; tax: number }[] }
   | { status: "no_payroll" }
   | { status: "not_authorised"; reason: string }
@@ -203,6 +205,7 @@ export async function computeGstReconciliation(
    *  not withhold") means PAYG is not looked for at all: no account hunt, no
    *  pay-run read, no issue line, and the estimated total is GST alone. */
   withholdsPayg = true,
+  clientId?: string | null,
 ): Promise<GstResult> {
 
 
@@ -438,8 +441,8 @@ export async function computeGstReconciliation(
   } else {
     const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
     const runs = supabase
-      ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, conn })
-      : await fetchPayRuns(conn);
+      ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, clientId, conn })
+      : await fetchPayRuns(conn, "registered");
     if (runs.status === "available") {
       const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
       paygPayroll = {
@@ -458,7 +461,7 @@ export async function computeGstReconciliation(
   const paygWithheldForTotal =
     paygPayroll.status === "available"
       ? paygPayroll.withheld
-      : paygPayroll.status === "no_payroll" || paygPayroll.status === "not_applicable"
+      : paygPayroll.status === "no_payroll" || paygPayroll.status === "not_applicable" || paygPayroll.status === "not_registered"
         ? 0
         : null;
   const estimatedPayable =

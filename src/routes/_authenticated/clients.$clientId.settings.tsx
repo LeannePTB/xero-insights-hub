@@ -65,6 +65,7 @@ import { ClientSubscriptionSection } from "@/components/billing/ClientSubscripti
 import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
 import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
 import { ClientCardsPanel } from "@/components/billing/ClientCardsPanel";
+import { getCardModel } from "@/lib/card-model.functions";
 import {
   ArrowLeft,
   Trash2,
@@ -149,6 +150,9 @@ function ClientSettings() {
   const fetchMyContext = useServerFn(getMyContext);
   const myCtxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
   const isSuperAdmin = !!myCtxQ.data?.isSuperAdmin;
+  const fetchCardModel = useServerFn(getCardModel);
+  const cardModelQ = useQuery({ queryKey: ["card-model"], queryFn: () => fetchCardModel() });
+  const cardModelActive = cardModelQ.data?.active === true;
 
   const fetchScopeStatus = useServerFn(listXeroScopeStatus);
   const scopeStatusQ = useQuery({
@@ -401,29 +405,30 @@ function ClientSettings() {
           </div>
         </Section>
 
-        {/* Subscription */}
-        <Section title="Subscription" collapsible>
-          <ClientSubscriptionSection clientId={clientId} />
-        </Section>
-
-        {/* Dashboard tier — what this client sees */}
-        <Section
-          title="Dashboard tier"
-          id="dashboard-tier"
-          collapsible
-          action={
-            isSuperAdmin ? (
-              <div className="flex items-center gap-2">
-                <SuperAdminChip />
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/settings/tiers">Edit plan defaults</Link>
-                </Button>
-              </div>
-            ) : undefined
-          }
-        >
-          <ClientDashboardTierControl clientId={clientId} />
-        </Section>
+        {!cardModelActive && (
+          <>
+            <Section title="Subscription" collapsible>
+              <ClientSubscriptionSection clientId={clientId} />
+            </Section>
+            <Section
+              title="Dashboard tier"
+              id="dashboard-tier"
+              collapsible
+              action={
+                isSuperAdmin ? (
+                  <div className="flex items-center gap-2">
+                    <SuperAdminChip />
+                    <Button variant="ghost" size="sm" asChild>
+                      <Link to="/settings/tiers">Edit plan defaults</Link>
+                    </Button>
+                  </div>
+                ) : undefined
+              }
+            >
+              <ClientDashboardTierControl clientId={clientId} />
+            </Section>
+          </>
+        )}
 
         {/* Cards — per-client switches within the tier */}
         <Section title="Cards" id="cards" collapsible>
@@ -452,7 +457,7 @@ function ClientSettings() {
         </Section>
 
         {/* Lodgement cycles */}
-        <Section title="How often this client lodges" collapsible>
+        <Section title="How often this client lodges" id="lodgement-cycles" collapsible>
           <LodgementCyclesSection
             clientId={clientId}
             gstCycle={(client.gst_cycle as GstCycle | null) ?? null}
