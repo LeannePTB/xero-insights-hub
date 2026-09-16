@@ -611,3 +611,64 @@ describe("12d. every CSV or spreadsheet export escapes its own cells", () => {
     expect(offenders).toEqual([]);
   });
 });
+
+/**
+ * 12e. A posture check nobody can see is not a check.
+ *
+ * public.security_posture() is the ONE reading the Security page renders. Three
+ * checks have now been built as their own function and left out of it
+ * (test_accounts, read_audit, xero_rate_limit) — each time, the check existed,
+ * passed review, and was invisible to the owner. This fails the build instead.
+ *
+ * Source of truth: docs/security/definer-register.md, which is generated FROM
+ * the live database and whose freshness is enforced by
+ * `bun ./scripts/definer-register.ts --check` in `bun run security:check`. So a
+ * new `*_posture()` function in the database cannot pass this without either
+ * being called by security_posture() or being listed as a deliberate exception
+ * below.
+ */
+describe("12e. every posture check is wired into security_posture()", () => {
+  const REGISTER_MD = readFileSync(join(ROOT, "docs/security/definer-register.md"), "utf8");
+
+  /**
+   * Posture functions deliberately NOT called by security_posture(), with the
+   * reason. Adding a name here is a decision the owner must agree to.
+   */
+  const NOT_IN_POSTURE: Record<string, string> = {
+    // Returns raw counts for the MFA card, not a check with a status.
+    get_mfa_posture_counts: "counts for the MFA card, not an Action/Warn/OK check",
+  };
+
+  function publicSection(): string {
+    const start = REGISTER_MD.indexOf("\n## `public`");
+    const end = REGISTER_MD.indexOf("\n## `app_private`");
+    expect(start, "definer register has no public section").toBeGreaterThan(-1);
+    return REGISTER_MD.slice(start, end === -1 ? undefined : end);
+  }
+
+  it("finds a posture check to test (the guard itself is not vacuous)", () => {
+    const names = [...publicSection().matchAll(/^\| `([a-z0-9_]*posture[a-z0-9_]*)\(/gm)].map(
+      (m) => m[1],
+    );
+    expect(names).toContain("xero_rate_limit_posture");
+    expect(names).toContain("test_accounts_posture");
+  });
+
+  it("has no public *_posture() function that security_posture() never calls", () => {
+    const offenders: string[] = [];
+    for (const line of publicSection().split("\n")) {
+      const m = /^\| `([a-z0-9_]*posture[a-z0-9_]*)\(/.exec(line);
+      if (!m) continue;
+      const name = m[1]!;
+      if (name === "security_posture") continue;
+      if (name in NOT_IN_POSTURE) continue;
+      if (line.includes("fn `public.security_posture`")) continue;
+      offenders.push(
+        `public.${name}() — call it from public.security_posture(), or the owner must add it to NOT_IN_POSTURE with a reason. It is invisible on the Security page as it stands.`,
+      );
+    }
+    expect(offenders, report("posture checks not wired into security_posture():", offenders)).toEqual(
+      [],
+    );
+  });
+});

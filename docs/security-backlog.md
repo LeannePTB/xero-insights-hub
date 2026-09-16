@@ -1170,3 +1170,30 @@ bf72506f2bb6218ec18a85299aedd71df714aeb8664c602e07b2877ed1c3c7d7, 1600 matrix
 rows / 1515 proved (0 failed), 95 tests passed, live access 18 passed / 0
 failed. Typecheck clean. Not verified: authenticated browser screenshots — the
 minted test session cannot pass the MFA gate.
+
+## 58. Posture checks built but never wired in (found and fixed 16 Sep 2026)
+
+**Defect, owner-reported.** `public.xero_rate_limit_posture()` existed, was
+correct, and was invisible: `public.security_posture()` never called it, and the
+app-side merge in `src/lib/security-posture.functions.ts` swallowed the RPC
+result silently. `read_audit_posture()` and `session_controls_posture()` were
+merged the same way. The third occurrence of the same fault
+(`test_accounts_posture` and `read_audit_posture` before it).
+
+**Fixed:** `security_posture()` now calls `read_audit_posture()`,
+`session_controls_posture()` and `xero_rate_limit_posture()` itself (22 checks
+returned, verified live as the owner's identity). The app-side merges are gone,
+so nothing can be dropped without the database dropping it. The rate-limit
+window changed from "today (UTC)" to the most recent day with usage, so it no
+longer reports nothing between UTC midnight and the nightly refresh.
+
+**Guard added:** `tests/static-guards.test.ts` §12e fails when a `*_posture()`
+function in `public` is not referenced by `security_posture()`, read from the
+live-generated `docs/security/definer-register.md`. Proved to fail when the
+reference is removed. `get_mfa_posture_counts` is the one listed exception
+(counts for a card, not an Action/Warn/OK check).
+
+**Reported for the 12 Xero files:** OK — most recent day with usage 15 Sep 2026,
+12 files, lowest remaining on any limit 76.7% (Autotek New South Wales: day
+4,986/5,000, minute 46/60, app-wide minute 9,973/10,000), 0 rate-limit
+rejections in 24h, 0 files over 300 calls in an hour.

@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
-import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
+
 
 import { listXeroScopeStatus } from "@/lib/xero/scope-status.functions";
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
@@ -160,7 +160,8 @@ function AdminPage() {
           </div>
         )}
 
-        {isSuper && <XeroUsageCard />}
+        {/* Xero request allowance now sits with the other Xero monitoring on
+            Security & compliance, so usage and failures are read together. */}
 
         {isSuper && (
           <OrphanXeroConnectionsCard

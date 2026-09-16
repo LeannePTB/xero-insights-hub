@@ -245,32 +245,12 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
     const { data, error } = await (context.supabase as any).rpc("security_posture");
     if (error) throw new Error("Security posture unavailable");
 
-    // Phase 6 read-audit check. Same authorisation pattern: a definer function
-    // that asserts aal2 + super admin itself, called through context.supabase.
-    // Computed from the trail and from figures actually served, not a fixed list.
-    let readAudit: PostureCheck[] = [];
-    const readRes = await (context.supabase as any).rpc("read_audit_posture");
-    if (!readRes.error && readRes.data) readAudit = [readRes.data as PostureCheck];
-
-    // The live-suite containment check is appended by `security_posture()`
-    // itself, so it must NOT be fetched again here — doing so rendered
-    // "Security test accounts are contained" twice on the card.
-
-    // Session timeout controls, read live from the enforcement objects
-    // themselves (the activity helper and the aal2 gate), so removing the idle
-    // check from the gate turns this red rather than going unnoticed.
-    let sessionControls: PostureCheck[] = [];
-    const sessRes = await (context.supabase as any).rpc("session_controls_posture");
-    if (!sessRes.error && sessRes.data) sessionControls = [sessRes.data as PostureCheck];
-
-    // Xero request allowance, computed live from the quota Xero itself reports
-    // back on every response (public.xero_rate_limits). Warns before a file runs
-    // low and flags a burst — a runaway loop shows up here long before the daily
-    // limit is reached.
-    let xeroLimits: PostureCheck[] = [];
-    const xeroRes = await (context.supabase as any).rpc("xero_rate_limit_posture");
-    if (!xeroRes.error && xeroRes.data) xeroLimits = [xeroRes.data as PostureCheck];
-
+    // Every database-side check — including the read-audit, session-timeout and
+    // Xero request-allowance checks — is appended by `security_posture()`
+    // itself, so it must NOT be fetched again here. Merging a check in this
+    // file is how one came to be invisible on the Security page: the RPC error
+    // was swallowed and nothing showed. tests/static-guards.test.ts now fails
+    // if a *_posture() function exists that security_posture() does not call.
 
     // Recorded human confirmations, read through context.supabase so the
     // super-admin-only rule is the database's, not this file's.
@@ -280,9 +260,6 @@ export const getSecurityChecks = createServerFn({ method: "GET" })
 
     const checks: PostureCheck[] = [
       ...((data?.checks ?? []) as PostureCheck[]),
-      ...readAudit,
-      ...sessionControls,
-      ...xeroLimits,
       ...(await serverConfigChecks(attestations)),
     ];
 

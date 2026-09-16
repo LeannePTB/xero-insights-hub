@@ -89,3 +89,10 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Xero failure count moved off the Organisations row into Security & compliance, per organisation and per Xero file (`xero_error_breakdown`).
 - [x] Clients link and super-admin-only View As on each row; View As now aal2 + super admin + existing membership, checked in the database, and audited (`view_as_started`). Previously an unaudited URL filter — recorded as a defect in backlog 57.
 - [x] Legacy notices on Subscription levels, `/settings/tiers` and the client dashboard-tier control.
+
+## Posture wiring (done 16 Sep 2026)
+
+- [x] `xero_rate_limit_posture`, `read_audit_posture` and `session_controls_posture` called by `public.security_posture()`; app-side merges removed.
+- [x] Rate-limit window widened to the most recent day with usage, so it is not blank after UTC midnight.
+- [x] Per-file Xero usage card moved to Security & compliance, beside the failure breakdown (quota remaining, requests seen, busiest hour with its start, rejections).
+- [x] Build-failing guard: a `*_posture()` function not called by `security_posture()` fails `bun run security:check`.

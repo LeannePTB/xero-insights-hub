@@ -34,6 +34,7 @@ import xeroMapping from "../../../docs/security/xero-assessment-mapping.md?raw";
 import { SecurityPostureCard } from "@/components/admin/SecurityPostureCard";
 import { AuditMonitoringCard } from "@/components/admin/AuditMonitoringCard";
 import { XeroErrorBreakdownCard } from "@/components/admin/XeroErrorBreakdownCard";
+import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 
 export const Route = createFileRoute("/_authenticated/admin/security")({
@@ -291,7 +292,8 @@ function SecurityDocsPage() {
       {isSuper && <AuditMonitoringCard />}
 
       {isSuper && (
-        <div className="mt-6">
+        <div className="mt-6 space-y-6">
+          <XeroUsageCard />
           <XeroErrorBreakdownCard />
         </div>
       )}
