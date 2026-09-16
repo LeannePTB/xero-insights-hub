@@ -1264,3 +1264,19 @@ fixture fingerprint matched to live, definer register regenerated with
 `set_org_trial` and `org_effective_options`); `bunx tsgo --noEmit` clean;
 consolidation counts unchanged (9 group members, 1 group); Supabase linter
 unchanged at 110 pre-existing findings, no new type.
+
+## 2026-09-16 — Orphan Xero connections card hidden when empty (presentation only)
+
+The "Unassigned Xero connections" card on admin Organisations rendered a
+permanent "Nothing to do" panel. Since Phase 5 the database prevents a
+connection from being created without an organisation and there are zero
+orphans, so the panel was noise. It now renders nothing at all unless
+`listOrphanXeroConnections` returns at least one row (also nothing while
+loading, so an empty state never flashes). Its orange tint and
+"SUPER ADMIN VIEW" badge were removed with the rest of that styling pass —
+it now uses the neutral Card style. The capability is kept: if a connection
+ever appears unassigned, the card returns with assign/disconnect actions, and
+the Security page posture check covers the same ground. No query, policy,
+server function or visibility rule changed — the caller's `isSuper` gate is
+untouched, so only super admins ever see the card. `bunx tsgo --noEmit` clean;
+live query confirms 0 connections with no organisation.
