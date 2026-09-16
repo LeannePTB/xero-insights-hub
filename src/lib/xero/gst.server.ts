@@ -73,6 +73,8 @@ export type CombinedAtoSection = {
  */
 export type PaygPayrollSection =
   | { status: "not_applicable" }
+  | { status: "not_registered" }
+  | { status: "setting_required" }
   | { status: "available"; withheld: number; payRuns: { paymentDate: string | null; tax: number }[] }
   | { status: "no_payroll" }
   | { status: "not_authorised"; reason: string }
@@ -459,7 +461,7 @@ export async function computeGstReconciliation(
   const paygWithheldForTotal =
     paygPayroll.status === "available"
       ? paygPayroll.withheld
-      : paygPayroll.status === "no_payroll" || paygPayroll.status === "not_applicable"
+      : paygPayroll.status === "no_payroll" || paygPayroll.status === "not_applicable" || paygPayroll.status === "not_registered"
         ? 0
         : null;
   const estimatedPayable =

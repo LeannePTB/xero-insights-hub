@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { listClients, deleteClient, getClientRemovalImpact } from "@/lib/clients.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
@@ -200,11 +200,11 @@ export function FirmClientsSection({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-semibold">{heading}</h2>
         <div className="flex flex-wrap items-center gap-3">
-          <SetAllClientTiersDialog
+        {clients.some((c: any) => c.cardModelActive !== true) && <SetAllClientTiersDialog
             firmId={firmId}
             clientCount={clients.length}
             options={enabledTiers.map((t) => ({ key: t, label: labelFor(t) }))}
-          />
+          />}
         </div>
         {showAddActions && (
           <div className="flex items-center gap-3">
@@ -340,7 +340,7 @@ export function FirmClientsSection({
               <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
                 <tr>
                   <th className="px-5 py-3">Client</th>
-                  <th className="px-5 py-3">Tier</th>
+                  <th className="px-5 py-3">Cards</th>
                   <th className="px-5 py-3 text-right"></th>
                 </tr>
               </thead>
@@ -348,6 +348,15 @@ export function FirmClientsSection({
                 {clients.map((c: any) => {
                   const ent = c.entitlement ?? { tier: "basic", source: "none", expiresAt: null };
                   const effectiveTier: string = ent.tier ?? "basic";
+                  const missingGst = c.gst_cycle == null;
+                  const missingPayg = c.payg_withholding_cycle == null;
+                  const missingLabel = missingGst && missingPayg
+                    ? "Lodgement cycles not set"
+                    : missingGst
+                      ? "GST cycle not set"
+                      : missingPayg
+                        ? "PAYG cycle not set"
+                        : null;
                   // Only a super admin may preview a tier the client is not on,
                   // and only within what the organisation's plan permits.
                   const previewTiers = (isSuperAdmin ? enabledTiers : []).filter(
@@ -373,6 +382,17 @@ export function FirmClientsSection({
                         {canOpenClientData && showHealth && c.healthAllowed && (
                             <ClientHealthBadge verdict={verdictsQ.data?.verdicts?.[c.id]} />
                           )}
+                        {canOpenClientData && missingLabel && (
+                          <Link
+                            to="/clients/$clientId/settings"
+                            params={{ clientId: c.id }}
+                            hash="lodgement-cycles"
+                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <AlertTriangle className="h-3 w-3" /> {missingLabel}
+                          </Link>
+                        )}
                       </div>
                     </>
                   );
@@ -394,7 +414,11 @@ export function FirmClientsSection({
 
                       </td>
                       <td className="px-5 py-4">
-                        {canManageTier ? (
+                        {c.cardModelActive === true ? (
+                          <span className="text-sm tabular-nums">
+                            {c.visibleCardCount ?? 0} card{c.visibleCardCount === 1 ? "" : "s"} enabled
+                          </span>
+                        ) : canManageTier ? (
                           <Link
                             to="/clients/$clientId/settings"
                             params={{ clientId: c.id }}

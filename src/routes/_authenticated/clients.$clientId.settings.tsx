@@ -452,7 +452,7 @@ function ClientSettings() {
         </Section>
 
         {/* Lodgement cycles */}
-        <Section title="How often this client lodges" collapsible>
+        <Section title="How often this client lodges" id="lodgement-cycles" collapsible>
           <LodgementCyclesSection
             clientId={clientId}
             gstCycle={(client.gst_cycle as GstCycle | null) ?? null}

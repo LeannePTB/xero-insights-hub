@@ -125,13 +125,14 @@ export function GstReconciliationWidget({
   );
 
   const notRegistered = gstCycle === "not_registered";
+  const settingRequired = gstCycle == null;
   const q = useQuery({
     queryKey: ["gst-reconciliation", clientId, tenantId, window, asAt],
     queryFn: () => fetchGst({ data: { clientId, tenantId, asAt, window } }),
     retry: false,
     staleTime: 5 * 60 * 1000,
     // A client who is not registered for GST has no period to fetch.
-    enabled: !notRegistered,
+    enabled: !notRegistered && !settingRequired,
   });
 
   const [recalculating, setRecalculating] = useState(false);
@@ -205,15 +206,13 @@ export function GstReconciliationWidget({
         )}
       </div>
 
-      {!gstCycle && (
+      {settingRequired && (
         <p className="mt-3 text-xs text-muted-foreground">
-          No GST lodgement cycle is set for this client, so this card opens on last month. Set the
-          cycle on the client settings page under “GST (business activity statement)” and it will
-          open on the current period instead.
+           Set how often this client lodges GST before GST figures can be shown.
         </p>
       )}
 
-      {notRegistered ? (
+      {settingRequired ? null : notRegistered ? (
         <p className="mt-6 text-sm text-muted-foreground">
           This client is not registered for GST, so there is no activity statement period to show.
           If that changes, set the new cycle on the client settings page under “GST (business

@@ -235,6 +235,8 @@ export const getTaxLiabilities = createServerFn({ method: "POST" })
  */
 export type SuperannuationPosition =
   | { status: "no_super_accounts" }
+  | { status: "payroll_not_registered" }
+  | { status: "payroll_setting_required" }
   | {
       status: "available";
       /** Balance on the super liability account(s), as at today. */
@@ -286,6 +288,12 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
       tenantId: data.tenantId,
       clientId: data.clientId ?? null,
     });
+    if (runs.status === "not_registered") {
+      return { status: "payroll_not_registered", source: liveSource("disabled") };
+    }
+    if (runs.status === "setting_required") {
+      return { status: "payroll_setting_required", source: liveSource("disabled") };
+    }
     const payrollStatus = runs.status;
 
     // The balance is live; the pay runs may be last night's saved copy. The
@@ -354,7 +362,7 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
  */
 export type PaygWithholdingPosition =
   | { status: "no_payg_accounts" }
-  | { status: "no_payroll"; outstanding: number; reason: "no_payroll" | "not_authorised" | "unavailable" }
+  | { status: "no_payroll"; outstanding: number; reason: "no_payroll" | "not_authorised" | "unavailable" | "not_registered" | "setting_required" }
   | {
       status: "available";
       /** Balance on the PAYG withholding liability account(s), as at today. */

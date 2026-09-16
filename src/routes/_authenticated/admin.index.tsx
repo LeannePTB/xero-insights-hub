@@ -525,7 +525,14 @@ function OptionPill({ on, label, offNote }: { on: boolean; label: string; offNot
 
 function CapacityCell({ usage }: { usage: OrganisationUsage | undefined }) {
   return (
-    <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} unit="clients" />
+    <div className="space-y-1">
+      <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} unit="clients" />
+      {!!usage?.unsetLodgementCycles && (
+        <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
+          {usage.unsetLodgementCycles} client{usage.unsetLodgementCycles === 1 ? "" : "s"} need lodgement cycles
+        </div>
+      )}
+    </div>
   );
 }
 
