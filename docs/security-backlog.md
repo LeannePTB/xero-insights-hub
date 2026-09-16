@@ -1334,3 +1334,28 @@ Two matrix rows added for the acknowledgement write and a cross-organisation rea
 and saving a basis now stamps `setup_ack.pl_basis`. A deliberate
 `not_registered`, a disabled cost-classification toggle, or "no statutory
 accounts needed" clears an item permanently and is never flagged.
+
+## Guard: database function calls must match the live signatures (16 September 2026) — DONE
+An owner-facing failure ("Could not find the function public.set_org_trial(...)
+in the schema cache") after `set_org_trial` gained `_branding`. The app code was
+already correct; the running bundle was not, and nothing in the check chain
+compares a call site to a live signature — a typecheck cannot, because the call
+crosses into PostgREST as a JSON body.
+
+Added, read-only: `scripts/dump-rpc-signatures.sql` / `.sh` snapshot every public
+function's INPUT argument names to `tests/fixtures/rpc-signatures.json`;
+`tests/rpc-signatures.test.ts` parses every `.rpc("name", { ... })` in `src` and
+fails when the function does not exist, an argument name is not real, or an
+argument without a default is not posted; `scripts/check-rpc-signatures.sh`
+fails when the snapshot itself is stale against live. Both are wired into
+`bun run security:check` ahead of the test run. A call whose argument object
+cannot be read statically fails the guard rather than escaping it.
+
+Generated types were considered instead and rejected as the primary guard: they
+are only refreshed by tooling after a migration, and they type the parameter
+object loosely enough that `as any` at a call site (common in this codebase for
+functions newer than the generated file) defeats them.
+
+No access rule, policy, grant or column changed. Nothing was written by the
+failed attempts: every organisation still has all trial fields false and
+`trial_ends_at` null, and `audit_log` holds no `org_trial_set` row.

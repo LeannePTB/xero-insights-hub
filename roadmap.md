@@ -138,3 +138,9 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Setup section on client settings: linked Xero file, lodgement cycles, P&L basis, cost classification (with the untagged count), statutory account coding — each links to the section that fixes it.
 - [x] Client list badge shows the number of outstanding setup items and opens the Setup section; `not_registered` and other deliberate answers never flagged.
 - [x] Saving a P&L basis stamps an explicit confirmation, since the stored value alone cannot be told from the column default.
+
+## Database call signature guard (16 Sep 2026)
+
+- [x] Snapshot of live function argument names, checked in and proven fresh on every security run.
+- [x] Test asserting every `.rpc()` call in src matches a real signature, including required arguments.
+- [x] PostgREST schema cache reloaded after signature changes; preview rebuilt.
