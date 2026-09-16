@@ -429,9 +429,7 @@ function OrgTrialBlock({
           </div>
           {overlap.length > 0 && (
             <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200">
-              <p className="font-medium">
-                This organisation has already bought {overlapLabel}.
-              </p>
+              <p className="font-medium">This organisation has already bought {overlapLabel}.</p>
               <p>
                 A trial of something already purchased grants nothing new, and nothing changes when
                 it ends. For the trial to mean anything, the purchase of {overlapLabel} has to be
@@ -459,7 +457,6 @@ function OrgTrialBlock({
             </div>
           )}
           <div className="space-y-1.5">
-
             <Label htmlFor="trial-ends">Ends</Label>
             <Input
               id="trial-ends"
@@ -496,7 +493,6 @@ function OrgTrialBlock({
                   clearPurchased: overlap.length > 0 && clearPurchased,
                 })
               }
-
             >
               {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Save trial
