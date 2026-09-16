@@ -5,6 +5,8 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 
 ## Closed — do not reopen on the strength of an older note
 
+- **Duplicate organisation subscription controls retired, 16 Sep 2026.** The organisation admin detail has one purchase editor backed by `org_subscription_options`; its client allowance is the live trigger source (DRTABT: 9, while the inert legacy override remains 12). The separate legacy plan, client-limit override and `subscriptions.consolidation_enabled` writers were removed from the active surface. Status, trial end and billing-period end remain in a clearly labelled billing lifecycle section because `app_private.firm_subscription_lapsed` still reads them; the inert `cancel_at_period_end` control is gone. The practice-only always-free control remains database-enforced and audited. No column or access rule changed, and v1 data remains for rollback.
+
 - **Legacy subscription screens retired, 16 Sep 2026.** Removed `/admin/plans`, `/settings/tiers`, their navigation, the legacy organisation plan table/banner, and active per-client tier/trial controls. The v1 tables, functions, Stripe webhook and guarded fallback branches remain temporarily as the rollback path. Client and Xero limit triggers now resolve through `app_private.firm_limits`, which reads `org_subscription_options.client_limit` rather than `subscriptions` or `plan_levels`. Live proof: Bangkok On Darby and Autotek NSW remain 1/1; a rollback-only insert for Bangkok was refused with `PLAN_LIMIT_CLIENTS: this organisation's plan allows 1 client(s). Upgrade to add more.`, and its client count remained 1.
 
 - **Token column exposure.** `authenticated` holds SELECT on 13 non-token columns of `xero_connections`; `access_token_enc` and `refresh_token_enc` have no grant. The privilege check runs before RLS, so a browser read of those columns fails before any policy is evaluated. No `select *` against that table exists in the codebase.
@@ -31,27 +33,27 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 22. **`profiles.email` is still read as a display fallback (opened 11 Sep 2026, partly closed 11 Sep 2026 in Phase 4 batch 4).** Originally six sites. The three report sites (`reports/monthly-report.server.ts`, `reports/monthly-report-context.server.ts`, `reports/report-verdict.server.ts`) are FIXED: a report byline and a note author are now the stored display name only, with "Positive Traction" / "Unknown" as the fallback, so no sign-in email can reach a client-facing report. Still open in three sites — `clients.functions.ts`, `support-access.functions.ts`, `xero/orphan-connections.functions.ts` — where the verified email must come from `auth.users`. `tests/static-guards.test.ts` reports the remaining three and fails on any new occurrence. **CLOSED 11 Sep 2026, Phase 4 batch 5:** the remaining fallbacks (client note authors, orphan Xero connections, support access, login events) are gone. Identity and recipients come from `auth.users`; the display fallback is `display_name` only. The static guard now fails the build on ANY `profiles.email` read — the known-failure list is empty.
 23. **Delete the template endpoint (opened 11 Sep 2026).** `src/lib/api/example.functions.ts` exposes an unauthenticated `getGreeting`. It touches no data, but it should not ship. **CLOSED 11 Sep 2026, Phase 4 batch 5:** `src/lib/api/example.functions.ts` deleted and its aal1 allow-list entry removed.
 
-51. **Nobody was recording activity in the published app (opened and closed 15 Sep 2026).** No `session_activity` row existed for any real signed-in session, so the inactivity check was resolving every session from its sign-in time alone — meaning a person was refused everything exactly 30 minutes after signing in, however busy they were, and with no warning shown by a browser running older cached code. Verified live: the post-MFA access token does carry `session_id` (claims `aal,amr,app_metadata,aud,email,exp,iat,is_anonymous,iss,phone,role,session_id,sub,user_metadata`), a brand-new session with no activity row is accepted through the `auth.sessions` start-time fallback, `public.touch_session_activity()` writes the row, and a real browser sign-in through the sign-in screen wrote its first activity row one second after the second factor. Fixed the browser call shape (`touch({})`, previously `{ data: undefined }`), made a SESSION_IDLE answer end the session instead of being swallowed, and stopped `/auth` offering back an aal2 session the server has already refused (it now signs it out and shows the sign-in form with the inactivity message). Regression rows added for the just-completed-MFA case. No access rule, no MFA enforcement and no database object changed. **Enforcement re-enabled 15 Sep 2026, 04:50 UTC (owner decision), after all four proofs held** — see spec § 0c "Enforcement history": the activity term is back in `app_private.is_aal2()`, `app_private.assert_aal2()` raises `SESSION_IDLE` before `MFA_REQUIRED`, and `ENFORCE_INACTIVITY_AT_REQUEST_LAYER` is `true`. The missing positive assertion is now a permanent test (`active_session_member`), closing the gap that let this ship.
+24. **Nobody was recording activity in the published app (opened and closed 15 Sep 2026).** No `session_activity` row existed for any real signed-in session, so the inactivity check was resolving every session from its sign-in time alone — meaning a person was refused everything exactly 30 minutes after signing in, however busy they were, and with no warning shown by a browser running older cached code. Verified live: the post-MFA access token does carry `session_id` (claims `aal,amr,app_metadata,aud,email,exp,iat,is_anonymous,iss,phone,role,session_id,sub,user_metadata`), a brand-new session with no activity row is accepted through the `auth.sessions` start-time fallback, `public.touch_session_activity()` writes the row, and a real browser sign-in through the sign-in screen wrote its first activity row one second after the second factor. Fixed the browser call shape (`touch({})`, previously `{ data: undefined }`), made a SESSION_IDLE answer end the session instead of being swallowed, and stopped `/auth` offering back an aal2 session the server has already refused (it now signs it out and shows the sign-in form with the inactivity message). Regression rows added for the just-completed-MFA case. No access rule, no MFA enforcement and no database object changed. **Enforcement re-enabled 15 Sep 2026, 04:50 UTC (owner decision), after all four proofs held** — see spec § 0c "Enforcement history": the activity term is back in `app_private.is_aal2()`, `app_private.assert_aal2()` raises `SESSION_IDLE` before `MFA_REQUIRED`, and `ENFORCE_INACTIVITY_AT_REQUEST_LAYER` is `true`. The missing positive assertion is now a permanent test (`active_session_member`), closing the gap that let this ship.
 
-53. **Session end: clean experience, visible failures, coverage alert (opened and closed 15 Sep 2026).** Follow-up to 51, owner decision. **No authorisation change** — an unreadable session identity still refuses, and "readable identity, no activity record, session older than the window" already resolved to refused and still does; treating it as active would let anyone bypass the control by blocking the write. What changed: (a) any `SESSION_IDLE` answer reaching the browser is handled once at the query client (`src/lib/session-ended.ts`) and ends the session cleanly with "Your session ended — please sign in again", so no page can render it as "Admin access required" (what the owner saw during a client demo) or as a generic failure, and `/auth` asks the server before offering an existing session back; (b) failed activity writes and request-layer refusals are logged with their reason, never a token, session id or email; (c) `public.session_controls_posture()` now reports live sessions past the window with no activity record — Warn on any count, naming the number and the oldest — which is the single signal that would have caught the 15 Sep outage in minutes. The request layer still passes a request on when it cannot reach the database to ask, because the database answers the same question a moment later; it is deny-only and never the control. Verified: fixture fingerprint refreshed and matching, 95 tests passed, 18 live access checks passed / 0 failed, database warnings unchanged at the accepted 96, and the only uncovered live session is one that began before the recording fix was published.
+25. **Session end: clean experience, visible failures, coverage alert (opened and closed 15 Sep 2026).** Follow-up to 51, owner decision. **No authorisation change** — an unreadable session identity still refuses, and "readable identity, no activity record, session older than the window" already resolved to refused and still does; treating it as active would let anyone bypass the control by blocking the write. What changed: (a) any `SESSION_IDLE` answer reaching the browser is handled once at the query client (`src/lib/session-ended.ts`) and ends the session cleanly with "Your session ended — please sign in again", so no page can render it as "Admin access required" (what the owner saw during a client demo) or as a generic failure, and `/auth` asks the server before offering an existing session back; (b) failed activity writes and request-layer refusals are logged with their reason, never a token, session id or email; (c) `public.session_controls_posture()` now reports live sessions past the window with no activity record — Warn on any count, naming the number and the oldest — which is the single signal that would have caught the 15 Sep outage in minutes. The request layer still passes a request on when it cannot reach the database to ask, because the database answers the same question a moment later; it is deny-only and never the control. Verified: fixture fingerprint refreshed and matching, 95 tests passed, 18 live access checks passed / 0 failed, database warnings unchanged at the accepted 96, and the only uncovered live session is one that began before the recording fix was published.
 
-24. **Excess default grants on `public` tables (opened 11 Sep 2026, Phase 2; clean up in Phase 7).** Supabase grants `anon`/`authenticated` ALL privileges on every new table, so most tables still carry INSERT/UPDATE/DELETE/TRUNCATE for `authenticated` with no permissive policy for that command, and some carry privileges for `anon`. RLS denies the writes today, so this is grant hygiene rather than a live hole — the same mistake fixed on `user_presence` and `security_test_runs`. The new `excess_grants` check in `public.security_posture()` lists the affected tables and commands on every run. Do not re-grade its Warn/Action results before the cleanup lands.
+26. **Excess default grants on `public` tables (opened 11 Sep 2026, Phase 2; clean up in Phase 7).** Supabase grants `anon`/`authenticated` ALL privileges on every new table, so most tables still carry INSERT/UPDATE/DELETE/TRUNCATE for `authenticated` with no permissive policy for that command, and some carry privileges for `anon`. RLS denies the writes today, so this is grant hygiene rather than a live hole — the same mistake fixed on `user_presence` and `security_test_runs`. The new `excess_grants` check in `public.security_posture()` lists the affected tables and commands on every run. Do not re-grade its Warn/Action results before the cleanup lands.
 
-25. **An active support grant cannot read four of the client tables (opened 11 Sep 2026, Phase 2 matrix run).** Proved in the PGlite matrix suite: the read policies on `clients`, `client_statutory_accounts`, `report_cache` and `scenario_exclusions` do not name `app_private.platform_staff_can_access_firm`, so a holder of a valid Path B grant sees nothing on those tables — including the client list, which makes the grant close to unusable. This fails closed (Spec §0.8), so it is a gap, not an incident. Decide with the owner whether Path B is meant to cover the client list before changing any policy; nothing was changed in Phase 2.
+27. **An active support grant cannot read four of the client tables (opened 11 Sep 2026, Phase 2 matrix run).** Proved in the PGlite matrix suite: the read policies on `clients`, `client_statutory_accounts`, `report_cache` and `scenario_exclusions` do not name `app_private.platform_staff_can_access_firm`, so a holder of a valid Path B grant sees nothing on those tables — including the client list, which makes the grant close to unusable. This fails closed (Spec §0.8), so it is a gap, not an incident. Decide with the owner whether Path B is meant to cover the client list before changing any policy; nothing was changed in Phase 2.
 
-26. **An organisation cannot read its own audit rows (opened 11 Sep 2026, Phase 2 matrix run).** Spec §3 says an organisation sees its own `audit_log` rows; the only read policy on `audit_log` is `app_private.is_super_admin(auth.uid())`, so an organisation owner reads none. Fails closed. Either implement the organisation-scoped read policy or amend the spec.
+28. **An organisation cannot read its own audit rows (opened 11 Sep 2026, Phase 2 matrix run).** Spec §3 says an organisation sees its own `audit_log` rows; the only read policy on `audit_log` is `app_private.is_super_admin(auth.uid())`, so an organisation owner reads none. Fails closed. Either implement the organisation-scoped read policy or amend the spec.
 
-27. **Standing client-viewer grants and owner-managed invites — design approved, NOT scheduled (recorded 11 Sep 2026).** Owner-approved redesign in `docs/design/people-and-access.md`. Introduces a standing grant covering every client in an organisation, specific per-client grants that override it, and owner-invited client viewers. Must be added as a named access path to the Access Control Spec §2 before building, with matrix rows for: standing grant sees newly added client; specific grant overrides standing; client entitlement caps the level; revoking standing leaves specific grants; standing grant never confers write access; standing grant never crosses organisations. Build only after Phases 4–7 are complete because it changes the client read path that Phase 4 is consolidating. Withdraws the earlier "merge members and viewers into one People section" request.
+29. **Standing client-viewer grants and owner-managed invites — design approved, NOT scheduled (recorded 11 Sep 2026).** Owner-approved redesign in `docs/design/people-and-access.md`. Introduces a standing grant covering every client in an organisation, specific per-client grants that override it, and owner-invited client viewers. Must be added as a named access path to the Access Control Spec §2 before building, with matrix rows for: standing grant sees newly added client; specific grant overrides standing; client entitlement caps the level; revoking standing leaves specific grants; standing grant never confers write access; standing grant never crosses organisations. Build only after Phases 4–7 are complete because it changes the client read path that Phase 4 is consolidating. Withdraws the earlier "merge members and viewers into one People section" request.
 
-28. **A bare super admin can take ownership of any organisation by direct REST call (opened 11 Sep 2026, Phase 2 review; fixed in Phase 2 part B).** Verified live: policy `super_admin updates firms` is `FOR UPDATE` on `app_private.is_super_admin(auth.uid())` alone, `authenticated` holds table-level UPDATE on `public.firms` with no column grants, and the only trigger is `firms_set_updated_at`. So an aal2 super admin with no membership can set `firms.owner_user_id` to themselves — which `app_private.is_org_owner` reads as ownership, letting them then approve their own support grant (Spec §7 forbids this) — or set `is_always_free` on a client organisation (Spec §4 forbids this), leaving no audit row. Breaks invariant 3 and Spec §4. Read-only check of history: all four organisations have the same `owner_user_id`, `audit_log` holds no ownership action for any of them, and every `updated_at` matches a rename/logo/subscription edit already in the audit log — no evidence of use, and no audit trail that could prove otherwise. **CLOSED 11 Sep 2026 (Phase 2 part B).** `super_admin updates firms` was dropped; INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER were revoked from `authenticated` on `public.firms` (it now holds SELECT only); the remaining `firms` and `signup_requests` policies were re-targeted from role `public` to `authenticated`; and `public.set_firm_always_free(_firm_id, _value, _reason)` is now the only path to the flag — aal2 + super admin, a reason of 3+ characters, an audit row, and TRUE permitted only on the practice organisation recorded in `app_private.platform_settings`. New posture check `always_free` reports an Action if any other organisation carries the flag. Residual: `authenticated` still holds MAINTAIN on `public.firms` (VACUUM/ANALYZE only, no row access) — cleaned up with the Phase 7 grant sweep (item 24).
+30. **A bare super admin can take ownership of any organisation by direct REST call (opened 11 Sep 2026, Phase 2 review; fixed in Phase 2 part B).** Verified live: policy `super_admin updates firms` is `FOR UPDATE` on `app_private.is_super_admin(auth.uid())` alone, `authenticated` holds table-level UPDATE on `public.firms` with no column grants, and the only trigger is `firms_set_updated_at`. So an aal2 super admin with no membership can set `firms.owner_user_id` to themselves — which `app_private.is_org_owner` reads as ownership, letting them then approve their own support grant (Spec §7 forbids this) — or set `is_always_free` on a client organisation (Spec §4 forbids this), leaving no audit row. Breaks invariant 3 and Spec §4. Read-only check of history: all four organisations have the same `owner_user_id`, `audit_log` holds no ownership action for any of them, and every `updated_at` matches a rename/logo/subscription edit already in the audit log — no evidence of use, and no audit trail that could prove otherwise. **CLOSED 11 Sep 2026 (Phase 2 part B).** `super_admin updates firms` was dropped; INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER were revoked from `authenticated` on `public.firms` (it now holds SELECT only); the remaining `firms` and `signup_requests` policies were re-targeted from role `public` to `authenticated`; and `public.set_firm_always_free(_firm_id, _value, _reason)` is now the only path to the flag — aal2 + super admin, a reason of 3+ characters, an audit row, and TRUE permitted only on the practice organisation recorded in `app_private.platform_settings`. New posture check `always_free` reports an Action if any other organisation carries the flag. Residual: `authenticated` still holds MAINTAIN on `public.firms` (VACUUM/ANALYZE only, no row access) — cleaned up with the Phase 7 grant sweep (item 24).
 
-29. **Bare super-admin and support-grant writes to `client_subscriptions` were unaudited — CLOSED 11 Sep 2026 (Phase 3b).** `super admins manage client subscriptions` (`FOR ALL` on `is_super_admin`) was dropped and INSERT/UPDATE/DELETE/TRUNCATE revoked from `authenticated`, which now holds SELECT only. Comps, trials and dashboard-tier changes go through aal2 SECURITY DEFINER functions that require a reason and write their own audit row: `public.set_client_comp`, `public.set_client_trial` (both super admin only) and `public.set_client_dashboard_tier` (client write access or super admin). Stripe webhook writes stay service_role (system context) and are recorded by the generic trigger below.
+31. **Bare super-admin and support-grant writes to `client_subscriptions` were unaudited — CLOSED 11 Sep 2026 (Phase 3b).** `super admins manage client subscriptions` (`FOR ALL` on `is_super_admin`) was dropped and INSERT/UPDATE/DELETE/TRUNCATE revoked from `authenticated`, which now holds SELECT only. Comps, trials and dashboard-tier changes go through aal2 SECURITY DEFINER functions that require a reason and write their own audit row: `public.set_client_comp`, `public.set_client_trial` (both super admin only) and `public.set_client_dashboard_tier` (client write access or super admin). Stripe webhook writes stay service_role (system context) and are recorded by the generic trigger below.
 
-30. **Path C writes left no audit trail — CLOSED 11 Sep 2026 (Phase 3b).** One generic `AFTER INSERT OR UPDATE OR DELETE` trigger, `public.audit_table_change()` (SECURITY DEFINER, `SET search_path`), now writes an `audit_log` row per row change recording the actor (`auth.uid()`, null for system contexts), the table, the row id, the operation and the changed columns old → new. Attached to `user_roles`, `plan_levels`, `signup_requests`, `xero_assessment_contact`, `client_subscriptions`, `subscriptions` and `firms`; it replaces the insert/delete-only `audit_user_roles_change`. Where an audited definer function already writes a richer row, both rows appear — that is intended. The PGlite suite asserts the trigger exists on all seven tables for all three operations, and that an update writes a row naming the changed columns.
+32. **Path C writes left no audit trail — CLOSED 11 Sep 2026 (Phase 3b).** One generic `AFTER INSERT OR UPDATE OR DELETE` trigger, `public.audit_table_change()` (SECURITY DEFINER, `SET search_path`), now writes an `audit_log` row per row change recording the actor (`auth.uid()`, null for system contexts), the table, the row id, the operation and the changed columns old → new. Attached to `user_roles`, `plan_levels`, `signup_requests`, `xero_assessment_contact`, `client_subscriptions`, `subscriptions` and `firms`; it replaces the insert/delete-only `audit_user_roles_change`. Where an audited definer function already writes a richer row, both rows appear — that is intended. The PGlite suite asserts the trigger exists on all seven tables for all three operations, and that an update writes a row naming the changed columns.
 
-31. **A super admin could self-join any organisation — CLOSED 11 Sep 2026 (Phase 3b).** `adminSetSelfFirmMembership` upserted a `firm_members` row through `supabaseAdmin` for any organisation. It now calls `public.admin_set_self_firm_membership(_firm_id, _join)` through `context.supabase`: aal2 + super admin, joining permitted only while `firms.owner_user_id` still holds `super_admin` (a handed-over organisation is refused with "This organisation has been handed over. Ask the owner for an invite, or request support access."), the row inserted or reactivated as `status='active'` with the previous status recorded, and every join and leave audited. Leaving remains self-only. All four current organisations are super-admin-owned, so no legitimate access changed.
+33. **A super admin could self-join any organisation — CLOSED 11 Sep 2026 (Phase 3b).** `adminSetSelfFirmMembership` upserted a `firm_members` row through `supabaseAdmin` for any organisation. It now calls `public.admin_set_self_firm_membership(_firm_id, _join)` through `context.supabase`: aal2 + super admin, joining permitted only while `firms.owner_user_id` still holds `super_admin` (a handed-over organisation is refused with "This organisation has been handed over. Ask the owner for an invite, or request support access."), the row inserted or reactivated as `status='active'` with the previous status recorded, and every join and leave audited. Leaving remains self-only. All four current organisations are super-admin-owned, so no legitimate access changed.
 
-32. **`set_firm_always_free` could fail open — CLOSED 11 Sep 2026 (Phase 3b).** It compared `_firm_id <> app_private.practice_firm_id()`, so a missing practice setting made the comparison NULL and let TRUE through on any organisation; it also recorded a fixed UI reason. It now refuses outright when `practice_firm_id()` is null, compares with `IS DISTINCT FROM`, and stores the reason the caller supplies (3–500 characters, validated in the server function and in the subscription editor, which asks for it only when the flag actually changes). The `always_free` posture check reports an Action when the practice organisation has not been recorded.
+34. **`set_firm_always_free` could fail open — CLOSED 11 Sep 2026 (Phase 3b).** It compared `_firm_id <> app_private.practice_firm_id()`, so a missing practice setting made the comparison NULL and let TRUE through on any organisation; it also recorded a fixed UI reason. It now refuses outright when `practice_firm_id()` is null, compares with `IS DISTINCT FROM`, and stores the reason the caller supplies (3–500 characters, validated in the server function and in the subscription editor, which asks for it only when the flag actually changes). The `always_free` posture check reports an Action when the practice organisation has not been recorded.
 
 **Backlog 18 — CLOSED 11 Sep 2026 (Phase 3a).** The read/write split now exists in the database:
 `app_private.user_can_write_client` (client owner or active membership, never a support grant) is the
@@ -548,31 +550,31 @@ Outstanding, in order, each its own security change:
   the membership-governs handover case, cross-client and cross-organisation denials, and the
   direct-write closure; fixtures, generated docs, posture, linter and the Security report.
 - **Monitoring findings fixed 13 Sep 2026 (5 of 5).**
-  1. *Xero file allowance leaked from access grants (high).* `getClientOrgAllowance` read
+  1. _Xero file allowance leaked from access grants (high)._ `getClientOrgAllowance` read
      `public.client_access_tiers`, so any Business owner / External adviser grant (which carries a
      pass-through `multi_company` dashboard level) raised the client's Xero file allowance to 5.
      The allowance now derives from the client's own `client_subscriptions.dashboard_tier`, with
      always-free organisations entitled to every level. The database triggers
      (`enforce_client_xero_org_allowance`, `enforce_client_max_xero_orgs`) remain the enforcement
      point; this path can only report, never widen. Caller IDs stay filters (invariant 4).
-  2. *Disconnecting a Xero file left other rows connected (high).* `disconnectXero` marked only the
+  2. _Disconnecting a Xero file left other rows connected (high)._ `disconnectXero` marked only the
      picked row. It now marks every `xero_connections` row for that `tenant_id` within the same
      `firm_id` — revoke at Xero first, fail closed, mark rather than delete, keep the client link,
      clear token ciphertext (unchanged). Another organisation's rows are untouched.
-  3. *`client_xero_files_used` called a non-existent two-argument function (high).* Redefined to
+  3. _`client_xero_files_used` called a non-existent two-argument function (high)._ Redefined to
      call `app_private.user_can_read_client(auth.uid(), _client_id)`; caller-scoped, aal2 path and
      `SET search_path` unchanged.
-  4. *Unsubscribe links in older emails stopped working (medium).* The unique constraint on
+  4. _Unsubscribe links in older emails stopped working (medium)._ The unique constraint on
      `email_unsubscribe_tokens.email` was dropped (plain index kept, `token_hash` stays unique) and
      both send paths now insert one token row per send. Only hashes are stored; the used-token
      safety fallback still refuses to send when the address unsubscribed via any earlier link.
-  5. *Owner invite option always failed (medium).* The Owner choice was removed from the admin
+  5. _Owner invite option always failed (medium)._ The Owner choice was removed from the admin
      organisation invite dialog; invitations to an existing organisation are staff only, matching
      `adminInviteFirmMember`. Ownership still changes only via `transfer_organisation_ownership`.
-  Verified this turn: fixture fingerprint match (255 policies), access matrix up to date, definer
-  register regenerated (153 functions), 50 tests passed, live access suite 18 passed / 0 failed /
-  0 inconclusive, typecheck clean. Supabase linter unchanged at the 90 accepted signed-in
-  SECURITY DEFINER warnings.
+     Verified this turn: fixture fingerprint match (255 policies), access matrix up to date, definer
+     register regenerated (153 functions), 50 tests passed, live access suite 18 passed / 0 failed /
+     0 inconclusive, typecheck clean. Supabase linter unchanged at the 90 accepted signed-in
+     SECURITY DEFINER warnings.
 
 ## Daily 3am sign-in cut-off and missing sign-out (done 14 Sep 2026)
 
@@ -699,6 +701,7 @@ live access 18/0/0.
 ---
 
 ## 14 Sep 2026 — "Guarded SECURITY DEFINER functions" Action cleared, and the
+
 ## nightly cut-off lockout fixed (CLOSED)
 
 Security-relevant. The posture check `definer_guards` reported one callable
@@ -713,7 +716,7 @@ app called it (the only reference was the generated types file), so it was
 
 While verifying it, a real defect was found in the cut-off arithmetic shared by
 both functions: the cut-off was computed as today's Sydney date + 3 hours, which
-between midnight and 3am local time is a *future* timestamp. In those three
+between midnight and 3am local time is a _future_ timestamp. In those three
 hours every session was stale, so the RESTRICTIVE `mfa_aal2_required` policy
 hid every row on every data table and `assert_aal2()` raised `SESSION_EXPIRED`
 — signing in again did not help. `app_private.is_session_fresh()` now uses the
@@ -764,7 +767,7 @@ left behind for each finding. Full coverage list: `docs/security/automated-check
    writer that bypasses it.
 2. **Loom iframe hardening.** The validator was already sound; the frame was not
    sandboxed. It now carries `sandbox="allow-scripts allow-same-origin
-   allow-presentation"`, `allow="fullscreen; picture-in-picture"` and
+allow-presentation"`, `allow="fullscreen; picture-in-picture"` and
    `referrerPolicy="strict-origin-when-cross-origin"`. Guard 12b keeps it that way
    and forbids any other iframe.
 3. **Statement upload bounds.** Added a 50,000-line cap, a 10,000-character
@@ -814,7 +817,7 @@ permissions-policy and report-only CSP.
   reference is parsed only in its own branch. No signature, grant, policy or
   trigger definition change; the organisation-match rule itself is unchanged and
   still fires on both tables. Verified by behaviour: `SET CONSTRAINTS ALL
-  IMMEDIATE` plus a no-op `firm_id` update now succeeds. Fixture regenerated
+IMMEDIATE` plus a no-op `firm_id` update now succeeds. Fixture regenerated
   (255 policies, fingerprint MATCH).
 - **CLOSED — client-facing GST note named the wrong cause.** The note asserted
   manual journals whatever the calculation found. `GstResult` now carries
@@ -847,10 +850,9 @@ permissions-policy and report-only CSP.
   contained staff test account, three live sessions open:
   - `POST /auth/v1/admin/users/{id}/logout` → 404 `404 page not found`;
     `DELETE /auth/v1/admin/users/{id}/sessions` → 404; `POST
-    /auth/v1/admin/users/{id}/sessions/logout` → 404. The earlier 404
+/auth/v1/admin/users/{id}/sessions/logout` → 404. The earlier 404
     `user_not_found` for a fake id was NOT evidence the route exists: the user
-    lookup runs before routing, so a real id falls through to the router's plain
-    404. Sessions still worked afterwards (access 200, refresh 200).
+    lookup runs before routing, so a real id falls through to the router's plain 404. Sessions still worked afterwards (access 200, refresh 200).
   - `admin.signOut(jwt, 'global')` needs the victim's own token, which an admin
     does not hold — not usable as an admin control.
   - **Ban is not a sign-out.** `ban_duration: "300s"` blocked the live session
@@ -861,14 +863,14 @@ permissions-policy and report-only CSP.
   - **An admin credential change does genuinely revoke.** After
     `updateUserById({ password })`, `auth.sessions` for that person went **5 → 0**
     and every one of the three sessions was refused (access 403, refresh 400).
-  Implemented on that mechanism: `public.admin_assert_can_sign_out_user(uuid)`
-  (aal2 + super admin, refuses the caller's own account, refuses the last
-  remaining super admin) authorises; the server function sets a random password
-  nobody holds, emails a reset link, then `public.record_sign_out_all_devices`
-  writes the `sessions_revoked_all` audit row — only after the revocation
-  succeeded, and never carrying a password or token. Control sits on
-  Settings → Advisors per person and states the password consequence before
-  confirming. No `auth`-schema write was needed and none was made.
+    Implemented on that mechanism: `public.admin_assert_can_sign_out_user(uuid)`
+    (aal2 + super admin, refuses the caller's own account, refuses the last
+    remaining super admin) authorises; the server function sets a random password
+    nobody holds, emails a reset link, then `public.record_sign_out_all_devices`
+    writes the `sessions_revoked_all` audit row — only after the revocation
+    succeeded, and never carrying a password or token. Control sits on
+    Settings → Advisors per person and states the password consequence before
+    confirming. No `auth`-schema write was needed and none was made.
 
 ## 15 Sep 2026 — Two posture Actions from the session-controls work (CLOSED)
 
@@ -1225,8 +1227,8 @@ rejections in 24h, 0 files over 300 calls in an hour.
 **Change.** Trials now live on `public.org_subscription_options`
 (`trial_advisory_enabled`, `trial_consolidation_enabled`, `trial_ends_at`),
 stored separately from what has been purchased. Effective options are resolved at
-read time by `app_private.org_effective_options()` as *purchased OR (trialled AND
-not expired)*, so a trial ends on the next request with no scheduled job — the
+read time by `app_private.org_effective_options()` as _purchased OR (trialled AND
+not expired)_, so a trial ends on the next request with no scheduled job — the
 pattern `client_entitlement` already used. Per-client ticked card lists are never
 rewritten when a trial lapses, so re-purchasing restores each client exactly.
 

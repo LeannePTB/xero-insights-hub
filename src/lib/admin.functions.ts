@@ -4,8 +4,13 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 import { siteUrl } from "@/lib/site-origin";
 import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 
-
-async function logAudit(action: string, targetType: string, targetId: string, actorUserId: string, meta: Record<string, any>) {
+async function logAudit(
+  action: string,
+  targetType: string,
+  targetId: string,
+  actorUserId: string,
+  meta: Record<string, any>,
+) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   await (supabaseAdmin as any).from("audit_log").insert({
     actor_user_id: actorUserId,
@@ -17,8 +22,10 @@ async function logAudit(action: string, targetType: string, targetId: string, ac
 }
 
 function validatePassword(pw: string) {
-  if (typeof pw !== "string" || pw.length < 8) throw new Error("Password must be at least 8 characters.");
-  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) throw new Error("Password must include at least one letter and one number.");
+  if (typeof pw !== "string" || pw.length < 8)
+    throw new Error("Password must be at least 8 characters.");
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw))
+    throw new Error("Password must include at least one letter and one number.");
 }
 
 export const adminRenameFirm = createServerFn({ method: "POST" })
@@ -32,12 +39,19 @@ export const adminRenameFirm = createServerFn({ method: "POST" })
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: prev } = await supabaseAdmin
-      .from("firms").select("name").eq("id", data.firmId).maybeSingle();
+      .from("firms")
+      .select("name")
+      .eq("id", data.firmId)
+      .maybeSingle();
     const { error } = await (supabaseAdmin as any)
-      .from("firms").update({ name }).eq("id", data.firmId);
+      .from("firms")
+      .update({ name })
+      .eq("id", data.firmId);
     if (error) throw new Error(error.message);
     await logAudit("firm_renamed_by_admin", "firm", data.firmId, context.userId, {
-      firm_id: data.firmId, old_name: prev?.name ?? null, new_name: name,
+      firm_id: data.firmId,
+      old_name: prev?.name ?? null,
+      new_name: name,
     });
     return { ok: true };
   });
@@ -72,7 +86,6 @@ export const listFirmsAdmin = createServerFn({ method: "GET" })
     }));
     return { firms };
   });
-
 
 export const getFirmAuditAdmin = createServerFn({ method: "GET" })
   .middleware([requireAal2])
@@ -121,7 +134,6 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
       display_name: string | null;
     }>;
 
-
     // Pull last_sign_in_at for each member
     const membersWithAuth = await Promise.all(
       (members ?? []).map(async (m) => {
@@ -142,12 +154,11 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
 
     const { data: subscription } = await supabaseAdmin
       .from("subscriptions")
-      .select("*")
+      .select("status, trial_ends_at, current_period_end")
       .eq("firm_id", data.firmId)
       .maybeSingle();
 
     return { firm, members: membersWithAuth, subscription, billing: [] as any[] };
-
   });
 
 export const adminSendPasswordReset = createServerFn({ method: "POST" })
@@ -216,56 +227,53 @@ export const adminUpdateUserEmail = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-export const adminUpdateSubscription = createServerFn({ method: "POST" })
+export const adminUpdateBillingLifecycle = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator(
     (i: {
       firmId: string;
-      tier?: string | null;
-      status?: string | null;
-      trial_ends_at?: string | null;
-      current_period_end?: string | null;
-      cancel_at_period_end?: boolean | null;
+      status: string;
+      trial_ends_at: string | null;
+      current_period_end: string | null;
       is_always_free?: boolean | null;
       always_free_reason?: string | null;
-      client_limit_override?: number | null;
-    }) => ({
-      ...i,
-      always_free_reason:
-        i.always_free_reason == null
-          ? null
-          : z.string().trim().min(3).max(500).parse(i.always_free_reason),
-    }),
+    }) =>
+      z
+        .object({
+          firmId: z.string().uuid(),
+          status: z.enum([
+            "trialing",
+            "active",
+            "past_due",
+            "canceled",
+            "paused",
+            "unpaid",
+            "incomplete_expired",
+          ]),
+          trial_ends_at: z.string().datetime().nullable(),
+          current_period_end: z.string().datetime().nullable(),
+          is_always_free: z.boolean().nullable().optional(),
+          always_free_reason: z.string().trim().min(3).max(500).nullable().optional(),
+        })
+        .parse(i),
   )
   .handler(async ({ data, context }) => {
     await assertSuperAdminDb(context.supabase);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const subPatch: Record<string, any> = {};
-    for (const k of ["tier", "status", "trial_ends_at", "current_period_end", "cancel_at_period_end", "client_limit_override"] as const) {
-      if (data[k] !== undefined) subPatch[k] = data[k];
-    }
-
-
-    if (Object.keys(subPatch).length > 0) {
-      const { data: existing } = await supabaseAdmin
-        .from("subscriptions")
-        .select("id")
-        .eq("firm_id", data.firmId)
-        .maybeSingle();
-      if (existing) {
-        const { error } = await (supabaseAdmin as any)
-          .from("subscriptions")
-          .update(subPatch)
-          .eq("firm_id", data.firmId);
-        if (error) throw new Error(error.message);
-      } else {
-        const { error } = await (supabaseAdmin as any)
-          .from("subscriptions")
-          .insert({ firm_id: data.firmId, ...subPatch });
-        if (error) throw new Error(error.message);
-      }
-    }
+    const subPatch = {
+      status: data.status,
+      trial_ends_at: data.trial_ends_at,
+      current_period_end: data.current_period_end,
+    };
+    const { data: updated, error: updateError } = await (supabaseAdmin as any)
+      .from("subscriptions")
+      .update(subPatch)
+      .eq("firm_id", data.firmId)
+      .select("id")
+      .maybeSingle();
+    if (updateError) throw new Error(updateError.message);
+    if (!updated) throw new Error("This organisation has no billing lifecycle record.");
 
     if (data.is_always_free !== undefined && data.is_always_free !== null) {
       // Only public.set_firm_always_free may change this flag: it re-checks aal2
@@ -280,8 +288,7 @@ export const adminUpdateSubscription = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-
-    await logAudit("subscription_updated_by_admin", "firm", data.firmId, context.userId, {
+    await logAudit("billing_lifecycle_updated_by_admin", "firm", data.firmId, context.userId, {
       firm_id: data.firmId,
       changes: { ...subPatch, is_always_free: data.is_always_free },
     });
@@ -309,94 +316,3 @@ export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, member: data.join };
   });
-
-/**
- * Toggle the organisation-level consolidation add-on.
- *
- * Independent of the plan (capacity) and of client dashboard tiers: it gates
- * the cross-client consolidation tools. Super admin only, always audited.
- */
-/**
- * Set one boolean add-on flag on an organisation's subscription and PROVE it landed.
- *
- * The write is never skipped on the strength of a prior read: it always runs,
- * returns the affected row via .select(), and the caller only sees success when
- * exactly one row came back carrying the requested value. Zero rows affected is
- * an error, not a success — a toggle that says "saved" without saving is worse
- * than one that errors.
- */
-async function setSubscriptionFlag(
-  firmId: string,
-  column: "consolidation_enabled",
-  enabled: boolean,
-  traceId?: string,
-) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  const { data: existing, error: readErr } = await (supabaseAdmin as any)
-    .from("subscriptions")
-    .select(`id, ${column}`)
-    .eq("firm_id", firmId)
-    .maybeSingle();
-  if (readErr) throw new Error(readErr.message);
-  if (!existing)
-    throw new Error("This organisation has no plan yet — assign a plan before enabling add-ons.");
-
-  const from = !!existing[column];
-
-  const { data: rows, error } = await (supabaseAdmin as any)
-    .from("subscriptions")
-    .update({ [column]: enabled })
-    .eq("id", existing.id)
-    .select(`id, ${column}`);
-  console.info("[admin-subscription-flag] update-result", {
-    traceId,
-    firmId,
-    subscriptionId: existing.id,
-    column,
-    enabled,
-    rows,
-    error: error ? { message: error.message, code: error.code } : null,
-  });
-  if (error) throw new Error(error.message);
-
-  const updated = (rows ?? []) as any[];
-  if (updated.length !== 1 || !!updated[0]?.[column] !== enabled) {
-    console.error("[subscription-flag] write not confirmed", {
-      firmId,
-      column,
-      enabled,
-      rowsAffected: updated.length,
-    });
-    throw new Error(
-      "The change was not saved — the database did not confirm the update. Nothing has changed.",
-    );
-  }
-
-  return { from, changed: from !== enabled };
-}
-
-export const adminSetFirmConsolidation = createServerFn({ method: "POST" })
-  .middleware([requireAal2])
-  .inputValidator((i: { firmId: string; enabled: boolean }) => i)
-  .handler(async ({ data, context }) => {
-    await assertSuperAdminDb(context.supabase);
-    const enabled = data.enabled === true;
-
-    const { from, changed } = await setSubscriptionFlag(
-      data.firmId,
-      "consolidation_enabled",
-      enabled,
-    );
-
-    if (changed) {
-      await logAudit("firm_consolidation_addon_changed", "firm", data.firmId, context.userId, {
-        firm_id: data.firmId,
-        from,
-        to: enabled,
-      });
-    }
-
-    return { ok: true, enabled };
-  });
-
