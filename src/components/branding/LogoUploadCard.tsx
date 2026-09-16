@@ -51,11 +51,23 @@ export function LogoUploadCard({
   const delOrg = useServerFn(removeOrganisationLogo);
   const delCli = useServerFn(removeClientLogo);
 
+  const brandingFn = useServerFn(getClientBrandingEnabled);
+  // Only the per-client logo is a purchasable option; the organisation's own
+  // logo is available to everyone.
+  const entitlement = useQuery({
+    queryKey: ["client-branding", id],
+    queryFn: () => brandingFn({ data: { clientId: id } }),
+    enabled: scope === "client",
+    retry: false,
+  });
+  const brandingOn = scope === "organisation" || entitlement.data?.enabled === true;
+
   const queryKey = ["report-logo", scope, id];
   const q = useQuery({
     queryKey,
     queryFn: () =>
       scope === "organisation" ? getOrg({ data: { firmId: id } }) : getCli({ data: { clientId: id } }),
+    enabled: brandingOn,
     retry: false,
   });
 
