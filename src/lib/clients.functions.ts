@@ -2,7 +2,13 @@ import { createServerFn } from "@tanstack/react-start";
 import { findVerifiedAuthUserByEmail, listVerifiedAuthUsers } from "@/lib/auth-users.server";
 import { siteUrl } from "@/lib/site-origin";
 import { requireAal2 } from "@/lib/auth/require-aal2";
-import { ALL_TIERS, DEFAULT_TIER_WIDGETS, type DashboardTier, type WidgetKey } from "@/lib/tiers";
+import {
+  ALL_TIERS,
+  ALL_WIDGETS,
+  DEFAULT_TIER_WIDGETS,
+  type DashboardTier,
+  type WidgetKey,
+} from "@/lib/tiers";
 
 export const listClients = createServerFn({ method: "POST" })
   .middleware([requireAal2])
@@ -61,6 +67,23 @@ export const listClients = createServerFn({ method: "POST" })
         }),
       );
     }
+    // Display only: cards a staff member has ticked that this app has no card
+    // for yet (the database's card groups can name one before it is built).
+    // These are counted separately so the enabled count is never silently short.
+    const pendingCardsByClient = new Map<string, number>();
+    if (v2 && clientIds.length) {
+      const { data: tickRows } = await db
+        .from("client_cards")
+        .select("client_id, cards")
+        .in("client_id", clientIds);
+      for (const r of (tickRows ?? []) as any[]) {
+        const pending = ((r.cards ?? []) as string[]).filter(
+          (w) => !(ALL_WIDGETS as readonly string[]).includes(w),
+        );
+        pendingCardsByClient.set(r.client_id as string, pending.length);
+      }
+    }
+
     const ceilings = await tierCeilings(context.supabase);
     const exIndex = new ExclusionIndex(
       clientIds.length
@@ -138,6 +161,7 @@ export const listClients = createServerFn({ method: "POST" })
         healthAllowed: healthByClient.get(c.id) === true,
         cardModelActive: v2,
         visibleCardCount: v2 ? (v2Cards.get(c.id) ?? []).length : null,
+        pendingCardCount: v2 ? (pendingCardsByClient.get(c.id) ?? 0) : null,
       };
     });
     return { clients };
