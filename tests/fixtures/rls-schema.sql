@@ -3000,4 +3000,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: bf72506f2bb6218ec18a85299aedd71df714aeb8664c602e07b2877ed1c3c7d7
+-- catalogue-fingerprint: 28d4211f347db410d39b53cdacc6fdf7412552dd8af0b235e69d5212865ce4a6

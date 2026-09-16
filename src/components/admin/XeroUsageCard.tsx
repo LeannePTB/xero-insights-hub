@@ -99,12 +99,20 @@ export function XeroUsageCard() {
                       }
                     >
                       Busiest hour: {r.peakHourCalls.toLocaleString()}
+                      {r.peakHourStart
+                        ? ` (from ${new Date(r.peakHourStart).toISOString().slice(11, 16)} UTC)`
+                        : ""}
                     </span>
-                    {r.rejections > 0 && (
+                    {r.rejections > 0 ? (
                       <Badge variant="destructive" className="text-[10px]">
                         {r.rejections} paused by Xero
                         {r.lastProblem ? ` (${r.lastProblem} limit)` : ""}
+                        {r.lastRejectedAt
+                          ? `, last ${new Date(r.lastRejectedAt).toISOString().slice(5, 16).replace("T", " ")} UTC`
+                          : ""}
                       </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">Paused by Xero: none</span>
                     )}
                   </div>
                 </li>
