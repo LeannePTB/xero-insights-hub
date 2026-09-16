@@ -1285,7 +1285,7 @@ live query confirms 0 connections with no organisation.
 
 The separate Capacity and Status columns were removed. Client capacity remains
 visible on the Plan line: an organisation at or over its database-supplied client
-limit is marked `at limit` in amber. The existing unset-lodgement-cycle signal
+limit is marked `at limit` in amber, while an already-over-limit state is marked `over limit` in red. The existing unset-lodgement-cycle signal
 moved beneath the organisation name rather than being lost with Capacity. Normal
 active status and expected absent billing dates now render nothing; Lapsed,
 Cancelled, Past due and Suspended remain visible beside the organisation name.
