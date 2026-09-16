@@ -99,6 +99,8 @@ const CONTEXT: Record<Role, Ctx> = {
   other_org_member: { uid: U.ownerB, dbRole: "authenticated", aal: "aal2" },
   org_a_owner_reading_org_b: { uid: U.ownerB, dbRole: "authenticated", aal: "aal2" },
   client_viewer: { uid: U.viewer, dbRole: "authenticated", aal: "aal2" },
+  // Live-only rows today: no PGlite probe uses this context yet.
+  business_owner: { uid: U.businessOwnerOne, dbRole: "authenticated", aal: "aal2" },
   standing_viewer: { uid: U.standingViewer, dbRole: "authenticated", aal: "aal2" },
   support_grant_active: { uid: U.supportActive, dbRole: "authenticated", aal: "aal2" },
   support_grant_expired: { uid: U.supportExpired, dbRole: "authenticated", aal: "aal2" },

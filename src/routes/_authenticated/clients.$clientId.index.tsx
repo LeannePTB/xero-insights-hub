@@ -46,6 +46,7 @@ import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 import { RefreshSnapshotsButton } from "@/components/dashboard/RefreshSnapshotsButton";
 import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLapsedNotice";
+import { ClientTrialNotice } from "@/components/dashboard/ClientTrialNotice";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
@@ -440,6 +441,9 @@ function ClientDashboard() {
         </div>
 
         {isAdvisor && <OrganisationLapsedNotice clientId={clientId} />}
+        {/* Not gated on isAdvisor: the business owner must see the trial too.
+            The server returns null to anyone who may not see billing state. */}
+        <ClientTrialNotice clientId={clientId} />
 
         <LatestReportPageOne clientId={clientId} />
 

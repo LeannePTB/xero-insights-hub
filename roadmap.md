@@ -149,3 +149,8 @@ Separate from the card-model migration; no file or object shared with it.
 
 - [x] Diagnosed the "paused by Xero (concurrent limit)" badge: 4 retried requests on the Positive Traction file at 02:44 UTC, caused by the 5-in-flight ceiling when a refresh overlapped interactive traffic. No failures; day/minute quotas untouched.
 - [x] Owner decision: monitor only, no throttle built. Recorded in `docs/security/monitoring.md` and the security backlog. Docs-only change.
+
+## Client-facing trial banner (16 Sep 2026)
+
+- [x] `public.client_org_trial(_client_id)`: aal2-guarded, returns the organisation's live trial (end date, days remaining) only to organisation members and the client's business owner; everyone else gets no rows.
+- [x] `ClientTrialNotice` on the client dashboard: shows the trial end date to the business owner and staff, neutral styling until the last 14 days (amber), disappears by itself when the trial ends.

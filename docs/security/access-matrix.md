@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1611**. Known failures: **0**.
+Rows: **1618**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -272,6 +272,7 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| server fn: getClientOrgTrial | execute | DENY | live | PK 2 — MFA is enforced on the server | app_private.assert_aal2() runs before anything is read, so an aal1 session is refused with MFA_REQUIRED even when the person would otherwise qualify. |
 
 ## Active member of a DIFFERENT organisation
 
@@ -1379,6 +1380,7 @@ None.
 | session_activity | update | DENY | pglite | PK 1 — read-only to signed-in users; only the definer function writes |  |
 | admin_assert_can_sign_out_user(another person) | execute | DENY | pglite | Invariant 3/6 — only a super admin may sign another person out |  |
 | server fn: getClientSetupChecklist for a client in another organisation | execute | DENY | live | PK 4 (a caller-supplied client_id is a FILTER, never a GRANT) | assertClientDataAccessForClient runs first, and every read inside setup-checklist.server.ts goes through context.supabase, so RLS scopes the clients, client_statutory_accounts, client_cost_classifications and xero_snapshots reads. public.client_setup_account_counts is SECURITY INVOKER, so it counts only rows the caller may already read. |
+| server fn: getClientOrgTrial for a client in their organisation | execute | ALLOW | live | Path A — members see their own organisation's billing state | app_private.has_firm_access (active membership) admits the caller; the same row a super admin sees on the purchase card is what the banner renders. |
 
 ## External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)
 
@@ -1447,6 +1449,7 @@ None.
 | unreconciled_lines | update | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 | unreconciled_lines | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 | user_can_write_client_scenario() for the client they can read | execute | DENY | pglite | PK rule 11 — the read predicate is gone from the scenario write check |  |
+| server fn: getClientOrgTrial | execute | DENY | live | Path D — an external adviser never sees billing, plan or organisation-level data | A client_access row with relationship = 'external_adviser' (or NULL) does not match the business_owner predicate and the caller is not a member, so no rows are returned. |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1576,6 +1579,7 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 | server fn: acknowledgeSetupItem (record a setup decision) | execute | DENY | live | PK 5 (support grants are READ-ONLY) | The acknowledgement is an UPDATE on public.clients through context.supabase, so the clients write policies (app_private.user_can_manage_client) decide. A support grant is read-only, so the update matches no row and the function raises 'You cannot change this client.' Reading the checklist stays allowed, like other client reads under a grant. |
+| server fn: getClientOrgTrial | execute | DENY | live | PK 5 / Path B — a support grant is read-only client data, never billing state | app_private.has_firm_access counts active firm_members rows only, so a support grant does not satisfy it; without a business_owner row the function returns nothing. |
 
 ## External adviser — All clients (firm_viewer_access on one organisation, read-only; user-facing name only, the key is unchanged)
 
@@ -1677,6 +1681,7 @@ None.
 | unreconciled_lines | insert | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 | unreconciled_lines | update | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 | unreconciled_lines | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
+| server fn: getClientOrgTrial | execute | DENY | live | Path D — an external adviser never sees billing, plan or organisation-level data | firm_viewer_access is not consulted by the function; without membership or a business_owner row the result is empty. |
 
 ## Super admin approving their own support grant
 
@@ -1717,3 +1722,10 @@ None.
 | client_notes | read | ALLOW | pglite | PK 2 — recent recorded activity keeps a long-lived session active, whatever its age |  |
 | assert_aal2() after 90 minutes of continuous use | execute | ALLOW | pglite | PK 2 — an actively used session is never refused as idle |  |
 | touch_session_activity() | execute | ALLOW | pglite | PK 2 — an actively used session keeps recording its own activity, caller-scoped |  |
+
+## Business owner — one specific client (client_access with relationship = 'business_owner', self-service)
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| server fn: getClientOrgTrial for their own client | execute | ALLOW | live | Path E — the business owner may see their client's plan and billing | public.client_org_trial asserts aal2, then returns the organisation's live trial (end date, days remaining, ending-soon flag) only when the caller is an active member of the client's organisation or holds a client_access row with relationship = 'business_owner' for that exact client. Only trial metadata is returned — never purchase detail, never another organisation. |
+| server fn: getClientOrgTrial for a client that is not theirs | execute | DENY | live | PK 4 (a caller-supplied client_id is a FILTER, never a GRANT) | Neither predicate holds — no membership of that organisation and no business_owner row for that client — so the function returns no rows and the banner never renders. |
