@@ -10,7 +10,6 @@ import {
   adminSendPasswordReset,
   adminSetUserPassword,
   adminUpdateUserEmail,
-  adminUpdateSubscription,
   adminRenameFirm,
   adminSetSelfFirmMembership,
 } from "@/lib/admin.functions";
@@ -30,9 +29,8 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, KeyRound, Mail, ShieldAlert, History, CreditCard, Users, Building2, Check, X, Pencil } from "lucide-react";
+import { Loader2, KeyRound, Mail, ShieldAlert, History, Users, Building2, Check, X, Pencil } from "lucide-react";
 import { toast } from "sonner";
-import { SubscriptionEditor } from "@/components/admin/SubscriptionEditor";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 
 
@@ -138,7 +136,7 @@ function FirmDetailPage() {
     );
   }
 
-  const { firm, members, subscription } = detailQ.data!;
+  const { firm, members } = detailQ.data!;
 
   return (
     <div className="min-h-screen bg-background">
@@ -160,13 +158,6 @@ function FirmDetailPage() {
 
         <OrgPurchaseCard firmId={firmId} />
 
-        <SubscriptionSection
-          firmId={firmId}
-          subscription={subscription}
-          isAlwaysFree={firm.is_always_free}
-          onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
-        />
-
         <MembersSection
           firmId={firmId}
           members={members}
@@ -185,7 +176,7 @@ function FirmDetailPage() {
             onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
           />
           <p className="text-xs text-muted-foreground">
-            Client names, tiers and linked Xero files only — nothing here opens client data. Client
+            Client names and linked Xero files only — nothing here opens client data. Client
             dashboards are reachable through “View as”, and only when this organisation has granted
             support access or you are a member of it.
           </p>
@@ -197,39 +188,6 @@ function FirmDetailPage() {
     </div>
   );
 }
-
-function SubscriptionSection({
-  firmId,
-  subscription,
-  isAlwaysFree,
-  onChanged,
-}: {
-  firmId: string;
-  subscription: any;
-  isAlwaysFree: boolean;
-  onChanged: () => void;
-}) {
-  return (
-    <section className="rounded-lg border p-6 space-y-4">
-      <div className="flex items-center gap-2">
-        <CreditCard className="h-4 w-4" />
-        <h2 className="text-lg font-semibold">Subscription</h2>
-      </div>
-      <SubscriptionEditor
-        firmId={firmId}
-        subscription={subscription}
-        isAlwaysFree={isAlwaysFree}
-        onChanged={onChanged}
-      />
-      <p className="text-xs text-muted-foreground">
-        The plan controls how many clients and Xero organisations this organisation can have, and
-        which dashboards are available. Each client's dashboard tier is set on that client's settings
-        page.
-      </p>
-    </section>
-  );
-}
-
 
 function MembersSection({
   firmId,

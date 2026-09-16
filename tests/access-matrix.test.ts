@@ -1215,6 +1215,19 @@ describe("access matrix — PGlite layer", () => {
 });
 
 describe("meta: the suite can actually detect a regression", () => {
+  it("sources organisation limits from org_subscription_options, not legacy plans", async () => {
+    const migration = fs.readFileSync(
+      path.join(
+        process.cwd(),
+        "supabase/migrations/20260916021651_2ff5c91e-569e-4c6e-b683-f68b40f87c09.sql",
+      ),
+      "utf8",
+    );
+    expect(migration).toContain("from public.org_subscription_options");
+    expect(migration).not.toContain("public.plan_levels");
+    expect(migration).not.toContain("public.subscriptions");
+  });
+
   it("(a) denies an aal1 claim on a data table that aal2 can read", async () => {
     const withAal2 = await asRole("org_owner", () =>
       probe(`select 1 from public.clients where id = '${CLIENT_A}'`),

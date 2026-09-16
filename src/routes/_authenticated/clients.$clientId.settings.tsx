@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { SuperAdminChip } from "@/components/admin/SuperAdminOnly";
 import { useEffect } from "react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,12 +18,6 @@ import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccounts
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
 import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
-import {
-  listTierConfig,
-  saveClientTierWidgets,
-  listTierSettings,
-} from "@/lib/tier-config.functions";
-import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
 import { getMyContext } from "@/lib/roles.functions";
 
 import {
@@ -61,11 +54,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
 import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
-import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
 import { ClientCardsPanel } from "@/components/billing/ClientCardsPanel";
-import { getCardModel } from "@/lib/card-model.functions";
 import {
   ArrowLeft,
   Trash2,
@@ -76,9 +66,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
-import { ALL_TIERS, tierLabel, type DashboardTier, type WidgetKey } from "@/lib/tiers";
-import { usePlanLevels } from "@/hooks/usePlanLevels";
-import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 // import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
@@ -111,9 +98,6 @@ function ClientSettings() {
   const detach = useServerFn(detachXeroOrg);
   const del = useServerFn(deleteClient);
   const revoke = useServerFn(revokeClientAccess);
-  const fetchTierCfg = useServerFn(listTierConfig);
-  const saveTier = useServerFn(saveClientTierWidgets);
-  const fetchTierSettings = useServerFn(listTierSettings);
   const fetchClassifications = useServerFn(listCostClassifications);
   const setClassEnabled = useServerFn(setCostClassificationEnabled);
 
@@ -133,26 +117,8 @@ function ClientSettings() {
     queryKey: ["client-access", clientId],
     queryFn: () => fetchAccess({ data: { clientId } }),
   });
-  const tierCfgQ = useQuery({
-    queryKey: ["tier-config", clientId],
-    queryFn: () => fetchTierCfg({ data: { clientId } }),
-  });
-  const tierSettingsQ = useQuery({
-    queryKey: ["tier-settings"],
-    queryFn: () => fetchTierSettings(),
-  });
-  const fetchPlanTiers = useServerFn(getAllowedTiersForClient);
-  const planTiersQ = useQuery({
-    queryKey: ["plan-tiers", "client", clientId],
-    queryFn: () => fetchPlanTiers({ data: { clientId } }),
-  });
-  const planTiers = planTiersQ.data?.allowed ?? null;
   const fetchMyContext = useServerFn(getMyContext);
   const myCtxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
-  const isSuperAdmin = !!myCtxQ.data?.isSuperAdmin;
-  const fetchCardModel = useServerFn(getCardModel);
-  const cardModelQ = useQuery({ queryKey: ["card-model"], queryFn: () => fetchCardModel() });
-  const cardModelActive = cardModelQ.data?.active === true;
 
   const fetchScopeStatus = useServerFn(listXeroScopeStatus);
   const scopeStatusQ = useQuery({
@@ -165,29 +131,6 @@ function ClientSettings() {
       .map((c) => [c.tenantId, c.missingScopes] as [string, string[]]),
   );
 
-  // Only offer tiers the organisation's plan includes.
-  const { levels: tierLevels } = usePlanLevels("dashboard");
-  const catalogueKeys = (
-    tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]
-  ) as DashboardTier[];
-  const labelFor = (t: string) => tierLabel(t, tierLevels.find((l) => l.key === t)?.label);
-  const enabledTiers = catalogueKeys.filter(
-    (t) =>
-      (tierLevels.find((l) => l.key === t)?.enabled ?? true) &&
-      (tierSettingsQ.data?.enabled?.[t] ?? true) &&
-      (!planTiers || planTiers.includes(t)),
-  );
-
-  const tierSaveMut = useMutation({
-    mutationFn: (v: { tier: DashboardTier; widgets: WidgetKey[] | null }) =>
-      saveTier({ data: { clientId, tier: v.tier, widgets: v.widgets } }),
-    onSuccess: () => {
-      toast.success("Saved");
-      qc.invalidateQueries({ queryKey: ["tier-config", clientId] });
-      qc.invalidateQueries({ queryKey: ["effective-widgets", clientId] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
 
   const [name, setName] = useState("");
   const [selectedXeroIds, setSelectedXeroIds] = useState<Set<string>>(new Set());
@@ -227,7 +170,7 @@ function ClientSettings() {
   const moveXeroMut = useMutation({
     mutationFn: (connectionId: string) => moveXeroFile({ data: { clientId, connectionId } }),
     onSuccess: () => {
-      toast.success("Xero file moved to this subscription");
+      toast.success("Xero file moved to this client");
       qc.invalidateQueries({ queryKey: ["client", clientId] });
       qc.invalidateQueries({ queryKey: ["client-xero-options", clientId] });
       qc.invalidateQueries({ queryKey: ["xero-connections"] });
@@ -330,7 +273,7 @@ function ClientSettings() {
       qc.invalidateQueries({ queryKey: ["xero-connections"] });
       qc.invalidateQueries({ queryKey: ["xero-scope-status"] });
     } else if (status === "choose") {
-      toast.info("Choose which Xero files belong to this subscription.");
+      toast.info("Choose which Xero files belong to this client.");
     } else if (err) {
       toast.error(err);
     }
@@ -343,16 +286,6 @@ function ClientSettings() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash.replace("#", "") !== "dashboard-tier") return;
-    const el = document.getElementById("dashboard-tier");
-    if (!el) return;
-    // Give the layout a beat to settle before scrolling to the target.
-    const t = setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-    return () => clearTimeout(t);
-  }, [clientId]);
 
   // Defence in depth: this page is preparer tooling. Anyone who is not an
   // advisor is sent to their own client dashboard. Server-side checks are
@@ -405,32 +338,7 @@ function ClientSettings() {
           </div>
         </Section>
 
-        {!cardModelActive && (
-          <>
-            <Section title="Subscription" collapsible>
-              <ClientSubscriptionSection clientId={clientId} />
-            </Section>
-            <Section
-              title="Dashboard tier"
-              id="dashboard-tier"
-              collapsible
-              action={
-                isSuperAdmin ? (
-                  <div className="flex items-center gap-2">
-                    <SuperAdminChip />
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link to="/settings/tiers">Edit plan defaults</Link>
-                    </Button>
-                  </div>
-                ) : undefined
-              }
-            >
-              <ClientDashboardTierControl clientId={clientId} />
-            </Section>
-          </>
-        )}
-
-        {/* Cards — per-client switches within the tier */}
+        {/* Cards — per-client switches within the organisation's available cards */}
         <Section title="Cards" id="cards" collapsible>
           <ClientCardsPanel clientId={clientId} firmId={client.firm_id ?? null} />
         </Section>
@@ -514,9 +422,7 @@ function ClientSettings() {
             {allowance ? (
               <p className="pb-2 text-xs text-muted-foreground">
                 {allowance.used} of {allowance.allowance} linked
-                {allowance.isMulti
-                  ? ` · ${allowance.sourceLabel ?? "Multi company"} tier — ${allowance.allowance} Xero files`
-                  : " · standard (single Xero file)"}
+                {allowance.isMulti ? ` · allowance ${allowance.allowance} Xero files` : " · single Xero file"}
               </p>
             ) : null}
           </div>
@@ -645,19 +551,18 @@ function ClientSettings() {
             <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
               Those Xero files belong to another organisation, so they can't be linked here. Run
               "Connect a Xero file" again and tick an organisation that belongs to this
-              organisation's subscription.
+              organisation.
             </p>
           )}
           {chooserState && availableConns.length > 0 && (allowance?.remaining ?? 0) < 1 && (
             <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-              This subscription is using {allowance?.used ?? 0} of {allowance?.allowance ?? 0} Xero
-              file{(allowance?.allowance ?? 0) === 1 ? "" : "s"} allowed on its plan, so no more can
-              be linked. Upgrade the organisation's plan to add another Xero file.
+              This client is using {allowance?.used ?? 0} of {allowance?.allowance ?? 0} allowed Xero
+              file{(allowance?.allowance ?? 0) === 1 ? "" : "s"}, so no more can be linked.
             </p>
           )}
           {chooserState && availableConns.length > 0 && (allowance?.remaining ?? 0) >= 1 && (
             <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3">
-              <p className="mb-2 text-sm font-semibold">Choose files for this subscription</p>
+              <p className="mb-2 text-sm font-semibold">Choose files for this client</p>
               <p className="mb-3 text-xs text-muted-foreground">
                 Only the files selected here will be visible to this client's users. You can select
                 up to {allowance?.remaining ?? 0}.
@@ -687,8 +592,8 @@ function ClientSettings() {
                         {disabled && (
                           <span className="text-xs text-muted-foreground">
                             {c.linkedToThisClient
-                              ? "Already linked to this subscription"
-                              : `Linked to ${c.linkedClientName ?? "another subscription"}${c.linkedFirmName ? ` — ${c.linkedFirmName}` : ""}`}
+                              ? "Already linked to this client"
+                              : `Linked to ${c.linkedClientName ?? "another client"}${c.linkedFirmName ? ` — ${c.linkedFirmName}` : ""}`}
                           </span>
                         )}
                         {!disabled && (
@@ -709,11 +614,11 @@ function ClientSettings() {
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>
-                                Move {c.tenant_name} to this subscription?
+                                Move {c.tenant_name} to this client?
                               </AlertDialogTitle>
                               <AlertDialogDescription>
                                 It will be unlinked from{" "}
-                                {c.linkedClientName ?? "its current subscription"}
+                                {c.linkedClientName ?? "its current client"}
                                 {c.linkedFirmName ? ` (${c.linkedFirmName})` : ""} and its users
                                 will lose access to this Xero file.
                               </AlertDialogDescription>
@@ -849,7 +754,7 @@ function Section({
   children: React.ReactNode;
 }) {
   const key = storageKey ?? sectionStorageKey("client-settings", title);
-  // A deep link to this section (e.g. /clients/x/settings#dashboard-tier) opens it.
+  // A deep link to a section opens it.
   const hashTargeted =
     typeof window !== "undefined" && !!id && window.location.hash.replace("#", "") === id;
   const [open, setOpen] = usePersistedDisclosure(key, {

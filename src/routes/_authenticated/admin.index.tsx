@@ -13,14 +13,11 @@ import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnecti
 
 
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
-import { usePlanLevels } from "@/hooks/usePlanLevels";
-import { ExpiringOrganisationsNotice } from "@/components/admin/ExpiringOrganisationsNotice";
 import { listSubscriptionStates } from "@/lib/subscription-state.functions";
 import { listOrgPurchases, type OrgPurchase } from "@/lib/card-model.functions";
 import { recordViewAs } from "@/lib/view-as.functions";
 import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription-state";
-import { trialStatus } from "@/lib/org-trial";
 
 
 
@@ -118,7 +115,6 @@ function AdminPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        <ExpiringOrganisationsNotice />
         <OrganisationsSection
           isSuper={isSuper}
           firms={firmsQ.data?.firms as FirmRow[] | undefined}
@@ -176,14 +172,7 @@ function OrganisationsSection({
   onCreated: () => void;
 }) {
   const navigate = useNavigate();
-  // Plan labels come from the plan_levels catalogue, never a hardcoded map.
-  const { all: planLevels } = usePlanLevels();
-  const planLabel = (key: string | null) =>
-    key ? planLevels.find((l) => l.scope === "firm" && l.key === key)?.label ?? key : "—";
-  const dashboardLabel = (key: string) =>
-    planLevels.find((l) => l.scope === "dashboard" && l.key === key)?.label ?? key;
-
-  // Limits and dashboard tiers for every visible organisation in one call.
+  // Limits and usage for every visible organisation in one call.
   const firmIds = (firms ?? []).map((f) => f.firm_id);
   const fetchUsage = useServerFn(listOrganisationUsage);
   const usageQ = useQuery({
@@ -208,7 +197,7 @@ function OrganisationsSection({
   );
 
   // What each organisation has actually bought (org_subscription_options via
-  // public.org_purchase). This — not the per-client dashboard tiers — is what
+  // public.org_purchase). This is what
   // decides cards while the purchase + ticked-list model is live.
   const fetchPurchases = useServerFn(listOrgPurchases);
   const purchasesQ = useQuery({
@@ -216,7 +205,6 @@ function OrganisationsSection({
     queryFn: () => fetchPurchases({ data: { firmIds } }),
     enabled: firmIds.length > 0,
   });
-  const modelActive = purchasesQ.data?.modelActive ?? false;
   const purchaseByFirm = new Map<string, OrgPurchase>(
     (purchasesQ.data?.purchases ?? []).map((p) => [p.firmId, p]),
   );
@@ -322,11 +310,8 @@ function OrganisationsSection({
                 </td>
                 <td className="px-4 py-3">
                   <PlanCell
-                    label={planLabel(f.tier)}
                     usage={usage}
-                    dashboardLabel={dashboardLabel}
                     purchase={purchaseByFirm.get(f.firm_id)}
-                    modelActive={modelActive}
                   />
                 </td>
                 <td className="px-4 py-3">
@@ -375,11 +360,8 @@ function OrganisationsSection({
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Plan</div>
                 <div className="mt-0.5">
                 <PlanCell
-                    label={planLabel(f.tier)}
                     usage={usage}
-                    dashboardLabel={dashboardLabel}
                     purchase={purchaseByFirm.get(f.firm_id)}
-                    modelActive={modelActive}
                   />
                 </div>
               </div>
@@ -443,32 +425,23 @@ function abnormalStatus(state: SubscriptionState | undefined, status: string | n
  *
  * Under the purchase + ticked-list model this reads org_subscription_options
  * (through public.org_purchase) and nothing else. The old line here counted
- * per-client dashboard tiers, which stopped deciding anything when the model
- * went live — it was describing a system no longer in use, which is worse than
- * showing nothing. The legacy dashboard-tier line is kept only while the old
- * model is still the live one.
+ * legacy per-client settings, which stopped deciding anything when the model
+ * went live.
  */
 function PlanCell({
-  label,
   usage,
-  dashboardLabel,
   purchase,
-  modelActive,
 }: {
-  label: string;
   usage: OrganisationUsage | undefined;
-  dashboardLabel: (key: string) => string;
   purchase: OrgPurchase | undefined;
-  modelActive: boolean;
 }) {
-  if (modelActive) {
-    if (!purchase) {
-      return (
-        <div className="leading-tight">
-          <div className="text-muted-foreground">—</div>
-        </div>
-      );
-    }
+  if (!purchase) {
+    return (
+      <div className="leading-tight">
+        <div className="text-muted-foreground">—</div>
+      </div>
+    );
+  }
     const consolidationBlocked = purchase.advisory && purchase.clientCount <= 1;
     return (
       <div className="leading-tight space-y-0.5">
@@ -503,21 +476,11 @@ function PlanCell({
             }
           />
         </div>
-        <TrialLine purchase={purchase} />
         <div className="text-xs text-muted-foreground whitespace-nowrap">
           {purchase.billingMode === "external" ? "billed externally" : "billed with bookkeeping"}
         </div>
       </div>
     );
-  }
-  return (
-    <div className="leading-tight">
-      <div>{label}</div>
-      <div className="text-xs text-muted-foreground">
-        <DashboardsInUseCell usage={usage} label={dashboardLabel} />
-      </div>
-    </div>
-  );
 }
 
 /** "Advisory on" / "Advisory off", with the reason it cannot be on when there is one. */
@@ -564,7 +527,7 @@ function RowActions({
     <div className="flex flex-wrap items-center justify-end gap-1">
       <Button size="sm" variant="outline" className="h-8 px-2 text-xs" asChild>
         <Link to="/admin/firms/$firmId" params={{ firmId }}>
-          Plan &amp; members
+          Options &amp; members
         </Link>
       </Button>
       <Button size="sm" variant="outline" className="h-8 px-2 text-xs" asChild>
@@ -587,28 +550,6 @@ function RowActions({
   );
 }
 
-/** Effective dashboard tiers across the organisation's clients, e.g. "8 × Standard, 4 × Advisory". */
-function DashboardsInUseCell({
-  usage,
-  label,
-}: {
-  usage: OrganisationUsage | undefined;
-  label: (key: string) => string;
-}) {
-  if (!usage) return <span className="text-muted-foreground">—</span>;
-  if (usage.clientsUsed === 0) return <span className="text-muted-foreground">no clients</span>;
-  const parts = Object.entries(usage.dashboards)
-    .sort((a, b) => b[1] - a[1])
-    .map(([key, count]) => `${count} × ${label(key)}`);
-  if (parts.length === 0) return <span className="text-muted-foreground">—</span>;
-  return (
-    <span>
-      {parts.join(", ")}
-      {usage.dashboardsPartial && <span className="text-muted-foreground"> (partial)</span>}
-    </span>
-  );
-}
-
 function SectionTitle() {
   return (
     <div className="flex items-center gap-2">
@@ -618,26 +559,3 @@ function SectionTitle() {
   );
 }
 
-/**
- * An active trial and the exact date it ends, amber inside the warning window so
- * it is noticed before it lapses rather than after. Nothing shows when there is
- * no trial, which is every organisation today.
- */
-function TrialLine({ purchase }: { purchase: OrgPurchase }) {
-  const status = trialStatus(purchase);
-  if (status.kind !== "active") return null;
-  return (
-    <div
-      className={`text-xs ${
-        status.warn ? "font-medium text-amber-600 dark:text-amber-400" : "text-muted-foreground"
-      }`}
-    >
-      {status.grants} on trial · ends {status.endLabel}
-      {status.warn
-        ? status.daysLeft <= 0
-          ? " · ends today"
-          : ` · ${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} left`
-        : ""}
-    </div>
-  );
-}

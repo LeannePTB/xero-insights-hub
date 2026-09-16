@@ -14,17 +14,13 @@ import { BrandMark } from "@/components/BrandMark";
 import { SecurityStatusCard } from "@/components/admin/SecurityStatusCard";
 import {
   Building2,
-  Layers,
   Shield,
-  SlidersHorizontal,
   Users,
 } from "lucide-react";
 
 const items = [
   { title: "Organisations", url: "/admin", icon: Building2 },
-  { title: "Subscription levels", url: "/admin/plans", icon: Layers },
   { title: "Security & Compliance", url: "/admin/security", icon: Shield },
-  { title: "Tier widgets", url: "/settings/tiers", icon: SlidersHorizontal },
   { title: "Advisors", url: "/settings/advisors", icon: Users },
 ];
 

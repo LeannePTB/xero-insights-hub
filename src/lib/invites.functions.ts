@@ -52,11 +52,6 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
   .inputValidator(
     (i: {
       name: string;
-      tier: string;
-      status: string;
-      trialEndsAt?: string | null;
-      currentPeriodEnd?: string | null;
-      isAlwaysFree?: boolean;
       ownerEmail?: string | null;
       ownerMode: "password" | "invite" | "none";
       ownerPassword?: string | null;
@@ -71,24 +66,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     const email = data.ownerMode === "none" ? "" : validateEmail(data.ownerEmail ?? "");
     if (data.ownerMode === "password") validatePassword(data.ownerPassword ?? "");
 
-    const builtInTiers = ["starter", "growth", "scale", "firm", "free", "legacy"];
-    const allowedStatuses = ["trialing", "active"];
-    if (!allowedStatuses.includes(data.status)) throw new Error("Invalid subscription status.");
-
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    // Super admins can define extra organisation plans in the Subscription levels
-    // page, so accept any enabled firm-scoped plan key as well as the built-ins.
-    const { data: planRows } = await (supabaseAdmin as any)
-      .from("plan_levels")
-      .select("key")
-      .eq("scope", "firm")
-      .eq("enabled", true);
-    const allowedTiers = new Set([
-      ...builtInTiers,
-      ...((planRows ?? []) as any[]).map((r) => String(r.key)),
-    ]);
-    if (!allowedTiers.has(data.tier)) throw new Error("Invalid plan tier.");
 
     // `is_always_free` belongs to Traction Advisory's own organisation only —
     // on a client organisation it would silently grant the highest enabled
@@ -106,19 +84,29 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     const rollback = async () => {
       await (supabaseAdmin as any).from("access_invites").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("firm_members").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("org_subscription_options").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("subscriptions").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("firms").delete().eq("id", firm.id);
     };
 
     try {
+      // Retained only for the v1 rollback path. Active limits and cards come
+      // from org_subscription_options below.
       const { error: sErr } = await (supabaseAdmin as any).from("subscriptions").insert({
         firm_id: firm.id,
-        tier: data.tier,
-        status: data.status,
-        trial_ends_at: data.status === "trialing" ? (data.trialEndsAt ?? null) : null,
-        current_period_end: data.status === "active" ? (data.currentPeriodEnd ?? null) : null,
+        tier: "starter",
+        status: "active",
       });
       if (sErr) throw new Error(sErr.message);
+
+      const { error: oErr } = await (supabaseAdmin as any).from("org_subscription_options").insert({
+        firm_id: firm.id,
+        client_limit: 1,
+        advisory_enabled: false,
+        consolidation_enabled: false,
+        billing_mode: "bookkeeping",
+      });
+      if (oErr) throw new Error(oErr.message);
 
       // The creator always becomes an active member so the organisation is
       // never stranded. Where a client login is created in the same step, that
@@ -175,8 +163,10 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       if (data.ownerMode === "none") {
         await logAudit("organisation_created", "firm", firm.id, context.userId, {
           firm_id: firm.id,
-          tier: data.tier,
-          status: data.status,
+          client_limit: 1,
+          advisory_enabled: false,
+          consolidation_enabled: false,
+          billing_mode: "bookkeeping",
           owner_mode: "none",
           owner_user_id: context.userId,
         });
@@ -227,8 +217,10 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         await logAudit("organisation_created", "firm", firm.id, context.userId, {
           firm_id: firm.id,
           email,
-          tier: data.tier,
-          status: data.status,
+          client_limit: 1,
+          advisory_enabled: false,
+          consolidation_enabled: false,
+          billing_mode: "bookkeeping",
           owner_mode: "password",
           owner_user_id: ownerId,
         });
@@ -258,8 +250,10 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       await logAudit("organisation_created", "firm", firm.id, context.userId, {
         firm_id: firm.id,
         email,
-        tier: data.tier,
-        status: data.status,
+        client_limit: 1,
+        advisory_enabled: false,
+        consolidation_enabled: false,
+        billing_mode: "bookkeeping",
         owner_mode: "invite",
         owner_user_id: context.userId,
       });
@@ -309,14 +303,29 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
       .single();
     if (fErr) throw new Error(fErr.message);
 
-    // Default subscription row: 7-day trial, starter tier.
-    const trialEnds = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    await (supabaseAdmin as any).from("subscriptions").insert({
+    const rollback = async () => {
+      await (supabaseAdmin as any).from("access_invites").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("org_subscription_options").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("subscriptions").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("firms").delete().eq("id", firm.id);
+    };
+
+    try {
+      // Retained only for the v1 rollback path.
+      const { error: subErr } = await (supabaseAdmin as any).from("subscriptions").insert({
       firm_id: firm.id,
       tier: "starter",
-      status: "trialing",
-      trial_ends_at: trialEnds,
+      status: "active",
     });
+      if (subErr) throw new Error(subErr.message);
+      const { error: purchaseErr } = await (supabaseAdmin as any).from("org_subscription_options").insert({
+      firm_id: firm.id,
+      client_limit: 1,
+      advisory_enabled: false,
+      consolidation_enabled: false,
+      billing_mode: "bookkeeping",
+    });
+      if (purchaseErr) throw new Error(purchaseErr.message);
 
     // Invite.
     const token = randomBytes(32).toString("hex");
@@ -329,7 +338,7 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
       expires_at: expiresAt,
       invited_by: context.userId,
     });
-    if (iErr) throw new Error(iErr.message);
+      if (iErr) throw new Error(iErr.message);
 
     await logAudit("firm_invite_created", "firm", firm.id, context.userId, {
       firm_id: firm.id,
@@ -360,7 +369,11 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
       emailStatus = "failed";
     }
 
-    return { ok: true, firmId: firm.id, token, email, emailStatus };
+      return { ok: true, firmId: firm.id, token, email, emailStatus };
+    } catch (error) {
+      await rollback().catch(() => {});
+      throw error;
+    }
   });
 
 /**

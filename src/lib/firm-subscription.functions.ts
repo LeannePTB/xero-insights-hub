@@ -36,6 +36,14 @@ export type FirmSubscriptionView = {
   isSuperAdmin: boolean;
 };
 
+export type FirmSettingsSummary = {
+  firm: { id: string; name: string };
+  clientCount: number;
+  clientLimit: number;
+  isMember: boolean;
+  isSuperAdmin: boolean;
+};
+
 type Access = {
   isOwner: boolean;
   isMember: boolean;
@@ -62,6 +70,37 @@ async function resolveAccess(supabase: any, firmId: string): Promise<Access> {
     isSuperAdmin: !!superAdmin,
   };
 }
+
+/** Active v2 settings-page summary. It does not read legacy plan or tier tables. */
+export const getFirmSettingsSummary = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { firmId: string }) => i)
+  .handler(async ({ data, context }): Promise<FirmSettingsSummary> => {
+    const access = await resolveAccess(context.supabase, data.firmId);
+    let hasSupportGrant = false;
+    if (!access.isMember) {
+      const { platformStaffCanAccessFirm } = await import("@/lib/support-access.server");
+      hasSupportGrant = await platformStaffCanAccessFirm(context.userId, data.firmId);
+      if (!hasSupportGrant) throw new Error("Forbidden");
+    }
+    const db: any = access.isMember
+      ? context.supabase
+      : (await import("@/integrations/supabase/client.server")).supabaseAdmin;
+    const [{ data: firm, error }, { data: options }, { count }] = await Promise.all([
+      db.from("firms").select("id, name").eq("id", data.firmId).maybeSingle(),
+      db.from("org_subscription_options").select("client_limit").eq("firm_id", data.firmId).maybeSingle(),
+      db.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", data.firmId),
+    ]);
+    if (error) throw new Error(error.message);
+    if (!firm) throw new Error("Organisation not found.");
+    return {
+      firm: { id: firm.id, name: firm.name },
+      clientCount: count ?? 0,
+      clientLimit: (options as any)?.client_limit ?? 0,
+      isMember: access.isMember,
+      isSuperAdmin: access.isSuperAdmin,
+    };
+  });
 
 /** Plan, status and available plan levels for one organisation. */
 export const getFirmSubscription = createServerFn({ method: "POST" })

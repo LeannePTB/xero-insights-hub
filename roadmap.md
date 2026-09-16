@@ -89,7 +89,7 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Entire Xero column and Xero-file capacity removed from the Organisations table; health and failures live on the Xero and Security & compliance screens.
 - [x] Clients link and super-admin-only View As visible directly on each row; View As remains aal2 + super admin + existing membership, checked in the database, and audited (`view_as_started`). Previously an unaudited URL filter — recorded as a defect in backlog 57.
 - [x] Obsolete `plan_levels` subtitle removed while `card_model_v2` is active; real billing mode retained.
-- [x] Legacy notices on Subscription levels, `/settings/tiers` and the client dashboard-tier control.
+- [x] Legacy subscription UI retired (16 Sep 2026): `/admin/plans` and `/settings/tiers`, their sidebar links, the legacy organisation table/banner, and all active per-client tier/trial controls were removed. The v1 database structures and rollback branches remain for the one-week rollback window. `app_private.firm_limits` now reads `org_subscription_options.client_limit`, so client and Xero limit triggers no longer depend on `plan_levels`.
 
 ## Posture wiring (done 16 Sep 2026)
 

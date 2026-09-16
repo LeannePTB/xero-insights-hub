@@ -5,6 +5,8 @@ Referenced by Access Control Spec §12. Update this file in the same change that
 
 ## Closed — do not reopen on the strength of an older note
 
+- **Legacy subscription screens retired, 16 Sep 2026.** Removed `/admin/plans`, `/settings/tiers`, their navigation, the legacy organisation plan table/banner, and active per-client tier/trial controls. The v1 tables, functions, Stripe webhook and guarded fallback branches remain temporarily as the rollback path. Client and Xero limit triggers now resolve through `app_private.firm_limits`, which reads `org_subscription_options.client_limit` rather than `subscriptions` or `plan_levels`. Live proof: Bangkok On Darby and Autotek NSW remain 1/1; a rollback-only insert for Bangkok was refused with `PLAN_LIMIT_CLIENTS: this organisation's plan allows 1 client(s). Upgrade to add more.`, and its client count remained 1.
+
 - **Token column exposure.** `authenticated` holds SELECT on 13 non-token columns of `xero_connections`; `access_token_enc` and `refresh_token_enc` have no grant. The privilege check runs before RLS, so a browser read of those columns fails before any policy is evaluated. No `select *` against that table exists in the codebase.
 - **`FORCE ROW LEVEL SECURITY` — WON'T DO.** All `public` tables are owned by `postgres`, which has `rolbypassrls`; `service_role` bypasses too. FORCE is evaluated after BYPASSRLS, so it changes nothing for any role the app connects as. Only worth revisiting if table ownership moves to a non-bypass role.
 - **Plan `free` / `pt` enum.** No `free` row exists in `plan_levels`. `pt` appears in no `allowed_tiers`. `plan-tiers.ts` filters unknown keys and falls back to `basic`; nothing casts a raw string to `dashboard_tier` (enum: `basic, advisory, investigate, multi_company`).

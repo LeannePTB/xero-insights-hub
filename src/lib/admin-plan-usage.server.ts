@@ -1,9 +1,5 @@
-// Plan usage for the Organisations table.
-//
-// Vocabulary: a **plan** is what an organisation pays for (PTB, Multi
-// Companies…); a **tier** is what a client's dashboard shows (Standard,
-// Advisory…). Limits come from public.firm_plan_limits and the effective
-// dashboard tier from public.client_entitlement — neither is recomputed here.
+// Current-model usage for the Organisations table. Limits come from the
+// org_subscription_options-backed public.firm_plan_limits function.
 
 export type OrganisationUsage = {
   firmId: string;
@@ -11,7 +7,7 @@ export type OrganisationUsage = {
   clientLimit: number | null;
   xeroFilesUsed: number | null;
   xeroOrgLimit: number | null;
-  /** Effective dashboard tier key -> number of clients on it. */
+  /** Compatibility-only v1 dashboard counts; not rendered while v2 is active. */
   dashboards: Record<string, number>;
   /** True when we could not see every client of the organisation. */
   dashboardsPartial: boolean;

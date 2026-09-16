@@ -5,18 +5,11 @@ import { adminCreateOrganisation } from "@/lib/invites.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Loader2, UserPlus, Copy, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { usePlanLevels } from "@/hooks/usePlanLevels";
 
-
-function isoDate(d: Date) {
-  return d.toISOString().slice(0, 10);
-}
-
-/** Super-admin dialog that creates an organisation, its plan and (optionally) its owner login. */
+/** Super-admin dialog that creates an organisation and optionally its owner login. */
 export function AddOrganisationDialog({
   onCreated,
   variant = "default",
@@ -29,18 +22,9 @@ export function AddOrganisationDialog({
   label?: string;
 }) {
   const create = useServerFn(adminCreateOrganisation);
-  const { levels: firmLevels } = usePlanLevels("firm");
-  const tierOptions: { key: string; label: string }[] =
-    firmLevels.length > 0
-      ? firmLevels.map((l) => ({ key: l.key, label: l.is_free ? `${l.label} (free)` : l.label }))
-      : ["ptb", "starter", "growth", "scale", "firm", "free", "legacy"].map((k) => ({ key: k, label: k }));
-
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [tier, setTier] = useState("included");
-  const [status, setStatus] = useState("active");
-  const [endDate, setEndDate] = useState(isoDate(new Date(Date.now() + 7 * 864e5)));
   const [ownerMode, setOwnerMode] = useState<"password" | "invite" | "none">("none");
   const [email, setEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
@@ -54,10 +38,6 @@ export function AddOrganisationDialog({
       create({
         data: {
           name,
-          tier,
-          status,
-          trialEndsAt: status === "trialing" ? endDate : null,
-          currentPeriodEnd: status === "active" ? endDate : null,
           ownerEmail: ownerMode === "none" ? null : email,
           ownerMode,
           ownerPassword: ownerMode === "password" ? password : null,
@@ -89,8 +69,7 @@ export function AddOrganisationDialog({
   });
 
   function reset() {
-    setName(""); setTier("included"); setStatus("active");
-    setEndDate(isoDate(new Date(Date.now() + 7 * 864e5)));
+    setName("");
     setOwnerMode("none"); setEmail(""); setOwnerName("");
     setPassword(""); setDone(null); setCopied(false); setErrorMsg(null);
   }
@@ -124,7 +103,7 @@ export function AddOrganisationDialog({
         <DialogHeader>
           <DialogTitle>Add an organisation</DialogTitle>
           <DialogDescription>
-            Creates the organisation, its plan and (optionally) its owner login in one step. You are added as the owner straight away, so the organisation is never left unusable.
+            Creates the organisation with one client place, Standard cards and bookkeeping billing. You can change its options after creation.
           </DialogDescription>
         </DialogHeader>
 
@@ -139,41 +118,6 @@ export function AddOrganisationDialog({
             <div className="space-y-1.5">
               <Label htmlFor="o-name">Organisation name</Label>
               <Input id="o-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Accounting" />
-            </div>
-
-            <div className="space-y-3 rounded-lg border border-border p-3">
-              <p className="text-sm font-medium">Plan</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Tier</Label>
-                  <Select value={tier} onValueChange={setTier}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {tierOptions.map((t) => (
-                        <SelectItem key={t.key} value={t.key} className="capitalize">{t.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="trialing">Trialing</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="o-date">{status === "trialing" ? "Trial ends" : "Next bill date"}</Label>
-                <Input id="o-date" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Included is the free default for bookkeeping client organisations we set up: one client, one Xero file and the Standard dashboard.
-              </p>
             </div>
 
             <div className="space-y-3 rounded-lg border border-border p-3">
