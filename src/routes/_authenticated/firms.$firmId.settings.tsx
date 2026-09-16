@@ -1,44 +1,20 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import {
   ArrowLeft,
   ArrowRight,
-  CheckCircle2,
-  CreditCard,
   Loader2,
   Plus,
-  ShieldAlert,
 } from "lucide-react";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
 import { TransferOwnershipCard } from "@/components/admin/TransferOwnershipCard";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
-import { OrgDefaultCardsPanel } from "@/components/admin/OrgDefaultCardsPanel";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { PeopleSection } from "@/components/people/PeopleSection";
-import { getFirmPlanSummary } from "@/lib/tier-config.functions";
-
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  changeFirmPlan,
-  getFirmSubscription,
-  setFirmCancellation,
-} from "@/lib/firm-subscription.functions";
-import { firmPlanView, toneClasses } from "@/lib/firmPlans";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings")({
   head: () => ({
@@ -62,43 +38,15 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/settings")({
   component: FirmSettingsPage,
 });
 
-function fmtDate(s: string | null) {
-  if (!s) return null;
-  return new Date(s).toLocaleDateString();
-}
-
 function FirmSettingsPage() {
   const { firmId } = Route.useParams();
   const navigate = useNavigate();
-  const qc = useQueryClient();
   const fetchSub = useServerFn(getFirmSubscription);
-  const changePlan = useServerFn(changeFirmPlan);
-  const setCancel = useServerFn(setFirmCancellation);
-
-  const [busy, setBusy] = useState<string | null>(null);
-  const [confirmPlan, setConfirmPlan] = useState<string | null>(null);
-  const [confirmCancel, setConfirmCancel] = useState(false);
-
   const q = useQuery({
     queryKey: ["firm-subscription", firmId],
     queryFn: () => fetchSub({ data: { firmId } }),
     retry: false,
   });
-
-  const fetchSummary = useServerFn(getFirmPlanSummary);
-  const summaryQ = useQuery({
-    queryKey: ["firm-plan-summary", firmId],
-    queryFn: () => fetchSummary({ data: { firmId } }),
-    staleTime: 5 * 60_000,
-  });
-  const summary = summaryQ.data;
-
-  const refresh = async () => {
-    await qc.invalidateQueries({ queryKey: ["firm-subscription", firmId] });
-    qc.invalidateQueries({ queryKey: ["my-firm", firmId] });
-    qc.invalidateQueries({ queryKey: ["firm-plan-summary", firmId] });
-    qc.invalidateQueries({ queryKey: ["my-firms"] });
-  };
 
   if (q.isLoading) {
     return (
@@ -127,50 +75,6 @@ function FirmSettingsPage() {
   }
 
   const view = q.data;
-  const planV = firmPlanView({
-    tier: view.subscription.tier,
-    status: view.subscription.status,
-    is_always_free: view.firm.isAlwaysFree,
-    trial_ends_at: view.subscription.trialEndsAt,
-    current_period_end: view.subscription.currentPeriodEnd,
-    // Stored catalogue name; the badge never carries a limit.
-    planName: view.plans.find((p) => p.key === view.subscription.tier)?.label ?? null,
-  });
-
-  const endLabel = fmtDate(view.subscription.currentPeriodEnd);
-  const pendingCancel = view.subscription.cancelAtPeriodEnd;
-  const canManage = view.canManage;
-  const canChangePlan = view.canChangePlan;
-
-  const doChange = async (planKey: string) => {
-    setBusy(planKey);
-    try {
-      await changePlan({ data: { firmId, planKey } });
-      await refresh();
-      toast.success("Plan updated");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Could not change the plan");
-    } finally {
-      setBusy(null);
-      setConfirmPlan(null);
-    }
-  };
-
-  const doCancel = async (cancel: boolean) => {
-    setBusy("cancel");
-    try {
-      await setCancel({ data: { firmId, cancel } });
-      await refresh();
-      toast.success(cancel ? "Subscription set to cancel" : "Subscription resumed");
-    } catch (e: any) {
-      toast.error(e?.message ?? "Could not update the subscription");
-    } finally {
-      setBusy(null);
-      setConfirmCancel(false);
-    }
-  };
-
-  const target = view.plans.find((p) => p.key === confirmPlan);
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
@@ -184,111 +88,6 @@ function FirmSettingsPage() {
       <p className="mt-1 text-sm text-muted-foreground">
         Manage people, clients, Xero files and account settings for {view.firm.name}.
       </p>
-
-      {/* Current plan */}
-      <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-        <div className="flex items-center gap-2 text-sm font-medium">
-          <CreditCard className="h-4 w-4 text-muted-foreground" /> Plan &amp; subscription
-        </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-          <Badge variant="secondary">{planV.planLabel}</Badge>
-          <Badge variant="outline" className={toneClasses(planV.statusTone)}>
-            {planV.statusLabel}
-          </Badge>
-          <span className="tabular-nums text-muted-foreground">
-            {view.clientCount} of {view.clientLimit} clients used
-          </span>
-          {planV.dueLabel && <span className="text-muted-foreground">· {planV.dueLabel}</span>}
-        </div>
-
-        {pendingCancel && (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-            <span className="flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4" />
-              Cancellation scheduled{endLabel ? ` — access until ${endLabel}` : ""}.
-            </span>
-            {canManage && (
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy === "cancel"}
-                onClick={() => doCancel(false)}
-              >
-                {busy === "cancel" ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                Resume subscription
-              </Button>
-            )}
-          </div>
-        )}
-
-        {!canManage && (
-          <p className="mt-4 text-xs text-muted-foreground">
-            Only the organisation owner can change or cancel this subscription.
-          </p>
-        )}
-      </section>
-
-      {/* What's included + default cards */}
-      <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-        <h2 className="text-sm font-medium">What&apos;s included</h2>
-        {summaryQ.isLoading && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            <Loader2 className="mr-2 inline h-3 w-3 animate-spin" /> Loading plan details…
-          </p>
-        )}
-        {summary && (
-          <div className="mt-4 space-y-4">
-            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
-              <span>
-                Clients allowed:{" "}
-                <strong className="text-foreground tabular-nums">{view.clientLimit}</strong>
-              </span>
-              <span>
-                Xero files allowed:{" "}
-                <strong className="text-foreground tabular-nums">
-                  {summary.xeroFileLimit ?? view.clientLimit}
-                </strong>
-              </span>
-              <span>
-                Consolidation:{" "}
-                <strong className="text-foreground">
-                  {summary.supportsConsolidation
-                    ? `up to ${summary.consolidationLimit ?? view.clientLimit} Xero files`
-                    : "not included"}
-                </strong>
-              </span>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Dashboard tiers included
-              </p>
-              <div className="mt-1.5 flex flex-wrap gap-1.5">
-                {summary.tiers.length === 0 && (
-                  <span className="text-xs text-muted-foreground">None configured</span>
-                )}
-                {summary.tiers.map((t) => (
-                  <Badge key={t.key} variant="secondary" className="text-[11px]">
-                    {t.label}
-                    {t.allowsMultiOrg ? ` · ${t.xeroFiles} Xero files` : ""}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Cards included by default (legacy)
-              </p>
-              <p className="mt-1 text-[11px] text-muted-foreground">
-                Kept for history. What each client shows is decided below by what this organisation
-                has bought, and by that client's own ticked card list.
-              </p>
-              <OrgDefaultCardsPanel firmId={firmId} />
-            </div>
-          </div>
-        )}
-      </section>
 
       <div className="mt-6">
         <OrgPurchaseCard firmId={firmId} />
@@ -369,143 +168,6 @@ function FirmSettingsPage() {
         </div>
       )}
 
-      {/* Change plan */}
-      <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-        <h2 className="text-sm font-medium">{canChangePlan ? "Change plan" : "Plans"}</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          {canChangePlan
-            ? "Pick the plan that suits this organisation. Changes apply straight away."
-            : "Your current plan is marked below. To move to a different plan, contact Positive Traction."}
-        </p>
-
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {view.plans.map((p) => {
-            const current = p.key === view.subscription.tier;
-            const tooSmall = view.clientCount > p.clientLimit;
-            return (
-              <div
-                key={p.key}
-                className={`rounded-xl border p-4 ${current ? "border-primary bg-primary/5" : "border-border"}`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2 text-sm font-semibold">
-                      {p.label}
-                      {current && (
-                        <Badge variant="secondary" className="text-[10px]">
-                          Current
-                        </Badge>
-                      )}
-                      {p.isFree && (
-                        <Badge variant="outline" className="text-[10px]">
-                          Free
-                        </Badge>
-                      )}
-                    </div>
-                    {p.description && (
-                      <p className="mt-1 text-xs text-muted-foreground">{p.description}</p>
-                    )}
-                  </div>
-                  {current && <CheckCircle2 className="h-4 w-4 shrink-0 text-primary" />}
-                </div>
-
-                <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-                  <li>
-                    Clients:{" "}
-                    <strong className="text-foreground tabular-nums">{p.clientLimit}</strong>
-                  </li>
-                  <li>
-                    Xero files:{" "}
-                    <strong className="text-foreground tabular-nums">{p.xeroOrgLimit}</strong>
-                  </li>
-                  <li>
-                    Consolidation:{" "}
-                    <strong className="text-foreground">
-                      {p.allowsMultiOrg ? "included" : "not included"}
-                    </strong>
-                  </li>
-                  {p.allowedTiers.length > 0 && (
-                    <li>Dashboard tiers: {p.allowedTiers.join(", ")}</li>
-                  )}
-                </ul>
-
-                {canChangePlan && !current && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="mt-3 w-full"
-                    disabled={tooSmall || busy != null}
-                    onClick={() => setConfirmPlan(p.key)}
-                  >
-                    {busy === p.key ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                    {tooSmall
-                      ? `Too small for ${view.clientCount} clients`
-                      : `Switch to ${p.label}`}
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Cancel */}
-      {canManage && !view.firm.isAlwaysFree && !pendingCancel && view.subscription.tier && (
-        <section className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
-          <h2 className="text-sm font-medium">Cancel subscription</h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {endLabel
-              ? `Your organisation keeps access until ${endLabel}, then the subscription ends.`
-              : "The subscription ends immediately."}
-          </p>
-          <Button
-            size="sm"
-            variant="destructive"
-            className="mt-3"
-            disabled={busy != null}
-            onClick={() => setConfirmCancel(true)}
-          >
-            Cancel subscription
-          </Button>
-        </section>
-      )}
-
-      <AlertDialog open={!!confirmPlan} onOpenChange={(o) => !o && setConfirmPlan(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Switch to {target?.label}?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This organisation will move onto {target?.label} straight away, allowing{" "}
-              {target?.clientLimit} clients.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep current plan</AlertDialogCancel>
-            <AlertDialogAction onClick={() => confirmPlan && doChange(confirmPlan)}>
-              Switch plan
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={confirmCancel} onOpenChange={setConfirmCancel}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cancel this subscription?</AlertDialogTitle>
-            <AlertDialogDescription>
-              {endLabel
-                ? `You'll keep access until ${endLabel}. You can resume any time before then.`
-                : "Access ends immediately. You can resume from this page."}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep subscription</AlertDialogCancel>
-            <AlertDialogAction onClick={() => doCancel(true)}>
-              Cancel subscription
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </main>
   );
 }
