@@ -15,6 +15,7 @@ import {
   setClientXeroAllowance,
 } from "@/lib/clients.functions";
 import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccountsSection";
+import { ClientSetupSection } from "@/components/clients/ClientSetupSection";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
 import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
