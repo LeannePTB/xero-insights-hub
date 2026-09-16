@@ -542,13 +542,11 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     // than trialled: purchased true, trial absent, then an expired trial.
     await db.exec("set local role postgres");
     await db.exec(`
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
       insert into public.org_subscription_options
-        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
-      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping')
-      on conflict (firm_id) do update
-        set advisory_enabled = true, consolidation_enabled = false,
-            trial_advisory_enabled = false, trial_consolidation_enabled = false,
-            trial_ends_at = null;
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode,
+         trial_advisory_enabled, trial_consolidation_enabled, trial_ends_at)
+      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping', false, false, null);
     `);
     const withNoTrial = await db.query<{ ok: boolean }>(
       `select app_private.client_available_cards('${CLIENT_A}'::uuid) @> array['cashflow'] as ok`,
@@ -566,16 +564,14 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r === "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive") {
     await db.exec("set local role postgres");
     await db.exec(`
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
       insert into public.client_cards (client_id, cards)
-      values ('${CLIENT_A}'::uuid, array['cashflow','debtors'])
-      on conflict (client_id) do update set cards = excluded.cards;
+      values ('${CLIENT_A}'::uuid, array['cashflow','debtors']);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
       insert into public.org_subscription_options
         (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode,
-         trial_advisory_enabled, trial_ends_at)
-      values ('${ORG_A}'::uuid, 10, false, false, 'bookkeeping', true, now() - interval '1 day')
-      on conflict (firm_id) do update
-        set advisory_enabled = false, consolidation_enabled = false,
-            trial_advisory_enabled = true, trial_ends_at = now() - interval '1 day';
+         trial_advisory_enabled, trial_consolidation_enabled, trial_ends_at)
+      values ('${ORG_A}'::uuid, 10, false, false, 'bookkeeping', true, false, now() - interval '1 day');
     `);
     const res = await db.query<{ has_advisory: boolean; ticks: string[] }>(
       `select app_private.client_available_cards('${CLIENT_A}'::uuid) @> array['cashflow'] as has_advisory,
