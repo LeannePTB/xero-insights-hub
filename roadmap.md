@@ -144,3 +144,8 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Snapshot of live function argument names, checked in and proven fresh on every security run.
 - [x] Test asserting every `.rpc()` call in src matches a real signature, including required arguments.
 - [x] PostgREST schema cache reloaded after signature changes; preview rebuilt.
+
+## Xero concurrent-limit diagnosis (16 Sep 2026)
+
+- [x] Diagnosed the "paused by Xero (concurrent limit)" badge: 4 retried requests on the Positive Traction file at 02:44 UTC, caused by the 5-in-flight ceiling when a refresh overlapped interactive traffic. No failures; day/minute quotas untouched.
+- [x] Owner decision: monitor only, no throttle built. Recorded in `docs/security/monitoring.md` and the security backlog. Docs-only change.
