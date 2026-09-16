@@ -140,6 +140,17 @@ export const listClients = createServerFn({ method: "POST" })
       }
     }
 
+    // Setup checklist per client, for the list badge. Read through the caller's
+    // session like everything else here, so it can only cover clients already
+    // visible. A failure leaves the badge off and never fails the list.
+    const { setupChecklists } = await import("@/lib/setup-checklist.server");
+    let setupByClient = new Map<string, { outstanding: number; outstandingTitles: string[] }>();
+    try {
+      setupByClient = (await setupChecklists(context.supabase, clientIds)) as any;
+    } catch (err) {
+      console.error("[listClients] setup checklist failed", err);
+    }
+
     const clients = (rows ?? []).map((c: any) => {
       const grantedTiers = Array.from(
         new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
