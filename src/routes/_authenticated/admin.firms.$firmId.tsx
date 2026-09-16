@@ -448,7 +448,78 @@ function ChangeEmailDialog({
   );
 }
 
+/**
+ * Presentation only: consecutive rows with the same action and the same meta are
+ * shown as one expandable line. No audit row is altered, hidden or removed — the
+ * group always lists every row it covers when opened.
+ */
+function groupAuditEvents(events: any[]) {
+  const groups: { key: string; action: string; rows: any[] }[] = [];
+  for (const e of events) {
+    const signature = `${e.action}|${JSON.stringify(e.meta ?? null)}`;
+    const last = groups[groups.length - 1];
+    if (last && last.key === signature) last.rows.push(e);
+    else groups.push({ key: signature, action: e.action, rows: [e] });
+  }
+  return groups;
+}
+
+function AuditGroup({ group }: { group: { action: string; rows: any[] } }) {
+  const [open, setOpen] = useState(false);
+  const rows = group.rows;
+  const first = rows[0];
+
+  if (rows.length === 1) {
+    return (
+      <li className="flex items-start gap-3 border-t pt-2">
+        <span className="text-muted-foreground tabular-nums whitespace-nowrap">{fmt(first.at)}</span>
+        <span className="font-medium">{first.action}</span>
+        <span className="text-muted-foreground truncate">{JSON.stringify(first.meta)}</span>
+      </li>
+    );
+  }
+
+  const last = rows[rows.length - 1];
+  const earliest = fmt(last.at);
+  const latest = fmt(first.at);
+
+  return (
+    <li className="border-t pt-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-start gap-2 text-left hover:underline"
+      >
+        {open ? (
+          <ChevronDown className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        ) : (
+          <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        )}
+        <span className="font-medium">
+          {group.action} ×{rows.length}
+        </span>
+        <span className="text-muted-foreground tabular-nums">
+          {earliest === latest ? earliest : `${earliest} – ${latest}`}
+        </span>
+      </button>
+      {open && (
+        <ul className="mt-2 space-y-1 pl-6 text-xs">
+          {rows.map((e) => (
+            <li key={e.id} className="flex items-start gap-3">
+              <span className="text-muted-foreground tabular-nums whitespace-nowrap">
+                {fmt(e.at)}
+              </span>
+              <span className="text-muted-foreground truncate">{JSON.stringify(e.meta)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
 function AuditSection({ events, loading }: { events: any[]; loading: boolean }) {
+  const groups = groupAuditEvents(events);
   return (
     <section className="rounded-lg border p-6 space-y-4">
       <div className="flex items-center gap-2">
@@ -463,14 +534,8 @@ function AuditSection({ events, loading }: { events: any[]; loading: boolean }) 
         <p className="text-sm text-muted-foreground">No events yet.</p>
       ) : (
         <ul className="space-y-2 text-sm">
-          {events.map((e) => (
-            <li key={e.id} className="flex items-start gap-3 border-t pt-2">
-              <span className="text-muted-foreground tabular-nums whitespace-nowrap">
-                {fmt(e.at)}
-              </span>
-              <span className="font-medium">{e.action}</span>
-              <span className="text-muted-foreground truncate">{JSON.stringify(e.meta)}</span>
-            </li>
+          {groups.map((g) => (
+            <AuditGroup key={`${g.key}-${g.rows[0].id}`} group={g} />
           ))}
         </ul>
       )}
