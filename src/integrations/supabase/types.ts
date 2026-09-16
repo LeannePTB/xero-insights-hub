@@ -2998,6 +2998,14 @@ export type Database = {
           referencing_clients: string[]
         }[]
       }
+      client_setup_account_counts: {
+        Args: { _client_ids: string[] }
+        Returns: {
+          classified_accounts: number
+          client_id: string
+          expense_accounts: number
+        }[]
+      }
       client_viewers: {
         Args: { _client_id: string }
         Returns: {
