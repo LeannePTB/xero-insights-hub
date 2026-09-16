@@ -1297,3 +1297,22 @@ The page continues to read `public.firm_subscription_state`, and no subscription
 card-availability, authorisation, policy or database function was changed.
 
 - **Card count and audit-log readability corrections, 16 Sep 2026.** Display only. The organisation client list now reports enabled cards plus a separate count of ticked cards this app has no card for yet (`bank_reconciliation`, `tax_liability` appear in the database card groups but not in `ALL_WIDGETS`), so the number is never silently short. The organisation audit log collapses consecutive identical action+meta rows into one expandable line; no audit row is altered, hidden or deleted and the log stays append-only. Billing lifecycle wording renamed away from "Trial" to avoid confusion with the Advisory trial; the underlying `trialing` status and `trial_ends_at` column remain live because `app_private.firm_subscription_lapsed` reads them. No access rule, policy, grant or column changed.
+
+## Branding as a purchasable option (16 September 2026) — DONE
+Added Branding as the fourth purchasable option on `org_subscription_options`
+(`branding_enabled`, `trial_branding_enabled`), following the Consolidation
+pattern: requires Advisory, turned off with Advisory, not included in an
+Advisory trial unless ticked. `app_private.org_effective_options` resolves
+purchased OR unexpired trial at read time; `app_private.firm_branding_enabled`
+adds the lapsed cap; `public.client_branding_enabled` is the single caller-scoped
+predicate (aal2 + `user_can_read_client`). `set_org_purchase` / `set_org_trial`
+gained the parameter and audit the previous and new state.
+
+Entitlement, never a grant: `assertClientWriter` (`user_can_write_client`) still
+runs first on every branding write, so backlog 32 stays closed — a support grant
+is still refused. With Branding off, `setClientLogo` / `clearClientLogo` are
+refused and `getClientLogo` returns no path and no signed URL. Hide, never
+delete: storage and `clients.logo_path` are untouched.
+
+The organisation's own logo is deliberately NOT gated — it identifies who
+prepared the report. Only the per-client logo is an option.
