@@ -94,7 +94,7 @@ function parseKeys(text: string, from: number): { keys: string[]; hasArgs: boole
 const calls: CallSite[] = [];
 const unreadable: string[] = [];
 for (const file of sourceFiles(join(ROOT, "src"))) {
-  const text = readFileSync(file, "utf8");
+  const text = blankComments(readFileSync(file, "utf8"));
   const re = /\.rpc\(\s*"([a-z0-9_]+)"/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(text))) {
