@@ -1305,6 +1305,7 @@ card-availability, authorisation, policy or database function was changed.
 - **Card count and audit-log readability corrections, 16 Sep 2026.** Display only. The organisation client list now reports enabled cards plus a separate count of ticked cards this app has no card for yet (`bank_reconciliation`, `tax_liability` appear in the database card groups but not in `ALL_WIDGETS`), so the number is never silently short. The organisation audit log collapses consecutive identical action+meta rows into one expandable line; no audit row is altered, hidden or deleted and the log stays append-only. Billing lifecycle wording renamed away from "Trial" to avoid confusion with the Advisory trial; the underlying `trialing` status and `trial_ends_at` column remain live because `app_private.firm_subscription_lapsed` reads them. No access rule, policy, grant or column changed.
 
 ## Branding as a purchasable option (16 September 2026) — DONE
+
 Added Branding as the fourth purchasable option on `org_subscription_options`
 (`branding_enabled`, `trial_branding_enabled`), following the Consolidation
 pattern: requires Advisory, turned off with Advisory, not included in an
@@ -1324,6 +1325,7 @@ The organisation's own logo is deliberately NOT gated — it identifies who
 prepared the report. Only the per-client logo is an option.
 
 ## Client setup checklist (16 September 2026) — DONE
+
 Display and acknowledgements only; no new access path. Reads are all through
 `context.supabase` behind `requireAal2` + `assertClientDataAccessForClient`, so a
 caller-supplied `client_id` stays a filter. `public.client_setup_account_counts`
@@ -1342,6 +1344,7 @@ and saving a basis now stamps `setup_ack.pl_basis`. A deliberate
 accounts needed" clears an item permanently and is never flagged.
 
 ## Guard: database function calls must match the live signatures (16 September 2026) — DONE
+
 An owner-facing failure ("Could not find the function public.set_org_trial(...)
 in the schema cache") after `set_org_trial` gained `_branding`. The app code was
 already correct; the running bundle was not, and nothing in the check chain
@@ -1367,6 +1370,7 @@ failed attempts: every organisation still has all trial fields false and
 `trial_ends_at` null, and `audit_log` holds no `org_trial_set` row.
 
 ## Cosmetic-trial guard on the purchase card (16 September 2026) — DONE
+
 Starting a trial on an organisation whose purchase already grants the same
 option produced a trial that granted nothing and expired with no effect. The
 trial editor now names the overlap and offers to clear the purchase in the same

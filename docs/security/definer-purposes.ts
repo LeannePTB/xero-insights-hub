@@ -72,7 +72,6 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.my_firm_memberships": "The caller's organisation memberships and roles.",
   "public.my_roles": "The caller's platform roles.",
 
-
   "public.user_can_access_client":
     "Legacy alias: whether a person may reach a client (superseded by the read/write pair).",
   "public.user_can_access_firm":
@@ -307,7 +306,6 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Returns the cards one client shows: aal2 first, then refuses unless the caller already has read access to that client, then intersects the purchase-available set with the client's ticked list. A missing ticked list means all available cards, never none, so a recording fault fails visible rather than blank. Never returns a card the purchase does not allow.",
 
   "public.security_attestations_list":
-
     "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
   "public.test_accounts_posture":
     "Posture check (aal2 + super admin): Action if a test account can sign in outside a run, holds access outside the test organisation, or has a session outside the run window.",

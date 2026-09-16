@@ -595,7 +595,9 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return withNoTrial.rows[0]?.ok && withExpiredTrial.rows[0]?.ok ? "allow" : "deny";
   }
-  if (r === "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive") {
+  if (
+    r === "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive"
+  ) {
     await db.exec("set local role postgres");
     await db.exec(`
       delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
@@ -621,15 +623,11 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return p.ok ? "allow" : "deny";
   }
   if (r === "admin_assert_can_sign_out_user(another person)") {
-    const p = await probe(
-      `select public.admin_assert_can_sign_out_user('${U.staffA}'::uuid)`,
-    );
+    const p = await probe(`select public.admin_assert_can_sign_out_user('${U.staffA}'::uuid)`);
     return p.ok ? "allow" : "deny";
   }
   if (r === "admin_assert_can_sign_out_user(their own account)") {
-    const p = await probe(
-      `select public.admin_assert_can_sign_out_user('${U.superAdmin}'::uuid)`,
-    );
+    const p = await probe(`select public.admin_assert_can_sign_out_user('${U.superAdmin}'::uuid)`);
     return p.ok ? "allow" : "deny";
   }
   if (r === "assert_aal2() immediately after MFA (no activity row yet)") {
