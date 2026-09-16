@@ -3,7 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { AlertTriangle, Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
 import { listClients, deleteClient, getClientRemovalImpact } from "@/lib/clients.functions";
 import { listTierSettings } from "@/lib/tier-config.functions";
 import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
@@ -382,17 +382,6 @@ export function FirmClientsSection({
                         {canOpenClientData && showHealth && c.healthAllowed && (
                             <ClientHealthBadge verdict={verdictsQ.data?.verdicts?.[c.id]} />
                           )}
-                        {canOpenClientData && missingLabel && (
-                          <Link
-                            to="/clients/$clientId/settings"
-                            params={{ clientId: c.id }}
-                            hash="lodgement-cycles"
-                            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <AlertTriangle className="h-3 w-3" /> {missingLabel}
-                          </Link>
-                        )}
                       </div>
                     </>
                   );
@@ -415,9 +404,22 @@ export function FirmClientsSection({
                       </td>
                       <td className="px-5 py-4">
                         {c.cardModelActive === true ? (
-                          <span className="text-sm tabular-nums">
-                            {c.visibleCardCount ?? 0} card{c.visibleCardCount === 1 ? "" : "s"} enabled
-                          </span>
+                          <div className="space-y-2">
+                            <span className="text-sm tabular-nums">
+                              {c.visibleCardCount ?? 0} card{c.visibleCardCount === 1 ? "" : "s"} enabled
+                            </span>
+                            {canOpenClientData && missingLabel && (
+                              <Link
+                                to="/clients/$clientId/settings"
+                                params={{ clientId: c.id }}
+                                hash="lodgement-cycles"
+                                className="flex w-fit items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <AlertTriangle className="h-3 w-3" /> {missingLabel}
+                              </Link>
+                            )}
+                          </div>
                         ) : canManageTier ? (
                           <Link
                             to="/clients/$clientId/settings"

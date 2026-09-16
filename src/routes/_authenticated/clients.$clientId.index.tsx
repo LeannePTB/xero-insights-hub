@@ -33,9 +33,8 @@ import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
-import { tierLabel as tierLabelFor, renderableWidgets, defaultCardRank, ALL_TIERS, type DashboardTier } from "@/lib/tiers";
+import { renderableWidgets, defaultCardRank, type DashboardTier } from "@/lib/tiers";
 import { getFileCapability } from "@/lib/xero/file-capability.functions";
-import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { TransactionSearchWidget } from "@/components/dashboard/TransactionSearchWidget";
 import { canSearchOrganisationTransactions } from "@/lib/xero/search.functions";
@@ -112,14 +111,7 @@ function ClientDashboard() {
   // now renders them, so an entitlement naming both halves draws one card.
   const widgets = renderableWidgets(widgetsQ.data?.widgets ?? []);
 
-  const tier: DashboardTier = effectivePreviewTier ?? tierLabelSource ?? "basic";
-
-  const { levels: tierLevels } = usePlanLevels("dashboard");
-  const catalogueTierLabel = tierLabelFor(tier, tierLevels.find((l) => l.key === tier)?.label);
-  const tierLabel =
-    effectivePreviewTier || tierLabelSource
-      ? catalogueTierLabel
-      : widgetsQ.data?.planLabel?.split(", ").pop() ?? catalogueTierLabel;
+  const cardCount = widgets.length;
 
   const orderQ = useQuery({
     queryKey: ["card-order", clientId],
@@ -421,7 +413,7 @@ function ClientDashboard() {
             )}
             <h1 className="truncate font-display text-2xl font-semibold sm:text-3xl">{client.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {tierLabel} dashboard · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
+              {cardCount} card{cardCount === 1 ? "" : "s"} enabled · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
             </p>
           </div>
           {isAdvisor && (

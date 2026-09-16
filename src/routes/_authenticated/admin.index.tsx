@@ -528,7 +528,8 @@ function CapacityCell({ usage }: { usage: OrganisationUsage | undefined }) {
     <div className="space-y-1">
       <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} unit="clients" />
       {!!usage?.unsetLodgementCycles && (
-        <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
+        <div className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+          <ShieldAlert className="h-3 w-3" />
           {usage.unsetLodgementCycles} client{usage.unsetLodgementCycles === 1 ? "" : "s"} need lodgement cycles
         </div>
       )}
