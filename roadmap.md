@@ -117,10 +117,10 @@ Separate from the card-model migration; no file or object shared with it.
 - [ ] Sweep every remaining display read of client_subscriptions.tier, plan_levels, and tier_widget_config; remove active-model staleness and report trial expiry behavior.
 
 ## Move trials to the organisation (16 Sep 2026)
-- [ ] Additive trial fields on `org_subscription_options` (trial Advisory, trial Consolidation, trial end) kept separate from purchased flags.
-- [ ] Effective options resolved at read time as purchased OR unexpired trial; no scheduled job; organisation lapse still caps.
-- [ ] Audited aal2 + super-admin database function to start, extend or end an organisation trial, with a reason; 120-day maximum.
-- [ ] Owner decision 16 Sep: DRTABT keeps purchased Advisory and Consolidation; NO organisation trial is backfilled anywhere (`trial_ends_at` stays null).
-- [ ] Organisation trial state visible on the purchase editor and Organisations list, with a 14-day amber warning and the exact end date.
-- [ ] Remove legacy trial labels from active v2 screens entirely rather than correcting dates; legacy per-client trial controls only in v1 rollback.
-- [ ] Matrix row proving purchased Advisory with a null or expired trial keeps its cards; plus trial-grant, expiry and tick-preservation rows.
+- [x] Additive trial fields on `org_subscription_options` (trial Advisory, trial Consolidation, trial end) kept separate from purchased flags.
+- [x] Effective options resolved at read time as purchased OR unexpired trial; no scheduled job; organisation lapse still caps.
+- [x] Audited aal2 + super-admin database function to start, extend or end an organisation trial, with a reason; 120-day maximum.
+- [x] Owner decision 16 Sep: DRTABT keeps purchased Advisory and Consolidation; NO organisation trial is backfilled anywhere (`trial_ends_at` stays null).
+- [x] Organisation trial state visible on the purchase editor and Organisations list, with a 14-day amber warning and the exact end date.
+- [x] Remove legacy trial labels from active v2 screens entirely rather than correcting dates; legacy per-client trial controls only in v1 rollback.
+- [x] Matrix row proving purchased Advisory with a null or expired trial keeps its cards; plus trial-grant, expiry and tick-preservation rows.
