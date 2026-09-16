@@ -5,12 +5,11 @@ import { useServerFn } from "@tanstack/react-start";
 import { listFirmsForSuperAdmin, listMyFirms, type FirmOverviewCard } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
 
-import { getMyFirmAccess } from "@/lib/access.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { LogOut, Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
+import { Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
 import { SuperAdminBadge, SuperAdminChip } from "@/components/admin/SuperAdminOnly";
@@ -120,7 +119,6 @@ function Dashboard() {
       <AppHeader />
 
       <main className="mx-auto max-w-6xl px-6 py-10">
-        {isAdvisor && <AccessBanner />}
         <div className="flex items-end justify-between">
           <div>
             <h1 className="flex flex-wrap items-center gap-3 font-display text-3xl font-semibold">
@@ -259,7 +257,7 @@ function SubscriptionCard({
         )}
       </div>
 
-      <dl className={`mt-6 grid gap-6 ${wide ? "sm:grid-cols-3" : "grid-cols-2"}`}>
+      <dl className="mt-6 grid gap-6">
         <div>
           <dt className="text-[11px] uppercase tracking-wider text-muted-foreground">Clients</dt>
           <dd className="mt-1 text-lg font-semibold tabular-nums">
@@ -289,33 +287,3 @@ function SubscriptionCard({
 }
 
 
-function AccessBanner() {
-  const fetchAccess = useServerFn(getMyFirmAccess);
-  const q = useQuery({ queryKey: ["my-firm-access"], queryFn: () => fetchAccess() });
-  if (!q.data || q.data.state === "no_firm" || q.data.state === "ok") return null;
-
-  if (q.data.state === "trial") {
-    return (
-      <div className="mb-6 rounded-md border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm flex items-center justify-between gap-3">
-        <span>
-          Trial: <strong>{q.data.trialDaysLeft}</strong> day{q.data.trialDaysLeft === 1 ? "" : "s"} left.
-          You're on the <strong className="capitalize">{q.data.tier}</strong> plan
-          ({q.data.connectionCount}/{q.data.connectionLimit} Xero files used).
-        </span>
-        <span className="text-muted-foreground text-xs">Billing setup coming soon.</span>
-      </div>
-    );
-  }
-
-  return (
-    <div className="mb-6 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm">
-      <p className="font-medium text-destructive">Subscription not active</p>
-      <p className="text-muted-foreground mt-1">
-        {q.data.reason === "trial_expired"
-          ? "Your trial has ended."
-          : `Your subscription is ${q.data.reason ?? "inactive"}.`}{" "}
-        Contact support to restore access. Your data is retained.
-      </p>
-    </div>
-  );
-}
