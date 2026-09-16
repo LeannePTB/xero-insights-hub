@@ -474,16 +474,20 @@ function PlanCell({
       <div className="leading-tight space-y-0.5">
         <div
           className={`whitespace-nowrap tabular-nums ${
-            usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed >= usage.clientLimit
-              ? "font-medium text-amber-600 dark:text-amber-400"
-              : ""
+            usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed > usage.clientLimit
+              ? "font-medium text-destructive"
+              : usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed === usage.clientLimit
+                ? "font-medium text-amber-600 dark:text-amber-400"
+                : ""
           }`}
         >
           {purchase.clientLimit >= 9999 ? "Unlimited" : purchase.clientLimit} client
           {purchase.clientLimit === 1 ? "" : "s"}
-          {usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed >= usage.clientLimit
-            ? " · at limit"
-            : ""}
+          {usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed > usage.clientLimit
+            ? " · over limit"
+            : usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed === usage.clientLimit
+              ? " · at limit"
+              : ""}
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <OptionPill on={purchase.advisory} label="Advisory" />
