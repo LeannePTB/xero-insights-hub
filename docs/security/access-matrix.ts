@@ -1030,6 +1030,15 @@ export const MATRIX: MatrixRow[] = [
     layers: ["pglite"],
   },
   {
+    role: "super_admin_no_membership",
+    resource: "toggling Consolidation off and on preserves all consolidation working data",
+    operation: "execute",
+    expect: "allow",
+    rule: "Availability is an entitlement filter, never a data operation — switching an option off hides cards and deletes nothing",
+    layers: ["pglite"],
+    note: "Added 16 Sep 2026 at the owner's direction — her single biggest concern about this model. Proves, on every check, that set_org_purchase with Consolidation false leaves consolidation_groups, consolidation_group_members, loan_consolidation_accounts and loan_consolidation_snapshots row-for-row unchanged, that the loan_consolidation card stops being available while it is off, and that switching it back on restores the card with the working data and the per-client ticks intact. No foreign key or trigger on those four tables references the option: their only cascades are from deleting a firm, client or group.",
+  },
+  {
     role: "org_owner",
     resource: "purchased Advisory keeps its cards with no trial or an expired trial",
     operation: "read",
