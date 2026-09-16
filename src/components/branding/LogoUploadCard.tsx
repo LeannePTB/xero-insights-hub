@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { ImageUp, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  getClientBrandingEnabled,
   getClientLogoUrl,
   getOrganisationLogoUrl,
   removeClientLogo,
@@ -50,11 +51,25 @@ export function LogoUploadCard({
   const delOrg = useServerFn(removeOrganisationLogo);
   const delCli = useServerFn(removeClientLogo);
 
+  const brandingFn = useServerFn(getClientBrandingEnabled);
+  // Only the per-client logo is a purchasable option; the organisation's own
+  // logo is available to everyone.
+  const entitlement = useQuery({
+    queryKey: ["client-branding", id],
+    queryFn: () => brandingFn({ data: { clientId: id } }),
+    enabled: scope === "client",
+    retry: false,
+  });
+  const brandingOn = scope === "organisation" || entitlement.data?.enabled === true;
+
   const queryKey = ["report-logo", scope, id];
   const q = useQuery({
     queryKey,
     queryFn: () =>
-      scope === "organisation" ? getOrg({ data: { firmId: id } }) : getCli({ data: { clientId: id } }),
+      scope === "organisation"
+        ? getOrg({ data: { firmId: id } })
+        : getCli({ data: { clientId: id } }),
+    enabled: brandingOn,
     retry: false,
   });
 
@@ -79,7 +94,9 @@ export function LogoUploadCard({
 
   const remove = useMutation({
     mutationFn: () =>
-      scope === "organisation" ? delOrg({ data: { firmId: id } }) : delCli({ data: { clientId: id } }),
+      scope === "organisation"
+        ? delOrg({ data: { firmId: id } })
+        : delCli({ data: { clientId: id } }),
     onSuccess: () => {
       toast.success("Logo removed. Reports fall back to text only.");
       qc.invalidateQueries({ queryKey });
@@ -88,6 +105,26 @@ export function LogoUploadCard({
   });
 
   const url = q.data?.url ?? null;
+
+  if (scope === "client" && entitlement.isLoading) {
+    return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
+  }
+
+  if (!brandingOn) {
+    return (
+      <div className="space-y-2">
+        {title && <h3 className="font-display text-base font-semibold">{title}</h3>}
+        <p className="text-sm text-muted-foreground">
+          Client logos on reports are part of Branding, which this organisation has not taken up.
+          Reports use the Traction Advisory heading instead.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Any logo uploaded before is kept — it simply is not used, and returns if Branding is
+          added.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-3">
@@ -101,7 +138,11 @@ export function LogoUploadCard({
           {q.isLoading ? (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : url ? (
-            <img src={url} alt={`${scope === "organisation" ? "Organisation" : "Client"} logo`} className="max-h-14 max-w-36 object-contain" />
+            <img
+              src={url}
+              alt={`${scope === "organisation" ? "Organisation" : "Client"} logo`}
+              className="max-h-14 max-w-36 object-contain"
+            />
           ) : (
             <span className="text-xs text-muted-foreground">No logo set</span>
           )}
@@ -119,8 +160,17 @@ export function LogoUploadCard({
             upload.mutate(f);
           }}
         />
-        <Button variant="outline" size="sm" onClick={() => inputRef.current?.click()} disabled={busy}>
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImageUp className="mr-2 h-4 w-4" />}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => inputRef.current?.click()}
+          disabled={busy}
+        >
+          {busy ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : (
+            <ImageUp className="mr-2 h-4 w-4" />
+          )}
           {url ? "Replace logo" : "Upload logo"}
         </Button>
         {url && (

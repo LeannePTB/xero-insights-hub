@@ -12,6 +12,7 @@ export const TRIAL_WARN_DAYS = 14;
 export type TrialShape = {
   trialAdvisory: boolean;
   trialConsolidation: boolean;
+  trialBranding: boolean;
   trialEndsAt: string | null;
   trialActive: boolean;
 };
@@ -37,14 +38,19 @@ export type TrialStatus =
   | { kind: "active"; endsAt: string; endLabel: string; daysLeft: number; warn: boolean; grants: string };
 
 export function trialStatus(t: TrialShape, now: Date = new Date()): TrialStatus {
-  const trialled = t.trialAdvisory || t.trialConsolidation;
+  const trialled = t.trialAdvisory || t.trialConsolidation || t.trialBranding;
   if (!trialled || !t.trialEndsAt) return { kind: "none" };
   const endLabel = trialEndLabel(t.trialEndsAt) ?? t.trialEndsAt;
   if (!t.trialActive) return { kind: "expired", endsAt: t.trialEndsAt, endLabel };
   const daysLeft = trialDaysLeft(t.trialEndsAt, now) ?? 0;
-  const grants = [t.trialAdvisory ? "Advisory" : null, t.trialConsolidation ? "Consolidation" : null]
+  const grants = [
+    t.trialAdvisory ? "Advisory" : null,
+    t.trialConsolidation ? "Consolidation" : null,
+    t.trialBranding ? "Branding" : null,
+  ]
     .filter(Boolean)
-    .join(" and ");
+    .join(", ")
+    .replace(/, ([^,]*)$/, " and $1");
   return {
     kind: "active",
     endsAt: t.trialEndsAt,

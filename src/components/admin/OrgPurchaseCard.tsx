@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SuperAdminChip } from "@/components/admin/SuperAdminOnly";
 import {
   getOrgPurchase,
@@ -43,6 +49,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
   const [clientLimit, setClientLimit] = useState("");
   const [advisory, setAdvisory] = useState(false);
   const [consolidation, setConsolidation] = useState(false);
+  const [branding, setBranding] = useState(false);
   const [billingMode, setBillingMode] = useState<"bookkeeping" | "external">("bookkeeping");
 
   useEffect(() => {
@@ -51,6 +58,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     setClientLimit(String(p.clientLimit));
     setAdvisory(p.advisory);
     setConsolidation(p.consolidation);
+    setBranding(p.branding);
     setBillingMode(p.billingMode);
   }, [q.data?.purchase]);
 
@@ -62,12 +70,15 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
           clientLimit: Number(clientLimit || 0),
           advisory,
           consolidation,
+          branding,
           billingMode,
         },
       }),
     onSuccess: () => {
       toast.success("Purchase saved");
       qc.invalidateQueries({ queryKey: ["org-purchase", firmId] });
+      qc.invalidateQueries({ queryKey: ["client-branding"] });
+      qc.invalidateQueries({ queryKey: ["report-logo"] });
       qc.invalidateQueries({ queryKey: ["client-card-setup"] });
       qc.invalidateQueries({ queryKey: ["client-widgets"] });
       qc.invalidateQueries({ queryKey: ["effective-widgets"] });
@@ -103,6 +114,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     Number(clientLimit || 0) !== purchase.clientLimit ||
     advisory !== purchase.advisory ||
     consolidation !== purchase.consolidation ||
+    branding !== purchase.branding ||
     billingMode !== purchase.billingMode;
 
   return (
@@ -140,7 +152,9 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
             disabled={!canEdit}
             onValueChange={(v) => setBillingMode(v as "bookkeeping" | "external")}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="bookkeeping">Included in bookkeeping fees</SelectItem>
               <SelectItem value="external">Billed externally</SelectItem>
@@ -153,8 +167,8 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
             <p className="text-sm font-medium">Advisory</p>
             <p className="text-xs text-muted-foreground">
               Adds {groupCards("advisory").map(cardLabel).join(", ") || "the advisory cards"}.
-              Switching it on ticks them for every client; switching it off hides them and keeps each
-              client's ticks for when it comes back.
+              Switching it on ticks them for every client; switching it off hides them and keeps
+              each client's ticks for when it comes back.
             </p>
           </div>
           <Switch
@@ -167,6 +181,13 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
                 toast.message("Consolidation switched off too", {
                   description:
                     "Consolidation extends Advisory, so it cannot stay on. The per-client ticks are kept.",
+                });
+              }
+              if (!v && branding) {
+                setBranding(false);
+                toast.message("Branding switched off too", {
+                  description:
+                    "Branding extends Advisory, so it cannot stay on. Logos already uploaded stay where they are and come back if Branding is switched on again.",
                 });
               }
             }}
@@ -188,6 +209,30 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
             checked={consolidation}
             disabled={!canEdit || !advisory || singleClient}
             onCheckedChange={setConsolidation}
+          />
+        </div>
+
+        <div className="flex items-start justify-between gap-4 rounded-md border p-3">
+          <div>
+            <p className="text-sm font-medium">Branding</p>
+            <p className="text-xs text-muted-foreground">
+              {!advisory
+                ? "Available once Advisory is on — it extends Advisory and is charged separately."
+                : "Charged separately. Lets each client have its own logo on the monthly management report. Switching it off hides the logos; nothing is deleted, and they return if it comes back on."}
+            </p>
+          </div>
+          <Switch
+            checked={branding}
+            disabled={!canEdit || !advisory}
+            onCheckedChange={(v) => {
+              setBranding(v);
+              if (!v) {
+                toast.message("Logos are kept", {
+                  description:
+                    "Any logo already uploaded stays in storage and simply stops being used. It comes back if Branding is switched on again.",
+                });
+              }
+            }}
           />
         </div>
       </div>
@@ -231,16 +276,25 @@ function OrgTrialBlock({
   const [open, setOpen] = useState(false);
   const [tAdvisory, setTAdvisory] = useState(purchase.trialAdvisory);
   const [tConsolidation, setTConsolidation] = useState(purchase.trialConsolidation);
-  const [endsAt, setEndsAt] = useState(purchase.trialEndsAt ? purchase.trialEndsAt.slice(0, 10) : "");
+  const [tBranding, setTBranding] = useState(purchase.trialBranding);
+  const [endsAt, setEndsAt] = useState(
+    purchase.trialEndsAt ? purchase.trialEndsAt.slice(0, 10) : "",
+  );
   const [reason, setReason] = useState("");
 
   const mut = useMutation({
-    mutationFn: (vars: { advisory: boolean; consolidation: boolean; endsAt: string | null }) =>
+    mutationFn: (vars: {
+      advisory: boolean;
+      consolidation: boolean;
+      branding: boolean;
+      endsAt: string | null;
+    }) =>
       saveTrial({
         data: {
           firmId,
           advisory: vars.advisory,
           consolidation: vars.consolidation,
+          branding: vars.branding,
           endsAt: vars.endsAt,
           reason,
         },
@@ -313,7 +367,10 @@ function OrgTrialBlock({
               checked={tAdvisory}
               onCheckedChange={(v) => {
                 setTAdvisory(v);
-                if (!v) setTConsolidation(false);
+                if (!v) {
+                  setTConsolidation(false);
+                  setTBranding(false);
+                }
               }}
             />
           </div>
@@ -324,6 +381,20 @@ function OrgTrialBlock({
               checked={tConsolidation}
               disabled={!tAdvisory}
               onCheckedChange={setTConsolidation}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="trial-branding">Branding on trial</Label>
+              <p className="text-xs text-muted-foreground">
+                A trial of Advisory does not include Branding unless it is ticked here.
+              </p>
+            </div>
+            <Switch
+              id="trial-branding"
+              checked={tBranding}
+              disabled={!tAdvisory}
+              onCheckedChange={setTBranding}
             />
           </div>
           <div className="space-y-1.5">
@@ -337,8 +408,8 @@ function OrgTrialBlock({
               onChange={(e) => setEndsAt(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              At most {TRIAL_MAX_DAYS} days. The date is shown to you from the start, and warned about
-              {" "}{TRIAL_WARN_DAYS} days before it lapses.
+              At most {TRIAL_MAX_DAYS} days. The date is shown to you from the start, and warned
+              about {TRIAL_WARN_DAYS} days before it lapses.
             </p>
           </div>
           <div className="space-y-1.5">
@@ -358,6 +429,7 @@ function OrgTrialBlock({
                 mut.mutate({
                   advisory: tAdvisory,
                   consolidation: tConsolidation,
+                  branding: tBranding,
                   endsAt: endsAt || null,
                 })
               }
@@ -370,7 +442,14 @@ function OrgTrialBlock({
                 size="sm"
                 variant="outline"
                 disabled={mut.isPending || reason.trim().length < 3}
-                onClick={() => mut.mutate({ advisory: false, consolidation: false, endsAt: null })}
+                onClick={() =>
+                  mut.mutate({
+                    advisory: false,
+                    consolidation: false,
+                    branding: false,
+                    endsAt: null,
+                  })
+                }
               >
                 End trial now
               </Button>

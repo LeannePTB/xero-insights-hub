@@ -17,7 +17,6 @@
 export type Role =
   | "anonymous"
   | "aal1_member"
-  
   | "idle_session_member"
   | "fresh_mfa_session_member"
   | "active_session_member"
@@ -133,7 +132,6 @@ export const APPEND_ONLY_TABLES = [
   "xero_api_errors",
   "xero_rate_limits",
 ] as const;
-
 
 const WRITES: Operation[] = ["insert", "update", "delete"];
 
@@ -1030,13 +1028,13 @@ export const MATRIX: MatrixRow[] = [
   },
   {
     role: "org_owner",
-    resource: "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive",
+    resource:
+      "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive",
     operation: "read",
     expect: "deny",
     rule: "A trial ends at read time with no scheduled job; per-client ticked lists are never rewritten",
     layers: ["pglite"],
   },
-
 
   // --------------------------------------------------------- server functions
   ...rows(
@@ -1115,7 +1113,25 @@ export const MATRIX: MatrixRow[] = [
     expect: "deny",
     rule: "PK 5 (support grants are READ-ONLY)",
     layers: ["live"],
-    note: "branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant.",
+    note: "branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. The Branding entitlement gate added on top narrows further and never widens: assertClientWriter still runs first.",
+  },
+  {
+    role: "org_staff",
+    resource: "server fn: set a client logo when the organisation has not bought Branding",
+    operation: "execute",
+    expect: "deny",
+    rule: "Spec §5 — Branding is a purchasable option; an entitlement is never a grant",
+    layers: ["live"],
+    note: "setClientLogo calls public.client_branding_enabled (aal2 + user_can_read_client + effective branding + NOT lapsed) after the write gate. A direct upload call is refused, and getClientLogo returns no path or signed URL, so an existing report link cannot render the logo either.",
+  },
+  {
+    role: "org_staff",
+    resource: "server fn: set a client logo when the organisation has bought Branding",
+    operation: "execute",
+    expect: "allow",
+    rule: "Path A — membership writes within its own organisation",
+    layers: ["live"],
+    note: "With effective branding on (purchased OR unexpired trial that explicitly includes Branding) and the organisation not lapsed, an active member may upload, replace and clear the client logo. Switching Branding off hides the logo; storage and clients.logo_path are untouched, so it returns when Branding comes back.",
   },
   // ------------------------------------------- invitations and ownership (People)
   {
@@ -1745,7 +1761,6 @@ export const MATRIX: MatrixRow[] = [
   // stolen-device threat directly, while a daily forced sign-in added friction
   // without covering it. app_private.is_session_fresh() was dropped and nothing
   // refuses a session for having begun yesterday.
-
 
   // ------------- 30 minute inactivity timeout — SERVER ENFORCEMENT SUSPENDED
   // OUTAGE, 15 Sep 2026. Nothing in the published app was recording activity, so

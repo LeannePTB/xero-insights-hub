@@ -49,6 +49,24 @@ async function assertClientWriter(userId: string, clientId: string) {
   await assertClientWriteAccess(userId, clientId);
 }
 
+/**
+ * ENTITLEMENT gate for the per-client logo. Branding is a purchasable option on
+ * org_subscription_options; the rule lives in public.client_branding_enabled
+ * (aal2 + user_can_read_client + effective branding + not lapsed) and this only
+ * calls it. Never a grant: it narrows what an already-authorised caller may do.
+ */
+export async function clientBrandingEnabled(supabase: any, clientId: string): Promise<boolean> {
+  const { data, error } = await supabase.rpc("client_branding_enabled", { _client_id: clientId });
+  if (error) throw new Error(error.message);
+  return data === true;
+}
+
+async function assertClientBranding(supabase: any, clientId: string) {
+  if (!(await clientBrandingEnabled(supabase, clientId))) {
+    throw new Error("Report branding is not part of this organisation's plan.");
+  }
+}
+
 async function upload(path: string, bytes: Uint8Array, contentType: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { error } = await (supabaseAdmin as any).storage
@@ -105,6 +123,7 @@ export async function setClientLogo(opts: {
   contentType: string;
 }) {
   await assertClientWriter(opts.userId, opts.clientId);
+  await assertClientBranding(opts.supabase, opts.clientId);
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: client } = await (supabaseAdmin as any)
@@ -156,9 +175,13 @@ export async function getOrganisationLogo(userId: string, firmId: string) {
   return { path, url: await signLogo(path) };
 }
 
-export async function getClientLogo(userId: string, clientId: string) {
+export async function getClientLogo(userId: string, clientId: string, supabase?: any) {
   const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
   await assertClientDataAccessForClient(userId, clientId);
+  // Hide, never delete: with Branding off the stored logo stays put but is not served.
+  if (supabase && !(await clientBrandingEnabled(supabase, clientId))) {
+    return { path: null, url: null };
+  }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await (supabaseAdmin as any)
     .from("clients")
@@ -188,11 +211,11 @@ export async function clearOrganisationLogo(userId: string, firmId: string) {
     meta: {},
   });
   return { path: null, url: null };
-
 }
 
-export async function clearClientLogo(userId: string, clientId: string) {
+export async function clearClientLogo(userId: string, clientId: string, supabase?: any) {
   await assertClientWriter(userId, clientId);
+  if (supabase) await assertClientBranding(supabase, clientId);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: client } = await (supabaseAdmin as any)
     .from("clients")

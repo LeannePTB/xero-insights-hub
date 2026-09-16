@@ -16,7 +16,16 @@ export const getClientLogoUrl = createServerFn({ method: "POST" })
   .inputValidator((input: { clientId: string }) => input)
   .handler(async ({ data, context }) => {
     const { getClientLogo } = await import("./branding.server");
-    return getClientLogo(context.userId, data.clientId);
+    return getClientLogo(context.userId, data.clientId, context.supabase);
+  });
+
+/** Whether this client's organisation has bought (or is trialling) Branding. */
+export const getClientBrandingEnabled = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((input: { clientId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { clientBrandingEnabled } = await import("./branding.server");
+    return { enabled: await clientBrandingEnabled(context.supabase, data.clientId) };
   });
 
 export const uploadOrganisationLogo = createServerFn({ method: "POST" })
@@ -60,5 +69,5 @@ export const removeClientLogo = createServerFn({ method: "POST" })
   .inputValidator((input: { clientId: string }) => input)
   .handler(async ({ data, context }) => {
     const { clearClientLogo } = await import("./branding.server");
-    return clearClientLogo(context.userId, data.clientId);
+    return clearClientLogo(context.userId, data.clientId, context.supabase);
   });

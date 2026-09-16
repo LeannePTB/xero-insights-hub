@@ -1405,11 +1405,13 @@ export type Database = {
         Row: {
           advisory_enabled: boolean
           billing_mode: string
+          branding_enabled: boolean
           client_limit: number
           consolidation_enabled: boolean
           created_at: string
           firm_id: string
           trial_advisory_enabled: boolean
+          trial_branding_enabled: boolean
           trial_consolidation_enabled: boolean
           trial_ends_at: string | null
           updated_at: string
@@ -1417,11 +1419,13 @@ export type Database = {
         Insert: {
           advisory_enabled?: boolean
           billing_mode?: string
+          branding_enabled?: boolean
           client_limit?: number
           consolidation_enabled?: boolean
           created_at?: string
           firm_id: string
           trial_advisory_enabled?: boolean
+          trial_branding_enabled?: boolean
           trial_consolidation_enabled?: boolean
           trial_ends_at?: string | null
           updated_at?: string
@@ -1429,11 +1433,13 @@ export type Database = {
         Update: {
           advisory_enabled?: boolean
           billing_mode?: string
+          branding_enabled?: boolean
           client_limit?: number
           consolidation_enabled?: boolean
           created_at?: string
           firm_id?: string
           trial_advisory_enabled?: boolean
+          trial_branding_enabled?: boolean
           trial_consolidation_enabled?: boolean
           trial_ends_at?: string | null
           updated_at?: string
@@ -2963,6 +2969,10 @@ export type Database = {
         Args: { _client_id: string }
         Returns: string[]
       }
+      client_branding_enabled: {
+        Args: { _client_id: string }
+        Returns: boolean
+      }
       client_can_use_widget: {
         Args: { _client_id: string; _widget: string }
         Returns: boolean
@@ -3261,14 +3271,17 @@ export type Database = {
         Returns: {
           advisory_enabled: boolean
           billing_mode: string
+          branding_enabled: boolean
           client_count: number
           client_limit: number
           consolidation_enabled: boolean
           effective_advisory: boolean
+          effective_branding: boolean
           effective_consolidation: boolean
           firm_id: string
           trial_active: boolean
           trial_advisory_enabled: boolean
+          trial_branding_enabled: boolean
           trial_consolidation_enabled: boolean
           trial_ends_at: string
         }[]
@@ -3437,6 +3450,7 @@ export type Database = {
         Args: {
           _advisory: boolean
           _billing_mode: string
+          _branding: boolean
           _client_limit: number
           _consolidation: boolean
           _firm_id: string
@@ -3446,6 +3460,7 @@ export type Database = {
       set_org_trial: {
         Args: {
           _advisory: boolean
+          _branding: boolean
           _consolidation: boolean
           _ends_at: string
           _firm_id: string

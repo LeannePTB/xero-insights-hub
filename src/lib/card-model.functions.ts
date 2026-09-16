@@ -26,16 +26,20 @@ export type OrgPurchase = {
   /** What the organisation has purchased. Never merged with a trial. */
   advisory: boolean;
   consolidation: boolean;
+  /** Report branding: the per-client logo. Extends Advisory, charged separately. */
+  branding: boolean;
   billingMode: "bookkeeping" | "external";
   clientCount: number;
   /** Trial grants, stored separately so an expiry reverts to the purchase. */
   trialAdvisory: boolean;
   trialConsolidation: boolean;
+  trialBranding: boolean;
   trialEndsAt: string | null;
   trialActive: boolean;
   /** Purchased OR unexpired trial — what the database actually allows today. */
   effectiveAdvisory: boolean;
   effectiveConsolidation: boolean;
+  effectiveBranding: boolean;
 };
 
 /** Maps one `public.org_purchase` row. The database decides every value here. */
@@ -45,16 +49,19 @@ function mapPurchase(r: any): OrgPurchase {
     clientLimit: Number(r.client_limit ?? 0),
     advisory: !!r.advisory_enabled,
     consolidation: !!r.consolidation_enabled,
+    branding: !!r.branding_enabled,
     billingMode: (r.billing_mode === "external" ? "external" : "bookkeeping") as
       | "bookkeeping"
       | "external",
     clientCount: Number(r.client_count ?? 0),
     trialAdvisory: !!r.trial_advisory_enabled,
     trialConsolidation: !!r.trial_consolidation_enabled,
+    trialBranding: !!r.trial_branding_enabled,
     trialEndsAt: (r.trial_ends_at as string | null) ?? null,
     trialActive: !!r.trial_active,
     effectiveAdvisory: !!r.effective_advisory,
     effectiveConsolidation: !!r.effective_consolidation,
+    effectiveBranding: !!r.effective_branding,
   };
 }
 
@@ -106,6 +113,7 @@ export const saveOrgPurchase = createServerFn({ method: "POST" })
       clientLimit: number;
       advisory: boolean;
       consolidation: boolean;
+      branding: boolean;
       billingMode: "bookkeeping" | "external";
     }) => {
       if (!i?.firmId) throw new Error("firmId is required");
@@ -121,6 +129,7 @@ export const saveOrgPurchase = createServerFn({ method: "POST" })
         clientLimit: limit,
         advisory: !!i.advisory,
         consolidation: !!i.consolidation,
+        branding: !!i.branding,
         billingMode: i.billingMode,
       };
     },
@@ -131,11 +140,15 @@ export const saveOrgPurchase = createServerFn({ method: "POST" })
       _client_limit: data.clientLimit,
       _advisory: data.advisory,
       _consolidation: data.consolidation,
+      _branding: data.branding,
       _billing_mode: data.billingMode,
     });
     if (error) {
       if (/CONSOLIDATION_REQUIRES_ADVISORY/.test(error.message)) {
         throw new Error("Consolidation can only be on when Advisory is on.");
+      }
+      if (/BRANDING_REQUIRES_ADVISORY/.test(error.message)) {
+        throw new Error("Branding can only be on when Advisory is on.");
       }
       if (/Forbidden/i.test(error.message)) throw new Error("Forbidden");
       throw rpcError(error.message);
@@ -235,7 +248,9 @@ export const copyClientCardSetup = createServerFn({ method: "POST" })
 export const listOrgPurchases = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmIds: string[] }) => ({
-    firmIds: Array.from(new Set((i?.firmIds ?? []).filter((id) => typeof id === "string" && id))).slice(0, 200),
+    firmIds: Array.from(
+      new Set((i?.firmIds ?? []).filter((id) => typeof id === "string" && id)),
+    ).slice(0, 200),
   }))
   .handler(async ({ data, context }) => {
     const db: any = context.supabase;
@@ -269,6 +284,7 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
       firmId: string;
       advisory: boolean;
       consolidation: boolean;
+      branding: boolean;
       endsAt: string | null;
       reason: string;
     }) => {
@@ -277,10 +293,14 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
       if (reason.length < 3) throw new Error("Please give a reason for this trial change.");
       const advisory = !!i.advisory;
       const consolidation = !!i.consolidation;
+      const branding = !!i.branding;
       if (consolidation && !advisory) {
         throw new Error("A Consolidation trial needs Advisory as well.");
       }
-      const ending = !advisory && !consolidation;
+      if (branding && !advisory) {
+        throw new Error("A Branding trial needs Advisory as well.");
+      }
+      const ending = !advisory && !consolidation && !branding;
       let endsAt: string | null = null;
       if (!ending) {
         if (!i.endsAt) throw new Error("Choose the date the trial ends.");
@@ -288,7 +308,7 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
         if (Number.isNaN(when.getTime())) throw new Error("That end date is not valid.");
         endsAt = when.toISOString();
       }
-      return { firmId: i.firmId, advisory, consolidation, endsAt, reason };
+      return { firmId: i.firmId, advisory, consolidation, branding, endsAt, reason };
     },
   )
   .handler(async ({ data, context }) => {
@@ -296,12 +316,16 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
       _firm_id: data.firmId,
       _advisory: data.advisory,
       _consolidation: data.consolidation,
+      _branding: data.branding,
       _ends_at: data.endsAt,
       _reason: data.reason,
     });
     if (error) {
       if (/CONSOLIDATION_REQUIRES_ADVISORY/.test(error.message)) {
         throw new Error("A Consolidation trial needs Advisory as well.");
+      }
+      if (/BRANDING_REQUIRES_ADVISORY/.test(error.message)) {
+        throw new Error("A Branding trial needs Advisory as well.");
       }
       if (/TRIAL_END_MUST_BE_FUTURE/.test(error.message)) {
         throw new Error("The trial end date must be in the future.");

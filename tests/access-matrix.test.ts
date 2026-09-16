@@ -533,7 +533,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     // the organisation they are attached to and must be refused.
     const org = r.includes("any organisation") ? ORG_B : ORG_A;
     const p = await probe(
-      `select public.set_org_trial('${org}'::uuid, true, false, now() + interval '30 days', 'matrix probe')`,
+      `select public.set_org_trial('${org}'::uuid, true, false, false, now() + interval '30 days', 'matrix probe')`,
     );
     return p.ok ? "allow" : "deny";
   }
