@@ -123,6 +123,7 @@ export async function setClientLogo(opts: {
   contentType: string;
 }) {
   await assertClientWriter(opts.userId, opts.clientId);
+  await assertClientBranding(opts.supabase, opts.clientId);
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: client } = await (supabaseAdmin as any)
