@@ -43,6 +43,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
   const [clientLimit, setClientLimit] = useState("");
   const [advisory, setAdvisory] = useState(false);
   const [consolidation, setConsolidation] = useState(false);
+  const [branding, setBranding] = useState(false);
   const [billingMode, setBillingMode] = useState<"bookkeeping" | "external">("bookkeeping");
 
   useEffect(() => {
@@ -51,6 +52,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     setClientLimit(String(p.clientLimit));
     setAdvisory(p.advisory);
     setConsolidation(p.consolidation);
+    setBranding(p.branding);
     setBillingMode(p.billingMode);
   }, [q.data?.purchase]);
 
@@ -62,6 +64,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
           clientLimit: Number(clientLimit || 0),
           advisory,
           consolidation,
+          branding,
           billingMode,
         },
       }),
