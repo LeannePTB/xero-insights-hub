@@ -2426,6 +2426,9 @@ export type Database = {
           expires_at: string
           firm_id: string
           id: string
+          payroll_access_checked_at: string | null
+          payroll_access_http_status: number | null
+          payroll_access_status: string
           refresh_token_enc: string | null
           scopes: string | null
           status: string
@@ -2446,6 +2449,9 @@ export type Database = {
           expires_at: string
           firm_id: string
           id?: string
+          payroll_access_checked_at?: string | null
+          payroll_access_http_status?: number | null
+          payroll_access_status?: string
           refresh_token_enc?: string | null
           scopes?: string | null
           status?: string
@@ -2466,6 +2472,9 @@ export type Database = {
           expires_at?: string
           firm_id?: string
           id?: string
+          payroll_access_checked_at?: string | null
+          payroll_access_http_status?: number | null
+          payroll_access_status?: string
           refresh_token_enc?: string | null
           scopes?: string | null
           status?: string
