@@ -96,3 +96,8 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Rate-limit window widened to the most recent day with usage, so it is not blank after UTC midnight.
 - [x] Per-file Xero usage card moved to Security & compliance, beside the failure breakdown (quota remaining, requests seen, busiest hour with its start, rejections).
 - [x] Build-failing guard: a `*_posture()` function not called by `security_posture()` fails `bun run security:check`.
+
+## Admin presentation corrections (16 Sep 2026)
+
+- [ ] Organisations table: remove all Xero content, expose Plan & members / Clients / View As in each row, and remove the obsolete plan-level subtitle.
+- [ ] Security & compliance: remove redundant Super Admin badges and audience tints while preserving severity colours and every visibility rule.
