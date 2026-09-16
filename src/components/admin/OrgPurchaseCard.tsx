@@ -71,6 +71,8 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     onSuccess: () => {
       toast.success("Purchase saved");
       qc.invalidateQueries({ queryKey: ["org-purchase", firmId] });
+      qc.invalidateQueries({ queryKey: ["client-branding"] });
+      qc.invalidateQueries({ queryKey: ["report-logo"] });
       qc.invalidateQueries({ queryKey: ["client-card-setup"] });
       qc.invalidateQueries({ queryKey: ["client-widgets"] });
       qc.invalidateQueries({ queryKey: ["effective-widgets"] });
