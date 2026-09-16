@@ -31,6 +31,8 @@ import {
 import { Switch } from "@/components/ui/switch";
 import {
   Loader2,
+  ChevronDown,
+  ChevronRight,
   KeyRound,
   Mail,
   ShieldAlert,
