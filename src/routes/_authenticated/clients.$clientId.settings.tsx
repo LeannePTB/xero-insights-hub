@@ -400,6 +400,7 @@ function ClientSettings() {
         {/* Xero orgs */}
         <Section
           title="Xero organisations"
+          id="xero-organisations"
           action={
             <ConnectWithXeroButton
               variant="connect"
