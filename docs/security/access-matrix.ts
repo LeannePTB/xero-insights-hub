@@ -17,7 +17,6 @@
 export type Role =
   | "anonymous"
   | "aal1_member"
-  
   | "idle_session_member"
   | "fresh_mfa_session_member"
   | "active_session_member"
@@ -133,7 +132,6 @@ export const APPEND_ONLY_TABLES = [
   "xero_api_errors",
   "xero_rate_limits",
 ] as const;
-
 
 const WRITES: Operation[] = ["insert", "update", "delete"];
 
@@ -1030,13 +1028,13 @@ export const MATRIX: MatrixRow[] = [
   },
   {
     role: "org_owner",
-    resource: "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive",
+    resource:
+      "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive",
     operation: "read",
     expect: "deny",
     rule: "A trial ends at read time with no scheduled job; per-client ticked lists are never rewritten",
     layers: ["pglite"],
   },
-
 
   // --------------------------------------------------------- server functions
   ...rows(
@@ -1763,7 +1761,6 @@ export const MATRIX: MatrixRow[] = [
   // stolen-device threat directly, while a daily forced sign-in added friction
   // without covering it. app_private.is_session_fresh() was dropped and nothing
   // refuses a session for having begun yesterday.
-
 
   // ------------- 30 minute inactivity timeout — SERVER ENFORCEMENT SUSPENDED
   // OUTAGE, 15 Sep 2026. Nothing in the published app was recording activity, so

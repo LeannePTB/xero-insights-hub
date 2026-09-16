@@ -8,16 +8,17 @@ Nine plans in `plan_levels`, three per-client tiers, and four layers of card con
 
 ## The model
 
-An organisation's subscription is **four fields**:
+An organisation's subscription is **five fields** (Branding added by owner decision, 16 September 2026):
 
 | Field | Values | Notes |
 | --- | --- | --- |
 | **Clients** | a number | Xero file capacity follows it — one file per client |
 | **Advisory** | on / off | Applies to every client in the organisation |
 | **Consolidation** | on / off | Separately chargeable. Requires Advisory |
+| **Branding** | on / off | Separately chargeable. Requires Advisory. Client logos on the monthly management report |
 | **Billing** | `bookkeeping` / `external` | `bookkeeping` = absorbed in Positive Traction's fees. `external` = they pay us directly |
 
-That is the whole thing. Nine plans collapse into three fields, and every combination is expressible without inventing a plan name.
+That is the whole thing. Nine plans collapse into four purchasable things — Clients, Advisory, Consolidation, Branding — plus a billing arrangement, and every combination is expressible without inventing a plan name.
 
 **Consolidation is a separately chargeable option.** It is not included in Advisory and does not switch itself on. The rules:
 - It can only be purchased when **Advisory is on** — it extends Advisory rather than standing alone.
@@ -26,6 +27,13 @@ That is the whole thing. Nine plans collapse into three fields, and every combin
 - The consolidated cards become available to every client in the organisation once it is on, following the same rule as Advisory.
 
 This is a deliberate commercial decision. A multi-entity group is the customer most likely to pay more, and consolidation is the most valuable thing the product offers them — folding it into Advisory would give it away.
+
+**Branding is a separately chargeable option** (owner decision, 16 September 2026). It follows the Consolidation pattern exactly, and is kept separate for the same reason: it is wanted by a distinct set of customers — those who present the report to their own clients or board — and pricing it separately leaves the commercial decision open without changing the structure.
+- It can only be purchased when **Advisory is on**.
+- Turning **Advisory off also turns Branding off**, with a warning first.
+- **A trial of Advisory does not include Branding** unless Branding is ticked in the trial, the same rule as Consolidation.
+- What it gates: the **per-client logo** on the monthly management report. Switching it off **hides, never deletes** — the uploaded file stays in storage and `clients.logo_path` is untouched, so it returns when Branding is switched back on. The confirmation says so.
+- **The organisation's own logo is not a paid extra.** It identifies who prepared the report and is available to every organisation regardless of Branding. Only the per-client logo is gated.
 
 ## Cards
 
@@ -102,6 +110,6 @@ None of this sits in `plan_levels`, `subscriptions`, `client_subscriptions` or `
 
 ## When this is built
 
-It changes what every dashboard shows, so it is a Security Gate change: entitlement caps what a viewer can see, and `client_entitlement` plus the tier helpers are part of the access path. Plan it, do not bolt it on. The three purchasable options are Clients, Advisory and Consolidation, and each must be independently provable in the access matrix — an organisation without Consolidation must not reach a consolidated card by any route, including a direct URL or a saved report link.
+It changes what every dashboard shows, so it is a Security Gate change: entitlement caps what a viewer can see, and `client_entitlement` plus the tier helpers are part of the access path. Plan it, do not bolt it on. The four purchasable options are Clients, Advisory, Consolidation and Branding, and each must be independently provable in the access matrix — an organisation without Consolidation must not reach a consolidated card by any route, including a direct URL or a saved report link, and an organisation without Branding must not set or render a client logo by any route, including a direct upload call.
 
 The migration plan must begin by establishing what each of the 14 existing clients currently sees, given that `tier_widget_config` is self-contradictory, so nothing changes unexpectedly when it moves to the new model. That reconciliation is the risky part of this work, not the new screens.

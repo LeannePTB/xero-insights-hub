@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { SuperAdminChip } from "@/components/admin/SuperAdminOnly";
 import {
   getOrgPurchase,
@@ -146,7 +152,9 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
             disabled={!canEdit}
             onValueChange={(v) => setBillingMode(v as "bookkeeping" | "external")}
           >
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               <SelectItem value="bookkeeping">Included in bookkeeping fees</SelectItem>
               <SelectItem value="external">Billed externally</SelectItem>
@@ -159,8 +167,8 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
             <p className="text-sm font-medium">Advisory</p>
             <p className="text-xs text-muted-foreground">
               Adds {groupCards("advisory").map(cardLabel).join(", ") || "the advisory cards"}.
-              Switching it on ticks them for every client; switching it off hides them and keeps each
-              client's ticks for when it comes back.
+              Switching it on ticks them for every client; switching it off hides them and keeps
+              each client's ticks for when it comes back.
             </p>
           </div>
           <Switch
@@ -269,7 +277,9 @@ function OrgTrialBlock({
   const [tAdvisory, setTAdvisory] = useState(purchase.trialAdvisory);
   const [tConsolidation, setTConsolidation] = useState(purchase.trialConsolidation);
   const [tBranding, setTBranding] = useState(purchase.trialBranding);
-  const [endsAt, setEndsAt] = useState(purchase.trialEndsAt ? purchase.trialEndsAt.slice(0, 10) : "");
+  const [endsAt, setEndsAt] = useState(
+    purchase.trialEndsAt ? purchase.trialEndsAt.slice(0, 10) : "",
+  );
   const [reason, setReason] = useState("");
 
   const mut = useMutation({
@@ -398,8 +408,8 @@ function OrgTrialBlock({
               onChange={(e) => setEndsAt(e.target.value)}
             />
             <p className="text-xs text-muted-foreground">
-              At most {TRIAL_MAX_DAYS} days. The date is shown to you from the start, and warned about
-              {" "}{TRIAL_WARN_DAYS} days before it lapses.
+              At most {TRIAL_MAX_DAYS} days. The date is shown to you from the start, and warned
+              about {TRIAL_WARN_DAYS} days before it lapses.
             </p>
           </div>
           <div className="space-y-1.5">

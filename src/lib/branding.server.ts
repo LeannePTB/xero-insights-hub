@@ -211,7 +211,6 @@ export async function clearOrganisationLogo(userId: string, firmId: string) {
     meta: {},
   });
   return { path: null, url: null };
-
 }
 
 export async function clearClientLogo(userId: string, clientId: string, supabase?: any) {

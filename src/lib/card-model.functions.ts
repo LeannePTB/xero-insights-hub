@@ -248,7 +248,9 @@ export const copyClientCardSetup = createServerFn({ method: "POST" })
 export const listOrgPurchases = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmIds: string[] }) => ({
-    firmIds: Array.from(new Set((i?.firmIds ?? []).filter((id) => typeof id === "string" && id))).slice(0, 200),
+    firmIds: Array.from(
+      new Set((i?.firmIds ?? []).filter((id) => typeof id === "string" && id)),
+    ).slice(0, 200),
   }))
   .handler(async ({ data, context }) => {
     const db: any = context.supabase;
