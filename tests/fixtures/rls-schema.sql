@@ -2000,7 +2000,6 @@ begin
     raise exception 'NO_SUCH_ORGANISATION' using errcode = 'no_data_found';
   end if;
 
-  -- Ending a trial: no grants, no end date.
   if not _adv and not _con and not _brand then
     _adv := false; _con := false; _brand := false; _end := null;
   else
@@ -2018,17 +2017,23 @@ begin
     end if;
   end if;
 
-  select coalesce(o.trial_advisory_enabled, false) as t_adv,
+  select coalesce(o.advisory_enabled, false) as p_adv,
+         coalesce(o.consolidation_enabled, false) as p_con,
+         coalesce(o.branding_enabled, false) as p_brand,
+         coalesce(o.trial_advisory_enabled, false) as t_adv,
          coalesce(o.trial_consolidation_enabled, false) as t_con,
          coalesce(o.trial_branding_enabled, false) as t_brand,
          o.trial_ends_at as t_end
     into _prev
     from public.org_subscription_options o
-   where o.firm_id = _firm_id;
+   where o.firm_id = _firm_id
+   for update;
 
-  -- Trial fields only: purchased options are never touched here.
   update public.org_subscription_options o
-     set trial_advisory_enabled = _adv,
+     set advisory_enabled = case when _adv then false else o.advisory_enabled end,
+         consolidation_enabled = case when _con then false else o.consolidation_enabled end,
+         branding_enabled = case when _brand then false else o.branding_enabled end,
+         trial_advisory_enabled = _adv,
          trial_consolidation_enabled = _con,
          trial_branding_enabled = _brand,
          trial_ends_at = _end,
@@ -2048,15 +2053,21 @@ begin
     jsonb_build_object(
       'reason', btrim(_reason),
       'previous', jsonb_build_object(
-        'advisory', coalesce(_prev.t_adv, false),
-        'consolidation', coalesce(_prev.t_con, false),
-        'branding', coalesce(_prev.t_brand, false),
+        'purchased_advisory', coalesce(_prev.p_adv, false),
+        'purchased_consolidation', coalesce(_prev.p_con, false),
+        'purchased_branding', coalesce(_prev.p_brand, false),
+        'trial_advisory', coalesce(_prev.t_adv, false),
+        'trial_consolidation', coalesce(_prev.t_con, false),
+        'trial_branding', coalesce(_prev.t_brand, false),
         'ends_at', _prev.t_end
       ),
       'new', jsonb_build_object(
-        'advisory', _adv,
-        'consolidation', _con,
-        'branding', _brand,
+        'purchased_advisory', case when _adv then false else coalesce(_prev.p_adv, false) end,
+        'purchased_consolidation', case when _con then false else coalesce(_prev.p_con, false) end,
+        'purchased_branding', case when _brand then false else coalesce(_prev.p_brand, false) end,
+        'trial_advisory', _adv,
+        'trial_consolidation', _con,
+        'trial_branding', _brand,
         'ends_at', _end
       )
     )
@@ -3150,4 +3161,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: d538cd40d90bdf88ae1ab91b07e9bf1e1919dd2384cfde0d476fb9b9fe669780
+-- catalogue-fingerprint: 85007f7430cb2fcd4d911b6ebac8e35aeab43c185f75ca6501918102039fcaa7
