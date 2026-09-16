@@ -112,3 +112,6 @@ Separate from the card-model migration; no file or object shared with it.
 - [ ] Superseding owner correction: gate every payroll path on the client's PAYG withholding setting; treat null as unknown/no call and show setup-needed state.
 - [ ] Check whether GST/BAS calls similarly ignore `gst_cycle = not_registered`, report and fix only if required by this request.
 - [ ] Retain per-connection refusal suppression as a fallback for registered clients whose Xero file has no payroll; never disconnect accounting.
+- [ ] Client list: flag only null GST/PAYG cycles, deep-link to lodgement settings, and show organisation-level unset counts.
+- [ ] Replace stale client tier/trial presentation with active card-model information and remove the obsolete tier edit control.
+- [ ] Sweep every remaining display read of client_subscriptions.tier, plan_levels, and tier_widget_config; remove active-model staleness and report trial expiry behavior.
