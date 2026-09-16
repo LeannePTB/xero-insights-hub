@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
-import { clientLimitFor, firmLimitCatalogue } from "@/lib/firmPlans";
 
 
 export type FirmOverviewCard = {
@@ -39,17 +38,14 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
     const firmIds = (firms ?? []).map((f: any) => f.id);
     if (firmIds.length === 0) return { firms: [] };
 
-    const [{ data: subs }, { data: clients }, { data: firmMeta }, { data: myMembership }] = await Promise.all([
-      (supabaseAdmin as any).from("subscriptions").select("firm_id, tier, status, trial_ends_at, current_period_end, client_limit_override").in("firm_id", firmIds),
+    const [{ data: options }, { data: clients }, { data: firmMeta }, { data: myMembership }] = await Promise.all([
+      (supabaseAdmin as any).from("org_subscription_options").select("firm_id, client_limit").in("firm_id", firmIds),
       (supabaseAdmin as any).from("clients").select("firm_id").in("firm_id", firmIds),
       (supabaseAdmin as any).from("firms").select("id, is_always_free").in("id", firmIds),
       (context.supabase as any).rpc("my_firm_ids"),
     ]);
-    const { data: planRows } = await (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
-    const catalogue = firmLimitCatalogue(planRows);
-
-    const subByFirm = new Map<string, any>();
-    for (const s of subs ?? []) subByFirm.set(s.firm_id, s);
+    const optionByFirm = new Map<string, any>();
+    for (const o of options ?? []) optionByFirm.set(o.firm_id, o);
     const countByFirm = new Map<string, number>();
     for (const c of clients ?? []) countByFirm.set(c.firm_id, (countByFirm.get(c.firm_id) ?? 0) + 1);
     const freeByFirm = new Map<string, boolean>();
@@ -57,18 +53,18 @@ export const listFirmsForSuperAdmin = createServerFn({ method: "GET" })
     const ownFirmIds = new Set<string>(((myMembership ?? []) as any[]).map((m) => m.firm_id));
 
     const cards: FirmOverviewCard[] = (firms ?? []).map((f: any) => {
-      const sub = subByFirm.get(f.id);
+      const option = optionByFirm.get(f.id);
       const isAlwaysFree = freeByFirm.get(f.id) ?? false;
       return {
         id: f.id,
         name: f.name,
-        tier: sub?.tier ?? null,
-        status: sub?.status ?? null,
+        tier: null,
+        status: null,
         clientCount: countByFirm.get(f.id) ?? 0,
-        clientLimit: clientLimitFor(sub?.tier, isAlwaysFree, { override: sub?.client_limit_override ?? null, catalogue }),
+        clientLimit: option?.client_limit ?? 0,
         isAlwaysFree,
-        trialEndsAt: sub?.trial_ends_at ?? null,
-        currentPeriodEnd: sub?.current_period_end ?? null,
+        trialEndsAt: null,
+        currentPeriodEnd: null,
         isOwn: ownFirmIds.has(f.id),
       };
     });
@@ -103,15 +99,13 @@ export const listMyFirms = createServerFn({ method: "GET" })
     if (firms.length === 0) return { firms: [] };
 
     const firmIds = firms.map((f) => f.id);
-    const [{ data: subs }, { data: clients }, { data: firmMeta }] = await Promise.all([
-      context.supabase.from("subscriptions").select("firm_id, tier, status, trial_ends_at, current_period_end, client_limit_override").in("firm_id", firmIds),
+    const [{ data: options }, { data: clients }, { data: firmMeta }] = await Promise.all([
+      context.supabase.from("org_subscription_options").select("firm_id, client_limit").in("firm_id", firmIds),
       context.supabase.from("clients").select("firm_id").in("firm_id", firmIds),
       context.supabase.from("firms").select("id, is_always_free").in("id", firmIds),
     ]);
-    const { data: planRows } = await (context.supabase as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
-    const catalogue = firmLimitCatalogue(planRows);
-    const subByFirm = new Map<string, any>();
-    for (const s of (subs ?? []) as any[]) subByFirm.set(s.firm_id, s);
+    const optionByFirm = new Map<string, any>();
+    for (const o of (options ?? []) as any[]) optionByFirm.set(o.firm_id, o);
     const countByFirm = new Map<string, number>();
     for (const c of (clients ?? []) as any[]) countByFirm.set(c.firm_id, (countByFirm.get(c.firm_id) ?? 0) + 1);
     const freeByFirm = new Map<string, boolean>();
@@ -119,18 +113,18 @@ export const listMyFirms = createServerFn({ method: "GET" })
 
     const cards: FirmOverviewCard[] = firms
       .map((f) => {
-        const sub = subByFirm.get(f.id);
+        const option = optionByFirm.get(f.id);
         const isAlwaysFree = freeByFirm.get(f.id) ?? false;
         return {
           id: f.id,
           name: f.name,
-          tier: sub?.tier ?? null,
-          status: sub?.status ?? null,
+          tier: null,
+          status: null,
           clientCount: countByFirm.get(f.id) ?? 0,
-          clientLimit: clientLimitFor(sub?.tier, isAlwaysFree, { override: sub?.client_limit_override ?? null, catalogue }),
+          clientLimit: option?.client_limit ?? 0,
           isAlwaysFree,
-          trialEndsAt: sub?.trial_ends_at ?? null,
-          currentPeriodEnd: sub?.current_period_end ?? null,
+          trialEndsAt: null,
+          currentPeriodEnd: null,
           isOwn: true,
         };
       })
@@ -166,27 +160,24 @@ export const getMyFirm = createServerFn({ method: "POST" })
       if (isSuper !== true) throw new Error("Forbidden");
       db = (await import("@/integrations/supabase/client.server")).supabaseAdmin;
     }
-    const [{ data: firm, error }, { data: sub }, { count: clientCount }] = await Promise.all([
+    const [{ data: firm, error }, { data: option }, { count: clientCount }] = await Promise.all([
       db.from("firms").select("id, name, is_always_free").eq("id", data.firmId).maybeSingle(),
-      db.from("subscriptions").select("tier, status, trial_ends_at, current_period_end, client_limit_override").eq("firm_id", data.firmId).maybeSingle(),
+      db.from("org_subscription_options").select("client_limit").eq("firm_id", data.firmId).maybeSingle(),
       db.from("clients").select("id", { count: "exact", head: true }).eq("firm_id", data.firmId),
     ]);
-    const { data: planRows } = await (db as any).from("plan_levels").select("key, client_limit").eq("scope", "firm");
-    const catalogue = firmLimitCatalogue(planRows);
     if (error) throw new Error(error.message);
     if (!firm) throw new Error("Organisation not found.");
-    const s: any = sub ?? {};
     const isAlwaysFree = !!(firm as any).is_always_free;
     const plan: FirmOverviewCard = {
       id: (firm as any).id,
       name: (firm as any).name,
-      tier: s.tier ?? null,
-      status: s.status ?? null,
+      tier: null,
+      status: null,
       clientCount: clientCount ?? 0,
-      clientLimit: clientLimitFor(s.tier, isAlwaysFree, { override: s.client_limit_override ?? null, catalogue }),
+      clientLimit: (option as any)?.client_limit ?? 0,
       isAlwaysFree,
-      trialEndsAt: s.trial_ends_at ?? null,
-      currentPeriodEnd: s.current_period_end ?? null,
+      trialEndsAt: null,
+      currentPeriodEnd: null,
       isOwn: true,
     };
     return { firm: { id: (firm as any).id, name: (firm as any).name }, plan };

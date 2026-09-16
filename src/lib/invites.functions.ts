@@ -303,21 +303,29 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
       .single();
     if (fErr) throw new Error(fErr.message);
 
-    // Retained only for the v1 rollback path.
-    const { error: subErr } = await (supabaseAdmin as any).from("subscriptions").insert({
+    const rollback = async () => {
+      await (supabaseAdmin as any).from("access_invites").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("org_subscription_options").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("subscriptions").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("firms").delete().eq("id", firm.id);
+    };
+
+    try {
+      // Retained only for the v1 rollback path.
+      const { error: subErr } = await (supabaseAdmin as any).from("subscriptions").insert({
       firm_id: firm.id,
       tier: "starter",
       status: "active",
     });
-    if (subErr) throw new Error(subErr.message);
-    const { error: purchaseErr } = await (supabaseAdmin as any).from("org_subscription_options").insert({
+      if (subErr) throw new Error(subErr.message);
+      const { error: purchaseErr } = await (supabaseAdmin as any).from("org_subscription_options").insert({
       firm_id: firm.id,
       client_limit: 1,
       advisory_enabled: false,
       consolidation_enabled: false,
       billing_mode: "bookkeeping",
     });
-    if (purchaseErr) throw new Error(purchaseErr.message);
+      if (purchaseErr) throw new Error(purchaseErr.message);
 
     // Invite.
     const token = randomBytes(32).toString("hex");
@@ -330,7 +338,7 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
       expires_at: expiresAt,
       invited_by: context.userId,
     });
-    if (iErr) throw new Error(iErr.message);
+      if (iErr) throw new Error(iErr.message);
 
     await logAudit("firm_invite_created", "firm", firm.id, context.userId, {
       firm_id: firm.id,
@@ -361,7 +369,11 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
       emailStatus = "failed";
     }
 
-    return { ok: true, firmId: firm.id, token, email, emailStatus };
+      return { ok: true, firmId: firm.id, token, email, emailStatus };
+    } catch (error) {
+      await rollback().catch(() => {});
+      throw error;
+    }
   });
 
 /**
