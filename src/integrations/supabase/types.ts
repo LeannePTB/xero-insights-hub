@@ -796,6 +796,7 @@ export type Database = {
             | Database["public"]["Enums"]["payg_withholding_cycle"]
             | null
           report_basis: Database["public"]["Enums"]["report_basis"]
+          setup_ack: Json
           updated_at: string
         }
         Insert: {
@@ -817,6 +818,7 @@ export type Database = {
             | Database["public"]["Enums"]["payg_withholding_cycle"]
             | null
           report_basis?: Database["public"]["Enums"]["report_basis"]
+          setup_ack?: Json
           updated_at?: string
         }
         Update: {
@@ -838,6 +840,7 @@ export type Database = {
             | Database["public"]["Enums"]["payg_withholding_cycle"]
             | null
           report_basis?: Database["public"]["Enums"]["report_basis"]
+          setup_ack?: Json
           updated_at?: string
         }
         Relationships: [
