@@ -268,16 +268,23 @@ function OrgTrialBlock({
   const [open, setOpen] = useState(false);
   const [tAdvisory, setTAdvisory] = useState(purchase.trialAdvisory);
   const [tConsolidation, setTConsolidation] = useState(purchase.trialConsolidation);
+  const [tBranding, setTBranding] = useState(purchase.trialBranding);
   const [endsAt, setEndsAt] = useState(purchase.trialEndsAt ? purchase.trialEndsAt.slice(0, 10) : "");
   const [reason, setReason] = useState("");
 
   const mut = useMutation({
-    mutationFn: (vars: { advisory: boolean; consolidation: boolean; endsAt: string | null }) =>
+    mutationFn: (vars: {
+      advisory: boolean;
+      consolidation: boolean;
+      branding: boolean;
+      endsAt: string | null;
+    }) =>
       saveTrial({
         data: {
           firmId,
           advisory: vars.advisory,
           consolidation: vars.consolidation,
+          branding: vars.branding,
           endsAt: vars.endsAt,
           reason,
         },
