@@ -491,6 +491,7 @@ function PlanCell({
             }
           />
         </div>
+        <TrialLine purchase={purchase} />
         <div className="text-xs text-muted-foreground whitespace-nowrap">
           {purchase.billingMode === "external" ? "billed externally" : "billed with bookkeeping"}
         </div>
