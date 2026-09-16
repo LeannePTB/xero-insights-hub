@@ -71,9 +71,13 @@ export const listConsolidationGroups = createServerFn({ method: "POST" })
     await assertFirmAccess(context.supabase, context.userId, data.firmId, { allowSupportRead: true });
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [{ data: firm }, { data: sub }, { data: clients }, { data: groups }] = await Promise.all([
+    const [{ data: firm }, { data: options }, { data: clients }, { data: groups }] = await Promise.all([
       supabaseAdmin.from("firms").select("id, name").eq("id", data.firmId).maybeSingle(),
-      supabaseAdmin.from("subscriptions").select("tier, client_limit_override").eq("firm_id", data.firmId).maybeSingle(),
+      supabaseAdmin
+        .from("org_subscription_options")
+        .select("client_limit")
+        .eq("firm_id", data.firmId)
+        .maybeSingle(),
       supabaseAdmin
         .from("clients")
         .select("id, name, client_xero_orgs(xero_connections(tenant_name))")
@@ -87,13 +91,8 @@ export const listConsolidationGroups = createServerFn({ method: "POST" })
     ]);
     if (!firm) throw new Error("Organisation not found.");
 
-    const { data: planRows } = await (supabaseAdmin as any)
-      .from("plan_levels")
-      .select("key, client_limit, allows_multi_org")
-      .eq("scope", "firm");
-    const level = ((planRows ?? []) as any[]).find((p) => p.key === (sub as any)?.tier);
-    const limit = (sub as any)?.client_limit_override ?? level?.client_limit ?? 1;
-    const multiCompany = Boolean(level?.allows_multi_org) || limit > 1;
+    const limit = Number((options as any)?.client_limit ?? 0);
+    const multiCompany = limit > 1;
 
     const groupIdByClient = new Map<string, string>();
     for (const g of (groups ?? []) as any[]) {
@@ -144,23 +143,17 @@ export const saveConsolidationGroup = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // A group can hold up to the organisation's full Xero file allowance.
-    const { data: subRow } = await supabaseAdmin
-      .from("subscriptions")
-      .select("tier, client_limit_override")
+    // A group can hold up to the organisation's current v2 client allowance.
+    const { data: options } = await supabaseAdmin
+      .from("org_subscription_options")
+      .select("client_limit")
       .eq("firm_id", data.firmId)
       .maybeSingle();
-    const { data: planRows } = await (supabaseAdmin as any)
-      .from("plan_levels")
-      .select("key, client_limit")
-      .eq("scope", "firm");
-    const planRow = ((planRows ?? []) as any[]).find((p) => p.key === (subRow as any)?.tier);
-    const groupLimit = Math.max(
-      1,
-      Number((subRow as any)?.client_limit_override ?? planRow?.client_limit ?? 1),
-    );
+    const groupLimit = Math.max(0, Number((options as any)?.client_limit ?? 0));
     if (data.clientIds.length > groupLimit) {
-      throw new Error(`This plan allows up to ${groupLimit} Xero files in a consolidation group.`);
+      throw new Error(
+        `This organisation allows up to ${groupLimit} Xero files in a consolidation group.`,
+      );
     }
 
     // Every selected client must belong to this organisation.

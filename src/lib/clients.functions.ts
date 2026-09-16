@@ -328,27 +328,28 @@ export const createClient = createServerFn({ method: "POST" })
       }
     }
 
-    // Enforce firm subscription client quota.
-    const { clientLimitFor, firmLimitCatalogue } = await import("@/lib/firmPlans");
+    // Give an early, friendly answer from the same v2 source enforced by the
+    // PLAN_LIMIT_CLIENTS database trigger. The trigger remains authoritative.
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [{ data: firmRow }, { data: subRow }, { count: usedCount }, { data: planRows }] =
+    const [{ data: firmRow }, { data: subRow }, { data: options }, { count: usedCount }] =
       await Promise.all([
         supabaseAdmin.from("firms").select("is_always_free").eq("id", firmId).maybeSingle(),
         supabaseAdmin
           .from("subscriptions")
-          .select("tier, status, client_limit_override")
+          .select("status")
+          .eq("firm_id", firmId)
+          .maybeSingle(),
+        supabaseAdmin
+          .from("org_subscription_options")
+          .select("client_limit")
           .eq("firm_id", firmId)
           .maybeSingle(),
         supabaseAdmin
           .from("clients")
           .select("id", { count: "exact", head: true })
           .eq("firm_id", firmId),
-        (supabaseAdmin as any).from("plan_levels").select("key, client_limit").eq("scope", "firm"),
       ]);
-    const limit = clientLimitFor((subRow as any)?.tier, (firmRow as any)?.is_always_free, {
-      override: (subRow as any)?.client_limit_override ?? null,
-      catalogue: firmLimitCatalogue(planRows as any),
-    });
+    const limit = Number((options as any)?.client_limit ?? 0);
 
     const status = (subRow as any)?.status ?? null;
     const okStatus =
@@ -362,7 +363,7 @@ export const createClient = createServerFn({ method: "POST" })
     }
     if ((usedCount ?? 0) >= limit) {
       throw new Error(
-        `Client limit reached (${usedCount}/${limit}). Upgrade the subscription to add more clients.`,
+        `Client limit reached (${usedCount}/${limit}). Increase the organisation's client allowance to add more clients.`,
       );
     }
 
