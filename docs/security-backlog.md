@@ -1161,7 +1161,8 @@ severity colour remains reserved for Action and Warn states.
 `tier_widget_config`, which no longer gates cards; tier names remain viewer
 labels) and `ClientDashboardTierControl` (dashboard tier is now only a label).
 `admin-plan-usage.server.ts` still counts per-client `client_entitlement` tiers
-— now shown only as the legacy subtitle.
+for legacy-mode fallback and capacity calculations, but its plan name is not
+shown while `card_model_v2` is active.
 
 **Two posture Actions from the earlier card-model batches closed in the same
 change:** `org_subscription_options` and `client_cards` were missing the
@@ -1178,6 +1179,15 @@ bf72506f2bb6218ec18a85299aedd71df714aeb8664c602e07b2877ed1c3c7d7, 1600 matrix
 rows / 1515 proved (0 failed), 95 tests passed, live access 18 passed / 0
 failed. Typecheck clean. Not verified: authenticated browser screenshots — the
 minted test session cannot pass the MFA gate.
+
+**Presentation-only correction verified 16 Sep 2026:** no authorisation or
+visibility code changed. Live `record_view_as` still calls `assert_aal2()` then
+`assert_super_admin()`, requires an existing active organisation membership,
+and inserts `view_as_started` with actor, organisation, optional client, mode
+and time before navigation. `bun run security:check`: fingerprint unchanged at
+`28d4211f347db410d39b53cdacc6fdf7412552dd8af0b235e69d5212865ce4a6`, 1600
+matrix rows / 1515 proved (0 failed), 97 tests passed, live access 18 passed / 0
+failed. Database linter unchanged: 109 findings in the same two accepted types.
 
 ## 58. Posture checks built but never wired in (found and fixed 16 Sep 2026)
 

@@ -37,7 +37,22 @@ import { XeroErrorBreakdownCard } from "@/components/admin/XeroErrorBreakdownCar
 import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
 
 export const Route = createFileRoute("/_authenticated/admin/security")({
-  head: () => ({ meta: [{ title: "Security & Compliance · Admin" }] }),
+  head: () => ({
+    meta: [
+      { title: "Security & Compliance — Traction Advisory" },
+      {
+        name: "description",
+        content: "Review Traction Advisory security posture, monitoring and compliance records.",
+      },
+      { property: "og:title", content: "Security & Compliance — Traction Advisory" },
+      {
+        property: "og:description",
+        content: "Review Traction Advisory security posture, monitoring and compliance records.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: SecurityDocsPage,
 });
 
