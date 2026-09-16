@@ -119,16 +119,13 @@ raises a Warn naming the number and the oldest. That single signal is what was
 missing on 15 September: the recorder was broken for hours and the first
 indication was people being locked out.
 
-
-
-
 - **Database (the enforcement point).** `public.session_activity` holds one row
   per session: `session_id` (primary key), `user_id`, `last_activity_at`. RLS on;
   `anon` and `authenticated` hold no write privilege at all — signed-in people may
   only read their own row. `app_private.is_session_active()` (STABLE SECURITY
   DEFINER, `SET search_path`, registered) reads the `session_id` claim and returns
   `coalesce(last_activity_at, auth.sessions.created_at) > now() - interval '30
-  minutes'`, so signing in counts as activity until the first recorded
+minutes'`, so signing in counts as activity until the first recorded
   interaction. No request context and `service_role` are system contexts and pass.
   It **fails closed**: a missing `session_id` claim, or a session row it cannot
   find (including one revoked in the authentication service), is idle.
@@ -184,7 +181,7 @@ indication was people being locked out.
 - **Sign another person out of every device (super admin, stolen device).**
   Mechanism, stated plainly: this platform's authentication service has **no**
   administrative sign-out endpoint (`POST /admin/users/{id}/logout`, `DELETE
-  /admin/users/{id}/sessions` and `POST /admin/users/{id}/sessions/logout` all
+/admin/users/{id}/sessions` and `POST /admin/users/{id}/sessions/logout` all
   return 404 against a **real** user id, verified 15 Sep 2026 with three live
   sessions still working afterwards), and a temporary ban is **not** a sign-out —
   it blocks while it lasts (403/400) but leaves the `auth.sessions` rows intact and

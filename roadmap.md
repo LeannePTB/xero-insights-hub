@@ -41,6 +41,7 @@
 - [x] Practice team on the advisors page, 12 Sep 2026 — one list instead of two. `/settings/advisors` now shows a "Practice team" indicator on each advisor row and a super-admin-only button that calls the existing audited `admin_add_practice_member` / `admin_remove_practice_member` through the caller's own session (`setPracticeMembership`); the old email-based `addPracticeMember` and its service-role auth-email lookup were deleted, so `src/lib/practice-team.functions.ts` leaves the admin-client register. `/settings/practice-team` redirects to the advisors page and its sidebar link is gone. `advisor`/`super_admin` still does NOT imply practice-team membership — explicit per person. Leanne, Allyce and Chantelle added through the audited function (3 rows, 3 `practice_team_member_added` audit rows). 9 new matrix rows (execute allow for the two platform admins, deny for owner, staff, other-organisation member, viewers, aal1 and anonymous): 1,527 rows / 1,450 proved / 0 failures / 44 tests / live suite 18 passed; fingerprint `0922f983…` (the fixture now includes the two admin functions). No access rule changed.
 
 ## Session controls (15 Sep 2026)
+
 - [ ] Verify access token carries a session_id claim (decode a real token; stop if absent)
 - [ ] Inactivity timeout (30 min) — server-held timestamp, DB + middleware + browser mirror
 - [ ] session_activity lookup must be a PK hit; helper STABLE; confirm no dashboard slowdown
@@ -49,6 +50,7 @@
 - [ ] Posture check session_controls, matrix rows, docs (spec, Xero inputs, registers, backlog)
 
 ## Session controls (15 Sep 2026) — DONE
+
 - [x] Verified real tokens carry session_id before building
 - [x] 30 minute inactivity timeout enforced in the database (server-held timestamp)
 - [x] SESSION_IDLE distinct from MFA_REQUIRED end to end
@@ -72,7 +74,6 @@
 - [ ] Batch 5 — matrix rows (three purchasable options, newly created client has a usable dashboard), posture check, docs, backlog
 - [x] Admin UI for the new model (15 Sep 2026): organisation purchase editor (Clients, Advisory, Consolidation, Billing) on the admin organisation page and organisation settings; per-client ticked card list grouped Standard / Advisory / Consolidation; "copy this card setup to other clients"; Subscription levels marked legacy and read-only while `card_model_v2` is on. Backlog 56.
 - [x] Recommended follow-up: "copy this client's card setup to the other entities" action — built as part of the admin UI above.
-
 
 ## Xero request allowance monitoring (done 15 Sep 2026)
 
@@ -106,6 +107,7 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Organisation admin detail: remove duplicate legacy purchase controls; retain one v2 purchase editor and separate only live billing lifecycle fields plus the practice-only always-free control.
 
 ## Payroll capability and View As audit (16 Sep 2026)
+
 - [ ] Confirm current View As database guards, audit row, matrix coverage, banner and exit.
 - [ ] Trace why Payroll/PayRuns refusals repeat and document the burst mechanism.
 - [ ] Persist per-connection payroll availability and periodically re-check without disconnecting healthy accounting connections.
@@ -119,6 +121,7 @@ Separate from the card-model migration; no file or object shared with it.
 - [ ] Sweep every remaining display read of client_subscriptions.tier, plan_levels, and tier_widget_config; remove active-model staleness and report trial expiry behavior.
 
 ## Move trials to the organisation (16 Sep 2026)
+
 - [x] Additive trial fields on `org_subscription_options` (trial Advisory, trial Consolidation, trial end) kept separate from purchased flags.
 - [x] Effective options resolved at read time as purchased OR unexpired trial; no scheduled job; organisation lapse still caps.
 - [x] Audited aal2 + super-admin database function to start, extend or end an organisation trial, with a reason; 120-day maximum.

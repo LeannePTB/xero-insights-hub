@@ -29,27 +29,41 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, KeyRound, Mail, ShieldAlert, History, Users, Building2, Check, X, Pencil } from "lucide-react";
+import {
+  Loader2,
+  KeyRound,
+  Mail,
+  ShieldAlert,
+  History,
+  Users,
+  Building2,
+  Check,
+  X,
+  Pencil,
+} from "lucide-react";
 import { toast } from "sonner";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { BillingLifecycleCard } from "@/components/admin/BillingLifecycleCard";
-
 
 export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
   head: () => ({
     meta: [
       { title: "Organisation Admin — Traction Advisory" },
-      { name: "description", content: "Manage an organisation's options, billing lifecycle, members and clients." },
+      {
+        name: "description",
+        content: "Manage an organisation's options, billing lifecycle, members and clients.",
+      },
       { property: "og:title", content: "Organisation Admin — Traction Advisory" },
-      { property: "og:description", content: "Manage an organisation's options, billing lifecycle, members and clients." },
+      {
+        property: "og:description",
+        content: "Manage an organisation's options, billing lifecycle, members and clients.",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
   }),
   component: FirmDetailPage,
 });
-
-
 
 function fmt(s: string | null | undefined) {
   if (!s) return "—";
@@ -72,14 +86,21 @@ function SupportAccessBadge({ firmId }: { firmId: string }) {
   const mut = useMutation({
     mutationFn: (join: boolean) => setMembership({ data: { firmId, join } }),
     onSuccess: (r: any) => {
-      toast.success(r.member ? "You now have access to this organisation" : "You left this organisation");
+      toast.success(
+        r.member ? "You now have access to this organisation" : "You left this organisation",
+      );
       qc.invalidateQueries({ queryKey: ["support-access", firmId] });
       qc.invalidateQueries({ queryKey: ["admin-firm", firmId] });
     },
     onError: (e: any) => toast.error(e.message),
   });
   const s = q.data;
-  if (!s) return <Badge variant="secondary" className="ml-auto">no client data</Badge>;
+  if (!s)
+    return (
+      <Badge variant="secondary" className="ml-auto">
+        no client data
+      </Badge>
+    );
   return (
     <div className="ml-auto flex items-center gap-2">
       <Badge variant={s.viewerHasClientData ? "default" : "secondary"}>
@@ -88,11 +109,14 @@ function SupportAccessBadge({ firmId }: { firmId: string }) {
       {s.viewerIsMember ? (
         <Badge variant="outline">you are a member</Badge>
       ) : (
-        <Badge variant={s.granted ? "default" : "outline"} title={
-          s.granted
-            ? `Support access granted${s.grantedByName ? ` by ${s.grantedByName}` : ""}${s.grantedAt ? ` on ${new Date(s.grantedAt).toLocaleString()}` : ""}`
-            : "This organisation hasn't granted support access"
-        }>
+        <Badge
+          variant={s.granted ? "default" : "outline"}
+          title={
+            s.granted
+              ? `Support access granted${s.grantedByName ? ` by ${s.grantedByName}` : ""}${s.grantedAt ? ` on ${new Date(s.grantedAt).toLocaleString()}` : ""}`
+              : "This organisation hasn't granted support access"
+          }
+        >
           {s.granted ? "support access on" : "support access off"}
         </Badge>
       )}
@@ -111,9 +135,7 @@ function SupportAccessBadge({ firmId }: { firmId: string }) {
   );
 }
 
-
 function FirmDetailPage() {
-
   const { firmId } = Route.useParams();
   const qc = useQueryClient();
   const getDetail = useServerFn(getFirmDetailAdmin);
@@ -158,7 +180,6 @@ function FirmDetailPage() {
         </div>
       </header>
 
-
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-10">
         <BusinessNameSection
           firmId={firmId}
@@ -198,7 +219,6 @@ function FirmDetailPage() {
             support access or you are a member of it.
           </p>
         </section>
-
 
         <AuditSection events={auditQ.data?.events ?? []} loading={auditQ.isLoading} />
       </main>
@@ -245,7 +265,15 @@ function MembersSection({
   );
 }
 
-function MemberRow({ member, firmId, onChanged }: { member: any; firmId: string; onChanged: () => void }) {
+function MemberRow({
+  member,
+  firmId,
+  onChanged,
+}: {
+  member: any;
+  firmId: string;
+  onChanged: () => void;
+}) {
   const [pwOpen, setPwOpen] = useState(false);
   const [emailOpen, setEmailOpen] = useState(false);
   const resetFn = useServerFn(adminSendPasswordReset);
@@ -260,33 +288,68 @@ function MemberRow({ member, firmId, onChanged }: { member: any; firmId: string;
     <tr className="border-t">
       <td className="px-4 py-3">
         <div className="font-medium">{member.email ?? "—"}</div>
-        {member.display_name && <div className="text-xs text-muted-foreground">{member.display_name}</div>}
+        {member.display_name && (
+          <div className="text-xs text-muted-foreground">{member.display_name}</div>
+        )}
       </td>
       <td className="px-4 py-3 capitalize">{member.role}</td>
       <td className="px-4 py-3 text-muted-foreground">{fmt(member.last_sign_in_at)}</td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-2">
-          <Button size="sm" variant="outline" onClick={() => resetMut.mutate()} disabled={resetMut.isPending}>
-            {resetMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3 mr-1" />}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => resetMut.mutate()}
+            disabled={resetMut.isPending}
+          >
+            {resetMut.isPending ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Mail className="h-3 w-3 mr-1" />
+            )}
             Send reset
           </Button>
           <Button size="sm" variant="outline" onClick={() => setPwOpen(true)}>
-            <KeyRound className="h-3 w-3 mr-1" />Set password
+            <KeyRound className="h-3 w-3 mr-1" />
+            Set password
           </Button>
           <Button size="sm" variant="outline" onClick={() => setEmailOpen(true)}>
             Change email
           </Button>
         </div>
-        <SetPasswordDialog open={pwOpen} onOpenChange={setPwOpen} userId={member.user_id} firmId={firmId} email={member.email} />
-        <ChangeEmailDialog open={emailOpen} onOpenChange={setEmailOpen} userId={member.user_id} firmId={firmId} currentEmail={member.email} onChanged={onChanged} />
+        <SetPasswordDialog
+          open={pwOpen}
+          onOpenChange={setPwOpen}
+          userId={member.user_id}
+          firmId={firmId}
+          email={member.email}
+        />
+        <ChangeEmailDialog
+          open={emailOpen}
+          onOpenChange={setEmailOpen}
+          userId={member.user_id}
+          firmId={firmId}
+          currentEmail={member.email}
+          onChanged={onChanged}
+        />
       </td>
     </tr>
   );
 }
 
 function SetPasswordDialog({
-  open, onOpenChange, userId, firmId, email,
-}: { open: boolean; onOpenChange: (b: boolean) => void; userId: string; firmId: string; email: string | null }) {
+  open,
+  onOpenChange,
+  userId,
+  firmId,
+  email,
+}: {
+  open: boolean;
+  onOpenChange: (b: boolean) => void;
+  userId: string;
+  firmId: string;
+  email: string | null;
+}) {
   const setFn = useServerFn(adminSetUserPassword);
   const [pw, setPw] = useState("");
   const mut = useMutation({
@@ -304,15 +367,23 @@ function SetPasswordDialog({
         <DialogHeader>
           <DialogTitle>Set password for {email ?? "user"}</DialogTitle>
           <DialogDescription>
-            This sets a new password immediately. Share it with the user over a secure channel; they should change it on first sign-in.
+            This sets a new password immediately. Share it with the user over a secure channel; they
+            should change it on first sign-in.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <Label>New password</Label>
-          <Input type="text" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="At least 8 chars, letter + number" />
+          <Input
+            type="text"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            placeholder="At least 8 chars, letter + number"
+          />
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending || pw.length < 8}>
             {mut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Set password
@@ -324,8 +395,20 @@ function SetPasswordDialog({
 }
 
 function ChangeEmailDialog({
-  open, onOpenChange, userId, firmId, currentEmail, onChanged,
-}: { open: boolean; onOpenChange: (b: boolean) => void; userId: string; firmId: string; currentEmail: string | null; onChanged: () => void }) {
+  open,
+  onOpenChange,
+  userId,
+  firmId,
+  currentEmail,
+  onChanged,
+}: {
+  open: boolean;
+  onOpenChange: (b: boolean) => void;
+  userId: string;
+  firmId: string;
+  currentEmail: string | null;
+  onChanged: () => void;
+}) {
   const updFn = useServerFn(adminUpdateUserEmail);
   const [email, setEmail] = useState(currentEmail ?? "");
   const mut = useMutation({
@@ -343,7 +426,8 @@ function ChangeEmailDialog({
         <DialogHeader>
           <DialogTitle>Change email</DialogTitle>
           <DialogDescription>
-            Current: {currentEmail ?? "—"}. New email will be marked confirmed; the user signs in with it immediately.
+            Current: {currentEmail ?? "—"}. New email will be marked confirmed; the user signs in
+            with it immediately.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
@@ -351,7 +435,9 @@ function ChangeEmailDialog({
           <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
           <Button onClick={() => mut.mutate()} disabled={mut.isPending || !email.includes("@")}>
             {mut.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Update email
@@ -361,7 +447,6 @@ function ChangeEmailDialog({
     </Dialog>
   );
 }
-
 
 function AuditSection({ events, loading }: { events: any[]; loading: boolean }) {
   return (
@@ -380,7 +465,9 @@ function AuditSection({ events, loading }: { events: any[]; loading: boolean }) 
         <ul className="space-y-2 text-sm">
           {events.map((e) => (
             <li key={e.id} className="flex items-start gap-3 border-t pt-2">
-              <span className="text-muted-foreground tabular-nums whitespace-nowrap">{fmt(e.at)}</span>
+              <span className="text-muted-foreground tabular-nums whitespace-nowrap">
+                {fmt(e.at)}
+              </span>
               <span className="font-medium">{e.action}</span>
               <span className="text-muted-foreground truncate">{JSON.stringify(e.meta)}</span>
             </li>
@@ -392,8 +479,14 @@ function AuditSection({ events, loading }: { events: any[]; loading: boolean }) 
 }
 
 function BusinessNameSection({
-  firmId, currentName, onChanged,
-}: { firmId: string; currentName: string; onChanged: () => void }) {
+  firmId,
+  currentName,
+  onChanged,
+}: {
+  firmId: string;
+  currentName: string;
+  onChanged: () => void;
+}) {
   const renameFn = useServerFn(adminRenameFirm);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(currentName);
@@ -412,7 +505,9 @@ function BusinessNameSection({
     <section className="rounded-lg border p-6">
       <div className="flex items-center gap-3">
         <Building2 className="h-4 w-4 text-muted-foreground" />
-        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Organisation name</Label>
+        <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+          Organisation name
+        </Label>
       </div>
       <div className="mt-3 flex items-center gap-2">
         {editing ? (
@@ -424,10 +519,25 @@ function BusinessNameSection({
               className="max-w-md"
               autoFocus
             />
-            <Button size="sm" onClick={() => mut.mutate()} disabled={mut.isPending || name.trim().length < 2}>
-              {mut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+            <Button
+              size="sm"
+              onClick={() => mut.mutate()}
+              disabled={mut.isPending || name.trim().length < 2}
+            >
+              {mut.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Check className="h-4 w-4" />
+              )}
             </Button>
-            <Button size="sm" variant="ghost" onClick={() => { setName(currentName); setEditing(false); }}>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => {
+                setName(currentName);
+                setEditing(false);
+              }}
+            >
               <X className="h-4 w-4" />
             </Button>
           </>
@@ -462,7 +572,11 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
     onError: (e: any) => toast.error(e?.message ?? "Could not create invite"),
   });
 
-  function reset() { setEmail(""); setInviteUrl(null); setEmailStatus(null); }
+  function reset() {
+    setEmail("");
+    setInviteUrl(null);
+    setEmailStatus(null);
+  }
 
   async function copy() {
     if (!inviteUrl) return;
@@ -471,7 +585,13 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) reset(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) reset();
+      }}
+    >
       <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
         <Users className="h-4 w-4 mr-2" /> Invite member
       </Button>
@@ -487,8 +607,8 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <p className="text-xs text-muted-foreground">
-              Invitations to an existing organisation are always for staff. To change who owns
-              it, use Hand over ownership on the organisation settings page.
+              Invitations to an existing organisation are always for staff. To change who owns it,
+              use Hand over ownership on the organisation settings page.
             </p>
           </div>
         ) : (
@@ -497,11 +617,13 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
               {emailStatus === "queued"
                 ? "✓ Invite email sent."
                 : emailStatus === "suppressed"
-                ? "⚠ This address is on the suppression list — share the link manually."
-                : "Invite created. The email couldn't be sent — share this link manually."}
+                  ? "⚠ This address is on the suppression list — share the link manually."
+                  : "Invite created. The email couldn't be sent — share this link manually."}
             </p>
             <Input readOnly value={inviteUrl} className="font-mono text-xs" />
-            <Button size="sm" variant="outline" onClick={copy}>Copy link</Button>
+            <Button size="sm" variant="outline" onClick={copy}>
+              Copy link
+            </Button>
             <p className="text-xs text-muted-foreground">Backup link — expires in 14 days.</p>
           </div>
         )}
@@ -512,7 +634,9 @@ function InviteMemberDialog({ firmId, onCreated }: { firmId: string; onCreated: 
               Create invite
             </Button>
           ) : (
-            <Button variant="outline" onClick={() => setOpen(false)}>Done</Button>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Done
+            </Button>
           )}
         </DialogFooter>
       </DialogContent>

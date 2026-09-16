@@ -4,8 +4,13 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 import { siteUrl } from "@/lib/site-origin";
 import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 
-
-async function logAudit(action: string, targetType: string, targetId: string, actorUserId: string, meta: Record<string, any>) {
+async function logAudit(
+  action: string,
+  targetType: string,
+  targetId: string,
+  actorUserId: string,
+  meta: Record<string, any>,
+) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   await (supabaseAdmin as any).from("audit_log").insert({
     actor_user_id: actorUserId,
@@ -17,8 +22,10 @@ async function logAudit(action: string, targetType: string, targetId: string, ac
 }
 
 function validatePassword(pw: string) {
-  if (typeof pw !== "string" || pw.length < 8) throw new Error("Password must be at least 8 characters.");
-  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw)) throw new Error("Password must include at least one letter and one number.");
+  if (typeof pw !== "string" || pw.length < 8)
+    throw new Error("Password must be at least 8 characters.");
+  if (!/[A-Za-z]/.test(pw) || !/[0-9]/.test(pw))
+    throw new Error("Password must include at least one letter and one number.");
 }
 
 export const adminRenameFirm = createServerFn({ method: "POST" })
@@ -32,12 +39,19 @@ export const adminRenameFirm = createServerFn({ method: "POST" })
     }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: prev } = await supabaseAdmin
-      .from("firms").select("name").eq("id", data.firmId).maybeSingle();
+      .from("firms")
+      .select("name")
+      .eq("id", data.firmId)
+      .maybeSingle();
     const { error } = await (supabaseAdmin as any)
-      .from("firms").update({ name }).eq("id", data.firmId);
+      .from("firms")
+      .update({ name })
+      .eq("id", data.firmId);
     if (error) throw new Error(error.message);
     await logAudit("firm_renamed_by_admin", "firm", data.firmId, context.userId, {
-      firm_id: data.firmId, old_name: prev?.name ?? null, new_name: name,
+      firm_id: data.firmId,
+      old_name: prev?.name ?? null,
+      new_name: name,
     });
     return { ok: true };
   });
@@ -72,7 +86,6 @@ export const listFirmsAdmin = createServerFn({ method: "GET" })
     }));
     return { firms };
   });
-
 
 export const getFirmAuditAdmin = createServerFn({ method: "GET" })
   .middleware([requireAal2])
@@ -121,7 +134,6 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
       display_name: string | null;
     }>;
 
-
     // Pull last_sign_in_at for each member
     const membersWithAuth = await Promise.all(
       (members ?? []).map(async (m) => {
@@ -147,7 +159,6 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
       .maybeSingle();
 
     return { firm, members: membersWithAuth, subscription, billing: [] as any[] };
-
   });
 
 export const adminSendPasswordReset = createServerFn({ method: "POST" })
@@ -227,14 +238,24 @@ export const adminUpdateBillingLifecycle = createServerFn({ method: "POST" })
       is_always_free?: boolean | null;
       always_free_reason?: string | null;
     }) =>
-      z.object({
-        firmId: z.string().uuid(),
-        status: z.enum(["trialing", "active", "past_due", "canceled", "paused", "unpaid", "incomplete_expired"]),
-        trial_ends_at: z.string().datetime().nullable(),
-        current_period_end: z.string().datetime().nullable(),
-        is_always_free: z.boolean().nullable().optional(),
-        always_free_reason: z.string().trim().min(3).max(500).nullable().optional(),
-      }).parse(i),
+      z
+        .object({
+          firmId: z.string().uuid(),
+          status: z.enum([
+            "trialing",
+            "active",
+            "past_due",
+            "canceled",
+            "paused",
+            "unpaid",
+            "incomplete_expired",
+          ]),
+          trial_ends_at: z.string().datetime().nullable(),
+          current_period_end: z.string().datetime().nullable(),
+          is_always_free: z.boolean().nullable().optional(),
+          always_free_reason: z.string().trim().min(3).max(500).nullable().optional(),
+        })
+        .parse(i),
   )
   .handler(async ({ data, context }) => {
     await assertSuperAdminDb(context.supabase);
@@ -267,7 +288,6 @@ export const adminUpdateBillingLifecycle = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-
     await logAudit("billing_lifecycle_updated_by_admin", "firm", data.firmId, context.userId, {
       firm_id: data.firmId,
       changes: { ...subPatch, is_always_free: data.is_always_free },
@@ -296,5 +316,3 @@ export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true, member: data.join };
   });
-
-

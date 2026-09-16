@@ -7,10 +7,24 @@ import { adminUpdateBillingLifecycle } from "@/lib/admin.functions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 
-const STATUSES = ["trialing", "active", "past_due", "canceled", "paused", "unpaid", "incomplete_expired"] as const;
+const STATUSES = [
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "paused",
+  "unpaid",
+  "incomplete_expired",
+] as const;
 
 const STATUS_LABELS: Record<(typeof STATUSES)[number], string> = {
   trialing: "Trialling",
@@ -99,10 +113,14 @@ export function BillingLifecycleCard({
         <div className="space-y-1.5">
           <Label>Status</Label>
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
             <SelectContent>
               {STATUSES.map((value) => (
-                <SelectItem key={value} value={value}>{STATUS_LABELS[value]}</SelectItem>
+                <SelectItem key={value} value={value}>
+                  {STATUS_LABELS[value]}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -110,14 +128,26 @@ export function BillingLifecycleCard({
 
         <div className="space-y-1.5">
           <Label>Trial ends</Label>
-          <Input type="date" value={trialEnds} onChange={(event) => setTrialEnds(event.target.value)} />
-          <p className="text-xs text-muted-foreground">Used only when the billing status is Trialling.</p>
+          <Input
+            type="date"
+            value={trialEnds}
+            onChange={(event) => setTrialEnds(event.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Used only when the billing status is Trialling.
+          </p>
         </div>
 
         <div className="space-y-1.5">
           <Label>Billing period ends</Label>
-          <Input type="date" value={periodEnd} onChange={(event) => setPeriodEnd(event.target.value)} />
-          <p className="text-xs text-muted-foreground">Used to determine when a past-due organisation lapses.</p>
+          <Input
+            type="date"
+            value={periodEnd}
+            onChange={(event) => setPeriodEnd(event.target.value)}
+          />
+          <p className="text-xs text-muted-foreground">
+            Used to determine when a past-due organisation lapses.
+          </p>
         </div>
 
         <div className="flex items-start justify-between gap-4 rounded-md border p-3">
