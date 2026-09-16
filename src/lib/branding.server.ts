@@ -175,9 +175,13 @@ export async function getOrganisationLogo(userId: string, firmId: string) {
   return { path, url: await signLogo(path) };
 }
 
-export async function getClientLogo(userId: string, clientId: string) {
+export async function getClientLogo(userId: string, clientId: string, supabase?: any) {
   const { assertClientDataAccessForClient } = await import("@/lib/support-access.server");
   await assertClientDataAccessForClient(userId, clientId);
+  // Hide, never delete: with Branding off the stored logo stays put but is not served.
+  if (supabase && !(await clientBrandingEnabled(supabase, clientId))) {
+    return { path: null, url: null };
+  }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await (supabaseAdmin as any)
     .from("clients")
