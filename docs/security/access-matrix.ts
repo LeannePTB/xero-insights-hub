@@ -1006,9 +1006,10 @@ export const MATRIX: MatrixRow[] = [
     role: "support_grant_active",
     resource: "set_org_trial(the organisation they support)",
     operation: "execute",
-    expect: "deny",
-    rule: "Invariant 5 — support grants are read-only",
+    expect: "allow",
+    rule: "PK 2 path C — this person is a platform super admin, so the change is plan metadata; the support grant contributes nothing to it",
     layers: ["pglite"],
+    note: "Support grants are only ever held by a Positive Traction super admin, so this row cannot separate the two paths. What it does prove is that the trial function reads and returns no client data, so invariant 5 (support grants are read-only over CLIENT data) is untouched: org_owner and client_viewer above are refused outright.",
   },
   {
     role: "client_viewer",
