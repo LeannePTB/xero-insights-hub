@@ -102,3 +102,10 @@ Separate from the card-model migration; no file or object shared with it.
 
 - [x] Organisations table: remove all Xero content, expose Plan & members / Clients / View As in each row, and remove the obsolete plan-level subtitle.
 - [x] Security & compliance: remove redundant Super Admin badges and audience tints while preserving severity colours and every visibility rule.
+
+## Payroll capability and View As audit (16 Sep 2026)
+- [ ] Confirm current View As database guards, audit row, matrix coverage, banner and exit.
+- [ ] Trace why Payroll/PayRuns refusals repeat and document the burst mechanism.
+- [ ] Persist per-connection payroll availability and periodically re-check without disconnecting healthy accounting connections.
+- [ ] Show a clear no-payroll state on PAYG withholding and superannuation cards.
+- [ ] Verify access matrix, burst posture, database posture/linter, and security fingerprint.
