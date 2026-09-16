@@ -247,7 +247,7 @@ If a feature seems to need cross-organisation visibility, ask which path it is f
 
 While `card_model_v2` is active, `org_subscription_options.client_limit` is the single source for both the client and Xero-file allowances. `app_private.firm_limits()` reads that field directly; `subscriptions.client_limit_override` and `plan_levels` remain inert rollback data and must not be presented or written by active screens.
 
-New organisations start with a client allowance of 1, Advisory and Consolidation off, and bookkeeping billing. Purchased Advisory and Consolidation remain distinct from time-limited organisation trial grants.
+New organisations start with a client allowance of 1, Advisory and Consolidation off, and bookkeeping billing. Purchased Advisory and Consolidation remain distinct from time-limited organisation trial grants. Starting a trial for an option already marked as purchased atomically moves that option from purchased to trialled; a cosmetic trial that grants nothing is not permitted. Client card ticks are never rewritten by this conversion.
 
 Triggers on `clients` and `xero_connections` block over-limit inserts and fire even for `service_role`. Catch and present these; never reimplement the check:
 

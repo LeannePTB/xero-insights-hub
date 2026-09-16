@@ -529,6 +529,37 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`select * from public.xero_error_breakdown(7)`);
     return p.ok ? "allow" : "deny";
   }
+  if (r === "starting a trial over purchased Advisory converts the purchase and keeps ticks") {
+    await db.exec("set local role postgres");
+    await db.exec(`
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      values ('${CLIENT_A}'::uuid, array['cashflow','debtors']);
+      delete from public.org_subscription_options where firm_id = '${ORG_B}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_B}'::uuid, 10, true, false, 'bookkeeping');
+    `);
+    const changed = await probe(
+      `select public.set_org_trial('${ORG_B}'::uuid, true, false, false, now() + interval '30 days', 'matrix overlap conversion')`,
+    );
+    await db.exec("set local role postgres");
+    const state = await db.query<{
+      purchased: boolean;
+      trialled: boolean;
+      ticked: string[];
+    }>(`
+      select o.advisory_enabled as purchased,
+             o.trial_advisory_enabled as trialled,
+             (select cards from public.client_cards where client_id = '${CLIENT_A}'::uuid) as ticked
+        from public.org_subscription_options o
+       where o.firm_id = '${ORG_B}'::uuid
+    `);
+    const row = state.rows[0];
+    return changed.ok && !row?.purchased && row?.trialled && (row?.ticked ?? []).length === 2
+      ? "allow"
+      : "deny";
+  }
   if (r.startsWith("set_org_trial(")) {
     // ORG_B for a super admin with no membership — a trial is plan metadata, not
     // an access path, so this one is allowed to succeed. Everyone else acts on
@@ -563,7 +594,9 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return withNoTrial.rows[0]?.ok && withExpiredTrial.rows[0]?.ok ? "allow" : "deny";
   }
-  if (r === "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive") {
+  if (
+    r === "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive"
+  ) {
     await db.exec("set local role postgres");
     await db.exec(`
       delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
@@ -589,15 +622,11 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return p.ok ? "allow" : "deny";
   }
   if (r === "admin_assert_can_sign_out_user(another person)") {
-    const p = await probe(
-      `select public.admin_assert_can_sign_out_user('${U.staffA}'::uuid)`,
-    );
+    const p = await probe(`select public.admin_assert_can_sign_out_user('${U.staffA}'::uuid)`);
     return p.ok ? "allow" : "deny";
   }
   if (r === "admin_assert_can_sign_out_user(their own account)") {
-    const p = await probe(
-      `select public.admin_assert_can_sign_out_user('${U.superAdmin}'::uuid)`,
-    );
+    const p = await probe(`select public.admin_assert_can_sign_out_user('${U.superAdmin}'::uuid)`);
     return p.ok ? "allow" : "deny";
   }
   if (r === "assert_aal2() immediately after MFA (no activity row yet)") {

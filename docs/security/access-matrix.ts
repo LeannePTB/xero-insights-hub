@@ -988,6 +988,15 @@ export const MATRIX: MatrixRow[] = [
     note: "Added 16 Sep 2026 when trials moved from the client to the organisation.",
   },
   {
+    role: "super_admin_no_membership",
+    resource: "starting a trial over purchased Advisory converts the purchase and keeps ticks",
+    operation: "execute",
+    expect: "allow",
+    rule: "The audited trial change is atomic: selected purchased options become trialled while client card selections remain untouched",
+    layers: ["pglite"],
+    note: "Added 16 Sep 2026 after a purchase-plus-trial overlap could create a cosmetic trial that granted nothing.",
+  },
+  {
     role: "org_owner",
     resource: "set_org_trial(their own organisation)",
     operation: "execute",

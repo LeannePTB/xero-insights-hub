@@ -72,7 +72,6 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.my_firm_memberships": "The caller's organisation memberships and roles.",
   "public.my_roles": "The caller's platform roles.",
 
-
   "public.user_can_access_client":
     "Legacy alias: whether a person may reach a client (superseded by the read/write pair).",
   "public.user_can_access_firm":
@@ -292,7 +291,7 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.client_org_trial":
     "Answers whether the organisation behind one client is running a trial right now, with its end date, days remaining and ending-soon flag. aal2 first, then returns rows only to an active member of that organisation (app_private.has_firm_access — membership only, never a support grant) or to a caller holding a client_access row with relationship = 'business_owner' for that exact client (Path E billing self-service). Everyone else — external advisers, standing viewers, support grants, other organisations — receives no rows, which reveals nothing. Read-only trial metadata sourced from app_private.org_effective_options; never purchase detail, never client data, and an expired or absent trial returns nothing so the dashboard reverts quietly.",
   "public.set_org_trial":
-    "Starts, extends or ends an organisation trial of Advisory (and Consolidation, refused without Advisory). aal2 + super admin via public.assert_super_admin, a written reason required, end date must be in the future and at most 120 days out, and every accepted change is audited with the previous and new state. It never touches the purchased flags and never rewrites any client's ticked card list, so ending a trial restores the purchase exactly. Grants access to nothing and reads no client data.",
+    "Starts, extends or ends an organisation trial of Advisory (and Consolidation, refused without Advisory). aal2 + super admin via public.assert_super_admin, a written reason required, end date must be in the future and at most 120 days out, and every accepted change is audited with the previous and new purchased and trial state. Starting a selected option's trial atomically clears that option's purchased flag so the trial cannot be cosmetic; it never rewrites any client's ticked card list. Grants access to nothing and reads no client data.",
   "public.record_view_as":
     "Records that a platform super admin previewed an organisation or client dashboard: aal2, super admin, and an access path already held. Never a grant.",
   "public.xero_error_breakdown":
@@ -307,7 +306,6 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Returns the cards one client shows: aal2 first, then refuses unless the caller already has read access to that client, then intersects the purchase-available set with the client's ticked list. A missing ticked list means all available cards, never none, so a recording fault fails visible rather than blank. Never returns a card the purchase does not allow.",
 
   "public.security_attestations_list":
-
     "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",
   "public.test_accounts_posture":
     "Posture check (aal2 + super admin): Action if a test account can sign in outside a run, holds access outside the test organisation, or has a session outside the run window.",
