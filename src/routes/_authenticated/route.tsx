@@ -39,7 +39,6 @@ function ownsAdminMenu(pathname: string) {
   return (
     pathname === "/admin" ||
     pathname.startsWith("/admin/") ||
-    pathname.startsWith("/settings/tiers") ||
     pathname.startsWith("/settings/advisors")
   );
 }
