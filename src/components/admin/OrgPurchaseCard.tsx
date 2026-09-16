@@ -203,6 +203,30 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
             onCheckedChange={setConsolidation}
           />
         </div>
+
+        <div className="flex items-start justify-between gap-4 rounded-md border p-3">
+          <div>
+            <p className="text-sm font-medium">Branding</p>
+            <p className="text-xs text-muted-foreground">
+              {!advisory
+                ? "Available once Advisory is on — it extends Advisory and is charged separately."
+                : "Charged separately. Lets each client have its own logo on the monthly management report. Switching it off hides the logos; nothing is deleted, and they return if it comes back on."}
+            </p>
+          </div>
+          <Switch
+            checked={branding}
+            disabled={!canEdit || !advisory}
+            onCheckedChange={(v) => {
+              setBranding(v);
+              if (!v) {
+                toast.message("Logos are kept", {
+                  description:
+                    "Any logo already uploaded stays in storage and simply stops being used. It comes back if Branding is switched on again.",
+                });
+              }
+            }}
+          />
+        </div>
       </div>
 
       {canEdit ? (
