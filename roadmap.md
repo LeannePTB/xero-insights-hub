@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Make organisation trial starts atomic with overlapping purchase options; preserve client card ticks and verify DRTABT's client-facing trial notice.
+
 - [ ] Replace role-check authorisation with access checks on write paths (plan in .lovable/plan.md awaiting approval; five open questions)
 - [x] Phase 2 — Guardrails, part 1: access matrix (source of truth + generated document), aal1 allow-list, verified admin-client register, static guard tests, `security_test_runs` + `record_access_test_run()`, `access_tests` posture check, tightened `definer_guards`, `bun run security:check`
 - [x] Phase 2 — Guardrails, part 2: `security_test_runs` grant fix, `excess_grants` posture check, PGlite fixture auth mirror (auth.uid/jwt/users/mfa_factors, table + column grants, BYPASSRLS definer owners), catalogue fingerprint check, matrix-driven PGlite suite (1,212 rows proved) and the three meta tests
