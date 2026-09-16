@@ -27,7 +27,7 @@ const STATUSES = [
 ] as const;
 
 const STATUS_LABELS: Record<(typeof STATUSES)[number], string> = {
-  trialing: "Trialling",
+  trialing: "Billing not started yet",
   active: "Active",
   past_due: "Past due",
   canceled: "Cancelled",
