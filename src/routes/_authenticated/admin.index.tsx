@@ -1,4 +1,3 @@
-import type { ReactNode } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -20,7 +19,7 @@ import { listSubscriptionStates } from "@/lib/subscription-state.functions";
 import { listOrgPurchases, type OrgPurchase } from "@/lib/card-model.functions";
 import { recordViewAs } from "@/lib/view-as.functions";
 import { toast } from "sonner";
-import { countdownLabel, formatEndDate, type SubscriptionState } from "@/lib/subscription-state";
+import type { SubscriptionState } from "@/lib/subscription-state";
 import { trialStatus } from "@/lib/org-trial";
 
 
@@ -52,25 +51,6 @@ type FirmRow = {
   connection_count: number;
   recent_error_count: number;
 };
-
-/** "1 / 1 clients", coloured amber at the limit and red over it. Never wraps mid-number. */
-function UsageCell({ used, limit, unit }: { used: number | null; limit: number | null; unit: string }) {
-  if (used == null) return <span className="text-muted-foreground">—</span>;
-  const limitLabel = limit == null ? "∞" : String(limit);
-  const tone =
-    limit == null ? "" : used > limit ? "text-destructive font-medium" : used === limit ? "text-amber-500 font-medium" : "";
-  return (
-    <span className={`whitespace-nowrap tabular-nums ${tone}`}>
-      {used} / {limitLabel} {unit}
-      {limit != null && used > limit ? " (over)" : ""}
-    </span>
-  );
-}
-
-function fmtDate(s: string | null) {
-  if (!s) return "—";
-  return new Date(s).toLocaleDateString();
-}
 
 function AdminPage() {
   const fetchCtx = useServerFn(getMyContext);
@@ -321,8 +301,6 @@ function OrganisationsSection({
             <tr>
               <th className="px-4 py-3 whitespace-nowrap">Organisation</th>
               <th className="px-4 py-3 whitespace-nowrap">Plan</th>
-              <th className="px-4 py-3 whitespace-nowrap">Capacity</th>
-              <th className="px-4 py-3 whitespace-nowrap">Status</th>
               <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
             </tr>
           </thead>
@@ -334,7 +312,13 @@ function OrganisationsSection({
                 onClick={() => navigate({ to: "/admin/firms/$firmId", params: { firmId: f.firm_id } })}
               >
                 <td className="px-4 py-3">
-                  <OrganisationCell name={f.firm_name} alwaysFree={f.is_always_free} />
+                  <OrganisationCell
+                    name={f.firm_name}
+                    alwaysFree={f.is_always_free}
+                    state={state}
+                    subscriptionStatus={f.status}
+                    unsetLodgementCycles={usage?.unsetLodgementCycles ?? 0}
+                  />
                 </td>
                 <td className="px-4 py-3">
                   <PlanCell
@@ -346,12 +330,6 @@ function OrganisationsSection({
                   />
                 </td>
                 <td className="px-4 py-3">
-                  <CapacityCell usage={usage} />
-                </td>
-                <td className="px-4 py-3">
-                  <StatusCell firm={f} state={state} />
-                </td>
-                <td className="px-4 py-3">
                   <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                     <RowActions firmId={f.firm_id} organisationName={f.firm_name} isSuper={isSuper} />
                   </div>
@@ -360,7 +338,7 @@ function OrganisationsSection({
             ))}
             {empty && (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
                   <p>No organisations yet.</p>
                   <div className="mt-3 flex justify-center">
                     <AddOrganisationDialog onCreated={onCreated} variant="outline" />
@@ -381,13 +359,21 @@ function OrganisationsSection({
             onClick={() => navigate({ to: "/admin/firms/$firmId", params: { firmId: f.firm_id } })}
           >
             <div className="flex items-start justify-between gap-3">
-              <OrganisationCell name={f.firm_name} alwaysFree={f.is_always_free} />
+              <OrganisationCell
+                name={f.firm_name}
+                alwaysFree={f.is_always_free}
+                state={state}
+                subscriptionStatus={f.status}
+                unsetLodgementCycles={usage?.unsetLodgementCycles ?? 0}
+              />
               <div onClick={(e) => e.stopPropagation()}>
                 <RowActions firmId={f.firm_id} organisationName={f.firm_name} isSuper={isSuper} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <Field label="Plan">
+            <div className="text-sm">
+              <div>
+                <div className="text-xs uppercase tracking-wide text-muted-foreground">Plan</div>
+                <div className="mt-0.5">
                 <PlanCell
                     label={planLabel(f.tier)}
                     usage={usage}
@@ -395,13 +381,8 @@ function OrganisationsSection({
                     purchase={purchaseByFirm.get(f.firm_id)}
                     modelActive={modelActive}
                   />
-              </Field>
-              <Field label="Capacity">
-                <CapacityCell usage={usage} />
-              </Field>
-              <Field label="Status">
-                <StatusCell firm={f} state={state} />
-              </Field>
+                </div>
+              </div>
             </div>
           </div>
         ))}
@@ -418,26 +399,43 @@ function OrganisationsSection({
   );
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function OrganisationCell({
+  name,
+  alwaysFree,
+  state,
+  subscriptionStatus,
+  unsetLodgementCycles,
+}: {
+  name: string;
+  alwaysFree: boolean;
+  state?: SubscriptionState;
+  subscriptionStatus: string | null;
+  unsetLodgementCycles: number;
+}) {
+  const status = abnormalStatus(state, subscriptionStatus);
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="mt-0.5">{children}</div>
+      <div className="flex flex-wrap items-center gap-2 font-medium">
+        <span>{name}</span>
+        {status && <Badge variant={status.variant}>{status.label}</Badge>}
+        {alwaysFree && <Badge variant="outline">always free</Badge>}
+      </div>
+      {unsetLodgementCycles > 0 && (
+        <div className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+          <ShieldAlert className="h-3 w-3" />
+          {unsetLodgementCycles} client{unsetLodgementCycles === 1 ? "" : "s"} need lodgement cycles
+        </div>
+      )}
     </div>
   );
 }
 
-function OrganisationCell({ name, alwaysFree }: { name: string; alwaysFree: boolean }) {
-  return (
-    <span className="font-medium">
-      {name}
-      {alwaysFree && (
-        <Badge variant="outline" className="ml-2 align-middle">
-          always free
-        </Badge>
-      )}
-    </span>
-  );
+function abnormalStatus(state: SubscriptionState | undefined, status: string | null) {
+  if (state?.lapsed) return { label: "Lapsed", variant: "destructive" as const };
+  if (status === "canceled") return { label: "Cancelled", variant: "destructive" as const };
+  if (status === "past_due") return { label: "Past due", variant: "outline" as const };
+  if (status === "paused") return { label: "Suspended", variant: "outline" as const };
+  return null;
 }
 
 /**
@@ -474,9 +472,18 @@ function PlanCell({
     const consolidationBlocked = purchase.advisory && purchase.clientCount <= 1;
     return (
       <div className="leading-tight space-y-0.5">
-        <div className="whitespace-nowrap tabular-nums">
+        <div
+          className={`whitespace-nowrap tabular-nums ${
+            usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed >= usage.clientLimit
+              ? "font-medium text-amber-600 dark:text-amber-400"
+              : ""
+          }`}
+        >
           {purchase.clientLimit >= 9999 ? "Unlimited" : purchase.clientLimit} client
           {purchase.clientLimit === 1 ? "" : "s"}
+          {usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed >= usage.clientLimit
+            ? " · at limit"
+            : ""}
         </div>
         <div className="flex flex-wrap items-center gap-1">
           <OptionPill on={purchase.advisory} label="Advisory" />
@@ -522,81 +529,6 @@ function OptionPill({ on, label, offNote }: { on: boolean; label: string; offNot
       {label} {on ? "on" : "off"}
       {!on && offNote ? ` · ${offNote}` : ""}
     </span>
-  );
-}
-
-function CapacityCell({ usage }: { usage: OrganisationUsage | undefined }) {
-  return (
-    <div className="space-y-1">
-      <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} unit="clients" />
-      {!!usage?.unsetLodgementCycles && (
-        <div className="flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-          <ShieldAlert className="h-3 w-3" />
-          {usage.unsetLodgementCycles} client{usage.unsetLodgementCycles === 1 ? "" : "s"} need lodgement cycles
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatusCell({ firm, state }: { firm: FirmRow; state?: SubscriptionState }) {
-  const lapsed = !!state?.lapsed;
-  const endingSoon = !!state?.endingSoon;
-  const alwaysFree = state?.alwaysFree ?? firm.is_always_free;
-  // A free plan (or an always-free organisation) never shows a bill date.
-  const noDates = alwaysFree || !!state?.isFree;
-
-  const countdown = state ? countdownLabel(state) : null;
-  const endDate = state ? formatEndDate(state.endsAt) : null;
-
-  let detail: string;
-  if (noDates) {
-    detail = "no billing dates";
-  } else if (lapsed) {
-    detail = "Lapsed — clients on Standard";
-  } else if (countdown) {
-    detail = countdown;
-  } else if (firm.status === "trialing") {
-    detail = `trial ends ${fmtDate(firm.trial_ends_at)}`;
-  } else if (endDate) {
-    detail = `next bill ${endDate}`;
-  } else if (firm.current_period_end) {
-    detail = `next bill ${fmtDate(firm.current_period_end)}`;
-  } else {
-    detail = "—";
-  }
-
-  const detailTone = lapsed
-    ? "text-destructive font-medium"
-    : endingSoon
-      ? "text-amber-600 dark:text-amber-400 font-medium"
-      : "text-muted-foreground";
-
-  const label = lapsed ? "lapsed" : (firm.status ?? "—");
-
-  return (
-    <div className="leading-tight">
-      <div className="whitespace-nowrap">
-        <Badge
-          variant={
-            lapsed
-              ? "destructive"
-              : firm.status === "active" || firm.status === "trialing"
-                ? "default"
-                : "secondary"
-          }
-          className="capitalize"
-        >
-          {label}
-        </Badge>
-        {firm.cancel_at_period_end && (
-          <Badge variant="outline" className="ml-1">
-            cancelling
-          </Badge>
-        )}
-      </div>
-      <div className={`mt-1 text-xs whitespace-nowrap ${detailTone}`}>{detail}</div>
-    </div>
   );
 }
 
