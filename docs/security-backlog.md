@@ -1316,3 +1316,21 @@ delete: storage and `clients.logo_path` are untouched.
 
 The organisation's own logo is deliberately NOT gated — it identifies who
 prepared the report. Only the per-client logo is an option.
+
+## Client setup checklist (16 September 2026) — DONE
+Display and acknowledgements only; no new access path. Reads are all through
+`context.supabase` behind `requireAal2` + `assertClientDataAccessForClient`, so a
+caller-supplied `client_id` stays a filter. `public.client_setup_account_counts`
+is SECURITY INVOKER, so it counts only rows the caller may already read.
+
+`clients.setup_ack` (jsonb, default `{}`) records deliberate decisions —
+`{ at, by, choice }` per item. Written by an UPDATE on `public.clients`, so the
+existing clients write policies (`app_private.user_can_manage_client`) decide:
+a support grant cannot acknowledge anything (PK 5 holds, no policy added).
+Two matrix rows added for the acknowledgement write and a cross-organisation read.
+
+`report_basis` cannot be told apart from its column default (NOT NULL DEFAULT
+'accrual'), so the checklist flags the basis until it is explicitly confirmed,
+and saving a basis now stamps `setup_ack.pl_basis`. A deliberate
+`not_registered`, a disabled cost-classification toggle, or "no statutory
+accounts needed" clears an item permanently and is never flagged.

@@ -131,3 +131,10 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Matrix row proving purchased Advisory with a null or expired trial keeps its cards; plus trial-grant, expiry and tick-preservation rows.
 
 - [x] Branding is a fourth purchasable option (16 Sep 2026): tick on the organisation purchase card, requires Advisory, gates the per-client report logo. Organisation logo stays free. Logos hidden, never deleted.
+
+## Client setup checklist (16 Sep 2026)
+
+- [x] `clients.setup_ack` records deliberate setup decisions; `public.client_setup_account_counts` (SECURITY INVOKER) counts expense vs classified accounts.
+- [x] Setup section on client settings: linked Xero file, lodgement cycles, P&L basis, cost classification (with the untagged count), statutory account coding — each links to the section that fixes it.
+- [x] Client list badge shows the number of outstanding setup items and opens the Setup section; `not_registered` and other deliberate answers never flagged.
+- [x] Saving a P&L basis stamps an explicit confirmation, since the stored value alone cannot be told from the column default.

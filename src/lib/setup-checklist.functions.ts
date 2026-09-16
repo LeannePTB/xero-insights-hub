@@ -29,7 +29,8 @@ export const getClientSetupChecklist = createServerFn({ method: "POST" })
 export const acknowledgeSetupItem = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string; item: SetupItemKey; choice: string; undo?: boolean }) => {
-    if (!(SETUP_ITEMS as readonly string[]).includes(i.item)) throw new Error("Unknown setup item.");
+    if (!(SETUP_ITEMS as readonly string[]).includes(i.item))
+      throw new Error("Unknown setup item.");
     if (typeof i.choice !== "string" || i.choice.length > 64) throw new Error("Invalid choice.");
     return i;
   })

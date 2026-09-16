@@ -140,6 +140,17 @@ export const listClients = createServerFn({ method: "POST" })
       }
     }
 
+    // Setup checklist per client, for the list badge. Read through the caller's
+    // session like everything else here, so it can only cover clients already
+    // visible. A failure leaves the badge off and never fails the list.
+    const { setupChecklists } = await import("@/lib/setup-checklist.server");
+    let setupByClient = new Map<string, { outstanding: number; outstandingTitles: string[] }>();
+    try {
+      setupByClient = (await setupChecklists(context.supabase, clientIds)) as any;
+    } catch (err) {
+      console.error("[listClients] setup checklist failed", err);
+    }
+
     const clients = (rows ?? []).map((c: any) => {
       const grantedTiers = Array.from(
         new Set(((c.client_access ?? []) as { tier: DashboardTier }[]).map((a) => a.tier)),
@@ -162,6 +173,8 @@ export const listClients = createServerFn({ method: "POST" })
         cardModelActive: v2,
         visibleCardCount: v2 ? (v2Cards.get(c.id) ?? []).length : null,
         pendingCardCount: v2 ? (pendingCardsByClient.get(c.id) ?? 0) : null,
+        setupOutstanding: setupByClient.get(c.id)?.outstanding ?? 0,
+        setupTitles: setupByClient.get(c.id)?.outstandingTitles ?? [],
       };
     });
     return { clients };
@@ -542,9 +555,24 @@ export const updateClientReportBasis = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string; basis: "accrual" | "cash" }) => i)
   .handler(async ({ data, context }) => {
+    // Choosing a basis is an explicit decision, so it is recorded as one. The
+    // stored basis alone cannot be told apart from the column default, which is
+    // why the setup checklist reads this acknowledgement rather than the value.
+    const { data: existing } = await context.supabase
+      .from("clients")
+      .select("setup_ack")
+      .eq("id", data.clientId)
+      .maybeSingle();
+    const ack = { ...(((existing as any)?.setup_ack ?? {}) as Record<string, unknown>) };
+    ack.pl_basis = {
+      at: new Date().toISOString(),
+      by: context.userId,
+      choice: `confirmed_${data.basis}`,
+    };
+
     const { error } = await context.supabase
       .from("clients")
-      .update({ report_basis: data.basis })
+      .update({ report_basis: data.basis, setup_ack: ack } as any)
       .eq("id", data.clientId);
     if (error) throw new Error(error.message);
     return { ok: true };

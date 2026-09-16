@@ -8,10 +8,7 @@ import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { AlertTriangle, Check, HelpCircle, Loader2, Minus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  getClientSetupChecklist,
-  acknowledgeSetupItem,
-} from "@/lib/setup-checklist.functions";
+import { getClientSetupChecklist, acknowledgeSetupItem } from "@/lib/setup-checklist.functions";
 import type { SetupChecklist } from "@/lib/setup-checklist.server";
 
 export function ClientSetupSection({ clientId }: { clientId: string }) {
@@ -43,7 +40,11 @@ export function ClientSetupSection({ clientId }: { clientId: string }) {
     );
   }
   if (q.error) {
-    return <p className="text-sm text-destructive">{(q.error as any)?.message ?? "Could not read the setup checklist."}</p>;
+    return (
+      <p className="text-sm text-destructive">
+        {(q.error as any)?.message ?? "Could not read the setup checklist."}
+      </p>
+    );
   }
 
   const items = q.data?.items ?? [];

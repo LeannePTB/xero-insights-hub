@@ -15,6 +15,7 @@ import {
   setClientXeroAllowance,
 } from "@/lib/clients.functions";
 import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccountsSection";
+import { ClientSetupSection } from "@/components/clients/ClientSetupSection";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
 import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
@@ -130,7 +131,6 @@ function ClientSettings() {
       .filter((c) => c.missingScopes.length > 0)
       .map((c) => [c.tenantId, c.missingScopes] as [string, string[]]),
   );
-
 
   const [name, setName] = useState("");
   const [selectedXeroIds, setSelectedXeroIds] = useState<Set<string>>(new Set());
@@ -338,6 +338,11 @@ function ClientSettings() {
           </div>
         </Section>
 
+        {/* Setup checklist — what still needs a decision on this client */}
+        <Section title="Setup" id="setup" collapsible defaultOpen>
+          <ClientSetupSection clientId={clientId} />
+        </Section>
+
         {/* Cards — per-client switches within the organisation's available cards */}
         <Section title="Cards" id="cards" collapsible>
           <ClientCardsPanel clientId={clientId} firmId={client.firm_id ?? null} />
@@ -353,7 +358,7 @@ function ClientSettings() {
         </Section>
 
         {/* Report basis */}
-        <Section title="Profit &amp; Loss basis" collapsible>
+        <Section title="Profit &amp; Loss basis" id="report-basis" collapsible>
           <ReportBasisSection
             clientId={clientId}
             clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
@@ -377,7 +382,11 @@ function ClientSettings() {
           />
         </Section>
 
-        <Section title="How this client codes GST, PAYG and super" collapsible>
+        <Section
+          title="How this client codes GST, PAYG and super"
+          id="statutory-accounts"
+          collapsible
+        >
           <StatutoryAccountsSection
             clientId={clientId}
             tenantId={
@@ -390,6 +399,7 @@ function ClientSettings() {
         {/* Xero orgs */}
         <Section
           title="Xero organisations"
+          id="xero-organisations"
           action={
             <ConnectWithXeroButton
               variant="connect"
@@ -422,7 +432,9 @@ function ClientSettings() {
             {allowance ? (
               <p className="pb-2 text-xs text-muted-foreground">
                 {allowance.used} of {allowance.allowance} linked
-                {allowance.isMulti ? ` · allowance ${allowance.allowance} Xero files` : " · single Xero file"}
+                {allowance.isMulti
+                  ? ` · allowance ${allowance.allowance} Xero files`
+                  : " · single Xero file"}
               </p>
             ) : null}
           </div>
@@ -556,8 +568,8 @@ function ClientSettings() {
           )}
           {chooserState && availableConns.length > 0 && (allowance?.remaining ?? 0) < 1 && (
             <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-              This client is using {allowance?.used ?? 0} of {allowance?.allowance ?? 0} allowed Xero
-              file{(allowance?.allowance ?? 0) === 1 ? "" : "s"}, so no more can be linked.
+              This client is using {allowance?.used ?? 0} of {allowance?.allowance ?? 0} allowed
+              Xero file{(allowance?.allowance ?? 0) === 1 ? "" : "s"}, so no more can be linked.
             </p>
           )}
           {chooserState && availableConns.length > 0 && (allowance?.remaining ?? 0) >= 1 && (
