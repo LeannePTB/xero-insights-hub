@@ -282,6 +282,7 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
       firmId: string;
       advisory: boolean;
       consolidation: boolean;
+      branding: boolean;
       endsAt: string | null;
       reason: string;
     }) => {
@@ -290,10 +291,14 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
       if (reason.length < 3) throw new Error("Please give a reason for this trial change.");
       const advisory = !!i.advisory;
       const consolidation = !!i.consolidation;
+      const branding = !!i.branding;
       if (consolidation && !advisory) {
         throw new Error("A Consolidation trial needs Advisory as well.");
       }
-      const ending = !advisory && !consolidation;
+      if (branding && !advisory) {
+        throw new Error("A Branding trial needs Advisory as well.");
+      }
+      const ending = !advisory && !consolidation && !branding;
       let endsAt: string | null = null;
       if (!ending) {
         if (!i.endsAt) throw new Error("Choose the date the trial ends.");
@@ -301,7 +306,7 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
         if (Number.isNaN(when.getTime())) throw new Error("That end date is not valid.");
         endsAt = when.toISOString();
       }
-      return { firmId: i.firmId, advisory, consolidation, endsAt, reason };
+      return { firmId: i.firmId, advisory, consolidation, branding, endsAt, reason };
     },
   )
   .handler(async ({ data, context }) => {
@@ -309,12 +314,16 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
       _firm_id: data.firmId,
       _advisory: data.advisory,
       _consolidation: data.consolidation,
+      _branding: data.branding,
       _ends_at: data.endsAt,
       _reason: data.reason,
     });
     if (error) {
       if (/CONSOLIDATION_REQUIRES_ADVISORY/.test(error.message)) {
         throw new Error("A Consolidation trial needs Advisory as well.");
+      }
+      if (/BRANDING_REQUIRES_ADVISORY/.test(error.message)) {
+        throw new Error("A Branding trial needs Advisory as well.");
       }
       if (/TRIAL_END_MUST_BE_FUTURE/.test(error.message)) {
         throw new Error("The trial end date must be in the future.");
