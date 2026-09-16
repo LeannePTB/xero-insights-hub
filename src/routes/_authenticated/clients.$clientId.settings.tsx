@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { SuperAdminChip } from "@/components/admin/SuperAdminOnly";
 import { useEffect } from "react";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,12 +18,6 @@ import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccounts
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
 import { getXeroSalesTaxBasis } from "@/lib/xero/org-basis.functions";
-import {
-  listTierConfig,
-  saveClientTierWidgets,
-  listTierSettings,
-} from "@/lib/tier-config.functions";
-import { getAllowedTiersForClient } from "@/lib/plan-tiers.functions";
 import { getMyContext } from "@/lib/roles.functions";
 
 import {
@@ -61,11 +54,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
-import { ClientSubscriptionSection } from "@/components/billing/ClientSubscriptionSection";
 import { LogoUploadCard } from "@/components/branding/LogoUploadCard";
-import { ClientDashboardTierControl } from "@/components/billing/ClientDashboardTierControl";
 import { ClientCardsPanel } from "@/components/billing/ClientCardsPanel";
-import { getCardModel } from "@/lib/card-model.functions";
 import {
   ArrowLeft,
   Trash2,
@@ -76,9 +66,6 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
-import { ALL_TIERS, tierLabel, type DashboardTier, type WidgetKey } from "@/lib/tiers";
-import { usePlanLevels } from "@/hooks/usePlanLevels";
-import { TierEditor } from "@/routes/_authenticated/settings.tiers";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 // import { SubscriptionPanel } from "@/components/billing/SubscriptionPanel";
@@ -111,9 +98,6 @@ function ClientSettings() {
   const detach = useServerFn(detachXeroOrg);
   const del = useServerFn(deleteClient);
   const revoke = useServerFn(revokeClientAccess);
-  const fetchTierCfg = useServerFn(listTierConfig);
-  const saveTier = useServerFn(saveClientTierWidgets);
-  const fetchTierSettings = useServerFn(listTierSettings);
   const fetchClassifications = useServerFn(listCostClassifications);
   const setClassEnabled = useServerFn(setCostClassificationEnabled);
 
@@ -133,26 +117,8 @@ function ClientSettings() {
     queryKey: ["client-access", clientId],
     queryFn: () => fetchAccess({ data: { clientId } }),
   });
-  const tierCfgQ = useQuery({
-    queryKey: ["tier-config", clientId],
-    queryFn: () => fetchTierCfg({ data: { clientId } }),
-  });
-  const tierSettingsQ = useQuery({
-    queryKey: ["tier-settings"],
-    queryFn: () => fetchTierSettings(),
-  });
-  const fetchPlanTiers = useServerFn(getAllowedTiersForClient);
-  const planTiersQ = useQuery({
-    queryKey: ["plan-tiers", "client", clientId],
-    queryFn: () => fetchPlanTiers({ data: { clientId } }),
-  });
-  const planTiers = planTiersQ.data?.allowed ?? null;
   const fetchMyContext = useServerFn(getMyContext);
   const myCtxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
-  const isSuperAdmin = !!myCtxQ.data?.isSuperAdmin;
-  const fetchCardModel = useServerFn(getCardModel);
-  const cardModelQ = useQuery({ queryKey: ["card-model"], queryFn: () => fetchCardModel() });
-  const cardModelActive = cardModelQ.data?.active === true;
 
   const fetchScopeStatus = useServerFn(listXeroScopeStatus);
   const scopeStatusQ = useQuery({
@@ -165,29 +131,6 @@ function ClientSettings() {
       .map((c) => [c.tenantId, c.missingScopes] as [string, string[]]),
   );
 
-  // Only offer tiers the organisation's plan includes.
-  const { levels: tierLevels } = usePlanLevels("dashboard");
-  const catalogueKeys = (
-    tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]
-  ) as DashboardTier[];
-  const labelFor = (t: string) => tierLabel(t, tierLevels.find((l) => l.key === t)?.label);
-  const enabledTiers = catalogueKeys.filter(
-    (t) =>
-      (tierLevels.find((l) => l.key === t)?.enabled ?? true) &&
-      (tierSettingsQ.data?.enabled?.[t] ?? true) &&
-      (!planTiers || planTiers.includes(t)),
-  );
-
-  const tierSaveMut = useMutation({
-    mutationFn: (v: { tier: DashboardTier; widgets: WidgetKey[] | null }) =>
-      saveTier({ data: { clientId, tier: v.tier, widgets: v.widgets } }),
-    onSuccess: () => {
-      toast.success("Saved");
-      qc.invalidateQueries({ queryKey: ["tier-config", clientId] });
-      qc.invalidateQueries({ queryKey: ["effective-widgets", clientId] });
-    },
-    onError: (e: any) => toast.error(e.message),
-  });
 
   const [name, setName] = useState("");
   const [selectedXeroIds, setSelectedXeroIds] = useState<Set<string>>(new Set());
@@ -344,16 +287,6 @@ function ClientSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hash.replace("#", "") !== "dashboard-tier") return;
-    const el = document.getElementById("dashboard-tier");
-    if (!el) return;
-    // Give the layout a beat to settle before scrolling to the target.
-    const t = setTimeout(() => el.scrollIntoView({ behavior: "smooth", block: "start" }), 100);
-    return () => clearTimeout(t);
-  }, [clientId]);
-
   // Defence in depth: this page is preparer tooling. Anyone who is not an
   // advisor is sent to their own client dashboard. Server-side checks are
   // unchanged and remain the real protection.
@@ -405,32 +338,7 @@ function ClientSettings() {
           </div>
         </Section>
 
-        {!cardModelActive && (
-          <>
-            <Section title="Subscription" collapsible>
-              <ClientSubscriptionSection clientId={clientId} />
-            </Section>
-            <Section
-              title="Dashboard tier"
-              id="dashboard-tier"
-              collapsible
-              action={
-                isSuperAdmin ? (
-                  <div className="flex items-center gap-2">
-                    <SuperAdminChip />
-                    <Button variant="ghost" size="sm" asChild>
-                      <Link to="/settings/tiers">Edit plan defaults</Link>
-                    </Button>
-                  </div>
-                ) : undefined
-              }
-            >
-              <ClientDashboardTierControl clientId={clientId} />
-            </Section>
-          </>
-        )}
-
-        {/* Cards — per-client switches within the tier */}
+        {/* Cards — per-client switches within the organisation's available cards */}
         <Section title="Cards" id="cards" collapsible>
           <ClientCardsPanel clientId={clientId} firmId={client.firm_id ?? null} />
         </Section>

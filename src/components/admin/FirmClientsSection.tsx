@@ -3,22 +3,18 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { AlertTriangle, Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertTriangle, Building2, ChevronRight, Eye, Loader2, MoreHorizontal, Plus, Trash2 } from "lucide-react";
 import { listClients, deleteClient, getClientRemovalImpact } from "@/lib/clients.functions";
-import { listTierSettings } from "@/lib/tier-config.functions";
-import { getAllowedTiersForFirm } from "@/lib/plan-tiers.functions";
 import { getSupportAccess } from "@/lib/support-access.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { recordViewAs } from "@/lib/view-as.functions";
 import { listClientVerdicts } from "@/lib/health/verdicts.functions";
 
 
-import { ALL_TIERS, tierLabel, type DashboardTier } from "@/lib/tiers";
-import { usePlanLevels } from "@/hooks/usePlanLevels";
+import type { DashboardTier } from "@/lib/tiers";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { Button } from "@/components/ui/button";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
-import { SetAllClientTiersDialog } from "@/components/admin/SetAllClientTiersDialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,23 +29,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-/** Explains a tier that isn't a plain paid subscription. */
-function sourceNote(ent: { source?: string; expiresAt?: string | null }): string | null {
-  const when = ent.expiresAt
-    ? new Date(ent.expiresAt).toLocaleDateString("en-AU", { day: "2-digit", month: "2-digit" })
-    : null;
-  switch (ent.source) {
-    case "trial":
-      return when ? `trial · ends ${when}` : "trial";
-    case "free_forever":
-      return "comped";
-    case "org_always_free":
-      return "included";
-    default:
-      return null;
-  }
-}
-
 /**
  * Clients for one organisation: list, add, open, settings, view-as and remove.
  * Shared by the organisation page and the admin "Plan & members" page so both
@@ -61,7 +40,6 @@ export function FirmClientsSection({
   firmId,
   firmName,
   clientLimit,
-  planLabel,
   showHealth = true,
   allowClientData = true,
   heading = "Clients",
@@ -71,7 +49,6 @@ export function FirmClientsSection({
   firmId: string;
   firmName: string;
   clientLimit?: number;
-  planLabel?: string;
   showHealth?: boolean;
   /** When false, nothing links through to client data; only gated "View as". */
   allowClientData?: boolean;
@@ -82,8 +59,6 @@ export function FirmClientsSection({
 }) {
   const qc = useQueryClient();
   const fetchClients = useServerFn(listClients);
-  const fetchTierSettings = useServerFn(listTierSettings);
-  const fetchPlanTiers = useServerFn(getAllowedTiersForFirm);
   const removeClient = useServerFn(deleteClient);
   const fetchRemovalImpact = useServerFn(getClientRemovalImpact);
   const fetchSupportAccess = useServerFn(getSupportAccess);
@@ -118,8 +93,6 @@ export function FirmClientsSection({
   const fetchMyContext = useServerFn(getMyContext);
   const meQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchMyContext() });
   const isSuperAdmin = !!meQ.data?.isSuperAdmin;
-  const isAdvisor = !!meQ.data?.isAdvisor;
-  const canManageTier = isAdvisor || isSuperAdmin;
 
 
 
@@ -129,10 +102,10 @@ export function FirmClientsSection({
   // person already holds); if it refuses, no preview opens.
   const navigate = useNavigate();
   const recordPreview = useServerFn(recordViewAs);
-  async function startClientPreview(clientId: string, tier: DashboardTier) {
+  async function startClientPreview(clientId: string) {
     try {
       await recordPreview({ data: { firmId, clientId, mode: "client" } });
-      navigate({ to: "/clients/$clientId", params: { clientId }, search: { viewAs: tier } });
+      navigate({ to: "/clients/$clientId", params: { clientId }, search: { viewAs: "client" } });
     } catch (e: any) {
       toast.error(e?.message ?? "Could not start the preview.");
     }
@@ -142,23 +115,6 @@ export function FirmClientsSection({
     queryKey: ["clients", firmId],
     queryFn: () => fetchClients({ data: { firmId } }),
   });
-  const tierSettingsQ = useQuery({ queryKey: ["tier-settings"], queryFn: () => fetchTierSettings() });
-  const planTiersQ = useQuery({
-    queryKey: ["plan-tiers", "firm", firmId],
-    queryFn: () => fetchPlanTiers({ data: { firmId } }),
-  });
-
-  const planTiers = planTiersQ.data?.allowed ?? null;
-  const { levels: tierLevels } = usePlanLevels("dashboard");
-  const catalogueKeys = (tierLevels.length ? tierLevels.map((l) => l.key) : [...ALL_TIERS]) as DashboardTier[];
-  const labelFor = (t: string) => tierLabel(t, tierLevels.find((l) => l.key === t)?.label);
-  const enabledTiers = catalogueKeys.filter(
-    (t) =>
-      (tierLevels.find((l) => l.key === t)?.enabled ?? true) &&
-      (tierSettingsQ.data?.enabled?.[t] ?? true) &&
-      (!planTiers || planTiers.includes(t)),
-  );
-
   const deleteMut = useMutation({
     mutationFn: (clientId: string) =>
       removeClient({ data: { clientId, disconnectXeroFiles: disconnectXero } }),
@@ -199,13 +155,6 @@ export function FirmClientsSection({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="font-display text-xl font-semibold">{heading}</h2>
-        <div className="flex flex-wrap items-center gap-3">
-        {clients.some((c: any) => c.cardModelActive !== true) && <SetAllClientTiersDialog
-            firmId={firmId}
-            clientCount={clients.length}
-            options={enabledTiers.map((t) => ({ key: t, label: labelFor(t) }))}
-          />}
-        </div>
         {showAddActions && (
           <div className="flex items-center gap-3">
             {atLimit && (
@@ -346,8 +295,6 @@ export function FirmClientsSection({
               </thead>
               <tbody>
                 {clients.map((c: any) => {
-                  const ent = c.entitlement ?? { tier: "basic", source: "none", expiresAt: null };
-                  const effectiveTier: string = ent.tier ?? "basic";
                   const missingGst = c.gst_cycle == null;
                   const missingPayg = c.payg_withholding_cycle == null;
                   const missingLabel = missingGst && missingPayg
@@ -357,12 +304,6 @@ export function FirmClientsSection({
                       : missingPayg
                         ? "PAYG cycle not set"
                         : null;
-                  // Only a super admin may preview a tier the client is not on,
-                  // and only within what the organisation's plan permits.
-                  const previewTiers = (isSuperAdmin && c.cardModelActive !== true ? enabledTiers : []).filter(
-                    (t) => t !== effectiveTier,
-                  );
-
                   const tenantNames = (c.client_xero_orgs ?? [])
                     .map((o: any) => o.xero_connections?.tenant_name)
                     .filter(Boolean)
@@ -403,12 +344,11 @@ export function FirmClientsSection({
 
                       </td>
                       <td className="px-5 py-4">
-                        {c.cardModelActive === true ? (
-                          <div className="space-y-2">
-                            <span className="text-sm tabular-nums">
-                              {c.visibleCardCount ?? 0} card{c.visibleCardCount === 1 ? "" : "s"} enabled
-                            </span>
-                            {canOpenClientData && missingLabel && (
+                        <div className="space-y-2">
+                          <span className="text-sm tabular-nums">
+                            {c.visibleCardCount ?? 0} card{c.visibleCardCount === 1 ? "" : "s"} enabled
+                          </span>
+                          {canOpenClientData && missingLabel && (
                               <Link
                                 to="/clients/$clientId/settings"
                                 params={{ clientId: c.id }}
@@ -418,32 +358,8 @@ export function FirmClientsSection({
                               >
                                 <AlertTriangle className="h-3 w-3" /> {missingLabel}
                               </Link>
-                            )}
-                          </div>
-                        ) : canManageTier ? (
-                          <Link
-                            to="/clients/$clientId/settings"
-                            params={{ clientId: c.id }}
-                            hash="dashboard-tier"
-                            title="Change dashboard tier"
-                            aria-label={`Change dashboard tier for ${c.name}`}
-                            className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary hover:bg-primary/20 hover:text-primary transition-colors cursor-pointer"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {labelFor(effectiveTier)}
-                            <Pencil className="h-3 w-3" />
-                          </Link>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
-                            {labelFor(effectiveTier)}
-                          </span>
-                        )}
-                        {/* Legacy per-client trial/comp labels only mean something
-                            in v1 rollback. Under the organisation model they were
-                            stale and misleading, so they are not shown. */}
-                        {c.cardModelActive !== true && sourceNote(ent) && (
-                          <div className="mt-0.5 text-xs text-muted-foreground">{sourceNote(ent)}</div>
-                        )}
+                          )}
+                        </div>
                       </td>
 
                       <td className="px-5 py-4 text-right">
@@ -475,27 +391,13 @@ export function FirmClientsSection({
                                   </DropdownMenuItem>
                                 </>
                               )}
-                              {(c.cardModelActive === true ? [effectiveTier] : [effectiveTier, ...previewTiers]).map((t) =>
-                                canOpenClientData ? (
-                                  <DropdownMenuItem
-                                    key={`view-as-${t}`}
-                                    onSelect={() => void startClientPreview(c.id, t as DashboardTier)}
-                                  >
-                                    <Eye className="mr-2 h-4 w-4" /> View as {c.cardModelActive === true ? "client" : `${labelFor(t)} client`}
-                                    {t !== effectiveTier && (
-                                      <span className="ml-1 text-xs text-muted-foreground">(preview)</span>
-                                    )}
-                                  </DropdownMenuItem>
-                                ) : (
-                                  <DropdownMenuItem
-                                    key={`view-as-${t}`}
-                                    disabled
-                                    title="This organisation hasn't granted support access"
-                                  >
-                                    <Eye className="mr-2 h-4 w-4" /> View as {labelFor(t)} client
-                                  </DropdownMenuItem>
-                                ),
-                              )}
+                              <DropdownMenuItem
+                                disabled={!canOpenClientData || !isSuperAdmin}
+                                title={!canOpenClientData ? "This organisation hasn't granted support access" : undefined}
+                                onSelect={() => void startClientPreview(c.id)}
+                              >
+                                <Eye className="mr-2 h-4 w-4" /> View as client
+                              </DropdownMenuItem>
 
 
                               <DropdownMenuItem

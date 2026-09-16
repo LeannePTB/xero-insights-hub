@@ -15,6 +15,7 @@ import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { PeopleSection } from "@/components/people/PeopleSection";
 import { Button } from "@/components/ui/button";
+import { getFirmSubscription } from "@/lib/firm-subscription.functions";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings")({
   head: () => ({
@@ -23,13 +24,13 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/settings")({
       {
         name: "description",
         content:
-          "Manage people, clients, Xero files, ownership, support access and plans for this organisation.",
+          "Manage people, clients, Xero files, ownership and support access for this organisation.",
       },
       { property: "og:title", content: "Organisation settings — Traction Advisory" },
       {
         property: "og:description",
         content:
-          "Manage people, clients, Xero files, ownership, support access and plans for this organisation.",
+          "Manage people, clients, Xero files, ownership and support access for this organisation.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -100,7 +101,7 @@ function FirmSettingsPage() {
         <p className="mt-1 text-xs text-muted-foreground">
           {view.clientCount} of {view.clientLimit} clients used.
           {view.clientCount >= view.clientLimit
-            ? " Client limit reached — upgrade the plan to add more."
+            ? " Client limit reached — increase the organisation's client allowance to add more."
             : " Connect a Xero file or set up a client manually."}
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-3">
