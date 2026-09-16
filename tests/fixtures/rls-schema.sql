@@ -522,11 +522,19 @@ CREATE OR REPLACE FUNCTION app_private.firm_limits(_firm_id uuid)
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  select coalesce(s.client_limit_override, pl.client_limit), pl.xero_org_limit
-  from public.subscriptions s
-  left join public.plan_levels pl on pl.scope='firm' and pl.key = s.tier
-  where s.firm_id = _firm_id
-  limit 1
+  select
+    coalesce((
+      select o.client_limit
+      from public.org_subscription_options o
+      where o.firm_id = _firm_id
+      limit 1
+    ), 0) as client_limit,
+    coalesce((
+      select o.client_limit
+      from public.org_subscription_options o
+      where o.firm_id = _firm_id
+      limit 1
+    ), 0) as xero_org_limit
 $function$
 ;
 CREATE OR REPLACE FUNCTION public.transfer_organisation_ownership(_firm_id uuid, _new_owner_user_id uuid, _keep_previous_as_staff boolean DEFAULT true)
@@ -3114,4 +3122,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: caff108e47f97f34226f1395055a4992a6c02a8757bc272d9d4e0af81761b3f4
+-- catalogue-fingerprint: a98ef12b72a5293f65e390705bed610eac2af83769ff45d8e2285e70012ad214
