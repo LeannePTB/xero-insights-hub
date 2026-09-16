@@ -1295,3 +1295,5 @@ active status and expected absent billing dates now render nothing; Lapsed,
 Cancelled, Past due and Suspended remain visible beside the organisation name.
 The page continues to read `public.firm_subscription_state`, and no subscription,
 card-availability, authorisation, policy or database function was changed.
+
+- **Card count and audit-log readability corrections, 16 Sep 2026.** Display only. The organisation client list now reports enabled cards plus a separate count of ticked cards this app has no card for yet (`bank_reconciliation`, `tax_liability` appear in the database card groups but not in `ALL_WIDGETS`), so the number is never silently short. The organisation audit log collapses consecutive identical action+meta rows into one expandable line; no audit row is altered, hidden or deleted and the log stays append-only. Billing lifecycle wording renamed away from "Trial" to avoid confusion with the Advisory trial; the underlying `trialing` status and `trial_ends_at` column remain live because `app_private.firm_subscription_lapsed` reads them. No access rule, policy, grant or column changed.
