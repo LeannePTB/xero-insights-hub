@@ -23,11 +23,40 @@ export type CardGroup = { group: string; cards: string[] };
 export type OrgPurchase = {
   firmId: string;
   clientLimit: number;
+  /** What the organisation has purchased. Never merged with a trial. */
   advisory: boolean;
   consolidation: boolean;
   billingMode: "bookkeeping" | "external";
   clientCount: number;
+  /** Trial grants, stored separately so an expiry reverts to the purchase. */
+  trialAdvisory: boolean;
+  trialConsolidation: boolean;
+  trialEndsAt: string | null;
+  trialActive: boolean;
+  /** Purchased OR unexpired trial — what the database actually allows today. */
+  effectiveAdvisory: boolean;
+  effectiveConsolidation: boolean;
 };
+
+/** Maps one `public.org_purchase` row. The database decides every value here. */
+function mapPurchase(r: any): OrgPurchase {
+  return {
+    firmId: r.firm_id as string,
+    clientLimit: Number(r.client_limit ?? 0),
+    advisory: !!r.advisory_enabled,
+    consolidation: !!r.consolidation_enabled,
+    billingMode: (r.billing_mode === "external" ? "external" : "bookkeeping") as
+      | "bookkeeping"
+      | "external",
+    clientCount: Number(r.client_count ?? 0),
+    trialAdvisory: !!r.trial_advisory_enabled,
+    trialConsolidation: !!r.trial_consolidation_enabled,
+    trialEndsAt: (r.trial_ends_at as string | null) ?? null,
+    trialActive: !!r.trial_active,
+    effectiveAdvisory: !!r.effective_advisory,
+    effectiveConsolidation: !!r.effective_consolidation,
+  };
+}
 
 function rpcError(message: string): Error {
   // Generic, caller-safe messages; the database keys are kept for the UI to
