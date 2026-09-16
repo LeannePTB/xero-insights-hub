@@ -1925,6 +1925,26 @@ export const MATRIX: MatrixRow[] = [
     rule: "Invariant 3/6 — only a super admin may sign another person out",
     layers: ["pglite"],
   },
+
+  // ---- Client setup checklist (display + acknowledgements) ----
+  {
+    role: "support_grant_active",
+    resource: "server fn: acknowledgeSetupItem (record a setup decision)",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 5 (support grants are READ-ONLY)",
+    layers: ["live"],
+    note: "The acknowledgement is an UPDATE on public.clients through context.supabase, so the clients write policies (app_private.user_can_manage_client) decide. A support grant is read-only, so the update matches no row and the function raises 'You cannot change this client.' Reading the checklist stays allowed, like other client reads under a grant.",
+  },
+  {
+    role: "org_staff",
+    resource: "server fn: getClientSetupChecklist for a client in another organisation",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 4 (a caller-supplied client_id is a FILTER, never a GRANT)",
+    layers: ["live"],
+    note: "assertClientDataAccessForClient runs first, and every read inside setup-checklist.server.ts goes through context.supabase, so RLS scopes the clients, client_statutory_accounts, client_cost_classifications and xero_snapshots reads. public.client_setup_account_counts is SECURITY INVOKER, so it counts only rows the caller may already read.",
+  },
 ];
 
 export const KNOWN_FAILURES = MATRIX.filter((r) => r.knownFailure);
