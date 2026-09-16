@@ -688,10 +688,23 @@ describe("12f. payroll calls honour the client's explicit setting", () => {
     );
   });
 
-  it("treats only null cycles as missing in the client list", () => {
+  it("treats only null cycles as missing, and never flags a deliberate answer", () => {
+    // The rule moved into the setup checklist, which the client list now reads.
+    const checklist = readFileSync(join(ROOT, "src/lib/setup-checklist.server.ts"), "utf8");
+    expect(checklist).toContain("client.gst_cycle == null");
+    expect(checklist).toContain("client.payg_withholding_cycle == null");
+    // `not_registered` only ever clears an item; it is never a flag.
+    expect(checklist).not.toMatch(/needs_attention[^\n]*not_registered/);
+    expect(checklist).toContain('client.cost_classification_enabled === false');
     const list = readFileSync(join(ROOT, "src/components/admin/FirmClientsSection.tsx"), "utf8");
-    expect(list).toContain("c.gst_cycle == null");
-    expect(list).toContain("c.payg_withholding_cycle == null");
-    expect(list).not.toMatch(/missing(?:Gst|Payg)[^\n]*not_registered/);
+    expect(list).toContain("c.setupOutstanding");
+    expect(list).toContain('hash="setup"');
+  });
+
+  it("records an explicit basis confirmation rather than inferring one", () => {
+    const clients = readFileSync(join(ROOT, "src/lib/clients.functions.ts"), "utf8");
+    expect(clients).toContain("ack.pl_basis");
+    const checklist = readFileSync(join(ROOT, "src/lib/setup-checklist.server.ts"), "utf8");
+    expect(checklist).toContain('ackedAt(ack, "pl_basis")');
   });
 });
