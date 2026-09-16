@@ -354,7 +354,8 @@ export function FirmClientsSection({
                               <Link
                                 to="/clients/$clientId/settings"
                                 params={{ clientId: c.id }}
-                                hash="lodgement-cycles"
+                                hash="setup"
+                                title={setupTitles.join(" · ")}
                                 className="flex w-fit items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
                                 onClick={(e) => e.stopPropagation()}
                               >
