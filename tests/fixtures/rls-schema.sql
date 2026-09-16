@@ -94,6 +94,7 @@ create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
 create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone);
+create unique index org_subscription_options_firm_id_key on public.org_subscription_options (firm_id);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
