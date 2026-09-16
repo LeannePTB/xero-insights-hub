@@ -615,14 +615,22 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const ctx = CONTEXT[row.role];
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
     await db.exec(`set local role ${ctx.dbRole}`);
-    const off = await probe(
+    // A savepoint keeps a refusal from poisoning the rest of the case.
+    const guarded = async (sql: string) => {
+      await db.exec("savepoint toggle_sp");
+      const p = await probe(sql);
+      await db.exec(p.ok ? "release savepoint toggle_sp" : "rollback to savepoint toggle_sp");
+      if (!p.ok) console.log(`  consolidation toggle — refused: ${p.error}`);
+      return p;
+    };
+    const off = await guarded(
       `select public.set_org_purchase('${ORG_A}'::uuid, 10, true, false, false, 'bookkeeping')`,
     );
     await db.exec("set local role postgres");
     const during = await counts();
     await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
     await db.exec(`set local role ${ctx.dbRole}`);
-    const on = await probe(
+    const on = await guarded(
       `select public.set_org_purchase('${ORG_A}'::uuid, 10, true, true, false, 'bookkeeping')`,
     );
     await db.exec("set local role postgres");
