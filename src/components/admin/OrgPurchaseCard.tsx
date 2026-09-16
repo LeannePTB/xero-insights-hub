@@ -175,6 +175,13 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
                     "Consolidation extends Advisory, so it cannot stay on. The per-client ticks are kept.",
                 });
               }
+              if (!v && branding) {
+                setBranding(false);
+                toast.message("Branding switched off too", {
+                  description:
+                    "Branding extends Advisory, so it cannot stay on. Logos already uploaded stay where they are and come back if Branding is switched on again.",
+                });
+              }
             }}
           />
         </div>
