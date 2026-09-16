@@ -2991,6 +2991,15 @@ export type Database = {
       }
       client_for_access: { Args: { _id: string }; Returns: string }
       client_for_tenant: { Args: { _tenant_id: string }; Returns: string }
+      client_org_trial: {
+        Args: { _client_id: string }
+        Returns: {
+          days_remaining: number
+          ending_soon: boolean
+          trial_active: boolean
+          trial_ends_at: string
+        }[]
+      }
       client_removal_impact: {
         Args: { _client_id: string }
         Returns: {
