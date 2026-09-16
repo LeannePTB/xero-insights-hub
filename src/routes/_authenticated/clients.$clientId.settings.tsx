@@ -359,7 +359,7 @@ function ClientSettings() {
         </Section>
 
         {/* Report basis */}
-        <Section title="Profit &amp; Loss basis" collapsible>
+        <Section title="Profit &amp; Loss basis" id="report-basis" collapsible>
           <ReportBasisSection
             clientId={clientId}
             clientBasis={(client.report_basis as ReportBasis) ?? "accrual"}
