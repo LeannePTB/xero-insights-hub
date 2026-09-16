@@ -1280,3 +1280,14 @@ the Security page posture check covers the same ground. No query, policy,
 server function or visibility rule changed — the caller's `isSuper` gate is
 untouched, so only super admins ever see the card. `bunx tsgo --noEmit` clean;
 live query confirms 0 connections with no organisation.
+
+## 2026-09-16 — Organisations table capacity and status tightened (presentation only)
+
+The separate Capacity and Status columns were removed. Client capacity remains
+visible on the Plan line: an organisation at or over its database-supplied client
+limit is marked `at limit` in amber, while an already-over-limit state is marked `over limit` in red. The existing unset-lodgement-cycle signal
+moved beneath the organisation name rather than being lost with Capacity. Normal
+active status and expected absent billing dates now render nothing; Lapsed,
+Cancelled, Past due and Suspended remain visible beside the organisation name.
+The page continues to read `public.firm_subscription_state`, and no subscription,
+card-availability, authorisation, policy or database function was changed.

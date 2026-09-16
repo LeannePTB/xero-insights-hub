@@ -102,6 +102,7 @@ Separate from the card-model migration; no file or object shared with it.
 
 - [x] Organisations table: remove all Xero content, expose Plan & members / Clients / View As in each row, and remove the obsolete plan-level subtitle.
 - [x] Security & compliance: remove redundant Super Admin badges and audience tints while preserving severity colours and every visibility rule.
+- [x] Organisations table: remove Capacity and Status columns; carry the at-limit warning into Plan and show only abnormal subscription states beside the organisation name.
 
 ## Payroll capability and View As audit (16 Sep 2026)
 - [ ] Confirm current View As database guards, audit row, matrix coverage, banner and exit.
