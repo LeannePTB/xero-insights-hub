@@ -473,8 +473,7 @@ describe("9. relationship foundation cannot silently grant authority", () => {
  * or a billing authorisation.
  */
 describe("11. read predicates never authorise a write or a payment", () => {
-  const READ_PREDICATE =
-    /has_client_access|has_client_read_access|has_standing_client_access/;
+  const READ_PREDICATE = /has_client_access|has_client_read_access|has_standing_client_access/;
   const catalogue = readFileSync(join(process.cwd(), "tests/fixtures/rls-schema.sql"), "utf8");
   const policyLines = catalogue
     .split("\n")
@@ -504,7 +503,9 @@ describe("11. read predicates never authorise a write or a payment", () => {
   it("appears in no billing or subscription authorisation helper", () => {
     const offenders = bodies
       .filter(
-        (b) => /^(app_private|public)\.\w*(billing|subscription|checkout|stripe)\w*\(/i.test(b) && READ_PREDICATE.test(b),
+        (b) =>
+          /^(app_private|public)\.\w*(billing|subscription|checkout|stripe)\w*\(/i.test(b) &&
+          READ_PREDICATE.test(b),
       )
       .map((b) => b.split("\n")[0]!);
     report("billing helpers naming a read predicate (invariant 11)", offenders);
@@ -593,7 +594,8 @@ describe("12d. every CSV or spreadsheet export escapes its own cells", () => {
   it("uses the shared cell escaper wherever CSV is produced", () => {
     const offenders = FILES.filter((f) => {
       if (f.path === "src/lib/csv.ts") return false;
-      const producesCsv = /text\/csv/.test(f.text) || /\bcsv\b\s*[:=]\s*lines|lines\.join\("\\n"\)/.test(f.text);
+      const producesCsv =
+        /text\/csv/.test(f.text) || /\bcsv\b\s*[:=]\s*lines|lines\.join\("\\n"\)/.test(f.text);
       if (!producesCsv) return false;
       // A component that only downloads a server-built string is fine.
       const buildsCells = /\.join\(","\)/.test(f.text);
@@ -667,9 +669,10 @@ describe("12e. every posture check is wired into security_posture()", () => {
         `public.${name}() — call it from public.security_posture(), or the owner must add it to NOT_IN_POSTURE with a reason. It is invisible on the Security page as it stands.`,
       );
     }
-    expect(offenders, report("posture checks not wired into security_posture():", offenders)).toEqual(
-      [],
-    );
+    expect(
+      offenders,
+      report("posture checks not wired into security_posture():", offenders),
+    ).toEqual([]);
   });
 });
 
@@ -677,7 +680,9 @@ describe("12f. payroll calls honour the client's explicit setting", () => {
   it("keeps raw pay-run reads behind an explicit registered-only argument", () => {
     const payroll = readFileSync(join(ROOT, "src/lib/xero/payroll.server.ts"), "utf8");
     expect(payroll).toContain('setting: "registered"');
-    expect(payroll).toContain('payrollSettingForClient(opts.supabase, opts.tenantId, opts.clientId)');
+    expect(payroll).toContain(
+      "payrollSettingForClient(opts.supabase, opts.tenantId, opts.clientId)",
+    );
   });
 
   it("gates scheduled payroll before report fetching", () => {
@@ -695,7 +700,7 @@ describe("12f. payroll calls honour the client's explicit setting", () => {
     expect(checklist).toContain("client.payg_withholding_cycle == null");
     // `not_registered` only ever clears an item; it is never a flag.
     expect(checklist).not.toMatch(/needs_attention[^\n]*not_registered/);
-    expect(checklist).toContain('client.cost_classification_enabled === false');
+    expect(checklist).toContain("client.cost_classification_enabled === false");
     const list = readFileSync(join(ROOT, "src/components/admin/FirmClientsSection.tsx"), "utf8");
     expect(list).toContain("c.setupOutstanding");
     expect(list).toContain('hash="setup"');
