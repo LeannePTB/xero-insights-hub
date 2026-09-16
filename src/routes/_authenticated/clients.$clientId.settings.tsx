@@ -383,7 +383,11 @@ function ClientSettings() {
           />
         </Section>
 
-        <Section title="How this client codes GST, PAYG and super" collapsible>
+        <Section
+          title="How this client codes GST, PAYG and super"
+          id="statutory-accounts"
+          collapsible
+        >
           <StatutoryAccountsSection
             clientId={clientId}
             tenantId={
