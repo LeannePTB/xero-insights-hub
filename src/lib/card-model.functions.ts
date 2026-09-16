@@ -113,6 +113,7 @@ export const saveOrgPurchase = createServerFn({ method: "POST" })
       clientLimit: number;
       advisory: boolean;
       consolidation: boolean;
+      branding: boolean;
       billingMode: "bookkeeping" | "external";
     }) => {
       if (!i?.firmId) throw new Error("firmId is required");
@@ -128,6 +129,7 @@ export const saveOrgPurchase = createServerFn({ method: "POST" })
         clientLimit: limit,
         advisory: !!i.advisory,
         consolidation: !!i.consolidation,
+        branding: !!i.branding,
         billingMode: i.billingMode,
       };
     },
@@ -138,11 +140,15 @@ export const saveOrgPurchase = createServerFn({ method: "POST" })
       _client_limit: data.clientLimit,
       _advisory: data.advisory,
       _consolidation: data.consolidation,
+      _branding: data.branding,
       _billing_mode: data.billingMode,
     });
     if (error) {
       if (/CONSOLIDATION_REQUIRES_ADVISORY/.test(error.message)) {
         throw new Error("Consolidation can only be on when Advisory is on.");
+      }
+      if (/BRANDING_REQUIRES_ADVISORY/.test(error.message)) {
+        throw new Error("Branding can only be on when Advisory is on.");
       }
       if (/Forbidden/i.test(error.message)) throw new Error("Forbidden");
       throw rpcError(error.message);
