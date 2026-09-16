@@ -203,6 +203,7 @@ export async function computeGstReconciliation(
    *  not withhold") means PAYG is not looked for at all: no account hunt, no
    *  pay-run read, no issue line, and the estimated total is GST alone. */
   withholdsPayg = true,
+  clientId?: string | null,
 ): Promise<GstResult> {
 
 
@@ -438,7 +439,7 @@ export async function computeGstReconciliation(
   } else {
     const { fetchPayRuns, loadPayRuns, payRunsInPeriod } = await import("./payroll.server");
     const runs = supabase
-      ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, conn })
+      ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, clientId, conn })
       : await fetchPayRuns(conn);
     if (runs.status === "available") {
       const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
