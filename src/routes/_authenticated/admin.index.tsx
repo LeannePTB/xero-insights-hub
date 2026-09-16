@@ -681,3 +681,27 @@ function SectionTitle() {
     </div>
   );
 }
+
+/**
+ * An active trial and the exact date it ends, amber inside the warning window so
+ * it is noticed before it lapses rather than after. Nothing shows when there is
+ * no trial, which is every organisation today.
+ */
+function TrialLine({ purchase }: { purchase: OrgPurchase }) {
+  const status = trialStatus(purchase);
+  if (status.kind !== "active") return null;
+  return (
+    <div
+      className={`text-xs ${
+        status.warn ? "font-medium text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+      }`}
+    >
+      {status.grants} on trial · ends {status.endLabel}
+      {status.warn
+        ? status.daysLeft <= 0
+          ? " · ends today"
+          : ` · ${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} left`
+        : ""}
+    </div>
+  );
+}
