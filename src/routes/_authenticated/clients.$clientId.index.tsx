@@ -46,6 +46,7 @@ import { AuditSummaryCard } from "@/components/dashboard/AuditSummaryCard";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 import { RefreshSnapshotsButton } from "@/components/dashboard/RefreshSnapshotsButton";
 import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLapsedNotice";
+import { ClientTrialNotice } from "@/components/dashboard/ClientTrialNotice";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
