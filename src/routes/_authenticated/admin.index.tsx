@@ -13,8 +13,6 @@ import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnecti
 
 
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
-import { usePlanLevels } from "@/hooks/usePlanLevels";
-import { ExpiringOrganisationsNotice } from "@/components/admin/ExpiringOrganisationsNotice";
 import { listSubscriptionStates } from "@/lib/subscription-state.functions";
 import { listOrgPurchases, type OrgPurchase } from "@/lib/card-model.functions";
 import { recordViewAs } from "@/lib/view-as.functions";
@@ -118,7 +116,6 @@ function AdminPage() {
       </header>
 
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        <ExpiringOrganisationsNotice />
         <OrganisationsSection
           isSuper={isSuper}
           firms={firmsQ.data?.firms as FirmRow[] | undefined}
@@ -176,14 +173,7 @@ function OrganisationsSection({
   onCreated: () => void;
 }) {
   const navigate = useNavigate();
-  // Plan labels come from the plan_levels catalogue, never a hardcoded map.
-  const { all: planLevels } = usePlanLevels();
-  const planLabel = (key: string | null) =>
-    key ? planLevels.find((l) => l.scope === "firm" && l.key === key)?.label ?? key : "—";
-  const dashboardLabel = (key: string) =>
-    planLevels.find((l) => l.scope === "dashboard" && l.key === key)?.label ?? key;
-
-  // Limits and dashboard tiers for every visible organisation in one call.
+  // Limits and usage for every visible organisation in one call.
   const firmIds = (firms ?? []).map((f) => f.firm_id);
   const fetchUsage = useServerFn(listOrganisationUsage);
   const usageQ = useQuery({
@@ -216,7 +206,6 @@ function OrganisationsSection({
     queryFn: () => fetchPurchases({ data: { firmIds } }),
     enabled: firmIds.length > 0,
   });
-  const modelActive = purchasesQ.data?.modelActive ?? false;
   const purchaseByFirm = new Map<string, OrgPurchase>(
     (purchasesQ.data?.purchases ?? []).map((p) => [p.firmId, p]),
   );
@@ -322,11 +311,8 @@ function OrganisationsSection({
                 </td>
                 <td className="px-4 py-3">
                   <PlanCell
-                    label={planLabel(f.tier)}
                     usage={usage}
-                    dashboardLabel={dashboardLabel}
                     purchase={purchaseByFirm.get(f.firm_id)}
-                    modelActive={modelActive}
                   />
                 </td>
                 <td className="px-4 py-3">
@@ -375,11 +361,8 @@ function OrganisationsSection({
                 <div className="text-xs uppercase tracking-wide text-muted-foreground">Plan</div>
                 <div className="mt-0.5">
                 <PlanCell
-                    label={planLabel(f.tier)}
                     usage={usage}
-                    dashboardLabel={dashboardLabel}
                     purchase={purchaseByFirm.get(f.firm_id)}
-                    modelActive={modelActive}
                   />
                 </div>
               </div>
