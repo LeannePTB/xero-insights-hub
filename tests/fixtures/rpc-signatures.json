@@ -231,6 +231,13 @@
         "args": [
             "_client_id"
         ],
+        "name": "client_org_trial",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
         "name": "client_removal_impact",
         "required": 1
     },
