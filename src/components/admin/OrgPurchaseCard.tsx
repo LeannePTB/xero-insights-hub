@@ -357,7 +357,10 @@ function OrgTrialBlock({
               checked={tAdvisory}
               onCheckedChange={(v) => {
                 setTAdvisory(v);
-                if (!v) setTConsolidation(false);
+                if (!v) {
+                  setTConsolidation(false);
+                  setTBranding(false);
+                }
               }}
             />
           </div>
@@ -368,6 +371,20 @@ function OrgTrialBlock({
               checked={tConsolidation}
               disabled={!tAdvisory}
               onCheckedChange={setTConsolidation}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="trial-branding">Branding on trial</Label>
+              <p className="text-xs text-muted-foreground">
+                A trial of Advisory does not include Branding unless it is ticked here.
+              </p>
+            </div>
+            <Switch
+              id="trial-branding"
+              checked={tBranding}
+              disabled={!tAdvisory}
+              onCheckedChange={setTBranding}
             />
           </div>
           <div className="space-y-1.5">
