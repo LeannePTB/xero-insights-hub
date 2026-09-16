@@ -254,3 +254,64 @@ export const listOrgPurchases = createServerFn({ method: "POST" })
       modelActive: model === "v2",
     };
   });
+
+/**
+ * Start, extend or end an organisation trial. Commercial change: the database
+ * function re-checks aal2 and super admin, insists on a reason, refuses
+ * Consolidation without Advisory, caps the trial at 120 days, and audits every
+ * accepted change. It never touches purchased flags or any client's ticked
+ * cards, so an expiry reverts to exactly what the organisation has bought.
+ */
+export const saveOrgTrial = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator(
+    (i: {
+      firmId: string;
+      advisory: boolean;
+      consolidation: boolean;
+      endsAt: string | null;
+      reason: string;
+    }) => {
+      if (!i?.firmId) throw new Error("firmId is required");
+      const reason = (i.reason ?? "").trim();
+      if (reason.length < 3) throw new Error("Please give a reason for this trial change.");
+      const advisory = !!i.advisory;
+      const consolidation = !!i.consolidation;
+      if (consolidation && !advisory) {
+        throw new Error("A Consolidation trial needs Advisory as well.");
+      }
+      const ending = !advisory && !consolidation;
+      let endsAt: string | null = null;
+      if (!ending) {
+        if (!i.endsAt) throw new Error("Choose the date the trial ends.");
+        const when = new Date(i.endsAt);
+        if (Number.isNaN(when.getTime())) throw new Error("That end date is not valid.");
+        endsAt = when.toISOString();
+      }
+      return { firmId: i.firmId, advisory, consolidation, endsAt, reason };
+    },
+  )
+  .handler(async ({ data, context }) => {
+    const { data: ends, error } = await (context.supabase as any).rpc("set_org_trial", {
+      _firm_id: data.firmId,
+      _advisory: data.advisory,
+      _consolidation: data.consolidation,
+      _ends_at: data.endsAt,
+      _reason: data.reason,
+    });
+    if (error) {
+      if (/CONSOLIDATION_REQUIRES_ADVISORY/.test(error.message)) {
+        throw new Error("A Consolidation trial needs Advisory as well.");
+      }
+      if (/TRIAL_END_MUST_BE_FUTURE/.test(error.message)) {
+        throw new Error("The trial end date must be in the future.");
+      }
+      if (/TRIAL_TOO_LONG/.test(error.message)) {
+        throw new Error("A trial can run for at most 120 days.");
+      }
+      if (/NO_SUCH_ORGANISATION/.test(error.message)) throw new Error("Organisation not found");
+      if (/Forbidden|NO_ACCESS|insufficient/i.test(error.message)) throw new Error("Forbidden");
+      throw rpcError(error.message);
+    }
+    return { trialEndsAt: (ends as string | null) ?? null };
+  });
