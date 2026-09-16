@@ -21,6 +21,7 @@ import { listOrgPurchases, type OrgPurchase } from "@/lib/card-model.functions";
 import { recordViewAs } from "@/lib/view-as.functions";
 import { toast } from "sonner";
 import { countdownLabel, formatEndDate, type SubscriptionState } from "@/lib/subscription-state";
+import { trialStatus } from "@/lib/org-trial";
 
 
 
@@ -491,6 +492,7 @@ function PlanCell({
             }
           />
         </div>
+        <TrialLine purchase={purchase} />
         <div className="text-xs text-muted-foreground whitespace-nowrap">
           {purchase.billingMode === "external" ? "billed externally" : "billed with bookkeeping"}
         </div>
@@ -676,6 +678,30 @@ function SectionTitle() {
     <div className="flex items-center gap-2">
       <Building2 className="h-5 w-5 text-muted-foreground" />
       <h2 className="text-xl font-semibold">Organisations</h2>
+    </div>
+  );
+}
+
+/**
+ * An active trial and the exact date it ends, amber inside the warning window so
+ * it is noticed before it lapses rather than after. Nothing shows when there is
+ * no trial, which is every organisation today.
+ */
+function TrialLine({ purchase }: { purchase: OrgPurchase }) {
+  const status = trialStatus(purchase);
+  if (status.kind !== "active") return null;
+  return (
+    <div
+      className={`text-xs ${
+        status.warn ? "font-medium text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+      }`}
+    >
+      {status.grants} on trial · ends {status.endLabel}
+      {status.warn
+        ? status.daysLeft <= 0
+          ? " · ends today"
+          : ` · ${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} left`
+        : ""}
     </div>
   );
 }

@@ -9,9 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SuperAdminChip } from "@/components/admin/SuperAdminOnly";
-import { getOrgPurchase, saveOrgPurchase } from "@/lib/card-model.functions";
+import {
+  getOrgPurchase,
+  saveOrgPurchase,
+  saveOrgTrial,
+  type OrgPurchase,
+} from "@/lib/card-model.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { cardLabel, CARD_GROUP_LABEL } from "@/lib/card-labels";
+import { trialStatus, TRIAL_MAX_DAYS, TRIAL_WARN_DAYS } from "@/lib/org-trial";
 
 /**
  * What this organisation has bought: number of clients, Advisory, Consolidation
@@ -196,6 +202,185 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
           Read-only — contact support to change what this organisation has bought.
         </p>
       )}
+
+      <OrgTrialBlock firmId={firmId} purchase={purchase} canEdit={canEdit} />
     </section>
+  );
+}
+
+/**
+ * A trial on top of the purchase: it grants Advisory (and Consolidation) until a
+ * date, and is kept entirely separate from what has been bought so that when it
+ * ends the organisation reverts to exactly its purchase. Every change goes
+ * through public.set_org_trial, which re-checks the second factor and super
+ * admin, insists on a reason, and writes an audit row.
+ */
+function OrgTrialBlock({
+  firmId,
+  purchase,
+  canEdit,
+}: {
+  firmId: string;
+  purchase: OrgPurchase;
+  canEdit: boolean;
+}) {
+  const qc = useQueryClient();
+  const saveTrial = useServerFn(saveOrgTrial);
+  const status = trialStatus(purchase);
+
+  const [open, setOpen] = useState(false);
+  const [tAdvisory, setTAdvisory] = useState(purchase.trialAdvisory);
+  const [tConsolidation, setTConsolidation] = useState(purchase.trialConsolidation);
+  const [endsAt, setEndsAt] = useState(purchase.trialEndsAt ? purchase.trialEndsAt.slice(0, 10) : "");
+  const [reason, setReason] = useState("");
+
+  const mut = useMutation({
+    mutationFn: (vars: { advisory: boolean; consolidation: boolean; endsAt: string | null }) =>
+      saveTrial({
+        data: {
+          firmId,
+          advisory: vars.advisory,
+          consolidation: vars.consolidation,
+          endsAt: vars.endsAt,
+          reason,
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Trial updated");
+      setOpen(false);
+      setReason("");
+      qc.invalidateQueries({ queryKey: ["org-purchase", firmId] });
+      qc.invalidateQueries({ queryKey: ["org-purchases"] });
+      qc.invalidateQueries({ queryKey: ["client-card-setup"] });
+      qc.invalidateQueries({ queryKey: ["client-widgets"] });
+      qc.invalidateQueries({ queryKey: ["effective-widgets"] });
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Could not update the trial"),
+  });
+
+  const maxDate = new Date(Date.now() + TRIAL_MAX_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const minDate = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+
+  return (
+    <div className="space-y-3 rounded-md border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium">Trial</p>
+          <p className="text-xs text-muted-foreground">
+            For an organisation that has not bought Advisory yet. A trial never removes anything the
+            organisation has purchased, and when it ends each client's ticked cards are remembered.
+          </p>
+        </div>
+        {canEdit && !open && (
+          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+            {status.kind === "active" ? "Change trial" : "Start a trial"}
+          </Button>
+        )}
+      </div>
+
+      {status.kind === "none" && (
+        <p className="text-sm text-muted-foreground">
+          No trial. This organisation only has what it has purchased above.
+        </p>
+      )}
+      {status.kind === "expired" && (
+        <p className="text-sm text-muted-foreground">
+          Trial ended {status.endLabel}. The organisation is back to its purchase; every client's
+          ticked cards were kept.
+        </p>
+      )}
+      {status.kind === "active" && (
+        <p
+          className={`text-sm ${
+            status.warn
+              ? "rounded-md border border-amber-300 bg-amber-50 px-3 py-2 font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
+              : "text-muted-foreground"
+          }`}
+        >
+          {status.grants} on trial until {status.endLabel}
+          {status.warn
+            ? ` — ${status.daysLeft <= 0 ? "ends today" : `${status.daysLeft} day${status.daysLeft === 1 ? "" : "s"} left`}. Purchase it or the cards stop being available.`
+            : "."}
+        </p>
+      )}
+
+      {canEdit && open && (
+        <div className="space-y-3 border-t pt-3">
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="trial-advisory">Advisory on trial</Label>
+            <Switch
+              id="trial-advisory"
+              checked={tAdvisory}
+              onCheckedChange={(v) => {
+                setTAdvisory(v);
+                if (!v) setTConsolidation(false);
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-between gap-4">
+            <Label htmlFor="trial-consolidation">Consolidation on trial</Label>
+            <Switch
+              id="trial-consolidation"
+              checked={tConsolidation}
+              disabled={!tAdvisory}
+              onCheckedChange={setTConsolidation}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="trial-ends">Ends</Label>
+            <Input
+              id="trial-ends"
+              type="date"
+              min={minDate}
+              max={maxDate}
+              value={endsAt}
+              onChange={(e) => setEndsAt(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              At most {TRIAL_MAX_DAYS} days. The date is shown to you from the start, and warned about
+              {" "}{TRIAL_WARN_DAYS} days before it lapses.
+            </p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="trial-reason">Reason</Label>
+            <Input
+              id="trial-reason"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder="Why this organisation is being given a trial"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              disabled={mut.isPending || reason.trim().length < 3}
+              onClick={() =>
+                mut.mutate({
+                  advisory: tAdvisory,
+                  consolidation: tConsolidation,
+                  endsAt: endsAt || null,
+                })
+              }
+            >
+              {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save trial
+            </Button>
+            {status.kind === "active" && (
+              <Button
+                size="sm"
+                variant="outline"
+                disabled={mut.isPending || reason.trim().length < 3}
+                onClick={() => mut.mutate({ advisory: false, consolidation: false, endsAt: null })}
+              >
+                End trial now
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

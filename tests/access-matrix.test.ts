@@ -527,6 +527,61 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(`select * from public.xero_error_breakdown(7)`);
     return p.ok ? "allow" : "deny";
   }
+  if (r.startsWith("set_org_trial(")) {
+    // ORG_B for a super admin with no membership — a trial is plan metadata, not
+    // an access path, so this one is allowed to succeed. Everyone else acts on
+    // the organisation they are attached to and must be refused.
+    const org = r.includes("any organisation") ? ORG_B : ORG_A;
+    const p = await probe(
+      `select public.set_org_trial('${org}'::uuid, true, false, now() + interval '30 days', 'matrix probe')`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "purchased Advisory keeps its cards with no trial or an expired trial") {
+    // The case that protects an organisation whose Advisory is granted rather
+    // than trialled: purchased true, trial absent, then an expired trial.
+    await db.exec("set local role postgres");
+    await db.exec(`
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode,
+         trial_advisory_enabled, trial_consolidation_enabled, trial_ends_at)
+      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping', false, false, null);
+    `);
+    const withNoTrial = await db.query<{ ok: boolean }>(
+      `select app_private.client_available_cards('${CLIENT_A}'::uuid) @> array['cashflow'] as ok`,
+    );
+    await db.exec(`
+      update public.org_subscription_options
+         set trial_advisory_enabled = true, trial_ends_at = now() - interval '1 day'
+       where firm_id = '${ORG_A}'::uuid;
+    `);
+    const withExpiredTrial = await db.query<{ ok: boolean }>(
+      `select app_private.client_available_cards('${CLIENT_A}'::uuid) @> array['cashflow'] as ok`,
+    );
+    return withNoTrial.rows[0]?.ok && withExpiredTrial.rows[0]?.ok ? "allow" : "deny";
+  }
+  if (r === "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive") {
+    await db.exec("set local role postgres");
+    await db.exec(`
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      values ('${CLIENT_A}'::uuid, array['cashflow','debtors']);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode,
+         trial_advisory_enabled, trial_consolidation_enabled, trial_ends_at)
+      values ('${ORG_A}'::uuid, 10, false, false, 'bookkeeping', true, false, now() - interval '1 day');
+    `);
+    const res = await db.query<{ has_advisory: boolean; ticks: string[] }>(
+      `select app_private.client_available_cards('${CLIENT_A}'::uuid) @> array['cashflow'] as has_advisory,
+              (select cards from public.client_cards where client_id = '${CLIENT_A}'::uuid) as ticks`,
+    );
+    const row = res.rows[0];
+    const ticksKept = (row?.ticks ?? []).includes("cashflow");
+    // "deny" is the expectation: no Advisory card, with the ticks still recorded.
+    return !row?.has_advisory && ticksKept ? "deny" : "allow";
+  }
   if (r === "touch_session_activity()") {
     const p = await probe(`select public.touch_session_activity()`);
     return p.ok ? "allow" : "deny";

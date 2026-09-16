@@ -1409,6 +1409,9 @@ export type Database = {
           consolidation_enabled: boolean
           created_at: string
           firm_id: string
+          trial_advisory_enabled: boolean
+          trial_consolidation_enabled: boolean
+          trial_ends_at: string | null
           updated_at: string
         }
         Insert: {
@@ -1418,6 +1421,9 @@ export type Database = {
           consolidation_enabled?: boolean
           created_at?: string
           firm_id: string
+          trial_advisory_enabled?: boolean
+          trial_consolidation_enabled?: boolean
+          trial_ends_at?: string | null
           updated_at?: string
         }
         Update: {
@@ -1427,6 +1433,9 @@ export type Database = {
           consolidation_enabled?: boolean
           created_at?: string
           firm_id?: string
+          trial_advisory_enabled?: boolean
+          trial_consolidation_enabled?: boolean
+          trial_ends_at?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -3255,7 +3264,13 @@ export type Database = {
           client_count: number
           client_limit: number
           consolidation_enabled: boolean
+          effective_advisory: boolean
+          effective_consolidation: boolean
           firm_id: string
+          trial_active: boolean
+          trial_advisory_enabled: boolean
+          trial_consolidation_enabled: boolean
+          trial_ends_at: string
         }[]
       }
       organisation_members: {
@@ -3427,6 +3442,16 @@ export type Database = {
           _firm_id: string
         }
         Returns: undefined
+      }
+      set_org_trial: {
+        Args: {
+          _advisory: boolean
+          _consolidation: boolean
+          _ends_at: string
+          _firm_id: string
+          _reason: string
+        }
+        Returns: string
       }
       set_org_widget_enabled: {
         Args: {

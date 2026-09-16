@@ -438,7 +438,10 @@ export function FirmClientsSection({
                             {labelFor(effectiveTier)}
                           </span>
                         )}
-                        {sourceNote(ent) && (
+                        {/* Legacy per-client trial/comp labels only mean something
+                            in v1 rollback. Under the organisation model they were
+                            stale and misleading, so they are not shown. */}
+                        {c.cardModelActive !== true && sourceNote(ent) && (
                           <div className="mt-0.5 text-xs text-muted-foreground">{sourceNote(ent)}</div>
                         )}
                       </td>

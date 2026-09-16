@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1600**. Known failures: **0**.
+Rows: **1607**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -248,6 +248,7 @@ None.
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
 | record_view_as(their own organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
+| set_org_trial(their own organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: write client data | execute | DENY | live | PK 2 (requireAal2) |  |
@@ -849,6 +850,7 @@ None.
 | public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
 | record_view_as(an organisation they are not a member of) | execute | DENY | pglite | PK 3 — super_admin alone grants no organisation access, so it cannot preview one either | Added 16 Sep 2026 with the audited View as action on the Organisations table. Before this, view-as was a URL parameter with no audit row and no database check. |
 | xero_error_breakdown() | execute | ALLOW | pglite | PK 2 path C — Xero telemetry is platform metadata: status codes and endpoints, never client data |  |
+| set_org_trial(any organisation) | execute | ALLOW | pglite | PK 2 path C — plan and billing metadata is platform operations; no client data is read or returned | Added 16 Sep 2026 when trials moved from the client to the organisation. |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
@@ -1189,6 +1191,9 @@ None.
 | public.xero_connections (tenant over the plan's Xero file limit) | insert | DENY | live | Plan limit trigger PLAN_LIMIT_XERO_ORGS — refused and reported, never stored unassigned | Phase 5 step 5: the callback presents the database's own plan-limit wording and names the refused Xero file. |
 | record_view_as(their own organisation) | execute | DENY | pglite | Platform operations only (assert_super_admin) — an organisation owner has no impersonation action |  |
 | xero_error_breakdown() | execute | DENY | pglite | PK 2 path C is platform operations only; an organisation reads its own Xero errors elsewhere |  |
+| set_org_trial(their own organisation) | execute | DENY | pglite | Commercial change — assert_super_admin, same treatment as a comp; an organisation cannot grant itself a trial |  |
+| purchased Advisory keeps its cards with no trial or an expired trial | read | ALLOW | pglite | Effective options = purchased OR unexpired trial — an absent or expired trial can never take away a purchase | Added 16 Sep 2026 at the owner's direction: this is the case that protects an organisation whose Advisory is granted rather than trialled. |
+| an expired trial with nothing purchased shows no Advisory cards, and the ticks survive | read | DENY | pglite | A trial ends at read time with no scheduled job; per-client ticked lists are never rewritten |  |
 | server fn: list clients for an organisation | execute | ALLOW | live | PK 2 path A |  |
 | server fn: write client data | execute | ALLOW | live | PK 2 path A |  |
 | server fn: invite a member | execute | ALLOW | live | PK 2 path A |  |
@@ -1412,6 +1417,7 @@ None.
 | tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | record_view_as(their own organisation) | execute | DENY | pglite | PK 2 path D — a viewer grant is read-only and never platform operations |  |
+| set_org_trial(the organisation of the client they can see) | execute | DENY | pglite | PK 2 path D — an adviser grant is read-only and never organisation or platform data |  |
 | server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — every reader is recorded, not only staff | A client viewer's dashboard read writes the same row with their own user id as the actor. |
 | clients (client added after the grant) | read | DENY | pglite, live | PK section 2 client viewer — a specific grant covers that client only |  |
@@ -1545,6 +1551,7 @@ None.
 | xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| set_org_trial(the organisation they support) | execute | ALLOW | pglite | PK 2 path C — this person is a platform super admin, so the change is plan metadata; the support grant contributes nothing to it | Support grants are only ever held by a Positive Traction super admin, so this row cannot separate the two paths. What it does prove is that the trial function reads and returns no client data, so invariant 5 (support grants are read-only over CLIENT data) is untouched: org_owner and client_viewer above are refused outright. |
 | server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
 | server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | server fn: change organisation or client branding | execute | DENY | live | PK 5 (support grants are READ-ONLY) | branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. |

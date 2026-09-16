@@ -971,6 +971,73 @@ export const MATRIX: MatrixRow[] = [
     layers: ["pglite"],
   },
 
+  // ------------------------------------------------- organisation trials (v2)
+  // A trial grants Advisory (and Consolidation) on the ORGANISATION until a
+  // date, stored separately from what has been purchased. Starting, extending or
+  // ending one is a commercial change, so it is aal2 + super admin through
+  // public.set_org_trial and audited. It never grants access to anything: it
+  // only changes which cards exist for clients the caller can already reach.
+  {
+    role: "super_admin_no_membership",
+    resource: "set_org_trial(any organisation)",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 path C — plan and billing metadata is platform operations; no client data is read or returned",
+    layers: ["pglite"],
+    note: "Added 16 Sep 2026 when trials moved from the client to the organisation.",
+  },
+  {
+    role: "org_owner",
+    resource: "set_org_trial(their own organisation)",
+    operation: "execute",
+    expect: "deny",
+    rule: "Commercial change — assert_super_admin, same treatment as a comp; an organisation cannot grant itself a trial",
+    layers: ["pglite"],
+  },
+  {
+    role: "aal1_member",
+    resource: "set_org_trial(their own organisation)",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 2 (aal2 required before anything else)",
+    layers: ["pglite"],
+  },
+  {
+    role: "support_grant_active",
+    resource: "set_org_trial(the organisation they support)",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 2 path C — this person is a platform super admin, so the change is plan metadata; the support grant contributes nothing to it",
+    layers: ["pglite"],
+    note: "Support grants are only ever held by a Positive Traction super admin, so this row cannot separate the two paths. What it does prove is that the trial function reads and returns no client data, so invariant 5 (support grants are read-only over CLIENT data) is untouched: org_owner and client_viewer above are refused outright.",
+  },
+  {
+    role: "client_viewer",
+    resource: "set_org_trial(the organisation of the client they can see)",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 2 path D — an adviser grant is read-only and never organisation or platform data",
+    layers: ["pglite"],
+  },
+  {
+    role: "org_owner",
+    resource: "purchased Advisory keeps its cards with no trial or an expired trial",
+    operation: "read",
+    expect: "allow",
+    rule: "Effective options = purchased OR unexpired trial — an absent or expired trial can never take away a purchase",
+    layers: ["pglite"],
+    note: "Added 16 Sep 2026 at the owner's direction: this is the case that protects an organisation whose Advisory is granted rather than trialled.",
+  },
+  {
+    role: "org_owner",
+    resource: "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive",
+    operation: "read",
+    expect: "deny",
+    rule: "A trial ends at read time with no scheduled job; per-client ticked lists are never rewritten",
+    layers: ["pglite"],
+  },
+
+
   // --------------------------------------------------------- server functions
   ...rows(
     ["other_org_member", "super_admin_no_membership", "suspended_member", "removed_member"],

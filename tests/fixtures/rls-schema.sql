@@ -93,7 +93,7 @@ create table public.firms (id uuid, name text, owner_user_id uuid, is_always_fre
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
-create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone);
+create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -120,7 +120,7 @@ create table public.user_presence (user_id uuid, last_seen_at timestamp with tim
 create table public.user_roles (id uuid, user_id uuid, role app_role, created_at timestamp with time zone);
 create table public.xero_api_errors (id uuid, firm_id uuid, xero_connection_id uuid, tenant_id text, tenant_name text, path text, http_status integer, last_message text, occurrences integer, first_seen timestamp with time zone, last_seen timestamp with time zone, day date);
 create table public.xero_assessment_contact (id text, legal_name text, trading_name text, abn_acn text, address text, website text, app_name text, xero_client_id text, contact_name text, contact_role text, contact_email text, contact_phone text, assessment_date text, api_usage_description text, updated_at timestamp with time zone);
-create table public.xero_connections (id uuid, user_id uuid, tenant_id text, tenant_name text, tenant_type text, expires_at timestamp with time zone, scopes text, created_at timestamp with time zone, updated_at timestamp with time zone, firm_id uuid, access_token_enc bytea, refresh_token_enc bytea, enc_version smallint, status text, disconnected_at timestamp with time zone, base_currency text, disconnected_reason text, authorisation_checked_at timestamp with time zone);
+create table public.xero_connections (id uuid, user_id uuid, tenant_id text, tenant_name text, tenant_type text, expires_at timestamp with time zone, scopes text, created_at timestamp with time zone, updated_at timestamp with time zone, firm_id uuid, access_token_enc bytea, refresh_token_enc bytea, enc_version smallint, status text, disconnected_at timestamp with time zone, base_currency text, disconnected_reason text, authorisation_checked_at timestamp with time zone, payroll_access_status text, payroll_access_checked_at timestamp with time zone, payroll_access_http_status integer);
 create table public.xero_oauth_states (state text, user_id uuid, code_verifier text, created_at timestamp with time zone, return_origin text, expires_at timestamp with time zone, client_id uuid, flow text, known_tenant_ids text[], pending_tenant_ids text[], completed_at timestamp with time zone, firm_id uuid);
 create table public.xero_rate_limits (tenant_id text, day date, firm_id uuid, xero_connection_id uuid, tenant_name text, day_remaining_low integer, day_low_at timestamp with time zone, min_remaining_low integer, min_low_at timestamp with time zone, app_min_remaining_low integer, app_min_low_at timestamp with time zone, calls_observed integer, rate_limited_count integer, last_problem text, last_retry_after_seconds integer, last_rate_limited_at timestamp with time zone, hour_start timestamp with time zone, hour_calls integer, peak_hour_calls integer, peak_hour_start timestamp with time zone, first_seen timestamp with time zone, last_seen timestamp with time zone);
 create table public.xero_snapshot_runs (id uuid, client_id uuid, firm_id uuid, tenant_id text, trigger text, status text, reports_requested integer, reports_succeeded integer, reports_failed integer, error text, started_at timestamp with time zone, finished_at timestamp with time zone, duration_ms integer, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -1748,9 +1748,8 @@ AS $function$
     select cl.firm_id from public.clients cl where cl.id = _client_id
   ),
   o as (
-    select opt.advisory_enabled, opt.consolidation_enabled
-    from public.org_subscription_options opt
-    where opt.firm_id = (select firm_id from c)
+    select e.advisory, e.consolidation
+      from app_private.org_effective_options((select firm_id from c)) e
   ),
   siblings as (
     select count(*) as n from public.clients cl where cl.firm_id = (select firm_id from c)
@@ -1761,9 +1760,9 @@ AS $function$
   select coalesce(array(
     select distinct x from unnest(
       app_private.card_group_cards('standard')
-      || case when coalesce((select advisory_enabled from o), false) and not (select v from lapsed)
+      || case when coalesce((select advisory from o), false) and not (select v from lapsed)
               then app_private.card_group_cards('advisory') else '{}'::text[] end
-      || case when coalesce((select consolidation_enabled from o), false)
+      || case when coalesce((select consolidation from o), false)
                    and not (select v from lapsed)
                    and (select n from siblings) > 1
               then app_private.card_group_cards('consolidation') else '{}'::text[] end
@@ -1913,6 +1912,121 @@ begin
    where e.last_seen > now() - make_interval(days => greatest(1, least(90, coalesce(_days, 7))))
    group by e.firm_id, f.name, coalesce(e.tenant_name, 'Unattributed'), e.path, e.http_status
    order by sum(e.occurrences) desc;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.org_effective_options(_firm_id uuid)
+ RETURNS TABLE(advisory boolean, consolidation boolean, purchased_advisory boolean, purchased_consolidation boolean, trial_advisory boolean, trial_consolidation boolean, trial_ends_at timestamp with time zone, trial_active boolean)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  with o as (
+    select coalesce(opt.advisory_enabled, false) as p_adv,
+           coalesce(opt.consolidation_enabled, false) as p_con,
+           coalesce(opt.trial_advisory_enabled, false) as t_adv,
+           coalesce(opt.trial_consolidation_enabled, false) as t_con,
+           opt.trial_ends_at as t_end
+      from public.org_subscription_options opt
+     where opt.firm_id = _firm_id
+  ),
+  r as (
+    select coalesce((select p_adv from o), false) as p_adv,
+           coalesce((select p_con from o), false) as p_con,
+           coalesce((select t_adv from o), false) as t_adv,
+           coalesce((select t_con from o), false) as t_con,
+           (select t_end from o) as t_end
+  ),
+  live as (
+    select r.*, (r.t_end is not null and r.t_end > now()) as t_live from r
+  )
+  select
+    (live.p_adv or (live.t_live and live.t_adv)) as advisory,
+    (live.p_con or (live.t_live and live.t_con))
+      and (live.p_adv or (live.t_live and live.t_adv)) as consolidation,
+    live.p_adv, live.p_con, live.t_adv, live.t_con, live.t_end, live.t_live
+  from live
+$function$
+;
+CREATE OR REPLACE FUNCTION public.set_org_trial(_firm_id uuid, _advisory boolean, _consolidation boolean, _ends_at timestamp with time zone, _reason text)
+ RETURNS timestamp with time zone
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _prev record;
+  _adv boolean := coalesce(_advisory, false);
+  _con boolean := coalesce(_consolidation, false);
+  _end timestamptz := _ends_at;
+  _touched integer;
+begin
+  perform app_private.assert_aal2();
+  perform public.assert_super_admin();
+
+  if _reason is null or length(btrim(_reason)) < 3 then
+    raise exception 'A reason is required.' using errcode = 'check_violation';
+  end if;
+  if not exists (select 1 from public.firms f where f.id = _firm_id) then
+    raise exception 'NO_SUCH_ORGANISATION' using errcode = 'no_data_found';
+  end if;
+
+  -- Ending a trial: no grants, no end date.
+  if not _adv and not _con then
+    _adv := false; _con := false; _end := null;
+  else
+    if _con and not _adv then
+      raise exception 'CONSOLIDATION_REQUIRES_ADVISORY' using errcode = 'check_violation';
+    end if;
+    if _end is null or _end <= now() then
+      raise exception 'TRIAL_END_MUST_BE_FUTURE' using errcode = 'check_violation';
+    end if;
+    if _end > now() + interval '120 days' then
+      raise exception 'TRIAL_TOO_LONG' using errcode = 'check_violation';
+    end if;
+  end if;
+
+  select coalesce(o.trial_advisory_enabled, false) as t_adv,
+         coalesce(o.trial_consolidation_enabled, false) as t_con,
+         o.trial_ends_at as t_end
+    into _prev
+    from public.org_subscription_options o
+   where o.firm_id = _firm_id;
+
+  -- Trial fields only: purchased options are never touched here.
+  update public.org_subscription_options o
+     set trial_advisory_enabled = _adv,
+         trial_consolidation_enabled = _con,
+         trial_ends_at = _end,
+         updated_at = now()
+   where o.firm_id = _firm_id;
+  get diagnostics _touched = row_count;
+
+  if _touched = 0 then
+    insert into public.org_subscription_options
+      (firm_id, trial_advisory_enabled, trial_consolidation_enabled, trial_ends_at)
+    values (_firm_id, _adv, _con, _end);
+  end if;
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (
+    auth.uid(), _firm_id, 'org_trial_set', 'firm', _firm_id::text,
+    jsonb_build_object(
+      'reason', btrim(_reason),
+      'previous', jsonb_build_object(
+        'advisory', coalesce(_prev.t_adv, false),
+        'consolidation', coalesce(_prev.t_con, false),
+        'ends_at', _prev.t_end
+      ),
+      'new', jsonb_build_object(
+        'advisory', _adv,
+        'consolidation', _con,
+        'ends_at', _end
+      )
+    )
+  );
+
+  return _end;
 end;
 $function$
 ;
@@ -3000,4 +3114,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 28d4211f347db410d39b53cdacc6fdf7412552dd8af0b235e69d5212865ce4a6
+-- catalogue-fingerprint: caff108e47f97f34226f1395055a4992a6c02a8757bc272d9d4e0af81761b3f4
