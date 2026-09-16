@@ -9,9 +9,15 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SuperAdminChip } from "@/components/admin/SuperAdminOnly";
-import { getOrgPurchase, saveOrgPurchase } from "@/lib/card-model.functions";
+import {
+  getOrgPurchase,
+  saveOrgPurchase,
+  saveOrgTrial,
+  type OrgPurchase,
+} from "@/lib/card-model.functions";
 import { getMyContext } from "@/lib/roles.functions";
 import { cardLabel, CARD_GROUP_LABEL } from "@/lib/card-labels";
+import { trialStatus, TRIAL_MAX_DAYS, TRIAL_WARN_DAYS } from "@/lib/org-trial";
 
 /**
  * What this organisation has bought: number of clients, Advisory, Consolidation
