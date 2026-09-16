@@ -65,9 +65,6 @@ function parseKeys(text: string, from: number): { keys: string[]; hasArgs: boole
     } else if (depth === 1) {
       const rest = text.slice(i);
       const m = /^(?:"([A-Za-z_][A-Za-z0-9_]*)"|([A-Za-z_][A-Za-z0-9_]*))\s*:/.exec(rest);
-      if (m && /[{,]\s*$/.test(text.slice(Math.max(0, i - 40), i).replace(/[^\S\n]*\n?/g, (s) => s))) {
-        // fall through to the simpler check below
-      }
       if (m) {
         const prev = text.slice(0, i).replace(/\s+$/, "");
         const prevChar = prev[prev.length - 1];
