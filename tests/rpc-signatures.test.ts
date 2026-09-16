@@ -48,9 +48,22 @@ function sourceFiles(dir: string, out: string[] = []): string[] {
 
 type CallSite = { file: string; line: number; fn: string; keys: string[]; hasArgs: boolean };
 
+/**
+ * Blanks out comments, keeping every offset, so a comment between two arguments
+ * cannot hide the argument that follows it.
+ */
+function blankComments(text: string): string {
+  return text
+    .replace(/\/\*[\s\S]*?\*\//g, (s) => s.replace(/[^\n]/g, " "))
+    .replace(/(^|[^:])\/\/[^\n]*/g, (s, lead: string) => lead + " ".repeat(s.length - lead.length));
+}
+
 /** Reads the object literal that follows an `.rpc("name",` and lists its top-level keys. */
 function parseKeys(text: string, from: number): { keys: string[]; hasArgs: boolean } | null {
   let i = from;
+  // Skip a type assertion such as `.rpc("name" as any)`.
+  const cast = /^\s*as\s+[A-Za-z_][A-Za-z0-9_.<>[\]]*/.exec(text.slice(i));
+  if (cast) i += cast[0].length;
   while (i < text.length && /[\s,]/.test(text[i]!)) i++;
   if (text[i] === ")") return { keys: [], hasArgs: false };
   if (text[i] !== "{") return null; // spread or variable — cannot be read statically
