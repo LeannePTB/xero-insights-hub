@@ -24,7 +24,6 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as AuthenticatedSettingsTiersRouteImport } from './routes/_authenticated/settings.tiers'
 import { Route as AuthenticatedSettingsPracticeTeamRouteImport } from './routes/_authenticated/settings.practice-team'
 import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
 import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
@@ -32,7 +31,6 @@ import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_auth
 import { Route as AuthenticatedFirmsFirmIdRouteImport } from './routes/_authenticated/firms.$firmId'
 import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedAdminSecurityRouteImport } from './routes/_authenticated/admin.security'
-import { Route as AuthenticatedAdminPlansRouteImport } from './routes/_authenticated/admin.plans'
 import { Route as AuthenticatedFirmsFirmIdIndexRouteImport } from './routes/_authenticated/firms.$firmId.index'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
 import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
@@ -137,12 +135,6 @@ const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   path: '/lovable/email/suppression',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSettingsTiersRoute =
-  AuthenticatedSettingsTiersRouteImport.update({
-    id: '/settings/tiers',
-    path: '/settings/tiers',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedSettingsPracticeTeamRoute =
   AuthenticatedSettingsPracticeTeamRouteImport.update({
     id: '/settings/practice-team',
@@ -184,11 +176,6 @@ const AuthenticatedAdminSecurityRoute =
     path: '/security',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminPlansRoute = AuthenticatedAdminPlansRouteImport.update({
-  id: '/plans',
-  path: '/plans',
-  getParentRoute: () => AuthenticatedAdminRoute,
-} as any)
 const AuthenticatedFirmsFirmIdIndexRoute =
   AuthenticatedFirmsFirmIdIndexRouteImport.update({
     id: '/',
@@ -373,7 +360,6 @@ export interface FileRoutesByFullPath {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/report/$token': typeof ReportTokenRoute
   '/signup/$token': typeof SignupTokenRoute
-  '/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/firms/$firmId': typeof AuthenticatedFirmsFirmIdRouteWithChildren
@@ -381,7 +367,6 @@ export interface FileRoutesByFullPath {
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
-  '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
@@ -426,14 +411,12 @@ export interface FileRoutesByTo {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/report/$token': typeof ReportTokenRoute
   '/signup/$token': typeof SignupTokenRoute
-  '/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/clients/new': typeof AuthenticatedClientsNewRoute
   '/settings/account': typeof AuthenticatedSettingsAccountRoute
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
-  '/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
@@ -480,7 +463,6 @@ export interface FileRoutesById {
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
   '/report/$token': typeof ReportTokenRoute
   '/signup/$token': typeof SignupTokenRoute
-  '/_authenticated/admin/plans': typeof AuthenticatedAdminPlansRoute
   '/_authenticated/admin/security': typeof AuthenticatedAdminSecurityRoute
   '/_authenticated/clients/new': typeof AuthenticatedClientsNewRoute
   '/_authenticated/firms/$firmId': typeof AuthenticatedFirmsFirmIdRouteWithChildren
@@ -488,7 +470,6 @@ export interface FileRoutesById {
   '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
-  '/_authenticated/settings/tiers': typeof AuthenticatedSettingsTiersRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
@@ -536,7 +517,6 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/report/$token'
     | '/signup/$token'
-    | '/admin/plans'
     | '/admin/security'
     | '/clients/new'
     | '/firms/$firmId'
@@ -544,7 +524,6 @@ export interface FileRouteTypes {
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/practice-team'
-    | '/settings/tiers'
     | '/lovable/email/suppression'
     | '/admin/'
     | '/admin/firms/$firmId'
@@ -589,14 +568,12 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/report/$token'
     | '/signup/$token'
-    | '/admin/plans'
     | '/admin/security'
     | '/clients/new'
     | '/settings/account'
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/practice-team'
-    | '/settings/tiers'
     | '/lovable/email/suppression'
     | '/admin'
     | '/admin/firms/$firmId'
@@ -642,7 +619,6 @@ export interface FileRouteTypes {
     | '/email/unsubscribe'
     | '/report/$token'
     | '/signup/$token'
-    | '/_authenticated/admin/plans'
     | '/_authenticated/admin/security'
     | '/_authenticated/clients/new'
     | '/_authenticated/firms/$firmId'
@@ -650,7 +626,6 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/activity'
     | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/practice-team'
-    | '/_authenticated/settings/tiers'
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/firms/$firmId'
@@ -815,13 +790,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LovableEmailSuppressionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/settings/tiers': {
-      id: '/_authenticated/settings/tiers'
-      path: '/settings/tiers'
-      fullPath: '/settings/tiers'
-      preLoaderRoute: typeof AuthenticatedSettingsTiersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/settings/practice-team': {
       id: '/_authenticated/settings/practice-team'
       path: '/settings/practice-team'
@@ -869,13 +837,6 @@ declare module '@tanstack/react-router' {
       path: '/security'
       fullPath: '/admin/security'
       preLoaderRoute: typeof AuthenticatedAdminSecurityRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
-    '/_authenticated/admin/plans': {
-      id: '/_authenticated/admin/plans'
-      path: '/plans'
-      fullPath: '/admin/plans'
-      preLoaderRoute: typeof AuthenticatedAdminPlansRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/firms/$firmId/': {
@@ -1085,14 +1046,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedAdminRouteChildren {
-  AuthenticatedAdminPlansRoute: typeof AuthenticatedAdminPlansRoute
   AuthenticatedAdminSecurityRoute: typeof AuthenticatedAdminSecurityRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminFirmsFirmIdRoute: typeof AuthenticatedAdminFirmsFirmIdRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
-  AuthenticatedAdminPlansRoute: AuthenticatedAdminPlansRoute,
   AuthenticatedAdminSecurityRoute: AuthenticatedAdminSecurityRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminFirmsFirmIdRoute: AuthenticatedAdminFirmsFirmIdRoute,
@@ -1159,7 +1118,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsActivityRoute: typeof AuthenticatedSettingsActivityRoute
   AuthenticatedSettingsAdvisorsRoute: typeof AuthenticatedSettingsAdvisorsRoute
   AuthenticatedSettingsPracticeTeamRoute: typeof AuthenticatedSettingsPracticeTeamRoute
-  AuthenticatedSettingsTiersRoute: typeof AuthenticatedSettingsTiersRoute
   AuthenticatedClientsClientIdCashflowScenarioRoute: typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   AuthenticatedClientsClientIdLoansRoute: typeof AuthenticatedClientsClientIdLoansRoute
   AuthenticatedClientsClientIdLoansAccountsRoute: typeof AuthenticatedClientsClientIdLoansAccountsRoute
@@ -1182,7 +1140,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsAdvisorsRoute: AuthenticatedSettingsAdvisorsRoute,
   AuthenticatedSettingsPracticeTeamRoute:
     AuthenticatedSettingsPracticeTeamRoute,
-  AuthenticatedSettingsTiersRoute: AuthenticatedSettingsTiersRoute,
   AuthenticatedClientsClientIdCashflowScenarioRoute:
     AuthenticatedClientsClientIdCashflowScenarioRoute,
   AuthenticatedClientsClientIdLoansRoute:
