@@ -109,3 +109,6 @@ Separate from the card-model migration; no file or object shared with it.
 - [ ] Persist per-connection payroll availability and periodically re-check without disconnecting healthy accounting connections.
 - [ ] Show a clear no-payroll state on PAYG withholding and superannuation cards.
 - [ ] Verify access matrix, burst posture, database posture/linter, and security fingerprint.
+- [ ] Superseding owner correction: gate every payroll path on the client's PAYG withholding setting; treat null as unknown/no call and show setup-needed state.
+- [ ] Check whether GST/BAS calls similarly ignore `gst_cycle = not_registered`, report and fix only if required by this request.
+- [ ] Retain per-connection refusal suppression as a fallback for registered clients whose Xero file has no payroll; never disconnect accounting.
