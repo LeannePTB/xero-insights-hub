@@ -1116,7 +1116,7 @@ export const MATRIX: MatrixRow[] = [
     note: "branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. The Branding entitlement gate added on top narrows further and never widens: assertClientWriter still runs first.",
   },
   {
-    role: "firm_staff",
+    role: "org_staff",
     resource: "server fn: set a client logo when the organisation has not bought Branding",
     operation: "execute",
     expect: "deny",
@@ -1125,7 +1125,7 @@ export const MATRIX: MatrixRow[] = [
     note: "setClientLogo calls public.client_branding_enabled (aal2 + user_can_read_client + effective branding + NOT lapsed) after the write gate. A direct upload call is refused, and getClientLogo returns no path or signed URL, so an existing report link cannot render the logo either.",
   },
   {
-    role: "firm_staff",
+    role: "org_staff",
     resource: "server fn: set a client logo when the organisation has bought Branding",
     operation: "execute",
     expect: "allow",
