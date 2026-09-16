@@ -9,12 +9,9 @@ import { ArrowLeft, Layers, Loader2, Settings } from "lucide-react";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
-import { firmPlanView } from "@/lib/firmPlans";
 import { useFirmWidgets } from "@/hooks/useFirmWidget";
-import { usePlanLevels } from "@/hooks/usePlanLevels";
 
 import { toast } from "sonner";
-import { SubscriptionExpiryBanner } from "@/components/admin/SubscriptionExpiryBanner";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
   validateSearch: (
@@ -30,12 +27,12 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
       { title: "Organisation — Traction Advisory" },
       {
         name: "description",
-        content: "Manage this organisation's plan, clients, Xero files and consolidation groups.",
+        content: "Manage this organisation's clients, Xero files and consolidation groups.",
       },
       { property: "og:title", content: "Organisation — Traction Advisory" },
       {
         property: "og:description",
-        content: "Manage this organisation's plan, clients, Xero files and consolidation groups.",
+        content: "Manage this organisation's clients, Xero files and consolidation groups.",
       },
     ],
   }),
@@ -56,10 +53,8 @@ function FirmPage() {
   const qc = useQueryClient();
   const fetchFirm = useServerFn(getMyFirm);
   const fetchCtx = useServerFn(getMyContext);
-  // Organisation-level features are gated by the plan (database-resolved).
+  // Organisation-level features are database-resolved from purchased or trialled options.
   const canConsolidate = useFirmWidgets(firmId).can("loan_consolidation");
-  // Plan names come from the plan_levels catalogue, never a hardcoded map.
-  const { levels: planLevels } = usePlanLevels("firm");
 
   const firmQ = useQuery({
     queryKey: ["my-firm", firmId],
@@ -102,14 +97,6 @@ function FirmPage() {
 
   const firm = firmQ.data.firm;
   const plan = firmQ.data.plan;
-  const planV = firmPlanView({
-    tier: plan.tier,
-    status: plan.status,
-    is_always_free: plan.isAlwaysFree,
-    trial_ends_at: plan.trialEndsAt,
-    current_period_end: plan.currentPeriodEnd,
-    planName: planLevels.find((l) => l.scope === "firm" && l.key === plan.tier)?.label ?? null,
-  });
 
   return (
     <div className="min-h-screen bg-background">
@@ -120,7 +107,6 @@ function FirmPage() {
         />
       )}
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <SubscriptionExpiryBanner firmId={firmId} />
         {!previewing && (
           <Button variant="ghost" size="sm" asChild className="mb-4">
             <Link to="/dashboard">
