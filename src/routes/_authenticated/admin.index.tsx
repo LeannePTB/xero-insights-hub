@@ -531,7 +531,7 @@ function RowActions({
     <div className="flex flex-wrap items-center justify-end gap-1">
       <Button size="sm" variant="outline" className="h-8 px-2 text-xs" asChild>
         <Link to="/admin/firms/$firmId" params={{ firmId }}>
-          Plan &amp; members
+          Options &amp; members
         </Link>
       </Button>
       <Button size="sm" variant="outline" className="h-8 px-2 text-xs" asChild>

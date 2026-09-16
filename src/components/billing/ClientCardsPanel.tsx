@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
@@ -67,7 +66,7 @@ export function ClientCardsPanel({
   if (q.error || !q.data || q.data.rows.length === 0) {
     return (
       <p className="text-xs text-muted-foreground">
-        No cards are available for this client&apos;s dashboard tier.
+        No cards are available for this client.
       </p>
     );
   }
@@ -103,7 +102,7 @@ export function ClientCardsPanel({
     } catch (e: any) {
       if (e?.message === "NOT_IN_TIER") {
         toast.error(
-          `${WIDGET_LABEL[w] ?? w} is not part of this client's dashboard tier. Change the tier above to include it.`,
+          `${WIDGET_LABEL[w] ?? w} is not available to this client.`,
         );
         qc.invalidateQueries({ queryKey: ["client-widget-matrix", clientId] });
       } else {
@@ -117,12 +116,7 @@ export function ClientCardsPanel({
   return (
     <div>
       <p className="text-xs text-muted-foreground">
-        Cards included in this client&apos;s dashboard tier. Switching one off here affects
-        this client only.{" "}
-        <Link to="/clients/$clientId/settings" params={{ clientId }} hash="dashboard-tier" className="text-primary hover:underline">
-          Dashboard tier
-        </Link>{" "}
-        decides which cards appear in this list.
+        Cards available to this client. Switching one off here affects this client only.
       </p>
 
       <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
