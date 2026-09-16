@@ -12,7 +12,9 @@
 - Payroll calls currently key only off granted OAuth scopes. All affected files have the payroll scope string even when the Xero organisation has no payroll product/access, so the nightly refresh and live fallback keep trying `Payroll/PayRuns`.
 - A payroll 401 is treated as a possibly expired token: the shared helper refreshes the token and retries once. A 429 also retries once. Separate dashboard/card/capability/manual-refresh requests have separate request-local memoisation, so repeated invocations can each issue their own initial call and retry. That is how development activity produced the 24-call burst; the nightly job then repeated one failed report per affected file each day.
 
-## Implementation
+## Corrected implementation
+
+The owner correction supersedes capability-first discovery: the client’s existing PAYG setting is authoritative for whether payroll may be queried. Persisted refusal state remains only as a fallback when a client marked registered is refused by Xero.
 
 ### 1. Preserve and strengthen View As evidence
 
@@ -20,23 +22,29 @@
 - Expand matrix coverage so staff, support-grant holders, external advisers, business owners/owners, AAL1 sessions and super admins without membership are explicitly refused; prove an eligible super-admin member succeeds and that exactly one audit row is written with no client data in `meta`.
 - Keep the existing obvious banner and Exit preview control. No authorisation or visibility change.
 
-### 2. Persist payroll capability per Xero connection
+### 2. Honour the client setting before every payroll path
 
-- Add connection metadata fields for payroll capability: `unknown`, `available`, or `unavailable`, plus checked time and a non-sensitive reason/status. Tokens and payroll payloads are never stored in these fields.
-- Update capability only from the server-side Xero response. A successful PayRuns response records `available`; a definitive 401/403 from the payroll endpoint records `unavailable` without changing the connection's connected status.
-- Before any payroll call, skip files recorded `unavailable` until their check is due. Re-probe **once every 7 days**: frequent enough to discover a newly added payroll subscription within a week, while avoiding daily predictable refusals and preserving quota.
-- Reset payroll capability to `unknown` after a successful reconnect/authorisation update so newly granted payroll becomes available immediately rather than waiting seven days.
-- Keep ordinary accounting sync active; missing payroll never disconnects a healthy Xero file.
+- Centralise a server-side payroll gate that resolves the client linked to the connection; caller-provided IDs remain filters, never grants.
+- If `payg_withholding_cycle = not_registered`, make no payroll call. If it is null, also make no payroll call and return `setting_required`: null means “we do not know”, never permission to guess.
+- Apply the gate to every path found: nightly/manual/first-link snapshots, file-capability reads, PAYG card reads, superannuation card reads, and GST reconciliation’s optional PAYG calculation.
+- The GST card itself already avoids calls when `gst_cycle = not_registered`; confirm and retain that behavior. Tighten its server function too so a direct request cannot bypass the screen-level gate. Null GST remains its existing explicit setup-needed state.
 
-### 3. Show an explicit card state
+### 3. Persist payroll refusal as a fallback
+
+- Add connection metadata fields for payroll access: `unknown`, `available`, or `unavailable`, plus checked time and a non-sensitive status/reason. Tokens and payroll payloads are never stored there.
+- A successful PayRuns response records `available`. A definitive 401/403 records `unavailable`, immediately stops the payroll request, and does not change the accounting connection’s connected status.
+- Skip known-unavailable connections until a **7-day** recheck is due. This finds newly enabled payroll within a week without repeating a known refusal every night. A successful reconnect resets it to `unknown` for immediate re-check.
+- Remove the payroll-specific 401 replay. Tokens are already refreshed before calls when near expiry; replaying a refused payroll request doubled failures and allowed concurrent/ repeated page requests to amplify the incident.
+
+### 4. Show explicit card states
 
 - Keep PAYG withholding and superannuation cards visible when purchased and ticked.
 - For a file known to lack payroll, show a clear neutral message: **“This Xero file does not have payroll, so payroll figures are not available.”** Do not show zero, an error/retry prompt, or silently hide the cards.
 - Balance-sheet information may still render where meaningful, but payroll-derived explanations/monthly figures use the explicit unavailable state.
 
-### 4. Burst protection and verification
+### 5. Burst protection and verification
 
-- Keep Xero’s normal rate-limit telemetry and add tests proving a known payroll-unavailable file makes no call before the seven-day recheck and at most one capability probe when due.
+- Keep Xero’s normal rate-limit telemetry and add tests proving unregistered/unset clients make no payroll call, and a known payroll-unavailable file makes no call before the seven-day recheck.
 - Verify the hourly posture check still raises Action above 300 calls per file in an hour. Note: its telemetry began after the 8 September incident, so historical rows cannot retroactively populate that counter; the same pattern now would be counted on every response and caught within the hour once it crosses 300.
 - Run `bun run security:check`, verify the access-matrix fingerprint and totals, run the database linter and `public.security_posture()`, and update the security backlog with the root cause, interval decision, card behaviour and evidence.
 
