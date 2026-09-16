@@ -25,6 +25,7 @@ export type Role =
   | "other_org_member"
   | "org_a_owner_reading_org_b"
   | "client_viewer"
+  | "business_owner"
   | "standing_viewer"
   | "support_grant_active"
   | "support_grant_expired"
@@ -73,6 +74,8 @@ export const ROLE_LABELS: Record<Role, string> = {
   org_a_owner_reading_org_b: "Organisation A's owner, reading organisation B",
   client_viewer:
     "External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)",
+  business_owner:
+    "Business owner — one specific client (client_access with relationship = 'business_owner', self-service)",
   standing_viewer:
     "External adviser — All clients (firm_viewer_access on one organisation, read-only; user-facing name only, the key is unchanged)",
   support_grant_active: "Support-grant holder, active, non-member organisation",
@@ -1944,6 +1947,70 @@ export const MATRIX: MatrixRow[] = [
     rule: "PK 4 (a caller-supplied client_id is a FILTER, never a GRANT)",
     layers: ["live"],
     note: "assertClientDataAccessForClient runs first, and every read inside setup-checklist.server.ts goes through context.supabase, so RLS scopes the clients, client_statutory_accounts, client_cost_classifications and xero_snapshots reads. public.client_setup_account_counts is SECURITY INVOKER, so it counts only rows the caller may already read.",
+  },
+  // ------------------------------------------- organisation trial visibility
+  {
+    role: "business_owner",
+    resource: "server fn: getClientOrgTrial for their own client",
+    operation: "execute",
+    expect: "allow",
+    rule: "Path E — the business owner may see their client's plan and billing",
+    layers: ["live"],
+    note: "public.client_org_trial asserts aal2, then returns the organisation's live trial (end date, days remaining, ending-soon flag) only when the caller is an active member of the client's organisation or holds a client_access row with relationship = 'business_owner' for that exact client. Only trial metadata is returned — never purchase detail, never another organisation.",
+  },
+  {
+    role: "org_staff",
+    resource: "server fn: getClientOrgTrial for a client in their organisation",
+    operation: "execute",
+    expect: "allow",
+    rule: "Path A — members see their own organisation's billing state",
+    layers: ["live"],
+    note: "app_private.has_firm_access (active membership) admits the caller; the same row a super admin sees on the purchase card is what the banner renders.",
+  },
+  {
+    role: "business_owner",
+    resource: "server fn: getClientOrgTrial for a client that is not theirs",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 4 (a caller-supplied client_id is a FILTER, never a GRANT)",
+    layers: ["live"],
+    note: "Neither predicate holds — no membership of that organisation and no business_owner row for that client — so the function returns no rows and the banner never renders.",
+  },
+  {
+    role: "client_viewer",
+    resource: "server fn: getClientOrgTrial",
+    operation: "execute",
+    expect: "deny",
+    rule: "Path D — an external adviser never sees billing, plan or organisation-level data",
+    layers: ["live"],
+    note: "A client_access row with relationship = 'external_adviser' (or NULL) does not match the business_owner predicate and the caller is not a member, so no rows are returned.",
+  },
+  {
+    role: "standing_viewer",
+    resource: "server fn: getClientOrgTrial",
+    operation: "execute",
+    expect: "deny",
+    rule: "Path D — an external adviser never sees billing, plan or organisation-level data",
+    layers: ["live"],
+    note: "firm_viewer_access is not consulted by the function; without membership or a business_owner row the result is empty.",
+  },
+  {
+    role: "support_grant_active",
+    resource: "server fn: getClientOrgTrial",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 5 / Path B — a support grant is read-only client data, never billing state",
+    layers: ["live"],
+    note: "app_private.has_firm_access counts active firm_members rows only, so a support grant does not satisfy it; without a business_owner row the function returns nothing.",
+  },
+  {
+    role: "aal1_member",
+    resource: "server fn: getClientOrgTrial",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 2 — MFA is enforced on the server",
+    layers: ["live"],
+    note: "app_private.assert_aal2() runs before anything is read, so an aal1 session is refused with MFA_REQUIRED even when the person would otherwise qualify.",
   },
 ];
 
