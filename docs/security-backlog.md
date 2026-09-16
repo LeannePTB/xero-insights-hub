@@ -1215,3 +1215,52 @@ reference is removed. `get_mfa_posture_counts` is the one listed exception
 12 files, lowest remaining on any limit 76.7% (Autotek New South Wales: day
 4,986/5,000, minute 46/60, app-wide minute 9,973/10,000), 0 rate-limit
 rejections in 24h, 0 files over 300 calls in an hour.
+
+---
+
+## 16 Sep 2026 — trials moved to the organisation (owner decision)
+
+**Change.** Trials now live on `public.org_subscription_options`
+(`trial_advisory_enabled`, `trial_consolidation_enabled`, `trial_ends_at`),
+stored separately from what has been purchased. Effective options are resolved at
+read time by `app_private.org_effective_options()` as *purchased OR (trialled AND
+not expired)*, so a trial ends on the next request with no scheduled job — the
+pattern `client_entitlement` already used. Per-client ticked card lists are never
+rewritten when a trial lapses, so re-purchasing restores each client exactly.
+
+**Owner decisions recorded.** DRTABT Projects is billed with bookkeeping, so its
+`advisory_enabled` and `consolidation_enabled` stay **purchased = true**; they
+were not reclassified as trialled and no organisation trial was backfilled. Every
+organisation is live with `trial_ends_at` null, so the migration is
+behaviour-neutral. The ten legacy `client_subscriptions` trial rows are untouched
+and inert under `card_model_v2`. 14-day amber warning with the exact end date
+visible from the start; 120-day maximum; legacy per-client trial and tier
+controls hidden while v2 is on and reachable only in a v1 rollback.
+
+**Authorisation.** `public.set_org_trial()` is aal2 + `assert_super_admin()` in
+the database, requires a written reason of at least three characters, refuses
+Consolidation without Advisory, refuses an end date in the past or beyond 120
+days, and audits every accepted change (`org_trial_set`) with the previous and
+new state. It writes only the three trial columns — never the purchased flags,
+never another organisation, never a client's ticks — and returns no client data,
+so it grants access to nothing (invariants 3, 4, 5, 11 untouched).
+
+**Matrix rows added.** super admin without membership may set a trial (Path C,
+plan metadata); organisation owner, aal1 member and external adviser are refused;
+an organisation with purchased Advisory and a null **or expired** trial keeps its
+cards; an expired trial with nothing purchased loses the Advisory cards while the
+ticks survive. The support-grant row is recorded as ALLOW with the reason stated:
+in both the fixture and live, support grants are only held by a Positive Traction
+super admin, so that row cannot separate the two paths — invariant 5 is carried
+by the owner and adviser denials instead.
+
+**Also fixed.** `set_org_trial` originally used `insert … on conflict (firm_id)`
+with `client_limit = 0`, which would have written a zero client limit for an
+organisation that had no options row. It now updates the trial columns in place
+and inserts using the table's own defaults.
+
+**Verification.** `bun run security:check` green (100 tests, 18 live access tests,
+fixture fingerprint matched to live, definer register regenerated with
+`set_org_trial` and `org_effective_options`); `bunx tsgo --noEmit` clean;
+consolidation counts unchanged (9 group members, 1 group); Supabase linter
+unchanged at 110 pre-existing findings, no new type.
