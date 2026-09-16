@@ -339,6 +339,11 @@ function ClientSettings() {
           </div>
         </Section>
 
+        {/* Setup checklist — what still needs a decision on this client */}
+        <Section title="Setup" id="setup" collapsible defaultOpen>
+          <ClientSetupSection clientId={clientId} />
+        </Section>
+
         {/* Cards — per-client switches within the organisation's available cards */}
         <Section title="Cards" id="cards" collapsible>
           <ClientCardsPanel clientId={clientId} firmId={client.firm_id ?? null} />
