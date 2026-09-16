@@ -294,15 +294,15 @@ export function FirmClientsSection({
               </thead>
               <tbody>
                 {clients.map((c: any) => {
-                  const missingGst = c.gst_cycle == null;
-                  const missingPayg = c.payg_withholding_cycle == null;
-                  const missingLabel = missingGst && missingPayg
-                    ? "Lodgement cycles not set"
-                    : missingGst
-                      ? "GST cycle not set"
-                      : missingPayg
-                        ? "PAYG cycle not set"
-                        : null;
+                  // Setup checklist summary. The server decides what counts as
+                  // outstanding; a deliberate "not registered", "off" or "not
+                  // applicable" never appears here.
+                  const setupOutstanding: number = c.setupOutstanding ?? 0;
+                  const setupTitles: string[] = c.setupTitles ?? [];
+                  const missingLabel =
+                    setupOutstanding > 0
+                      ? `${setupOutstanding} setup item${setupOutstanding === 1 ? "" : "s"} to do`
+                      : null;
                   const tenantNames = (c.client_xero_orgs ?? [])
                     .map((o: any) => o.xero_connections?.tenant_name)
                     .filter(Boolean)
