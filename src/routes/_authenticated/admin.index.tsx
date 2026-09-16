@@ -8,18 +8,11 @@ import { getMyContext } from "@/lib/roles.functions";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye, MoreHorizontal, Users } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye, Users } from "lucide-react";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
 
 
-import { listXeroScopeStatus } from "@/lib/xero/scope-status.functions";
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
 import { usePlanLevels } from "@/hooks/usePlanLevels";
 import { ExpiringOrganisationsNotice } from "@/components/admin/ExpiringOrganisationsNotice";
@@ -175,9 +168,8 @@ function AdminPage() {
 
         {isSuper && (
           <p className="text-sm text-muted-foreground">
-            Organisation name, what each has bought, usage, billing state and Xero connection
-            counts only. Xero failures are in Security &amp; compliance. No balances or client data
-            are visible from this page — enforced at the database level.
+            Organisation name, what each has bought, usage and billing state only. No balances or
+            client data are visible from this page — enforced at the database level.
           </p>
         )}
 
@@ -203,25 +195,6 @@ function OrganisationsSection({
   onCreated: () => void;
 }) {
   const navigate = useNavigate();
-  // One query for every connection the caller can see (RLS decides), grouped
-  // by organisation — not a query per row.
-  const fetchScopeStatus = useServerFn(listXeroScopeStatus);
-  const scopeQ = useQuery({
-    queryKey: ["xero-scope-status"],
-    queryFn: () => fetchScopeStatus(),
-  });
-  const scopeHealth = (() => {
-    const map = new Map<string, { missing: number; total: number }>();
-    for (const c of scopeQ.data?.connections ?? []) {
-      if (!c.firmId) continue;
-      const cur = map.get(c.firmId) ?? { missing: 0, total: 0 };
-      cur.total += 1;
-      if (c.missingScopes.length > 0) cur.missing += 1;
-      map.set(c.firmId, cur);
-    }
-    return map;
-  })();
-
   // Plan labels come from the plan_levels catalogue, never a hardcoded map.
   const { all: planLevels } = usePlanLevels();
   const planLabel = (key: string | null) =>
@@ -333,7 +306,6 @@ function OrganisationsSection({
   const rows = (firms ?? []).map((f) => ({
     f,
     usage: usageByFirm.get(f.firm_id),
-    scope: scopeHealth?.get(f.firm_id),
     state: stateByFirm.get(f.firm_id),
   }));
 
@@ -350,12 +322,11 @@ function OrganisationsSection({
               <th className="px-4 py-3 whitespace-nowrap">Plan</th>
               <th className="px-4 py-3 whitespace-nowrap">Capacity</th>
               <th className="px-4 py-3 whitespace-nowrap">Status</th>
-              <th className="px-4 py-3 whitespace-nowrap">Xero</th>
               <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map(({ f, usage, scope, state }) => (
+            {rows.map(({ f, usage, state }) => (
               <tr
                 key={f.firm_id}
                 className="border-t hover:bg-muted/30 cursor-pointer align-top"
@@ -380,9 +351,6 @@ function OrganisationsSection({
                   <StatusCell firm={f} state={state} />
                 </td>
                 <td className="px-4 py-3">
-                  <XeroCell missing={scope?.missing} total={scope?.total} />
-                </td>
-                <td className="px-4 py-3">
                   <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                     <RowActions firmId={f.firm_id} organisationName={f.firm_name} isSuper={isSuper} />
                   </div>
@@ -391,7 +359,7 @@ function OrganisationsSection({
             ))}
             {empty && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground">
                   <p>No organisations yet.</p>
                   <div className="mt-3 flex justify-center">
                     <AddOrganisationDialog onCreated={onCreated} variant="outline" />
@@ -405,7 +373,7 @@ function OrganisationsSection({
 
       {/* Stacked cards below 900px */}
       <div className="min-[900px]:hidden space-y-3">
-        {rows.map(({ f, usage, scope, state }) => (
+        {rows.map(({ f, usage, state }) => (
           <div
             key={f.firm_id}
             className="rounded-lg border bg-card p-4 space-y-3 cursor-pointer"
@@ -432,9 +400,6 @@ function OrganisationsSection({
               </Field>
               <Field label="Status">
                 <StatusCell firm={f} state={state} />
-              </Field>
-              <Field label="Xero">
-                <XeroCell missing={scope?.missing} total={scope?.total} />
               </Field>
             </div>
           </div>
@@ -502,7 +467,6 @@ function PlanCell({
       return (
         <div className="leading-tight">
           <div className="text-muted-foreground">—</div>
-          <div className="text-xs text-muted-foreground">billing plan: {label}</div>
         </div>
       );
     }
@@ -529,8 +493,6 @@ function PlanCell({
         </div>
         <div className="text-xs text-muted-foreground whitespace-nowrap">
           {purchase.billingMode === "external" ? "billed externally" : "billed with bookkeeping"}
-          {" · "}
-          billing plan: {label}
         </div>
       </div>
     );
@@ -568,7 +530,7 @@ function CapacityCell({ usage }: { usage: OrganisationUsage | undefined }) {
         <UsageCell used={usage?.clientsUsed ?? null} limit={usage?.clientLimit ?? null} unit="clients" />
       </div>
       <div className="text-xs">
-        <UsageCell used={usage?.xeroFilesUsed ?? null} limit={usage?.xeroOrgLimit ?? null} unit="files" />
+        {usage?.clientsUsed === 1 ? "client in use" : "clients in use"}
       </div>
     </div>
   );
@@ -635,20 +597,6 @@ function StatusCell({ firm, state }: { firm: FirmRow; state?: SubscriptionState 
   );
 }
 
-/**
- * Connection health only — how many Xero files are connected and whether any
- * are missing permissions. That is capacity, so it belongs here. The 7-day
- * failure count moved to Security & compliance → Xero API failures, where it
- * sits with the rest of the monitoring and breaks down per Xero file.
- */
-function XeroCell({ missing, total }: { missing?: number; total?: number }) {
-  return (
-    <div className="leading-tight">
-      <XeroScopeHealthCell missing={missing} total={total} />
-    </div>
-  );
-}
-
 function RowActions({
   firmId,
   organisationName,
@@ -674,31 +622,28 @@ function RowActions({
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <Button size="sm" variant="outline" asChild>
+    <div className="flex flex-wrap items-center justify-end gap-1">
+      <Button size="sm" variant="outline" className="h-8 px-2 text-xs" asChild>
         <Link to="/admin/firms/$firmId" params={{ firmId }}>
           Plan &amp; members
         </Link>
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button size="sm" variant="ghost" aria-label="More actions">
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuItem asChild>
-            <Link to="/firms/$firmId" params={{ firmId }}>
-              <Users className="h-4 w-4 mr-2" /> Clients
-            </Link>
-          </DropdownMenuItem>
-          {isSuper && (
-            <DropdownMenuItem onSelect={() => void startPreview()}>
-              <Eye className="h-4 w-4 mr-2" /> View as {organisationName}
-            </DropdownMenuItem>
-          )}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <Button size="sm" variant="outline" className="h-8 px-2 text-xs" asChild>
+        <Link to="/firms/$firmId" params={{ firmId }}>
+          <Users className="mr-1 h-3.5 w-3.5" /> Clients
+        </Link>
+      </Button>
+      {isSuper && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-8 px-2 text-xs"
+          onClick={() => void startPreview()}
+          aria-label={`View as ${organisationName}`}
+        >
+          <Eye className="mr-1 h-3.5 w-3.5" /> View As
+        </Button>
+      )}
     </div>
   );
 }
@@ -721,16 +666,6 @@ function DashboardsInUseCell({
     <span>
       {parts.join(", ")}
       {usage.dashboardsPartial && <span className="text-muted-foreground"> (partial)</span>}
-    </span>
-  );
-}
-
-function XeroScopeHealthCell({ missing, total }: { missing?: number; total?: number }) {
-  if (total === undefined) return <span className="text-muted-foreground">—</span>;
-  if (!missing) return <span className="text-muted-foreground whitespace-nowrap">{total} OK</span>;
-  return (
-    <span className="font-medium text-amber-500 whitespace-nowrap">
-      {missing} of {total} need permissions
     </span>
   );
 }

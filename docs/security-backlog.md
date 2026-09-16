@@ -1122,8 +1122,8 @@ accepted self-guarded definer set, now including the five functions above.
 old per-client tier (`plan_levels` / `client_entitlement`), which no longer
 decides anything under `card_model_v2`. It now reads
 `public.org_purchase(firm_id)` — client limit, Advisory on/off, Consolidation
-on/off, billing mode — with the billing plan name kept only as a subtitle. The
-legacy tier line still shows while the old model is live.
+on/off and billing mode. The obsolete `plan_levels` name is not shown while the
+new model is live. The legacy tier line still shows while the old model is live.
 
 **View As was a defect.** It was a URL query parameter (`?viewAs=`) read by the
 firm and client pages — a UI filter, with no server check of its own beyond the
@@ -1143,11 +1143,19 @@ Matrix rows added for `record_view_as` (deny: super admin with no membership,
 organisation owner, aal1 member, client viewer) and for
 `xero_error_breakdown()` (allow: super admin, path C metadata; deny: owner).
 
-**Xero failures moved.** The "N errors (7 days)" count is out of the
-Organisations row (the "N OK" connection count stays — that is capacity). New
-super-admin-only `public.xero_error_breakdown(_days)` (aal2 + super admin,
-status codes / endpoints / counts only, no payloads) feeds a per-organisation,
-per-Xero-file card in Security & compliance.
+**Xero moved.** The entire Xero column, connection-health count and Xero-file
+capacity line are out of the Organisations table. Xero health and failures live
+on the dedicated Xero and Security & compliance screens. The super-admin-only
+`public.xero_error_breakdown(_days)` (aal2 + super admin, status codes /
+endpoints / counts only, no payloads) feeds a per-organisation, per-Xero-file
+card in Security & compliance.
+
+**Presentation correction, 16 Sep 2026.** `Plan & members`, `Clients` and the
+super-admin-only `View As` control are visible directly in every organisation
+row; they are no longer hidden in an overflow menu. The Security & compliance
+page and Xero request-allowance card no longer repeat the Super Admin badge or
+audience tint. No visibility, database guard or authorisation rule changed;
+severity colour remains reserved for Action and Warn states.
 
 **Stale screens found and marked legacy:** `/settings/tiers` (edits
 `tier_widget_config`, which no longer gates cards; tier names remain viewer

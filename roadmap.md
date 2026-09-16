@@ -78,7 +78,7 @@
 
 - [x] Capture Xero's own quota headers on every call (accounting, assets, payroll, token refresh); telemetry in `public.xero_rate_limits`, 30-day retention, service-role write path only, never `audit_log`.
 - [x] `xero_rate_limits` posture check — Warn under 20% remaining, Action under 5%, on any 429 in 24h, or on a burst above 300 calls per file per hour.
-- [x] Per-file usage card on Admin → Organisations (super admin only).
+- [x] Per-file usage card in Security & compliance (super admin only).
 - [x] A daily-limit rejection stops with its own message instead of retrying.
 
 Separate from the card-model migration; no file or object shared with it.
@@ -86,8 +86,9 @@ Separate from the card-model migration; no file or object shared with it.
 ## Admin Organisations table (done 15 Sep 2026)
 
 - [x] Plan column reads the organisation purchase (`org_purchase`) instead of the old per-client tier.
-- [x] Xero failure count moved off the Organisations row into Security & compliance, per organisation and per Xero file (`xero_error_breakdown`).
-- [x] Clients link and super-admin-only View As on each row; View As now aal2 + super admin + existing membership, checked in the database, and audited (`view_as_started`). Previously an unaudited URL filter — recorded as a defect in backlog 57.
+- [x] Entire Xero column and Xero-file capacity removed from the Organisations table; health and failures live on the Xero and Security & compliance screens.
+- [x] Clients link and super-admin-only View As visible directly on each row; View As remains aal2 + super admin + existing membership, checked in the database, and audited (`view_as_started`). Previously an unaudited URL filter — recorded as a defect in backlog 57.
+- [x] Obsolete `plan_levels` subtitle removed while `card_model_v2` is active; real billing mode retained.
 - [x] Legacy notices on Subscription levels, `/settings/tiers` and the client dashboard-tier control.
 
 ## Posture wiring (done 16 Sep 2026)
@@ -99,5 +100,5 @@ Separate from the card-model migration; no file or object shared with it.
 
 ## Admin presentation corrections (16 Sep 2026)
 
-- [ ] Organisations table: remove all Xero content, expose Plan & members / Clients / View As in each row, and remove the obsolete plan-level subtitle.
-- [ ] Security & compliance: remove redundant Super Admin badges and audience tints while preserving severity colours and every visibility rule.
+- [x] Organisations table: remove all Xero content, expose Plan & members / Clients / View As in each row, and remove the obsolete plan-level subtitle.
+- [x] Security & compliance: remove redundant Super Admin badges and audience tints while preserving severity colours and every visibility rule.
