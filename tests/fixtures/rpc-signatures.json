@@ -1,0 +1,1069 @@
+[
+    {
+        "args": [
+            "_user_id"
+        ],
+        "name": "admin_add_practice_member",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "admin_advisor_user_ids",
+        "required": 0
+    },
+    {
+        "args": [
+            "_user_id"
+        ],
+        "name": "admin_assert_can_sign_out_user",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "admin_firm_members",
+        "required": 1
+    },
+    {
+        "args": [
+            "_user_id"
+        ],
+        "name": "admin_grant_advisor",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "admin_list_advisors",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "admin_practice_team",
+        "required": 0
+    },
+    {
+        "args": [
+            "_user_id"
+        ],
+        "name": "admin_remove_advisor",
+        "required": 1
+    },
+    {
+        "args": [
+            "_user_id"
+        ],
+        "name": "admin_remove_practice_member",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_join"
+        ],
+        "name": "admin_set_self_firm_membership",
+        "required": 2
+    },
+    {
+        "args": [
+            "_user_id",
+            "_make"
+        ],
+        "name": "admin_set_super_admin",
+        "required": 2
+    },
+    {
+        "args": [
+            "_invite_id",
+            "_user_id"
+        ],
+        "name": "apply_viewer_invite",
+        "required": 2
+    },
+    {
+        "args": [
+        ],
+        "name": "assert_advisor",
+        "required": 0
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "assert_client_write_access",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "assert_super_admin",
+        "required": 0
+    },
+    {
+        "args": [
+            "_client_id",
+            "_tenant_id"
+        ],
+        "name": "assert_tenant_belongs_to_client",
+        "required": 2
+    },
+    {
+        "args": [
+            "_tenant_id",
+            "_widget"
+        ],
+        "name": "assert_widget_access",
+        "required": 2
+    },
+    {
+        "args": [
+        ],
+        "name": "audit_table_change",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "audit_user_roles_change",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "card_group_list",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "card_model_active",
+        "required": 0
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_plan_key"
+        ],
+        "name": "change_firm_plan",
+        "required": 2
+    },
+    {
+        "args": [
+            "_key",
+            "_max",
+            "_window_seconds"
+        ],
+        "name": "check_rate_limit",
+        "required": 3
+    },
+    {
+        "args": [
+            "_client_id",
+            "_firm_id",
+            "_tenant_id",
+            "_trigger",
+            "_abandoned_minutes"
+        ],
+        "name": "claim_xero_snapshot_run",
+        "required": 3
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_access_tiers",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_allowed_widgets",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_available_cards",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_branding_enabled",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id",
+            "_widget"
+        ],
+        "name": "client_can_use_widget",
+        "required": 2
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_entitlement",
+        "required": 1
+    },
+    {
+        "args": [
+            "_id"
+        ],
+        "name": "client_for_access",
+        "required": 1
+    },
+    {
+        "args": [
+            "_tenant_id"
+        ],
+        "name": "client_for_tenant",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_removal_impact",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_ids"
+        ],
+        "name": "client_setup_account_counts",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_viewers",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_visible_cards",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "client_xero_files_used",
+        "required": 1
+    },
+    {
+        "args": [
+            "_from_client_id",
+            "_to_client_ids"
+        ],
+        "name": "copy_client_cards",
+        "required": 2
+    },
+    {
+        "args": [
+            "_report_id",
+            "_reason"
+        ],
+        "name": "delete_client_report",
+        "required": 1
+    },
+    {
+        "args": [
+            "queue_name",
+            "message_id"
+        ],
+        "name": "delete_email",
+        "required": 2
+    },
+    {
+        "args": [
+            "_upload_id"
+        ],
+        "name": "delete_statement_upload",
+        "required": 1
+    },
+    {
+        "args": [
+            "_tenant_id"
+        ],
+        "name": "effective_tier_for_tenant",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "email_queue_dispatch",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "email_queue_wake",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "enforce_client_max_xero_orgs",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "enforce_client_xero_org_allowance",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "enforce_consolidation_requires_advisory",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "enforce_unreconciled_line_viewer_columns",
+        "required": 0
+    },
+    {
+        "args": [
+            "queue_name",
+            "payload"
+        ],
+        "name": "enqueue_email",
+        "required": 2
+    },
+    {
+        "args": [
+            "_user_id",
+            "_firm_id"
+        ],
+        "name": "firm_access_path",
+        "required": 2
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "firm_allowed_widgets",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_widget"
+        ],
+        "name": "firm_can_use_widget",
+        "required": 2
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "firm_has_consolidation",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "firm_member_invites",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "firm_plan_limits",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "firm_subscription_state",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "firm_support_access_audit",
+        "required": 0
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "firm_support_grants",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "firm_support_viewer_state",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "firm_viewer_invites",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "firm_viewers",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "get_mfa_posture_counts",
+        "required": 0
+    },
+    {
+        "args": [
+            "_client_id",
+            "_user_id",
+            "_tier",
+            "_relationship",
+            "_inviter_label"
+        ],
+        "name": "grant_client_access",
+        "required": 3
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_user_id",
+            "_tier",
+            "_inviter_label"
+        ],
+        "name": "grant_firm_viewer_access",
+        "required": 3
+    },
+    {
+        "args": [
+        ],
+        "name": "handle_new_user",
+        "required": 0
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_connection_id",
+            "_tenant_id",
+            "_tenant_name",
+            "_path",
+            "_status",
+            "_message"
+        ],
+        "name": "log_xero_api_error",
+        "required": 7
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_connection_id",
+            "_tenant_id",
+            "_tenant_name",
+            "_day_remaining",
+            "_min_remaining",
+            "_app_min_remaining",
+            "_rate_limited",
+            "_problem",
+            "_retry_after"
+        ],
+        "name": "log_xero_rate_limit",
+        "required": 10
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "me_can_manage_client_viewers",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "me_can_manage_firm_viewers",
+        "required": 1
+    },
+    {
+        "args": [
+            "_role"
+        ],
+        "name": "me_has_role",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "me_is_super_admin",
+        "required": 0
+    },
+    {
+        "args": [
+            "source_queue",
+            "dlq_name",
+            "message_id",
+            "payload"
+        ],
+        "name": "move_to_dlq",
+        "required": 4
+    },
+    {
+        "args": [
+            "_connection_id",
+            "_target_client_id",
+            "_actor_user_id"
+        ],
+        "name": "move_xero_file_to_client",
+        "required": 3
+    },
+    {
+        "args": [
+        ],
+        "name": "my_client_access",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "my_firm_ids",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "my_firm_memberships",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "my_roles",
+        "required": 0
+    },
+    {
+        "args": [
+            "_window_minutes"
+        ],
+        "name": "online_users",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "org_addon_widgets",
+        "required": 0
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "org_purchase",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "organisation_members",
+        "required": 1
+    },
+    {
+        "args": [
+            "_id"
+        ],
+        "name": "plan_level_usage_count",
+        "required": 1
+    },
+    {
+        "args": [
+            "_retention_days",
+            "_abandoned_hours"
+        ],
+        "name": "prune_xero_snapshot_runs",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "purge_expired_security_logs",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "read_audit_posture",
+        "required": 0
+    },
+    {
+        "args": [
+            "queue_name",
+            "batch_size",
+            "vt"
+        ],
+        "name": "read_email_batch",
+        "required": 3
+    },
+    {
+        "args": [
+            "_layer",
+            "_passed",
+            "_failed",
+            "_known_failures",
+            "_fingerprint_match",
+            "_details"
+        ],
+        "name": "record_access_test_run",
+        "required": 5
+    },
+    {
+        "args": [
+            "_check_key",
+            "_note"
+        ],
+        "name": "record_security_attestation",
+        "required": 1
+    },
+    {
+        "args": [
+            "_user_id",
+            "_method"
+        ],
+        "name": "record_sign_out_all_devices",
+        "required": 2
+    },
+    {
+        "args": [
+        ],
+        "name": "record_sign_out_other_devices",
+        "required": 0
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_client_id",
+            "_mode"
+        ],
+        "name": "record_view_as",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "remove_client",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_user_id"
+        ],
+        "name": "remove_firm_member",
+        "required": 2
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_tier"
+        ],
+        "name": "reset_org_tier_widgets",
+        "required": 2
+    },
+    {
+        "args": [
+            "_id"
+        ],
+        "name": "revoke_client_access",
+        "required": 1
+    },
+    {
+        "args": [
+            "_id"
+        ],
+        "name": "revoke_firm_member_invite",
+        "required": 1
+    },
+    {
+        "args": [
+            "_id"
+        ],
+        "name": "revoke_firm_viewer_access",
+        "required": 1
+    },
+    {
+        "args": [
+            "_id"
+        ],
+        "name": "revoke_viewer_invite",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "security_attestations_list",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "security_posture",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "session_controls_posture",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "session_is_active",
+        "required": 0
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_tier",
+            "_include_billed",
+            "_reason"
+        ],
+        "name": "set_all_client_tiers",
+        "required": 2
+    },
+    {
+        "args": [
+            "_id",
+            "_relationship"
+        ],
+        "name": "set_client_access_relationship",
+        "required": 2
+    },
+    {
+        "args": [
+            "_id",
+            "_tier"
+        ],
+        "name": "set_client_access_tier",
+        "required": 2
+    },
+    {
+        "args": [
+            "_client_id",
+            "_card",
+            "_enabled"
+        ],
+        "name": "set_client_card_enabled",
+        "required": 3
+    },
+    {
+        "args": [
+            "_client_id",
+            "_comped",
+            "_reason"
+        ],
+        "name": "set_client_comp",
+        "required": 3
+    },
+    {
+        "args": [
+            "_client_id",
+            "_tier",
+            "_reason"
+        ],
+        "name": "set_client_dashboard_tier",
+        "required": 3
+    },
+    {
+        "args": [
+            "_client_id",
+            "_tier",
+            "_excluded",
+            "_clear"
+        ],
+        "name": "set_client_tier_widgets",
+        "required": 4
+    },
+    {
+        "args": [
+            "_client_id",
+            "_tier",
+            "_days",
+            "_reason"
+        ],
+        "name": "set_client_trial",
+        "required": 4
+    },
+    {
+        "args": [
+            "_client_id",
+            "_widget",
+            "_enabled"
+        ],
+        "name": "set_client_widget_enabled",
+        "required": 3
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_value",
+            "_reason"
+        ],
+        "name": "set_firm_always_free",
+        "required": 3
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_widgets"
+        ],
+        "name": "set_firm_default_widgets",
+        "required": 2
+    },
+    {
+        "args": [
+            "_id",
+            "_tier"
+        ],
+        "name": "set_firm_viewer_tier",
+        "required": 2
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_client_limit",
+            "_advisory",
+            "_consolidation",
+            "_branding",
+            "_billing_mode"
+        ],
+        "name": "set_org_purchase",
+        "required": 6
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_advisory",
+            "_consolidation",
+            "_branding",
+            "_ends_at",
+            "_reason"
+        ],
+        "name": "set_org_trial",
+        "required": 6
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_tier",
+            "_widget",
+            "_enabled"
+        ],
+        "name": "set_org_widget_enabled",
+        "required": 4
+    },
+    {
+        "args": [
+            "_tier",
+            "_excluded"
+        ],
+        "name": "set_platform_tier_widgets",
+        "required": 2
+    },
+    {
+        "args": [
+        ],
+        "name": "set_presence_seen_at",
+        "required": 0
+    },
+    {
+        "args": [
+            "_target_user_id",
+            "_display_name"
+        ],
+        "name": "set_profile_display_name_admin",
+        "required": 2
+    },
+    {
+        "args": [
+            "_tier",
+            "_enabled"
+        ],
+        "name": "set_tier_enabled",
+        "required": 2
+    },
+    {
+        "args": [
+        ],
+        "name": "test_accounts_posture",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "tg_set_updated_at",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "tg_xero_oauth_states_validate",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "touch_session_activity",
+        "required": 0
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_new_owner_user_id",
+            "_keep_previous_as_staff"
+        ],
+        "name": "transfer_organisation_ownership",
+        "required": 2
+    },
+    {
+        "args": [
+            "_client_id",
+            "_firm_id",
+            "_tenant_id",
+            "_report_key",
+            "_params_hash",
+            "_params",
+            "_source_endpoint",
+            "_payload",
+            "_payload_version",
+            "_as_at",
+            "_fetched_at",
+            "_run_id",
+            "_complete"
+        ],
+        "name": "upsert_xero_snapshot",
+        "required": 11
+    },
+    {
+        "args": [
+            "_user_id",
+            "_client_id"
+        ],
+        "name": "user_can_access_client",
+        "required": 2
+    },
+    {
+        "args": [
+            "_user_id",
+            "_firm_id"
+        ],
+        "name": "user_can_access_firm",
+        "required": 2
+    },
+    {
+        "args": [
+            "_tenant_id"
+        ],
+        "name": "user_can_access_tenant",
+        "required": 1
+    },
+    {
+        "args": [
+            "_user_id",
+            "_connection_id"
+        ],
+        "name": "user_can_disconnect_xero_connection",
+        "required": 2
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "user_can_read_client",
+        "required": 1
+    },
+    {
+        "args": [
+            "_user_id",
+            "_client_id"
+        ],
+        "name": "user_can_write_client",
+        "required": 2
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "user_can_write_client_scenario",
+        "required": 1
+    },
+    {
+        "args": [
+            "_user_id",
+            "_firm_id"
+        ],
+        "name": "user_can_write_firm",
+        "required": 2
+    },
+    {
+        "args": [
+            "_days"
+        ],
+        "name": "xero_error_breakdown",
+        "required": 0
+    },
+    {
+        "args": [
+            "_connection_id"
+        ],
+        "name": "xero_missing_scopes",
+        "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "xero_rate_limit_posture",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "xero_rate_limit_usage",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "xero_required_scopes",
+        "required": 0
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_tenant_id"
+        ],
+        "name": "xero_tenant_already_linked",
+        "required": 2
+    }
+]
