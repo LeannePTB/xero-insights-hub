@@ -138,7 +138,6 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Removes a person from an organisation by setting firm_members.status = 'removed', audited. Owner removes staff; anyone but the owner may remove themselves; never strands an organisation.",
   "public.set_firm_always_free":
     "Marks Positive Traction's own organisation as never billed, audited.",
-  "public.set_firm_default_widgets": "Sets an organisation's default dashboard cards.",
   "public.set_all_client_tiers":
     "Sets the plan level for every client in an organisation, audited.",
   "public.set_client_comp": "Marks a client as complimentary with a reason, audited.",
@@ -304,6 +303,17 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Copies one client's ticked card list onto other clients in the SAME organisation, for organisations with many entities. Requires write access to the source and to every target, refuses any target in another organisation, and audits one row per target. What each target then shows is still capped by its organisation's purchase.",
   "public.client_visible_cards":
     "Returns the cards one client shows: aal2 first, then refuses unless the caller already has read access to that client, then intersects the purchase-available set with the client's ticked list. A missing ticked list means all available cards, never none, so a recording fault fails visible rather than blank. Never returns a card the purchase does not allow.",
+
+  "app_private.assert_firm_member_write":
+    "Refuses unless the caller is aal2 and either the organisation's owner or an active member of it. Deliberately NOT public.has_firm_access, which also admits a read-only platform support grant, and not super admin alone: writing every client's card ticks is an organisation decision.",
+  "app_private.seed_client_cards_from_org_default":
+    "AFTER INSERT trigger on public.clients: copies the organisation's default card set into the new client's own ticked list, in the same transaction that creates the client. It is a template applied once, never a layer consulted when a dashboard is resolved. No default saved means no row is written, which still means every purchase-available card.",
+  "public.org_card_defaults":
+    "Reads the organisation's default card set for the admin screen: aal2 then public.has_firm_access. Read-only, no client data.",
+  "public.set_org_card_defaults":
+    "Saves the default card set new clients in this organisation will start from. app_private.assert_firm_member_write, card keys sanitised against app_private.known_cards, audited as org_card_defaults_set. Changes no existing client and is never read when resolving a dashboard.",
+  "public.apply_org_card_defaults":
+    "Deliberately overwrites every client's ticked list in this organisation with the saved default, for organisations with many entities. app_private.assert_firm_member_write, refuses when no default is saved, writes through app_private.set_client_cards and audits one org_card_defaults_applied row recording how many clients changed and the cards applied. Grants nothing: what each client then shows is still capped by the purchase.",
 
   "public.security_attestations_list":
     "List the recorded human confirmations with the sign-in address of the person who made each one (aal2 + super admin), so the posture card can name who confirmed what and when.",

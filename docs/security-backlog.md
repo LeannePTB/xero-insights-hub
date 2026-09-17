@@ -1435,3 +1435,7 @@ and prove the gap appears without the row and disappears with it. Three all-clea
 wording tests that had been failing on this same gap now supply a payables row.
 
 Zero extra Xero calls: the fix is one wider database read.
+
+## Organisation default cards (17 Sep 2026)
+
+Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.apply_org_card_defaults`) and one read (`public.org_card_defaults`), all recorded in the definer register with their purpose. Both writers authorise through `app_private.assert_firm_member_write` (aal2 + organisation owner or active member) and audit themselves; `apply_org_card_defaults` is a deliberate bulk overwrite of card ticks and says so in the confirmation. `public.org_card_defaults` the table is select-only for `authenticated` with an aal2 + `has_firm_access` policy and has no insert/update/delete policy, so writes only happen inside those functions. Supabase linter unchanged in class: RLS-enabled-no-policy plus SECURITY DEFINER-executable-by-authenticated, the same accepted findings as the rest of the model. No new access path: the template decides what a client's ticks START as and is never read when resolving a dashboard.

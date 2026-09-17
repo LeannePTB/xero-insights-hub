@@ -93,6 +93,7 @@ create table public.firms (id uuid, name text, owner_user_id uuid, is_always_fre
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
+create table public.org_card_defaults (firm_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
@@ -2032,6 +2033,13 @@ begin
                           order by x),
            updated_at = now()
      where cc.client_id in (select c.id from public.clients c where c.firm_id = _firm_id);
+
+    update public.org_card_defaults d
+       set cards = array(select distinct x
+                           from unnest(d.cards || app_private.card_group_cards('advisory')) x
+                          order by x),
+           updated_at = now()
+     where d.firm_id = _firm_id;
   end if;
 
   select count(*) into _siblings from public.clients c where c.firm_id = _firm_id;
@@ -2042,6 +2050,13 @@ begin
                           order by x),
            updated_at = now()
      where cc.client_id in (select c.id from public.clients c where c.firm_id = _firm_id);
+
+    update public.org_card_defaults d
+       set cards = array(select distinct x
+                           from unnest(d.cards || app_private.card_group_cards('consolidation')) x
+                          order by x),
+           updated_at = now()
+     where d.firm_id = _firm_id;
   end if;
 
   -- Branding is not a card: switching it off changes no client_cards row and
@@ -2163,6 +2178,126 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.known_cards()
+ RETURNS text[]
+ LANGUAGE sql
+ IMMUTABLE
+ SET search_path TO 'public'
+AS $function$
+  select app_private.card_group_cards('standard')
+      || app_private.card_group_cards('advisory')
+      || app_private.card_group_cards('consolidation')
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.assert_firm_member_write(_firm_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _uid uuid := auth.uid();
+begin
+  if _uid is null or _firm_id is null then
+    raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+  end if;
+  if not exists (
+    select 1 from public.firms f where f.id = _firm_id and f.owner_user_id = _uid
+  ) and not exists (
+    select 1 from public.firm_members m
+     where m.firm_id = _firm_id and m.user_id = _uid and m.status = 'active'
+  ) then
+    raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+  end if;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.org_card_defaults(_firm_id uuid)
+ RETURNS TABLE(firm_id uuid, cards text[], configured boolean)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _cards text[];
+begin
+  perform app_private.assert_aal2();
+  if _firm_id is null or not app_private.has_firm_access(auth.uid(), _firm_id) then
+    raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+  end if;
+
+  select d.cards into _cards from public.org_card_defaults d where d.firm_id = _firm_id;
+
+  return query select _firm_id, coalesce(_cards, '{}'::text[]), _cards is not null;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.set_org_card_defaults(_firm_id uuid, _cards text[])
+ RETURNS text[]
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _clean text[];
+begin
+  perform app_private.assert_aal2();
+  perform app_private.assert_firm_member_write(_firm_id);
+
+  if not exists (select 1 from public.firms f where f.id = _firm_id) then
+    raise exception 'NO_SUCH_ORGANISATION' using errcode = 'no_data_found';
+  end if;
+
+  _clean := coalesce(array(
+    select distinct x from unnest(coalesce(_cards, '{}'::text[])) x
+     where x = any(app_private.known_cards())
+     order by x
+  ), '{}'::text[]);
+
+  insert into public.org_card_defaults (firm_id, cards)
+  values (_firm_id, _clean)
+  on conflict (firm_id) do update set cards = excluded.cards, updated_at = now();
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm_id, 'org_card_defaults_set', 'firm', _firm_id::text,
+          jsonb_build_object('cards', to_jsonb(_clean)));
+
+  return _clean;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.apply_org_card_defaults(_firm_id uuid)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _cards text[];
+  _client uuid;
+  _n int := 0;
+begin
+  perform app_private.assert_aal2();
+  perform app_private.assert_firm_member_write(_firm_id);
+
+  select d.cards into _cards from public.org_card_defaults d where d.firm_id = _firm_id;
+  if _cards is null then
+    raise exception 'NO_DEFAULT_SET' using errcode = 'no_data_found';
+  end if;
+
+  for _client in select c.id from public.clients c where c.firm_id = _firm_id loop
+    perform app_private.set_client_cards(_client, _cards);
+    _n := _n + 1;
+  end loop;
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm_id, 'org_card_defaults_applied', 'firm', _firm_id::text,
+          jsonb_build_object('clients_changed', _n, 'cards', to_jsonb(_cards)));
+
+  return _n;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2209,6 +2344,25 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.seed_client_cards_from_org_default()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _cards text[];
+begin
+  if new.firm_id is not null then
+    select d.cards into _cards from public.org_card_defaults d where d.firm_id = new.firm_id;
+    if _cards is not null then
+      perform app_private.set_client_cards(new.id, _cards);
+    end if;
+  end if;
+  return null;
+end;
+$function$
+;
 alter table public.access_invites enable row level security;
 alter table public.audit_finding_snoozes enable row level security;
 alter table public.audit_findings enable row level security;
@@ -2239,6 +2393,7 @@ alter table public.firms enable row level security;
 alter table public.loan_consolidation_accounts enable row level security;
 alter table public.loan_consolidation_snapshots enable row level security;
 alter table public.login_events enable row level security;
+alter table public.org_card_defaults enable row level security;
 alter table public.org_subscription_options enable row level security;
 alter table public.plan_levels enable row level security;
 alter table public.practice_team enable row level security;
@@ -2558,6 +2713,14 @@ grant SELECT on table public.login_events to service_role;
 grant TRIGGER on table public.login_events to service_role;
 grant TRUNCATE on table public.login_events to service_role;
 grant UPDATE on table public.login_events to service_role;
+grant SELECT on table public.org_card_defaults to authenticated;
+grant DELETE on table public.org_card_defaults to service_role;
+grant INSERT on table public.org_card_defaults to service_role;
+grant REFERENCES on table public.org_card_defaults to service_role;
+grant SELECT on table public.org_card_defaults to service_role;
+grant TRIGGER on table public.org_card_defaults to service_role;
+grant TRUNCATE on table public.org_card_defaults to service_role;
+grant UPDATE on table public.org_card_defaults to service_role;
 grant SELECT on table public.org_subscription_options to authenticated;
 grant DELETE on table public.org_subscription_options to service_role;
 grant INSERT on table public.org_subscription_options to service_role;
@@ -3093,6 +3256,7 @@ create policy mfa_aal2_required on public.loan_consolidation_snapshots as restri
 create policy "Advisors read same-firm login events" on public.login_events as permissive for select to authenticated using ((app_private.is_advisor(auth.uid()) AND (user_id IS NOT NULL) AND app_private.shares_firm_with(auth.uid(), user_id)));
 create policy "Users read own login events" on public.login_events as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy mfa_aal2_required on public.login_events as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "org card defaults readable by organisation access" on public.org_card_defaults as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.org_subscription_options as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "org options readable by organisation access" on public.org_subscription_options as permissive for select to authenticated using ((app_private.is_aal2() AND (app_private.has_firm_access(auth.uid(), firm_id) OR app_private.platform_staff_can_access_firm(auth.uid(), firm_id))));
 create policy plan_levels_read on public.plan_levels as permissive for select to authenticated using (true);
@@ -3239,6 +3403,7 @@ create policy mfa_aal2_required on public.xero_snapshot_runs as restrictive for 
 create policy "entitled users read client snapshots" on public.xero_snapshots as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.xero_snapshots as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.client_subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER tg_seed_client_cards_from_org_default AFTER INSERT ON public.clients FOR EACH ROW EXECUTE FUNCTION app_private.seed_client_cards_from_org_default();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.firms FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.plan_levels FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER security_attestations_audit AFTER INSERT OR DELETE OR UPDATE ON public.security_attestations FOR EACH ROW EXECUTE FUNCTION audit_table_change();
@@ -3247,4 +3412,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 85007f7430cb2fcd4d911b6ebac8e35aeab43c185f75ca6501918102039fcaa7
+-- catalogue-fingerprint: 714adfdbd659b55528f808ef6c489e2c55c0683e1299ef20584c893919aa2f6d

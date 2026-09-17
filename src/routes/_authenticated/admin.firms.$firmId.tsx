@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
+import { OrgCardDefaultsCard } from "@/components/admin/OrgCardDefaultsCard";
 import { BillingLifecycleCard } from "@/components/admin/BillingLifecycleCard";
 
 export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
@@ -190,6 +191,8 @@ function FirmDetailPage() {
         />
 
         <OrgPurchaseCard firmId={firmId} />
+
+        <OrgCardDefaultsCard firmId={firmId} />
 
         <BillingLifecycleCard
           firmId={firmId}

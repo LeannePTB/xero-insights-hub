@@ -570,6 +570,106 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return p.ok ? "allow" : "deny";
   }
+  if (r.startsWith("set_org_card_defaults(")) {
+    const p = await probe(
+      `select public.set_org_card_defaults('${ORG_A}'::uuid, array['cashflow','profit_loss'])`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r.startsWith("apply_org_card_defaults(")) {
+    await db.exec("set local role postgres");
+    await db.exec(`
+      insert into public.org_card_defaults (firm_id, cards)
+      values ('${ORG_A}'::uuid, array['cashflow'])
+      on conflict (firm_id) do update set cards = excluded.cards;
+    `);
+    const ctx = CONTEXT[row.role];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
+    await db.exec(`set local role ${ctx.dbRole}`);
+    const p = await probe(`select public.apply_org_card_defaults('${ORG_A}'::uuid)`);
+    return p.ok ? "allow" : "deny";
+  }
+  if (r === "a new client starts from the organisation's default card set") {
+    // The template is copied by the AFTER INSERT trigger, in the transaction
+    // that creates the client. With no template there is no row at all, which
+    // still means every available card — exactly as before this feature.
+    const NEW_ONE = "00000000-0000-4000-8000-00000000cd01";
+    const NEW_TWO = "00000000-0000-4000-8000-00000000cd02";
+    await db.exec("set local role postgres");
+    await db.exec(`
+      delete from public.org_card_defaults where firm_id = '${ORG_A}'::uuid;
+      delete from public.clients where id in ('${NEW_ONE}'::uuid, '${NEW_TWO}'::uuid);
+      insert into public.clients (id, name, owner_user_id, firm_id)
+      values ('${NEW_ONE}'::uuid, 'No template', '${U.ownerA}'::uuid, '${ORG_A}'::uuid);
+      insert into public.org_card_defaults (firm_id, cards)
+      values ('${ORG_A}'::uuid, array['cashflow','profit_loss']);
+      insert into public.clients (id, name, owner_user_id, firm_id)
+      values ('${NEW_TWO}'::uuid, 'From template', '${U.ownerA}'::uuid, '${ORG_A}'::uuid);
+    `);
+    const res = await db.query<{ id: string; cards: string[] | null }>(`
+      select c.id, cc.cards
+        from public.clients c
+        left join public.client_cards cc on cc.client_id = c.id
+       where c.id in ('${NEW_ONE}'::uuid, '${NEW_TWO}'::uuid)
+    `);
+    const noTemplate = res.rows.find((x) => x.id === NEW_ONE);
+    const fromTemplate = res.rows.find((x) => x.id === NEW_TWO);
+    console.log(
+      `  org card default — no template: ticks ${noTemplate?.cards === null ? "absent (all available)" : `[${(noTemplate?.cards ?? []).join(",")}]`}; with template: [${(fromTemplate?.cards ?? []).join(",")}]`,
+    );
+    if (noTemplate?.cards != null) {
+      throw new Error("With no default saved a new client must get no ticked list at all.");
+    }
+    const got = [...(fromTemplate?.cards ?? [])].sort().join(",");
+    if (got !== "cashflow,profit_loss") {
+      throw new Error(`A new client must start from the organisation default; got [${got}].`);
+    }
+    return "allow";
+  }
+  if (r === "changing the default card set does not change an existing client") {
+    // The design constraint: the default must never be consulted when resolving
+    // a dashboard. Saving a different template leaves an existing client's
+    // visible cards byte-identical; only the deliberate apply changes them.
+    const visible = async () => {
+      const res = await db.query<{ cards: string[] }>(
+        `select app_private.client_cards_v2('${CLIENT_A}'::uuid) as cards`,
+      );
+      return [...(res.rows[0]?.cards ?? [])].sort().join(",");
+    };
+    await db.exec("set local role postgres");
+    await db.exec(`
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping');
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      values ('${CLIENT_A}'::uuid, array['cashflow']);
+      delete from public.org_card_defaults where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_card_defaults (firm_id, cards)
+      values ('${ORG_A}'::uuid, array['profit_loss','balance_sheet']);
+    `);
+    const before = await visible();
+    const owner = CONTEXT["org_owner"];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(owner)]);
+    await db.exec(`set local role ${owner.dbRole}`);
+    const saved = await probe(
+      `select public.set_org_card_defaults('${ORG_A}'::uuid, array['balance_sheet'])`,
+    );
+    await db.exec("set local role postgres");
+    const after = await visible();
+    console.log(
+      `  org card default — existing client visible before [${before}] after [${after}] (template changed)`,
+    );
+    if (!saved.ok || before !== after) {
+      throw new Error(
+        `Changing the default must not change an existing client's cards: before [${before}], after [${after}]${saved.ok ? "" : `; save refused: ${saved.error}`}`,
+      );
+    }
+    return "allow";
+  }
   if (r === "toggling Consolidation off and on preserves all consolidation working data") {
     // The owner's biggest concern: does switching Consolidation off destroy the
     // consolidation work? Counts the four working-data tables before, during and
@@ -1172,6 +1272,15 @@ beforeAll(async () => {
   // Same fidelity fix: live `session_activity` has a primary key on session_id
   // (verified 15 Sep 2026) and `touch_session_activity` upserts on it.
   await db.exec(`alter table public.session_activity add primary key (session_id);`);
+
+  // Same fidelity fix: live `client_cards` is keyed on client_id and
+  // `org_card_defaults` on firm_id, and the upserts in
+  // app_private.set_client_cards, app_private.seed_client_cards_from_org_default
+  // and public.set_org_card_defaults depend on those keys.
+  await db.exec(`create unique index if not exists client_cards_client_key
+                   on public.client_cards (client_id);`);
+  await db.exec(`create unique index if not exists org_card_defaults_firm_key
+                   on public.org_card_defaults (firm_id);`);
 
   const users = Object.values(U);
   await db.exec(`
