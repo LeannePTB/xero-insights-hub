@@ -729,7 +729,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
         (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
       values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping');
       delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
-      insert into public.client_cards (client_id, cards) values ('${CLIENT_A}'::uuid, array['cashflow']);
+      insert into public.client_cards (client_id, cards) values ('${CLIENT_A}'::uuid, array['pnl']);
     `);
     const res = await db.query<{ visible: string[]; available: string[] }>(`
       select app_private.client_cards_v2('${CLIENT_A}'::uuid) as visible,
