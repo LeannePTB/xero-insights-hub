@@ -703,9 +703,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       values ('${ORG_A}'::uuid, 10, false, false, false, 'bookkeeping',
               true, true, false, now() + interval '30 days');
     `);
-    const ctx = CONTEXT[row.role];
-    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(ctx)]);
-    await db.exec(`set local role ${ctx.dbRole}`);
     const result = await db.query<{
       purchased_advisory: boolean;
       purchased_consolidation: boolean;
@@ -716,15 +713,15 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       effective_consolidation: boolean;
       trial_ends_at: string | null;
     }>(`
-      select advisory_enabled as purchased_advisory,
-             consolidation_enabled as purchased_consolidation,
-             trial_advisory_enabled as trial_advisory,
-             trial_consolidation_enabled as trial_consolidation,
+      select purchased_advisory,
+             purchased_consolidation,
+             trial_advisory,
+             trial_consolidation,
              trial_active,
-             effective_advisory,
-             effective_consolidation,
+             advisory as effective_advisory,
+             consolidation as effective_consolidation,
              trial_ends_at
-        from public.org_purchase('${ORG_A}'::uuid)
+        from app_private.org_effective_options('${ORG_A}'::uuid)
     `);
     const state = result.rows[0];
     return state &&
