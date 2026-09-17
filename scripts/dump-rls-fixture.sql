@@ -39,7 +39,8 @@ fns as (
         'touch_session_activity','session_is_active',
         'admin_assert_can_sign_out_user','record_sign_out_all_devices',
         'assert_super_admin','user_can_read_client',
-        'record_view_as','xero_error_breakdown','set_org_trial','set_org_purchase'))
+        'record_view_as','xero_error_breakdown','set_org_trial','set_org_purchase',
+        'org_card_defaults','set_org_card_defaults','apply_org_card_defaults'))
     )
 ),
 stmts as (
@@ -76,6 +77,21 @@ stmts as (
     from tabs join pg_trigger tg on tg.tgrelid = tabs.oid and not tg.tgisinternal
     join pg_proc p on p.oid = tg.tgfoid
    where p.proname = 'audit_table_change'
+
+  -- the organisation card-default template, copied into a new client's own
+  -- ticked list in the same transaction that creates the client
+  union all
+  select 3, 'trgfn:' || p.oid::text, pg_get_functiondef(p.oid) || ';'
+    from pg_proc p
+   where p.pronamespace = 'app_private'::regnamespace
+     and p.prorettype = 'trigger'::regtype
+     and p.proname = 'seed_client_cards_from_org_default'
+
+  union all
+  select 8, tabs.t || '/' || tg.tgname, pg_get_triggerdef(tg.oid) || ';'
+    from tabs join pg_trigger tg on tg.tgrelid = tabs.oid and not tg.tgisinternal
+    join pg_proc p on p.oid = tg.tgfoid
+   where p.proname = 'seed_client_cards_from_org_default'
 
   union all
   select 4, tabs.t, 'alter table public.' || quote_ident(tabs.t) || ' enable row level security;'
