@@ -881,8 +881,9 @@ function CostClassificationSection({
               <p className="mt-1 text-xs text-muted-foreground">
                 {usesCostSplit ? (
                   <>
-                    Tag each expense account as <strong>Fixed</strong>, <strong>Variable</strong>,
-                    or <strong>Excluded</strong> for break-even and the cash-flow scenario. Use the
+                    Tag each expense account as <strong>Unclassified</strong>, <strong>Fixed</strong>, <strong>Variable</strong>,
+                    or <strong>Excluded</strong> for break-even and the cash-flow scenario. Unclassified
+                    accounts are still treated as fixed until decided. Use the
                     separate <strong>Wages</strong> marker for Business Health only; it does not
                     change fixed-cost treatment.
                   </>

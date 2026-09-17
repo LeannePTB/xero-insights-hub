@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Make Unclassified an explicit cost-classification state, delete its stored row on reset, prioritise undecided accounts, and preserve the fixed calculation fallback.
+
 - [x] Make every organisation-option summary use effective purchased-or-trial state, mark trial-only options and their end date, and add display/matrix regression proof.
 
 - [x] Make organisation trial starts atomic with overlapping purchase options; preserve client card ticks and verify DRTABT's client-facing trial notice.

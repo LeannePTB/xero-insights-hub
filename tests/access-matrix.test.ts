@@ -510,6 +510,23 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
 
+  if (r === "reset a cost classification to Unclassified deletes its stored row") {
+    const removed = await probe(
+      `delete from public.client_cost_classifications
+        where client_id = '${CLIENT_A}' and tenant_id = '${TENANT_A}' and account_name = 'Wages'`,
+    );
+    if (!removed.ok || removed.rows !== 1) return "deny";
+    await db.exec("set local role postgres");
+    const check = await db.query<{ n: number; stored_unclassified: number }>(`
+      select
+        count(*)::int as n,
+        count(*) filter (where classification = 'unclassified')::int as stored_unclassified
+      from public.client_cost_classifications
+      where client_id = '${CLIENT_A}' and tenant_id = '${TENANT_A}' and account_name = 'Wages'
+    `);
+    return check.rows[0]?.n === 0 && check.rows[0]?.stored_unclassified === 0 ? "allow" : "deny";
+  }
+
   if (r === "assert_aal2() with an idle session") {
     const p = await probe(`select app_private.assert_aal2()`);
     // The code must be SESSION_IDLE: an idle session is not an MFA problem, and

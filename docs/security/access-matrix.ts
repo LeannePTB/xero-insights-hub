@@ -448,6 +448,16 @@ export const MATRIX: MatrixRow[] = [
     "live",
   ]),
 
+  {
+    role: "org_owner",
+    resource: "reset a cost classification to Unclassified deletes its stored row",
+    operation: "execute",
+    expect: "allow",
+    rule: "PK 1 / Spec §3 — the existing caller-scoped delete restores the fixed calculation fallback without storing a new classification value",
+    layers: ["pglite"],
+    note: "The UI-only Unclassified choice calls removeCostClassifications. Absence of the row remains the resolver's existing fixed fallback; no unclassified database value or access path exists.",
+  },
+
   // ---------------- Batch 2 relationship foundation (13 Sep 2026) --------
   {
     role: "org_owner",

@@ -11,14 +11,18 @@ import {
 import {
   buildClassificationResolver,
   normaliseAccountKey,
-  xeroTypeLabel,
   type Classification,
 } from "@/lib/cost-classification";
+import {
+  classificationChoice,
+  classificationSourceLabel,
+  type ClassificationChoice,
+} from "@/components/dashboard/cost-classification-display";
 import { Button } from "@/components/ui/button";
 import { Loader2, RefreshCw, Save, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-type AccountOverride = { classification?: Classification; isWages?: boolean };
+type AccountOverride = { classification?: ClassificationChoice; isWages?: boolean };
 
 function lastNMonthsRange(n: number) {
   const end = new Date();
@@ -102,7 +106,7 @@ export function CostClassificationPanel({
       seen.add(l.name);
       merged.push(l);
     }
-    return merged.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+    return merged;
   }, [pnlQ.data]);
 
   // A stored row is stale when its account no longer appears in either the
@@ -112,25 +116,50 @@ export function CostClassificationPanel({
     return resolver.orphans.filter((o) => !seenInPnl.has(normaliseAccountKey(o.account_name)));
   }, [resolver, accounts]);
 
-  const current = (name: string): Classification =>
-    overrides[name]?.classification ?? resolver.resolve(name).effective;
+  const current = (name: string): ClassificationChoice =>
+    overrides[name]?.classification ?? classificationChoice(resolver.resolve(name));
 
   const currentIsWages = (name: string): boolean =>
     overrides[name]?.isWages ?? resolver.resolve(name).isWages;
 
   const dirty = Object.keys(overrides).filter((k) => {
     const r = resolver.resolve(k);
-    return current(k) !== r.effective || currentIsWages(k) !== r.isWages;
+    const override = overrides[k];
+    return (
+      (override?.classification !== undefined &&
+        override.classification !== classificationChoice(r)) ||
+      (override?.isWages !== undefined && override.isWages !== r.isWages)
+    );
   });
+
+  const sortedAccounts = useMemo(
+    () =>
+      [...accounts].sort((a, b) => {
+        const aUnclassified = current(a.name) === "unclassified";
+        const bUnclassified = current(b.name) === "unclassified";
+        if (aUnclassified !== bUnclassified) return aUnclassified ? -1 : 1;
+        return Math.abs(b.amount) - Math.abs(a.amount);
+      }),
+    [accounts, overrides, resolver],
+  );
 
   const saveMut = useMutation({
     mutationFn: async () => {
-      const entries = dirty.map((accountName) => ({
-        accountName,
-        classification: current(accountName),
-        isWages: currentIsWages(accountName),
-      }));
-      return saveClassifications({ data: { clientId, tenantId, entries } });
+      const accountNames = dirty.filter((accountName) => current(accountName) === "unclassified");
+      const entries = dirty
+        .filter((accountName) => current(accountName) !== "unclassified")
+        .map((accountName) => ({
+          accountName,
+          classification: current(accountName) as Classification,
+          isWages: currentIsWages(accountName),
+        }));
+      if (accountNames.length > 0) {
+        await removeClassifications({ data: { clientId, tenantId, accountNames } });
+      }
+      if (entries.length > 0) {
+        await saveClassifications({ data: { clientId, tenantId, entries } });
+      }
+      return { ok: true };
     },
     onSuccess: () => {
       toast.success("Classifications saved");
@@ -160,10 +189,18 @@ export function CostClassificationPanel({
 
   function sourceLabel(name: string): string {
     const r = resolver.resolve(name);
-    if (overrides[name]?.classification) return "unsaved change";
-    if (r.source === "manual") return "tagged by hand";
-    if (r.source === "xero") return `from Xero: ${xeroTypeLabel(r.xeroType)}`;
-    return "unclassified — treated as fixed";
+    const override = overrides[name];
+    const classificationChanged =
+      override?.classification !== undefined &&
+      override.classification !== classificationChoice(r);
+    const wagesChanged = override?.isWages !== undefined && override.isWages !== r.isWages;
+    if (classificationChanged && override?.classification === "unclassified") {
+      return "Unsaved · will return to the default (treated as fixed if Xero cannot classify it)";
+    }
+    if (classificationChanged || wagesChanged) {
+      return "Unsaved change";
+    }
+    return classificationSourceLabel(r);
   }
 
   const unclassifiedCount = accounts.filter((a) => resolver.resolve(a.name).unclassified).length;
@@ -210,16 +247,32 @@ export function CostClassificationPanel({
           {!wagesOnly && unclassifiedCount > 0 && (
             <p className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
               {unclassifiedCount} account{unclassifiedCount === 1 ? "" : "s"} still unclassified —
-              treated as fixed in break-even and the cash-flow scenario.
+              treated as fixed in break-even and the cash-flow scenario.{" "}
+              <Button
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-xs text-current underline underline-offset-2"
+                onClick={() =>
+                  document
+                    .querySelector<HTMLElement>("[data-unclassified-account='true']")
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                }
+              >
+                Show {unclassifiedCount === 1 ? "it" : "them"}
+              </Button>
             </p>
           )}
 
           <ul className="divide-y divide-border">
-            {accounts.map((a) => {
+            {sortedAccounts.map((a) => {
               const c = current(a.name);
               const isWages = currentIsWages(a.name);
               return (
-                <li key={a.name} className="flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+                <li
+                  key={a.name}
+                  data-unclassified-account={c === "unclassified" ? "true" : undefined}
+                  className="scroll-mt-8 flex flex-col gap-2 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+                >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">{a.name}</p>
                     <p className="text-[11px] text-muted-foreground">
@@ -234,49 +287,59 @@ export function CostClassificationPanel({
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     {!wagesOnly && (
                       <div className="inline-flex rounded-md border border-border p-0.5 text-xs">
-                        {(["fixed", "variable", "excluded"] as Classification[]).map((opt) => (
-                          <button
+                        {(["unclassified", "fixed", "variable", "excluded"] as ClassificationChoice[]).map((opt) => (
+                          <Button
                             key={opt}
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() =>
                               setOverrides((prev) => ({
                                 ...prev,
-                                [a.name]: { ...prev[a.name], classification: opt },
+                                [a.name]: {
+                                  ...prev[a.name],
+                                  classification: opt,
+                                  ...(opt === "unclassified" ? { isWages: false } : {}),
+                                },
                               }))
                             }
-                            className={`rounded px-2.5 py-1 capitalize transition ${
+                            className={`h-7 rounded px-2.5 text-xs capitalize transition ${
                               c === opt
                                 ? "bg-primary text-primary-foreground"
                                 : "text-muted-foreground hover:text-foreground"
                             }`}
                             title={
-                              opt === "excluded"
+                              opt === "unclassified"
+                                ? "Remove the stored classification and return this account to its default. If Xero cannot classify it, calculations treat it as fixed."
+                                : opt === "excluded"
                                 ? "Leave this account out of the Breakeven calculation entirely"
                                 : undefined
                             }
                           >
                             {opt}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     )}
-                    <button
+                    <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
                       onClick={() =>
                         setOverrides((prev) => ({
                           ...prev,
                           [a.name]: { ...prev[a.name], isWages: !isWages },
                         }))
                       }
-                      className={`rounded-md border px-2.5 py-1 text-xs transition ${
+                      className={`h-7 px-2.5 text-xs transition ${
                         isWages
-                          ? "border-primary bg-primary text-primary-foreground"
+                          ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
                           : "border-border text-muted-foreground hover:text-foreground"
                       }`}
                       title="Mark as wages/salaries for Business Health Efficiency without changing fixed-cost treatment"
                     >
                       Wages
-                    </button>
+                    </Button>
                   </div>
                 </li>
               );
