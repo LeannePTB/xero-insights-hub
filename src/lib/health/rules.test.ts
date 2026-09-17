@@ -847,7 +847,9 @@ describe("the verdict loader reads the payables snapshot", () => {
     ];
     const withAp = evaluateFromRows({ clientId: "c1", connections: CONNECTED, snapshots, now: NOW });
     assert.ok(
-      !(withAp.gaps ?? []).some((g) => /unpaid supplier bills could not be read in full/.test(g)),
+      !((withAp as { gaps?: string[] }).gaps ?? []).some((g: string) =>
+        /unpaid supplier bills could not be read in full/.test(g),
+      ),
     );
 
     const withoutAp = evaluateFromRows({
@@ -857,7 +859,9 @@ describe("the verdict loader reads the payables snapshot", () => {
       now: NOW,
     });
     assert.ok(
-      (withoutAp.gaps ?? []).some((g) => /unpaid supplier bills could not be read in full/.test(g)),
+      ((withoutAp as { gaps?: string[] }).gaps ?? []).some((g: string) =>
+        /unpaid supplier bills could not be read in full/.test(g),
+      ),
     );
   });
 });
