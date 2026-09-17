@@ -11,6 +11,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHash, timingSafeEqual } from "crypto";
 
+const TRIGGER_LIMIT = { max: 6, windowSeconds: 3_600 } as const;
+
+function json(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+  });
+}
+
 function constantTimeEquals(a: string, b: string): boolean {
   // Hash first so the comparison is over fixed-length buffers: timingSafeEqual
   // throws on a length mismatch, which would itself leak the secret's length.
@@ -25,10 +34,7 @@ export const Route = createFileRoute("/api/public/security/run-access-tests")({
       POST: async ({ request }) => {
         const expected = process.env["SECURITY_TEST_TRIGGER_SECRET"];
         if (!expected) {
-          return new Response(JSON.stringify({ error: "Not configured" }), {
-            status: 503,
-            headers: { "Content-Type": "application/json" },
-          });
+          return json({ error: "Not configured" }, 503);
         }
 
         const provided = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "");
@@ -38,43 +44,48 @@ export const Route = createFileRoute("/api/public/security/run-access-tests")({
 
         const { enforceRateLimit } = await import("@/lib/rate-limit.server");
         try {
-          // Six runs an hour, app-wide. A run signs accounts in and out, so it
-          // is never something to allow in a loop.
-          await enforceRateLimit("security_access_tests:global", 6, 3600);
+          // Six trigger attempts per fixed 3,600-second bucket, app-wide. This
+          // is the suite trigger's own global guard, not the auth provider's
+          // per-IP password-sign-in limit. A rate-limited trigger means the run
+          // did not start and must be reported as inconclusive, never green.
+          await enforceRateLimit("security_access_tests:global", TRIGGER_LIMIT.max, TRIGGER_LIMIT.windowSeconds);
         } catch {
-          return new Response(JSON.stringify({ error: "Rate limited" }), {
-            status: 429,
-            headers: { "Content-Type": "application/json" },
-          });
+          return json(
+            {
+              error: "Rate limited",
+              completed: false,
+              incompleteReason:
+                "INCONCLUSIVE — run did not complete: live access-test trigger rate limited before sign-in.",
+              limit: TRIGGER_LIMIT,
+            },
+            429,
+          );
         }
 
         try {
           const { runLiveAccessTests } = await import("@/lib/live-access-tests.server");
           const summary = await runLiveAccessTests(null);
-          return new Response(
-            JSON.stringify({
-              runId: summary.runId,
-              passed: summary.passed,
-              failed: summary.failed,
-              inconclusive: summary.inconclusive,
-              failures: summary.probes
-                .filter((p) => !p.passed)
-                .map((p) => ({
-                  role: p.role,
-                  resource: p.resource,
-                  operation: p.operation,
-                  expected: p.expected,
-                  observed: p.observed,
-                })),
-            }),
-            { headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } },
-          );
+          return json({
+            runId: summary.runId,
+            passed: summary.passed,
+            failed: summary.failed,
+            inconclusive: summary.inconclusive,
+            completed: summary.completed,
+            incompleteReason: summary.incompleteReason,
+            failures: summary.probes
+              .filter((p) => !p.passed)
+              .map((p) => ({
+                role: p.role,
+                resource: p.resource,
+                operation: p.operation,
+                expected: p.expected,
+                observed: p.observed,
+                detail: p.detail,
+              })),
+          });
         } catch (e) {
           console.error("[run-access-tests] run failed:", e instanceof Error ? e.message : e);
-          return new Response(JSON.stringify({ error: "The access-test run failed." }), {
-            status: 500,
-            headers: { "Content-Type": "application/json" },
-          });
+          return json({ error: "The access-test run failed." }, 500);
         }
       },
     },

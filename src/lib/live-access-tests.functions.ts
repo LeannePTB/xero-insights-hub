@@ -7,6 +7,8 @@ export type LiveRunResult = {
   passed: number;
   failed: number;
   inconclusive: number;
+  completed: boolean;
+  incompleteReason: string | null;
   failures: {
     role: string;
     resource: string;
@@ -36,6 +38,8 @@ export const runAccessTests = createServerFn({ method: "POST" })
       passed: summary.passed,
       failed: summary.failed,
       inconclusive: summary.inconclusive,
+      completed: summary.completed,
+      incompleteReason: summary.incompleteReason,
       failures: summary.probes
         .filter((p) => !p.passed)
         .map((p) => ({

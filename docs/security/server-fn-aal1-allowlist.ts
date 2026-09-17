@@ -96,6 +96,6 @@ export const AAL1_ALLOWLIST: Aal1Exception[] = [
     reason:
       "Server ROUTE (not a server function; its exported const is `Route`, POST handler). Trigger for the slim live smoke suite. It must be callable by a scheduler or CI with no session, in the same way as the snapshot-refresh route.",
     containment:
-      "The owner-added SECURITY_TEST_TRIGGER_SECRET is the credential, compared in constant time over SHA-256 digests; a wrong or missing secret gets a bare 401. Rate limited app-wide to six runs an hour BEFORE any work. Touches only the isolated ZZ Security Test Org and the suite's own three accounts, which database triggers refuse to attach to any real organisation. Returns counts and failed expectations only — never a token, password, TOTP secret, email address or anything about a real organisation.",
+      "The owner-added SECURITY_TEST_TRIGGER_SECRET is the credential, compared in constant time over SHA-256 digests; a wrong or missing secret gets a bare 401. Rate limited app-wide to six trigger attempts per fixed 3,600-second bucket BEFORE any work. A database claim prevents overlapping runs; sign-ins are serialised, paced and reused. A 429 returns an explicit incomplete result and is never green or an access denial. Touches only the isolated ZZ Security Test Org and the suite's own three accounts, which database triggers refuse to attach to any real organisation. Returns counts and failed expectations only — never a token, password, TOTP secret, email address or anything about a real organisation.",
   },
 ];

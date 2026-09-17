@@ -13,6 +13,8 @@
  *   SECURITY_TEST_BASE_URL        optional; defaults to the published site
  */
 
+import { classifyLiveAccessHttpFailure } from "../src/lib/live-access-test-status";
+
 const secret = process.env["SECURITY_TEST_TRIGGER_SECRET"];
 const base =
   process.env["SECURITY_TEST_BASE_URL"] ??
@@ -33,21 +35,35 @@ const res = await fetch(`${base.replace(/\/+$/, "")}/api/public/security/run-acc
 
 const text = await res.text();
 if (!res.ok) {
-  console.error(`live access tests: FAILED to trigger (${res.status}) ${text.slice(0, 300)}`);
-  process.exit(1);
+  const outcome = classifyLiveAccessHttpFailure(res.status, text);
+  console.error(outcome.message);
+  process.exit(outcome.incomplete ? 2 : 1);
 }
 
 const body = JSON.parse(text) as {
   passed: number;
   failed: number;
   inconclusive: number;
-  failures: { role: string; resource: string; operation: string; expected: string; observed: string }[];
+  completed?: boolean;
+  incompleteReason?: string | null;
+  failures: { role: string; resource: string; operation: string; expected: string; observed: string; detail?: string }[];
 };
+
+if (body.completed === false) {
+  console.error(
+    `live access tests: INCONCLUSIVE — run did not complete. ${body.incompleteReason ?? "Rate limited or interrupted."}`,
+  );
+  process.exit(2);
+}
 
 console.log(
   `live access tests: ${body.passed} passed, ${body.failed} failed, ${body.inconclusive} inconclusive`,
 );
-for (const f of body.failures) {
-  console.error(`  FAIL ${f.role} / ${f.resource} / ${f.operation}: expected ${f.expected}, got ${f.observed}`);
+if (body.inconclusive > 0) {
+  console.error("live access tests: INCONCLUSIVE — run did not complete every probe.");
 }
-process.exit(body.failed > 0 ? 1 : 0);
+for (const f of body.failures) {
+  const prefix = f.observed === "inconclusive" ? "INCONCLUSIVE" : "FAIL";
+  console.error(`  ${prefix} ${f.role} / ${f.resource} / ${f.operation}: expected ${f.expected}, got ${f.observed}`);
+}
+process.exit(body.failed > 0 ? 1 : body.inconclusive > 0 ? 2 : 0);
