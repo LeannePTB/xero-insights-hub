@@ -126,7 +126,8 @@ export function CostClassificationPanel({
     const r = resolver.resolve(k);
     const override = overrides[k];
     return (
-      override?.classification !== undefined ||
+      (override?.classification !== undefined &&
+        override.classification !== classificationChoice(r)) ||
       (override?.isWages !== undefined && override.isWages !== r.isWages)
     );
   });
@@ -189,10 +190,14 @@ export function CostClassificationPanel({
   function sourceLabel(name: string): string {
     const r = resolver.resolve(name);
     const override = overrides[name];
-    if (override?.classification === "unclassified") {
+    const classificationChanged =
+      override?.classification !== undefined &&
+      override.classification !== classificationChoice(r);
+    const wagesChanged = override?.isWages !== undefined && override.isWages !== r.isWages;
+    if (classificationChanged && override?.classification === "unclassified") {
       return "Unsaved · will return to the default (treated as fixed if Xero cannot classify it)";
     }
-    if (override?.classification !== undefined || override?.isWages !== undefined) {
+    if (classificationChanged || wagesChanged) {
       return "Unsaved change";
     }
     return classificationSourceLabel(r);
@@ -291,7 +296,11 @@ export function CostClassificationPanel({
                             onClick={() =>
                               setOverrides((prev) => ({
                                 ...prev,
-                                [a.name]: { ...prev[a.name], classification: opt },
+                                [a.name]: {
+                                  ...prev[a.name],
+                                  classification: opt,
+                                  ...(opt === "unclassified" ? { isWages: false } : {}),
+                                },
                               }))
                             }
                             className={`h-7 rounded px-2.5 text-xs capitalize transition ${

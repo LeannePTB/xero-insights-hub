@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, test } from "node:test";
+import assert from "node:assert/strict";
 import {
   classificationChoice,
   classificationSourceLabel,
@@ -22,8 +23,8 @@ function resolved(
 describe("cost classification display", () => {
   test("shows a true fallback as Unclassified while retaining fixed calculation treatment", () => {
     const value = resolved({ effective: "fixed", decided: null, unclassified: true });
-    expect(classificationChoice(value)).toBe("unclassified");
-    expect(classificationSourceLabel(value)).toBe(
+    assert.equal(classificationChoice(value), "unclassified");
+    assert.equal(classificationSourceLabel(value),
       "No classification saved · treated as fixed",
     );
   });
@@ -43,8 +44,8 @@ describe("cost classification display", () => {
       unclassified: false,
     });
 
-    expect(classificationChoice(seeded)).toBe("variable");
-    expect(classificationSourceLabel(seeded)).toBe("Seeded from Xero · cost of sales");
-    expect(classificationSourceLabel(chosen)).toBe("Chosen by hand");
+    assert.equal(classificationChoice(seeded), "variable");
+    assert.equal(classificationSourceLabel(seeded), "Seeded from Xero · cost of sales");
+    assert.equal(classificationSourceLabel(chosen), "Chosen by hand");
   });
 });
