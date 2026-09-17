@@ -531,7 +531,23 @@ Two entry points, both authorised: the super-admin "Run access tests" button on
 `/admin/security` (`assertSuperAdminDb`), and
 `POST /api/public/security/run-access-tests`, which compares the single
 owner-added `SECURITY_TEST_TRIGGER_SECRET` in constant time and is rate limited
-to six runs an hour before doing any work. Results land in
+to six trigger attempts per app-wide, fixed UTC-aligned 3,600-second bucket
+before doing any work. This is the application's own global trigger bucket, not
+an Auth sign-in or per-IP limit. The runner opens four password sessions in a
+normal run (owner aal2, the same owner at aal1, staff aal2 and viewer aal2), or
+seven only during first-time TOTP enrolment, and reuses those sessions across
+all probes. Sign-ins are serialised and spaced one second apart; a database
+claim prevents overlapping runs across server instances.
+
+Supabase documents the default password/sign-in-related Auth allowance as 30
+requests per five minutes per IP, with burst capacity up to 30; the token
+endpoint default is 150 per five minutes per IP, also with burst capacity up to
+30. These are documented provider defaults, not a claim that this project's
+dashboard settings override them. A normal four-sign-in run uses 13% of the
+documented sign-in allowance; first-time setup uses 23%. Provider sign-in and
+MFA 429s, server-function 429s, an active-run collision and the trigger's own
+429 all produce **INCONCLUSIVE — run did not complete**. They are never counted
+as a pass or an access denial. Results land in
 `public.security_test_runs` with layer `live`.
 
 ## 17. Attestations — controls no system can read (12 Sep 2026)
