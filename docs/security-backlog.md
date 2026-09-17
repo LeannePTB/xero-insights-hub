@@ -1411,3 +1411,27 @@ if any table ever moves.
 The fixture dump now includes `public.set_org_purchase` so the real function body is
 the thing under test. `bun run security:check`: 106 passed, 18 live access tests,
 0 failed, fingerprint 85007f7430cb2fcd4d911b6ebac8e35aeab43c185f75ca6501918102039fcaa7.
+
+## Closed 2026-09-17 — "Partial data — 1 check unavailable" was a query gap, not a Xero cap
+
+Classification: not security-relevant. No policy, grant, definer function, role,
+entitlement or Xero credential was touched. `listClientVerdicts` still reads
+`xero_snapshots` through `context.supabase`, so the dual-check RLS decides which
+rows the caller sees; the change only widens the `report_key` filter within that
+same authorised read.
+
+Cause: the badge loader queried `REQUIRED_REPORT_KEYS`
+(`balance_sheet`, `accounts`, `invoices_accrec_open`) only, so
+`invoices_accpay_open` was never fetched. `evaluateFromRows` then saw the payables
+row as missing and `analyseAtoPayables` correctly refused the lodged-and-owing
+split with `ATO_REFUSAL_UNAVAILABLE`. Not pagination and not truncation: every
+stored `invoices_accpay_open` row is `complete = true`, largest payload 64
+invoices against the 5-page / 500-invoice ceiling.
+
+Fix: new `VERDICT_REPORT_KEYS` (required set + `invoices_accpay_open`) used by the
+loader; the required set is unchanged, so a missing payables snapshot still cannot
+block a verdict. Two new tests in `src/lib/health/rules.test.ts` pin the key list
+and prove the gap appears without the row and disappears with it. Three all-clear
+wording tests that had been failing on this same gap now supply a payables row.
+
+Zero extra Xero calls: the fix is one wider database read.

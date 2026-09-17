@@ -390,6 +390,7 @@ describe("statutory registration settings", () => {
           }),
           accountRow(),
           HEALTHY_DEBTORS,
+          payablesRow(billsPayload([])),
         ],
         now: NOW,
       },
@@ -408,6 +409,7 @@ describe("statutory registration settings", () => {
           row({ report_key: "balance_sheet", payload: { Reports: [balanceSheet(500_000, FULL_TAX)] } }),
           accountRow(),
           HEALTHY_DEBTORS,
+          payablesRow(billsPayload([])),
         ],
         now: NOW,
       },
@@ -451,6 +453,7 @@ describe("statutory registration settings", () => {
           }),
           accountRow(),
           HEALTHY_DEBTORS,
+          payablesRow(billsPayload([])),
         ],
         now: NOW,
       },
@@ -812,5 +815,53 @@ describe("R01 lodged and still owing", () => {
       ),
     );
     assert.strictEqual(without.finding!.severity, with_.finding!.severity);
+  });
+});
+
+describe("the verdict loader reads the payables snapshot", () => {
+  it("includes invoices_accpay_open in the keys a verdict loads", async () => {
+    const { VERDICT_REPORT_KEYS, REQUIRED_REPORT_KEYS } = await import("./rule-thresholds");
+    assert.ok(
+      (VERDICT_REPORT_KEYS as readonly string[]).includes("invoices_accpay_open"),
+      "a verdict refuses the lodged-and-owing split without this key, so it must be queried",
+    );
+    // Still optional: a missing payables snapshot must not block the verdict.
+    assert.ok(!(REQUIRED_REPORT_KEYS as readonly string[]).includes("invoices_accpay_open"));
+  });
+
+  it("a complete payables snapshot removes the partial-data gap", () => {
+    const snapshots = [
+      BS_ROW,
+      accountRow(),
+      HEALTHY_DEBTORS,
+      payablesRow(
+        billsPayload([
+          {
+            contact: "Australian Taxation Office",
+            total: 5_835,
+            due: 5_835,
+            lines: [{ accountId: "gst-1", amount: 5_835 }],
+          },
+        ]),
+      ),
+    ];
+    const withAp = evaluateFromRows({ clientId: "c1", connections: CONNECTED, snapshots, now: NOW });
+    assert.ok(
+      !((withAp as { gaps?: string[] }).gaps ?? []).some((g: string) =>
+        /unpaid supplier bills could not be read in full/.test(g),
+      ),
+    );
+
+    const withoutAp = evaluateFromRows({
+      clientId: "c1",
+      connections: CONNECTED,
+      snapshots: snapshots.slice(0, 3),
+      now: NOW,
+    });
+    assert.ok(
+      ((withoutAp as { gaps?: string[] }).gaps ?? []).some((g: string) =>
+        /unpaid supplier bills could not be read in full/.test(g),
+      ),
+    );
   });
 });

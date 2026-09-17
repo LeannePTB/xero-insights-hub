@@ -35,3 +35,15 @@ export const R06_DEBTORS = {
 
 /** Report keys a client must have before any verdict is produced. */
 export const REQUIRED_REPORT_KEYS = ["balance_sheet", "accounts", "invoices_accrec_open"] as const;
+
+/**
+ * Report keys a verdict READS. Wider than the required set: the payables list
+ * is optional (a verdict is still produced without it) but the lodged-and-owing
+ * half of protected money is refused when it is absent, so it must be loaded.
+ * Leaving it out of the query made every client report "1 check unavailable"
+ * while the snapshot sat in the table, complete.
+ */
+export const VERDICT_REPORT_KEYS = [
+  ...REQUIRED_REPORT_KEYS,
+  "invoices_accpay_open",
+] as const;
