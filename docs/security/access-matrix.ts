@@ -1066,6 +1066,50 @@ export const MATRIX: MatrixRow[] = [
     layers: ["pglite"],
   },
 
+  // ------------------------------------ organisation default cards (a template)
+  {
+    role: "org_owner",
+    resource: "a new client starts from the organisation's default card set",
+    operation: "read",
+    expect: "allow",
+    rule: "The default is a template copied into the new client's own ticked list in the transaction that creates it — never a resolution layer",
+    layers: ["pglite"],
+    note: "Added 17 Sep 2026 with organisation card defaults. Proves the AFTER INSERT trigger app_private.seed_client_cards_from_org_default writes the template into public.client_cards for the new client, and that with no template saved the new client gets no row at all, which still means every available card, exactly as before.",
+  },
+  {
+    role: "org_owner",
+    resource: "changing the default card set does not change an existing client",
+    operation: "read",
+    expect: "allow",
+    rule: "Resolution is the purchase intersected with the one ticked list stored for that client; the default is not read",
+    layers: ["pglite"],
+    note: "Added 17 Sep 2026. The design constraint the owner set: if the default were consulted when resolving a dashboard, the multi-layer model would be back. Proves an existing client's visible cards are byte-identical before and after set_org_card_defaults, and only change when apply_org_card_defaults is deliberately run.",
+  },
+  ...rows(
+    ["support_grant_active", "other_org_member", "client_viewer", "client_business_owner"],
+    ["set_org_card_defaults(an organisation)", "apply_org_card_defaults(an organisation)"],
+    ["execute"],
+    "deny",
+    "app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants)",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_owner"],
+    ["set_org_card_defaults(an organisation)", "apply_org_card_defaults(an organisation)"],
+    ["execute"],
+    "allow",
+    "PK 2 path A — the organisation's own owner sets its template and may overwrite its own clients' ticks, audited",
+    ["pglite"],
+  ),
+  ...rows(
+    ["aal1_member"],
+    ["set_org_card_defaults(an organisation)", "apply_org_card_defaults(an organisation)"],
+    ["execute"],
+    "deny",
+    "PK 2 (aal2 required before anything else)",
+    ["pglite"],
+  ),
+
   // --------------------------------------------------------- server functions
   ...rows(
     ["other_org_member", "super_admin_no_membership", "suspended_member", "removed_member"],
