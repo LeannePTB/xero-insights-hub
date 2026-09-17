@@ -1086,7 +1086,7 @@ export const MATRIX: MatrixRow[] = [
     note: "Added 17 Sep 2026. The design constraint the owner set: if the default were consulted when resolving a dashboard, the multi-layer model would be back. Proves an existing client's visible cards are byte-identical before and after set_org_card_defaults, and only change when apply_org_card_defaults is deliberately run.",
   },
   ...rows(
-    ["support_grant_active", "other_org_member", "client_viewer", "client_business_owner"],
+    ["support_grant_active", "other_org_member", "client_viewer", "business_owner"],
     ["set_org_card_defaults(an organisation)", "apply_org_card_defaults(an organisation)"],
     ["execute"],
     "deny",
