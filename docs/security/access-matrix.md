@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1637**. Known failures: **0**.
+Rows: **1638**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1170,6 +1170,7 @@ None.
 | client_subscriptions | insert | DENY | pglite, live | Spec §8 (billing is platform-owned) |  |
 | client_subscriptions | update | DENY | pglite, live | Spec §8 (billing is platform-owned) |  |
 | client_subscriptions | delete | DENY | pglite, live | Spec §8 (billing is platform-owned) |  |
+| reset a cost classification to Unclassified deletes its stored row | execute | ALLOW | pglite | PK 1 / Spec §3 — the existing caller-scoped delete restores the fixed calculation fallback without storing a new classification value | The UI-only Unclassified choice calls removeCostClassifications. Absence of the row remains the resolver's existing fixed fallback; no unclassified database value or access path exists. |
 | set_client_access_relationship() for own organisation | execute | ALLOW | pglite, live | PK paths D/E — owner classifies selected-client access through an audited function |  |
 | two Business owners on one client remain independently client-scoped | execute | ALLOW | pglite, live | PK path E — several Business owners are valid; each exact client_access row stands alone |  |
 | removing membership preserves the Business owner relationship row | execute | ALLOW | pglite, live | PK path E — membership removal does not silently delete independently granted client access |  |
