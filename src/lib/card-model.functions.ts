@@ -80,6 +80,16 @@ async function readGroups(supabase: any): Promise<CardGroup[]> {
   }));
 }
 
+/**
+ * The three card groups and the cards each contains, straight from the
+ * database catalogue. Used by the create-organisation dialog, which has no
+ * organisation to read yet. Presentation data only: no organisation, client or
+ * Xero data, and it grants nothing.
+ */
+export const listCardGroups = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .handler(async ({ context }) => ({ groups: await readGroups(context.supabase as any) }));
+
 /** Is the new card model live? Fails closed. */
 export const getCardModel = createServerFn({ method: "POST" })
   .middleware([requireAal2])

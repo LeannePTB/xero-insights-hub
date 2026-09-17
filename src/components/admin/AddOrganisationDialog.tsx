@@ -1,7 +1,10 @@
-import { useState } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { adminCreateOrganisation } from "@/lib/invites.functions";
+import { listCardGroups } from "@/lib/card-model.functions";
+import { cardLabel, CARD_GROUP_LABEL } from "@/lib/card-labels";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +25,7 @@ export function AddOrganisationDialog({
   label?: string;
 }) {
   const create = useServerFn(adminCreateOrganisation);
+  const listGroups = useServerFn(listCardGroups);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -29,9 +33,48 @@ export function AddOrganisationDialog({
   const [email, setEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [password, setPassword] = useState("");
+  // What they are buying.
+  const [clientLimit, setClientLimit] = useState("1");
+  const [billingMode, setBillingMode] = useState<"bookkeeping" | "external">("bookkeeping");
+  const [advisory, setAdvisory] = useState(false);
+  const [consolidation, setConsolidation] = useState(false);
+  const [branding, setBranding] = useState(false);
+  // How they want it set up — a starting point for clients added later, never a purchase.
+  const [unticked, setUnticked] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [done, setDone] = useState<null | { mode: "password" | "invite" | "none"; email?: string | null; password?: string; inviteUrl?: string; emailStatus?: string | null }>(null);
   const [copied, setCopied] = useState(false);
+
+  const groupsQ = useQuery({
+    queryKey: ["card-groups"],
+    queryFn: () => (listGroups as any)({ data: {} }),
+    enabled: open,
+    staleTime: 5 * 60_000,
+  });
+  const groups: { group: string; cards: string[] }[] = (groupsQ.data as any)?.groups ?? [];
+  const limitNum = Math.max(0, Math.trunc(Number(clientLimit) || 0));
+
+  /** The groups this purchase pays for. Consolidation only bites above one client. */
+  const includedGroups = useMemo(
+    () =>
+      groups.filter(
+        (g) =>
+          g.group === "standard" ||
+          (g.group === "advisory" && advisory) ||
+          (g.group === "consolidation" && advisory && consolidation && limitNum > 1),
+      ),
+    [groups, advisory, consolidation, limitNum],
+  );
+  const availableCards = useMemo(
+    () => includedGroups.flatMap((g) => g.cards),
+    [includedGroups],
+  );
+  const cardsPayload = useMemo(() => {
+    const chosen = availableCards.filter((c) => !unticked.includes(c));
+    // No template unless something was actually unticked: absent means "every
+    // card the purchase allows", exactly as before.
+    return chosen.length === availableCards.length ? null : chosen;
+  }, [availableCards, unticked]);
 
   const mut = useMutation({
     mutationFn: () =>
@@ -42,6 +85,12 @@ export function AddOrganisationDialog({
           ownerMode,
           ownerPassword: ownerMode === "password" ? password : null,
           ownerName: ownerName || null,
+          clientLimit: limitNum,
+          billingMode,
+          advisory,
+          consolidation: advisory && consolidation,
+          branding: advisory && branding,
+          cards: cardsPayload,
         },
       }),
     onMutate: () => setErrorMsg(null),
@@ -72,6 +121,8 @@ export function AddOrganisationDialog({
     setName("");
     setOwnerMode("none"); setEmail(""); setOwnerName("");
     setPassword(""); setDone(null); setCopied(false); setErrorMsg(null);
+    setClientLimit("1"); setBillingMode("bookkeeping");
+    setAdvisory(false); setConsolidation(false); setBranding(false); setUnticked([]);
   }
 
   function generatePassword() {
@@ -103,7 +154,7 @@ export function AddOrganisationDialog({
         <DialogHeader>
           <DialogTitle>Add an organisation</DialogTitle>
           <DialogDescription>
-            Creates the organisation with one client place, Standard cards and bookkeeping billing. You can change its options after creation.
+            Capture what they are buying and how they want it set up. Everything here is written in one step — if any part fails, no organisation is created.
           </DialogDescription>
         </DialogHeader>
 
@@ -118,6 +169,117 @@ export function AddOrganisationDialog({
             <div className="space-y-1.5">
               <Label htmlFor="o-name">Organisation name</Label>
               <Input id="o-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Accounting" />
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <p className="text-sm font-medium">What they are buying</p>
+              <p className="text-xs text-muted-foreground">
+                This is what they pay for. It decides what exists for every client in the organisation.
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="o-clients">Clients</Label>
+                  <Input
+                    id="o-clients"
+                    inputMode="numeric"
+                    value={clientLimit}
+                    onChange={(e) => setClientLimit(e.target.value.replace(/[^0-9]/g, ""))}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Billing</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button type="button" size="sm" variant={billingMode === "bookkeeping" ? "default" : "outline"} onClick={() => setBillingMode("bookkeeping")}>
+                      Bookkeeping
+                    </Button>
+                    <Button type="button" size="sm" variant={billingMode === "external" ? "default" : "outline"} onClick={() => setBillingMode("external")}>
+                      External
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox
+                    checked={advisory}
+                    onCheckedChange={(v) => {
+                      const on = !!v;
+                      setAdvisory(on);
+                      if (!on) { setConsolidation(false); setBranding(false); }
+                    }}
+                  />
+                  <span>Advisory</span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox
+                    checked={consolidation}
+                    disabled={!advisory}
+                    onCheckedChange={(v) => setConsolidation(!!v)}
+                  />
+                  <span>
+                    Consolidation
+                    <span className="block text-xs text-muted-foreground">
+                      {!advisory
+                        ? "Needs Advisory."
+                        : limitNum > 1
+                        ? "Groups this organisation's clients together."
+                        : "Only does anything with more than one client."}
+                    </span>
+                  </span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox
+                    checked={branding}
+                    disabled={!advisory}
+                    onCheckedChange={(v) => setBranding(!!v)}
+                  />
+                  <span>
+                    Report branding
+                    <span className="block text-xs text-muted-foreground">
+                      {advisory ? "Client logos on reports." : "Needs Advisory."}
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-lg border border-border p-3">
+              <p className="text-sm font-medium">How they want it set up</p>
+              <p className="text-xs text-muted-foreground">
+                These ticks are not part of what they pay for. They are the starting point for clients
+                added from now on — unticking a card here does not reduce what they have bought, and you
+                can turn it back on for any client at any time.
+              </p>
+              {groupsQ.isLoading ? (
+                <p className="text-xs text-muted-foreground">Loading cards…</p>
+              ) : includedGroups.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No cards to show yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {includedGroups.map((g) => (
+                    <div key={g.group} className="space-y-1.5">
+                      <p className="text-xs font-medium text-muted-foreground">
+                        {CARD_GROUP_LABEL[g.group] ?? g.group}
+                      </p>
+                      <div className="grid gap-1.5 sm:grid-cols-2">
+                        {g.cards.map((c) => (
+                          <label key={c} className="flex items-center gap-2 text-sm">
+                            <Checkbox
+                              checked={!unticked.includes(c)}
+                              onCheckedChange={(v) =>
+                                setUnticked((prev) =>
+                                  v ? prev.filter((x) => x !== c) : [...prev, c],
+                                )
+                              }
+                            />
+                            <span>{cardLabel(c)}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div className="space-y-3 rounded-lg border border-border p-3">

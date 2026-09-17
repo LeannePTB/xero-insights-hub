@@ -43,9 +43,19 @@ function validateEmail(email: string) {
 }
 
 /**
- * Super-admin: create a brand-new organisation, its subscription and its owner
- * in a single step. The owner either gets a login immediately (password mode)
- * or an invite link/email (invite mode).
+ * Super-admin: create a brand-new organisation, what it has bought, how it
+ * wants its cards set up, and its owner, in a single all-or-nothing step.
+ *
+ * The purchase is written through the SAME audited control the organisation
+ * page uses, public.set_org_purchase (aal2 + super admin, one audit row), and
+ * the card preferences through public.set_org_card_defaults. Both run inside
+ * the existing rollback block: if anything fails, the organisation itself is
+ * removed rather than left stranded with no owner or no options.
+ *
+ * Card preferences are not a purchase. The three options decide what exists;
+ * the default card set only decides what a client added later STARTS with. It
+ * is a template applied at client creation, never consulted when a dashboard is
+ * resolved.
  */
 export const adminCreateOrganisation = createServerFn({ method: "POST" })
   .middleware([requireAal2])
@@ -56,6 +66,12 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       ownerMode: "password" | "invite" | "none";
       ownerPassword?: string | null;
       ownerName?: string | null;
+      clientLimit?: number | null;
+      billingMode?: "bookkeeping" | "external" | null;
+      advisory?: boolean | null;
+      consolidation?: boolean | null;
+      branding?: boolean | null;
+      cards?: string[] | null;
     }) => i,
   )
   .handler(async ({ data, context }) => {
@@ -65,6 +81,21 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     if (name.length < 2 || name.length > 120) throw new Error("Please enter an organisation name.");
     const email = data.ownerMode === "none" ? "" : validateEmail(data.ownerEmail ?? "");
     if (data.ownerMode === "password") validatePassword(data.ownerPassword ?? "");
+
+    // What they are buying. The database re-checks every one of these rules in
+    // set_org_purchase; this only keeps an obvious mistake out of the audit log.
+    const clientLimit = Math.trunc(Number(data.clientLimit ?? 1));
+    if (!Number.isFinite(clientLimit) || clientLimit < 0 || clientLimit > 9999) {
+      throw new Error("Enter how many clients this organisation is paying for.");
+    }
+    const billingMode = data.billingMode === "external" ? "external" : "bookkeeping";
+    const advisory = !!data.advisory;
+    const consolidation = !!data.consolidation && advisory;
+    const branding = !!data.branding && advisory;
+    // Card preferences: a template for clients added later, never a purchase.
+    const cards = Array.isArray(data.cards)
+      ? Array.from(new Set(data.cards.filter((c) => typeof c === "string" && c))).slice(0, 100)
+      : null;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -84,6 +115,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     const rollback = async () => {
       await (supabaseAdmin as any).from("access_invites").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("firm_members").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("org_card_defaults").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("org_subscription_options").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("subscriptions").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("firms").delete().eq("id", firm.id);
@@ -98,15 +130,6 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         status: "active",
       });
       if (sErr) throw new Error(sErr.message);
-
-      const { error: oErr } = await (supabaseAdmin as any).from("org_subscription_options").insert({
-        firm_id: firm.id,
-        client_limit: 1,
-        advisory_enabled: false,
-        consolidation_enabled: false,
-        billing_mode: "bookkeeping",
-      });
-      if (oErr) throw new Error(oErr.message);
 
       // The creator always becomes an active member so the organisation is
       // never stranded. Where a client login is created in the same step, that
@@ -125,6 +148,32 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
           .update({ owner_user_id: context.userId })
           .eq("id", firm.id);
         if (oErr) throw new Error(oErr.message);
+      }
+
+      // What they have bought, through the same audited control the
+      // organisation page uses. It runs as the signed-in super admin (aal2 +
+      // assert_super_admin inside the function), never as the admin client, and
+      // writes its own org_purchase_set audit row.
+      const { error: pErr } = await (context.supabase as any).rpc("set_org_purchase", {
+        _firm_id: firm.id,
+        _client_limit: clientLimit,
+        _advisory: advisory,
+        _consolidation: consolidation,
+        _branding: branding,
+        _billing_mode: billingMode,
+      });
+      if (pErr) throw new Error(pErr.message);
+
+      // How they want it set up. Saved only when the person actually unticked
+      // something: no template means a client added later starts with every
+      // card the purchase allows, exactly as before. The creator is already an
+      // active member above, which is what set_org_card_defaults requires.
+      if (cards) {
+        const { error: dErr } = await (context.supabase as any).rpc("set_org_card_defaults", {
+          _firm_id: firm.id,
+          _cards: cards,
+        });
+        if (dErr) throw new Error(dErr.message);
       }
 
       // Batch 5 — practice team auto-add. Traction Advisory's own people are
@@ -163,10 +212,12 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       if (data.ownerMode === "none") {
         await logAudit("organisation_created", "firm", firm.id, context.userId, {
           firm_id: firm.id,
-          client_limit: 1,
-          advisory_enabled: false,
-          consolidation_enabled: false,
-          billing_mode: "bookkeeping",
+          client_limit: clientLimit,
+          advisory_enabled: advisory,
+          consolidation_enabled: consolidation,
+          branding_enabled: branding,
+          billing_mode: billingMode,
+          default_cards: cards,
           owner_mode: "none",
           owner_user_id: context.userId,
         });
@@ -217,10 +268,12 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         await logAudit("organisation_created", "firm", firm.id, context.userId, {
           firm_id: firm.id,
           email,
-          client_limit: 1,
-          advisory_enabled: false,
-          consolidation_enabled: false,
-          billing_mode: "bookkeeping",
+          client_limit: clientLimit,
+          advisory_enabled: advisory,
+          consolidation_enabled: consolidation,
+          branding_enabled: branding,
+          billing_mode: billingMode,
+          default_cards: cards,
           owner_mode: "password",
           owner_user_id: ownerId,
         });
@@ -250,10 +303,12 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       await logAudit("organisation_created", "firm", firm.id, context.userId, {
         firm_id: firm.id,
         email,
-        client_limit: 1,
-        advisory_enabled: false,
-        consolidation_enabled: false,
-        billing_mode: "bookkeeping",
+        client_limit: clientLimit,
+        advisory_enabled: advisory,
+        consolidation_enabled: consolidation,
+        branding_enabled: branding,
+        billing_mode: billingMode,
+        default_cards: cards,
         owner_mode: "invite",
         owner_user_id: context.userId,
       });
@@ -305,6 +360,7 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
 
     const rollback = async () => {
       await (supabaseAdmin as any).from("access_invites").delete().eq("firm_id", firm.id);
+      await (supabaseAdmin as any).from("org_card_defaults").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("org_subscription_options").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("subscriptions").delete().eq("firm_id", firm.id);
       await (supabaseAdmin as any).from("firms").delete().eq("id", firm.id);

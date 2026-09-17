@@ -1085,6 +1085,26 @@ export const MATRIX: MatrixRow[] = [
     layers: ["pglite"],
     note: "Added 17 Sep 2026. The design constraint the owner set: if the default were consulted when resolving a dashboard, the multi-layer model would be back. Proves an existing client's visible cards are byte-identical before and after set_org_card_defaults, and only change when apply_org_card_defaults is deliberately run.",
   },
+  {
+    role: "org_owner",
+    resource:
+      "an organisation created with Advisory off cannot reach Advisory cards by any route",
+    operation: "read",
+    expect: "deny",
+    rule: "Resolution is the purchase intersected with the client's ticked list; a tick for a card the organisation has not bought grants nothing",
+    layers: ["pglite"],
+    note: "Added 17 Sep 2026 with the creation flow. Creation captures the purchase through set_org_purchase, so an organisation created with Advisory off has no Advisory cards available and none visible, even with an Advisory key sitting in the client's ticked list.",
+  },
+  {
+    role: "org_owner",
+    resource:
+      "an organisation created with Advisory on and cards unticked has those cards available but off",
+    operation: "read",
+    expect: "allow",
+    rule: "Card preferences are not a purchase: unticking a card leaves it bought and available, simply not shown",
+    layers: ["pglite"],
+    note: "Added 17 Sep 2026 with the creation flow. Proves the unticked Advisory cards stay in client_available_cards (so they can be turned back on) while being absent from the resolved dashboard.",
+  },
   ...rows(
     ["support_grant_active", "other_org_member", "client_viewer", "business_owner"],
     ["set_org_card_defaults(an organisation)", "apply_org_card_defaults(an organisation)"],
