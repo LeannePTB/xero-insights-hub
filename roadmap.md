@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Make every organisation-option summary use effective purchased-or-trial state, mark trial-only options and their end date, and add display/matrix regression proof.
+
 - [x] Make organisation trial starts atomic with overlapping purchase options; preserve client card ticks and verify DRTABT's client-facing trial notice.
 
 - [ ] Replace role-check authorisation with access checks on write paths (plan in .lovable/plan.md awaiting approval; five open questions)

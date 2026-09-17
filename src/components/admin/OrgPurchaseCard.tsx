@@ -24,6 +24,10 @@ import {
 import { getMyContext } from "@/lib/roles.functions";
 import { cardLabel, CARD_GROUP_LABEL } from "@/lib/card-labels";
 import { trialStatus, TRIAL_MAX_DAYS, TRIAL_WARN_DAYS } from "@/lib/org-trial";
+import {
+  organisationOptionDisplay,
+  organisationTrialEndLabel,
+} from "@/lib/organisation-option-display";
 
 /**
  * What this organisation has bought: number of clients, Advisory, Consolidation
@@ -77,6 +81,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     onSuccess: () => {
       toast.success("Purchase saved");
       qc.invalidateQueries({ queryKey: ["org-purchase", firmId] });
+      qc.invalidateQueries({ queryKey: ["admin-org-purchases"] });
       qc.invalidateQueries({ queryKey: ["client-branding"] });
       qc.invalidateQueries({ queryKey: ["report-logo"] });
       qc.invalidateQueries({ queryKey: ["client-card-setup"] });
@@ -116,6 +121,10 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     consolidation !== purchase.consolidation ||
     branding !== purchase.branding ||
     billingMode !== purchase.billingMode;
+  const availableNow = organisationOptionDisplay(purchase);
+  const activeTrialEnd = purchase.trialActive
+    ? organisationTrialEndLabel(purchase.trialEndsAt)
+    : null;
 
   return (
     <section className="space-y-4 rounded-lg border p-6">
@@ -129,6 +138,30 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
         own ticked list then decides which of them that client sees.
         {!q.data?.modelActive && " The new model is not switched on yet, so this is not live."}
       </p>
+
+      <div className="rounded-md border bg-muted/30 p-3">
+        <p className="text-xs font-medium uppercase text-muted-foreground">Available now</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {availableNow.map((option) => (
+            <span
+              key={option.key}
+              className={
+                option.on
+                  ? "rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
+                  : "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
+              }
+            >
+              {option.label} {option.on ? "on" : "off"}
+              {option.trial ? " · trial" : ""}
+            </span>
+          ))}
+        </div>
+        {activeTrialEnd && (
+          <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+            Trial ends {activeTrialEnd}
+          </p>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div className="space-y-1.5">
@@ -315,6 +348,7 @@ function OrgTrialBlock({
       setReason("");
       qc.invalidateQueries({ queryKey: ["org-purchase", firmId] });
       qc.invalidateQueries({ queryKey: ["org-purchases"] });
+      qc.invalidateQueries({ queryKey: ["admin-org-purchases"] });
       qc.invalidateQueries({ queryKey: ["client-card-setup"] });
       qc.invalidateQueries({ queryKey: ["client-widgets"] });
       qc.invalidateQueries({ queryKey: ["effective-widgets"] });
