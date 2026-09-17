@@ -18,6 +18,10 @@ import { listOrgPurchases, type OrgPurchase } from "@/lib/card-model.functions";
 import { recordViewAs } from "@/lib/view-as.functions";
 import { toast } from "sonner";
 import type { SubscriptionState } from "@/lib/subscription-state";
+import {
+  organisationOptionDisplay,
+  organisationTrialEndLabel,
+} from "@/lib/organisation-option-display";
 
 
 
@@ -196,9 +200,8 @@ function OrganisationsSection({
     (statesQ.data?.states ?? []).map((st) => [st.firmId, st]),
   );
 
-  // What each organisation has actually bought (org_subscription_options via
-  // public.org_purchase). This is what
-  // decides cards while the purchase + ticked-list model is live.
+  // Purchased, trialled and effective options come from public.org_purchase.
+  // The row must describe effective availability, never purchased flags alone.
   const fetchPurchases = useServerFn(listOrgPurchases);
   const purchasesQ = useQuery({
     queryKey: ["admin-org-purchases", firmIds.join(",")],
@@ -421,12 +424,11 @@ function abnormalStatus(state: SubscriptionState | undefined, status: string | n
 }
 
 /**
- * What the organisation has bought.
+ * What the organisation can use now.
  *
- * Under the purchase + ticked-list model this reads org_subscription_options
- * (through public.org_purchase) and nothing else. The old line here counted
- * legacy per-client settings, which stopped deciding anything when the model
- * went live.
+ * public.org_purchase resolves purchased OR unexpired trial in the database.
+ * Purchased fields remain available to the editor, but this summary always
+ * uses the effective fields and identifies trial-only availability.
  */
 function PlanCell({
   usage,
@@ -442,7 +444,14 @@ function PlanCell({
       </div>
     );
   }
-    const consolidationBlocked = purchase.advisory && purchase.clientCount <= 1;
+    const options = organisationOptionDisplay(purchase);
+    const advisory = options.find((option) => option.key === "advisory");
+    const consolidation = options.find((option) => option.key === "consolidation");
+    const branding = options.find((option) => option.key === "branding");
+    const consolidationBlocked = !!advisory?.on && purchase.clientCount <= 1;
+    const trialEnd = purchase.trialActive
+      ? organisationTrialEndLabel(purchase.trialEndsAt)
+      : null;
     return (
       <div className="leading-tight space-y-0.5">
         <div
@@ -463,19 +472,26 @@ function PlanCell({
               : ""}
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          <OptionPill on={purchase.advisory} label="Advisory" />
+          <OptionPill on={!!advisory?.on} trial={!!advisory?.trial} label="Advisory" />
           <OptionPill
-            on={purchase.consolidation}
+            on={!!consolidation?.on}
+            trial={!!consolidation?.trial}
             label="Consolidation"
             offNote={
-              !purchase.advisory
+              !advisory?.on
                 ? "needs Advisory"
                 : consolidationBlocked
                   ? "single client"
                   : undefined
             }
           />
+          <OptionPill on={!!branding?.on} trial={!!branding?.trial} label="Branding" />
         </div>
+        {trialEnd && (
+          <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
+            Trial ends {trialEnd}
+          </div>
+        )}
         <div className="text-xs text-muted-foreground whitespace-nowrap">
           {purchase.billingMode === "external" ? "billed externally" : "billed with bookkeeping"}
         </div>
@@ -484,7 +500,17 @@ function PlanCell({
 }
 
 /** "Advisory on" / "Advisory off", with the reason it cannot be on when there is one. */
-function OptionPill({ on, label, offNote }: { on: boolean; label: string; offNote?: string }) {
+function OptionPill({
+  on,
+  trial,
+  label,
+  offNote,
+}: {
+  on: boolean;
+  trial?: boolean;
+  label: string;
+  offNote?: string;
+}) {
   return (
     <span
       className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
@@ -494,6 +520,7 @@ function OptionPill({ on, label, offNote }: { on: boolean; label: string; offNot
       }`}
     >
       {label} {on ? "on" : "off"}
+      {on && trial ? " · trial" : ""}
       {!on && offNote ? ` · ${offNote}` : ""}
     </span>
   );

@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1620**. Known failures: **0**.
+Rows: **1621**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1196,6 +1196,7 @@ None.
 | xero_error_breakdown() | execute | DENY | pglite | PK 2 path C is platform operations only; an organisation reads its own Xero errors elsewhere |  |
 | set_org_trial(their own organisation) | execute | DENY | pglite | Commercial change — assert_super_admin, same treatment as a comp; an organisation cannot grant itself a trial |  |
 | purchased Advisory keeps its cards with no trial or an expired trial | read | ALLOW | pglite | Effective options = purchased OR unexpired trial — an absent or expired trial can never take away a purchase | Added 16 Sep 2026 at the owner's direction: this is the case that protects an organisation whose Advisory is granted rather than trialled. |
+| trial-only organisation options are available and identified as trialled | read | ALLOW | pglite | Every organisation-option display uses effective state (purchased OR unexpired trial), while preserving the trial marker and end date | Added 17 Sep 2026 after the Organisations row incorrectly described a genuine Advisory and Consolidation trial as both options being off. |
 | an expired trial with nothing purchased shows no Advisory cards, and the ticks survive | read | DENY | pglite | A trial ends at read time with no scheduled job; per-client ticked lists are never rewritten |  |
 | server fn: list clients for an organisation | execute | ALLOW | live | PK 2 path A |  |
 | server fn: write client data | execute | ALLOW | live | PK 2 path A |  |

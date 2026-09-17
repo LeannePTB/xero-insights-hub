@@ -1049,6 +1049,15 @@ export const MATRIX: MatrixRow[] = [
   },
   {
     role: "org_owner",
+    resource: "trial-only organisation options are available and identified as trialled",
+    operation: "read",
+    expect: "allow",
+    rule: "Every organisation-option display uses effective state (purchased OR unexpired trial), while preserving the trial marker and end date",
+    layers: ["pglite"],
+    note: "Added 17 Sep 2026 after the Organisations row incorrectly described a genuine Advisory and Consolidation trial as both options being off.",
+  },
+  {
+    role: "org_owner",
     resource:
       "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive",
     operation: "read",

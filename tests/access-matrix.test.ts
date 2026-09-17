@@ -692,6 +692,50 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return withNoTrial.rows[0]?.ok && withExpiredTrial.rows[0]?.ok ? "allow" : "deny";
   }
+  if (r === "trial-only organisation options are available and identified as trialled") {
+    await db.exec("set local role postgres");
+    await db.exec(`
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, branding_enabled,
+         billing_mode, trial_advisory_enabled, trial_consolidation_enabled,
+         trial_branding_enabled, trial_ends_at)
+      values ('${ORG_A}'::uuid, 10, false, false, false, 'bookkeeping',
+              true, true, false, now() + interval '30 days');
+    `);
+    const result = await db.query<{
+      purchased_advisory: boolean;
+      purchased_consolidation: boolean;
+      trial_advisory: boolean;
+      trial_consolidation: boolean;
+      trial_active: boolean;
+      effective_advisory: boolean;
+      effective_consolidation: boolean;
+      trial_ends_at: string | null;
+    }>(`
+      select purchased_advisory,
+             purchased_consolidation,
+             trial_advisory,
+             trial_consolidation,
+             trial_active,
+             advisory as effective_advisory,
+             consolidation as effective_consolidation,
+             trial_ends_at
+        from app_private.org_effective_options('${ORG_A}'::uuid)
+    `);
+    const state = result.rows[0];
+    return state &&
+      !state.purchased_advisory &&
+      !state.purchased_consolidation &&
+      state.trial_advisory &&
+      state.trial_consolidation &&
+      state.trial_active &&
+      state.effective_advisory &&
+      state.effective_consolidation &&
+      state.trial_ends_at
+      ? "allow"
+      : "deny";
+  }
   if (
     r === "an expired trial with nothing purchased shows no Advisory cards, and the ticks survive"
   ) {
