@@ -638,6 +638,12 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     };
     await db.exec("set local role postgres");
     await db.exec(`
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping');
       delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
       insert into public.client_cards (client_id, cards)
       values ('${CLIENT_A}'::uuid, array['cashflow']);
