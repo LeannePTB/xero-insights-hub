@@ -577,9 +577,8 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     return p.ok ? "allow" : "deny";
   }
   if (r.startsWith("apply_org_card_defaults(")) {
-    await asRole("org_owner", `
-      create unique index if not exists org_card_defaults_firm_key
-        on public.org_card_defaults (firm_id);
+    await db.exec("set local role postgres");
+    await db.exec(`
       insert into public.org_card_defaults (firm_id, cards)
       values ('${ORG_A}'::uuid, array['cashflow'])
       on conflict (firm_id) do update set cards = excluded.cards;
@@ -598,8 +597,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const NEW_TWO = "00000000-0000-4000-8000-00000000cd02";
     await db.exec("set local role postgres");
     await db.exec(`
-      create unique index if not exists org_card_defaults_firm_key
-        on public.org_card_defaults (firm_id);
       delete from public.org_card_defaults where firm_id = '${ORG_A}'::uuid;
       delete from public.clients where id in ('${NEW_ONE}'::uuid, '${NEW_TWO}'::uuid);
       insert into public.clients (id, name, owner_user_id, firm_id)
@@ -641,8 +638,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     };
     await db.exec("set local role postgres");
     await db.exec(`
-      create unique index if not exists org_card_defaults_firm_key
-        on public.org_card_defaults (firm_id);
       delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
       insert into public.client_cards (client_id, cards)
       values ('${CLIENT_A}'::uuid, array['cashflow']);
@@ -651,7 +646,9 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       values ('${ORG_A}'::uuid, array['profit_loss','balance_sheet']);
     `);
     const before = await visible();
-    await asRole("org_owner", "select 1");
+    const owner = CONTEXT["org_owner"];
+    await db.query(`select set_config('request.jwt.claims', $1, true)`, [claims(owner)]);
+    await db.exec(`set local role ${owner.dbRole}`);
     const saved = await probe(
       `select public.set_org_card_defaults('${ORG_A}'::uuid, array['balance_sheet'])`,
     );
@@ -1269,6 +1266,15 @@ beforeAll(async () => {
   // Same fidelity fix: live `session_activity` has a primary key on session_id
   // (verified 15 Sep 2026) and `touch_session_activity` upserts on it.
   await db.exec(`alter table public.session_activity add primary key (session_id);`);
+
+  // Same fidelity fix: live `client_cards` is keyed on client_id and
+  // `org_card_defaults` on firm_id, and the upserts in
+  // app_private.set_client_cards, app_private.seed_client_cards_from_org_default
+  // and public.set_org_card_defaults depend on those keys.
+  await db.exec(`create unique index if not exists client_cards_client_key
+                   on public.client_cards (client_id);`);
+  await db.exec(`create unique index if not exists org_card_defaults_firm_key
+                   on public.org_card_defaults (firm_id);`);
 
   const users = Object.values(U);
   await db.exec(`
