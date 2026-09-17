@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1621**. Known failures: **0**.
+Rows: **1635**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -249,6 +249,8 @@ None.
 | public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
 | record_view_as(their own organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
 | set_org_trial(their own organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
+| set_org_card_defaults(an organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
+| apply_org_card_defaults(an organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 2 (requireAal2) |  |
 | server fn: write client data | execute | DENY | live | PK 2 (requireAal2) |  |
@@ -380,6 +382,8 @@ None.
 | tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
+| set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
 | server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
@@ -1198,6 +1202,10 @@ None.
 | purchased Advisory keeps its cards with no trial or an expired trial | read | ALLOW | pglite | Effective options = purchased OR unexpired trial — an absent or expired trial can never take away a purchase | Added 16 Sep 2026 at the owner's direction: this is the case that protects an organisation whose Advisory is granted rather than trialled. |
 | trial-only organisation options are available and identified as trialled | read | ALLOW | pglite | Every organisation-option display uses effective state (purchased OR unexpired trial), while preserving the trial marker and end date | Added 17 Sep 2026 after the Organisations row incorrectly described a genuine Advisory and Consolidation trial as both options being off. |
 | an expired trial with nothing purchased shows no Advisory cards, and the ticks survive | read | DENY | pglite | A trial ends at read time with no scheduled job; per-client ticked lists are never rewritten |  |
+| a new client starts from the organisation's default card set | read | ALLOW | pglite | The default is a template copied into the new client's own ticked list in the transaction that creates it — never a resolution layer | Added 17 Sep 2026 with organisation card defaults. Proves the AFTER INSERT trigger app_private.seed_client_cards_from_org_default writes the template into public.client_cards for the new client, and that with no template saved the new client gets no row at all, which still means every available card, exactly as before. |
+| changing the default card set does not change an existing client | read | ALLOW | pglite | Resolution is the purchase intersected with the one ticked list stored for that client; the default is not read | Added 17 Sep 2026. The design constraint the owner set: if the default were consulted when resolving a dashboard, the multi-layer model would be back. Proves an existing client's visible cards are byte-identical before and after set_org_card_defaults, and only change when apply_org_card_defaults is deliberately run. |
+| set_org_card_defaults(an organisation) | execute | ALLOW | pglite | PK 2 path A — the organisation's own owner sets its template and may overwrite its own clients' ticks, audited |  |
+| apply_org_card_defaults(an organisation) | execute | ALLOW | pglite | PK 2 path A — the organisation's own owner sets its template and may overwrite its own clients' ticks, audited |  |
 | server fn: list clients for an organisation | execute | ALLOW | live | PK 2 path A |  |
 | server fn: write client data | execute | ALLOW | live | PK 2 path A |  |
 | server fn: invite a member | execute | ALLOW | live | PK 2 path A |  |
@@ -1426,6 +1434,8 @@ None.
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | record_view_as(their own organisation) | execute | DENY | pglite | PK 2 path D — a viewer grant is read-only and never platform operations |  |
 | set_org_trial(the organisation of the client they can see) | execute | DENY | pglite | PK 2 path D — an adviser grant is read-only and never organisation or platform data |  |
+| set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | audit trail row for reading a client's figures | insert | ALLOW | live | PK 8 / Spec §1 — every reader is recorded, not only staff | A client viewer's dashboard read writes the same row with their own user id as the actor. |
 | clients (client added after the grant) | read | DENY | pglite, live | PK section 2 client viewer — a specific grant covers that client only |  |
@@ -1561,6 +1571,8 @@ None.
 | xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | set_org_trial(the organisation they support) | execute | ALLOW | pglite | PK 2 path C — this person is a platform super admin, so the change is plan metadata; the support grant contributes nothing to it | Support grants are only ever held by a Positive Traction super admin, so this row cannot separate the two paths. What it does prove is that the trial function reads and returns no client data, so invariant 5 (support grants are read-only over CLIENT data) is untouched: org_owner and client_viewer above are refused outright. |
+| set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
 | server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | server fn: change organisation or client branding | execute | DENY | live | PK 5 (support grants are READ-ONLY) | branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. The Branding entitlement gate added on top narrows further and never widens: assertClientWriter still runs first. |
@@ -1692,6 +1704,15 @@ None.
 | --- | --- | --- | --- | --- | --- |
 | server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
 
+## Business owner — one specific client (client_access with relationship = 'business_owner', self-service)
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| server fn: getClientOrgTrial for their own client | execute | ALLOW | live | Path E — the business owner may see their client's plan and billing | public.client_org_trial asserts aal2, then returns the organisation's live trial (end date, days remaining, ending-soon flag) only when the caller is an active member of the client's organisation or holds a client_access row with relationship = 'business_owner' for that exact client. Only trial metadata is returned — never purchase detail, never another organisation. |
+| server fn: getClientOrgTrial for a client that is not theirs | execute | DENY | live | PK 4 (a caller-supplied client_id is a FILTER, never a GRANT) | Neither predicate holds — no membership of that organisation and no business_owner row for that client — so the function returns no rows and the banner never renders. |
+
 ## Live smoke-suite test account (confined to ZZ Security Test Org, banned outside a run)
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
@@ -1725,10 +1746,3 @@ None.
 | client_notes | read | ALLOW | pglite | PK 2 — recent recorded activity keeps a long-lived session active, whatever its age |  |
 | assert_aal2() after 90 minutes of continuous use | execute | ALLOW | pglite | PK 2 — an actively used session is never refused as idle |  |
 | touch_session_activity() | execute | ALLOW | pglite | PK 2 — an actively used session keeps recording its own activity, caller-scoped |  |
-
-## Business owner — one specific client (client_access with relationship = 'business_owner', self-service)
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| server fn: getClientOrgTrial for their own client | execute | ALLOW | live | Path E — the business owner may see their client's plan and billing | public.client_org_trial asserts aal2, then returns the organisation's live trial (end date, days remaining, ending-soon flag) only when the caller is an active member of the client's organisation or holds a client_access row with relationship = 'business_owner' for that exact client. Only trial metadata is returned — never purchase detail, never another organisation. |
-| server fn: getClientOrgTrial for a client that is not theirs | execute | DENY | live | PK 4 (a caller-supplied client_id is a FILTER, never a GRANT) | Neither predicate holds — no membership of that organisation and no business_owner row for that client — so the function returns no rows and the banner never renders. |

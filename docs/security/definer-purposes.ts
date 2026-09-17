@@ -304,8 +304,6 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.client_visible_cards":
     "Returns the cards one client shows: aal2 first, then refuses unless the caller already has read access to that client, then intersects the purchase-available set with the client's ticked list. A missing ticked list means all available cards, never none, so a recording fault fails visible rather than blank. Never returns a card the purchase does not allow.",
 
-  "app_private.known_cards":
-    "The full catalogue of card keys the three groups contain, immutable. Used to sanitise a saved default card set so an unknown key can never be stored, and to keep one list of card keys rather than two.",
   "app_private.assert_firm_member_write":
     "Refuses unless the caller is aal2 and either the organisation's owner or an active member of it. Deliberately NOT public.has_firm_access, which also admits a read-only platform support grant, and not super admin alone: writing every client's card ticks is an organisation decision.",
   "app_private.seed_client_cards_from_org_default":
