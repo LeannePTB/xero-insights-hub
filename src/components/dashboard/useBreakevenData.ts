@@ -5,6 +5,7 @@ import { getProfitAndLoss } from "@/lib/xero/reports.functions";
 import { listCostClassifications } from "@/lib/cost-classification.functions";
 import { getExpenseAccounts } from "@/lib/xero/accounts.functions";
 import { buildClassificationResolver } from "@/lib/cost-classification";
+import { breakevenFigures } from "@/components/dashboard/breakeven-figures";
 import {
   clearLegacyRangeStorage,
   toISO,
@@ -141,9 +142,9 @@ export function useBreakevenData({
 
   const months = monthsBetween(fromDate, toDate);
   const totalVariable = cogs + variableOpex;
-  const grossMargin = income > 0 ? (income - totalVariable) / income : 0;
-  const breakevenRevenue = grossMargin > 0 ? fixedOpex / grossMargin : 0;
-  const monthlyIncome = income / months;
+  const figures = breakevenFigures({ income, totalVariable, fixedOpex, months });
+  const { grossMargin, monthlyIncome } = figures;
+  const breakevenRevenue = figures.monthlyBreakeven;
 
   return {
     shouldLoad,
@@ -177,6 +178,8 @@ export function useBreakevenData({
     months,
     totalVariable,
     grossMargin,
+    // Monthly-basis figures: every money row on the card uses these.
+    figures,
     breakevenRevenue,
     monthlyIncome,
   };

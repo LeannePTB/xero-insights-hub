@@ -27,9 +27,10 @@ export function BreakevenWidget({
   // Cost-classification prompts are preparer tooling; clients never see them.
   const { isAdvisor } = useIsAdvisor();
 
-  const operatingResult = s.income - s.totalVariable - s.fixedOpex;
-  const isProfit = operatingResult >= 0;
-  const aboveBreakeven = s.monthlyIncome >= s.breakevenRevenue / s.months;
+  // One basis for the whole card: every money figure is monthly.
+  const f = s.figures;
+  const isProfit = f.monthlyOperatingResult >= 0;
+  const aboveBreakeven = f.aboveBreakeven;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -92,26 +93,26 @@ export function BreakevenWidget({
                 <tbody>
                   {(
                     [
-                      { label: "Total Fixed Costs", value: fmtAUD(s.fixedOpex) },
+                      { label: "Fixed Costs (per month)", value: fmtAUD(f.monthlyFixed) },
                       { label: "Gross Margin %", value: fmtPct(s.grossMargin) },
                       {
                         label: (
                           <>
-                            Break-Even Revenue{" "}
-                            <span className="italic text-muted-foreground">(Fixed Costs ÷ Gross Margin %)</span>
+                            Break-Even Revenue (per month){" "}
+                            <span className="italic text-muted-foreground">(Monthly Fixed Costs ÷ Gross Margin %)</span>
                           </>
                         ),
-                        value: fmtAUD(s.breakevenRevenue),
+                        value: fmtAUD(f.monthlyBreakeven),
                       },
-                      { label: "Monthly Revenue", value: fmtAUD(s.monthlyIncome) },
+                      { label: "Revenue (per month)", value: fmtAUD(f.monthlyIncome) },
                       {
                         label: "Above or Below Break-Even?",
                         value: aboveBreakeven ? "Above" : "Below",
                         tone: aboveBreakeven ? "positive" : "negative",
                       },
                       {
-                        label: isProfit ? "Operating Profit" : "Operating Loss",
-                        value: fmtAUD(operatingResult),
+                        label: isProfit ? "Operating Profit (per month)" : "Operating Loss (per month)",
+                        value: fmtAUD(f.monthlyOperatingResult),
                         tone: isProfit ? "positive" : "negative",
                       },
                     ] as { label: ReactNode; value: ReactNode; tone?: "positive" | "negative" }[]
@@ -142,10 +143,17 @@ export function BreakevenWidget({
               <div className="space-y-4 border-t border-border/60 px-3 py-3 text-xs">
                 <div>
                   <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Formula</p>
-                  <p className="font-mono text-foreground">Break-Even Revenue = Fixed Costs ÷ Gross Margin %</p>
+                  <p className="font-mono text-foreground">Break-Even Revenue (per month) = Monthly Fixed Costs ÷ Gross Margin %</p>
                   <p className="mt-1 font-mono text-muted-foreground">
-                    {fmtAUD(s.breakevenRevenue)} = {fmtAUD(s.fixedOpex)} ÷ {fmtPct(s.grossMargin)}
+                    {fmtAUD(f.monthlyBreakeven)} = {fmtAUD(f.monthlyFixed)} ÷ {fmtPct(s.grossMargin)}
                   </p>
+                  {Math.abs(s.months - 1) > 0.01 && (
+                    <p className="mt-1 text-muted-foreground">
+                      The selected range is {s.months.toFixed(2)} months. Period figures (fixed costs{" "}
+                      {fmtAUD(s.fixedOpex)}) are divided by {s.months.toFixed(2)} to give the monthly basis
+                      shown above.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Gross Margin %</p>
