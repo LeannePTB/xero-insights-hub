@@ -42,8 +42,67 @@ export type RunSummary = {
   passed: number;
   failed: number;
   inconclusive: number;
+  completed: boolean;
+  incompleteReason: string | null;
   probes: ProbeResult[];
 };
+
+export const LIVE_ACCESS_SIGN_IN_COUNTS = {
+  steadyState: 4,
+  firstRunWithTotpEnrollment: 7,
+} as const;
+
+const SIGN_IN_SPACING_MS = 1_000;
+
+export class LiveAccessRunIncompleteError extends Error {
+  readonly reason: string;
+  readonly retryAfterSeconds: number | null;
+
+  constructor(reason: string, retryAfterSeconds: number | null = null) {
+    super(reason);
+    this.name = "LiveAccessRunIncompleteError";
+    this.reason = reason;
+    this.retryAfterSeconds = retryAfterSeconds;
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function authErrorStatus(error: unknown): number | null {
+  const status = (error as { status?: unknown; statusCode?: unknown } | null)?.status ??
+    (error as { statusCode?: unknown } | null)?.statusCode;
+  return typeof status === "number" ? status : null;
+}
+
+function authErrorMessage(error: unknown): string {
+  return String((error as { message?: unknown } | null)?.message ?? error ?? "unknown auth error");
+}
+
+function throwIfAuthRateLimited(error: unknown, stage: string): never {
+  const status = authErrorStatus(error);
+  const message = authErrorMessage(error);
+  if (status === 429 || /rate.?limit|too many requests/i.test(message)) {
+    throw new LiveAccessRunIncompleteError(
+      `INCONCLUSIVE — run did not complete: authentication rate limit while ${stage}.`,
+    );
+  }
+  throw new Error(`Test sign-in failed while ${stage}: ${message}`);
+}
+
+export function classifyLiveAccessHttpFailure(status: number, text: string): { incomplete: boolean; message: string } {
+  if (status === 429) {
+    return {
+      incomplete: true,
+      message: `live access tests: INCONCLUSIVE — run did not complete (429 rate limited). ${text.slice(0, 300)}`,
+    };
+  }
+  return {
+    incomplete: false,
+    message: `live access tests: FAILED to trigger (${status}) ${text.slice(0, 300)}`,
+  };
+}
 
 const LABELS = ["owner", "staff", "viewer"] as const;
 type Label = (typeof LABELS)[number];
@@ -242,11 +301,12 @@ async function ensureTotp(account: Account): Promise<Account> {
   const { totpCode } = await import("@/lib/totp.server");
 
   const client = await browserLikeClient();
+  await sleep(SIGN_IN_SPACING_MS);
   const signIn = await client.auth.signInWithPassword({
     email: account.email,
     password: account.password,
   });
-  if (signIn.error) throw new Error(`Test sign-in failed for ${account.label}: ${signIn.error.message}`);
+  if (signIn.error) throwIfAuthRateLimited(signIn.error, `enrolling TOTP for ${account.label}`);
 
   const enrol = await client.auth.mfa.enroll({ factorType: "totp" });
   if (enrol.error || !enrol.data) throw new Error(`TOTP enrol failed: ${enrol.error?.message}`);
@@ -279,12 +339,14 @@ async function ensureTotp(account: Account): Promise<Account> {
 async function openSession(account: Account, stepUp: boolean): Promise<Session> {
   const { totpCode } = await import("@/lib/totp.server");
   const client = await browserLikeClient();
+  await sleep(SIGN_IN_SPACING_MS);
   const signIn = await client.auth.signInWithPassword({
     email: account.email,
     password: account.password,
   });
-  if (signIn.error || !signIn.data.session) {
-    throw new Error(`Test sign-in failed for ${account.label}: ${signIn.error?.message}`);
+  if (signIn.error) throwIfAuthRateLimited(signIn.error, `opening ${account.label} ${stepUp ? "aal2" : "aal1"} session`);
+  if (!signIn.data.session) {
+    throw new Error(`Test sign-in failed for ${account.label}: no session returned`);
   }
   if (!stepUp) {
     return {
@@ -408,6 +470,12 @@ async function callServerFn(
       return { outcome: "allow", detail: `${res.status}`, body: text };
     // A 2xx without the serialised envelope is not a server-function result.
     return { outcome: "inconclusive", detail: `${res.status} without a server-function payload` };
+  }
+  if (res.status === 429) {
+    return {
+      outcome: "inconclusive",
+      detail: `429 rate limited — run did not complete this probe: ${text.slice(0, 120)}`,
+    };
   }
   if (res.status === 401 || res.status === 403) return { outcome: "deny", detail: `${res.status}` };
   if (res.status >= 400 && res.status < 500) {
@@ -578,7 +646,8 @@ async function runProbes(
 
   const ownerAal2 = await openSession(owner, true);
   // The single most valuable thing the copy cannot prove: the SAME person,
-  // signed in, who skipped the second factor.
+  // signed in, who skipped the second factor. Sessions are opened once and
+  // reused across assertions; the suite never signs in per assertion.
   const ownerAal1 = await openSession(owner, false);
   const staffAal2 = await openSession(staff, true);
   const viewerAal2 = await openSession(viewer, true);
@@ -833,6 +902,8 @@ export async function runLiveAccessTests(ranBy: string | null): Promise<RunSumma
   await setRunState(false, null);
 
   let probes: ProbeResult[] = [];
+  let completed = true;
+  let incompleteReason: string | null = null;
   try {
     let accounts = await loadOrCreateAccounts();
     await setRunState(true, runId);
@@ -848,6 +919,21 @@ export async function runLiveAccessTests(ranBy: string | null): Promise<RunSumma
     // Membership and grants are put back exactly as the suite expects to find
     // them next time; nothing outside the test organisation is touched.
     await ensureTestOrganisation(accounts);
+  } catch (e) {
+    if (!(e instanceof LiveAccessRunIncompleteError)) throw e;
+    completed = false;
+    incompleteReason = e.reason;
+    probes = [
+      {
+        role: "security_test_account",
+        resource: "live access smoke suite",
+        operation: "execute",
+        expected: "allow",
+        observed: "inconclusive",
+        passed: false,
+        detail: e.reason,
+      },
+    ];
   } finally {
     await banAll();
     await setRunState(false, null);
@@ -855,7 +941,7 @@ export async function runLiveAccessTests(ranBy: string | null): Promise<RunSumma
 
   const passed = probes.filter((p) => p.passed).length;
   const inconclusive = probes.filter((p) => p.observed === "inconclusive").length;
-  const failed = probes.length - passed;
+  const failed = completed ? probes.filter((p) => !p.passed && p.observed !== "inconclusive").length : 0;
 
   // Recorded with the service role. public.record_access_test_run() is aal2 +
   // super-admin guarded, which is right for a browser session but cannot be
@@ -867,10 +953,16 @@ export async function runLiveAccessTests(ranBy: string | null): Promise<RunSumma
     passed,
     failed,
     known_failures: [],
-    fingerprint_match: true,
-    details: probes,
+    fingerprint_match: completed,
+    details: {
+      completed,
+      incompleteReason,
+      steady_state_sign_ins: LIVE_ACCESS_SIGN_IN_COUNTS.steadyState,
+      first_run_sign_ins: LIVE_ACCESS_SIGN_IN_COUNTS.firstRunWithTotpEnrollment,
+      probes,
+    },
   });
   if (recErr) console.error("[live-access-tests] could not record the run:", recErr.message);
 
-  return { runId, passed, failed, inconclusive, probes };
+  return { runId, passed, failed, inconclusive, completed, incompleteReason, probes };
 }
