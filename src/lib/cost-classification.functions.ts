@@ -83,8 +83,9 @@ export const setCostClassificationEnabled = createServerFn({ method: "POST" })
   });
 
 /**
- * Remove stored tags. Used to clear stale rows whose account no longer exists
- * in Xero — the panel surfaces them rather than orphaning them silently.
+ * Remove stored tags. Used both to return an active account to Unclassified and
+ * to clear stale rows whose account no longer exists in Xero. "Unclassified"
+ * is therefore absence of a row, never a value stored in `classification`.
  */
 export const removeCostClassifications = createServerFn({ method: "POST" })
   .middleware([requireAal2])
