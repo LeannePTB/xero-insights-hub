@@ -169,3 +169,13 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Inspected every trigger and foreign key on the four consolidation tables: nothing on the consolidation-off path deletes, cascades into or nulls any of them.
 - [x] Permanent matrix row proves, on every check, that toggling Consolidation off and on leaves all consolidation working data unchanged and restores the card and ticks.
 - [x] DRTABT confirmed on a genuine trial: purchased flags off, trial flags on, ends 30 Nov 2026, audited with a reason; 9 clients, 162 ticked cards, 18 of 18 visible each, consolidation counts 56/9/1/1 untouched.
+
+## Organisation default cards (17 Sep 2026)
+
+- [x] `public.org_card_defaults` holds one template per organisation. It is a TEMPLATE APPLIED AT CLIENT CREATION, not a layer: `app_private.seed_client_cards_from_org_default` (AFTER INSERT on `clients`) copies it into the new client's own ticked list in the same transaction. No template saved means no row, which still means every purchase-available card, exactly as before.
+- [x] Resolution is unchanged: `app_private.client_cards_v2` is still the purchase intersected with the one ticked list stored for that client. The default is never read when resolving a dashboard.
+- [x] `set_org_card_defaults` (save, changes no client) and `apply_org_card_defaults` (deliberately overwrites every client's ticks) both require aal2 + active membership of that organisation via `app_private.assert_firm_member_write` — not `has_firm_access`, which admits read-only support grants — and each writes its own audit row; the apply records how many clients changed.
+- [x] "Default cards for new clients" panel on the organisation admin page, under "What this organisation has bought": ticks limited to what the purchase allows, plain wording that it applies from now on, and an apply action behind a confirmation naming the exact client count and that current ticks are replaced.
+- [x] One rule for switching an option on: `set_org_purchase` ticks the newly enabled group's cards for every client AND adds them to the template, so a new client added afterwards starts with them too.
+- [x] `firms.default_widgets` retired: its only readers (`getFirmPlanSummary`, `saveFirmDefaultWidgets`) and `public.set_firm_default_widgets` are gone. The column is left in place, empty, as rollback data — there is no second dormant default.
+- [x] Two permanent matrix proofs: a new client starts from the organisation default; changing the default leaves an existing client's visible cards unchanged. Plus authorisation rows refusing support grants, other-organisation members, advisers, business owners and aal1.
