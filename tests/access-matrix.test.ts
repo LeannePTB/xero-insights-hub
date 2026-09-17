@@ -670,6 +670,86 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     }
     return "allow";
   }
+  if (
+    r === "an organisation created with Advisory off cannot reach Advisory cards by any route"
+  ) {
+    // Creation captures the purchase, so an organisation created with Advisory
+    // off has no Advisory cards. A tick is not a grant: even with an Advisory
+    // key in the client's ticked list, nothing resolves.
+    await db.exec("set local role postgres");
+    const adv = await db.query<{ cards: string[] }>(
+      `select app_private.card_group_cards('advisory') as cards`,
+    );
+    const advisoryCards = adv.rows[0]?.cards ?? [];
+    const advList = advisoryCards.map((c) => `'${c}'`).join(",");
+    await db.exec(`
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, false, false, 'bookkeeping');
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards)
+      values ('${CLIENT_A}'::uuid, array[${advList}]::text[] || array['cashflow']);
+    `);
+    const res = await db.query<{ visible: string[]; available: string[] }>(`
+      select app_private.client_cards_v2('${CLIENT_A}'::uuid) as visible,
+             (select array_agg(card) from public.client_available_cards('${CLIENT_A}'::uuid) as card) as available
+    `);
+    const visible = res.rows[0]?.visible ?? [];
+    const available = res.rows[0]?.available ?? [];
+    const leaked = advisoryCards.filter(
+      (c) => visible.includes(c) || (available ?? []).includes(c),
+    );
+    console.log(
+      `  Advisory off — advisory cards ticked [${advisoryCards.join(",")}], resolved [${visible.join(",")}], available [${(available ?? []).join(",")}]`,
+    );
+    if (leaked.length) {
+      throw new Error(`Advisory cards reachable with Advisory off: [${leaked.join(",")}]`);
+    }
+    return "deny";
+  }
+  if (
+    r ===
+    "an organisation created with Advisory on and cards unticked has those cards available but off"
+  ) {
+    // Unticking is a preference, not a refund: the card stays bought and
+    // available so it can be switched back on, it is simply not shown.
+    await db.exec("set local role postgres");
+    const adv = await db.query<{ cards: string[] }>(
+      `select app_private.card_group_cards('advisory') as cards`,
+    );
+    const advisoryCards = adv.rows[0]?.cards ?? [];
+    await db.exec(`
+      create unique index if not exists org_subscription_options_firm_key
+        on public.org_subscription_options (firm_id);
+      delete from public.org_subscription_options where firm_id = '${ORG_A}'::uuid;
+      insert into public.org_subscription_options
+        (firm_id, client_limit, advisory_enabled, consolidation_enabled, billing_mode)
+      values ('${ORG_A}'::uuid, 10, true, false, 'bookkeeping');
+      delete from public.client_cards where client_id = '${CLIENT_A}'::uuid;
+      insert into public.client_cards (client_id, cards) values ('${CLIENT_A}'::uuid, array['cashflow']);
+    `);
+    const res = await db.query<{ visible: string[]; available: string[] }>(`
+      select app_private.client_cards_v2('${CLIENT_A}'::uuid) as visible,
+             (select array_agg(card) from public.client_available_cards('${CLIENT_A}'::uuid) as card) as available
+    `);
+    const visible = res.rows[0]?.visible ?? [];
+    const available = res.rows[0]?.available ?? [];
+    const missing = advisoryCards.filter((c) => !(available ?? []).includes(c));
+    const shown = advisoryCards.filter((c) => visible.includes(c));
+    console.log(
+      `  Advisory on, cards unticked — available [${(available ?? []).join(",")}], resolved [${visible.join(",")}]`,
+    );
+    if (missing.length) {
+      throw new Error(`Unticking must not remove what was bought: missing [${missing.join(",")}]`);
+    }
+    if (shown.length) {
+      throw new Error(`Unticked cards must not resolve: [${shown.join(",")}]`);
+    }
+    return "allow";
+  }
   if (r === "toggling Consolidation off and on preserves all consolidation working data") {
     // The owner's biggest concern: does switching Consolidation off destroy the
     // consolidation work? Counts the four working-data tables before, during and
