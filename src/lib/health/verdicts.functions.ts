@@ -19,7 +19,7 @@ export const listClientVerdicts = createServerFn({ method: "POST" })
     const clientIds = Array.from(new Set(data.clientIds ?? [])).slice(0, 500);
     if (!clientIds.length) return { verdicts: {} };
 
-    const { REQUIRED_REPORT_KEYS } = await import("./rule-thresholds");
+    const { VERDICT_REPORT_KEYS } = await import("./rule-thresholds");
     const { evaluateClient } = await import("./rules.server");
 
     // One query. With `firmId` supplied this uses xero_snapshots_firm_report_idx
@@ -29,7 +29,7 @@ export const listClientVerdicts = createServerFn({ method: "POST" })
       .select(
         "client_id, tenant_id, report_key, payload, payload_version, as_at, fetched_at, complete",
       )
-      .in("report_key", REQUIRED_REPORT_KEYS as unknown as string[])
+      .in("report_key", VERDICT_REPORT_KEYS as unknown as string[])
       .in("client_id", clientIds);
     if (data.firmId) q = q.eq("firm_id", data.firmId);
     const { data: rows, error } = await q;
