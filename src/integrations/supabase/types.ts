@@ -1404,6 +1404,42 @@ export type Database = {
         }
         Relationships: []
       }
+      org_card_defaults: {
+        Row: {
+          cards: string[]
+          created_at: string
+          firm_id: string
+          updated_at: string
+        }
+        Insert: {
+          cards?: string[]
+          created_at?: string
+          firm_id: string
+          updated_at?: string
+        }
+        Update: {
+          cards?: string[]
+          created_at?: string
+          firm_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_card_defaults_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "org_card_defaults_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       org_subscription_options: {
         Row: {
           advisory_enabled: boolean
@@ -2919,6 +2955,7 @@ export type Database = {
         Args: { _make: boolean; _user_id: string }
         Returns: boolean
       }
+      apply_org_card_defaults: { Args: { _firm_id: string }; Returns: number }
       apply_viewer_invite: {
         Args: { _invite_id: string; _user_id: string }
         Returns: Json
@@ -3286,6 +3323,14 @@ export type Database = {
         }[]
       }
       org_addon_widgets: { Args: never; Returns: string[] }
+      org_card_defaults: {
+        Args: { _firm_id: string }
+        Returns: {
+          cards: string[]
+          configured: boolean
+          firm_id: string
+        }[]
+      }
       org_purchase: {
         Args: { _firm_id: string }
         Returns: {
@@ -3455,16 +3500,16 @@ export type Database = {
         Args: { _firm_id: string; _reason: string; _value: boolean }
         Returns: boolean
       }
-      set_firm_default_widgets: {
-        Args: { _firm_id: string; _widgets: string[] }
-        Returns: number
-      }
       set_firm_viewer_tier: {
         Args: {
           _id: string
           _tier: Database["public"]["Enums"]["dashboard_tier"]
         }
         Returns: undefined
+      }
+      set_org_card_defaults: {
+        Args: { _cards: string[]; _firm_id: string }
+        Returns: string[]
       }
       set_org_purchase: {
         Args: {
