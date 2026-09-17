@@ -695,7 +695,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     `);
     const res = await db.query<{ visible: string[]; available: string[] }>(`
       select app_private.client_cards_v2('${CLIENT_A}'::uuid) as visible,
-             (select array_agg(card) from public.client_available_cards('${CLIENT_A}'::uuid) as card) as available
+             app_private.client_available_cards('${CLIENT_A}'::uuid) as available
     `);
     const visible = res.rows[0]?.visible ?? [];
     const available = res.rows[0]?.available ?? [];
@@ -733,7 +733,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     `);
     const res = await db.query<{ visible: string[]; available: string[] }>(`
       select app_private.client_cards_v2('${CLIENT_A}'::uuid) as visible,
-             (select array_agg(card) from public.client_available_cards('${CLIENT_A}'::uuid) as card) as available
+             app_private.client_available_cards('${CLIENT_A}'::uuid) as available
     `);
     const visible = res.rows[0]?.visible ?? [];
     const available = res.rows[0]?.available ?? [];
