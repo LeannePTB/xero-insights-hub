@@ -339,3 +339,77 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
     }
     return { trialEndsAt: (ends as string | null) ?? null };
   });
+
+/**
+ * Organisation card defaults — the TEMPLATE new clients start from.
+ *
+ * This is not a resolution layer. Nothing here is read when a dashboard is
+ * resolved: `app_private.client_cards_v2` is still the purchase intersected
+ * with the one ticked list stored for that client. The template is copied into
+ * that list once, by a database trigger, in the same transaction that creates
+ * the client.
+ *
+ *   public.org_card_defaults(firm)        read the template
+ *   public.set_org_card_defaults(...)     active membership only, audited
+ *   public.apply_org_card_defaults(firm)  overwrites every client, audited
+ */
+export const getOrgCardDefaults = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { firmId: string }) => {
+    if (!i?.firmId) throw new Error("firmId is required");
+    return { firmId: i.firmId };
+  })
+  .handler(async ({ data, context }) => {
+    const db: any = context.supabase;
+    const { data: rows, error } = await db.rpc("org_card_defaults", { _firm_id: data.firmId });
+    if (error) {
+      if (/NO_ACCESS/.test(error.message)) throw new Error("Forbidden");
+      throw rpcError(error.message);
+    }
+    const r = (rows ?? [])[0];
+    return {
+      cards: ((r?.cards ?? []) as string[]) ?? [],
+      configured: !!r?.configured,
+    };
+  });
+
+export const saveOrgCardDefaults = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { firmId: string; cards: string[] }) => {
+    if (!i?.firmId) throw new Error("firmId is required");
+    const cards = Array.from(new Set((i.cards ?? []).filter((c) => typeof c === "string" && c)));
+    if (cards.length > 100) throw new Error("Too many cards in one default.");
+    return { firmId: i.firmId, cards };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: saved, error } = await (context.supabase as any).rpc("set_org_card_defaults", {
+      _firm_id: data.firmId,
+      _cards: data.cards,
+    });
+    if (error) {
+      if (/NO_ACCESS|Forbidden|insufficient/i.test(error.message)) throw new Error("Forbidden");
+      if (/NO_SUCH_ORGANISATION/.test(error.message)) throw new Error("Organisation not found");
+      throw rpcError(error.message);
+    }
+    return { cards: (saved ?? []) as string[] };
+  });
+
+export const applyOrgCardDefaults = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: { firmId: string }) => {
+    if (!i?.firmId) throw new Error("firmId is required");
+    return { firmId: i.firmId };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: n, error } = await (context.supabase as any).rpc("apply_org_card_defaults", {
+      _firm_id: data.firmId,
+    });
+    if (error) {
+      if (/NO_DEFAULT_SET/.test(error.message)) {
+        throw new Error("Save the default card set first.");
+      }
+      if (/NO_ACCESS|Forbidden|insufficient/i.test(error.message)) throw new Error("Forbidden");
+      throw rpcError(error.message);
+    }
+    return { clientsChanged: Number(n ?? 0) };
+  });
