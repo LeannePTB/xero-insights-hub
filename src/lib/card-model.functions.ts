@@ -368,7 +368,7 @@ export const getOrgCardDefaults = createServerFn({ method: "POST" })
     }
     const r = (rows ?? [])[0];
     return {
-      cards: ((r?.cards ?? []) as string[]) ?? [],
+      cards: (r?.cards ?? []) as string[],
       configured: !!r?.configured,
     };
   });
