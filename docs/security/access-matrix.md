@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1635**. Known failures: **0**.
+Rows: **1637**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1204,6 +1204,8 @@ None.
 | an expired trial with nothing purchased shows no Advisory cards, and the ticks survive | read | DENY | pglite | A trial ends at read time with no scheduled job; per-client ticked lists are never rewritten |  |
 | a new client starts from the organisation's default card set | read | ALLOW | pglite | The default is a template copied into the new client's own ticked list in the transaction that creates it — never a resolution layer | Added 17 Sep 2026 with organisation card defaults. Proves the AFTER INSERT trigger app_private.seed_client_cards_from_org_default writes the template into public.client_cards for the new client, and that with no template saved the new client gets no row at all, which still means every available card, exactly as before. |
 | changing the default card set does not change an existing client | read | ALLOW | pglite | Resolution is the purchase intersected with the one ticked list stored for that client; the default is not read | Added 17 Sep 2026. The design constraint the owner set: if the default were consulted when resolving a dashboard, the multi-layer model would be back. Proves an existing client's visible cards are byte-identical before and after set_org_card_defaults, and only change when apply_org_card_defaults is deliberately run. |
+| an organisation created with Advisory off cannot reach Advisory cards by any route | read | DENY | pglite | Resolution is the purchase intersected with the client's ticked list; a tick for a card the organisation has not bought grants nothing | Added 17 Sep 2026 with the creation flow. Creation captures the purchase through set_org_purchase, so an organisation created with Advisory off has no Advisory cards available and none visible, even with an Advisory key sitting in the client's ticked list. |
+| an organisation created with Advisory on and cards unticked has those cards available but off | read | ALLOW | pglite | Card preferences are not a purchase: unticking a card leaves it bought and available, simply not shown | Added 17 Sep 2026 with the creation flow. Proves the unticked Advisory cards stay in client_available_cards (so they can be turned back on) while being absent from the resolved dashboard. |
 | set_org_card_defaults(an organisation) | execute | ALLOW | pglite | PK 2 path A — the organisation's own owner sets its template and may overwrite its own clients' ticks, audited |  |
 | apply_org_card_defaults(an organisation) | execute | ALLOW | pglite | PK 2 path A — the organisation's own owner sets its template and may overwrite its own clients' ticks, audited |  |
 | server fn: list clients for an organisation | execute | ALLOW | live | PK 2 path A |  |
