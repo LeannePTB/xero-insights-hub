@@ -161,9 +161,13 @@ function SecurityDocsPage() {
     mutationFn: () => runTestsFn(),
     onSuccess: async (r) => {
       await qc.invalidateQueries({ queryKey: ["security-checks"] });
-      if (r.failed === 0) {
+      if (!r.completed || r.inconclusive > 0) {
+        toast.warning(
+          `Access tests inconclusive — the run did not complete. ${r.incompleteReason ?? `${r.inconclusive} probe(s) were inconclusive.`}`,
+        );
+      } else if (r.failed === 0) {
         toast.success(
-          `Access tests passed: ${r.passed} checked${r.inconclusive ? `, ${r.inconclusive} inconclusive` : ""}.`,
+          `Access tests passed: ${r.passed} checked.`,
         );
       } else {
         toast.error(

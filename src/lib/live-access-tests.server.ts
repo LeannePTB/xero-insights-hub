@@ -26,6 +26,7 @@
 
 import { randomBytes } from "crypto";
 import { MATRIX, type Expect, type Operation, type Role } from "../../docs/security/access-matrix";
+import { LIVE_ACCESS_SIGN_IN_COUNTS } from "./live-access-test-status";
 
 export type ProbeResult = {
   role: Role;
@@ -47,12 +48,8 @@ export type RunSummary = {
   probes: ProbeResult[];
 };
 
-export const LIVE_ACCESS_SIGN_IN_COUNTS = {
-  steadyState: 4,
-  firstRunWithTotpEnrollment: 7,
-} as const;
-
 const SIGN_IN_SPACING_MS = 1_000;
+const STALE_RUN_MS = 15 * 60 * 1_000;
 
 export class LiveAccessRunIncompleteError extends Error {
   readonly reason: string;
@@ -89,19 +86,6 @@ function throwIfAuthRateLimited(error: unknown, stage: string): never {
     );
   }
   throw new Error(`Test sign-in failed while ${stage}: ${message}`);
-}
-
-export function classifyLiveAccessHttpFailure(status: number, text: string): { incomplete: boolean; message: string } {
-  if (status === 429) {
-    return {
-      incomplete: true,
-      message: `live access tests: INCONCLUSIVE — run did not complete (429 rate limited). ${text.slice(0, 300)}`,
-    };
-  }
-  return {
-    incomplete: false,
-    message: `live access tests: FAILED to trigger (${status}) ${text.slice(0, 300)}`,
-  };
 }
 
 const LABELS = ["owner", "staff", "viewer"] as const;
@@ -309,17 +293,26 @@ async function ensureTotp(account: Account): Promise<Account> {
   if (signIn.error) throwIfAuthRateLimited(signIn.error, `enrolling TOTP for ${account.label}`);
 
   const enrol = await client.auth.mfa.enroll({ factorType: "totp" });
+  if (enrol.error && authErrorStatus(enrol.error) === 429) {
+    throwIfAuthRateLimited(enrol.error, `enrolling TOTP for ${account.label}`);
+  }
   if (enrol.error || !enrol.data) throw new Error(`TOTP enrol failed: ${enrol.error?.message}`);
   const secret = (enrol.data as any).totp.secret as string;
   const factorId = (enrol.data as any).id as string;
 
   const challenge = await client.auth.mfa.challenge({ factorId });
+  if (challenge.error && authErrorStatus(challenge.error) === 429) {
+    throwIfAuthRateLimited(challenge.error, `challenging TOTP for ${account.label}`);
+  }
   if (challenge.error) throw new Error(`TOTP challenge failed: ${challenge.error.message}`);
   const verify = await client.auth.mfa.verify({
     factorId,
     challengeId: challenge.data.id,
     code: totpCode(secret),
   });
+  if (verify.error && authErrorStatus(verify.error) === 429) {
+    throwIfAuthRateLimited(verify.error, `verifying TOTP for ${account.label}`);
+  }
   if (verify.error) throw new Error(`TOTP verify failed: ${verify.error.message}`);
 
   await supabaseAdmin
@@ -360,12 +353,18 @@ async function openSession(account: Account, stepUp: boolean): Promise<Session> 
     factors.data?.totp?.[0]?.id ?? (factors.data as any)?.all?.find((f: any) => f.status === "verified")?.id;
   if (!factorId) throw new Error(`No verified factor for ${account.label}`);
   const challenge = await client.auth.mfa.challenge({ factorId });
+  if (challenge.error && authErrorStatus(challenge.error) === 429) {
+    throwIfAuthRateLimited(challenge.error, `challenging ${account.label} TOTP`);
+  }
   if (challenge.error) throw new Error(`Challenge failed: ${challenge.error.message}`);
   const verify = await client.auth.mfa.verify({
     factorId,
     challengeId: challenge.data.id,
     code: totpCode(account.totpSecret!),
   });
+  if (verify.error && authErrorStatus(verify.error) === 429) {
+    throwIfAuthRateLimited(verify.error, `verifying ${account.label} TOTP`);
+  }
   if (verify.error || !verify.data) throw new Error(`Verify failed: ${verify.error?.message}`);
   return {
     accessToken: verify.data.access_token,
@@ -411,8 +410,8 @@ function serialisedErrorMessage(text: string): string | null {
  * SEROVAL-serialised `{ data }` envelope — not plain JSON. Plain JSON is what
  * produced "Seroval Error (step: 3)" on every probe.
  *
- * Classification: a serialised error payload (any status) is a refusal; 2xx
- * with a result is allow; 401/403 and other 4xx are deny. A 5xx without a
+ * Classification: a serialised error payload (except a 429) is a refusal; 2xx
+ * with a result is allow; 401/403 and other 4xx are deny. A 429, 5xx without a
  * readable payload, or anything unparseable, is INCONCLUSIVE and never a pass.
  */
 async function callServerFn(
@@ -462,6 +461,12 @@ async function callServerFn(
   }
 
   const text = (await res.text()).slice(0, 2000);
+  if (res.status === 429) {
+    return {
+      outcome: "inconclusive",
+      detail: `429 rate limited — run did not complete this probe: ${text.slice(0, 120)}`,
+    };
+  }
   const errMessage = serialisedErrorMessage(text);
   if (errMessage) return { outcome: "deny", detail: `${res.status}: ${errMessage.slice(0, 160)}` };
 
@@ -470,12 +475,6 @@ async function callServerFn(
       return { outcome: "allow", detail: `${res.status}`, body: text };
     // A 2xx without the serialised envelope is not a server-function result.
     return { outcome: "inconclusive", detail: `${res.status} without a server-function payload` };
-  }
-  if (res.status === 429) {
-    return {
-      outcome: "inconclusive",
-      detail: `429 rate limited — run did not complete this probe: ${text.slice(0, 120)}`,
-    };
   }
   if (res.status === 401 || res.status === 403) return { outcome: "deny", detail: `${res.status}` };
   if (res.status >= 400 && res.status < 500) {
@@ -875,18 +874,42 @@ async function unbanAll(): Promise<void> {
   }
 }
 
-async function setRunState(running: boolean, runId: string | null): Promise<void> {
+async function claimRun(runId: string): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  await supabaseAdmin.from("security_test_run_state" as any).upsert(
-    {
-      id: true,
-      running,
+  const staleBefore = new Date(Date.now() - STALE_RUN_MS).toISOString();
+  await supabaseAdmin
+    .from("security_test_run_state" as any)
+    .update({ running: false, run_id: null, started_at: null, updated_at: new Date().toISOString() })
+    .eq("id", true)
+    .eq("running", true)
+    .lt("updated_at", staleBefore);
+  const { data, error } = await supabaseAdmin
+    .from("security_test_run_state" as any)
+    .update({
+      running: true,
       run_id: runId,
-      started_at: running ? new Date().toISOString() : null,
+      started_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    },
-    { onConflict: "id" },
-  );
+    })
+    .eq("id", true)
+    .eq("running", false)
+    .select("run_id")
+    .maybeSingle();
+  if (error) throw new Error(`Could not claim live access-test run: ${error.message}`);
+  if (!data) {
+    throw new LiveAccessRunIncompleteError(
+      "INCONCLUSIVE — run did not complete: another live access-test run is already active.",
+    );
+  }
+}
+
+async function releaseRun(runId: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin
+    .from("security_test_run_state" as any)
+    .update({ running: false, run_id: null, started_at: null, updated_at: new Date().toISOString() })
+    .eq("id", true)
+    .eq("run_id", runId);
 }
 
 /**
@@ -897,16 +920,18 @@ export async function runLiveAccessTests(ranBy: string | null): Promise<RunSumma
   const runId = crypto.randomUUID();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  // 1. sweep — whatever happened last time, the accounts start banned.
-  await banAll();
-  await setRunState(false, null);
-
   let probes: ProbeResult[] = [];
   let completed = true;
   let incompleteReason: string | null = null;
+  let claimed = false;
   try {
+    // The database row serialises runs across server instances. A stale claim
+    // older than 15 minutes is recoverable; an active claim is inconclusive.
+    await claimRun(runId);
+    claimed = true;
+    // Whatever happened before a stale claim, accounts start banned.
+    await banAll();
     let accounts = await loadOrCreateAccounts();
-    await setRunState(true, runId);
     await unbanAll();
 
     const withFactors: Account[] = [];
@@ -935,8 +960,10 @@ export async function runLiveAccessTests(ranBy: string | null): Promise<RunSumma
       },
     ];
   } finally {
-    await banAll();
-    await setRunState(false, null);
+    if (claimed) {
+      await banAll();
+      await releaseRun(runId);
+    }
   }
 
   const passed = probes.filter((p) => p.passed).length;

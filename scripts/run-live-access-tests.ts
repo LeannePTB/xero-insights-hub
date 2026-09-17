@@ -13,6 +13,8 @@
  *   SECURITY_TEST_BASE_URL        optional; defaults to the published site
  */
 
+import { classifyLiveAccessHttpFailure } from "../src/lib/live-access-test-status";
+
 const secret = process.env["SECURITY_TEST_TRIGGER_SECRET"];
 const base =
   process.env["SECURITY_TEST_BASE_URL"] ??
@@ -33,14 +35,9 @@ const res = await fetch(`${base.replace(/\/+$/, "")}/api/public/security/run-acc
 
 const text = await res.text();
 if (!res.ok) {
-  if (res.status === 429) {
-    console.error(
-      `live access tests: INCONCLUSIVE — run did not complete (429 rate limited). ${text.slice(0, 300)}`,
-    );
-    process.exit(2);
-  }
-  console.error(`live access tests: FAILED to trigger (${res.status}) ${text.slice(0, 300)}`);
-  process.exit(1);
+  const outcome = classifyLiveAccessHttpFailure(res.status, text);
+  console.error(outcome.message);
+  process.exit(outcome.incomplete ? 2 : 1);
 }
 
 const body = JSON.parse(text) as {
