@@ -23,11 +23,12 @@ export type ReconcilePeriod = {
 export type ResidueKind =
   /** The named periods add up to the balance exactly. */
   | "none"
-  /** Every saved period is already counted and the balance is still larger:
-   *  the difference was withheld/accrued after the last saved pay run. */
+  /** The balance is larger than the pay runs saved up to their own date can
+   *  explain, and the balance was read later than those runs were saved: the
+   *  difference is withheld/accrued since the last saved pay run. */
   | "since_last_pay_run"
-  /** The balance falls between period boundaries — a part payment, a manual
-   *  journal, or an adjustment. No period-by-period split can be claimed. */
+  /** Same vintage on both sides, so the difference is not staleness — a part
+   *  payment, a manual journal or an adjustment. No split can be claimed. */
   | "unmatched";
 
 export type Reconciliation = {
