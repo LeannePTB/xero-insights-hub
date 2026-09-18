@@ -132,7 +132,19 @@ export async function loadPayRuns(opts: {
     reportKey: PAYROLL_PAYRUNS_REPORT_KEY,
   });
   if (hit?.payload && typeof hit.payload === "object" && "status" in hit.payload) {
-    return { ...(hit.payload as PayrollPayRuns), fromSnapshot: true, fetchedAt: hit.source.fetchedAt };
+    const payload = hit.payload as PayrollPayRuns;
+    return {
+      ...payload,
+      fromSnapshot: true,
+      fetchedAt: hit.source.fetchedAt,
+      // A truncated pay-run pull is stored with complete = false. Carry that
+      // through rather than letting each caller assume completeness.
+      snapshotSource: {
+        ...hit.source,
+        complete:
+          hit.source.complete && !(payload.status === "available" && payload.truncated === true),
+      },
+    };
   }
   const conn = opts.conn ?? (await (await import("./api.server")).getConnectionByTenant(opts.tenantId));
   return { ...(await fetchPayRuns(conn, "registered")), fromSnapshot: false };
