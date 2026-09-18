@@ -468,37 +468,57 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
     const monthKeys: string[] = [];
     for (let i = 0; i < wanted; i++) monthKeys.push(startOfMonth(addMonths(thisMonth, -i)));
 
+    // COMPARE LIKE WITH LIKE. The balance is read live; the saved pay-run list
+    // only knows about runs up to its own as-at date. A run posted after that
+    // is in the balance and not in the list, so it is excluded from the monthly
+    // figures here and reported as a residue below — never absorbed by
+    // stretching the match back to an older month.
+    const payRunsAsAt = runs.snapshotSource?.asAt ?? null;
+    const usableRuns = runs.payRuns.filter(
+      (r) => !!r.paymentDate && (!payRunsAsAt || r.paymentDate <= payRunsAsAt),
+    );
+    const latestPayRunDate =
+      usableRuns.reduce<string | null>(
+        (max, r) => (!max || (r.paymentDate ?? "") > max ? r.paymentDate! : max),
+        null,
+      ) ?? null;
+
     const byMonth = new Map<string, { withheld: number; payRuns: number }>();
-    for (const r of runs.payRuns) {
-      if (!r.paymentDate) continue;
-      const key = startOfMonth(r.paymentDate);
+    for (const r of usableRuns) {
+      const key = startOfMonth(r.paymentDate!);
       const cur = byMonth.get(key) ?? { withheld: 0, payRuns: 0 };
       cur.withheld = round(cur.withheld + r.tax);
       cur.payRuns += 1;
       byMonth.set(key, cur);
     }
 
-    // Match the outstanding balance against the monthly totals, newest first.
-    // Months the balance covers are owing; anything older has been paid.
-    let cumulative = 0;
-    let matchesMonths = false;
-    let oldestOwingMonth: string | null = null;
-    const owing = new Set<string>();
-    if (outstanding > 0.005) {
-      for (const key of monthKeys) {
-        const m = byMonth.get(key);
-        if (!m) continue;
-        cumulative = round(cumulative + m.withheld);
-        owing.add(key);
-        oldestOwingMonth = key;
-        if (Math.abs(cumulative - outstanding) < 0.005) {
-          matchesMonths = true;
-          break;
-        }
-        if (cumulative > outstanding) break;
+    // Only whole months that FIT inside the balance are named as owing. What is
+    // left over is stated as a residue.
+    const { reconcileBalanceAgainstPeriods } = await import("./payg-reconciliation");
+    const vintageDiffers = !!payRunsAsAt && payRunsAsAt < today;
+    const recon = reconcileBalanceAgainstPeriods(
+      outstanding,
+      monthKeys.map((key) => ({ key, amount: byMonth.get(key)?.withheld ?? 0 })),
+      { savedRunsOlderThanBalance: vintageDiffers },
+    );
+    const owing = new Set(recon.owing);
+
+    // A PAYG liability filed outside current liabilities is a chart-of-accounts
+    // problem worth telling the owner about. It does not change the figure.
+    const accountsById = new Map(
+      (accountsRes.Accounts ?? []).map((a: any) => [String(a?.AccountID ?? ""), a]),
+    );
+    const misfiledAccounts: MisfiledTaxAccount[] = [];
+    for (const l of paygLines) {
+      const acc = l.accountId ? accountsById.get(l.accountId) : undefined;
+      const type = String(acc?.Type ?? "").toUpperCase();
+      if (type && type !== "CURRLIAB") {
+        misfiledAccounts.push({
+          name: l.name,
+          code: acc?.Code ? String(acc.Code) : null,
+          type: type === "TERMLIAB" ? "Non-current Liability" : String(acc?.Type ?? type),
+        });
       }
-      // No clean division: do not claim a month-by-month split.
-      if (!matchesMonths) owing.clear();
     }
 
     return {
@@ -513,7 +533,19 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
         owing: owing.has(key),
         incomplete: key === thisMonth,
       })),
-      matchesMonths,
-      oldestOwingMonth,
+      matchesMonths: recon.matches,
+      oldestOwingMonth: recon.oldest,
+      residue: recon.residue,
+      residueKind: recon.residueKind,
+      vintage: {
+        balanceFetchedAt: balanceSource.fetchedAt ?? new Date().toISOString(),
+        payRunsFetchedAt: runs.snapshotSource?.fetchedAt ?? runs.fetchedAt ?? null,
+        payRunsAsAt,
+        payRunsFromSnapshot: runs.fromSnapshot,
+        payRunsComplete: runs.snapshotSource ? runs.snapshotSource.complete : !runs.truncated,
+        latestPayRunDate,
+        differs: vintageDiffers,
+      },
+      misfiledAccounts,
     };
   });
