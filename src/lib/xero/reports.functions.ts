@@ -246,8 +246,13 @@ export type SuperannuationPosition =
       matchesPaydays: boolean;
       /** Number of whole paydays the balance covers, when it matches. */
       unpaidPaydays: number | null;
-      /** Oldest payday not covered by a payment, when pay runs are readable. */
+      /** Oldest payday the balance FULLY covers. Never a payday merely reached. */
       oldestUnpaidPayday: string | null;
+      /** Balance not accounted for by the paydays above. Never pushed onto an
+       *  older payday. */
+      residue: number;
+      residueKind: import("./payg-reconciliation").ResidueKind;
+      vintage: PayrollVintage;
       /** Why pay runs could not be used, when they could not. */
       payrollStatus: "available" | "no_payroll" | "not_authorised" | "unavailable";
     };
