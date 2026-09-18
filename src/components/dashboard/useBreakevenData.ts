@@ -6,6 +6,7 @@ import { listCostClassifications } from "@/lib/cost-classification.functions";
 import { getExpenseAccounts } from "@/lib/xero/accounts.functions";
 import { buildClassificationResolver } from "@/lib/cost-classification";
 import { breakevenFigures } from "@/components/dashboard/breakeven-figures";
+import { classifyBreakevenLines } from "@/components/dashboard/breakeven-lines";
 import {
   clearLegacyRangeStorage,
   toISO,
