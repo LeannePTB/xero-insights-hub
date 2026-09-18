@@ -446,21 +446,10 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
       clientId: data.clientId ?? null,
     });
     // The balance is live; the pay runs may be last night's saved copy. The
-    // card must report the older of the two.
-    const source =
-      mergeSources([
-        liveSource("disabled"),
-        runs.fromSnapshot
-          ? {
-              mode: "snapshot" as const,
-              asAt: null,
-              fetchedAt: runs.fetchedAt ?? null,
-              stale: false,
-              complete: true,
-              connection: "connected" as const,
-            }
-          : null,
-      ]) ?? liveSource("disabled");
+    // card reports the older of the two, and carries the stored row's OWN
+    // staleness and completeness rather than assuming either.
+    const balanceSource = liveSource("disabled");
+    const source = mergeSources([balanceSource, runs.snapshotSource ?? null]) ?? balanceSource;
 
     if (runs.status !== "available") {
       return {
