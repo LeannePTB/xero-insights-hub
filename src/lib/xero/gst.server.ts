@@ -111,6 +111,28 @@ export type GstResult = {
   combinedAto: CombinedAtoSection | null;
   /** GST net plus PAYG withheld. Null when either side is unavailable. */
   estimatedPayable: number | null;
+  /** Where each input came from and as at when. The GST side is read live from
+   *  Xero; the pay-run side may be last night's saved copy. Never combine the
+   *  two without stating both. */
+  vintages: {
+    /** When the live GST reports were read. */
+    gstReadAt: string;
+    /** True when the pay-run list came from the stored nightly copy. */
+    payRunsFromSnapshot: boolean;
+    /** The stored copy's own as-at date, when it came from one. */
+    payRunsAsAt: string | null;
+    /** When the stored copy was pulled. */
+    payRunsFetchedAt: string | null;
+    /** The stored copy's OWN completeness flag, never assumed. */
+    payRunsComplete: boolean;
+    /** False when the saved list stops before the period end, so a pay run
+     *  inside the period may be missing from the estimate. */
+    payRunsCoverPeriodEnd: boolean;
+    /** The newest usable payday, so the gap is nameable. */
+    latestPayRunDate: string | null;
+    /** True when the two sides are of different vintages. */
+    differs: boolean;
+  };
 };
 
 const NEAR_ZERO = 0.005;
@@ -435,6 +457,13 @@ export async function computeGstReconciliation(
   // nightly; a file without payroll withholds nothing, which is a real zero,
   // while a read we could not make stays null and says so.
   let paygPayroll: PaygPayrollSection;
+  let payRunsFromSnapshot = false;
+  let payRunsAsAt: string | null = null;
+  let payRunsFetchedAt: string | null = null;
+  let payRunsComplete = true;
+  let payRunsCoverPeriodEnd = true;
+  let latestPayRunDate: string | null = null;
+  const gstReadAt = new Date().toISOString();
   if (!withholdsPayg) {
     // "Does not withhold": no pay-run read is made at all.
     paygPayroll = { status: "not_applicable" };
@@ -443,13 +472,50 @@ export async function computeGstReconciliation(
     const runs = supabase
       ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, clientId, conn })
       : await fetchPayRuns(conn, "registered");
+    payRunsFromSnapshot = "fromSnapshot" in runs ? !!runs.fromSnapshot : false;
+    payRunsAsAt = ("snapshotSource" in runs ? runs.snapshotSource?.asAt : null) ?? null;
+    payRunsFetchedAt =
+      ("snapshotSource" in runs ? runs.snapshotSource?.fetchedAt : null) ??
+      ("fetchedAt" in runs ? (runs.fetchedAt ?? null) : null);
+    // The stored copy's OWN flag. Never rebuilt as complete.
+    payRunsComplete =
+      "snapshotSource" in runs && runs.snapshotSource
+        ? runs.snapshotSource.complete
+        : runs.status === "available"
+          ? !runs.truncated
+          : true;
     if (runs.status === "available") {
-      const inPeriodRuns = payRunsInPeriod(runs.payRuns, from, to);
+      // Compare like with like: a payday after the saved list's own as-at date
+      // cannot be in that list, so the list cannot be treated as covering the
+      // period end just because the period has closed.
+      const usable = payRunsAsAt
+        ? runs.payRuns.filter((r) => !!r.paymentDate && r.paymentDate <= payRunsAsAt!)
+        : runs.payRuns;
+      latestPayRunDate = usable.reduce<string | null>(
+        (max, r) => (r.paymentDate && (!max || r.paymentDate > max) ? r.paymentDate : max),
+        null,
+      );
+      payRunsCoverPeriodEnd = !payRunsAsAt || payRunsAsAt >= to;
+      const inPeriodRuns = payRunsInPeriod(usable, from, to);
       paygPayroll = {
         status: "available",
         withheld: round2(inPeriodRuns.reduce((s, r) => s + r.tax, 0)),
         payRuns: inPeriodRuns.map((r) => ({ paymentDate: r.paymentDate, tax: round2(r.tax) })),
       };
+      // An estimate is incomplete when the saved list stops before the period
+      // ends OR was a partial pull — not only when a read failed.
+      if (!payRunsCoverPeriodEnd) {
+        complete = false;
+        issues.push(
+          `Pay runs are only saved as at ${payRunsAsAt}, which is before this period ends on ${to}. Any pay run paid after that date is not in the PAYG figure below.`,
+        );
+      }
+      if (!payRunsComplete) {
+        complete = false;
+        issues.push(
+          "The saved pay-run list was a partial pull (it stops at the read limit), so an older pay run inside this period may be missing from the PAYG figure below.",
+        );
+      }
     } else {
       paygPayroll = runs;
       if (runs.status !== "no_payroll") complete = false;
@@ -492,6 +558,16 @@ export async function computeGstReconciliation(
     paygPayroll,
     combinedAto,
     estimatedPayable,
+    vintages: {
+      gstReadAt,
+      payRunsFromSnapshot,
+      payRunsAsAt,
+      payRunsFetchedAt,
+      payRunsComplete,
+      payRunsCoverPeriodEnd,
+      latestPayRunDate,
+      differs: payRunsFromSnapshot && (!payRunsCoverPeriodEnd || !payRunsComplete || !!payRunsAsAt),
+    },
   };
 
 }
