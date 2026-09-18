@@ -201,7 +201,7 @@ export function PaygWithholdingWidget({
                   )}
                 </span>
                 <span className="flex shrink-0 items-center gap-3">
-                  {available.matchesMonths && !isPaidUp && (
+                  {!isPaidUp && available.months.some((x) => x.owing) && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                         m.owing
@@ -230,6 +230,16 @@ export function PaygWithholdingWidget({
           )}
         </>
       ) : null}
+
+      {available?.status === "available" && available.misfiledAccounts.length > 0 && (
+        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          Worth tidying in Xero:{" "}
+          {available.misfiledAccounts
+            .map((a) => `${a.name}${a.code ? ` (${a.code})` : ""} is filed under ${a.type}`)
+            .join("; ")}
+          . PAYG withholding is a current liability. This does not change the figure above.
+        </p>
+      )}
 
       <p className="mt-4 text-xs text-muted-foreground">
         Monthly amounts come from the pay runs paid in each month. Xero does not make ATO
