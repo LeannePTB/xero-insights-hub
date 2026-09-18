@@ -328,7 +328,18 @@ export function CostClassificationPanel({
                       onClick={() =>
                         setOverrides((prev) => ({
                           ...prev,
-                          [a.name]: { ...prev[a.name], isWages: !isWages },
+                          [a.name]: {
+                            ...prev[a.name],
+                            isWages: !isWages,
+                            // The wages marker lives on a stored row, and an
+                            // unclassified account has none. Ticking wages
+                            // therefore stores the account at its effective
+                            // treatment (fixed) rather than silently dropping
+                            // the tick on save.
+                            ...(!isWages && c === "unclassified"
+                              ? { classification: "fixed" as ClassificationChoice }
+                              : {}),
+                          },
                         }))
                       }
                       className={`h-7 px-2.5 text-xs transition ${
@@ -336,7 +347,11 @@ export function CostClassificationPanel({
                           ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
                           : "border-border text-muted-foreground hover:text-foreground"
                       }`}
-                      title="Mark as wages/salaries for Business Health Efficiency without changing fixed-cost treatment"
+                      title={
+                        c === "unclassified" && !isWages
+                          ? "Mark as wages/salaries for Business Health. This account is unclassified, so marking it wages also saves it as Fixed — the treatment it already has in the calculations."
+                          : "Mark as wages/salaries for Business Health Efficiency without changing fixed-cost treatment"
+                      }
                     >
                       Wages
                     </Button>

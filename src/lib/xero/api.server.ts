@@ -714,6 +714,14 @@ async function xeroGetPayrollUncached<T = unknown>(
     return xeroGetPayrollUncached<T>(conn, path, params, retries - 1);
   }
 
+  // A 401 is usually a stale access token, not a payroll refusal. Refresh once
+  // and retry BEFORE recording this file as having no payroll, otherwise one
+  // expired token silences payroll figures for the whole recheck window.
+  if (res.status === 401 && retries > 0) {
+    const refreshed = await refreshAccessToken(conn);
+    return xeroGetPayrollUncached<T>(refreshed, path, params, retries - 1);
+  }
+
   if (!res.ok) {
     const body = await res.text();
     await logXeroApiError(conn, `Payroll/${path}`, res.status, body.slice(0, 500));
