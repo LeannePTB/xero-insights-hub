@@ -104,51 +104,36 @@ export function useBreakevenData({
   const cogs = data?.totalCostOfSales ?? 0;
   const opex = data?.totalExpenses ?? 0;
   const expenseLines = data?.expenseLines ?? [];
+  const cogsLines = data?.cogsLines ?? [];
 
-  let variableOpex = 0;
-  let fixedOpex = 0;
-  let excludedOpex = 0;
-  let excludedCount = 0;
-  let unclassifiedCount = 0;
-  // The plug applied when Xero's reported expense total does not equal the sum
-  // of the listed accounts. Kept as its own figure so the breakdown can show it
-  // and always reconcile, instead of it vanishing into fixed costs.
-  let unitemisedBalance = 0;
-  const fixedLines: { name: string; amount: number; unclassified: boolean }[] = [];
-  const variableLines: { name: string; amount: number }[] = [];
-  if (!classificationEnabled || expenseLines.length === 0) {
-    fixedOpex = opex;
-    for (const line of expenseLines) {
-      fixedLines.push({ name: line.name, amount: line.amount, unclassified: true });
-    }
-  } else {
-    for (const line of expenseLines) {
-      // One shared resolution: a stored tag wins, then Xero's account type
-      // seeds a default, and anything still undecided is fixed.
-      const r = resolver.resolve(line.name);
-      if (r.effective === "variable") {
-        variableOpex += line.amount;
-        variableLines.push({ name: line.name, amount: line.amount });
-      } else if (r.effective === "excluded") {
-        excludedOpex += line.amount;
-        excludedCount += 1;
-      } else {
-        fixedOpex += line.amount;
-        fixedLines.push({ name: line.name, amount: line.amount, unclassified: r.unclassified });
-        if (r.unclassified) unclassifiedCount += 1;
-      }
-    }
-    const linesTotal = variableOpex + fixedOpex + excludedOpex;
-    if (Math.abs(linesTotal - opex) > 0.5) {
-      unitemisedBalance = opex - linesTotal;
-      fixedOpex += unitemisedBalance;
-    }
-  }
-  fixedLines.sort((a, b) => b.amount - a.amount);
-  variableLines.sort((a, b) => b.amount - a.amount);
+  // Both P&L sections go through the same resolver: a cost-of-sales line tagged
+  // Fixed is fixed, and only an undecided cost-of-sales line falls back to
+  // variable. See breakeven-lines.ts.
+  const split = classifyBreakevenLines({
+    expenseLines,
+    cogsLines,
+    totalExpenses: opex,
+    totalCostOfSales: cogs,
+    resolve: (name) => resolver.resolve(name),
+    classificationEnabled,
+  });
+  const {
+    fixedLines,
+    variableLines,
+    excludedCount,
+    unclassifiedCount,
+    unitemisedBalance,
+    cogsUnitemisedBalance,
+  } = split;
+  const fixedOpex = split.fixedTotal;
+  const excludedOpex = split.excludedTotal;
+  const variableOpex = variableLines
+    .filter((l) => l.section === "operating")
+    .reduce((a, l) => a + l.amount, 0);
+  const variableCogs = split.variableTotal - variableOpex;
 
   const months = monthsBetween(fromDate, toDate);
-  const totalVariable = cogs + variableOpex;
+  const totalVariable = split.variableTotal;
   const figures = breakevenFigures({ income, totalVariable, fixedOpex, months });
   const { grossMargin, monthlyIncome } = figures;
   const breakevenRevenue = figures.monthlyBreakeven;
