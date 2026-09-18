@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { reconcileBalanceAgainstPeriods } from "./payg-reconciliation";
+import { reconcileBalanceAgainstPeriods, payRunVintageIssues } from "./payg-reconciliation";
 
 // The case that broke: Positive Traction, 18 Sep 2026. Live PAYG balance
 // $4,114 (it includes the pay run posted this morning), saved pay runs only
@@ -78,5 +78,46 @@ describe("reconcileBalanceAgainstPeriods", () => {
     assert.equal(withToday.residue, 355.68);
     assert.equal(withToday.residueKind, "since_last_pay_run");
     assert.equal(withToday.oldest, "2026-08-28");
+  });
+});
+
+describe("payRunVintageIssues", () => {
+  it("a saved list that stops before the period end is incomplete", () => {
+    const r = payRunVintageIssues({
+      payRunsAsAt: "2026-09-17",
+      payRunsComplete: true,
+      periodTo: "2026-09-30",
+    });
+    assert.equal(r.coversPeriodEnd, false);
+    assert.equal(r.complete, false);
+    assert.equal(r.issues.length, 1);
+  });
+
+  it("a truncated list is incomplete even when it reaches the period end", () => {
+    const r = payRunVintageIssues({
+      payRunsAsAt: "2026-09-30",
+      payRunsComplete: false,
+      periodTo: "2026-06-30",
+    });
+    assert.equal(r.coversPeriodEnd, true);
+    assert.equal(r.complete, false);
+  });
+
+  it("a complete list past the period end is fit to combine", () => {
+    const r = payRunVintageIssues({
+      payRunsAsAt: "2026-09-17",
+      payRunsComplete: true,
+      periodTo: "2026-06-30",
+    });
+    assert.deepEqual(r, { coversPeriodEnd: true, complete: true, issues: [] });
+  });
+
+  it("a live read has no vintage gap", () => {
+    const r = payRunVintageIssues({
+      payRunsAsAt: null,
+      payRunsComplete: true,
+      periodTo: "2026-09-30",
+    });
+    assert.equal(r.complete, true);
   });
 });

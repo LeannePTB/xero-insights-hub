@@ -99,3 +99,31 @@ export function reconcileBalanceAgainstPeriods(
     residueKind,
   };
 }
+
+/** Whether a saved pay-run list is fit to be combined with a live figure for a
+ *  period, and why not when it is not. A BAS estimate must call itself
+ *  incomplete when the saved list stops before the period ends OR was a partial
+ *  pull — not only when a read failed. */
+export function payRunVintageIssues(input: {
+  /** The stored copy's own as-at date, or null when read live. */
+  payRunsAsAt: string | null;
+  /** The stored copy's own completeness flag. Never assume true. */
+  payRunsComplete: boolean;
+  /** Last day of the period being estimated. */
+  periodTo: string;
+}): { coversPeriodEnd: boolean; complete: boolean; issues: string[] } {
+  const { payRunsAsAt, payRunsComplete, periodTo } = input;
+  const coversPeriodEnd = !payRunsAsAt || payRunsAsAt >= periodTo;
+  const issues: string[] = [];
+  if (!coversPeriodEnd) {
+    issues.push(
+      `Pay runs are only saved as at ${payRunsAsAt}, which is before this period ends on ${periodTo}. Any pay run paid after that date is not in the PAYG figure.`,
+    );
+  }
+  if (!payRunsComplete) {
+    issues.push(
+      "The saved pay-run list was a partial pull (it stops at the read limit), so an older pay run inside this period may be missing from the PAYG figure.",
+    );
+  }
+  return { coversPeriodEnd, complete: issues.length === 0, issues };
+}

@@ -287,9 +287,50 @@ export function GstReconciliationWidget({
           {showWarnings && !data.complete && (
             <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-              <p className="font-medium">Incomplete — some data could not be loaded</p>
+              <p className="font-medium">
+                Incomplete — this estimate is missing part of its inputs. See the reasons below.
+              </p>
             </div>
           )}
+
+          {/* This is a figure the practice lodges from. It names the vintage of
+              each input and says plainly it must be checked in Xero first. */}
+          <div className="mt-4 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs">
+            <p className="font-semibold text-foreground">
+              Estimate only — check against Xero before lodging.
+            </p>
+            <p className="mt-1 text-muted-foreground">
+              GST figures read live from Xero
+              {data.vintages?.gstReadAt
+                ? ` at ${format(new Date(data.vintages.gstReadAt), "d MMM yyyy, h:mmaaa")}`
+                : ""}
+              .{" "}
+              {data.paygPayroll?.status === "available"
+                ? data.vintages?.payRunsFromSnapshot
+                  ? `PAYG withheld from the saved pay-run list${
+                      data.vintages.payRunsAsAt ? ` as at ${data.vintages.payRunsAsAt}` : ""
+                    }${
+                      data.vintages.latestPayRunDate
+                        ? `, the newest pay run being ${data.vintages.latestPayRunDate}`
+                        : ""
+                    }.`
+                  : "PAYG withheld read live from Xero payroll at the same time."
+                : "PAYG withheld is not included — see the reasons below."}
+            </p>
+            {data.vintages && !data.vintages.payRunsCoverPeriodEnd && (
+              <p className="mt-1 text-amber-800 dark:text-amber-200">
+                The saved pay-run list stops before this period ends, so a pay run paid after{" "}
+                {data.vintages.payRunsAsAt} is not in the PAYG figure. Nothing has been assumed or
+                added in its place.
+              </p>
+            )}
+            {data.vintages && !data.vintages.payRunsComplete && (
+              <p className="mt-1 text-amber-800 dark:text-amber-200">
+                That saved list was a partial pull, so an older pay run inside this period may be
+                missing. Nothing has been estimated in its place.
+              </p>
+            )}
+          </div>
 
           {/* Preparer-only: the balance-based check, and the only place any
               balance appears on this card. */}
