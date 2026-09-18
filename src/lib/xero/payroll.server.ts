@@ -110,7 +110,17 @@ export async function loadPayRuns(opts: {
   tenantId: string;
   clientId?: string | null;
   conn?: Connection;
-}): Promise<PayrollPayRuns & { fromSnapshot: boolean; fetchedAt?: string | null }> {
+}): Promise<
+  PayrollPayRuns & {
+    fromSnapshot: boolean;
+    fetchedAt?: string | null;
+    /** The stored row's OWN provenance, unaltered: its as-at date, staleness
+     *  and — the part that used to be dropped — whether the pull was complete.
+     *  A caller that rebuilds this by hand can silently present a truncated
+     *  pull as a whole one. */
+    snapshotSource?: import("./snapshot-source").SnapshotSource | null;
+  }
+> {
   const { payrollSettingForClient } = await import("./payroll-setting.server");
   const setting = await payrollSettingForClient(opts.supabase, opts.tenantId, opts.clientId);
   if (setting !== "registered") return { status: setting, fromSnapshot: false };
