@@ -220,19 +220,45 @@ export function BreakevenWidget({
               </div>
             </details>
 
-            {isAdvisor && clientId && s.classificationEnabled && s.unclassifiedCount > 0 && (
+            {s.unitemisedBalance !== 0 && s.unitemisedMaterial && (
               <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1">
-                  <strong>{s.unclassifiedCount}</strong> expense {s.unclassifiedCount === 1 ? "account is" : "accounts are"} unclassified and treated as fixed.{" "}
-                  <Link
-                    to="/clients/$clientId/settings"
-                    params={{ clientId }}
-                    hash="cost-classification"
-                    className="font-medium underline underline-offset-2"
-                  >
-                    Classify accounts
-                  </Link>
+                  {fmtAUD(s.unitemisedBalance)} of the fixed costs below could not be matched to a
+                  named account, which is a large enough share of the total that this break-even
+                  should not be relied on until it is explained.
+                </div>
+              </div>
+            )}
+
+            {/* A client may not see the practice's tooling, but must be told when
+                a figure they are shown rests on an assumption. Same disclosure
+                either way; only the action link is preparer-facing. */}
+            {s.classificationEnabled && s.unclassifiedCount > 0 && (
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                <div className="flex-1">
+                  {isAdvisor && clientId ? (
+                    <>
+                      <strong>{s.unclassifiedCount}</strong> expense{" "}
+                      {s.unclassifiedCount === 1 ? "account is" : "accounts are"} unclassified and treated as fixed.{" "}
+                      <Link
+                        to="/clients/$clientId/settings"
+                        params={{ clientId }}
+                        hash="cost-classification"
+                        className="font-medium underline underline-offset-2"
+                      >
+                        Classify accounts
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <strong>{s.unclassifiedCount}</strong> expense{" "}
+                      {s.unclassifiedCount === 1 ? "account is" : "accounts are"} not yet categorised
+                      and {s.unclassifiedCount === 1 ? "is" : "are"} treated as fixed costs, which may
+                      make this figure higher than it should be. Your bookkeeper is reviewing them.
+                    </>
+                  )}
                 </div>
               </div>
             )}
