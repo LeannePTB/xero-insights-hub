@@ -14,7 +14,7 @@ describe("reconcileBalanceAgainstPeriods", () => {
   ];
 
   it("a live balance larger than the saved pay runs explain gives an honest residue, never an older month", () => {
-    const r = reconcileBalanceAgainstPeriods(4114, months);
+    const r = reconcileBalanceAgainstPeriods(4114, months, { savedRunsOlderThanBalance: true });
     assert.deepEqual(r.owing, ["2026-09-01", "2026-08-01"]);
     assert.equal(r.oldest, "2026-08-01");
     assert.equal(r.matches, false);
@@ -36,13 +36,15 @@ describe("reconcileBalanceAgainstPeriods", () => {
   });
 
   it("a balance falling between month boundaries claims no split and reaches no further back", () => {
-    // $4,000: September fits, August does not. July must not be reached.
+    // $4,000 with both sides read at the same moment: September and August fit,
+    // July does not. July must not be reached, and the leftover is not staleness.
     const r = reconcileBalanceAgainstPeriods(4000, months);
-    assert.deepEqual(r.owing, ["2026-09-01"]);
-    assert.equal(r.oldest, "2026-09-01");
+    assert.deepEqual(r.owing, ["2026-09-01", "2026-08-01"]);
+    assert.equal(r.oldest, "2026-08-01");
     assert.equal(r.matches, false);
-    assert.equal(r.residue, 2828);
+    assert.equal(r.residue, 480);
     assert.equal(r.residueKind, "unmatched");
+    assert.equal(r.owing.includes("2026-07-01"), false);
   });
 
   it("a nil balance names nothing", () => {
@@ -54,7 +56,7 @@ describe("reconcileBalanceAgainstPeriods", () => {
   });
 
   it("a balance with no saved pay runs at all is all residue since the last saved run", () => {
-    const r = reconcileBalanceAgainstPeriods(594, []);
+    const r = reconcileBalanceAgainstPeriods(594, [], { savedRunsOlderThanBalance: true });
     assert.deepEqual(r.owing, []);
     assert.equal(r.oldest, null);
     assert.equal(r.residue, 594);
@@ -70,7 +72,9 @@ describe("reconcileBalanceAgainstPeriods", () => {
     const r = reconcileBalanceAgainstPeriods(1067.04, paydays);
     assert.equal(r.owing.length, 3);
     assert.equal(r.matches, true);
-    const withToday = reconcileBalanceAgainstPeriods(1422.72, paydays);
+    const withToday = reconcileBalanceAgainstPeriods(1422.72, paydays, {
+      savedRunsOlderThanBalance: true,
+    });
     assert.equal(withToday.residue, 355.68);
     assert.equal(withToday.residueKind, "since_last_pay_run");
     assert.equal(withToday.oldest, "2026-08-28");
