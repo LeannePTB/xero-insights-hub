@@ -32,7 +32,7 @@ import {
   type ScenarioExpense,
   type ScenarioInvoice,
 } from "@/lib/xero/scenario.functions";
-import { buildMatrix, computeTotals, groupBySection, groupExpenses, monthKey } from "@/lib/scenario-calc";
+import { buildMatrix, computeTotals, groupExpenses, monthKey } from "@/lib/scenario-calc";
 import {
   basisNote,
   isModelled,
@@ -154,8 +154,8 @@ function CashflowScenarioPage() {
     const monthExpenses = data.expenses.filter((e: ScenarioExpense) => monthKey(e.date) === month);
     const sumGroups = (gs: { subtotal: number }[]) => gs.reduce((a, g) => a + g.subtotal, 0);
     const actuals: Record<CostGroup, number> = {
-      cogs: sumGroups(groupBySection(monthExpenses, "cogs")),
-      fixed: sumGroups(groupExpenses(monthExpenses, "Fixed", "operating")),
+      cogs: sumGroups(groupExpenses(monthExpenses, "Variable", "cogs")),
+      fixed: sumGroups(groupExpenses(monthExpenses, "Fixed")),
       variable: sumGroups(groupExpenses(monthExpenses, "Variable", "operating")),
     };
     const avg: Record<CostGroup, number> | null = data.avg3
@@ -579,7 +579,7 @@ function CashflowScenarioPage() {
             <section className="mt-6 grid gap-6 md:grid-cols-3">
               <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-display text-lg font-semibold">Cost of sales</h2>
+                  <h2 className="font-display text-lg font-semibold">Cost of sales, variable</h2>
                   <span className="tabular-nums text-sm font-semibold">{fmt(view.costActuals.cogs)}</span>
                 </div>
                 {isModelled(costBasis.cogs) && (
@@ -588,13 +588,13 @@ function CashflowScenarioPage() {
                     accounts.
                   </p>
                 )}
-                {groupBySection(view.monthExpenses, "cogs").length === 0 ? (
+                {groupExpenses(view.monthExpenses, "Variable", "cogs").length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">
-                    No cost of sales in this month.
+                    No variable cost of sales in this month.
                   </p>
                 ) : (
                   <ul className="mt-4 space-y-1.5">
-                    {groupBySection(view.monthExpenses, "cogs").map((g) => (
+                    {groupExpenses(view.monthExpenses, "Variable", "cogs").map((g) => (
                       <li key={g.category} className="flex items-center justify-between text-sm">
                         <span className="truncate pr-3">{g.category}</span>
                         <span className="tabular-nums">{fmt(g.subtotal)}</span>
@@ -604,7 +604,9 @@ function CashflowScenarioPage() {
                 )}
               </div>
               {(["Fixed", "Variable"] as const).map((type) => {
-                const groups = groupExpenses(view.monthExpenses, type, "operating");
+                // Fixed spans both P&L sections: wages posted to cost of sales and
+                // tagged Fixed are fixed costs here too, matching the break-even card.
+                const groups = groupExpenses(view.monthExpenses, type, type === "Fixed" ? undefined : "operating");
                 const total = groups.reduce((a, g) => a + g.subtotal, 0);
                 const key: CostGroup = type === "Fixed" ? "fixed" : "variable";
                 return (
