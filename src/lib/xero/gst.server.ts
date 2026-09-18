@@ -497,7 +497,9 @@ export async function computeGstReconciliation(
         (max, r) => (r.paymentDate && (!max || r.paymentDate > max) ? r.paymentDate : max),
         null,
       );
-      payRunsCoverPeriodEnd = !payRunsAsAt || payRunsAsAt >= to;
+      const { payRunVintageIssues } = await import("./payg-reconciliation");
+      const vintage = payRunVintageIssues({ payRunsAsAt, payRunsComplete, periodTo: to });
+      payRunsCoverPeriodEnd = vintage.coversPeriodEnd;
       const inPeriodRuns = payRunsInPeriod(usable, from, to);
       paygPayroll = {
         status: "available",
@@ -506,17 +508,9 @@ export async function computeGstReconciliation(
       };
       // An estimate is incomplete when the saved list stops before the period
       // ends OR was a partial pull — not only when a read failed.
-      if (!payRunsCoverPeriodEnd) {
+      if (!vintage.complete) {
         complete = false;
-        issues.push(
-          `Pay runs are only saved as at ${payRunsAsAt}, which is before this period ends on ${to}. Any pay run paid after that date is not in the PAYG figure below.`,
-        );
-      }
-      if (!payRunsComplete) {
-        complete = false;
-        issues.push(
-          "The saved pay-run list was a partial pull (it stops at the read limit), so an older pay run inside this period may be missing from the PAYG figure below.",
-        );
+        issues.push(...vintage.issues);
       }
     } else {
       paygPayroll = runs;
