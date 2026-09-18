@@ -21,6 +21,10 @@ function monthLabel(iso: string) {
   return format(new Date(`${iso}T00:00:00`), "MMMM yyyy");
 }
 
+function dayLabel(iso: string) {
+  return format(new Date(`${iso}T00:00:00`), "d MMM yyyy");
+}
+
 export function PaygWithholdingWidget({
   tenantId,
   tenantName,
