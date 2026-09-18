@@ -352,9 +352,12 @@ export const getScenarioData = createServerFn({ method: "POST" })
       for (const l of avgLines) {
         const r = resolver.resolve(l.name);
         if (r.effective === "excluded") continue;
-        if (l.section === "cogs") cogs += l.amount;
-        else if (r.effective === "variable") variable += l.amount;
-        else fixed += l.amount;
+        // Classification first, then section: a cost-of-sales line tagged Fixed
+        // belongs in fixed costs, exactly as the forecast and the break-even
+        // card treat it. Only variable cost-of-sales lines form the cogs group.
+        if (r.effective !== "variable") fixed += l.amount;
+        else if (l.section === "cogs") cogs += l.amount;
+        else variable += l.amount;
       }
       const n = avgMonths.length || 1;
       avg3 = { months: avgMonths, cogs: cogs / n, fixed: fixed / n, variable: variable / n };
