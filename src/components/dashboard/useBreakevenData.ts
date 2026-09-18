@@ -110,6 +110,10 @@ export function useBreakevenData({
   let excludedOpex = 0;
   let excludedCount = 0;
   let unclassifiedCount = 0;
+  // The plug applied when Xero's reported expense total does not equal the sum
+  // of the listed accounts. Kept as its own figure so the breakdown can show it
+  // and always reconcile, instead of it vanishing into fixed costs.
+  let unitemisedBalance = 0;
   const fixedLines: { name: string; amount: number; unclassified: boolean }[] = [];
   const variableLines: { name: string; amount: number }[] = [];
   if (!classificationEnabled || expenseLines.length === 0) {
@@ -135,7 +139,10 @@ export function useBreakevenData({
       }
     }
     const linesTotal = variableOpex + fixedOpex + excludedOpex;
-    if (Math.abs(linesTotal - opex) > 0.5) fixedOpex += opex - linesTotal;
+    if (Math.abs(linesTotal - opex) > 0.5) {
+      unitemisedBalance = opex - linesTotal;
+      fixedOpex += unitemisedBalance;
+    }
   }
   fixedLines.sort((a, b) => b.amount - a.amount);
   variableLines.sort((a, b) => b.amount - a.amount);
@@ -171,6 +178,12 @@ export function useBreakevenData({
     excludedOpex,
     excludedCount,
     unclassifiedCount,
+    unitemisedBalance,
+    // A plug worth more than a twentieth of fixed costs moves break-even by the
+    // same proportion, which is well past rounding and means the report is not
+    // being read correctly.
+    unitemisedMaterial:
+      fixedOpex !== 0 && Math.abs(unitemisedBalance) / Math.abs(fixedOpex) > 0.05,
     fixedLines,
     variableLines,
     classificationEnabled,

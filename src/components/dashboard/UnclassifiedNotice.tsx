@@ -15,23 +15,34 @@ export function UnclassifiedNotice({
   count: number;
 }) {
   const { isAdvisor } = useIsAdvisor();
-  // Classification is preparer work; the prompt means nothing to a business owner.
-  if (!isAdvisor) return null;
-  if (!clientId || count <= 0) return null;
+  if (count <= 0) return null;
+  // Everyone is told the figure rests on an assumption. Only the preparer gets
+  // the tooling link, because a client cannot act on it.
+  const advisorView = isAdvisor && !!clientId;
   return (
     <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <div className="flex-1">
-        <strong>{count}</strong> expense {count === 1 ? "account is" : "accounts are"} unclassified
-        and treated as fixed.{" "}
-        <Link
-          to="/clients/$clientId/settings"
-          params={{ clientId }}
-          hash="cost-classification"
-          className="font-medium underline underline-offset-2"
-        >
-          Classify accounts
-        </Link>
+        {advisorView ? (
+          <>
+            <strong>{count}</strong> expense {count === 1 ? "account is" : "accounts are"} unclassified
+            and treated as fixed.{" "}
+            <Link
+              to="/clients/$clientId/settings"
+              params={{ clientId: clientId! }}
+              hash="cost-classification"
+              className="font-medium underline underline-offset-2"
+            >
+              Classify accounts
+            </Link>
+          </>
+        ) : (
+          <>
+            <strong>{count}</strong> expense {count === 1 ? "account is" : "accounts are"} not yet
+            categorised and {count === 1 ? "is" : "are"} treated as fixed costs, which may make these
+            figures higher than they should be. Your bookkeeper is reviewing them.
+          </>
+        )}
       </div>
     </div>
   );
