@@ -160,6 +160,8 @@ export function useBreakevenData({
     cogs,
     opex,
     variableOpex,
+    variableCogs,
+    cogsUnitemisedBalance,
     fixedOpex,
     excludedOpex,
     excludedCount,
