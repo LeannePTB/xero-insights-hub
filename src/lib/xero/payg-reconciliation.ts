@@ -73,7 +73,6 @@ export function reconcileBalanceAgainstPeriods(
 
   const owing: string[] = [];
   let accountedFor = 0;
-  let blocked = false;
 
   for (const p of periods) {
     if (!(p.amount > TOL)) continue;
@@ -84,12 +83,10 @@ export function reconcileBalanceAgainstPeriods(
     }
     // Taking this period would claim more is owing than the balance shows.
     // Stop: never absorb it, and never reach past it to an older one.
-    blocked = true;
     break;
   }
 
   const residue = round(outstanding - accountedFor);
-  void blocked;
   const residueKind: ResidueKind =
     residue <= TOL ? "none" : opts.savedRunsOlderThanBalance ? "since_last_pay_run" : "unmatched";
 
