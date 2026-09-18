@@ -170,7 +170,7 @@ export function BreakevenWidget({
                     <span>Fixed Costs ({s.fixedLines.length})</span>
                     <span>{fmtAUD(s.fixedOpex)}</span>
                   </p>
-                  {s.fixedLines.length === 0 ? (
+                  {s.fixedLines.length === 0 && s.unitemisedBalance === 0 ? (
                     <p className="text-muted-foreground">No fixed cost accounts in this period.</p>
                   ) : (
                     <ul className="divide-y divide-border/40">
@@ -185,6 +185,19 @@ export function BreakevenWidget({
                           <span className="font-mono tabular-nums text-foreground">{fmtAUD(l.amount)}</span>
                         </li>
                       ))}
+                      {s.unitemisedBalance !== 0 && (
+                        <li className="flex items-start justify-between gap-2 py-1">
+                          <span className="text-muted-foreground">
+                            Unitemised balance{" "}
+                            <span className="italic">
+                              (difference between Xero's reported total and the listed accounts)
+                            </span>
+                          </span>
+                          <span className="font-mono tabular-nums text-foreground">
+                            {fmtAUD(s.unitemisedBalance)}
+                          </span>
+                        </li>
+                      )}
                     </ul>
                   )}
                 </div>
