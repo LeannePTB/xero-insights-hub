@@ -208,22 +208,60 @@ export function BreakevenWidget({
                     </ul>
                   )}
                 </div>
-                {s.variableLines.length > 0 && (
-                  <div>
-                    <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
-                      <span>Variable Opex ({s.variableLines.length})</span>
-                      <span>{fmtAUD(s.variableOpex)}</span>
-                    </p>
-                    <ul className="divide-y divide-border/40">
-                      {s.variableLines.map((l) => (
-                        <li key={l.name} className="flex items-center justify-between gap-2 py-1">
-                          <span className="truncate">{l.name}</span>
-                          <span className="font-mono tabular-nums text-foreground">{fmtAUD(l.amount)}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                {(() => {
+                  const varOpex = s.variableLines.filter((l) => l.section === "operating");
+                  const varCogs = s.variableLines.filter((l) => l.section === "cogs");
+                  return (
+                    <>
+                      {varOpex.length > 0 && (
+                        <div>
+                          <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                            <span>Variable Opex ({varOpex.length})</span>
+                            <span>{fmtAUD(s.variableOpex)}</span>
+                          </p>
+                          <ul className="divide-y divide-border/40">
+                            {varOpex.map((l) => (
+                              <li key={l.name} className="flex items-center justify-between gap-2 py-1">
+                                <span className="truncate">{l.name}</span>
+                                <span className="font-mono tabular-nums text-foreground">{fmtAUD(l.amount)}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {(varCogs.length > 0 || s.variableCogs !== 0) && (
+                        <div>
+                          <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                            <span>Cost of Sales, variable ({varCogs.length})</span>
+                            <span>{fmtAUD(s.variableCogs)}</span>
+                          </p>
+                          <ul className="divide-y divide-border/40">
+                            {varCogs.map((l) => (
+                              <li key={l.name} className="flex items-center justify-between gap-2 py-1">
+                                <span className="truncate">{l.name}</span>
+                                <span className="font-mono tabular-nums text-foreground">{fmtAUD(l.amount)}</span>
+                              </li>
+                            ))}
+                            {s.cogsUnitemisedBalance !== 0 && (
+                              <li className="flex items-start justify-between gap-2 py-1">
+                                <span className="text-muted-foreground">
+                                  Unitemised balance{" "}
+                                  <span className="italic">
+                                    (difference between Xero's reported cost of sales and the listed
+                                    accounts)
+                                  </span>
+                                </span>
+                                <span className="font-mono tabular-nums text-foreground">
+                                  {fmtAUD(s.cogsUnitemisedBalance)}
+                                </span>
+                              </li>
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </details>
 
