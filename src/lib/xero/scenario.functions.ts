@@ -360,7 +360,10 @@ export const getScenarioData = createServerFn({ method: "POST" })
         // Classification first, then section: a cost-of-sales line tagged Fixed
         // belongs in fixed costs, exactly as the forecast and the break-even
         // card treat it. Only variable cost-of-sales lines form the cogs group.
-        if (r.effective !== "variable") fixed += l.amount;
+        // An undecided cost-of-sales line falls back to variable, matching
+        // breakeven-lines.ts.
+        const effective = l.section === "cogs" ? (r.decided ?? "variable") : r.effective;
+        if (effective !== "variable") fixed += l.amount;
         else if (l.section === "cogs") cogs += l.amount;
         else variable += l.amount;
       }
