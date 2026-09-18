@@ -41,7 +41,7 @@ test("a cost-of-sales account tagged Fixed lands in fixed costs", () => {
   const fixedNames = s.fixedLines.map((l) => l.name);
   assert.ok(fixedNames.includes("Wages & Salaries"));
   assert.ok(fixedNames.includes("Superannuation"));
-  assert.equal(Math.round(s.fixedTotal * 100) / 100, 8918.05 + 1067.04 + 348.29);
+  assert.equal(Math.round(s.fixedTotal * 100) / 100, 10333.38);
   assert.equal(
     s.fixedLines.find((l) => l.name === "Wages & Salaries")!.section,
     "cogs",
