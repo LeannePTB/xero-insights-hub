@@ -246,8 +246,13 @@ export type SuperannuationPosition =
       matchesPaydays: boolean;
       /** Number of whole paydays the balance covers, when it matches. */
       unpaidPaydays: number | null;
-      /** Oldest payday not covered by a payment, when pay runs are readable. */
+      /** Oldest payday the balance FULLY covers. Never a payday merely reached. */
       oldestUnpaidPayday: string | null;
+      /** Balance not accounted for by the paydays above. Never pushed onto an
+       *  older payday. */
+      residue: number;
+      residueKind: import("./payg-reconciliation").ResidueKind;
+      vintage: PayrollVintage;
       /** Why pay runs could not be used, when they could not. */
       payrollStatus: "available" | "no_payroll" | "not_authorised" | "unavailable";
     };
@@ -297,41 +302,41 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
     const payrollStatus = runs.status;
 
     // The balance is live; the pay runs may be last night's saved copy. The
-    // card must report the older of the two.
-    const source =
-      mergeSources([
-        liveSource("disabled"),
-        runs.fromSnapshot
-          ? {
-              mode: "snapshot" as const,
-              asAt: null,
-              fetchedAt: runs.fetchedAt ?? null,
-              stale: false,
-              complete: true,
-              connection: "connected" as const,
-            }
-          : null,
-      ]) ?? liveSource("disabled");
+    // card reports the older of the two, and carries the stored row's OWN
+    // staleness and completeness rather than assuming either.
+    const balanceSource = liveSource("disabled");
+    const source = mergeSources([balanceSource, runs.snapshotSource ?? null]) ?? balanceSource;
 
     let matchesPaydays = false;
     let unpaidPaydays: number | null = null;
     let oldestUnpaidPayday: string | null = null;
+    let residue = 0;
+    let residueKind: import("./payg-reconciliation").ResidueKind = "none";
+    const payRunsAsAt = runs.snapshotSource?.asAt ?? null;
+    const { sydneyDate } = await import("@/lib/sydney-time");
+    const vintageDiffers = !!payRunsAsAt && payRunsAsAt < sydneyDate();
+    let latestPayRunDate: string | null = null;
 
-    if (runs.status === "available" && outstanding > 0.005) {
-      // Newest payday first: accumulate until the accruals reach the balance.
+    if (runs.status === "available") {
+      // Compare like with like: a payday after the saved list's own date cannot
+      // be in that list, so it is excluded and reported as a residue instead.
       const ordered = runs.payRuns
-        .filter((r) => !!r.paymentDate)
+        .filter((r) => !!r.paymentDate && (!payRunsAsAt || r.paymentDate! <= payRunsAsAt))
         .sort((a, b) => (b.paymentDate ?? "").localeCompare(a.paymentDate ?? ""));
-      let cumulative = 0;
-      for (let i = 0; i < ordered.length; i++) {
-        cumulative = round(cumulative + ordered[i]!.super);
-        oldestUnpaidPayday = ordered[i]!.paymentDate;
-        if (Math.abs(cumulative - outstanding) < 0.005) {
-          matchesPaydays = true;
-          unpaidPaydays = i + 1;
-          break;
-        }
-        if (cumulative > outstanding) break;
+      latestPayRunDate = ordered[0]?.paymentDate ?? null;
+      if (outstanding > 0.005) {
+        const { reconcileBalanceAgainstPeriods } = await import("./payg-reconciliation");
+        const recon = reconcileBalanceAgainstPeriods(
+          outstanding,
+          ordered.map((r) => ({ key: r.paymentDate!, amount: round(r.super) })),
+          { savedRunsOlderThanBalance: vintageDiffers },
+        );
+        matchesPaydays = recon.matches;
+        unpaidPaydays = recon.owing.length ? recon.owing.length : null;
+        // Never a payday we merely reached: only ones the balance fully covers.
+        oldestUnpaidPayday = recon.oldest;
+        residue = recon.residue;
+        residueKind = recon.residueKind;
       }
     }
 
@@ -344,6 +349,21 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
       unpaidPaydays,
       oldestUnpaidPayday,
       payrollStatus,
+      residue,
+      residueKind,
+      vintage: {
+        balanceFetchedAt: balanceSource.fetchedAt ?? new Date().toISOString(),
+        payRunsFetchedAt: runs.snapshotSource?.fetchedAt ?? runs.fetchedAt ?? null,
+        payRunsAsAt,
+        payRunsFromSnapshot: runs.fromSnapshot,
+        payRunsComplete: runs.snapshotSource
+          ? runs.snapshotSource.complete
+          : runs.status === "available"
+            ? !runs.truncated
+            : true,
+        latestPayRunDate,
+        differs: vintageDiffers,
+      },
     };
   });
 
@@ -360,6 +380,31 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
  * Xero exposes no ATO lodgement or payment data through its API, so payment is
  * INFERRED from that balance falling. Nothing here may imply otherwise.
  */
+/**
+ * The two vintages a payroll liability card is made of. They are reported
+ * separately, and side by side on the card whenever they differ: the balance is
+ * read live, the pay runs are usually last night's stored copy, and comparing
+ * them without saying so is what produced a phantom July liability.
+ */
+export type PayrollVintage = {
+  /** When the live balance was read. */
+  balanceFetchedAt: string;
+  /** When the pay-run list was retrieved from Xero. */
+  payRunsFetchedAt: string | null;
+  /** The stored copy's own as-at date (Sydney), null when read live. */
+  payRunsAsAt: string | null;
+  payRunsFromSnapshot: boolean;
+  /** False when the pay-run pull was truncated at the page cap. */
+  payRunsComplete: boolean;
+  /** Payday of the newest pay run the card could see. */
+  latestPayRunDate: string | null;
+  /** True when the balance was read after the pay runs were saved. */
+  differs: boolean;
+};
+
+/** A statutory account sitting outside current liabilities in the chart. */
+export type MisfiledTaxAccount = { name: string; code: string | null; type: string };
+
 export type PaygWithholdingPosition =
   | { status: "no_payg_accounts" }
   | { status: "no_payroll"; outstanding: number; reason: "no_payroll" | "not_authorised" | "unavailable" | "not_registered" | "setting_required" }
@@ -372,8 +417,16 @@ export type PaygWithholdingPosition =
       months: { month: string; withheld: number; payRuns: number; owing: boolean; incomplete: boolean }[];
       /** True when whole months add up to the outstanding balance. */
       matchesMonths: boolean;
-      /** Oldest month the balance reaches, matched or not. */
+      /** Oldest month the balance FULLY covers. Never a month merely reached. */
       oldestOwingMonth: string | null;
+      /** Balance not accounted for by the months named above. Never pushed
+       *  onto an older month. */
+      residue: number;
+      residueKind: import("./payg-reconciliation").ResidueKind;
+      vintage: PayrollVintage;
+      /** PAYG accounts filed outside current liabilities — a chart problem,
+       *  not a figure problem. */
+      misfiledAccounts: MisfiledTaxAccount[];
     };
 
 export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
@@ -413,21 +466,10 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
       clientId: data.clientId ?? null,
     });
     // The balance is live; the pay runs may be last night's saved copy. The
-    // card must report the older of the two.
-    const source =
-      mergeSources([
-        liveSource("disabled"),
-        runs.fromSnapshot
-          ? {
-              mode: "snapshot" as const,
-              asAt: null,
-              fetchedAt: runs.fetchedAt ?? null,
-              stale: false,
-              complete: true,
-              connection: "connected" as const,
-            }
-          : null,
-      ]) ?? liveSource("disabled");
+    // card reports the older of the two, and carries the stored row's OWN
+    // staleness and completeness rather than assuming either.
+    const balanceSource = liveSource("disabled");
+    const source = mergeSources([balanceSource, runs.snapshotSource ?? null]) ?? balanceSource;
 
     if (runs.status !== "available") {
       return {
@@ -446,37 +488,57 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
     const monthKeys: string[] = [];
     for (let i = 0; i < wanted; i++) monthKeys.push(startOfMonth(addMonths(thisMonth, -i)));
 
+    // COMPARE LIKE WITH LIKE. The balance is read live; the saved pay-run list
+    // only knows about runs up to its own as-at date. A run posted after that
+    // is in the balance and not in the list, so it is excluded from the monthly
+    // figures here and reported as a residue below — never absorbed by
+    // stretching the match back to an older month.
+    const payRunsAsAt = runs.snapshotSource?.asAt ?? null;
+    const usableRuns = runs.payRuns.filter(
+      (r) => !!r.paymentDate && (!payRunsAsAt || r.paymentDate <= payRunsAsAt),
+    );
+    const latestPayRunDate =
+      usableRuns.reduce<string | null>(
+        (max, r) => (!max || (r.paymentDate ?? "") > max ? r.paymentDate! : max),
+        null,
+      ) ?? null;
+
     const byMonth = new Map<string, { withheld: number; payRuns: number }>();
-    for (const r of runs.payRuns) {
-      if (!r.paymentDate) continue;
-      const key = startOfMonth(r.paymentDate);
+    for (const r of usableRuns) {
+      const key = startOfMonth(r.paymentDate!);
       const cur = byMonth.get(key) ?? { withheld: 0, payRuns: 0 };
       cur.withheld = round(cur.withheld + r.tax);
       cur.payRuns += 1;
       byMonth.set(key, cur);
     }
 
-    // Match the outstanding balance against the monthly totals, newest first.
-    // Months the balance covers are owing; anything older has been paid.
-    let cumulative = 0;
-    let matchesMonths = false;
-    let oldestOwingMonth: string | null = null;
-    const owing = new Set<string>();
-    if (outstanding > 0.005) {
-      for (const key of monthKeys) {
-        const m = byMonth.get(key);
-        if (!m) continue;
-        cumulative = round(cumulative + m.withheld);
-        owing.add(key);
-        oldestOwingMonth = key;
-        if (Math.abs(cumulative - outstanding) < 0.005) {
-          matchesMonths = true;
-          break;
-        }
-        if (cumulative > outstanding) break;
+    // Only whole months that FIT inside the balance are named as owing. What is
+    // left over is stated as a residue.
+    const { reconcileBalanceAgainstPeriods } = await import("./payg-reconciliation");
+    const vintageDiffers = !!payRunsAsAt && payRunsAsAt < today;
+    const recon = reconcileBalanceAgainstPeriods(
+      outstanding,
+      monthKeys.map((key) => ({ key, amount: byMonth.get(key)?.withheld ?? 0 })),
+      { savedRunsOlderThanBalance: vintageDiffers },
+    );
+    const owing = new Set(recon.owing);
+
+    // A PAYG liability filed outside current liabilities is a chart-of-accounts
+    // problem worth telling the owner about. It does not change the figure.
+    const accountsById = new Map(
+      (accountsRes.Accounts ?? []).map((a: any) => [String(a?.AccountID ?? ""), a]),
+    );
+    const misfiledAccounts: MisfiledTaxAccount[] = [];
+    for (const l of paygLines) {
+      const acc = l.accountId ? accountsById.get(l.accountId) : undefined;
+      const type = String(acc?.Type ?? "").toUpperCase();
+      if (type && type !== "CURRLIAB") {
+        misfiledAccounts.push({
+          name: l.name,
+          code: acc?.Code ? String(acc.Code) : null,
+          type: type === "TERMLIAB" ? "Non-current Liability" : String(acc?.Type ?? type),
+        });
       }
-      // No clean division: do not claim a month-by-month split.
-      if (!matchesMonths) owing.clear();
     }
 
     return {
@@ -491,7 +553,19 @@ export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
         owing: owing.has(key),
         incomplete: key === thisMonth,
       })),
-      matchesMonths,
-      oldestOwingMonth,
+      matchesMonths: recon.matches,
+      oldestOwingMonth: recon.oldest,
+      residue: recon.residue,
+      residueKind: recon.residueKind,
+      vintage: {
+        balanceFetchedAt: balanceSource.fetchedAt ?? new Date().toISOString(),
+        payRunsFetchedAt: runs.snapshotSource?.fetchedAt ?? runs.fetchedAt ?? null,
+        payRunsAsAt,
+        payRunsFromSnapshot: runs.fromSnapshot,
+        payRunsComplete: runs.snapshotSource ? runs.snapshotSource.complete : !runs.truncated,
+        latestPayRunDate,
+        differs: vintageDiffers,
+      },
+      misfiledAccounts,
     };
   });

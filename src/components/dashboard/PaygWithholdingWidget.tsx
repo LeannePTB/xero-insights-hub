@@ -21,6 +21,10 @@ function monthLabel(iso: string) {
   return format(new Date(`${iso}T00:00:00`), "MMMM yyyy");
 }
 
+function dayLabel(iso: string) {
+  return format(new Date(`${iso}T00:00:00`), "d MMM yyyy");
+}
+
 export function PaygWithholdingWidget({
   tenantId,
   tenantName,
@@ -120,11 +124,68 @@ export function PaygWithholdingWidget({
                       available.oldestOwingMonth,
                     )}. Months before that are covered by payments already made.`
                   : available.oldestOwingMonth
-                    ? `The balance reaches back to ${monthLabel(
+                    ? `${fmt(
+                        available.outstanding - available.residue,
+                      )} of this is the PAYG withheld in the months ticked below, back to ${monthLabel(
                         available.oldestOwingMonth,
-                      )}. It does not divide into whole months, so no month-by-month split is shown — only the amount owing.`
+                      )}. Months before that are covered by payments already made.`
                     : "The months behind this balance could not be identified from this organisation's pay runs."}
               </p>
+
+              {/* REQUIREMENT: a residue is never attributed to an older month.
+                  It is stated for what it is. */}
+              {available.residue > 0.005 && (
+                <p className="mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+                  {available.residueKind === "since_last_pay_run" ? (
+                    <>
+                      <span className="font-medium tabular-nums">{fmt(available.residue)}</span>{" "}
+                      withheld since the last saved pay run
+                      {available.vintage.latestPayRunDate
+                        ? ` on ${dayLabel(available.vintage.latestPayRunDate)}`
+                        : ""}
+                      . It is in the balance above but not yet in the monthly figures, so it is not
+                      assigned to a month.
+                    </>
+                  ) : (
+                    <>
+                      <span className="font-medium tabular-nums">{fmt(available.residue)}</span> of
+                      this balance is not accounted for by any whole month of pay runs — it is shown
+                      as an amount only, and is not assigned to an earlier month.
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* REQUIREMENT: show both vintages whenever they differ, so a
+              mismatch is visible rather than silently absorbed. */}
+          {available.vintage.differs && (
+            <div className="mt-4 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">
+              <p>
+                Balance read from Xero just now
+                {available.vintage.balanceFetchedAt
+                  ? ` (${format(new Date(available.vintage.balanceFetchedAt), "d MMM yyyy, h:mmaaa")})`
+                  : ""}
+                .
+              </p>
+              <p>
+                Pay runs from the saved copy taken
+                {available.vintage.payRunsAsAt
+                  ? ` as at ${dayLabel(available.vintage.payRunsAsAt)}`
+                  : ""}
+                {available.vintage.latestPayRunDate
+                  ? `, the newest being ${dayLabel(available.vintage.latestPayRunDate)}`
+                  : ""}
+                . Anything paid since then is in the balance but not in the months below.
+              </p>
+              {!available.vintage.payRunsComplete && (
+                <p className="mt-1">
+                  That saved copy was an incomplete pull: it holds the most recent pay runs and
+                  stops at the read limit, so the oldest history is missing. Recent months are
+                  unaffected.
+                </p>
+              )}
             </div>
           )}
 
@@ -140,7 +201,7 @@ export function PaygWithholdingWidget({
                   )}
                 </span>
                 <span className="flex shrink-0 items-center gap-3">
-                  {available.matchesMonths && !isPaidUp && (
+                  {!isPaidUp && available.months.some((x) => x.owing) && (
                     <span
                       className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
                         m.owing
@@ -169,6 +230,16 @@ export function PaygWithholdingWidget({
           )}
         </>
       ) : null}
+
+      {available?.status === "available" && available.misfiledAccounts.length > 0 && (
+        <p className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
+          Worth tidying in Xero:{" "}
+          {available.misfiledAccounts
+            .map((a) => `${a.name}${a.code ? ` (${a.code})` : ""} is filed under ${a.type}`)
+            .join("; ")}
+          . PAYG withholding is a current liability. This does not change the figure above.
+        </p>
+      )}
 
       <p className="mt-4 text-xs text-muted-foreground">
         Monthly amounts come from the pay runs paid in each month. Xero does not make ATO

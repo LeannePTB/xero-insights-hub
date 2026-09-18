@@ -126,14 +126,56 @@ export function SuperannuationWidget({
                     available.unpaidPaydays === 1 ? "payday" : "paydays"
                   }, the oldest being ${format(new Date(`${oldest}T00:00:00`), "d MMM yyyy")}.`
                 : oldest
-                  ? `The oldest payday not yet covered is ${format(
+                  ? `The paydays this balance fully covers go back to ${format(
                       new Date(`${oldest}T00:00:00`),
                       "d MMM yyyy",
-                    )}. The balance does not match whole paydays, so it is shown as an amount only.`
+                    )}. The rest does not match whole paydays and is not assigned to an earlier payday.`
                   : available.payrollStatus === "not_authorised"
                     ? "Payroll access has not been authorised in Xero for this organisation, so the paydays behind this balance cannot be identified."
                     : "The paydays behind this balance could not be identified from this organisation's pay runs."}
             </p>
+            {/* A residue is stated for what it is, never attributed to an
+                older payday. */}
+            {available.residue > 0.005 && (
+              <p className="mt-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+                {available.residueKind === "since_last_pay_run" ? (
+                  <>
+                    <span className="font-medium tabular-nums">{fmt(available.residue)}</span>{" "}
+                    accrued since the last saved pay run
+                    {available.vintage.latestPayRunDate
+                      ? ` on ${format(new Date(`${available.vintage.latestPayRunDate}T00:00:00`), "d MMM yyyy")}`
+                      : ""}
+                    . It is in the balance above but not yet in the paydays counted.
+                  </>
+                ) : (
+                  <>
+                    <span className="font-medium tabular-nums">{fmt(available.residue)}</span> of
+                    this balance is not accounted for by whole paydays, and is not assigned to an
+                    earlier payday.
+                  </>
+                )}
+              </p>
+            )}
+
+            {/* Both vintages, shown whenever they differ. */}
+            {available.vintage.differs && (
+              <div className="mt-3 rounded-lg border border-border px-3 py-2 text-xs text-muted-foreground">
+                <p>Balance read from Xero just now.</p>
+                <p>
+                  Pay runs from the saved copy
+                  {available.vintage.payRunsAsAt
+                    ? ` as at ${format(new Date(`${available.vintage.payRunsAsAt}T00:00:00`), "d MMM yyyy")}`
+                    : ""}
+                  . Anything accrued since then is in the balance but not in the paydays counted.
+                </p>
+                {!available.vintage.payRunsComplete && (
+                  <p className="mt-1">
+                    That saved copy was an incomplete pull: it holds the most recent pay runs and
+                    stops at the read limit, so the oldest history is missing.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {available.accounts.length > 1 && (

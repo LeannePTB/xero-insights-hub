@@ -110,7 +110,17 @@ export async function loadPayRuns(opts: {
   tenantId: string;
   clientId?: string | null;
   conn?: Connection;
-}): Promise<PayrollPayRuns & { fromSnapshot: boolean; fetchedAt?: string | null }> {
+}): Promise<
+  PayrollPayRuns & {
+    fromSnapshot: boolean;
+    fetchedAt?: string | null;
+    /** The stored row's OWN provenance, unaltered: its as-at date, staleness
+     *  and — the part that used to be dropped — whether the pull was complete.
+     *  A caller that rebuilds this by hand can silently present a truncated
+     *  pull as a whole one. */
+    snapshotSource?: import("./snapshot-source").SnapshotSource | null;
+  }
+> {
   const { payrollSettingForClient } = await import("./payroll-setting.server");
   const setting = await payrollSettingForClient(opts.supabase, opts.tenantId, opts.clientId);
   if (setting !== "registered") return { status: setting, fromSnapshot: false };
@@ -122,7 +132,19 @@ export async function loadPayRuns(opts: {
     reportKey: PAYROLL_PAYRUNS_REPORT_KEY,
   });
   if (hit?.payload && typeof hit.payload === "object" && "status" in hit.payload) {
-    return { ...(hit.payload as PayrollPayRuns), fromSnapshot: true, fetchedAt: hit.source.fetchedAt };
+    const payload = hit.payload as PayrollPayRuns;
+    return {
+      ...payload,
+      fromSnapshot: true,
+      fetchedAt: hit.source.fetchedAt,
+      // A truncated pay-run pull is stored with complete = false. Carry that
+      // through rather than letting each caller assume completeness.
+      snapshotSource: {
+        ...hit.source,
+        complete:
+          hit.source.complete && !(payload.status === "available" && payload.truncated === true),
+      },
+    };
   }
   const conn = opts.conn ?? (await (await import("./api.server")).getConnectionByTenant(opts.tenantId));
   return { ...(await fetchPayRuns(conn, "registered")), fromSnapshot: false };
