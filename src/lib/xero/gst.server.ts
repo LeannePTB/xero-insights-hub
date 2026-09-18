@@ -472,18 +472,20 @@ export async function computeGstReconciliation(
     const runs = supabase
       ? await loadPayRuns({ supabase, tenantId: conn.tenant_id, clientId, conn })
       : await fetchPayRuns(conn, "registered");
-    payRunsFromSnapshot = "fromSnapshot" in runs ? !!runs.fromSnapshot : false;
-    payRunsAsAt = ("snapshotSource" in runs ? runs.snapshotSource?.asAt : null) ?? null;
-    payRunsFetchedAt =
-      ("snapshotSource" in runs ? runs.snapshotSource?.fetchedAt : null) ??
-      ("fetchedAt" in runs ? (runs.fetchedAt ?? null) : null);
-    // The stored copy's OWN flag. Never rebuilt as complete.
-    payRunsComplete =
-      "snapshotSource" in runs && runs.snapshotSource
-        ? runs.snapshotSource.complete
-        : runs.status === "available"
-          ? !runs.truncated
-          : true;
+    // The stored row's own provenance, read as-is. Never rebuilt.
+    const prov = runs as {
+      fromSnapshot?: boolean;
+      fetchedAt?: string | null;
+      snapshotSource?: import("./snapshot-source").SnapshotSource | null;
+    };
+    payRunsFromSnapshot = !!prov.fromSnapshot;
+    payRunsAsAt = prov.snapshotSource?.asAt ?? null;
+    payRunsFetchedAt = prov.snapshotSource?.fetchedAt ?? prov.fetchedAt ?? null;
+    payRunsComplete = prov.snapshotSource
+      ? prov.snapshotSource.complete
+      : runs.status === "available"
+        ? !runs.truncated
+        : true;
     if (runs.status === "available") {
       // Compare like with like: a payday after the saved list's own as-at date
       // cannot be in that list, so the list cannot be treated as covering the
