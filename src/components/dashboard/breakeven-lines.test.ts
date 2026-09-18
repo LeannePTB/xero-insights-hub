@@ -36,6 +36,7 @@ test("a cost-of-sales account tagged Fixed lands in fixed costs", () => {
     { account_name: "Wages & Salaries", classification: "fixed" },
     { account_name: "Superannuation", classification: "fixed" },
     { account_name: "Telephones", classification: "fixed" },
+    { account_name: "Subscriptions AI", classification: "variable" },
   ]);
   const fixedNames = s.fixedLines.map((l) => l.name);
   assert.ok(fixedNames.includes("Wages & Salaries"));
@@ -50,7 +51,7 @@ test("a cost-of-sales account tagged Fixed lands in fixed costs", () => {
 });
 
 test("an untagged cost-of-sales line stays variable", () => {
-  const s = split([]);
+  const s = split([{ account_name: "Subscriptions AI", classification: "variable" }]);
   const variableNames = s.variableLines.map((l) => l.name);
   assert.ok(variableNames.includes("Wages & Salaries"));
   assert.ok(variableNames.includes("Superannuation"));
@@ -74,7 +75,10 @@ test("a cost-of-sales line with no Xero type and no tag still defaults to variab
 });
 
 test("an excluded cost-of-sales line is excluded from both totals", () => {
-  const s = split([{ account_name: "Superannuation", classification: "excluded" }]);
+  const s = split([
+    { account_name: "Superannuation", classification: "excluded" },
+    { account_name: "Subscriptions AI", classification: "variable" },
+  ]);
   assert.equal(s.excludedCount, 1);
   assert.equal(Math.round(s.excludedTotal * 100) / 100, 1067.04);
   assert.ok(!s.fixedLines.some((l) => l.name === "Superannuation"));
