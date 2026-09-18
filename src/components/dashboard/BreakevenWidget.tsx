@@ -161,8 +161,12 @@ export function BreakevenWidget({
                     ({fmtAUD(s.income)} − {fmtAUD(s.totalVariable)}) ÷ {fmtAUD(s.income)} = {fmtPct(s.grossMargin)}
                   </p>
                   <p className="mt-1 text-muted-foreground">
-                    Variable costs = Cost of Sales ({fmtAUD(s.cogs)})
+                    Variable costs = Cost of sales, variable ({fmtAUD(s.variableCogs)})
                     {s.variableOpex > 0 && <> + Variable opex ({fmtAUD(s.variableOpex)})</>}
+                  </p>
+                  <p className="mt-1 text-muted-foreground">
+                    Cost of sales in total is {fmtAUD(s.cogs)}. A cost-of-sales account classified as
+                    fixed is counted in fixed costs below, not here.
                   </p>
                 </div>
                 <div>
@@ -178,6 +182,9 @@ export function BreakevenWidget({
                         <li key={l.name} className="flex items-center justify-between gap-2 py-1">
                           <span className="truncate">
                             {l.name}
+                            {l.section === "cogs" && (
+                              <span className="ml-1.5 text-[10px] text-muted-foreground">(cost of sales)</span>
+                            )}
                             {l.unclassified && (
                               <span className="ml-1.5 text-[10px] text-amber-600">(unclassified)</span>
                             )}
