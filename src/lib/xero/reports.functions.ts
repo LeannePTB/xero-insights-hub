@@ -360,6 +360,31 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
  * Xero exposes no ATO lodgement or payment data through its API, so payment is
  * INFERRED from that balance falling. Nothing here may imply otherwise.
  */
+/**
+ * The two vintages a payroll liability card is made of. They are reported
+ * separately, and side by side on the card whenever they differ: the balance is
+ * read live, the pay runs are usually last night's stored copy, and comparing
+ * them without saying so is what produced a phantom July liability.
+ */
+export type PayrollVintage = {
+  /** When the live balance was read. */
+  balanceFetchedAt: string;
+  /** When the pay-run list was retrieved from Xero. */
+  payRunsFetchedAt: string | null;
+  /** The stored copy's own as-at date (Sydney), null when read live. */
+  payRunsAsAt: string | null;
+  payRunsFromSnapshot: boolean;
+  /** False when the pay-run pull was truncated at the page cap. */
+  payRunsComplete: boolean;
+  /** Payday of the newest pay run the card could see. */
+  latestPayRunDate: string | null;
+  /** True when the balance was read after the pay runs were saved. */
+  differs: boolean;
+};
+
+/** A statutory account sitting outside current liabilities in the chart. */
+export type MisfiledTaxAccount = { name: string; code: string | null; type: string };
+
 export type PaygWithholdingPosition =
   | { status: "no_payg_accounts" }
   | { status: "no_payroll"; outstanding: number; reason: "no_payroll" | "not_authorised" | "unavailable" | "not_registered" | "setting_required" }
@@ -372,8 +397,16 @@ export type PaygWithholdingPosition =
       months: { month: string; withheld: number; payRuns: number; owing: boolean; incomplete: boolean }[];
       /** True when whole months add up to the outstanding balance. */
       matchesMonths: boolean;
-      /** Oldest month the balance reaches, matched or not. */
+      /** Oldest month the balance FULLY covers. Never a month merely reached. */
       oldestOwingMonth: string | null;
+      /** Balance not accounted for by the months named above. Never pushed
+       *  onto an older month. */
+      residue: number;
+      residueKind: import("./payg-reconciliation").ResidueKind;
+      vintage: PayrollVintage;
+      /** PAYG accounts filed outside current liabilities — a chart problem,
+       *  not a figure problem. */
+      misfiledAccounts: MisfiledTaxAccount[];
     };
 
 export const getPaygWithholdingPosition = createServerFn({ method: "POST" })
