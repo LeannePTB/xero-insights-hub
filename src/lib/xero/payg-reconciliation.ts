@@ -55,6 +55,10 @@ const round = (n: number) => Math.round(n * 100) / 100;
 export function reconcileBalanceAgainstPeriods(
   outstanding: number,
   periods: ReconcilePeriod[],
+  /** True when the balance was read AFTER the saved pay runs were taken, so a
+   *  residue is explained by pay runs posted since. Vintage is the caller's
+   *  knowledge, never guessed from the arithmetic. */
+  opts: { savedRunsOlderThanBalance?: boolean } = {},
 ): Reconciliation {
   if (!(outstanding > TOL)) {
     return {
