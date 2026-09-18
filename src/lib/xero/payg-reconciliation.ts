@@ -89,8 +89,9 @@ export function reconcileBalanceAgainstPeriods(
   }
 
   const residue = round(outstanding - accountedFor);
+  void blocked;
   const residueKind: ResidueKind =
-    residue <= TOL ? "none" : blocked ? "unmatched" : "since_last_pay_run";
+    residue <= TOL ? "none" : opts.savedRunsOlderThanBalance ? "since_last_pay_run" : "unmatched";
 
   return {
     owing,
