@@ -319,13 +319,18 @@ export const getScenarioData = createServerFn({ method: "POST" })
     for (const line of expenseLines) {
       const r = resolver.resolve(line.name);
       if (r.effective === "excluded") continue;
-      if (r.unclassified) unclassifiedNames.add(line.name);
+      const isCogs = line.section === "cogs";
+      // Same rule as the break-even card (see breakeven-lines.ts): an undecided
+      // cost-of-sales line falls back to VARIABLE, not the resolver's fixed
+      // default, so the two cards never disagree about the same account.
+      const effective = isCogs ? (r.decided ?? "variable") : r.effective;
+      if (r.unclassified && !isCogs) unclassifiedNames.add(line.name);
       expenses.push({
         id: `${line.month}:${line.name}`,
         name: line.name,
         amount: line.amount,
-        type: r.effective === "variable" ? "Variable" : "Fixed",
-        section: line.section === "cogs" ? "cogs" : "operating",
+        type: effective === "variable" ? "Variable" : "Fixed",
+        section: isCogs ? "cogs" : "operating",
         category: line.name,
         date: `${line.month}-01`,
       });
