@@ -297,41 +297,41 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
     const payrollStatus = runs.status;
 
     // The balance is live; the pay runs may be last night's saved copy. The
-    // card must report the older of the two.
-    const source =
-      mergeSources([
-        liveSource("disabled"),
-        runs.fromSnapshot
-          ? {
-              mode: "snapshot" as const,
-              asAt: null,
-              fetchedAt: runs.fetchedAt ?? null,
-              stale: false,
-              complete: true,
-              connection: "connected" as const,
-            }
-          : null,
-      ]) ?? liveSource("disabled");
+    // card reports the older of the two, and carries the stored row's OWN
+    // staleness and completeness rather than assuming either.
+    const balanceSource = liveSource("disabled");
+    const source = mergeSources([balanceSource, runs.snapshotSource ?? null]) ?? balanceSource;
 
     let matchesPaydays = false;
     let unpaidPaydays: number | null = null;
     let oldestUnpaidPayday: string | null = null;
+    let residue = 0;
+    let residueKind: import("./payg-reconciliation").ResidueKind = "none";
+    const payRunsAsAt = runs.snapshotSource?.asAt ?? null;
+    const { sydneyDate } = await import("@/lib/sydney-time");
+    const vintageDiffers = !!payRunsAsAt && payRunsAsAt < sydneyDate();
+    let latestPayRunDate: string | null = null;
 
-    if (runs.status === "available" && outstanding > 0.005) {
-      // Newest payday first: accumulate until the accruals reach the balance.
+    if (runs.status === "available") {
+      // Compare like with like: a payday after the saved list's own date cannot
+      // be in that list, so it is excluded and reported as a residue instead.
       const ordered = runs.payRuns
-        .filter((r) => !!r.paymentDate)
+        .filter((r) => !!r.paymentDate && (!payRunsAsAt || r.paymentDate! <= payRunsAsAt))
         .sort((a, b) => (b.paymentDate ?? "").localeCompare(a.paymentDate ?? ""));
-      let cumulative = 0;
-      for (let i = 0; i < ordered.length; i++) {
-        cumulative = round(cumulative + ordered[i]!.super);
-        oldestUnpaidPayday = ordered[i]!.paymentDate;
-        if (Math.abs(cumulative - outstanding) < 0.005) {
-          matchesPaydays = true;
-          unpaidPaydays = i + 1;
-          break;
-        }
-        if (cumulative > outstanding) break;
+      latestPayRunDate = ordered[0]?.paymentDate ?? null;
+      if (outstanding > 0.005) {
+        const { reconcileBalanceAgainstPeriods } = await import("./payg-reconciliation");
+        const recon = reconcileBalanceAgainstPeriods(
+          outstanding,
+          ordered.map((r) => ({ key: r.paymentDate!, amount: round(r.super) })),
+          { savedRunsOlderThanBalance: vintageDiffers },
+        );
+        matchesPaydays = recon.matches;
+        unpaidPaydays = recon.owing.length ? recon.owing.length : null;
+        // Never a payday we merely reached: only ones the balance fully covers.
+        oldestUnpaidPayday = recon.oldest;
+        residue = recon.residue;
+        residueKind = recon.residueKind;
       }
     }
 
@@ -344,6 +344,21 @@ export const getSuperannuationPosition = createServerFn({ method: "POST" })
       unpaidPaydays,
       oldestUnpaidPayday,
       payrollStatus,
+      residue,
+      residueKind,
+      vintage: {
+        balanceFetchedAt: balanceSource.fetchedAt ?? new Date().toISOString(),
+        payRunsFetchedAt: runs.snapshotSource?.fetchedAt ?? runs.fetchedAt ?? null,
+        payRunsAsAt,
+        payRunsFromSnapshot: runs.fromSnapshot,
+        payRunsComplete: runs.snapshotSource
+          ? runs.snapshotSource.complete
+          : runs.status === "available"
+            ? !runs.truncated
+            : true,
+        latestPayRunDate,
+        differs: vintageDiffers,
+      },
     };
   });
 
