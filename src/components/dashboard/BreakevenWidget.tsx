@@ -191,6 +191,13 @@ export function BreakevenWidget({
                 <div>
                   <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Formula</p>
                   <p className="font-mono text-foreground">Break-Even Revenue (per month) = Monthly Fixed Costs ÷ Contribution Margin %</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Contribution margin is what is left from each dollar of revenue after the variable
+                    costs — the costs that rise and fall with the work. It differs from gross margin in
+                    the Xero profit and loss because it splits costs by how they behave rather than by
+                    which section of the profit and loss they sit in: a cost-of-sales account classified
+                    as fixed is counted as a fixed cost here, not a variable one.
+                  </p>
                   <p className="mt-1 font-mono text-muted-foreground">
                     {fmtAUD(f.monthlyBreakeven)} = {fmtAUD(f.monthlyFixed)} ÷ {fmtPct(s.grossMargin)}
                   </p>
