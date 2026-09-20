@@ -724,6 +724,9 @@ function ClientSettings() {
           setClassEnabled={setClassEnabled}
         />
 
+        {/* Loan repayments, tax and drawings — shown inside the Break-Even card */}
+        <CashCommitmentsSection clientId={clientId} linkedOrgs={linkedOrgs} />
+
         <Section title="Danger zone">
           <Button
             variant="destructive"
