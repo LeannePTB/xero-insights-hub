@@ -1740,8 +1740,8 @@ CREATE OR REPLACE FUNCTION app_private.card_group_cards(_group text)
  SET search_path TO 'public'
 AS $function$
   select case _group
-    when 'standard' then array['health','receivables','payables','pnl','notes','unreconciled','bank_reconciliation']
-    when 'advisory' then array['cashflow','cashflow_scenario','accounting_breakeven','true_breakeven','tax_liability','gst_reconciliation','superannuation','payg_withholding','xero_audit','transaction_search']
+    when 'standard' then array['health','receivables','payables','pnl','notes','unreconciled']
+    when 'advisory' then array['cashflow','cashflow_scenario','accounting_breakeven','true_breakeven','gst_reconciliation','superannuation','payg_withholding','xero_audit','transaction_search']
     when 'consolidation' then array['loan_consolidation']
     else '{}'::text[]
   end
@@ -3412,4 +3412,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 57adf478245269d88116899e94f1fe804a6211eea89065f4b1e68d7ad767e199
+-- catalogue-fingerprint: 6c080f51fc7130cf7140cba77fa663ecc3d0604d07d080f6426ded16a62ba571
