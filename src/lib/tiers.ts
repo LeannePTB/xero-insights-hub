@@ -85,7 +85,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   unreconciled: "Uncoded Bankfeed Questions",
   superannuation: "Superannuation",
   accounting_breakeven: "Break-Even",
-  true_breakeven: "True Break-Even (shown in Break-Even)",
+  true_breakeven: "What you really need to bring in (loan repayments, tax, drawings)",
   cashflow: "Cash Flow",
   cashflow_scenario: "Cashflow Scenario",
   xero_audit: "Xero File Audit",

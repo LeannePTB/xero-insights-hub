@@ -20,8 +20,8 @@ export const FIXED_CARD_BASIS_LABELS: { key: string; label: string; reason: stri
   { key: "receivables", label: "Aged Receivables", reason: "On a cash basis there are no receivables" },
   { key: "payables", label: "Aged Payables", reason: "On a cash basis there are no payables" },
   { key: "superannuation", label: "Superannuation", reason: "Liabilities are an accrual concept" },
-  { key: "accounting_breakeven", label: "Accounting Break-Even", reason: "Accrual by definition" },
-  { key: "true_breakeven", label: "True Break-Even (Cash)", reason: "Cash by definition" },
+  { key: "accounting_breakeven", label: "Breaking even", reason: "Accrual by definition" },
+  { key: "true_breakeven", label: "What you really need to bring in (Cash)", reason: "Cash by definition" },
   { key: "cashflow", label: "Cash Flow", reason: "Cash movement is cash movement" },
 ];
 

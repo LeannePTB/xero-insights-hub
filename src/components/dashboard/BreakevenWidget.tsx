@@ -9,6 +9,7 @@ import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { cn } from "@/lib/utils";
 import { useBreakevenData, fmtAUD, fmtPct } from "@/components/dashboard/useBreakevenData";
 import { useIsAdvisor } from "@/hooks/useIsAdvisor";
+import { TrueBreakevenSection } from "@/components/dashboard/TrueBreakevenSection";
 
 export function BreakevenWidget({
   tenantId,
@@ -16,12 +17,16 @@ export function BreakevenWidget({
   clientId,
   loadDelayMs = 0,
   basis = "accrual",
+  showCommitments = false,
 }: {
   tenantId: string;
   tenantName: string;
   clientId?: string;
   loadDelayMs?: number;
   basis?: "accrual" | "cash";
+  /** The `true_breakeven` card key: loan repayments, tax and drawings, as a
+   * section of this card. */
+  showCommitments?: boolean;
 }) {
   const s = useBreakevenData({ tenantId, clientId, basis, loadDelayMs });
   // Cost-classification prompts are preparer tooling; clients never see them.
@@ -40,9 +45,12 @@ export function BreakevenWidget({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Target className="h-4 w-4 text-primary" /> Accounting Break-Even
+            <Target className="h-4 w-4 text-primary" /> Breaking even
             <BasisBadge basis={basis} />
           </h3>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            The sales you need to cover your costs
+          </p>
           <CardFreshness
             from={s.fromDate}
             to={s.toDate}
@@ -182,6 +190,17 @@ export function BreakevenWidget({
                 </tbody>
               </table>
             </div>
+
+            {showCommitments && clientId && (
+              <TrueBreakevenSection
+                clientId={clientId}
+                tenantId={tenantId}
+                monthlyFixed={f.monthlyFixed}
+                grossMargin={s.grossMargin}
+                monthlyIncome={f.monthlyIncome}
+                isAdvisor={isAdvisor}
+              />
+            )}
 
             <details className="mt-3 rounded-lg border border-border/60 bg-background/50">
               <summary className="cursor-pointer select-none px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground">

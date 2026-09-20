@@ -258,7 +258,7 @@ function ClientDashboard() {
       // Accounting and True break-even are one card; cash commitments are an
       // expandable section inside it.
       if (widgets.includes("accounting_breakeven"))
-        advanced.push({ id: `${o.id}:accounting_breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} /> });
+        advanced.push({ id: `${o.id}:accounting_breakeven`, node: <BreakevenWidget tenantId={tenantId} tenantName={tenantName} clientId={clientId} basis={basisFor("accounting_breakeven")} showCommitments={widgets.includes("true_breakeven")} /> });
 
       if (widgets.includes("cashflow"))
         advanced.push({ id: `${o.id}:cashflow`, node: <CashflowWidget tenantId={tenantId} tenantName={tenantName} /> });
