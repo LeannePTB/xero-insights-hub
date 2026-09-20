@@ -96,4 +96,9 @@ honour:
   after `bank_reconciliation` and `tax_liability` were removed, to prove no
   client was left holding a key the catalogue no longer offers.
 
+The reverse check proved the 20 Sep retirement of `true_breakeven`: its
+fail-loud migration removed the catalogue entry and all ten stored ticks in one
+transaction, and the check then confirmed that no client or organisation
+template retained the retired key.
+
 Neither reads or changes any policy, grant or credential.

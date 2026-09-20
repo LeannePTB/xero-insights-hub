@@ -20,8 +20,8 @@
  *
  * Both directions are covered:
  *   * a catalogue card with no component FAILS the build;
- *   * a built card missing from the catalogue WARNS, so a finished card cannot
- *     sit unofferable without anyone noticing.
+ *   * a built card missing from the catalogue WARNS, so retained implementation
+ *     for a future rebuild cannot sit unofferable without anyone noticing.
  */
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
@@ -55,9 +55,10 @@ const rendered = new Set(
 );
 
 /**
- * A deprecated key draws a card when the card it was merged into is rendered —
- * `true_breakeven` shows inside the Break-Even card. Derived from the alias
- * table, never a second hardcoded list.
+ * A deprecated key draws a card when the card it was merged into is rendered.
+ * Derived from the alias table, never a second hardcoded list. Retired aliases
+ * may remain implemented but absent from the catalogue while their supporting
+ * data and code are retained for a future rebuild.
  */
 const drawable = new Set(rendered);
 for (const [key, target] of Object.entries(DEPRECATED_WIDGET_ALIASES)) {
@@ -68,6 +69,10 @@ describe("card catalogue", () => {
   it("reads a non-empty catalogue and a non-empty set of dashboard cards", () => {
     expect(offered.length).toBeGreaterThan(0);
     expect(rendered.size).toBeGreaterThan(0);
+  });
+
+  it("keeps the retired true break-even key out of every purchasable group", () => {
+    expect(offered).not.toContain("true_breakeven");
   });
 
   it("offers no card the app has no component for", () => {
