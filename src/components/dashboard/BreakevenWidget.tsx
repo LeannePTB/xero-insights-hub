@@ -177,7 +177,7 @@ export function BreakevenWidget({
               <div className="space-y-4 border-t border-border/60 px-3 py-3 text-xs">
                 <div>
                   <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Formula</p>
-                  <p className="font-mono text-foreground">Break-Even Revenue (per month) = Monthly Fixed Costs ÷ Gross Margin %</p>
+                  <p className="font-mono text-foreground">Break-Even Revenue (per month) = Monthly Fixed Costs ÷ Contribution Margin %</p>
                   <p className="mt-1 font-mono text-muted-foreground">
                     {fmtAUD(f.monthlyBreakeven)} = {fmtAUD(f.monthlyFixed)} ÷ {fmtPct(s.grossMargin)}
                   </p>
@@ -190,7 +190,7 @@ export function BreakevenWidget({
                   )}
                 </div>
                 <div>
-                  <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Gross Margin %</p>
+                  <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Contribution Margin %</p>
                   <p className="font-mono text-foreground">
                     ({fmtAUD(s.income)} − {fmtAUD(s.totalVariable)}) ÷ {fmtAUD(s.income)} = {fmtPct(s.grossMargin)}
                   </p>
