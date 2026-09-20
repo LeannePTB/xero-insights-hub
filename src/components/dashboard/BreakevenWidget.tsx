@@ -112,12 +112,28 @@ export function BreakevenWidget({
                   {(
                     [
                       { label: "Fixed Costs (per month)", value: fmtAUD(f.monthlyFixed) },
-                      { label: "Gross Margin %", value: fmtPct(s.grossMargin) },
+                      {
+                        // Qualified deliberately: any cost of sales classified as
+                        // fixed is excluded from variable costs here, so this is a
+                        // contribution margin and will read higher than the gross
+                        // margin in the Xero profit and loss.
+                        label: (
+                          <>
+                            Contribution Margin %{" "}
+                            <span className="italic text-muted-foreground">
+                              (after variable costs only — not the same as gross margin in Xero)
+                            </span>
+                          </>
+                        ),
+                        value: fmtPct(s.grossMargin),
+                      },
                       {
                         label: (
                           <>
                             Break-Even Revenue (per month){" "}
-                            <span className="italic text-muted-foreground">(Monthly Fixed Costs ÷ Gross Margin %)</span>
+                            <span className="italic text-muted-foreground">
+                              (Monthly Fixed Costs ÷ Contribution Margin %)
+                            </span>
                           </>
                         ),
                         value: fmtAUD(f.monthlyBreakeven),
