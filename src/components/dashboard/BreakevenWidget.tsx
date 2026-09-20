@@ -27,10 +27,12 @@ export function BreakevenWidget({
   // Cost-classification prompts are preparer tooling; clients never see them.
   const { isAdvisor } = useIsAdvisor();
 
-  // One basis for the whole card: every money figure is monthly.
+  // One basis for the whole card: every money figure is monthly. Null until the
+  // report, the stored classifications and the account list have all resolved —
+  // figures are never calculated from partial inputs.
   const f = s.figures;
-  const isProfit = f.monthlyOperatingResult >= 0;
-  const aboveBreakeven = f.aboveBreakeven;
+  const isProfit = (f?.monthlyOperatingResult ?? 0) >= 0;
+  const aboveBreakeven = f?.aboveBreakeven ?? false;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
