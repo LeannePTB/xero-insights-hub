@@ -2,6 +2,10 @@
 // only from `.functions.ts` handlers via dynamic import.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { decryptToken, encryptTokenB64 } from "@/lib/crypto.server";
+import {
+  XERO_FILE_CEILING_MESSAGE,
+  enforceXeroFileCeiling,
+} from "@/lib/xero/file-ceiling.server";
 
 const TOKEN_URL = "https://identity.xero.com/connect/token";
 const API_BASE = "https://api.xero.com/api.xro/2.0";
