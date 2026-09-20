@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Is tests/fixtures/card-catalogue.json still a faithful copy of the live card
+# Is tests/fixtures/card-catalogue.sql still a faithful copy of the live card
 # catalogue?
 #
 # Read-only. A mismatch means a migration changed which cards a purchasable
@@ -10,7 +10,7 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-fixture="tests/fixtures/card-catalogue.json"
+fixture="tests/fixtures/card-catalogue.sql"
 if [ ! -s "$fixture" ]; then
   echo "CARD CATALOGUE: FAIL — $fixture is missing. Run ./scripts/dump-card-catalogue.sh"
   exit 1

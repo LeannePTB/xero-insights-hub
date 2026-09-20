@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Regenerate tests/fixtures/card-catalogue.json from the live catalogue
+# Regenerate tests/fixtures/card-catalogue.sql from the live catalogue
 # (read-only). Run this after any migration that adds or removes a card from
 # app_private.card_group_cards — scripts/check-card-catalogue.sh fails until you
 # do.
@@ -11,7 +11,7 @@ if ! command -v psql >/dev/null 2>&1 || [ -z "${PGHOST:-}" ]; then
   exit 1
 fi
 
-out="tests/fixtures/card-catalogue.json"
+out="tests/fixtures/card-catalogue.sql"
 psql -q -t -A -f scripts/dump-card-catalogue.sql >"$out.tmp"
 if [ ! -s "$out.tmp" ]; then
   rm -f "$out.tmp"
