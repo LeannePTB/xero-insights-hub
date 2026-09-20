@@ -101,6 +101,19 @@ export function useBreakevenData({
   );
 
   const data = pnlQ.data;
+
+  // Nothing is calculated from partial inputs: an in-flight classification list
+  // reads as an empty list, which silently seeds cost-of-sales accounts as
+  // variable. See breakeven-readiness.ts.
+  const readiness = breakevenReadiness({
+    needsClassifications: !!clientId,
+    report: { data, error: pnlQ.error },
+    classifications: { data: classQ.data, error: classQ.error },
+    accounts: { data: accountsQ.data, error: accountsQ.error },
+  });
+  const classificationError = readiness.status === "classification-error";
+  const canCalculate = readiness.canCalculate;
+
   const income = data?.totalIncome ?? 0;
   const cogs = data?.totalCostOfSales ?? 0;
   const opex = data?.totalExpenses ?? 0;
@@ -135,9 +148,14 @@ export function useBreakevenData({
 
   const months = monthsBetween(fromDate, toDate);
   const totalVariable = split.variableTotal;
-  const figures = breakevenFigures({ income, totalVariable, fixedOpex, months });
-  const { grossMargin, monthlyIncome } = figures;
-  const breakevenRevenue = figures.monthlyBreakeven;
+  // Null until every input has resolved: a caller cannot render a figure from
+  // partial inputs even by accident.
+  const figures = canCalculate
+    ? breakevenFigures({ income, totalVariable, fixedOpex, months })
+    : null;
+  const grossMargin = figures?.grossMargin ?? 0;
+  const monthlyIncome = figures?.monthlyIncome ?? 0;
+  const breakevenRevenue = figures?.monthlyBreakeven ?? 0;
 
   return {
     shouldLoad,
@@ -148,9 +166,17 @@ export function useBreakevenData({
     setToDate,
     fromStr,
     toStr,
-    isLoading: pnlQ.isLoading,
-    isFetching: pnlQ.isFetching,
+    // Loading covers the classification and account requests too, not just the
+    // report.
+    isLoading: readiness.status === "loading",
+    isFetching: pnlQ.isFetching || classQ.isFetching || accountsQ.isFetching,
     error: pnlQ.error,
+    classificationError,
+    canCalculate,
+    refetchClassifications: () => {
+      void classQ.refetch();
+      void accountsQ.refetch();
+    },
     refetch: pnlQ.refetch,
     // Deliberately NOT exposed: React Query's `dataUpdatedAt`. Freshness comes
     // from the provenance the server returns on `data.source`, never from when
