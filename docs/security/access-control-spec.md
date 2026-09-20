@@ -1,3 +1,12 @@
+@@
+-1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 53 `public` tables.
++1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 63 `public` tables.
+@@
+-12. `authenticated` holds only the privileges the policies on that table admit (§14).
++12. `authenticated` holds only the privileges the policies on that table admit (§14). `scripts/check-table-security.ts` enforces this from the live-catalogue fixture before release and rejects anonymous privileges unless explicitly allow-listed.
+@@
+-- **Database.** `app_private.is_aal2()` reads the `aal` claim from the request JWT. A RESTRICTIVE `FOR ALL TO authenticated` policy `mfa_aal2_required` sits on **51 of the 53 `public` tables** (verified live), with two owner-approved exclusions holding no organisation, client or personal data: `plan_levels` and `tier_settings`. Requests with no JWT claims (cron, migrations) and `service_role` requests are system contexts, which bypass RLS anyway.
++- **Database.** `app_private.is_aal2()` reads the `aal` claim from the request JWT. A RESTRICTIVE `FOR ALL TO authenticated` policy `mfa_aal2_required` sits on **60 of the 63 `public` tables** (verified live). The three documented exclusions are `plan_levels` and `tier_settings` (legacy non-data catalogues), plus `session_activity`, which `is_aal2()` itself reads to enforce inactivity and therefore cannot carry the guard without recursion. Requests with no JWT claims (cron, migrations) and `service_role` requests are system contexts, which bypass RLS anyway. The pre-release table-security guard fails when a new table omits this policy or receives a data privilege not admitted by a matching permissive policy.
 # Traction Advisory — Access Control Spec (the detail)
 
 > **What this file is for.** The DETAIL behind the rules: how each rule is implemented, and the
