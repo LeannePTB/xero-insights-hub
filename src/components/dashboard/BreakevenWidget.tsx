@@ -111,17 +111,30 @@ export function BreakevenWidget({
                 <tbody>
                   {(
                     [
-                      { label: "Fixed Costs (per month)", value: fmtAUD(f.monthlyFixed) },
                       {
-                        // Qualified deliberately: any cost of sales classified as
-                        // fixed is excluded from variable costs here, so this is a
-                        // contribution margin and will read higher than the gross
-                        // margin in the Xero profit and loss.
+                        // Plain English on the face of the card (owner decision):
+                        // "fixed costs" reads as accountant's language. The
+                        // technical terms live in the breakdown below.
                         label: (
                           <>
-                            Contribution Margin %{" "}
+                            Costs you have anyway (per month){" "}
+                            <span className="italic text-muted-foreground">(fixed costs)</span>
+                          </>
+                        ),
+                        value: fmtAUD(f.monthlyFixed),
+                      },
+                      {
+                        // This is a contribution margin, not gross margin — any
+                        // cost of sales classified as fixed is excluded from
+                        // variable costs here. The label says what the figure
+                        // means rather than naming the accounting measure, and
+                        // the breakdown explains the difference properly.
+                        label: (
+                          <>
+                            Left from each sale (%){" "}
                             <span className="italic text-muted-foreground">
-                              (after variable costs only — not the same as gross margin in Xero)
+                              (after the costs that rise and fall with the work — this is what pays
+                              your fixed costs. Not the same as the gross margin in Xero)
                             </span>
                           </>
                         ),
@@ -132,7 +145,7 @@ export function BreakevenWidget({
                           <>
                             Break-Even Revenue (per month){" "}
                             <span className="italic text-muted-foreground">
-                              (Monthly Fixed Costs ÷ Contribution Margin %)
+                              (Costs you have anyway ÷ Left from each sale %)
                             </span>
                           </>
                         ),
