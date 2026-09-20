@@ -94,7 +94,7 @@ export function BreakevenWidget({
         s.income <= 0 || s.grossMargin <= 0 ? (
           <div className="mt-6 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>Not enough income or positive gross margin in this period to compute a break-even.</span>
+            <span>Not enough income in this period to work out a break-even — income did not cover the costs that rise and fall with the work.</span>
           </div>
         ) : (
           <>
@@ -111,17 +111,30 @@ export function BreakevenWidget({
                 <tbody>
                   {(
                     [
-                      { label: "Fixed Costs (per month)", value: fmtAUD(f.monthlyFixed) },
                       {
-                        // Qualified deliberately: any cost of sales classified as
-                        // fixed is excluded from variable costs here, so this is a
-                        // contribution margin and will read higher than the gross
-                        // margin in the Xero profit and loss.
+                        // Plain English on the face of the card (owner decision):
+                        // "fixed costs" reads as accountant's language. The
+                        // technical terms live in the breakdown below.
                         label: (
                           <>
-                            Contribution Margin %{" "}
+                            Costs you have anyway (per month){" "}
+                            <span className="italic text-muted-foreground">(fixed costs)</span>
+                          </>
+                        ),
+                        value: fmtAUD(f.monthlyFixed),
+                      },
+                      {
+                        // This is a contribution margin, not gross margin — any
+                        // cost of sales classified as fixed is excluded from
+                        // variable costs here. The label says what the figure
+                        // means rather than naming the accounting measure, and
+                        // the breakdown explains the difference properly.
+                        label: (
+                          <>
+                            Left from each sale (%){" "}
                             <span className="italic text-muted-foreground">
-                              (after variable costs only — not the same as gross margin in Xero)
+                              (after the costs that rise and fall with the work — this is what pays
+                              your fixed costs. Not the same as the gross margin in Xero)
                             </span>
                           </>
                         ),
@@ -132,7 +145,7 @@ export function BreakevenWidget({
                           <>
                             Break-Even Revenue (per month){" "}
                             <span className="italic text-muted-foreground">
-                              (Monthly Fixed Costs ÷ Contribution Margin %)
+                              (Costs you have anyway ÷ Left from each sale %)
                             </span>
                           </>
                         ),
@@ -178,6 +191,13 @@ export function BreakevenWidget({
                 <div>
                   <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Formula</p>
                   <p className="font-mono text-foreground">Break-Even Revenue (per month) = Monthly Fixed Costs ÷ Contribution Margin %</p>
+                  <p className="mt-1 text-muted-foreground">
+                    Contribution margin is what is left from each dollar of revenue after the variable
+                    costs — the costs that rise and fall with the work. It differs from gross margin in
+                    the Xero profit and loss because it splits costs by how they behave rather than by
+                    which section of the profit and loss they sit in: a cost-of-sales account classified
+                    as fixed is counted as a fixed cost here, not a variable one.
+                  </p>
                   <p className="mt-1 font-mono text-muted-foreground">
                     {fmtAUD(f.monthlyBreakeven)} = {fmtAUD(f.monthlyFixed)} ÷ {fmtPct(s.grossMargin)}
                   </p>
