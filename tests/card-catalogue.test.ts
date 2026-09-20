@@ -71,6 +71,10 @@ describe("card catalogue", () => {
     expect(rendered.size).toBeGreaterThan(0);
   });
 
+  it("keeps the retired true break-even key out of every purchasable group", () => {
+    expect(offered).not.toContain("true_breakeven");
+  });
+
   it("offers no card the app has no component for", () => {
     const orphans = offered.filter((c) => !drawable.has(c));
     expect(
