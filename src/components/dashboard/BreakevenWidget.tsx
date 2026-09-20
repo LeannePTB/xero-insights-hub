@@ -74,7 +74,23 @@ export function BreakevenWidget({
         </div>
       ) : s.error ? (
         <XeroErrorNotice error={s.error} onRetry={() => s.refetch()} isRetrying={s.isFetching} />
-      ) : s.data ? (
+      ) : s.classificationError ? (
+        // A failed classification read is said out loud. Falling back to the
+        // defaults here would show a confident, wrong fixed-cost figure.
+        <div className="mt-6 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div className="space-y-2">
+            <p className="font-medium text-foreground">Break-even cannot be worked out just now</p>
+            <p className="text-muted-foreground">
+              The saved fixed and variable cost settings could not be read, so this figure would be
+              wrong. Nothing is missing from your records — please try again in a moment.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => s.refetchClassifications()}>
+              Try again
+            </Button>
+          </div>
+        </div>
+      ) : s.data && f ? (
         s.income <= 0 || s.grossMargin <= 0 ? (
           <div className="mt-6 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
