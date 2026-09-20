@@ -94,7 +94,7 @@ export function BreakevenWidget({
         s.income <= 0 || s.grossMargin <= 0 ? (
           <div className="mt-6 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>Not enough income or positive gross margin in this period to compute a break-even.</span>
+            <span>Not enough income in this period to work out a break-even — income did not cover the costs that rise and fall with the work.</span>
           </div>
         ) : (
           <>
