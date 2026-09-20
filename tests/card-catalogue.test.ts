@@ -29,14 +29,21 @@ import { join } from "node:path";
 import { ALL_WIDGETS, DEPRECATED_WIDGET_ALIASES } from "../src/lib/tiers";
 
 const ROOT = join(import.meta.dirname, "..");
-const FIXTURE = process.env["CARD_CATALOGUE_FIXTURE"] ?? "tests/fixtures/card-catalogue.json";
+const FIXTURE = process.env["CARD_CATALOGUE_FIXTURE"] ?? "tests/fixtures/card-catalogue.sql";
 const DASHBOARD = "src/routes/_authenticated/clients.$clientId.index.tsx";
 
-type Group = { group: string; cards: string[] };
-const catalogue: Group[] = JSON.parse(readFileSync(join(ROOT, FIXTURE), "utf8"));
-
-/** Every card key the catalogue offers, in any purchasable group. */
-const offered = [...new Set(catalogue.flatMap((g) => g.cards))].sort();
+/**
+ * Every card key the catalogue offers, in any purchasable group, parsed out of
+ * the snapshotted function body (`when 'advisory' then array['...','...']`).
+ */
+const catalogueSql = readFileSync(join(ROOT, FIXTURE), "utf8");
+const offered = [
+  ...new Set(
+    [...catalogueSql.matchAll(/when\s+'[a-z_]+'\s+then\s+array\[([^\]]*)\]/g)].flatMap((m) =>
+      [...m[1]!.matchAll(/'([a-z_]+)'/g)].map((c) => c[1]!),
+    ),
+  ),
+].sort();
 
 /**
  * Every card key the dashboard has a component branch for. Read from the
