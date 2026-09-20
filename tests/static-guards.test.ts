@@ -712,4 +712,15 @@ describe("12f. payroll calls honour the client's explicit setting", () => {
     const checklist = readFileSync(join(ROOT, "src/lib/setup-checklist.server.ts"), "utf8");
     expect(checklist).toContain('ackedAt(ack, "pl_basis")');
   });
+  it("never calculates break-even figures from partial inputs", () => {
+    // The card once rendered while the classification request was still in
+    // flight, so cost-of-sales wages silently seeded as variable.
+    const hook = readFileSync(join(ROOT, "src/components/dashboard/useBreakevenData.ts"), "utf8");
+    expect(hook).toContain("breakevenReadiness");
+    expect(hook).toMatch(/const figures = canCalculate\s*\?\s*breakevenFigures/);
+    expect(hook).toContain("classificationError");
+    const widget = readFileSync(join(ROOT, "src/components/dashboard/BreakevenWidget.tsx"), "utf8");
+    expect(widget).toContain("s.classificationError");
+    expect(widget).toContain("s.data && f ?");
+  });
 });

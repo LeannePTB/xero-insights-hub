@@ -27,10 +27,12 @@ export function BreakevenWidget({
   // Cost-classification prompts are preparer tooling; clients never see them.
   const { isAdvisor } = useIsAdvisor();
 
-  // One basis for the whole card: every money figure is monthly.
+  // One basis for the whole card: every money figure is monthly. Null until the
+  // report, the stored classifications and the account list have all resolved —
+  // figures are never calculated from partial inputs.
   const f = s.figures;
-  const isProfit = f.monthlyOperatingResult >= 0;
-  const aboveBreakeven = f.aboveBreakeven;
+  const isProfit = (f?.monthlyOperatingResult ?? 0) >= 0;
+  const aboveBreakeven = f?.aboveBreakeven ?? false;
 
   return (
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
@@ -72,7 +74,23 @@ export function BreakevenWidget({
         </div>
       ) : s.error ? (
         <XeroErrorNotice error={s.error} onRetry={() => s.refetch()} isRetrying={s.isFetching} />
-      ) : s.data ? (
+      ) : s.classificationError ? (
+        // A failed classification read is said out loud. Falling back to the
+        // defaults here would show a confident, wrong fixed-cost figure.
+        <div className="mt-6 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+          <div className="space-y-2">
+            <p className="font-medium text-foreground">Break-even cannot be worked out just now</p>
+            <p className="text-muted-foreground">
+              The saved fixed and variable cost settings could not be read, so this figure would be
+              wrong. Nothing is missing from your records — please try again in a moment.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => s.refetchClassifications()}>
+              Try again
+            </Button>
+          </div>
+        </div>
+      ) : s.data && f ? (
         s.income <= 0 || s.grossMargin <= 0 ? (
           <div className="mt-6 flex items-start gap-3 rounded-lg bg-muted/50 p-4 text-sm text-muted-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -94,12 +112,28 @@ export function BreakevenWidget({
                   {(
                     [
                       { label: "Fixed Costs (per month)", value: fmtAUD(f.monthlyFixed) },
-                      { label: "Gross Margin %", value: fmtPct(s.grossMargin) },
+                      {
+                        // Qualified deliberately: any cost of sales classified as
+                        // fixed is excluded from variable costs here, so this is a
+                        // contribution margin and will read higher than the gross
+                        // margin in the Xero profit and loss.
+                        label: (
+                          <>
+                            Contribution Margin %{" "}
+                            <span className="italic text-muted-foreground">
+                              (after variable costs only — not the same as gross margin in Xero)
+                            </span>
+                          </>
+                        ),
+                        value: fmtPct(s.grossMargin),
+                      },
                       {
                         label: (
                           <>
                             Break-Even Revenue (per month){" "}
-                            <span className="italic text-muted-foreground">(Monthly Fixed Costs ÷ Gross Margin %)</span>
+                            <span className="italic text-muted-foreground">
+                              (Monthly Fixed Costs ÷ Contribution Margin %)
+                            </span>
                           </>
                         ),
                         value: fmtAUD(f.monthlyBreakeven),
@@ -143,7 +177,7 @@ export function BreakevenWidget({
               <div className="space-y-4 border-t border-border/60 px-3 py-3 text-xs">
                 <div>
                   <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Formula</p>
-                  <p className="font-mono text-foreground">Break-Even Revenue (per month) = Monthly Fixed Costs ÷ Gross Margin %</p>
+                  <p className="font-mono text-foreground">Break-Even Revenue (per month) = Monthly Fixed Costs ÷ Contribution Margin %</p>
                   <p className="mt-1 font-mono text-muted-foreground">
                     {fmtAUD(f.monthlyBreakeven)} = {fmtAUD(f.monthlyFixed)} ÷ {fmtPct(s.grossMargin)}
                   </p>
@@ -156,7 +190,7 @@ export function BreakevenWidget({
                   )}
                 </div>
                 <div>
-                  <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Gross Margin %</p>
+                  <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Contribution Margin %</p>
                   <p className="font-mono text-foreground">
                     ({fmtAUD(s.income)} − {fmtAUD(s.totalVariable)}) ÷ {fmtAUD(s.income)} = {fmtPct(s.grossMargin)}
                   </p>
