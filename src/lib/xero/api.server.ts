@@ -2,6 +2,10 @@
 // only from `.functions.ts` handlers via dynamic import.
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { decryptToken, encryptTokenB64 } from "@/lib/crypto.server";
+import {
+  XERO_FILE_CEILING_MESSAGE,
+  enforceXeroFileCeiling,
+} from "@/lib/xero/file-ceiling.server";
 
 const TOKEN_URL = "https://identity.xero.com/connect/token";
 const API_BASE = "https://api.xero.com/api.xro/2.0";
@@ -480,6 +484,9 @@ async function xeroGetUncached<T = unknown>(
   const q = new URLSearchParams(clean).toString();
   const url = `${API_BASE}/${path}${q ? "?" + q : ""}`;
 
+  // Hard per-file hourly ceiling, counted across every backend instance.
+  await enforceXeroFileCeiling(conn.tenant_id);
+
 
   const res = await fetchWithTimeout(url, {
     headers: {
@@ -598,6 +605,7 @@ async function xeroGetAssetsUncached<T = unknown>(
   const clean: Record<string, string> = {};
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
   const q = new URLSearchParams(clean).toString();
+  await enforceXeroFileCeiling(conn.tenant_id);
   const res = await fetchWithTimeout(`${ASSETS_BASE}/${path}${q ? "?" + q : ""}`, {
     headers: {
       Authorization: `Bearer ${conn.access_token}`,
@@ -697,6 +705,7 @@ async function xeroGetPayrollUncached<T = unknown>(
   const clean: Record<string, string> = {};
   for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
   const q = new URLSearchParams(clean).toString();
+  await enforceXeroFileCeiling(conn.tenant_id);
   const res = await fetchWithTimeout(`${PAYROLL_BASE}/${path}${q ? "?" + q : ""}`, {
     headers: {
       Authorization: `Bearer ${conn.access_token}`,
