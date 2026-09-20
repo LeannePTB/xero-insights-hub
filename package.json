@@ -12,7 +12,7 @@
     "format": "prettier --write .",
     "test": "bun test src && vitest run tests",
     "access-matrix": "bun ./scripts/render-access-matrix.ts",
-    "security:check": "./scripts/check-fixture-fingerprint.sh && ./scripts/check-rpc-signatures.sh && ./scripts/check-card-catalogue.sh && bun ./scripts/render-access-matrix.ts --check && bun ./scripts/definer-register.ts --check && vitest run tests && bun ./scripts/run-live-access-tests.ts",
+    "security:check": "./scripts/check-fixture-fingerprint.sh && bun ./scripts/check-table-security.ts && ./scripts/check-rpc-signatures.sh && ./scripts/check-card-catalogue.sh && bun ./scripts/render-access-matrix.ts --check && bun ./scripts/definer-register.ts --check && vitest run tests && bun ./scripts/run-live-access-tests.ts",
     "security:live": "bun ./scripts/run-live-access-tests.ts"
   },
   "dependencies": {

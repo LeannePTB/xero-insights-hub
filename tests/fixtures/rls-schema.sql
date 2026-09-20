@@ -3256,6 +3256,7 @@ create policy mfa_aal2_required on public.loan_consolidation_snapshots as restri
 create policy "Advisors read same-firm login events" on public.login_events as permissive for select to authenticated using ((app_private.is_advisor(auth.uid()) AND (user_id IS NOT NULL) AND app_private.shares_firm_with(auth.uid(), user_id)));
 create policy "Users read own login events" on public.login_events as permissive for select to authenticated using ((user_id = auth.uid()));
 create policy mfa_aal2_required on public.login_events as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.org_card_defaults as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "org card defaults readable by organisation access" on public.org_card_defaults as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.org_subscription_options as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "org options readable by organisation access" on public.org_subscription_options as permissive for select to authenticated using ((app_private.is_aal2() AND (app_private.has_firm_access(auth.uid(), firm_id) OR app_private.platform_staff_can_access_firm(auth.uid(), firm_id))));
@@ -3412,4 +3413,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 6c080f51fc7130cf7140cba77fa663ecc3d0604d07d080f6426ded16a62ba571
+-- catalogue-fingerprint: bd8fc6a2bb05badadf63c7925348dfcf6ce4579a93c2d7c036c6785cb67704a1

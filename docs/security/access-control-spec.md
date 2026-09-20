@@ -1,3 +1,12 @@
+@@
+-1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 53 `public` tables.
++1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 63 `public` tables.
+@@
+-12. `authenticated` holds only the privileges the policies on that table admit (§14).
++12. `authenticated` holds only the privileges the policies on that table admit (§14). `scripts/check-table-security.ts` enforces this from the live-catalogue fixture before release and rejects anonymous privileges unless explicitly allow-listed.
+@@
+-- **Database.** `app_private.is_aal2()` reads the `aal` claim from the request JWT. A RESTRICTIVE `FOR ALL TO authenticated` policy `mfa_aal2_required` sits on **51 of the 53 `public` tables** (verified live), with two owner-approved exclusions holding no organisation, client or personal data: `plan_levels` and `tier_settings`. Requests with no JWT claims (cron, migrations) and `service_role` requests are system contexts, which bypass RLS anyway.
++- **Database.** `app_private.is_aal2()` reads the `aal` claim from the request JWT. A RESTRICTIVE `FOR ALL TO authenticated` policy `mfa_aal2_required` sits on **60 of the 63 `public` tables** (verified live). The three documented exclusions are `plan_levels` and `tier_settings` (legacy non-data catalogues), plus `session_activity`, which `is_aal2()` itself reads to enforce inactivity and therefore cannot carry the guard without recursion. Requests with no JWT claims (cron, migrations) and `service_role` requests are system contexts, which bypass RLS anyway. The pre-release table-security guard fails when a new table omits this policy or receives a data privilege not admitted by a matching permissive policy.
 # Traction Advisory — Access Control Spec (the detail)
 
 > **What this file is for.** The DETAIL behind the rules: how each rule is implemented, and the
@@ -20,7 +29,7 @@ If a chat request conflicts with this document, STOP and reply:
 
 ## 0. Invariants — must hold after EVERY change
 
-1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 53 `public` tables.
+1. Deny by default. Every table with organisation/client/Xero data has RLS with explicit policies. Verified live: RLS is on for all 63 `public` tables.
 2. No policy on a data table may read `USING (true)`. New permissive policies are per command, never `FOR ALL`; a RESTRICTIVE `FOR ALL` guard that only narrows access (the aal2 guard) is allowed.
 3. **Being `super_admin` grants ZERO access to organisation or client data on its own** (see §4a for the bounds on what it _can_ do).
 4. A `firm_id` / `client_id` / `tenant_id` from the caller is a FILTER, never a GRANT.
@@ -31,14 +40,14 @@ If a chat request conflicts with this document, STOP and reply:
 9. **MFA is enforced on the server**, not by the browser (§0a). The browser gate is UX only.
 10. **Support grants are READ-ONLY everywhere** (§7).
 11. **Every read of a client's financial figures is audited** (§9a).
-12. `authenticated` holds only the privileges the policies on that table admit (§14).
+12. `authenticated` holds only the privileges the policies on that table admit (§14). `scripts/check-table-security.ts` enforces this from the live-catalogue fixture before release and rejects anonymous privileges unless explicitly allow-listed.
 
 ## 0a. MFA (aal2) is enforced on the server — three layers
 
 `MfaGate` and the `_authenticated` layout are UX only; nothing depends on them.
 
 - **Server functions.** `requireAal2` (`src/lib/auth/require-aal2.ts`) wraps the generated `requireSupabaseAuth` and rejects any session whose `aal` claim is not `aal2`. It guards every authenticated server function except two owner-approved logging exceptions, `logAuthEvent` and `logLogin`, which record the sign-in and MFA lifecycle itself before a second factor can exist: both are write-only, derive actor and email from the verified token, accept no caller free text (six-value allow-list; `logLogin` takes no input) and are rate limited via `public.check_rate_limit`. Seven functions are deliberately unauthenticated (Xero sign-in start and callback, the public report link, the webhook and cron routes) and each verifies its own credential.
-- **Database.** `app_private.is_aal2()` reads the `aal` claim from the request JWT. A RESTRICTIVE `FOR ALL TO authenticated` policy `mfa_aal2_required` sits on **51 of the 53 `public` tables** (verified live), with two owner-approved exclusions holding no organisation, client or personal data: `plan_levels` and `tier_settings`. Requests with no JWT claims (cron, migrations) and `service_role` requests are system contexts, which bypass RLS anyway.
+- **Database.** `app_private.is_aal2()` reads the `aal` claim from the request JWT. A RESTRICTIVE `FOR ALL TO authenticated` policy `mfa_aal2_required` sits on **60 of the 63 `public` tables** (verified live). The three documented exclusions are `plan_levels` and `tier_settings` (legacy non-data catalogues), plus `session_activity`, which `is_aal2()` itself reads to enforce inactivity and therefore cannot carry the guard without recursion. Requests with no JWT claims (cron, migrations) and `service_role` requests are system contexts, which bypass RLS anyway. The pre-release table-security guard fails when a new table omits this policy or receives a data privilege not admitted by a matching permissive policy.
 - **Callable functions.** Every SECURITY DEFINER function callable by a signed-in user asserts aal2 in its body via `app_private.assert_aal2()`, with one approved exception, `public.xero_required_scopes()`, which returns a fixed constant and reads no table. `public.xero_missing_scopes` returns `null` unless `app_private.is_aal2()`. All 127 definer functions set `search_path`. See `definer-register.md`, regenerated by `bun run security:check`.
 - `app_private` is not an exposed PostgREST schema: a request with `Accept-Profile: app_private` returns `PGRST106`.
 
