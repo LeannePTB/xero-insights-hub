@@ -3,7 +3,10 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Loader2, Search } from "lucide-react";
-import { getClientOverview, type OverviewRow, type FeedEvent } from "@/lib/overview/overview.functions";
+import { getClientOverview, setOverviewAlert, type OverviewRow, type FeedEvent } from "@/lib/overview/overview.functions";
+import { useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -96,7 +99,7 @@ function OverviewPage() {
         ))}
       </div>
 
-      <Feed events={q.data?.feed ?? []} notes={q.data?.feedNotes ?? []} loading={q.isLoading} />
+      <Feed events={q.data?.feed ?? []} cleared={q.data?.cleared ?? []} notes={q.data?.feedNotes ?? []} loading={q.isLoading} />
 
       <div className="flex flex-wrap items-center gap-4">
         <div className="relative w-64">
@@ -184,7 +187,22 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
   );
 }
 
-function Feed({ events, notes, loading }: { events: FeedEvent[]; notes: string[]; loading: boolean }) {
+function Feed({ events, cleared, notes, loading }: { events: FeedEvent[]; cleared: FeedEvent[]; notes: string[]; loading: boolean }) {
+  const setAlert = useServerFn(setOverviewAlert);
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState<string | null>(null);
+  async function act(e: FeedEvent, action: "acknowledge" | "snooze" | "clear") {
+    const k = `${e.clientId}:${e.eventKey}`;
+    setBusy(k);
+    try {
+      await setAlert({ data: { clientId: e.clientId, eventKey: e.eventKey, action, severity: e.severity, snoozeDays: action === "snooze" ? 7 : undefined } });
+      await qc.invalidateQueries({ queryKey: ["client-overview"] });
+    } catch {
+      toast.error("That alert could not be updated.");
+    } finally {
+      setBusy(null);
+    }
+  }
   if (loading) return null;
   return (
     <section className="rounded-lg border bg-card p-4">
@@ -206,9 +224,32 @@ function Feed({ events, notes, loading }: { events: FeedEvent[]; notes: string[]
                 </span>
               )}
               <span className="text-xs text-muted-foreground">{date(e.date)}</span>
+              <span className="flex gap-1">
+                <Button size="sm" variant="outline" disabled={busy !== null} onClick={() => act(e, "acknowledge")}>Acknowledge</Button>
+                <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => act(e, "snooze")}>Snooze 7 days</Button>
+              </span>
             </li>
           ))}
         </ul>
+      )}
+      {cleared.length > 0 && (
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer text-xs text-muted-foreground">Cleared ({cleared.length})</summary>
+          <ul className="mt-2 divide-y">
+            {cleared.map((e) => (
+              <li key={`${e.clientId}:${e.eventKey}`} className="flex flex-wrap items-baseline gap-x-3 py-2 text-muted-foreground">
+                <span className="font-medium text-foreground">{e.clientName}</span>
+                <span className="flex-1">{e.headline}</span>
+                <span className="text-xs">
+                  {e.cleared?.how === "snoozed"
+                    ? `Snoozed by ${e.cleared.by} until ${date(e.cleared.until ?? null)}`
+                    : `Acknowledged by ${e.cleared?.by} on ${date(e.cleared?.at ?? null)}`}
+                </span>
+                <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => act(e, "clear")}>Un-acknowledge</Button>
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       {notes.length > 0 && (
         <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
