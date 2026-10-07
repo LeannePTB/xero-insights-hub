@@ -39,6 +39,10 @@ export type OverviewContext = {
   runs: Map<string, { status: string; started_at: string }[]>;
   /** Nightly key figures (Batch 3), last ~40 days, as the caller under RLS. */
   keyFigures: Map<string, any[]>;
+  /** Shared acknowledge/snooze state (Batch 4), as the caller under RLS. */
+  alertStates: Map<string, any[]>;
+  /** user id -> display label, from organisation_members (auth.users email). */
+  people: Map<string, string>;
   today: string;
   now: Date;
 };
@@ -85,6 +89,8 @@ export async function loadOverviewContext(sb: Sb): Promise<OverviewContext> {
     sentMonths: new Map(),
     runs: new Map(),
     keyFigures: new Map(),
+    alertStates: new Map(),
+    people: new Map(),
     today,
     now,
   };
@@ -96,7 +102,7 @@ export async function loadOverviewContext(sb: Sb): Promise<OverviewContext> {
   const undatedKeys = (VERDICT_REPORT_KEYS as readonly string[]).filter((k) => k !== "balance_sheet");
 
   for (const part of chunk(ids, 50)) {
-    const [undated, bs, pnl, ytd, links, ov, cl, rep, runs, kf] = await Promise.all([
+    const [undated, bs, pnl, ytd, links, ov, cl, rep, runs, st, kf] = await Promise.all([
       sb.from("xero_snapshots").select(cols).in("report_key", undatedKeys).in("client_id", part),
       sb.from("xero_snapshots").select(cols).eq("report_key", "balance_sheet").in("params->>date", dates).in("client_id", part),
       sb.from("xero_snapshots").select(cols).eq("report_key", "profit_and_loss_mtd").in("params->>toDate", dates).in("client_id", part),
@@ -106,6 +112,7 @@ export async function loadOverviewContext(sb: Sb): Promise<OverviewContext> {
       sb.from("clients").select("id, gst_cycle, payg_withholding_cycle").in("id", part),
       sb.from("client_reports").select("client_id, period_end, sent_at").not("sent_at", "is", null).in("client_id", part),
       sb.from("xero_snapshot_runs").select("client_id, status, started_at").in("client_id", part).gte("started_at", addDays(today, -9)),
+      sb.from("overview_alert_states").select("client_id, event_key, severity_at_ack, acknowledged_by, acknowledged_at, snoozed_by, snoozed_until").in("client_id", part),
       sb.from("client_key_figures").select("client_id, as_at, cash, debtors_total, debtors_overdue, creditors").in("client_id", part).gte("as_at", addDays(today, -40)),
     ]);
     for (const r of [undated, bs, pnl, ytd]) if (r.error) throw new Error(r.error.message);
@@ -128,6 +135,17 @@ export async function loadOverviewContext(sb: Sb): Promise<OverviewContext> {
     }
     for (const row of (runs.data ?? []) as any[]) push(ctx.runs, row.client_id, row);
     for (const row of (kf.data ?? []) as any[]) push(ctx.keyFigures, row.client_id, row);
+    for (const row of (st.data ?? []) as any[]) push(ctx.alertStates, row.client_id, row);
+  }
+  // Who cleared an alert: names come from organisation_members (caller-scoped),
+  // only for organisations that have any alert state.
+  const firmsWithStates = new Set(
+    clients.filter((c) => ctx.alertStates.has(c.client_id)).map((c) => c.firm_id),
+  );
+  for (const firmId of firmsWithStates) {
+    const { data: members } = await sb.rpc("organisation_members", { _firm_id: firmId });
+    for (const m of (members ?? []) as any[])
+      ctx.people.set(m.user_id, (m.display_name as string) || (m.email as string) || "A colleague");
   }
   return ctx;
 }
@@ -246,7 +264,12 @@ export function moveFor(s: ClientSeries, key: FigureKey, days: number): MoveResu
 export async function buildOverview(
   sb: Sb,
   userId: string,
-): Promise<{ rows: OverviewRow[]; feed: import("./feed.server").FeedEvent[]; feedNotes: string[] }> {
+): Promise<{
+  rows: OverviewRow[];
+  feed: import("./feed.server").FeedEvent[];
+  cleared: import("./feed.server").FeedEvent[];
+  feedNotes: string[];
+}> {
   const ctx = await loadOverviewContext(sb);
   const { logClientDataRead } = await import("@/lib/audit.server");
   const out: OverviewRow[] = [];
@@ -297,5 +320,5 @@ export async function buildOverview(
   out.sort((a, b) => b.rank - a.rank || a.clientName.localeCompare(b.clientName));
   const { buildFeed } = await import("./feed.server");
   const feed = buildFeed(ctx);
-  return { rows: out, feed: feed.events, feedNotes: feed.notes };
+  return { rows: out, feed: feed.events, cleared: feed.cleared, feedNotes: feed.notes };
 }

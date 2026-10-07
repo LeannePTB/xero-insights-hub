@@ -19,6 +19,8 @@ export type FeedEvent = {
   before: string | null;
   after: string | null;
   date: string;
+  /** Present when an acknowledgement or snooze hides this item. */
+  cleared?: { how: "acknowledged" | "snoozed"; by: string; at: string; until?: string | null };
 };
 
 const FIGURE_LABEL: Partial<Record<FigureKey, string>> = {
@@ -33,7 +35,7 @@ function money(n: number | null): string {
   return n < 0 ? `(${s})` : s;
 }
 
-export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; notes: string[] } {
+export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared: FeedEvent[]; notes: string[] } {
   const events: FeedEvent[] = [];
   const notes = new Set<string>();
   let kfShort = false;
@@ -139,5 +141,35 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; notes: s
   }
   if (kfShort) notes.add("Debtors and creditors moves need daily history from the nightly key figures, which started on 8 October 2026. Some clients do not have enough yet.");
   events.sort((a, b) => b.severity - a.severity || (a.date < b.date ? 1 : -1));
-  return { events, notes: [...notes] };
+  const { visible, cleared } = applyAlertStates(events, ctx);
+  return { events: visible, cleared, notes: [...notes] };
+}
+
+/**
+ * Shared acknowledge/snooze. An item stays hidden while it is acknowledged, or
+ * snoozed and the snooze has not ended, AND its severity has not risen above
+ * the severity recorded when it was cleared.
+ */
+export function applyAlertStates(events: FeedEvent[], ctx: Pick<OverviewContext, "alertStates" | "people" | "now">) {
+  const visible: FeedEvent[] = [];
+  const cleared: FeedEvent[] = [];
+  for (const e of events) {
+    const st = (ctx.alertStates.get(e.clientId) ?? []).find((x: any) => x.event_key === e.eventKey);
+    const notWorse = st && e.severity <= Number(st.severity_at_ack ?? 0);
+    const snoozed = st?.snoozed_until && new Date(st.snoozed_until) > ctx.now;
+    if (st && notWorse && (st.acknowledged_at || snoozed)) {
+      const how = st.acknowledged_at ? "acknowledged" : "snoozed";
+      const by = (how === "acknowledged" ? st.acknowledged_by : st.snoozed_by) as string | null;
+      cleared.push({
+        ...e,
+        cleared: {
+          how,
+          by: (by && ctx.people.get(by)) || "A colleague",
+          at: (st.acknowledged_at ?? st.snoozed_until) as string,
+          until: how === "snoozed" ? st.snoozed_until : null,
+        },
+      });
+    } else visible.push(e);
+  }
+  return { visible, cleared };
 }

@@ -40,7 +40,7 @@ export const getClientOverview = createServerFn({ method: "POST" })
   .handler(
     async ({
       context,
-    }): Promise<{ rows: OverviewRow[]; feed: FeedEvent[]; feedNotes: string[] }> => {
+    }): Promise<{ rows: OverviewRow[]; feed: FeedEvent[]; cleared: FeedEvent[]; feedNotes: string[] }> => {
     try {
       const { buildOverview } = await import("./overview.server");
       return await buildOverview(context.supabase as any, context.userId as string);
@@ -50,3 +50,38 @@ export const getClientOverview = createServerFn({ method: "POST" })
     }
   },
   );
+
+const AlertInput = z.object({
+  clientId: z.string().uuid(),
+  eventKey: z.string().min(1).max(120).regex(/^[a-z0-9_:.-]+$/i),
+  action: z.enum(["acknowledge", "snooze", "clear"]),
+  severity: z.number().int().min(0).max(4),
+  snoozeDays: z.number().int().min(1).max(90).optional(),
+});
+
+/**
+ * Shared acknowledge / snooze / un-acknowledge. Authorisation is entirely in
+ * the database (aal2 + user_can_write_client, audited); the caller-supplied
+ * client id is a filter the function re-checks, never a grant.
+ */
+export const setOverviewAlert = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => AlertInput.parse(i))
+  .handler(async ({ data, context }) => {
+    const until =
+      data.action === "snooze"
+        ? new Date(Date.now() + (data.snoozeDays ?? 7) * 86_400_000).toISOString()
+        : null;
+    const { error } = await (context.supabase as any).rpc("set_overview_alert_state", {
+      _client_id: data.clientId,
+      _event_key: data.eventKey,
+      _action: data.action,
+      _severity: data.severity,
+      _snooze_until: until,
+    });
+    if (error) {
+      console.warn("[overview] alert state refused", error.message);
+      throw new Error("That alert could not be updated.");
+    }
+    return { ok: true };
+  });
