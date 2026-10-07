@@ -7,6 +7,7 @@ import {
   pct,
   pctMagnitude,
   resolveDisclaimer,
+  yearToDateComparisonLabels,
   namesEqual,
   uniqueNames,
   type AgeingDetail,
@@ -201,6 +202,7 @@ export function MonthlyReportPreview({
   video?: ReportVideo | null;
 }) {
   const m = payload.meta;
+  const ytdLabels = yearToDateComparisonLabels(m.periodEnd);
   const shownFailures = renderableFailedSections(payload);
   const failed = new Map(shownFailures.map((f) => [f.section, f.message]));
   const loomId = parseLoomId(video?.url);
@@ -339,8 +341,8 @@ export function MonthlyReportPreview({
                   <th className="py-2 pl-2 text-right">{m.monthLabel}</th>
                   <th className="py-2 pl-2 text-right">Prior month</th>
                   <th className="py-2 pl-2 text-right">Change</th>
-                  <th className="py-2 pl-2 text-right">{m.fyLabel} YTD</th>
-                  <th className="py-2 pl-2 text-right">{m.priorFyLabel} YTD</th>
+                  <th className="py-2 pl-2 text-right normal-case">{ytdLabels.current}</th>
+                  <th className="py-2 pl-2 text-right normal-case">{ytdLabels.prior}</th>
                   <th className="py-2 pl-2 text-right">Change</th>
                 </tr>
               </thead>
@@ -397,8 +399,8 @@ export function MonthlyReportPreview({
                           unit={k.unit}
                         />
                       </Field>
-                      <Field label={`${m.fyLabel} YTD`}>{f(k.fyYtd)}</Field>
-                      <Field label={`${m.priorFyLabel} YTD`}>{f(k.priorFyYtd)}</Field>
+                      <Field label={ytdLabels.current}>{f(k.fyYtd)}</Field>
+                      <Field label={ytdLabels.prior}>{f(k.priorFyYtd)}</Field>
                       <Field label="Change">
                         <Variance
                           variance={k.ytdVariance}

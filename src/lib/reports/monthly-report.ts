@@ -278,6 +278,39 @@ export function fyLabelFor(fyStart: string): string {
   return `FY${String(y + 1).slice(2)}`;
 }
 
+function utcDate(iso: string): Date {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Compact, explicit reporting window for client-facing comparisons. */
+export function reportPeriodLabel(from: string, to: string): string {
+  const start = utcDate(from);
+  const end = utcDate(to);
+  const sameMonth = start.getUTCFullYear() === end.getUTCFullYear() && start.getUTCMonth() === end.getUTCMonth();
+  const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
+  const startText = [
+    start.getUTCDate(),
+    sameMonth ? null : SHORT_MONTHS[start.getUTCMonth()],
+    sameYear ? null : start.getUTCFullYear(),
+  ].filter((part) => part !== null).join(" ");
+  const endText = `${end.getUTCDate()} ${SHORT_MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`;
+  return `${startText}–${endText}`;
+}
+
+/** The like-for-like financial-year-to-date windows shown in Key figures. */
+export function yearToDateComparisonLabels(periodEnd: string) {
+  const currentStart = fyStartFor(periodEnd);
+  const priorStart = addMonths(currentStart, -12);
+  const priorEnd = endOfMonth(addMonths(monthStartFor(periodEnd), -12));
+  return {
+    current: `Current period — ${reportPeriodLabel(currentStart, periodEnd)}`,
+    prior: `Same period last year — ${reportPeriodLabel(priorStart, priorEnd)}`,
+  };
+}
+
 export function monthStartFor(periodEnd: string): string {
   return `${periodEnd.slice(0, 7)}-01`;
 }

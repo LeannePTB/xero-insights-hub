@@ -22,6 +22,7 @@ import {
   pct,
   pctMagnitude,
   resolveDisclaimer,
+  yearToDateComparisonLabels,
   namesEqual,
   uniqueNames,
   type AgeingDetail,
@@ -423,6 +424,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   if (!payload.keyFigures) {
     missing(failed.get("key_figures") ?? "Not computed.");
   } else {
+    const ytdLabels = yearToDateComparisonLabels(payload.meta.periodEnd);
     const f = (k: any, n: number) => (k.unit === "money" ? money(n) : pct(n));
 
     // Tiles, four across — this is the page clients actually read. Same
@@ -430,7 +432,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     const cols = 4;
     const gap = 10;
     const tileW = (PAGE.w - M.left - M.right - gap * (cols - 1)) / cols;
-    const tileH = 72;
+    const tileH = 88;
     const figures = payload.keyFigures;
     for (let row = 0; row < Math.ceil(figures.length / cols); row++) {
       need(tileH + 8);
@@ -487,11 +489,13 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
           variancePct: k.ytdVariancePct,
           unit: k.unit,
         });
-        doc.text(
-          `${m.fyLabel} YTD ${f(k, k.fyYtd)} · ${marker(jy.arrow)}${f(k, k.ytdVariance)}`,
-          x + 8,
-          top + 66,
-        );
+        const currentYtd = doc.splitTextToSize(`${ytdLabels.current}: ${f(k, k.fyYtd)}`, tileW - 16).slice(0, 2);
+        doc.text(currentYtd, x + 8, top + 66);
+        const priorYtd = doc.splitTextToSize(
+          `${ytdLabels.prior}: ${f(k, k.priorFyYtd)} · ${marker(jy.arrow)}${f(k, k.ytdVariance)}`,
+          tileW - 16,
+        ).slice(0, 2);
+        doc.text(priorYtd, x + 8, top + 78);
       }
       y = top + tileH + gap;
     }
