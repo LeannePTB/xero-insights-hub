@@ -283,24 +283,20 @@ function utcDate(iso: string): Date {
   return new Date(Date.UTC(year, month - 1, day));
 }
 
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 /** Compact, explicit reporting window for client-facing comparisons. */
 export function reportPeriodLabel(from: string, to: string): string {
   const start = utcDate(from);
   const end = utcDate(to);
   const sameMonth = start.getUTCFullYear() === end.getUTCFullYear() && start.getUTCMonth() === end.getUTCMonth();
   const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
-  const startText = start.toLocaleDateString("en-AU", {
-    day: "numeric",
-    ...(sameMonth ? {} : { month: "short" as const }),
-    ...(sameYear ? {} : { year: "numeric" as const }),
-    timeZone: "UTC",
-  });
-  const endText = end.toLocaleDateString("en-AU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "UTC",
-  });
+  const startText = [
+    start.getUTCDate(),
+    sameMonth ? null : SHORT_MONTHS[start.getUTCMonth()],
+    sameYear ? null : start.getUTCFullYear(),
+  ].filter((part) => part !== null).join(" ");
+  const endText = `${end.getUTCDate()} ${SHORT_MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`;
   return `${startText}–${endText}`;
 }
 
