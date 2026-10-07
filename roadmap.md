@@ -187,8 +187,9 @@ Separate from the card-model migration; no file or object shared with it.
 - 17 Sep 2026 — CLOSED: organisation creation now captures the purchase (clients, billing, Advisory, Consolidation, Branding) through the audited public.set_org_purchase inside the existing all-or-nothing creation block, plus the card preferences through public.set_org_card_defaults. Two new matrix proofs: Advisory off is unreachable by any route; Advisory on with cards unticked keeps them available but off.
 
 ## Client overview (7 Oct 2026)
-- [x] Batch 0 — read-only checks done 7 Oct; BLOCKED on owner: nightly 400-call ceiling would skip ~half of 60 tenants
-- [ ] Batch 1 — overview page computed on read
-- [ ] Batch 2 — "What changed" feed
-- [ ] Batch 3 — nightly key-figures table (no retention change; flag)
+- [x] Batch 0 — read-only checks done 7 Oct
+- [x] Nightly refresh ceiling scales with file count + least-recently-refreshed order (owner approved)
+- [x] Batch 1 — overview page computed on read (7 Oct; R06 date defect logged for owner)
+- [x] Batch 2 — "What changed" feed (7 Oct)
+- [x] Batch 3 — nightly key-figures table (7 Oct; retention decision OPEN, first rows after tonight's run)
 - [ ] Batch 4 — shared acknowledge/snooze via audited definer function

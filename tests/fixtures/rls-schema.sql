@@ -72,6 +72,7 @@ create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text,
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
+create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
 create table public.client_statutory_accounts (id uuid, client_id uuid, tenant_id text, account_name text, category statutory_category, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -95,6 +96,7 @@ create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at 
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
 create table public.org_card_defaults (firm_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean);
+create table public.overview_alert_states (id uuid, client_id uuid, event_key text, severity_at_ack smallint, acknowledged_by uuid, acknowledged_at timestamp with time zone, snoozed_by uuid, snoozed_at timestamp with time zone, snoozed_until timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -1240,6 +1242,23 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.my_firm_memberships()
+ RETURNS TABLE(firm_id uuid, role text, created_at timestamp with time zone)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  return query
+    select fm.firm_id, fm.role::text, fm.created_at
+      from public.firm_members fm
+     where fm.user_id = auth.uid()
+       and fm.status = 'active'
+     order by fm.created_at;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION app_private.client_xero_files_used(_client_id uuid, _exclude_link_id uuid DEFAULT NULL::uuid)
  RETURNS integer
  LANGUAGE sql
@@ -2298,6 +2317,110 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.me_is_practice_member()
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null then
+    return false;
+  end if;
+  return exists (
+    select 1 from public.my_firm_memberships() m
+     where app_private.is_practice_member_of(auth.uid(), m.firm_id)
+  );
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.overview_clients()
+ RETURNS TABLE(client_id uuid, client_name text, firm_id uuid, firm_name text)
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null then
+    return;
+  end if;
+  return query
+    select c.id, c.name, f.id, f.name
+      from public.clients c
+      join public.firms f on f.id = c.firm_id
+     where app_private.is_practice_member_of(auth.uid(), c.firm_id)
+       and app_private.user_can_read_client(auth.uid(), c.id)
+     order by f.name, c.name
+     limit 1000;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.set_overview_alert_state(_client_id uuid, _event_key text, _action text, _severity smallint DEFAULT 0, _snooze_until timestamp with time zone DEFAULT NULL::timestamp with time zone)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _uid uuid := auth.uid();
+  _firm uuid;
+begin
+  perform app_private.assert_aal2();
+  -- Write predicate only (PK invariant 11): never a read predicate.
+  if _uid is null or not app_private.user_can_write_client(_uid, _client_id) then
+    raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+  end if;
+  if _event_key is null or char_length(_event_key) not between 1 and 120 then
+    raise exception 'INVALID_EVENT' using errcode = 'invalid_parameter_value';
+  end if;
+  if _action not in ('acknowledge', 'snooze', 'clear') then
+    raise exception 'INVALID_ACTION' using errcode = 'invalid_parameter_value';
+  end if;
+  if _action = 'snooze' and (_snooze_until is null or _snooze_until <= now()
+                             or _snooze_until > now() + interval '90 days') then
+    raise exception 'INVALID_SNOOZE' using errcode = 'invalid_parameter_value';
+  end if;
+
+  select c.firm_id into _firm from public.clients c where c.id = _client_id;
+
+  if _action = 'clear' then
+    delete from public.overview_alert_states where client_id = _client_id and event_key = _event_key;
+  elsif _action = 'acknowledge' then
+    insert into public.overview_alert_states (client_id, event_key, severity_at_ack, acknowledged_by, acknowledged_at)
+    values (_client_id, _event_key, coalesce(_severity, 0), _uid, now())
+    on conflict (client_id, event_key) do update
+      set severity_at_ack = excluded.severity_at_ack,
+          acknowledged_by = excluded.acknowledged_by,
+          acknowledged_at = excluded.acknowledged_at;
+  else
+    insert into public.overview_alert_states (client_id, event_key, severity_at_ack, snoozed_by, snoozed_at, snoozed_until)
+    values (_client_id, _event_key, coalesce(_severity, 0), _uid, now(), _snooze_until)
+    on conflict (client_id, event_key) do update
+      set severity_at_ack = excluded.severity_at_ack,
+          snoozed_by = excluded.snoozed_by,
+          snoozed_at = excluded.snoozed_at,
+          snoozed_until = excluded.snoozed_until;
+  end if;
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (_uid, _firm, 'overview_alert_' || _action, 'client', _client_id::text,
+          jsonb_build_object('event_key', _event_key, 'severity', _severity, 'snooze_until', _snooze_until));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.set_overview_alert_state(_client_id uuid, _event_key text, _action text, _severity smallint DEFAULT 0, _snooze_until timestamp with time zone DEFAULT NULL::timestamp with time zone)
+ RETURNS void
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  perform app_private.set_overview_alert_state(_client_id, _event_key, _action, _severity, _snooze_until);
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2372,6 +2495,7 @@ alter table public.billing_events enable row level security;
 alter table public.client_access enable row level security;
 alter table public.client_cards enable row level security;
 alter table public.client_cost_classifications enable row level security;
+alter table public.client_key_figures enable row level security;
 alter table public.client_notes enable row level security;
 alter table public.client_reports enable row level security;
 alter table public.client_statutory_accounts enable row level security;
@@ -2395,6 +2519,7 @@ alter table public.loan_consolidation_snapshots enable row level security;
 alter table public.login_events enable row level security;
 alter table public.org_card_defaults enable row level security;
 alter table public.org_subscription_options enable row level security;
+alter table public.overview_alert_states enable row level security;
 alter table public.plan_levels enable row level security;
 alter table public.practice_team enable row level security;
 alter table public.profiles enable row level security;
@@ -2507,6 +2632,14 @@ grant SELECT on table public.client_cost_classifications to service_role;
 grant TRIGGER on table public.client_cost_classifications to service_role;
 grant TRUNCATE on table public.client_cost_classifications to service_role;
 grant UPDATE on table public.client_cost_classifications to service_role;
+grant SELECT on table public.client_key_figures to authenticated;
+grant DELETE on table public.client_key_figures to service_role;
+grant INSERT on table public.client_key_figures to service_role;
+grant REFERENCES on table public.client_key_figures to service_role;
+grant SELECT on table public.client_key_figures to service_role;
+grant TRIGGER on table public.client_key_figures to service_role;
+grant TRUNCATE on table public.client_key_figures to service_role;
+grant UPDATE on table public.client_key_figures to service_role;
 grant DELETE on table public.client_notes to authenticated;
 grant INSERT on table public.client_notes to authenticated;
 grant SELECT on table public.client_notes to authenticated;
@@ -2729,6 +2862,14 @@ grant SELECT on table public.org_subscription_options to service_role;
 grant TRIGGER on table public.org_subscription_options to service_role;
 grant TRUNCATE on table public.org_subscription_options to service_role;
 grant UPDATE on table public.org_subscription_options to service_role;
+grant SELECT on table public.overview_alert_states to authenticated;
+grant DELETE on table public.overview_alert_states to service_role;
+grant INSERT on table public.overview_alert_states to service_role;
+grant REFERENCES on table public.overview_alert_states to service_role;
+grant SELECT on table public.overview_alert_states to service_role;
+grant TRIGGER on table public.overview_alert_states to service_role;
+grant TRUNCATE on table public.overview_alert_states to service_role;
+grant UPDATE on table public.overview_alert_states to service_role;
 grant DELETE on table public.plan_levels to authenticated;
 grant INSERT on table public.plan_levels to authenticated;
 grant SELECT on table public.plan_levels to authenticated;
@@ -3077,6 +3218,8 @@ create policy "Manage cost classifications by firm (update)" on public.client_co
   WHERE ((c.id = client_cost_classifications.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy "Viewers read cost classifications" on public.client_cost_classifications as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_cost_classifications as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "entitled users read client key figures" on public.client_key_figures as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
+create policy mfa_aal2_required on public.client_key_figures as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Client viewers read notes" on public.client_notes as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy "manage client notes by firm (delete)" on public.client_notes as permissive for delete to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
@@ -3260,6 +3403,8 @@ create policy mfa_aal2_required on public.org_card_defaults as restrictive for a
 create policy "org card defaults readable by organisation access" on public.org_card_defaults as permissive for select to authenticated using ((app_private.is_aal2() AND app_private.has_firm_access(auth.uid(), firm_id)));
 create policy mfa_aal2_required on public.org_subscription_options as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "org options readable by organisation access" on public.org_subscription_options as permissive for select to authenticated using ((app_private.is_aal2() AND (app_private.has_firm_access(auth.uid(), firm_id) OR app_private.platform_staff_can_access_firm(auth.uid(), firm_id))));
+create policy mfa_aal2_required on public.overview_alert_states as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "readers of a client read its alert states" on public.overview_alert_states as permissive for select to authenticated using (app_private.user_can_read_client(auth.uid(), client_id));
 create policy plan_levels_read on public.plan_levels as permissive for select to authenticated using (true);
 create policy "plan_levels_write (delete)" on public.plan_levels as permissive for delete to authenticated using (app_private.me_is_super_admin());
 create policy "plan_levels_write (insert)" on public.plan_levels as permissive for insert to authenticated with check (app_private.me_is_super_admin());
@@ -3413,4 +3558,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 3402d16b1910ac141f72672d4817cfb61bd0c32b675363231d73e1b3609a1a41
+-- catalogue-fingerprint: 05c8d13af0ec0cf830c0c91990b164fdb50dad2c1571c69776ccd12e90a6e9d1

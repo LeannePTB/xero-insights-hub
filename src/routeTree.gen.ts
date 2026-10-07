@@ -20,6 +20,7 @@ import { Route as ReportTokenRouteImport } from './routes/report.$token'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
 import { Route as AuthMfaVerifyRouteImport } from './routes/auth_.mfa-verify'
 import { Route as AuthMfaEnrollRouteImport } from './routes/auth_.mfa-enroll'
+import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
@@ -114,6 +115,11 @@ const AuthMfaEnrollRoute = AuthMfaEnrollRouteImport.update({
   id: '/auth_/mfa-enroll',
   path: '/auth/mfa-enroll',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
+  id: '/overview',
+  path: '/overview',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
@@ -355,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/unsubscribe': typeof UnsubscribeRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/overview': typeof AuthenticatedOverviewRoute
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -406,6 +413,7 @@ export interface FileRoutesByTo {
   '/set-password': typeof SetPasswordRoute
   '/unsubscribe': typeof UnsubscribeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/overview': typeof AuthenticatedOverviewRoute
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -458,6 +466,7 @@ export interface FileRoutesById {
   '/unsubscribe': typeof UnsubscribeRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/overview': typeof AuthenticatedOverviewRoute
   '/auth_/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -512,6 +521,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/admin'
     | '/dashboard'
+    | '/overview'
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
@@ -563,6 +573,7 @@ export interface FileRouteTypes {
     | '/set-password'
     | '/unsubscribe'
     | '/dashboard'
+    | '/overview'
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
@@ -614,6 +625,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
+    | '/_authenticated/overview'
     | '/auth_/mfa-enroll'
     | '/auth_/mfa-verify'
     | '/email/unsubscribe'
@@ -761,6 +773,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/auth/mfa-enroll'
       preLoaderRoute: typeof AuthMfaEnrollRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/overview': {
+      id: '/_authenticated/overview'
+      path: '/overview'
+      fullPath: '/overview'
+      preLoaderRoute: typeof AuthenticatedOverviewRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
@@ -1112,6 +1131,7 @@ const AuthenticatedFirmsFirmIdRouteWithChildren =
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedOverviewRoute: typeof AuthenticatedOverviewRoute
   AuthenticatedClientsNewRoute: typeof AuthenticatedClientsNewRoute
   AuthenticatedFirmsFirmIdRoute: typeof AuthenticatedFirmsFirmIdRouteWithChildren
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
@@ -1133,6 +1153,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedOverviewRoute: AuthenticatedOverviewRoute,
   AuthenticatedClientsNewRoute: AuthenticatedClientsNewRoute,
   AuthenticatedFirmsFirmIdRoute: AuthenticatedFirmsFirmIdRouteWithChildren,
   AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,

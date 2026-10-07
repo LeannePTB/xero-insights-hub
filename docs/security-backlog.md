@@ -1474,3 +1474,30 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - 20 Sep 2026 — OPEN (future consideration, no change made, owner-flagged): cost classification is whole-account only, so a wages account cannot be part fixed and part variable. Correct for Positive Traction (salaried staff, confirmed fixed). A business with casual staff scaling with volume would need a split. Options: a per-account fixed/variable split percentage, or guidance to keep separate Xero accounts for salaried and casual wages. Needs an owner decision before any model change.
 
 - 7 Oct 2026 — CLOSED: the monthly management report's correct like-for-like year-to-date comparison used the headings “FY27 YTD” and “FY26 YTD”, which made a July 2026 versus July 2025 comparison look like two completed financial years. Classification: SECURITY-RELEVANT because the screen and PDF present client Xero figures; presentation only. The key-figure table, mobile blocks and PDF now name the exact current and prior windows. No Xero request, stored payload, figure, variance, judgement, access path, policy, grant, role or credential changed. Focused tests pin both a one-month July comparison and a multi-month year-to-date comparison.
+
+## 7 Oct 2026 — Nightly refresh ceiling scales with file count (CLOSED)
+- Per-run ceiling for the scheduled refresh is now `scheduledRunCallCeiling(n)` = max(400, n × 25), capped at 3,000 (`snapshot-keys.ts`). Single-file runs keep 400.
+- Nightly order is least-recently-refreshed first (system-context read of `xero_snapshot_runs`), so a file a stopped run skipped goes first next night.
+- Unchanged: 2-in-flight concurrency gate, 200/hour per-file cap, daily-limit stop, abort on ceiling. No new access path; no caller input; register entry updated.
+
+## 7 Oct 2026 — Client overview, Batch 1 (CLOSED)
+- New `public.overview_clients()` and `public.me_is_practice_member()`: SECURITY INVOKER, aal2 asserted first, EXECUTE revoked from PUBLIC/anon. Client list = practice team AND active membership (`is_practice_member_of`) AND `user_can_read_client`, read as the caller under RLS. Super admin alone, support grants, external advisers and business owners get nothing. Landing and the sidebar link are routing only.
+- `getClientOverview`: requireAal2, Zod (no IDs accepted), stored snapshots only (zero Xero calls), status via `evaluateClient`, figures via `analyseBalanceSheet` / `buildProtectedMoney` / `parsePnl` / `debtorBook`, one Phase 6 read-audit per client (`readKey: overview`, source `snapshot`), generic error.
+- Matrix: 25 new PGlite rows (owner on practice team allowed; another organisation, staff not on the practice team, other organisation, viewers, business owner, support grant, super admin only, suspended, removed, aal1, anon denied).
+- `ruleDebtors` loop extracted to `debtorBook` with no change in behaviour.
+
+## 7 Oct 2026 — OPEN (owner decision): R06 debtor ageing never sees overdue invoices from snapshots
+- `ruleDebtors` builds its as-at date as `${row.as_at}T00:00:00Z`. Stored `as_at` is a full timestamp, so that is an invalid date and overdue/over-90 shares are always 0. On stored snapshots only the concentration (watch) finding can fire. Example: Positive Traction has $125,294 of $126,479 overdue, and its badge says only "Debtors are concentrated in one customer".
+- The overview's "Debtors overdue" column uses the correct date, so it can disagree with the badge until this is fixed. Fixing it will change verdicts on the staff badge, the overview and possibly the monthly report. Not fixed silently.
+
+## 7 Oct 2026 — Client overview, Batch 2 "What changed" feed (CLOSED)
+- Computed on read in `src/lib/overview/feed.server.ts` from the same caller-scoped context as Batch 1. No new database objects, no new server function, zero Xero calls, the same single read-audit per client.
+- Events: escalation (`evaluateClient` on the 7-days-ago balance sheet compared with now; only a worsening, so a client that stays critical does not repeat), big moves (cash, protected money, month-to-date revenue over 1 and 7 days, not across a month start), data (disconnected, failed run in 7 days, stale), report not sent for the previous month by the 15th business day.
+- Limitation stated in the feed: debtors and creditors moves need the Batch 3 daily history. The 7-days-ago verdict uses the current open-invoice list.
+
+## 7 Oct 2026 — Client overview, Batch 3 nightly key figures (CLOSED, retention OPEN)
+- New table `public.client_key_figures`: numbers only (cash, debtors total and overdue, creditors, protected money, revenue and net profit MTD), unique per client, Xero file and day. RLS on; all privileges revoked from anon, authenticated and public, then SELECT granted to authenticated only. RESTRICTIVE aal2 guard. One SELECT policy `to authenticated` using the same dual check as `xero_snapshots` (`user_can_access_client` + `user_can_access_tenant`). No write policies.
+- Writer: `writeKeyFigures` (system context, register entry added), called by the scheduled refresh after each run that did not fail. It uses the existing extraction helpers. Zero Xero calls.
+- Reader: the overview context, as the caller, under RLS, covered by the existing per-client read audit. It feeds the 30-day sparkline and the debtors and creditors moves.
+- Matrix: added to the client-data and server-written table sets, giving 48 new PGlite rows (members read, every write denied, and no-data and platform-only roles denied).
+- OPEN: no retention limit is set, pending the owner's decision. Documented in data-retention.md.

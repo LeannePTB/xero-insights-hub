@@ -418,6 +418,33 @@ function xeroDate(v: any): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
+/**
+ * The open-invoice book as at `asAtMs`: total due, overdue, over 90 days, and
+ * per-contact totals. The one implementation; R06 and the client overview both
+ * use it.
+ */
+export function debtorBook(
+  payload: any,
+  asAtMs: number,
+): { total: number; overdue: number; over90: number; byContact: Map<string, number> } {
+  const over90Cutoff = asAtMs - R06_DEBTORS.over90Days * 86_400_000;
+  let total = 0;
+  let overdue = 0;
+  let over90 = 0;
+  const byContact = new Map<string, number>();
+  for (const inv of invoicesOf(payload)) {
+    const due = Number(inv?.AmountDue ?? 0);
+    if (!Number.isFinite(due) || due <= 0) continue;
+    total += due;
+    const dueDate = xeroDate(inv?.DueDate);
+    if (dueDate !== null && dueDate < asAtMs) overdue += due;
+    if (dueDate !== null && dueDate < over90Cutoff) over90 += due;
+    const contact = inv?.Contact?.Name ?? "Unnamed customer";
+    byContact.set(contact, (byContact.get(contact) ?? 0) + due);
+  }
+  return { total, overdue, over90, byContact };
+}
+
 export function ruleDebtors(row: SnapshotRow): { finding: Finding | null; unavailable?: string } {
   // A truncated invoice pull is written with `complete = false`. Ageing and
   // concentration computed on part of the book would be wrong in the safe-
@@ -429,27 +456,10 @@ export function ruleDebtors(row: SnapshotRow): { finding: Finding | null; unavai
     };
   }
 
-  const invoices = invoicesOf(row.payload);
-  if (!invoices.length) return { finding: null };
+  if (!invoicesOf(row.payload).length) return { finding: null };
 
   const asAt = new Date(`${row.as_at}T00:00:00Z`).getTime();
-  const over90Cutoff = asAt - R06_DEBTORS.over90Days * 86_400_000;
-
-  let total = 0;
-  let overdue = 0;
-  let over90 = 0;
-  const byContact = new Map<string, number>();
-
-  for (const inv of invoices) {
-    const due = Number(inv?.AmountDue ?? 0);
-    if (!Number.isFinite(due) || due <= 0) continue;
-    total += due;
-    const dueDate = xeroDate(inv?.DueDate);
-    if (dueDate !== null && dueDate < asAt) overdue += due;
-    if (dueDate !== null && dueDate < over90Cutoff) over90 += due;
-    const contact = inv?.Contact?.Name ?? "Unnamed customer";
-    byContact.set(contact, (byContact.get(contact) ?? 0) + due);
-  }
+  const { total, overdue, over90, byContact } = debtorBook(row.payload, asAt);
 
   if (total <= 0) return { finding: null };
 

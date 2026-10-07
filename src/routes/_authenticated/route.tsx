@@ -84,7 +84,10 @@ function AuthenticatedLayout() {
   // the same server-side signal the admin screens use. Anyone else — including
   // client viewers and ordinary organisation members — never renders it, and
   // every route behind it keeps its own unchanged guard.
-  const showAdminMenu = ctxQ.data?.isSuperAdmin === true && !ownsAdminMenu(pathname);
+  // Practice-team members also get the menu, for the Overview link only.
+  const showAdminMenu =
+    (ctxQ.data?.isSuperAdmin === true || ctxQ.data?.isPracticeMember === true) &&
+    !ownsAdminMenu(pathname);
 
   if (!showAdminMenu)
     return (

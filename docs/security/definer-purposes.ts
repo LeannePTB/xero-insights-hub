@@ -69,6 +69,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.my_client_access":
     "The selected-client grants the caller holds, including display relationship and label metadata.",
   "public.my_firm_ids": "The organisations the caller may reach.",
+  "app_private.set_overview_alert_state":
+    "Client overview: shared acknowledge, snooze or clear of one feed alert for one client. aal2, write predicate user_can_write_client (never a read predicate), audited. Called only by the SECURITY INVOKER public wrapper.",
   "public.my_firm_memberships": "The caller's organisation memberships and roles.",
   "public.my_roles": "The caller's platform roles.",
 

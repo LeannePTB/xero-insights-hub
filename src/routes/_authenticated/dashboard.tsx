@@ -48,6 +48,12 @@ function Dashboard() {
   // Role-aware landing: send people straight to where they work.
   useEffect(() => {
     if (!ctxQ.data) return;
+    // Practice-team members (with an active membership) land on the client
+    // overview. Routing only: the overview shows only what they can already read.
+    if (ctxQ.data.isPracticeMember) {
+      navigate({ to: "/overview", replace: true });
+      return;
+    }
     // Super admins manage the platform from the Admin area.
     if (ctxQ.data.isSuperAdmin) {
       navigate({ to: "/admin", replace: true });
