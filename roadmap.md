@@ -185,3 +185,10 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] `firms.default_widgets` retired: its only readers (`getFirmPlanSummary`, `saveFirmDefaultWidgets`) and `public.set_firm_default_widgets` are gone. The column is left in place, empty, as rollback data — there is no second dormant default.
 - [x] Two permanent matrix proofs: a new client starts from the organisation default; changing the default leaves an existing client's visible cards unchanged. Plus authorisation rows refusing support grants, other-organisation members, advisers, business owners and aal1.
 - 17 Sep 2026 — CLOSED: organisation creation now captures the purchase (clients, billing, Advisory, Consolidation, Branding) through the audited public.set_org_purchase inside the existing all-or-nothing creation block, plus the card preferences through public.set_org_card_defaults. Two new matrix proofs: Advisory off is unreachable by any route; Advisory on with cards unticked keeps them available but off.
+
+## Client overview (7 Oct 2026)
+- [ ] Batch 0 — read-only checks (refresh skip, no-charge lapsed, snapshot retention, practice-team auto-add)
+- [ ] Batch 1 — overview page computed on read
+- [ ] Batch 2 — "What changed" feed
+- [ ] Batch 3 — nightly key-figures table (no retention change; flag)
+- [ ] Batch 4 — shared acknowledge/snooze via audited definer function
