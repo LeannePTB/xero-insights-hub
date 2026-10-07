@@ -559,7 +559,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(
       `select public.set_overview_alert_state('${CLIENT_A}'::uuid, 'escalation:critical', 'acknowledge', 4::smallint, null)`,
     );
-    if (process.env.DEBUG_OVERVIEW) console.log("OVDBG", row.role, p.error);
     return p.ok ? "allow" : "deny";
   }
   if (r.startsWith("overview_clients()")) {
@@ -1396,6 +1395,9 @@ beforeAll(async () => {
   // copy needs it to be faithful for that path. Test-copy fidelity only — no
   // application object changes.
   await db.exec(`alter table public.practice_team add primary key (user_id);`);
+  // overview_alert_states is unique on (client_id, event_key) live (7 Oct 2026); the
+  // acknowledge upsert depends on it.
+  await db.exec(`alter table public.overview_alert_states add unique (client_id, event_key);`);
 
   // Same fidelity fix: live `session_activity` has a primary key on session_id
   // (verified 15 Sep 2026) and `touch_session_activity` upserts on it.
