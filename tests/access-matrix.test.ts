@@ -559,6 +559,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(
       `select public.set_overview_alert_state('${CLIENT_A}'::uuid, 'escalation:critical', 'acknowledge', 4::smallint, null)`,
     );
+    if (process.env.DEBUG_OVERVIEW) console.log("OVDBG", row.role, p.error);
     return p.ok ? "allow" : "deny";
   }
   if (r.startsWith("overview_clients()")) {
