@@ -241,6 +241,19 @@ const TARGET: Record<string, Record<string, string>> = {
     widgets: "'{}'::text[]",
     excluded_widgets: "'{}'::text[]",
   },
+  overview_alert_states: {
+    id: q("c0000098-1111-4111-8111-111111111111"),
+    client_id: q(CLIENT_A),
+    event_key: q("escalation:critical"),
+  },
+  client_key_figures: {
+    id: q("c0000099-1111-4111-8111-111111111111"),
+    client_id: q(CLIENT_A),
+    firm_id: q(ORG_A),
+    tenant_id: q(TENANT_A),
+    as_at: "current_date",
+    cash: "1000",
+  },
   xero_snapshots: {
     id: q("c0000016-1111-4111-8111-111111111111"),
     client_id: q(CLIENT_A),
@@ -541,6 +554,23 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const org = r.includes("not a member of") ? ORG_B : ORG_A;
     const p = await probe(`select public.record_view_as('${org}'::uuid, null, 'owner')`);
     return p.ok ? "allow" : "deny";
+  }
+  if (r.startsWith("set_overview_alert_state(")) {
+    const p = await probe(
+      `select public.set_overview_alert_state('${CLIENT_A}'::uuid, 'escalation:critical', 'acknowledge', 4::smallint, null)`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
+  if (r.startsWith("overview_clients()")) {
+    const target = r.includes("another organisation") ? CLIENT_B : CLIENT_A;
+    const p = await probe(
+      `select 1 from public.overview_clients() where client_id = '${target}'`,
+    );
+    return p.ok && p.rows > 0 ? "allow" : "deny";
+  }
+  if (r === "me_is_practice_member()") {
+    const p = await probe(`select 1 where public.me_is_practice_member()`);
+    return p.ok && p.rows > 0 ? "allow" : "deny";
   }
   if (r === "xero_error_breakdown()") {
     const p = await probe(`select * from public.xero_error_breakdown(7)`);
@@ -1365,6 +1395,9 @@ beforeAll(async () => {
   // copy needs it to be faithful for that path. Test-copy fidelity only — no
   // application object changes.
   await db.exec(`alter table public.practice_team add primary key (user_id);`);
+  // overview_alert_states is unique on (client_id, event_key) live (7 Oct 2026); the
+  // acknowledge upsert depends on it.
+  await db.exec(`alter table public.overview_alert_states add unique (client_id, event_key);`);
 
   // Same fidelity fix: live `session_activity` has a primary key on session_id
   // (verified 15 Sep 2026) and `touch_session_activity` upserts on it.

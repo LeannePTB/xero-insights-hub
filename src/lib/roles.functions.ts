@@ -11,10 +11,13 @@ import type { ClientAccessRelationship } from "@/lib/access-labels";
 export const getMyContext = createServerFn({ method: "GET" })
   .middleware([requireAal2])
   .handler(async ({ context }) => {
-    const [{ data: roles }, { data: memberships }] = await Promise.all([
+    const [{ data: roles }, { data: memberships }, { data: practice }] = await Promise.all([
       (context.supabase as any).rpc("my_roles"),
       (context.supabase as any).rpc("my_firm_memberships"),
+      // Routing only (client overview landing and link); never a grant.
+      (context.supabase as any).rpc("me_is_practice_member"),
     ]);
+    const isPracticeMember = practice === true;
     const roleNames = (roles ?? []) as string[];
     const hasAdvisorRole = roleNames.includes("advisor");
     const isSuperAdmin = roleNames.includes("super_admin");
@@ -45,6 +48,7 @@ export const getMyContext = createServerFn({ method: "GET" })
       }));
     }
     return {
+      isPracticeMember,
       isAdvisor,
       isSuperAdmin,
       isFirmOwner,

@@ -529,6 +529,12 @@
     {
         "args": [
         ],
+        "name": "me_is_practice_member",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
         "name": "me_is_super_admin",
         "required": 0
     },
@@ -608,6 +614,12 @@
         ],
         "name": "organisation_members",
         "required": 1
+    },
+    {
+        "args": [
+        ],
+        "name": "overview_clients",
+        "required": 0
     },
     {
         "args": [
@@ -903,6 +915,17 @@
         ],
         "name": "set_org_widget_enabled",
         "required": 4
+    },
+    {
+        "args": [
+            "_client_id",
+            "_event_key",
+            "_action",
+            "_severity",
+            "_snooze_until"
+        ],
+        "name": "set_overview_alert_state",
+        "required": 3
     },
     {
         "args": [

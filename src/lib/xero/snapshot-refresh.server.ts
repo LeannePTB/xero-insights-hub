@@ -13,6 +13,8 @@ import { sydneyDate, sydneyStartOfDayISO } from "@/lib/sydney-time";
 import {
   INVOICE_PAGE_LIMIT,
   MAX_XERO_CALLS_PER_RUN,
+  orderByLeastRecentlyRefreshed,
+  scheduledRunCallCeiling,
   SNAPSHOT_PAYLOAD_VERSION,
   snapshotParamsHash,
   snapshotReports,
@@ -379,14 +381,43 @@ export async function refreshAllTenants(): Promise<{
 
 
 
-  const budget = new CallBudget(MAX_XERO_CALLS_PER_RUN);
-  const targets = await listRefreshTargets();
+  const hashOrdered = await listRefreshTargets();
+  // Ceiling scales with the number of connected, client-linked files.
+  const budget = new CallBudget(
+    scheduledRunCallCeiling(new Set(hashOrdered.map((t) => t.tenantId)).size),
+  );
+  // Least recently refreshed first, so a file a stopped run skipped is first next night.
+  const lastRunAt = new Map<string, string>();
+  try {
+    const { data: runRows } = await (supabaseAdmin as any)
+      .from("xero_snapshot_runs")
+      .select("tenant_id, started_at")
+      .eq("trigger", "scheduled")
+      .gte("started_at", new Date(Date.now() - 14 * 86400_000).toISOString());
+    for (const r of (runRows ?? []) as any[]) {
+      const prev = lastRunAt.get(r.tenant_id);
+      if (!prev || r.started_at > prev) lastRunAt.set(r.tenant_id, r.started_at);
+    }
+  } catch (e) {
+    console.warn("[snapshot] run history read failed", e instanceof Error ? e.message : e);
+  }
+  const targets = orderByLeastRecentlyRefreshed(hashOrdered, lastRunAt);
   const results: TenantRefreshResult[] = [];
   let aborted = false;
 
   for (const target of targets) {
     try {
-      results.push(await refreshTenant(target, "scheduled", budget));
+      const r = await refreshTenant(target, "scheduled", budget);
+      results.push(r);
+      // Nightly key figures from what was just stored (no Xero calls).
+      if (r.status !== "failed") {
+        try {
+          const { writeKeyFigures } = await import("@/lib/overview/key-figures.server");
+          await writeKeyFigures(target);
+        } catch (e) {
+          console.warn("[snapshot] key figures failed", e instanceof Error ? e.message : e);
+        }
+      }
     } catch (e) {
       if (e instanceof SnapshotCallCeilingError) {
         aborted = true;

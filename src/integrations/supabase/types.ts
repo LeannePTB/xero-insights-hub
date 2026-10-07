@@ -437,6 +437,79 @@ export type Database = {
           },
         ]
       }
+      client_key_figures: {
+        Row: {
+          as_at: string
+          cash: number | null
+          client_id: string
+          created_at: string
+          creditors: number | null
+          debtors_overdue: number | null
+          debtors_total: number | null
+          firm_id: string
+          id: string
+          net_profit_mtd: number | null
+          protected_money: number | null
+          revenue_mtd: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          as_at: string
+          cash?: number | null
+          client_id: string
+          created_at?: string
+          creditors?: number | null
+          debtors_overdue?: number | null
+          debtors_total?: number | null
+          firm_id: string
+          id?: string
+          net_profit_mtd?: number | null
+          protected_money?: number | null
+          revenue_mtd?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          as_at?: string
+          cash?: number | null
+          client_id?: string
+          created_at?: string
+          creditors?: number | null
+          debtors_overdue?: number | null
+          debtors_total?: number | null
+          firm_id?: string
+          id?: string
+          net_profit_mtd?: number | null
+          protected_money?: number | null
+          revenue_mtd?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_key_figures_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_key_figures_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "client_key_figures_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_notes: {
         Row: {
           author_id: string | null
@@ -1496,6 +1569,56 @@ export type Database = {
             columns: ["firm_id"]
             isOneToOne: true
             referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      overview_alert_states: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          client_id: string
+          created_at: string
+          event_key: string
+          id: string
+          severity_at_ack: number
+          snoozed_at: string | null
+          snoozed_by: string | null
+          snoozed_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          client_id: string
+          created_at?: string
+          event_key: string
+          id?: string
+          severity_at_ack?: number
+          snoozed_at?: string | null
+          snoozed_by?: string | null
+          snoozed_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          client_id?: string
+          created_at?: string
+          event_key?: string
+          id?: string
+          severity_at_ack?: number
+          snoozed_at?: string | null
+          snoozed_by?: string | null
+          snoozed_until?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "overview_alert_states_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
             referencedColumns: ["id"]
           },
         ]
@@ -3267,6 +3390,7 @@ export type Database = {
         Args: { _role: Database["public"]["Enums"]["app_role"] }
         Returns: boolean
       }
+      me_is_practice_member: { Args: never; Returns: boolean }
       me_is_super_admin: { Args: never; Returns: boolean }
       move_to_dlq: {
         Args: {
@@ -3360,6 +3484,15 @@ export type Database = {
           role: string
           status: string
           user_id: string
+        }[]
+      }
+      overview_clients: {
+        Args: never
+        Returns: {
+          client_id: string
+          client_name: string
+          firm_id: string
+          firm_name: string
         }[]
       }
       plan_level_usage_count: { Args: { _id: string }; Returns: number }
@@ -3543,6 +3676,16 @@ export type Database = {
         Returns: {
           clients_affected: number
         }[]
+      }
+      set_overview_alert_state: {
+        Args: {
+          _action: string
+          _client_id: string
+          _event_key: string
+          _severity?: number
+          _snooze_until?: string
+        }
+        Returns: undefined
       }
       set_platform_tier_widgets: {
         Args: { _excluded: string[]; _tier: string }

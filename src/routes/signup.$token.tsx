@@ -16,7 +16,7 @@ export const Route = createFileRoute("/signup/$token")({
   component: SignupPage,
   errorComponent: ({ error }) => (
     <div className="min-h-screen grid place-items-center p-6">
-      <p className="text-sm text-destructive">{error.message}</p>
+      <p className="text-sm text-destructive">{error instanceof Error ? error.message : "Something went wrong."}</p>
     </div>
   ),
   notFoundComponent: () => (

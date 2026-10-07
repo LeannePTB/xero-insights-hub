@@ -11,11 +11,45 @@ import { addDays, addMonths, endOfMonth, startOfFinancialYear, startOfMonth, syd
 export const SNAPSHOT_PAYLOAD_VERSION = 1;
 
 /**
- * Hard ceiling on Xero calls issued by a single refresh run. The bound is a
- * number, not the report loop being correct: if the loop ever misbehaves the
- * run aborts here rather than spending the app-wide daily quota.
+ * Ceiling on Xero calls for a single-file run (manual refresh, first-link
+ * backfill). Also the floor for the nightly run. The bound is a number, not
+ * the report loop being correct: if the loop misbehaves the run aborts here.
  */
 export const MAX_XERO_CALLS_PER_RUN = 400;
+
+/**
+ * Nightly run allowance per connected, client-linked Xero file. A file needs
+ * about 12 report calls plus up to INVOICE_PAGE_LIMIT pages for each of the two
+ * open-invoice lists; 25 covers that with a little slack.
+ */
+export const XERO_CALLS_PER_FILE_PER_RUN = 25;
+
+/** Absolute upper bound for the nightly run, whatever the file count. */
+export const MAX_XERO_CALLS_PER_SCHEDULED_RUN_HARD = 3000;
+
+/** Nightly ceiling: scales with file count, never below the floor or above the hard bound. */
+export function scheduledRunCallCeiling(fileCount: number): number {
+  const n = Number.isFinite(fileCount) && fileCount > 0 ? Math.floor(fileCount) : 0;
+  return Math.min(
+    MAX_XERO_CALLS_PER_SCHEDULED_RUN_HARD,
+    Math.max(MAX_XERO_CALLS_PER_RUN, n * XERO_CALLS_PER_FILE_PER_RUN),
+  );
+}
+
+/**
+ * Nightly order: files whose last scheduled run is oldest (or never) go first,
+ * so any file a stopped run skipped tonight is first tomorrow. Ties keep the
+ * given order (callers pass a stable hash order).
+ */
+export function orderByLeastRecentlyRefreshed<T extends { tenantId: string }>(
+  targets: T[],
+  lastRunAt: Map<string, string>,
+): T[] {
+  return targets
+    .map((t, i) => ({ t, i, at: lastRunAt.get(t.tenantId) ?? "" }))
+    .sort((a, b) => (a.at < b.at ? -1 : a.at > b.at ? 1 : a.i - b.i))
+    .map((x) => x.t);
+}
 
 /** Pages of `Invoices` pulled per report. Each page is one Xero call. */
 export const INVOICE_PAGE_LIMIT = 5;
