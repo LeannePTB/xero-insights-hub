@@ -192,4 +192,4 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Batch 1 — overview page computed on read (7 Oct; R06 date defect logged for owner)
 - [x] Batch 2 — "What changed" feed (7 Oct)
 - [x] Batch 3 — nightly key-figures table (7 Oct; retention decision OPEN, first rows after tonight's run)
-- [ ] Batch 4 — shared acknowledge/snooze via audited definer function
+- [x] Batch 4 — shared acknowledge/snooze via audited definer function (7 Oct)
