@@ -9,71 +9,65 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
-import { Route as SetPasswordRouteImport } from './routes/set-password'
-import { Route as SecurityRouteImport } from './routes/security'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SignupTokenRouteImport } from './routes/signup.$token'
-import { Route as ReportTokenRouteImport } from './routes/report.$token'
-import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
-import { Route as AuthMfaVerifyRouteImport } from './routes/auth_.mfa-verify'
-import { Route as AuthMfaEnrollRouteImport } from './routes/auth_.mfa-enroll'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as SecurityRouteImport } from './routes/security'
+import { Route as SetPasswordRouteImport } from './routes/set-password'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthMfaEnrollRouteImport } from './routes/auth_.mfa-enroll'
+import { Route as AuthMfaVerifyRouteImport } from './routes/auth_.mfa-verify'
+import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
+import { Route as ReportTokenRouteImport } from './routes/report.$token'
+import { Route as SignupTokenRouteImport } from './routes/signup.$token'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
-import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
-import { Route as AuthenticatedSettingsPracticeTeamRouteImport } from './routes/_authenticated/settings.practice-team'
-import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
-import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
-import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
-import { Route as AuthenticatedFirmsFirmIdRouteImport } from './routes/_authenticated/firms.$firmId'
-import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
 import { Route as AuthenticatedAdminSecurityRouteImport } from './routes/_authenticated/admin.security'
-import { Route as AuthenticatedFirmsFirmIdIndexRouteImport } from './routes/_authenticated/firms.$firmId.index'
-import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
-import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
-import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
-import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
-import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
-import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
-import { Route as ApiPublicXeroSnapshotRefreshRouteImport } from './routes/api/public/xero/snapshot-refresh'
-import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
-import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
-import { Route as ApiPublicSecurityRunAccessTestsRouteImport } from './routes/api/public/security/run-access-tests'
-import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
-import { Route as AuthenticatedFirmsFirmIdPeopleRouteImport } from './routes/_authenticated/firms.$firmId.people'
-import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
-import { Route as AuthenticatedFirmsFirmIdConsolidationsRouteImport } from './routes/_authenticated/firms.$firmId.consolidations'
-import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
-import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
-import { Route as AuthenticatedClientsClientIdReportsRouteImport } from './routes/_authenticated/clients.$clientId.reports'
-import { Route as AuthenticatedClientsClientIdLoansAccountsRouteImport } from './routes/_authenticated/clients.$clientId.loans-accounts'
-import { Route as AuthenticatedClientsClientIdLoansRouteImport } from './routes/_authenticated/clients.$clientId.loans'
-import { Route as AuthenticatedClientsClientIdCashflowScenarioRouteImport } from './routes/_authenticated/clients.$clientId.cashflow-scenario'
+import { Route as AuthenticatedClientsNewRouteImport } from './routes/_authenticated/clients.new'
+import { Route as AuthenticatedFirmsFirmIdRouteImport } from './routes/_authenticated/firms.$firmId'
+import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_authenticated/settings.account'
+import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
+import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
+import { Route as AuthenticatedSettingsPracticeTeamRouteImport } from './routes/_authenticated/settings.practice-team'
+import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
-import { Route as AuthenticatedFirmsFirmIdLoansIndexRouteImport } from './routes/_authenticated/firms.$firmId.loans.index'
-import { Route as AuthenticatedFirmsFirmIdLoansGroupsRouteImport } from './routes/_authenticated/firms.$firmId.loans.groups'
-import { Route as AuthenticatedFirmsFirmIdLoansAccountsRouteImport } from './routes/_authenticated/firms.$firmId.loans.accounts'
-import { Route as AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport } from './routes/_authenticated/firms.$firmId.consolidated.$groupId'
-import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
-import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
+import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
+import { Route as AuthenticatedClientsClientIdCashflowScenarioRouteImport } from './routes/_authenticated/clients.$clientId.cashflow-scenario'
+import { Route as AuthenticatedClientsClientIdLoansRouteImport } from './routes/_authenticated/clients.$clientId.loans'
+import { Route as AuthenticatedClientsClientIdLoansAccountsRouteImport } from './routes/_authenticated/clients.$clientId.loans-accounts'
+import { Route as AuthenticatedClientsClientIdReportsRouteImport } from './routes/_authenticated/clients.$clientId.reports'
+import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './routes/_authenticated/clients.$clientId.settings'
+import { Route as AuthenticatedClientsClientIdUnreconciledRouteImport } from './routes/_authenticated/clients.$clientId.unreconciled'
+import { Route as AuthenticatedFirmsFirmIdIndexRouteImport } from './routes/_authenticated/firms.$firmId.index'
+import { Route as AuthenticatedFirmsFirmIdConsolidationsRouteImport } from './routes/_authenticated/firms.$firmId.consolidations'
+import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
+import { Route as AuthenticatedFirmsFirmIdPeopleRouteImport } from './routes/_authenticated/firms.$firmId.people'
+import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
+import { Route as ApiPublicSecurityRunAccessTestsRouteImport } from './routes/api/public/security/run-access-tests'
+import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
+import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
+import { Route as ApiPublicXeroSnapshotRefreshRouteImport } from './routes/api/public/xero/snapshot-refresh'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
+import { Route as LovableEmailQueueProcessRouteImport } from './routes/lovable/email/queue/process'
+import { Route as LovableEmailTransactionalPreviewRouteImport } from './routes/lovable/email/transactional/preview'
+import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lovable/email/transactional/send'
 import { Route as AuthenticatedClientsClientIdAuditTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.audit.$tenantId'
+import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
+import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
+import { Route as AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport } from './routes/_authenticated/firms.$firmId.consolidated.$groupId'
+import { Route as AuthenticatedFirmsFirmIdLoansIndexRouteImport } from './routes/_authenticated/firms.$firmId.loans.index'
+import { Route as AuthenticatedFirmsFirmIdLoansAccountsRouteImport } from './routes/_authenticated/firms.$firmId.loans.accounts'
+import { Route as AuthenticatedFirmsFirmIdLoansGroupsRouteImport } from './routes/_authenticated/firms.$firmId.loans.groups'
 
-const UnsubscribeRoute = UnsubscribeRouteImport.update({
-  id: '/unsubscribe',
-  path: '/unsubscribe',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SetPasswordRoute = SetPasswordRouteImport.update({
-  id: '/set-password',
-  path: '/set-password',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SecurityRoute = SecurityRouteImport.update({
-  id: '/security',
-  path: '/security',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -81,28 +75,34 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
+const SecurityRoute = SecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const SetPasswordRoute = SetPasswordRouteImport.update({
+  id: '/set-password',
+  path: '/set-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SignupTokenRoute = SignupTokenRouteImport.update({
-  id: '/signup/$token',
-  path: '/signup/$token',
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ReportTokenRoute = ReportTokenRouteImport.update({
-  id: '/report/$token',
-  path: '/report/$token',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
-  id: '/email/unsubscribe',
-  path: '/email/unsubscribe',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthMfaEnrollRoute = AuthMfaEnrollRouteImport.update({
+  id: '/auth_/mfa-enroll',
+  path: '/auth/mfa-enroll',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthMfaVerifyRoute = AuthMfaVerifyRouteImport.update({
@@ -110,47 +110,41 @@ const AuthMfaVerifyRoute = AuthMfaVerifyRouteImport.update({
   path: '/auth/mfa-verify',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthMfaEnrollRoute = AuthMfaEnrollRouteImport.update({
-  id: '/auth_/mfa-enroll',
-  path: '/auth/mfa-enroll',
+const EmailUnsubscribeRoute = EmailUnsubscribeRouteImport.update({
+  id: '/email/unsubscribe',
+  path: '/email/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const ReportTokenRoute = ReportTokenRouteImport.update({
+  id: '/report/$token',
+  path: '/report/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
+const SignupTokenRoute = SignupTokenRouteImport.update({
+  id: '/signup/$token',
+  path: '/signup/$token',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
-const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
-  id: '/lovable/email/suppression',
-  path: '/lovable/email/suppression',
-  getParentRoute: () => rootRouteImport,
+const AuthenticatedAdminSecurityRoute =
+  AuthenticatedAdminSecurityRouteImport.update({
+    id: '/security',
+    path: '/security',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedClientsNewRoute = AuthenticatedClientsNewRouteImport.update({
+  id: '/clients/new',
+  path: '/clients/new',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSettingsPracticeTeamRoute =
-  AuthenticatedSettingsPracticeTeamRouteImport.update({
-    id: '/settings/practice-team',
-    path: '/settings/practice-team',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSettingsAdvisorsRoute =
-  AuthenticatedSettingsAdvisorsRouteImport.update({
-    id: '/settings/advisors',
-    path: '/settings/advisors',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedSettingsActivityRoute =
-  AuthenticatedSettingsActivityRouteImport.update({
-    id: '/settings/activity',
-    path: '/settings/activity',
+const AuthenticatedFirmsFirmIdRoute =
+  AuthenticatedFirmsFirmIdRouteImport.update({
+    id: '/firms/$firmId',
+    path: '/firms/$firmId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSettingsAccountRoute =
@@ -159,137 +153,39 @@ const AuthenticatedSettingsAccountRoute =
     path: '/settings/account',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedFirmsFirmIdRoute =
-  AuthenticatedFirmsFirmIdRouteImport.update({
-    id: '/firms/$firmId',
-    path: '/firms/$firmId',
+const AuthenticatedSettingsActivityRoute =
+  AuthenticatedSettingsActivityRouteImport.update({
+    id: '/settings/activity',
+    path: '/settings/activity',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedClientsNewRoute = AuthenticatedClientsNewRouteImport.update({
-  id: '/clients/new',
-  path: '/clients/new',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedAdminSecurityRoute =
-  AuthenticatedAdminSecurityRouteImport.update({
-    id: '/security',
-    path: '/security',
-    getParentRoute: () => AuthenticatedAdminRoute,
+const AuthenticatedSettingsAdvisorsRoute =
+  AuthenticatedSettingsAdvisorsRouteImport.update({
+    id: '/settings/advisors',
+    path: '/settings/advisors',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedFirmsFirmIdIndexRoute =
-  AuthenticatedFirmsFirmIdIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+const AuthenticatedSettingsPracticeTeamRoute =
+  AuthenticatedSettingsPracticeTeamRouteImport.update({
+    id: '/settings/practice-team',
+    path: '/settings/practice-team',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
+  id: '/lovable/email/suppression',
+  path: '/lovable/email/suppression',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedAdminFirmsFirmIdRoute =
+  AuthenticatedAdminFirmsFirmIdRouteImport.update({
+    id: '/firms/$firmId',
+    path: '/firms/$firmId',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedClientsClientIdIndexRoute =
   AuthenticatedClientsClientIdIndexRouteImport.update({
     id: '/clients/$clientId/',
     path: '/clients/$clientId/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const LovableEmailTransactionalSendRoute =
-  LovableEmailTransactionalSendRouteImport.update({
-    id: '/lovable/email/transactional/send',
-    path: '/lovable/email/transactional/send',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailTransactionalPreviewRoute =
-  LovableEmailTransactionalPreviewRouteImport.update({
-    id: '/lovable/email/transactional/preview',
-    path: '/lovable/email/transactional/preview',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailQueueProcessRoute =
-  LovableEmailQueueProcessRouteImport.update({
-    id: '/lovable/email/queue/process',
-    path: '/lovable/email/queue/process',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
-  id: '/lovable/email/auth/webhook',
-  path: '/lovable/email/auth/webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
-  id: '/lovable/email/auth/preview',
-  path: '/lovable/email/auth/preview',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicXeroSnapshotRefreshRoute =
-  ApiPublicXeroSnapshotRefreshRouteImport.update({
-    id: '/api/public/xero/snapshot-refresh',
-    path: '/api/public/xero/snapshot-refresh',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
-  id: '/api/public/xero/callback',
-  path: '/api/public/xero/callback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
-  id: '/api/public/stripe/webhook',
-  path: '/api/public/stripe/webhook',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicSecurityRunAccessTestsRoute =
-  ApiPublicSecurityRunAccessTestsRouteImport.update({
-    id: '/api/public/security/run-access-tests',
-    path: '/api/public/security/run-access-tests',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const AuthenticatedFirmsFirmIdSettingsRoute =
-  AuthenticatedFirmsFirmIdSettingsRouteImport.update({
-    id: '/settings',
-    path: '/settings',
-    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
-  } as any)
-const AuthenticatedFirmsFirmIdPeopleRoute =
-  AuthenticatedFirmsFirmIdPeopleRouteImport.update({
-    id: '/people',
-    path: '/people',
-    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
-  } as any)
-const AuthenticatedFirmsFirmIdLoansRoute =
-  AuthenticatedFirmsFirmIdLoansRouteImport.update({
-    id: '/loans',
-    path: '/loans',
-    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
-  } as any)
-const AuthenticatedFirmsFirmIdConsolidationsRoute =
-  AuthenticatedFirmsFirmIdConsolidationsRouteImport.update({
-    id: '/consolidations',
-    path: '/consolidations',
-    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
-  } as any)
-const AuthenticatedClientsClientIdUnreconciledRoute =
-  AuthenticatedClientsClientIdUnreconciledRouteImport.update({
-    id: '/clients/$clientId/unreconciled',
-    path: '/clients/$clientId/unreconciled',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedClientsClientIdSettingsRoute =
-  AuthenticatedClientsClientIdSettingsRouteImport.update({
-    id: '/clients/$clientId/settings',
-    path: '/clients/$clientId/settings',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedClientsClientIdReportsRoute =
-  AuthenticatedClientsClientIdReportsRouteImport.update({
-    id: '/clients/$clientId/reports',
-    path: '/clients/$clientId/reports',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedClientsClientIdLoansAccountsRoute =
-  AuthenticatedClientsClientIdLoansAccountsRouteImport.update({
-    id: '/clients/$clientId/loans-accounts',
-    path: '/clients/$clientId/loans-accounts',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedClientsClientIdLoansRoute =
-  AuthenticatedClientsClientIdLoansRouteImport.update({
-    id: '/clients/$clientId/loans',
-    path: '/clients/$clientId/loans',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedClientsClientIdCashflowScenarioRoute =
@@ -298,40 +194,120 @@ const AuthenticatedClientsClientIdCashflowScenarioRoute =
     path: '/clients/$clientId/cashflow-scenario',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminFirmsFirmIdRoute =
-  AuthenticatedAdminFirmsFirmIdRouteImport.update({
-    id: '/firms/$firmId',
-    path: '/firms/$firmId',
-    getParentRoute: () => AuthenticatedAdminRoute,
+const AuthenticatedClientsClientIdLoansRoute =
+  AuthenticatedClientsClientIdLoansRouteImport.update({
+    id: '/clients/$clientId/loans',
+    path: '/clients/$clientId/loans',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedFirmsFirmIdLoansIndexRoute =
-  AuthenticatedFirmsFirmIdLoansIndexRouteImport.update({
+const AuthenticatedClientsClientIdLoansAccountsRoute =
+  AuthenticatedClientsClientIdLoansAccountsRouteImport.update({
+    id: '/clients/$clientId/loans-accounts',
+    path: '/clients/$clientId/loans-accounts',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedClientsClientIdReportsRoute =
+  AuthenticatedClientsClientIdReportsRouteImport.update({
+    id: '/clients/$clientId/reports',
+    path: '/clients/$clientId/reports',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedClientsClientIdSettingsRoute =
+  AuthenticatedClientsClientIdSettingsRouteImport.update({
+    id: '/clients/$clientId/settings',
+    path: '/clients/$clientId/settings',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedClientsClientIdUnreconciledRoute =
+  AuthenticatedClientsClientIdUnreconciledRouteImport.update({
+    id: '/clients/$clientId/unreconciled',
+    path: '/clients/$clientId/unreconciled',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdIndexRoute =
+  AuthenticatedFirmsFirmIdIndexRouteImport.update({
     id: '/',
     path: '/',
-    getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
-  } as any)
-const AuthenticatedFirmsFirmIdLoansGroupsRoute =
-  AuthenticatedFirmsFirmIdLoansGroupsRouteImport.update({
-    id: '/groups',
-    path: '/groups',
-    getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
-  } as any)
-const AuthenticatedFirmsFirmIdLoansAccountsRoute =
-  AuthenticatedFirmsFirmIdLoansAccountsRouteImport.update({
-    id: '/accounts',
-    path: '/accounts',
-    getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
-  } as any)
-const AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute =
-  AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport.update({
-    id: '/consolidated/$groupId',
-    path: '/consolidated/$groupId',
     getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
   } as any)
-const AuthenticatedClientsClientIdReceivablesTenantIdRoute =
-  AuthenticatedClientsClientIdReceivablesTenantIdRouteImport.update({
-    id: '/clients/$clientId/receivables/$tenantId',
-    path: '/clients/$clientId/receivables/$tenantId',
+const AuthenticatedFirmsFirmIdConsolidationsRoute =
+  AuthenticatedFirmsFirmIdConsolidationsRouteImport.update({
+    id: '/consolidations',
+    path: '/consolidations',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdLoansRoute =
+  AuthenticatedFirmsFirmIdLoansRouteImport.update({
+    id: '/loans',
+    path: '/loans',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdPeopleRoute =
+  AuthenticatedFirmsFirmIdPeopleRouteImport.update({
+    id: '/people',
+    path: '/people',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdSettingsRoute =
+  AuthenticatedFirmsFirmIdSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
+const ApiPublicSecurityRunAccessTestsRoute =
+  ApiPublicSecurityRunAccessTestsRouteImport.update({
+    id: '/api/public/security/run-access-tests',
+    path: '/api/public/security/run-access-tests',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
+  id: '/api/public/stripe/webhook',
+  path: '/api/public/stripe/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
+  id: '/api/public/xero/callback',
+  path: '/api/public/xero/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicXeroSnapshotRefreshRoute =
+  ApiPublicXeroSnapshotRefreshRouteImport.update({
+    id: '/api/public/xero/snapshot-refresh',
+    path: '/api/public/xero/snapshot-refresh',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailQueueProcessRoute =
+  LovableEmailQueueProcessRouteImport.update({
+    id: '/lovable/email/queue/process',
+    path: '/lovable/email/queue/process',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalPreviewRoute =
+  LovableEmailTransactionalPreviewRouteImport.update({
+    id: '/lovable/email/transactional/preview',
+    path: '/lovable/email/transactional/preview',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailTransactionalSendRoute =
+  LovableEmailTransactionalSendRouteImport.update({
+    id: '/lovable/email/transactional/send',
+    path: '/lovable/email/transactional/send',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AuthenticatedClientsClientIdAuditTenantIdRoute =
+  AuthenticatedClientsClientIdAuditTenantIdRouteImport.update({
+    id: '/clients/$clientId/audit/$tenantId',
+    path: '/clients/$clientId/audit/$tenantId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedClientsClientIdPayablesTenantIdRoute =
@@ -340,11 +316,35 @@ const AuthenticatedClientsClientIdPayablesTenantIdRoute =
     path: '/clients/$clientId/payables/$tenantId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedClientsClientIdAuditTenantIdRoute =
-  AuthenticatedClientsClientIdAuditTenantIdRouteImport.update({
-    id: '/clients/$clientId/audit/$tenantId',
-    path: '/clients/$clientId/audit/$tenantId',
+const AuthenticatedClientsClientIdReceivablesTenantIdRoute =
+  AuthenticatedClientsClientIdReceivablesTenantIdRouteImport.update({
+    id: '/clients/$clientId/receivables/$tenantId',
+    path: '/clients/$clientId/receivables/$tenantId',
     getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute =
+  AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport.update({
+    id: '/consolidated/$groupId',
+    path: '/consolidated/$groupId',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdLoansIndexRoute =
+  AuthenticatedFirmsFirmIdLoansIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdLoansAccountsRoute =
+  AuthenticatedFirmsFirmIdLoansAccountsRouteImport.update({
+    id: '/accounts',
+    path: '/accounts',
+    getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdLoansGroupsRoute =
+  AuthenticatedFirmsFirmIdLoansGroupsRouteImport.update({
+    id: '/groups',
+    path: '/groups',
+    getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -685,32 +685,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/unsubscribe': {
-      id: '/unsubscribe'
-      path: '/unsubscribe'
-      fullPath: '/unsubscribe'
-      preLoaderRoute: typeof UnsubscribeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/set-password': {
-      id: '/set-password'
-      path: '/set-password'
-      fullPath: '/set-password'
-      preLoaderRoute: typeof SetPasswordRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/security': {
-      id: '/security'
-      path: '/security'
-      fullPath: '/security'
-      preLoaderRoute: typeof SecurityRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -720,32 +699,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/signup/$token': {
-      id: '/signup/$token'
-      path: '/signup/$token'
-      fullPath: '/signup/$token'
-      preLoaderRoute: typeof SignupTokenRouteImport
+    '/security': {
+      id: '/security'
+      path: '/security'
+      fullPath: '/security'
+      preLoaderRoute: typeof SecurityRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/report/$token': {
-      id: '/report/$token'
-      path: '/report/$token'
-      fullPath: '/report/$token'
-      preLoaderRoute: typeof ReportTokenRouteImport
+    '/set-password': {
+      id: '/set-password'
+      path: '/set-password'
+      fullPath: '/set-password'
+      preLoaderRoute: typeof SetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/email/unsubscribe': {
-      id: '/email/unsubscribe'
-      path: '/email/unsubscribe'
-      fullPath: '/email/unsubscribe'
-      preLoaderRoute: typeof EmailUnsubscribeRouteImport
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/auth_/mfa-enroll': {
+      id: '/auth_/mfa-enroll'
+      path: '/auth/mfa-enroll'
+      fullPath: '/auth/mfa-enroll'
+      preLoaderRoute: typeof AuthMfaEnrollRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth_/mfa-verify': {
@@ -755,26 +755,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthMfaVerifyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth_/mfa-enroll': {
-      id: '/auth_/mfa-enroll'
-      path: '/auth/mfa-enroll'
-      fullPath: '/auth/mfa-enroll'
-      preLoaderRoute: typeof AuthMfaEnrollRouteImport
+    '/email/unsubscribe': {
+      id: '/email/unsubscribe'
+      path: '/email/unsubscribe'
+      fullPath: '/email/unsubscribe'
+      preLoaderRoute: typeof EmailUnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/report/$token': {
+      id: '/report/$token'
+      path: '/report/$token'
+      fullPath: '/report/$token'
+      preLoaderRoute: typeof ReportTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/signup/$token': {
+      id: '/signup/$token'
+      path: '/signup/$token'
+      fullPath: '/signup/$token'
+      preLoaderRoute: typeof SignupTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
@@ -783,39 +783,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/lovable/email/suppression': {
-      id: '/lovable/email/suppression'
-      path: '/lovable/email/suppression'
-      fullPath: '/lovable/email/suppression'
-      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/admin/security': {
+      id: '/_authenticated/admin/security'
+      path: '/security'
+      fullPath: '/admin/security'
+      preLoaderRoute: typeof AuthenticatedAdminSecurityRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/settings/practice-team': {
-      id: '/_authenticated/settings/practice-team'
-      path: '/settings/practice-team'
-      fullPath: '/settings/practice-team'
-      preLoaderRoute: typeof AuthenticatedSettingsPracticeTeamRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings/advisors': {
-      id: '/_authenticated/settings/advisors'
-      path: '/settings/advisors'
-      fullPath: '/settings/advisors'
-      preLoaderRoute: typeof AuthenticatedSettingsAdvisorsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings/activity': {
-      id: '/_authenticated/settings/activity'
-      path: '/settings/activity'
-      fullPath: '/settings/activity'
-      preLoaderRoute: typeof AuthenticatedSettingsActivityRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/settings/account': {
-      id: '/_authenticated/settings/account'
-      path: '/settings/account'
-      fullPath: '/settings/account'
-      preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
+    '/_authenticated/clients/new': {
+      id: '/_authenticated/clients/new'
+      path: '/clients/new'
+      fullPath: '/clients/new'
+      preLoaderRoute: typeof AuthenticatedClientsNewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/firms/$firmId': {
@@ -825,158 +804,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/clients/new': {
-      id: '/_authenticated/clients/new'
-      path: '/clients/new'
-      fullPath: '/clients/new'
-      preLoaderRoute: typeof AuthenticatedClientsNewRouteImport
+    '/_authenticated/settings/account': {
+      id: '/_authenticated/settings/account'
+      path: '/settings/account'
+      fullPath: '/settings/account'
+      preLoaderRoute: typeof AuthenticatedSettingsAccountRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/security': {
-      id: '/_authenticated/admin/security'
-      path: '/security'
-      fullPath: '/admin/security'
-      preLoaderRoute: typeof AuthenticatedAdminSecurityRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
+    '/_authenticated/settings/activity': {
+      id: '/_authenticated/settings/activity'
+      path: '/settings/activity'
+      fullPath: '/settings/activity'
+      preLoaderRoute: typeof AuthenticatedSettingsActivityRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/firms/$firmId/': {
-      id: '/_authenticated/firms/$firmId/'
-      path: '/'
-      fullPath: '/firms/$firmId/'
-      preLoaderRoute: typeof AuthenticatedFirmsFirmIdIndexRouteImport
-      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    '/_authenticated/settings/advisors': {
+      id: '/_authenticated/settings/advisors'
+      path: '/settings/advisors'
+      fullPath: '/settings/advisors'
+      preLoaderRoute: typeof AuthenticatedSettingsAdvisorsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/settings/practice-team': {
+      id: '/_authenticated/settings/practice-team'
+      path: '/settings/practice-team'
+      fullPath: '/settings/practice-team'
+      preLoaderRoute: typeof AuthenticatedSettingsPracticeTeamRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/lovable/email/suppression': {
+      id: '/lovable/email/suppression'
+      path: '/lovable/email/suppression'
+      fullPath: '/lovable/email/suppression'
+      preLoaderRoute: typeof LovableEmailSuppressionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin/firms/$firmId': {
+      id: '/_authenticated/admin/firms/$firmId'
+      path: '/firms/$firmId'
+      fullPath: '/admin/firms/$firmId'
+      preLoaderRoute: typeof AuthenticatedAdminFirmsFirmIdRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/clients/$clientId/': {
       id: '/_authenticated/clients/$clientId/'
       path: '/clients/$clientId'
       fullPath: '/clients/$clientId/'
       preLoaderRoute: typeof AuthenticatedClientsClientIdIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/lovable/email/transactional/send': {
-      id: '/lovable/email/transactional/send'
-      path: '/lovable/email/transactional/send'
-      fullPath: '/lovable/email/transactional/send'
-      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/transactional/preview': {
-      id: '/lovable/email/transactional/preview'
-      path: '/lovable/email/transactional/preview'
-      fullPath: '/lovable/email/transactional/preview'
-      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/queue/process': {
-      id: '/lovable/email/queue/process'
-      path: '/lovable/email/queue/process'
-      fullPath: '/lovable/email/queue/process'
-      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/auth/webhook': {
-      id: '/lovable/email/auth/webhook'
-      path: '/lovable/email/auth/webhook'
-      fullPath: '/lovable/email/auth/webhook'
-      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lovable/email/auth/preview': {
-      id: '/lovable/email/auth/preview'
-      path: '/lovable/email/auth/preview'
-      fullPath: '/lovable/email/auth/preview'
-      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/xero/snapshot-refresh': {
-      id: '/api/public/xero/snapshot-refresh'
-      path: '/api/public/xero/snapshot-refresh'
-      fullPath: '/api/public/xero/snapshot-refresh'
-      preLoaderRoute: typeof ApiPublicXeroSnapshotRefreshRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/xero/callback': {
-      id: '/api/public/xero/callback'
-      path: '/api/public/xero/callback'
-      fullPath: '/api/public/xero/callback'
-      preLoaderRoute: typeof ApiPublicXeroCallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/stripe/webhook': {
-      id: '/api/public/stripe/webhook'
-      path: '/api/public/stripe/webhook'
-      fullPath: '/api/public/stripe/webhook'
-      preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/public/security/run-access-tests': {
-      id: '/api/public/security/run-access-tests'
-      path: '/api/public/security/run-access-tests'
-      fullPath: '/api/public/security/run-access-tests'
-      preLoaderRoute: typeof ApiPublicSecurityRunAccessTestsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/firms/$firmId/settings': {
-      id: '/_authenticated/firms/$firmId/settings'
-      path: '/settings'
-      fullPath: '/firms/$firmId/settings'
-      preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsRouteImport
-      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
-    }
-    '/_authenticated/firms/$firmId/people': {
-      id: '/_authenticated/firms/$firmId/people'
-      path: '/people'
-      fullPath: '/firms/$firmId/people'
-      preLoaderRoute: typeof AuthenticatedFirmsFirmIdPeopleRouteImport
-      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
-    }
-    '/_authenticated/firms/$firmId/loans': {
-      id: '/_authenticated/firms/$firmId/loans'
-      path: '/loans'
-      fullPath: '/firms/$firmId/loans'
-      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansRouteImport
-      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
-    }
-    '/_authenticated/firms/$firmId/consolidations': {
-      id: '/_authenticated/firms/$firmId/consolidations'
-      path: '/consolidations'
-      fullPath: '/firms/$firmId/consolidations'
-      preLoaderRoute: typeof AuthenticatedFirmsFirmIdConsolidationsRouteImport
-      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
-    }
-    '/_authenticated/clients/$clientId/unreconciled': {
-      id: '/_authenticated/clients/$clientId/unreconciled'
-      path: '/clients/$clientId/unreconciled'
-      fullPath: '/clients/$clientId/unreconciled'
-      preLoaderRoute: typeof AuthenticatedClientsClientIdUnreconciledRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/clients/$clientId/settings': {
-      id: '/_authenticated/clients/$clientId/settings'
-      path: '/clients/$clientId/settings'
-      fullPath: '/clients/$clientId/settings'
-      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/clients/$clientId/reports': {
-      id: '/_authenticated/clients/$clientId/reports'
-      path: '/clients/$clientId/reports'
-      fullPath: '/clients/$clientId/reports'
-      preLoaderRoute: typeof AuthenticatedClientsClientIdReportsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/clients/$clientId/loans-accounts': {
-      id: '/_authenticated/clients/$clientId/loans-accounts'
-      path: '/clients/$clientId/loans-accounts'
-      fullPath: '/clients/$clientId/loans-accounts'
-      preLoaderRoute: typeof AuthenticatedClientsClientIdLoansAccountsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/clients/$clientId/loans': {
-      id: '/_authenticated/clients/$clientId/loans'
-      path: '/clients/$clientId/loans'
-      fullPath: '/clients/$clientId/loans'
-      preLoaderRoute: typeof AuthenticatedClientsClientIdLoansRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/clients/$clientId/cashflow-scenario': {
@@ -986,46 +860,144 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdCashflowScenarioRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/firms/$firmId': {
-      id: '/_authenticated/admin/firms/$firmId'
-      path: '/firms/$firmId'
-      fullPath: '/admin/firms/$firmId'
-      preLoaderRoute: typeof AuthenticatedAdminFirmsFirmIdRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
+    '/_authenticated/clients/$clientId/loans': {
+      id: '/_authenticated/clients/$clientId/loans'
+      path: '/clients/$clientId/loans'
+      fullPath: '/clients/$clientId/loans'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdLoansRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/firms/$firmId/loans/': {
-      id: '/_authenticated/firms/$firmId/loans/'
+    '/_authenticated/clients/$clientId/loans-accounts': {
+      id: '/_authenticated/clients/$clientId/loans-accounts'
+      path: '/clients/$clientId/loans-accounts'
+      fullPath: '/clients/$clientId/loans-accounts'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdLoansAccountsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clients/$clientId/reports': {
+      id: '/_authenticated/clients/$clientId/reports'
+      path: '/clients/$clientId/reports'
+      fullPath: '/clients/$clientId/reports'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdReportsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clients/$clientId/settings': {
+      id: '/_authenticated/clients/$clientId/settings'
+      path: '/clients/$clientId/settings'
+      fullPath: '/clients/$clientId/settings'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/clients/$clientId/unreconciled': {
+      id: '/_authenticated/clients/$clientId/unreconciled'
+      path: '/clients/$clientId/unreconciled'
+      fullPath: '/clients/$clientId/unreconciled'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdUnreconciledRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/firms/$firmId/': {
+      id: '/_authenticated/firms/$firmId/'
       path: '/'
-      fullPath: '/firms/$firmId/loans/'
-      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansIndexRouteImport
-      parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
-    }
-    '/_authenticated/firms/$firmId/loans/groups': {
-      id: '/_authenticated/firms/$firmId/loans/groups'
-      path: '/groups'
-      fullPath: '/firms/$firmId/loans/groups'
-      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansGroupsRouteImport
-      parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
-    }
-    '/_authenticated/firms/$firmId/loans/accounts': {
-      id: '/_authenticated/firms/$firmId/loans/accounts'
-      path: '/accounts'
-      fullPath: '/firms/$firmId/loans/accounts'
-      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansAccountsRouteImport
-      parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
-    }
-    '/_authenticated/firms/$firmId/consolidated/$groupId': {
-      id: '/_authenticated/firms/$firmId/consolidated/$groupId'
-      path: '/consolidated/$groupId'
-      fullPath: '/firms/$firmId/consolidated/$groupId'
-      preLoaderRoute: typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport
+      fullPath: '/firms/$firmId/'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdIndexRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdRoute
     }
-    '/_authenticated/clients/$clientId/receivables/$tenantId': {
-      id: '/_authenticated/clients/$clientId/receivables/$tenantId'
-      path: '/clients/$clientId/receivables/$tenantId'
-      fullPath: '/clients/$clientId/receivables/$tenantId'
-      preLoaderRoute: typeof AuthenticatedClientsClientIdReceivablesTenantIdRouteImport
+    '/_authenticated/firms/$firmId/consolidations': {
+      id: '/_authenticated/firms/$firmId/consolidations'
+      path: '/consolidations'
+      fullPath: '/firms/$firmId/consolidations'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdConsolidationsRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
+    '/_authenticated/firms/$firmId/loans': {
+      id: '/_authenticated/firms/$firmId/loans'
+      path: '/loans'
+      fullPath: '/firms/$firmId/loans'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
+    '/_authenticated/firms/$firmId/people': {
+      id: '/_authenticated/firms/$firmId/people'
+      path: '/people'
+      fullPath: '/firms/$firmId/people'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdPeopleRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
+    '/_authenticated/firms/$firmId/settings': {
+      id: '/_authenticated/firms/$firmId/settings'
+      path: '/settings'
+      fullPath: '/firms/$firmId/settings'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
+    '/api/public/security/run-access-tests': {
+      id: '/api/public/security/run-access-tests'
+      path: '/api/public/security/run-access-tests'
+      fullPath: '/api/public/security/run-access-tests'
+      preLoaderRoute: typeof ApiPublicSecurityRunAccessTestsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/stripe/webhook': {
+      id: '/api/public/stripe/webhook'
+      path: '/api/public/stripe/webhook'
+      fullPath: '/api/public/stripe/webhook'
+      preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/xero/callback': {
+      id: '/api/public/xero/callback'
+      path: '/api/public/xero/callback'
+      fullPath: '/api/public/xero/callback'
+      preLoaderRoute: typeof ApiPublicXeroCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/xero/snapshot-refresh': {
+      id: '/api/public/xero/snapshot-refresh'
+      path: '/api/public/xero/snapshot-refresh'
+      fullPath: '/api/public/xero/snapshot-refresh'
+      preLoaderRoute: typeof ApiPublicXeroSnapshotRefreshRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/queue/process': {
+      id: '/lovable/email/queue/process'
+      path: '/lovable/email/queue/process'
+      fullPath: '/lovable/email/queue/process'
+      preLoaderRoute: typeof LovableEmailQueueProcessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/preview': {
+      id: '/lovable/email/transactional/preview'
+      path: '/lovable/email/transactional/preview'
+      fullPath: '/lovable/email/transactional/preview'
+      preLoaderRoute: typeof LovableEmailTransactionalPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/transactional/send': {
+      id: '/lovable/email/transactional/send'
+      path: '/lovable/email/transactional/send'
+      fullPath: '/lovable/email/transactional/send'
+      preLoaderRoute: typeof LovableEmailTransactionalSendRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/clients/$clientId/audit/$tenantId': {
+      id: '/_authenticated/clients/$clientId/audit/$tenantId'
+      path: '/clients/$clientId/audit/$tenantId'
+      fullPath: '/clients/$clientId/audit/$tenantId'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdAuditTenantIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/clients/$clientId/payables/$tenantId': {
@@ -1035,12 +1007,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdPayablesTenantIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/clients/$clientId/audit/$tenantId': {
-      id: '/_authenticated/clients/$clientId/audit/$tenantId'
-      path: '/clients/$clientId/audit/$tenantId'
-      fullPath: '/clients/$clientId/audit/$tenantId'
-      preLoaderRoute: typeof AuthenticatedClientsClientIdAuditTenantIdRouteImport
+    '/_authenticated/clients/$clientId/receivables/$tenantId': {
+      id: '/_authenticated/clients/$clientId/receivables/$tenantId'
+      path: '/clients/$clientId/receivables/$tenantId'
+      fullPath: '/clients/$clientId/receivables/$tenantId'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdReceivablesTenantIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/firms/$firmId/consolidated/$groupId': {
+      id: '/_authenticated/firms/$firmId/consolidated/$groupId'
+      path: '/consolidated/$groupId'
+      fullPath: '/firms/$firmId/consolidated/$groupId'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
+    '/_authenticated/firms/$firmId/loans/': {
+      id: '/_authenticated/firms/$firmId/loans/'
+      path: '/'
+      fullPath: '/firms/$firmId/loans/'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansIndexRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
+    }
+    '/_authenticated/firms/$firmId/loans/accounts': {
+      id: '/_authenticated/firms/$firmId/loans/accounts'
+      path: '/accounts'
+      fullPath: '/firms/$firmId/loans/accounts'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansAccountsRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
+    }
+    '/_authenticated/firms/$firmId/loans/groups': {
+      id: '/_authenticated/firms/$firmId/loans/groups'
+      path: '/groups'
+      fullPath: '/firms/$firmId/loans/groups'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansGroupsRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
     }
   }
 }
