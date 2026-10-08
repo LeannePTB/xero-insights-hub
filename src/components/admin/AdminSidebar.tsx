@@ -2,6 +2,7 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -12,10 +13,11 @@ import {
 } from "@/components/ui/sidebar";
 import ptLogo from "@/assets/traction-advisory-logo.png";
 import { SecurityStatusCard } from "@/components/admin/SecurityStatusCard";
-import { Building2, LayoutGrid, Shield, Users } from "lucide-react";
+import { Building2, LayoutGrid, LogOut, Shield, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyContext } from "@/lib/roles.functions";
+import { useSignOut } from "@/lib/use-sign-out";
 
 const baseItems = [
   { title: "Organisations", url: "/admin", icon: Building2 },
@@ -25,6 +27,7 @@ const baseItems = [
 
 
 export function AdminSidebar() {
+  const signOut = useSignOut();
   const currentPath = useRouterState({
     select: (router) => router.location.pathname,
   });
@@ -80,6 +83,20 @@ export function AdminSidebar() {
           </SidebarGroup>
         )}
       </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => void signOut()}
+              tooltip="Sign out"
+              data-sign-out
+            >
+              <LogOut className="h-4 w-4" />
+              <span>Sign out</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
     </Sidebar>
   );
 }

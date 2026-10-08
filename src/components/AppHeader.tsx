@@ -19,8 +19,12 @@ type Props = {
 export function AppHeader({ actions }: Props) {
   const handleSignOut = useSignOut();
   const [initial, setInitial] = useState("");
+  // The side menu carries Sign out when it is on screen; the header then
+  // hides its own button so no page shows two.
+  const [sideMenuPresent, setSideMenuPresent] = useState(false);
 
   useEffect(() => {
+    setSideMenuPresent(!!document.querySelector('[data-sidebar="sidebar"]'));
     let active = true;
     supabase.auth.getUser().then(({ data }) => {
       if (!active) return;
@@ -59,9 +63,11 @@ export function AppHeader({ actions }: Props) {
           >
             {initial}
           </span>
-          <Button variant="ghost" size="sm" onClick={() => void handleSignOut()} className="font-semibold">
-            <LogOut className="mr-2 h-4 w-4" /> Sign out
-          </Button>
+          {!sideMenuPresent && (
+            <Button variant="ghost" size="sm" onClick={() => void handleSignOut()} className="font-semibold">
+              <LogOut className="mr-2 h-4 w-4" /> Sign out
+            </Button>
+          )}
         </div>
       </div>
     </header>
