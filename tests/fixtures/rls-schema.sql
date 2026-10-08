@@ -1122,6 +1122,20 @@ AS $function$
   ) end
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.user_can_write_firm(_user_id uuid, _firm_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is not null and _user_id is distinct from auth.uid() then return false; end if;
+  return _user_id is not null and _firm_id is not null
+     and app_private.has_firm_access(_user_id, _firm_id);
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION app_private.client_for_tenant(_tenant_id text)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -2423,6 +2437,65 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.set_client_overview_hidden(_client_id uuid, _hidden boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if not app_private.user_can_write_client(auth.uid(), _client_id) then
+    raise exception 'FORBIDDEN' using errcode = 'insufficient_privilege';
+  end if;
+  update public.clients set overview_hidden = _hidden where id = _client_id;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'client_overview_hidden_set', 'client', _client_id::text,
+          jsonb_build_object('hidden', _hidden));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.set_firm_overview_hidden(_firm_id uuid, _hidden boolean)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if not public.user_can_write_firm(auth.uid(), _firm_id) then
+    raise exception 'FORBIDDEN' using errcode = 'insufficient_privilege';
+  end if;
+  update public.firms set overview_hidden = _hidden where id = _firm_id;
+  insert into public.audit_log (actor_user_id, action, target_type, target_id, meta)
+  values (auth.uid(), 'firm_overview_hidden_set', 'firm', _firm_id::text,
+          jsonb_build_object('hidden', _hidden));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.overview_hidden_items()
+ RETURNS TABLE(kind text, id uuid, name text, firm_id uuid, firm_name text)
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null then return; end if;
+  return query
+    select 'client'::text, c.id, c.name, f.id, f.name
+      from public.clients c join public.firms f on f.id = c.firm_id
+     where c.overview_hidden and not f.overview_hidden
+       and app_private.user_can_write_client(auth.uid(), c.id)
+    union all
+    select 'organisation'::text, f.id, f.name, f.id, f.name
+      from public.firms f
+     where f.overview_hidden
+       and public.user_can_write_firm(auth.uid(), f.id)
+     order by 5, 3 limit 1000;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -3560,4 +3633,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 147acc955c6cca24c6e27e35205f8eb3167154444f96dd5dff6ad13fd514c7d9
+-- catalogue-fingerprint: b901e79df4024fc7779fe86de0877cb5affa038c74304d39aff9860f50690f16
