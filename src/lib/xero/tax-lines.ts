@@ -302,6 +302,10 @@ function invalidCash(reason: string): Extract<CashAtBankExtraction, { status: "i
   return { status: "input_invalid", total: 0, accounts: [], reason };
 }
 
+function invalidCreditCard(reason: string): Extract<CreditCardDebtExtraction, { status: "input_invalid" }> {
+  return { status: "input_invalid", total: 0, accounts: [], reason };
+}
+
 function extractTaxLinesFromReport(
   report: BalanceSheetReport,
   accountsById: Map<string, XeroAccountRef>,
@@ -355,6 +359,20 @@ function isActiveBankAccount(account: XeroAccountRef | undefined): boolean {
   return (
     normaliseText(account.Type).toUpperCase() === "BANK" &&
     normaliseText(account.Class).toUpperCase() === "ASSET" &&
+    normaliseText(account.Status).toUpperCase() === "ACTIVE"
+  );
+}
+
+/**
+ * A credit card in Xero is typed BANK with Class LIABILITY — the mirror of a
+ * bank account. Matching on account metadata, not the card's name, keeps a
+ * card named like a bank account (or vice versa) from being miscounted.
+ */
+function isActiveCreditCardAccount(account: XeroAccountRef | undefined): boolean {
+  if (!account) return false;
+  return (
+    normaliseText(account.Type).toUpperCase() === "BANK" &&
+    normaliseText(account.Class).toUpperCase() === "LIABILITY" &&
     normaliseText(account.Status).toUpperCase() === "ACTIVE"
   );
 }
