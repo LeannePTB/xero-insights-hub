@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Correct cash at bank and credit-card separation; verify calculation and unchanged access controls.
 
 - [x] Repair organisation overview hide/restore calls to the existing write predicate; synthetic hide/readback/restore and security suite pass. Real-user visual check and security_posture remain blocked by second-factor/tooling permissions.
 
