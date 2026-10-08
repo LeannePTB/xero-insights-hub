@@ -18,6 +18,7 @@ export const SCOPE_CAPABILITIES: Record<string, string> = {
   "payroll.payslip.read": "payslips",
   "payroll.employees.read": "payroll employees",
   "payroll.settings.read": "payroll settings",
+  "finance.accountingactivity.read": "user activity (last sign-ins)",
 };
 
 export function capabilityFor(scope: string) {
