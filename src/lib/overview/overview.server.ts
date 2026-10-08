@@ -16,6 +16,7 @@ type Row = SnapshotRow & { client_id: string; tenant_id: string; params: any };
 /** Dated figures for one client at one Sydney date. */
 export type DayFigures = {
   cash: number | null;
+  creditCardDebt: number | null;
   protectedMoney: number | null;
   revenueMtd: number | null;
   netProfitMtd: number | null;
@@ -201,7 +202,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
   const get = (d: string) => {
     let f = byDate.get(d);
     if (!f) {
-      f = { cash: null, protectedMoney: null, revenueMtd: null, netProfitMtd: null };
+      f = { cash: null, creditCardDebt: null, protectedMoney: null, revenueMtd: null, netProfitMtd: null };
       byDate.set(d, f);
     }
     return f;
@@ -213,6 +214,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
       const a = analyseBalanceSheet(row.payload, accounts?.payload, overrides);
       const f = get(d);
       if (a.cashAtBank.status === "assessed") f.cash = a.cashAtBank.total;
+      if (a.creditCardDebt.status === "assessed") f.creditCardDebt = a.creditCardDebt.total;
       if (a.taxLines.status === "assessed") f.protectedMoney = buildProtectedMoney(d, a.taxLines.lines).total;
     } else if (row.report_key === "profit_and_loss_mtd") {
       const report = row.payload?.Reports?.[0];
