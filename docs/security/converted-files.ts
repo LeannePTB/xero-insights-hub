@@ -115,6 +115,7 @@ export const CONVERTED_FILES: string[] = [
   "src/lib/cost-classification.functions.ts",
   "src/lib/statutory-accounts.functions.ts",
   "src/lib/income-tax-instalments.functions.ts",
+  "src/lib/rent.functions.ts",
 
   // Batch 2 — client data reads and writes.
   "src/lib/clients.functions.ts",
