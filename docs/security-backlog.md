@@ -1567,3 +1567,7 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - The CSP moved from `content-security-policy-report-only` to an enforcing `content-security-policy` header (owner request, item 5 of the 8 Oct change list). Same rules as before; it had run report-only with no violations observed.
 - Known, documented allowance: `script-src 'unsafe-inline'` stays because the framework's inline hydration scripts require it; removing it needs a nonce pipeline. The browser-headers posture check keeps this as a warn — expected, not a regression.
 - Verified: `curl -I` against the dev server returns the enforcing header; report-only header is gone.
+
+## 2026-10-08 — Add organisation → Connect Xero file(s) (UI only)
+- After "Create organisation", the dialog offers "Connect Xero file(s)". This is the existing aal2 onboard flow (`startXeroOnboardConnect` → callback → picker → `createClientsFromSelectedTenants`). It is gated by `user_can_write_firm` (the creator is an active member) and by the plan limit from `firm_plan_limits`.
+- No new access path, function, policy or admin use. Customer self-service creation (stage 2) is NOT built: it needs a rules amendment and payments.
