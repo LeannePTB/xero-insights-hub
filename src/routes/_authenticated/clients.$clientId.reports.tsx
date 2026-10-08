@@ -193,19 +193,19 @@ function ReportsPage() {
     <div className="min-h-screen bg-background">
       <AppHeader />
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-          <Link to="/clients/$clientId" params={{ clientId }}>
-            <ArrowLeft className="mr-1 h-4 w-4" /> Back to dashboard
-          </Link>
-        </Button>
-        <h1 className="font-display text-2xl font-semibold sm:text-3xl">
-          Monthly management reports
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {isAdvisor
-            ? `${client?.name ?? "Client"} · a report is a point-in-time snapshot; the dashboard stays live.`
-            : `${client?.name ?? "Client"} · a snapshot of your business for the period, prepared by Traction Advisory.`}
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="font-display text-2xl font-semibold sm:text-3xl">
+              Monthly management reports
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {isAdvisor
+                ? `${client?.name ?? "Client"} · a report is a point-in-time snapshot; the dashboard stays live.`
+                : `${client?.name ?? "Client"} · a snapshot of your business for the period, prepared by Traction Advisory.`}
+            </p>
+          </div>
+          <ViewToggle clientId={clientId} active="reports" />
+        </div>
 
         {/* Preview — sits directly under the page title so the period, version and
             status in its header are visible without scrolling. */}
