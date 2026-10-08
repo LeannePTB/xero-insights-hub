@@ -29,7 +29,6 @@ import { GstReconciliationWidget, type GstCycle } from "@/components/dashboard/G
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
-import { NotesCard } from "@/components/dashboard/NotesCard";
 import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
@@ -447,11 +446,9 @@ function ClientDashboard() {
 
         <LatestReportPageOne clientId={clientId} />
 
-        {widgets.includes("notes") && (
-          <div className="mt-6 w-full">
-            <NotesCard clientId={clientId} canEdit={isAdvisor} />
-          </div>
-        )}
+        {/* Notes live on the management reports page only, not the live dashboard. */}
+
+
 
 
         {orgs.length > 0 && (
