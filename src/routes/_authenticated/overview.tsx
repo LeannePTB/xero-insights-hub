@@ -277,7 +277,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide }: {
               {r.cashChange7d === null ? "—" : `${r.cashChange7d >= 0 ? "+" : ""}${money(r.cashChange7d)}`}
             </span>
           </td>
-          <td className="p-3 text-right tabular-nums" title={staleBank ? staleTitle : undefined}>
+          <td className={`p-3 text-right tabular-nums ${r.protectedPctOfCash === null ? "" : r.protectedPctOfCash > 100 ? "font-semibold text-destructive" : "font-medium text-success"}`} title={staleBank ? staleTitle : r.protectedPctOfCash === null ? undefined : r.protectedPctOfCash > 100 ? "Tax and super owed is more than net cash." : "Net cash covers tax and super owed."}>
             <span className="inline-flex items-center justify-end gap-1">
               {staleMark}
               {pct(r.protectedPctOfCash)}
