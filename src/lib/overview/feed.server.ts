@@ -132,6 +132,25 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
       events.push({ ...base, eventKey: "data:stale", kind: "data", severity: 1, headline: "Snapshot out of date", before: null, after: now.detail, date: ctx.today });
     }
 
+    // Bank not reconciled: the newest reconciled bank transaction is old, or
+    // the file has none at all. Only for connected files with nightly figures.
+    if (kAnchor && conns.some((x) => x.status === "connected")) {
+      const rec = kf.get(kAnchor)?.bank_reconciled_to ?? null;
+      const stale = rec === null || rec <= addDays(kAnchor, -BANK_NOT_RECONCILED.staleDays);
+      if (stale) {
+        events.push({
+          ...base,
+          eventKey: "data:bank_not_reconciled",
+          kind: "data",
+          severity: 1,
+          headline: rec === null ? "Bank never reconciled" : "Bank not reconciled recently",
+          before: null,
+          after: rec === null ? "No reconciled bank transactions" : `Last reconciled to ${rec}`,
+          date: kAnchor,
+        });
+      }
+    }
+
     // Monthly report not sent by the 15th business day.
     const due = nthBusinessDay(ctx.today, REPORT_NOT_SENT.businessDay);
     const prevMonth = addMonths(`${ctx.today.slice(0, 7)}-01`, -1).slice(0, 7);
