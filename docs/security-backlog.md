@@ -1628,3 +1628,6 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Consolidation reads group, members, clients and properties as the caller under RLS; each file passes `assert_widget_access` or is skipped.
 - OPEN: tracking matching relies on `TrackingOptionID` being present on Xero line items; verify against a real file after the first refresh. Part-paid invoices count only once fully paid (FullyPaidOnDate).
 - Not built yet: overview "Rent arrears" column and a Monthly management reports section.
+
+## 2026-10-08 — Xero file activity card always visible (CLOSED)
+- `XeroActivityWidget` was gated behind the `tax_obligations` card entitlement, so clients without that card (e.g. Bangkok on King) never saw it. It now renders for every connected Xero file on the live dashboard. Presentation gating only: reads still go through the existing AAL2-gated, caller-scoped `getXeroUserActivity` server function over the stored nightly snapshot; no policy, grant, function or access change. Verified: typecheck clean, `security:check` 129 tests + 18 live access checks pass.
