@@ -870,6 +870,7 @@ export type Database = {
           max_xero_orgs: number
           name: string
           notes: string
+          overview_hidden: boolean
           owner_user_id: string
           payg_withholding_cycle:
             | Database["public"]["Enums"]["payg_withholding_cycle"]
@@ -892,6 +893,7 @@ export type Database = {
           max_xero_orgs?: number
           name: string
           notes?: string
+          overview_hidden?: boolean
           owner_user_id: string
           payg_withholding_cycle?:
             | Database["public"]["Enums"]["payg_withholding_cycle"]
@@ -914,6 +916,7 @@ export type Database = {
           max_xero_orgs?: number
           name?: string
           notes?: string
+          overview_hidden?: boolean
           owner_user_id?: string
           payg_withholding_cycle?:
             | Database["public"]["Enums"]["payg_withholding_cycle"]
@@ -1325,6 +1328,7 @@ export type Database = {
           is_test: boolean
           logo_path: string | null
           name: string
+          overview_hidden: boolean
           owner_user_id: string | null
           updated_at: string
         }
@@ -1336,6 +1340,7 @@ export type Database = {
           is_test?: boolean
           logo_path?: string | null
           name: string
+          overview_hidden?: boolean
           owner_user_id?: string | null
           updated_at?: string
         }
@@ -1347,6 +1352,7 @@ export type Database = {
           is_test?: boolean
           logo_path?: string | null
           name?: string
+          overview_hidden?: boolean
           owner_user_id?: string | null
           updated_at?: string
         }
@@ -3501,6 +3507,16 @@ export type Database = {
           firm_name: string
         }[]
       }
+      overview_hidden_items: {
+        Args: never
+        Returns: {
+          firm_id: string
+          firm_name: string
+          id: string
+          kind: string
+          name: string
+        }[]
+      }
       plan_level_usage_count: { Args: { _id: string }; Returns: number }
       prune_xero_snapshot_runs: {
         Args: { _abandoned_hours?: number; _retention_days?: number }
@@ -3610,6 +3626,10 @@ export type Database = {
         Args: { _client_id: string; _reason: string; _tier: string }
         Returns: string
       }
+      set_client_overview_hidden: {
+        Args: { _client_id: string; _hidden: boolean }
+        Returns: undefined
+      }
       set_client_tier_widgets: {
         Args: {
           _clear: boolean
@@ -3638,6 +3658,10 @@ export type Database = {
       set_firm_always_free: {
         Args: { _firm_id: string; _reason: string; _value: boolean }
         Returns: boolean
+      }
+      set_firm_overview_hidden: {
+        Args: { _firm_id: string; _hidden: boolean }
+        Returns: undefined
       }
       set_firm_viewer_tier: {
         Args: {

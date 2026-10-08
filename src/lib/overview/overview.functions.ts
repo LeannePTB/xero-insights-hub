@@ -92,3 +92,70 @@ export const setOverviewAlert = createServerFn({ method: "POST" })
     }
     return { ok: true };
   });
+
+const HideInput = z.object({ clientId: z.string().uuid(), hidden: z.boolean() });
+const HideFirmInput = z.object({ firmId: z.string().uuid(), hidden: z.boolean() });
+
+/**
+ * Hide or restore a client on the overview. Authorisation is entirely in the
+ * database (aal2 + user_can_write_client, audited); the caller-supplied id is
+ * a filter the function re-checks, never a grant.
+ */
+export const setClientOverviewHidden = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => HideInput.parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("set_client_overview_hidden", {
+      _client_id: data.clientId,
+      _hidden: data.hidden,
+    });
+    if (error) {
+      console.warn("[overview] hide client refused", error.message);
+      throw new Error("That client could not be updated.");
+    }
+    return { ok: true };
+  });
+
+/** Hide or restore a whole organisation on the overview. Same shape as above. */
+export const setFirmOverviewHidden = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => HideFirmInput.parse(i))
+  .handler(async ({ data, context }) => {
+    const { error } = await (context.supabase as any).rpc("set_firm_overview_hidden", {
+      _firm_id: data.firmId,
+      _hidden: data.hidden,
+    });
+    if (error) {
+      console.warn("[overview] hide organisation refused", error.message);
+      throw new Error("That organisation could not be updated.");
+    }
+    return { ok: true };
+  });
+
+export type HiddenItem = {
+  kind: "client" | "organisation";
+  id: string;
+  name: string;
+  firmId: string;
+  firmName: string;
+};
+
+/** What the caller has hidden and could bring back (caller-scoped in the DB). */
+export const getHiddenOverviewItems = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) => Input.parse(i))
+  .handler(async ({ context }): Promise<{ items: HiddenItem[] }> => {
+    const { data, error } = await (context.supabase as any).rpc("overview_hidden_items");
+    if (error) {
+      console.warn("[overview] hidden items refused", error.message);
+      throw new Error("Hidden items could not be loaded.");
+    }
+    const items = ((data ?? []) as any[]).map((r) => ({
+      kind: r.kind as "client" | "organisation",
+      id: r.id as string,
+      name: r.name as string,
+      firmId: r.firm_id as string,
+      firmName: r.firm_name as string,
+    }));
+    return { items };
+  });

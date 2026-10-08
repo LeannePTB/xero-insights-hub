@@ -623,6 +623,12 @@
     },
     {
         "args": [
+        ],
+        "name": "overview_hidden_items",
+        "required": 0
+    },
+    {
+        "args": [
             "_id"
         ],
         "name": "plan_level_usage_count",
@@ -831,6 +837,14 @@
     {
         "args": [
             "_client_id",
+            "_hidden"
+        ],
+        "name": "set_client_overview_hidden",
+        "required": 2
+    },
+    {
+        "args": [
+            "_client_id",
             "_tier",
             "_excluded",
             "_clear"
@@ -865,6 +879,14 @@
         ],
         "name": "set_firm_always_free",
         "required": 3
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_hidden"
+        ],
+        "name": "set_firm_overview_hidden",
+        "required": 2
     },
     {
         "args": [
