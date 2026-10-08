@@ -440,6 +440,7 @@ export type Database = {
       client_key_figures: {
         Row: {
           as_at: string
+          bank_reconciled_to: string | null
           cash: number | null
           client_id: string
           created_at: string
@@ -456,6 +457,7 @@ export type Database = {
         }
         Insert: {
           as_at: string
+          bank_reconciled_to?: string | null
           cash?: number | null
           client_id: string
           created_at?: string
@@ -472,6 +474,7 @@ export type Database = {
         }
         Update: {
           as_at?: string
+          bank_reconciled_to?: string | null
           cash?: number | null
           client_id?: string
           created_at?: string
