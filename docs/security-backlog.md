@@ -1547,3 +1547,23 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Auth page: `?signup=1` shows a request-access form pre-filled from the Xero identity; a "Request access" link on the sign-in card opens the same form. Sign In with Xero already existed and is unchanged.
 - No policy, grant or role changed. One definer function updated in place: `tg_xero_oauth_states_validate()` now permits flow='signup' (user_id null, like 'signin'; never a firm/client link) — migration `0002_allow_signup_flow_in_xero_oauth_states`; RLS fixture regenerated.
 - Checks: `bun run security:check` green (123 tests, 18 live access checks); `bunx tsgo` clean; no new linter findings (no database objects added).
+
+## 8 Oct 2026 — Posture-check false positives: Xero burst threshold and abandoned sessions (CLOSED)
+- Classification: SECURITY-RELEVANT (definer functions changed in place; no policy, grant, role or access path touched).
+- `xero_rate_limit_posture()`: hourly burst trip point 20 → 40 calls. The nightly refresh budget is 25 calls per file, so a normal scheduled run tripped the old threshold every night (TracyFinlay 21, Positive Traction 27 — both normal). 40 sits above the budget, so only a genuine refresh loop trips it. Detail wording updated.
+- `session_controls_posture()`: the no-activity-record count now includes only sessions refreshed in the last 24h. Sessions not refreshed in 24h are abandoned (no open browser, never asked to sign in again); the flagged 24-day-old session predated the 15 Sep recorder fix and made the check cry wolf. Evidence line now names "active sessions".
+- Recorded in migration `0005_overview_hidden_and_posture_fixes` (the live changes had been applied without a migration file; now captured).
+
+## 8 Oct 2026 — Hide a client or organisation from the client overview (CLOSED)
+- Classification: SECURITY-RELEVANT (new columns on data tables, two new definer functions, `overview_clients()` changed).
+- `clients.overview_hidden` / `firms.overview_hidden` (boolean, not null, default false). `overview_clients()` excludes hidden rows — a narrowing only; no one gains access to anything.
+- Write path is only `set_client_overview_hidden` / `set_firm_overview_hidden`: aal2, caller-scoped (no user-id parameter), write predicates `user_can_write_client` / `user_can_write_firm` (never a read predicate), audited (`client_overview_hidden_set` / `firm_overview_hidden_set`), EXECUTE revoked from public/anon, granted to authenticated. Registered in the definer register with stated purposes.
+- `overview_hidden_items()` is SECURITY INVOKER (RLS plus the write predicates scope it; aal2 asserted inside) and returns only hidden rows the caller could bring back — the "Hidden from this overview" section on the overview page.
+- UI: an eye button on each client row and each organisation band hides it; hidden items are listed at the bottom of the overview with a "Bring back" button. Hiding changes monitoring only — data still refreshes and the client's own pages are unchanged.
+- Test-copy fidelity: the PGlite fixture dump drops column defaults, so the test setup now sets `overview_hidden` defaults to false after loading the fixture (mirrors live; no application object change).
+- Checks: `bun run security:check` green (123 tests, 1,675 access rows, 18 live access checks); `bunx tsgo` clean.
+
+## 8 Oct 2026 — Content Security Policy now enforced (CLOSED)
+- The CSP moved from `content-security-policy-report-only` to an enforcing `content-security-policy` header (owner request, item 5 of the 8 Oct change list). Same rules as before; it had run report-only with no violations observed.
+- Known, documented allowance: `script-src 'unsafe-inline'` stays because the framework's inline hydration scripts require it; removing it needs a nonce pipeline. The browser-headers posture check keeps this as a warn — expected, not a regression.
+- Verified: `curl -I` against the dev server returns the enforcing header; report-only header is gone.
