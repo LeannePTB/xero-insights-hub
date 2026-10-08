@@ -1,5 +1,7 @@
 # Roadmap
 
+- [ ] Remove the duplicate bank-reconciliation badge and diagnose missing overview dates without changing access.
+
 - [x] Replace ambiguous FY YTD headings in monthly reports with exact current and same-period-last-year date ranges, without changing calculations.
 - [x] Make Unclassified an explicit cost-classification state, delete its stored row on reset, prioritise undecided accounts, and preserve the fixed calculation fallback.
 - [x] Retire `true_breakeven` from the live catalogue and all ten stored client ticks with fail-loud before/after assertions and audit evidence.

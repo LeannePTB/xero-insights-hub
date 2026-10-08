@@ -247,15 +247,6 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide }: {
           <td className="max-w-[16rem] p-3 [&>span]:mt-0">
             <div className="flex flex-wrap items-center gap-1.5">
               <ClientHealthBadge verdict={r.verdict} />
-              {staleBank && (
-                <span
-                  className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
-                  title={staleTitle}
-                >
-                  <AlertTriangle className="h-3 w-3" />
-                  Bank not reconciled
-                </span>
-              )}
             </div>
           </td>
           <td className="p-3 text-right tabular-nums" title={staleBank ? staleTitle : undefined}>
