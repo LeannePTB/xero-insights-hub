@@ -244,6 +244,31 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         }
 
         // ─────────────────────────────────────────────────────────────────────
+        // Sign Up with Xero (modified flow) — read the identity claims and use
+        // them only to pre-fill the request-access form. No account is created,
+        // no session is minted, and no tokens are stored: the identity scopes
+        // (openid profile email) return no refresh token worth keeping, and the
+        // request form treats every field as unverified free text.
+        // ─────────────────────────────────────────────────────────────────────
+        if (flow === "signup") {
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+          const claims = tokens.id_token ? decodeJwtPayload(tokens.id_token) : null;
+          const xeroEmail =
+            typeof claims?.email === "string" ? claims.email.toLowerCase().trim() : "";
+          const given = typeof claims?.given_name === "string" ? claims.given_name.trim() : "";
+          const family = typeof claims?.family_name === "string" ? claims.family_name.trim() : "";
+          const full =
+            typeof claims?.name === "string" && claims.name.trim()
+              ? claims.name.trim()
+              : `${given} ${family}`.trim();
+          const params = new URLSearchParams({ signup: "1" });
+          // Pre-fill only — length-capped, and the form re-validates everything.
+          if (xeroEmail) params.set("email", xeroEmail.slice(0, 254));
+          if (full) params.set("name", full.slice(0, 120));
+          return redirectTo(`${returnOrigin}/auth?${params.toString()}`);
+        }
+
+        // ─────────────────────────────────────────────────────────────────────
         // Data-connect flow (original behaviour)
         // ─────────────────────────────────────────────────────────────────────
         const userId = stateRow.user_id;
