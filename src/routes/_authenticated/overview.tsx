@@ -152,8 +152,15 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
   return (
     <>
       {name && (
-        <tr className="bg-muted/20">
-          <td colSpan={9} className="p-2 px-3 text-xs font-semibold">{name}</td>
+        <tr className="border-y bg-muted/60">
+          <td colSpan={9} className="px-3 py-2.5">
+            <div className="flex items-baseline gap-2">
+              <span className="text-sm font-semibold uppercase tracking-wide">{name}</span>
+              <span className="text-xs text-muted-foreground">
+                {rows.length} {rows.length === 1 ? "client" : "clients"}
+              </span>
+            </div>
+          </td>
         </tr>
       )}
       {rows.map((r) => (
