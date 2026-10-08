@@ -279,11 +279,13 @@ function ClientDashboard() {
             paygRegistered={client?.payg_withholding_cycle !== "not_registered"}
           />
         );
-        // Xero file activity shares the Tax obligations entitlement: it is
-        // read-only client data from the stored nightly snapshot.
-        block.activity = <XeroActivityWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />;
         advanced.push({ id: `${o.id}:rent_report`, node: <RentReportWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
       }
+
+      // Xero file activity shows for every connected file: it is read-only
+      // client data from the stored nightly snapshot, and the server function
+      // applies the same caller-scoped access checks as the rest of the page.
+      block.activity = <XeroActivityWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />;
 
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
