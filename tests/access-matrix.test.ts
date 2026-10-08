@@ -1398,6 +1398,11 @@ beforeAll(async () => {
   // overview_alert_states is unique on (client_id, event_key) live (7 Oct 2026); the
   // acknowledge upsert depends on it.
   await db.exec(`alter table public.overview_alert_states add unique (client_id, event_key);`);
+  // clients/firms.overview_hidden are `not null default false` live (8 Oct 2026); the
+  // dump drops defaults, so seeded rows would be NULL and overview_clients() would
+  // filter everything out. Test-copy fidelity only — no application object changes.
+  await db.exec(`update public.clients set overview_hidden = false where overview_hidden is null;
+                 update public.firms set overview_hidden = false where overview_hidden is null;`);
 
   // Same fidelity fix: live `session_activity` has a primary key on session_id
   // (verified 15 Sep 2026) and `touch_session_activity` upserts on it.
