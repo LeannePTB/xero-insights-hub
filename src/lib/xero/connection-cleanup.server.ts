@@ -1,18 +1,21 @@
 // Xero connection cleanup routine (Xero certification: apps must have a
 // process that removes unused or expired connections, so App Store referral
-// fees stop when a customer stops using the product, and so we never hold
-// access beyond what is necessary).
+// fees stop when a customer stops using the product, and we never hold access
+// beyond what is necessary).
 //
 // System context: called only from the cron route
 // /api/public/xero/connection-cleanup, which authenticates with the service
 // role secret. Registered in docs/security/admin-client-register.md.
 //
-// Xero-side listing uses the CLIENT CREDENTIALS grant with the
-// `app.connections` scope — a non-tenanted token that can list and delete the
-// app's connections without any user's refresh token. User tokens are never
-// touched here, and a connection is removed with DELETE /connections/{id}
-// (never token revocation, which would detach every organisation on the same
-// Xero account).
+// Xero-side listing uses each connecting user's OWN access token through the
+// app's normal refresh path (the same pattern as disconnect.server.ts): a
+// user token lists every connection that user has to this app, including any
+// we have no local row for. The client-credentials grant was considered and
+// rejected — Xero requires a xero-user-id header we do not store, and adding
+// it would mean persisting more identity data than this job needs.
+//
+// A connection is removed with DELETE /connections/{id} — never token
+// revocation, which would detach every organisation on the same Xero account.
 //
 // DRY-RUN FIRST: the live detach path runs only when the environment sets
 // XERO_CONNECTION_CLEANUP_LIVE="true". Until then every run reports what it
@@ -20,8 +23,8 @@
 
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { writeAudit } from "@/lib/audit.server";
+import { getConnectionByTenant } from "./api.server";
 
-const TOKEN_URL = "https://identity.xero.com/connect/token";
 const CONNECTIONS_URL = "https://api.xero.com/connections";
 const TIMEOUT_MS = 20_000;
 
@@ -30,8 +33,6 @@ type XeroConnection = {
   tenantId: string;
   tenantName?: string | null;
   tenantType?: string;
-  createdDateUtc?: string;
-  updatedDateUtc?: string;
 };
 
 export type CleanupFlag = {
@@ -51,45 +52,17 @@ export type CleanupFlag = {
 export type CleanupReport = {
   dryRun: boolean;
   xeroConnections: number;
+  /** Connecting users whose token could not be refreshed; their connections were not checked. */
+  usersSkipped: number;
   flagged: CleanupFlag[];
 };
 
-async function appConnectionsToken(): Promise<string> {
-  const clientId = process.env.XERO_CLIENT_ID;
-  const clientSecret = process.env.XERO_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error("Xero is not configured (missing XERO_CLIENT_ID / XERO_CLIENT_SECRET).");
-  }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
-  try {
-    const res = await fetch(TOKEN_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString("base64")}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        grant_type: "client_credentials",
-        scope: "app.connections",
-      }),
-      signal: controller.signal,
-    });
-    if (!res.ok) throw new Error(`Xero token request failed (${res.status}).`);
-    const body = await res.json();
-    if (!body?.access_token) throw new Error("Xero returned no access token.");
-    return body.access_token as string;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-async function listConnections(token: string): Promise<XeroConnection[]> {
+async function listConnections(accessToken: string): Promise<XeroConnection[]> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(CONNECTIONS_URL, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`Xero returned ${res.status} listing connections.`);
@@ -101,13 +74,13 @@ async function listConnections(token: string): Promise<XeroConnection[]> {
   }
 }
 
-async function deleteConnection(token: string, connectionId: string): Promise<void> {
+async function deleteConnection(accessToken: string, connectionId: string): Promise<void> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
   try {
     const res = await fetch(`${CONNECTIONS_URL}/${connectionId}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: `Bearer ${accessToken}` },
       signal: controller.signal,
     });
     if (!res.ok) throw new Error(`Xero returned ${res.status} removing a connection.`);
@@ -125,27 +98,48 @@ async function deleteConnection(token: string, connectionId: string): Promise<vo
 export async function cleanupXeroConnections(): Promise<CleanupReport> {
   const live = process.env.XERO_CONNECTION_CLEANUP_LIVE === "true";
 
-  const token = await appConnectionsToken();
-  const xeroConns = await listConnections(token);
-
   const [{ data: localConns, error: cErr }, { data: links, error: lErr }] = await Promise.all([
-    (supabaseAdmin as any).from("xero_connections").select("id, tenant_id, status"),
+    (supabaseAdmin as any).from("xero_connections").select("id, tenant_id, status, user_id"),
     (supabaseAdmin as any).from("client_xero_orgs").select("xero_connection_id"),
   ]);
   if (cErr) throw new Error(cErr.message);
   if (lErr) throw new Error(lErr.message);
 
   const localByTenant = new Map<string, { id: string; status: string }>();
+  const firstTenantByUser = new Map<string, string>();
   for (const row of (localConns ?? []) as any[]) {
     if (row.tenant_id) localByTenant.set(row.tenant_id as string, { id: row.id, status: row.status });
+    if (row.user_id && row.tenant_id && !firstTenantByUser.has(row.user_id)) {
+      firstTenantByUser.set(row.user_id as string, row.tenant_id as string);
+    }
   }
   const linkedConnectionIds = new Set<string>(
     ((links ?? []) as any[]).map((l) => l.xero_connection_id as string),
   );
 
+  // One GET /connections per connecting user, through the normal refresh path.
+  const xeroConns = new Map<string, XeroConnection & { accessToken: string }>();
+  let usersSkipped = 0;
+  for (const tenantId of firstTenantByUser.values()) {
+    let accessToken: string;
+    try {
+      accessToken = (await getConnectionByTenant(tenantId)).access_token;
+    } catch {
+      usersSkipped++;
+      continue;
+    }
+    try {
+      for (const xc of await listConnections(accessToken)) {
+        if (xc.id && !xeroConns.has(xc.id)) xeroConns.set(xc.id, { ...xc, accessToken });
+      }
+    } catch {
+      usersSkipped++;
+    }
+  }
+
   const flagged: CleanupFlag[] = [];
-  for (const xc of xeroConns) {
-    if (!xc.id || !xc.tenantId) continue;
+  for (const xc of xeroConns.values()) {
+    if (!xc.tenantId) continue;
     const local = localByTenant.get(xc.tenantId);
     let reason: CleanupFlag["reason"] | null = null;
     if (!local) reason = "unknown_tenant";
@@ -155,7 +149,7 @@ export async function cleanupXeroConnections(): Promise<CleanupReport> {
 
     let detached = false;
     if (live) {
-      await deleteConnection(token, xc.id);
+      await deleteConnection(xc.accessToken, xc.id);
       detached = true;
       await writeAudit({
         actorUserId: null,
@@ -174,5 +168,5 @@ export async function cleanupXeroConnections(): Promise<CleanupReport> {
     });
   }
 
-  return { dryRun: !live, xeroConnections: xeroConns.length, flagged };
+  return { dryRun: !live, xeroConnections: xeroConns.size, usersSkipped, flagged };
 }
