@@ -68,6 +68,12 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Caller-scoped UI check: whether an active organisation member may maintain this client's ATO income tax instalment periods; aal2 required.",
   "public.save_client_income_tax_instalment":
     "Saves one ATO income tax instalment period after aal2, organisation-team write access and Xero-file ownership checks, with an audit row in the same transaction.",
+  "public.can_manage_client_rental_properties":
+    "Caller-scoped UI check: whether an active organisation member may maintain this client's rental property setup; aal2 required.",
+  "public.save_client_rental_property":
+    "Adds or updates one rental property's rent matching setup after aal2, organisation-team write access and Xero-file ownership checks, with an audit row in the same transaction.",
+  "public.delete_client_rental_property":
+    "Removes one rental property after aal2 and organisation-team write access checks, with an audit row in the same transaction.",
   "public.me_has_role": "Whether the caller holds a given platform role.",
   "public.me_is_super_admin": "Whether the caller is a platform super admin.",
   "public.my_client_access":
