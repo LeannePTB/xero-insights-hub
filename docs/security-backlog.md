@@ -1538,3 +1538,12 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Verified live in dry-run against production data: 13 Xero connections checked, 0 users skipped, 0 flagged — every Xero-side connection maps to a linked, active local row. Unauthenticated POST returns 401.
 - Owner action before live mode: review a dry-run report, then set `XERO_CONNECTION_CLEANUP_LIVE=true`.
 - Checks: `bun run security:check` green (123 tests, 18 live access checks); `bunx tsgo` clean; linter shows only the pre-existing known set.
+
+## 8 Oct 2026 — Xero App Store certification, work item 1: Sign Up with Xero, modified flow (CLOSED)
+- Xero requires Sign Up with Xero for App Store listing; the modified flow (Xero identity pre-fills the existing request path, no auto-provisioning) is expressly permitted and fits the app's invite-only policy.
+- Classification: SECURITY-RELEVANT (auth-adjacent, new public route, supabaseAdmin). New public route `/api/public/xero/signup` (GET): justified as the connect-request URL for the App Store listing; takes no input, mints a PKCE state row (`flow='signup'`, no user_id), redirects to Xero with identity scopes only (`openid profile email` — no accounting scopes, no tokens stored); rate limited; redirects only to Xero or the canonical site origin.
+- Callback (`/api/public/xero/callback`) gains a `signup` branch: decodes the id_token, length-caps email/name, deletes the state row, and redirects to `/auth?signup=1&email=…&name=…`. No account created, no session minted, nothing stored. Error paths for the signup flow go to `/auth` like signin.
+- New unauthenticated server fn `requestSignup` (`src/lib/signup-request.functions.ts`): Zod validation, per-email and global rate limits, honeypot; inserts into `signup_requests` via service role (table is revoked from anon/authenticated) — registered in `admin-client-register.md`. Reveals nothing about existing accounts.
+- Auth page: `?signup=1` shows a request-access form pre-filled from the Xero identity; a "Request access" link on the sign-in card opens the same form. Sign In with Xero already existed and is unchanged.
+- No policy, grant, definer function, role or database object changed; `xero_oauth_states.flow` has no check constraint, so no migration was needed.
+- Checks: `bun run security:check` green (123 tests, 18 live access checks); `bunx tsgo` clean; no new linter findings (no database objects added).
