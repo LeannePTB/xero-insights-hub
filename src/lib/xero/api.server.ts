@@ -766,3 +766,82 @@ async function xeroGetPayrollUncached<T = unknown>(
   await logXeroRead(conn, `Payroll/${path}`);
   return (await res.json()) as T;
 }
+
+// ---- Xero Finance API (User Activities) ------------------------------------
+// Separate base URL from Accounting and Payroll. The Finance scope IS in
+// `xero_required_scopes()`, so a file that has not granted it is flagged for
+// reconnection; until then the granted-scopes check below refuses before
+// spending a Xero call (same pattern as payroll).
+
+const FINANCE_BASE = "https://api.xero.com/api.xro/finance.xro/1.0";
+
+/** Which Finance scope each path needs; used to refuse before calling Xero. */
+const FINANCE_PATH_SCOPE: Record<string, string> = {
+  UserActivities: "finance.accountingactivity.read",
+};
+
+export async function xeroGetFinance<T = unknown>(
+  conn: Connection,
+  path: string,
+  params: Record<string, string | undefined> = {},
+  retries = 1,
+): Promise<T> {
+  const { memoiseXeroGet, xeroMemoKey } = await import("./request-memo.server");
+  const key = xeroMemoKey("finance", conn.tenant_id, path, params);
+  return memoiseXeroGet<T>(key, () => xeroGetFinanceUncached<T>(conn, path, params, retries));
+}
+
+async function xeroGetFinanceUncached<T = unknown>(
+  conn: Connection,
+  path: string,
+  params: Record<string, string | undefined> = {},
+  retries = 1,
+): Promise<T> {
+  const requiredScope = FINANCE_PATH_SCOPE[path.split("/")[0] ?? path];
+  const granted = (conn.scopes ?? "").split(/\s+/).filter(Boolean);
+  if (requiredScope && !granted.includes(requiredScope)) {
+    const { capabilityFor } = await import("@/lib/xero/scope-capabilities");
+    throw new XeroScopeMissingError(
+      requiredScope,
+      conn.tenant_id,
+      `Reconnect to enable this — ${conn.tenant_name} hasn't authorised ${capabilityFor(requiredScope)} yet.`,
+    );
+  }
+
+  const clean: Record<string, string> = {};
+  for (const [k, v] of Object.entries(params)) if (v !== undefined && v !== "") clean[k] = v;
+  const q = new URLSearchParams(clean).toString();
+  await enforceXeroFileCeiling(conn.tenant_id);
+  const res = await fetchWithTimeout(`${FINANCE_BASE}/${path}${q ? "?" + q : ""}`, {
+    headers: {
+      Authorization: `Bearer ${conn.access_token}`,
+      "Xero-tenant-id": conn.tenant_id,
+      Accept: "application/json",
+    },
+  });
+  await recordXeroLimits(conn, res);
+  if (res.status === 429 && rateLimitProblem(res) === "day") {
+    throw new Error(XERO_DAY_LIMIT_MESSAGE);
+  }
+  if (res.status === 429 && retries > 0) {
+    const retryAfter = Math.min(parseInt(res.headers.get("retry-after") || "5", 10), 10);
+    await new Promise((r) => setTimeout(r, retryAfter * 1000));
+    return xeroGetFinanceUncached<T>(conn, path, params, retries - 1);
+  }
+
+  // A 401 is usually a stale access token, not a Finance refusal. Refresh once
+  // and retry, exactly as the payroll helper does.
+  if (res.status === 401 && retries > 0) {
+    const refreshed = await refreshAccessToken(conn);
+    return xeroGetFinanceUncached<T>(refreshed, path, params, retries - 1);
+  }
+
+  if (!res.ok) {
+    const body = await res.text();
+    await logXeroApiError(conn, `Finance/${path}`, res.status, body.slice(0, 500));
+    throw new Error(`Xero Finance/${path}: ${res.status} ${body}`);
+  }
+  const { logXeroRead } = await import("@/lib/audit.server");
+  await logXeroRead(conn, `Finance/${path}`);
+  return (await res.json()) as T;
+}

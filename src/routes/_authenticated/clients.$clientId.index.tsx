@@ -26,6 +26,7 @@ import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
 import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 import { GstReconciliationWidget, type GstCycle } from "@/components/dashboard/GstReconciliationWidget";
 import { TaxObligationsWidget } from "@/components/dashboard/TaxObligationsWidget";
+import { XeroActivityWidget } from "@/components/dashboard/XeroActivityWidget";
 
 
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
@@ -196,6 +197,7 @@ function ClientDashboard() {
   type StatutoryBlock = {
     orgId: string;
     taxObligations: ReactNode | null;
+    activity: ReactNode | null;
     gst: ReactNode | null;
     payg: ReactNode | null;
     superannuation: ReactNode | null;
@@ -233,7 +235,7 @@ function ClientDashboard() {
       // Fixed statutory block for this Xero file. Populated below under the
       // exact same conditions the sortable cards used, then pushed only if it
       // holds at least one card.
-      const block: StatutoryBlock = { orgId: String(o.id), taxObligations: null, gst: null, payg: null, superannuation: null };
+      const block: StatutoryBlock = { orgId: String(o.id), taxObligations: null, activity: null, gst: null, payg: null, superannuation: null };
 
       if (widgets.includes("xero_audit"))
         advanced.push({
@@ -267,7 +269,7 @@ function ClientDashboard() {
       if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
         block.gst = <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} gstCycle={(client?.gst_cycle as GstCycle | null) ?? null} showWarnings={isAdvisor} />;
 
-      if (widgets.includes("tax_obligations"))
+      if (widgets.includes("tax_obligations")) {
         block.taxObligations = (
           <TaxObligationsWidget
             clientId={clientId}
@@ -277,6 +279,10 @@ function ClientDashboard() {
             paygRegistered={client?.payg_withholding_cycle !== "not_registered"}
           />
         );
+        // Xero file activity shares the Tax obligations entitlement: it is
+        // read-only client data from the stored nightly snapshot.
+        block.activity = <XeroActivityWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />;
+      }
 
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
@@ -295,7 +301,7 @@ function ClientDashboard() {
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
 
-      if (block.taxObligations || block.gst || block.payg || block.superannuation) statutory.push(block);
+      if (block.taxObligations || block.activity || block.gst || block.payg || block.superannuation) statutory.push(block);
     }
 
     // Transaction Search is organisation-wide, not per-org, so it lives in the
@@ -497,6 +503,7 @@ function ClientDashboard() {
               {statutoryBlocks.map((b) => (
                 <div key={b.orgId} className="mb-6 space-y-6">
                   {b.taxObligations && <div>{b.taxObligations}</div>}
+                  {b.activity && <div>{b.activity}</div>}
                   {(b.gst || b.payg) && (
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                       {b.gst && <div className={b.payg ? undefined : "lg:col-span-2"}>{b.gst}</div>}
