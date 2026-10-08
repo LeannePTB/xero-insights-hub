@@ -21,9 +21,17 @@ export const getRouter = () => {
     // Server: the per-request CSP nonce from the security-headers middleware.
     // Browser: the router reads it back from the csp-nonce meta tag itself.
     ssr: typeof window === "undefined"
-      ? { nonce: (getGlobalStartContext() as { cspNonce?: string } | undefined)?.cspNonce }
+      ? { nonce: readRequestNonce() }
       : undefined,
   });
 
   return router;
 };
+
+function readRequestNonce(): string | undefined {
+  try {
+    return (getGlobalStartContext() as { cspNonce?: string } | undefined)?.cspNonce;
+  } catch {
+    return undefined;
+  }
+}
