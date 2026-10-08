@@ -29,6 +29,13 @@
       "when": 1791428567770,
       "tag": "0003_posture_check_false_positive_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1791428598354,
+      "tag": "0004_overview_hidden_toggles",
+      "breakpoints": true
     }
   ]
 }
