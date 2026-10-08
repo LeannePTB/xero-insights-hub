@@ -2526,7 +2526,6 @@ AS $function$
 DECLARE
   _actor uuid := auth.uid();
   _firm_id uuid;
-  _allowed boolean := false;
   _saved public.client_income_tax_instalments;
 BEGIN
   PERFORM app_private.assert_aal2();
@@ -2544,19 +2543,11 @@ BEGIN
     RAISE EXCEPTION 'INVALID_INSTALMENT_AMOUNT' USING ERRCODE = '22023';
   END IF;
 
-  SELECT c.firm_id,
-         app_private.user_can_write_client(_actor, c.id)
-         OR EXISTS (
-           SELECT 1 FROM public.client_access ca
-           WHERE ca.client_id = c.id
-             AND ca.user_id = _actor
-             AND ca.relationship = 'business_owner'
-         )
-    INTO _firm_id, _allowed
+  SELECT c.firm_id INTO _firm_id
     FROM public.clients c
    WHERE c.id = _client_id;
 
-  IF NOT coalesce(_allowed, false) THEN
+  IF NOT coalesce(app_private.user_can_write_client(_actor, _client_id), false) THEN
     RAISE EXCEPTION 'CLIENT_INCOME_TAX_INSTALMENT_FORBIDDEN' USING ERRCODE = '42501';
   END IF;
 
@@ -2603,13 +2594,7 @@ BEGIN
   IF _actor IS NULL OR _client_id IS NULL THEN
     RETURN false;
   END IF;
-  RETURN app_private.user_can_write_client(_actor, _client_id)
-    OR EXISTS (
-      SELECT 1 FROM public.client_access ca
-      WHERE ca.client_id = _client_id
-        AND ca.user_id = _actor
-        AND ca.relationship = 'business_owner'
-    );
+  RETURN app_private.user_can_write_client(_actor, _client_id);
 END;
 $function$
 ;
@@ -3767,4 +3752,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: d1d2ce47121d2645b08c710e33fdda11ddf262a3d965910b41df192a9e06d9fb
+-- catalogue-fingerprint: 5635dcaec59a8b11298b6ea526d3f18441913bdda1fa139373dd0242d3d13a01
