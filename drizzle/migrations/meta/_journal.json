@@ -43,6 +43,13 @@
       "when": 1791428980365,
       "tag": "0005_overview_hidden_and_posture_fixes",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1791429949118,
+      "tag": "0006_remove_unreconciled_card",
+      "breakpoints": true
     }
   ]
 }
