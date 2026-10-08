@@ -61,7 +61,9 @@ export function CostClassificationPanel({
           tenantId,
           fromDate: range.from,
           toDate: range.to,
-          widget: "accounting_breakeven",
+          // Wages marking is a Business Health feature: a client whose plan has
+          // no Break-Even card is still entitled to these figures as "health".
+          widget: wagesOnly ? "health" : "accounting_breakeven",
           basis: "accrual",
         },
       }),
