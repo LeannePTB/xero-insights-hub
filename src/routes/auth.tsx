@@ -58,6 +58,17 @@ function AuthPage() {
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [endedReason, setEndedReason] = useState<SignOutReason | null>(null);
+  // Request access (Sign Up with Xero modified flow): the Xero callback lands
+  // here with ?signup=1&email=…&name=… to pre-fill the form. Every field is
+  // re-validated server-side; the pre-fill is convenience only.
+  const [signupMode, setSignupMode] = useState(false);
+  const [reqName, setReqName] = useState("");
+  const [reqEmail, setReqEmail] = useState("");
+  const [reqFirm, setReqFirm] = useState("");
+  const [reqNote, setReqNote] = useState("");
+  const [reqWebsite, setReqWebsite] = useState(""); // honeypot
+  const [reqLoading, setReqLoading] = useState(false);
+  const [reqSent, setReqSent] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -71,6 +82,13 @@ function AuthPage() {
     }
     if (params.get("xero") === "signedin") {
       toast.success("Signed in with Xero");
+    }
+    if (params.get("signup") === "1") {
+      setSignupMode(true);
+      const preEmail = params.get("email");
+      const preName = params.get("name");
+      if (preEmail) setReqEmail(preEmail.slice(0, 254));
+      if (preName) setReqName(preName.slice(0, 120));
     }
     // The session ended: say so plainly. This is NOT a second-factor prompt, so
     // nobody is sent to their authenticator app when they simply need to sign in
