@@ -1755,3 +1755,29 @@ describe("audit trigger — every Path C table records its changes (backlog 29)"
     }
   });
 });
+
+describe("overview organisation hide and restore", () => {
+  it("an active organisation member can hide the group, read it back and restore it with an audit record", async () => {
+    await asRole("owner_org_a", async () => {
+      await db.query(`select public.set_firm_overview_hidden($1::uuid, true)`, [ORG_A]);
+      const hidden = await db.query<{ kind: string; id: string }>(`select kind, id from public.overview_hidden_items()`);
+      expect(hidden.rows).toContainEqual({ kind: "organisation", id: ORG_A });
+      await db.query(`select public.set_firm_overview_hidden($1::uuid, false)`, [ORG_A]);
+      const restored = await db.query<{ kind: string; id: string }>(`select kind, id from public.overview_hidden_items()`);
+      expect(restored.rows).not.toContainEqual({ kind: "organisation", id: ORG_A });
+      await db.exec("set local role postgres");
+      const audit = await db.query<{ n: number }>(`select count(*)::int n from public.audit_log where action = 'firm_overview_hidden_set' and target_id = $1 and actor_user_id = $2::uuid`, [ORG_A, U.ownerA]);
+      expect(audit.rows[0]?.n).toBe(2);
+      const state = await db.query<{ overview_hidden: boolean }>(`select overview_hidden from public.firms where id = $1::uuid`, [ORG_A]);
+      expect(state.rows[0]?.overview_hidden).toBe(false);
+    });
+  });
+
+  for (const role of ["other_org_member", "support_grant_active", "client_viewer", "super_admin_no_membership", "aal1_member"] as const) {
+    it(`${role} cannot hide another organisation or bypass the write check`, async () => {
+      const result = await asRole(role, () => probe(`select public.set_firm_overview_hidden('${ORG_A}'::uuid, true)`));
+      expect(result.ok).toBe(false);
+      expect(result.error).toMatch(/FORBIDDEN|MFA_REQUIRED/);
+    });
+  }
+});
