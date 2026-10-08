@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { requestSignup } from "@/lib/signup-request.functions";
 import { toast } from "sonner";
 import { logFailedSignIn } from "@/lib/audit.functions";
 import { Loader2, LogOut } from "lucide-react";
