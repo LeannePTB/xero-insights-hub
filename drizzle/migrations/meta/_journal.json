@@ -50,6 +50,13 @@
       "when": 1791429949118,
       "tag": "0006_remove_unreconciled_card",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791430097921,
+      "tag": "0007_fix_card_catalogue_true_breakeven",
+      "breakpoints": true
     }
   ]
 }
