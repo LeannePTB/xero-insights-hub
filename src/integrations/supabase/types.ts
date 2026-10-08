@@ -497,6 +497,7 @@ export type Database = {
           debtors_total: number | null
           firm_id: string
           id: string
+          last_xero_login_at: string | null
           net_profit_mtd: number | null
           protected_money: number | null
           revenue_mtd: number | null
@@ -515,6 +516,7 @@ export type Database = {
           debtors_total?: number | null
           firm_id: string
           id?: string
+          last_xero_login_at?: string | null
           net_profit_mtd?: number | null
           protected_money?: number | null
           revenue_mtd?: number | null
@@ -533,6 +535,7 @@ export type Database = {
           debtors_total?: number | null
           firm_id?: string
           id?: string
+          last_xero_login_at?: string | null
           net_profit_mtd?: number | null
           protected_money?: number | null
           revenue_mtd?: number | null
