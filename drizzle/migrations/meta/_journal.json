@@ -36,6 +36,13 @@
       "when": 1791428598354,
       "tag": "0004_overview_hidden_toggles",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1791428980365,
+      "tag": "0005_overview_hidden_and_posture_fixes",
+      "breakpoints": true
     }
   ]
 }
