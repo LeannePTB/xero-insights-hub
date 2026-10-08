@@ -30,14 +30,14 @@ export const Route = createFileRoute("/api/public/xero/signup")({
         const origin = siteOrigin();
         const clientId = process.env.XERO_CLIENT_ID;
         if (!clientId) {
-          return Response.redirect(`${origin}/auth?xero_error=not_configured`, 302);
+          return new Response(null, { status: 302, headers: { Location: `${origin}/auth?xero_error=not_configured` } });
         }
 
         // Blunt abuse brake: this endpoint writes a state row per call.
         try {
           await enforceRateLimit("xero-signup-start:global", 60, 3600);
         } catch {
-          return Response.redirect(`${origin}/auth?xero_error=rate_limited`, 302);
+          return new Response(null, { status: 302, headers: { Location: `${origin}/auth?xero_error=rate_limited` } });
         }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -56,7 +56,7 @@ export const Route = createFileRoute("/api/public/xero/signup")({
         });
         if (error) {
           console.error("Xero sign-up: could not store state", error.message);
-          return Response.redirect(`${origin}/auth?xero_error=state_store`, 302);
+          return new Response(null, { status: 302, headers: { Location: `${origin}/auth?xero_error=state_store` } });
         }
 
         const url = new URL(XERO_AUTHORIZE_URL);
