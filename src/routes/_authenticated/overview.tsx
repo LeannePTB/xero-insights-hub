@@ -132,6 +132,7 @@ function OverviewPage() {
                 <th className="p-3 text-right">Protected money</th>
                 <th className="p-3 text-right">Net profit MTD</th>
                 <th className="p-3 text-right">Debtors overdue</th>
+                <th className="p-3">Bank reconciled to</th>
                 <th className="p-3">Last report sent</th>
                 <th className="p-3">Data as at</th>
               </tr>
@@ -153,7 +154,7 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
     <>
       {name && (
         <tr className="border-y bg-muted/60">
-          <td colSpan={9} className="px-3 py-2.5">
+          <td colSpan={10} className="px-3 py-2.5">
             <div className="flex items-baseline gap-2">
               <span className="text-sm font-semibold uppercase tracking-wide">{name}</span>
               <span className="text-xs text-muted-foreground">
@@ -186,6 +187,7 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
           <td className="p-3 text-right tabular-nums">{pct(r.protectedPctOfCash)}</td>
           <td className="p-3 text-right tabular-nums">{money(r.netProfitMtd)}</td>
           <td className="p-3 text-right tabular-nums">{pct(r.debtorsOverduePct)}</td>
+          <td className="p-3">{r.bankReconciledTo === null ? "—" : date(r.bankReconciledTo)}</td>
           <td className="p-3">{date(r.lastReportSentAt)}</td>
           <td className="p-3 text-muted-foreground">{date(r.freshAsAt)}</td>
         </tr>

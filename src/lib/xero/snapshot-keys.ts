@@ -19,7 +19,7 @@ export const MAX_XERO_CALLS_PER_RUN = 400;
 
 /**
  * Nightly run allowance per connected, client-linked Xero file. A file needs
- * about 12 report calls plus up to INVOICE_PAGE_LIMIT pages for each of the two
+ * about 13 report calls plus up to INVOICE_PAGE_LIMIT pages for each of the two
  * open-invoice lists; 25 covers that with a little slack.
  */
 export const XERO_CALLS_PER_FILE_PER_RUN = 25;
@@ -82,6 +82,7 @@ export const STALENESS_SECONDS: Record<string, number> = {
   invoices_accrec_open: 30 * 3600,
   invoices_accpay_open: 30 * 3600,
   payroll_payruns: 30 * 3600,
+  bank_reconciled_latest: 30 * 3600,
 };
 
 export type SnapshotReport = {
@@ -178,6 +179,15 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       params: {},
       asAt: today,
       api: "payroll",
+    },
+    {
+      // The most recent reconciled bank transaction gives the "bank
+      // reconciled to" date for the client overview. One call: first page
+      // only, newest first.
+      reportKey: "bank_reconciled_latest",
+      path: "BankTransactions",
+      params: { where: "IsReconciled==true", order: "Date DESC" },
+      asAt: today,
     },
   ];
 }

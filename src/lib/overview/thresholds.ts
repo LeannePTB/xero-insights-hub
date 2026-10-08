@@ -25,3 +25,8 @@ export const FEED = {
   /** The "What changed" feed looks back this many days. */
   lookbackDays: 7,
 } as const;
+
+export const BANK_NOT_RECONCILED = {
+  /** A connected file whose newest reconciled bank transaction is at least this old is flagged. */
+  staleDays: 14,
+} as const;

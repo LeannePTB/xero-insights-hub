@@ -9,7 +9,17 @@ import { debtorBook } from "@/lib/health/rules.server";
 import { analyseBalanceSheet, buildProtectedMoney, statutoryOverrideMap } from "@/lib/xero/tax-lines";
 import { parsePnl, totalsForPeriod } from "@/lib/reports/monthly-report.server";
 
-const KEYS = ["balance_sheet", "accounts", "invoices_accrec_open", "invoices_accpay_open", "profit_and_loss_mtd"];
+const KEYS = ["balance_sheet", "accounts", "invoices_accrec_open", "invoices_accpay_open", "profit_and_loss_mtd", "bank_reconciled_latest"];
+
+/** Xero serialises dates like "/Date(1700000000000+0000)/"; some payloads carry ISO. */
+function xeroDateOnly(v: any): string | null {
+  if (typeof v !== "string") return null;
+  const m = v.match(/Date\((\d+)/);
+  const iso = v.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  if (!m) return null;
+  return new Date(Number(m[1])).toISOString().slice(0, 10);
+}
 
 export async function writeKeyFigures(target: { clientId: string; firmId: string; tenantId: string }): Promise<void> {
   const db = supabaseAdmin as any;
@@ -60,9 +70,15 @@ export async function writeKeyFigures(target: { clientId: string; firmId: string
     fig.net_profit_mtd = t.netProfit;
   }
 
-  if (Object.values(fig).every((v) => v === null)) return;
+  // Bank reconciled to: the newest reconciled bank transaction. Null means the
+  // file has no reconciled transactions (or the report has not run yet).
+  const br = latest.get("bank_reconciled_latest");
+  const txs = br?.complete ? (br.payload?.BankTransactions ?? []) : [];
+  const bankReconciledTo: string | null = txs.length ? xeroDateOnly(txs[0]?.Date) : null;
+
+  if (Object.values(fig).every((v) => v === null) && bankReconciledTo === null) return;
   const { error: wErr } = await db.from("client_key_figures").upsert(
-    { client_id: target.clientId, firm_id: target.firmId, tenant_id: target.tenantId, as_at: asAt, ...fig },
+    { client_id: target.clientId, firm_id: target.firmId, tenant_id: target.tenantId, as_at: asAt, ...fig, bank_reconciled_to: bankReconciledTo },
     { onConflict: "client_id,tenant_id,as_at" },
   );
   if (wErr) throw new Error(wErr.message);

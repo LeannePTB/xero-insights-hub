@@ -2,7 +2,7 @@
 // context as the overview. Zero Xero calls. Staff-only.
 
 import { addDays, addMonths } from "@/lib/sydney-time";
-import { BIG_MOVE, REPORT_NOT_SENT } from "./thresholds";
+import { BANK_NOT_RECONCILED, BIG_MOVE, REPORT_NOT_SENT } from "./thresholds";
 import { bucketOf, evaluateMove, nthBusinessDay, verdictRank } from "./changes";
 import { moveFor, seriesFor, verdictFor, type FigureKey, type OverviewContext } from "./overview.server";
 
@@ -33,6 +33,15 @@ function money(n: number | null): string {
   if (n === null) return "—";
   const s = `$${Math.abs(Math.round(n)).toLocaleString("en-AU")}`;
   return n < 0 ? `(${s})` : s;
+}
+
+/**
+ * Bank-not-reconciled rule: the newest reconciled bank transaction is at least
+ * BANK_NOT_RECONCILED.staleDays before the data anchor, or there is none at all.
+ */
+export function bankReconciledStale(reconciledTo: string | null, anchor: string): boolean {
+  if (reconciledTo === null) return true;
+  return reconciledTo <= addDays(anchor, -BANK_NOT_RECONCILED.staleDays);
 }
 
 export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared: FeedEvent[]; notes: string[] } {
@@ -130,6 +139,24 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
     }
     if (now.state === "stale") {
       events.push({ ...base, eventKey: "data:stale", kind: "data", severity: 1, headline: "Snapshot out of date", before: null, after: now.detail, date: ctx.today });
+    }
+
+    // Bank not reconciled: the newest reconciled bank transaction is old, or
+    // the file has none at all. Only for connected files with nightly figures.
+    if (kAnchor && conns.some((x) => x.status === "connected")) {
+      const rec = kf.get(kAnchor)?.bank_reconciled_to ?? null;
+      if (bankReconciledStale(rec, kAnchor)) {
+        events.push({
+          ...base,
+          eventKey: "data:bank_not_reconciled",
+          kind: "data",
+          severity: 1,
+          headline: rec === null ? "Bank never reconciled" : "Bank not reconciled recently",
+          before: null,
+          after: rec === null ? "No reconciled bank transactions" : `Last reconciled to ${rec}`,
+          date: kAnchor,
+        });
+      }
     }
 
     // Monthly report not sent by the 15th business day.

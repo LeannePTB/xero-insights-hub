@@ -1,0 +1,2 @@
+ALTER TABLE public.client_key_figures ADD COLUMN bank_reconciled_to date;
+COMMENT ON COLUMN public.client_key_figures.bank_reconciled_to IS 'Date of the most recent reconciled bank transaction in the client''s Xero file, from the nightly snapshot. Null = never reconciled or no data.';
