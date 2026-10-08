@@ -445,19 +445,24 @@ function extractCreditCardDebtFromReport(
   const accounts: { name: string; balance: number }[] = [];
   let total = 0;
 
-  walkTaxRows(report.Rows, (r) => {
-    if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
-    const name = r.Cells[0]?.Value;
-    if (!name) return;
-    const accountId = accountIdFromCells(r.Cells);
-    if (!accountId) return;
-    const account = accountsById.get(accountId);
-    if (!isActiveCreditCardAccount(account)) return;
-    const amount = parseTaxAmount(r.Cells[1]?.Value);
-    const owed = amount < 0 ? -amount : 0;
-    total += owed;
-    accounts.push({ name, balance: amount });
-  });
+  // Sign depends on where Xero places the card: under a liabilities section a
+  // positive balance is owed; under assets a negative balance is owed.
+  for (const section of report.Rows ?? []) {
+    const inLiabilities = /liabilit/i.test(String((section as any).Title ?? ""));
+    walkTaxRows([section], (r) => {
+      if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
+      const name = r.Cells[0]?.Value;
+      if (!name) return;
+      const accountId = accountIdFromCells(r.Cells);
+      if (!accountId) return;
+      const account = accountsById.get(accountId);
+      if (!isActiveCreditCardAccount(account)) return;
+      const amount = parseTaxAmount(r.Cells[1]?.Value);
+      const owedSigned = inLiabilities ? amount : -amount;
+      total += owedSigned > 0 ? owedSigned : 0;
+      accounts.push({ name, balance: amount });
+    });
+  }
 
   if (accounts.length > 0) return { status: "assessed", total, accounts };
 
