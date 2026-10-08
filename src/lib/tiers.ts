@@ -5,7 +5,6 @@ export type WidgetKey =
   | "payables"
   | "pnl"
   | "notes"
-  | "unreconciled"
   | "superannuation"
   | "accounting_breakeven"
   | "true_breakeven"
@@ -24,7 +23,6 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "payables",
   "pnl",
   "notes",
-  "unreconciled",
   "superannuation",
   "accounting_breakeven",
   "true_breakeven",
@@ -44,7 +42,6 @@ const ADVANCED: WidgetKey[] = [
   "payables",
   "pnl",
   "notes",
-  "unreconciled",
   "superannuation",
   "accounting_breakeven",
   "true_breakeven",
@@ -56,7 +53,7 @@ const ADVANCED: WidgetKey[] = [
   "transaction_search",
 ];
 export const DEFAULT_TIER_WIDGETS: Record<DashboardTier, WidgetKey[]> = {
-  basic: ["health", "receivables", "payables", "pnl", "notes", "unreconciled"],
+  basic: ["health", "receivables", "payables", "pnl", "notes"],
   advisory: ADVANCED,
   investigate: ADVANCED,
   multi_company: ADVANCED,
@@ -70,7 +67,7 @@ export const TIER_LABEL: Record<DashboardTier, string> = {
 };
 
 export const TIER_DESCRIPTION: Record<DashboardTier, string> = {
-  basic: "Health, receivables, payables, P&L and unreconciled transactions.",
+  basic: "Health, receivables, payables and P&L.",
   advisory: "Everything in Standard plus tax, super and break-even analysis.",
   investigate: "Full advisory view across one Xero organisation.",
   multi_company: "Full dashboard across the number of Xero organisations allowed for this subscription.",
@@ -82,7 +79,6 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   payables: "Aged Payables",
   pnl: "Profit & Loss",
   notes: "Notes",
-  unreconciled: "Uncoded Bankfeed Questions",
   superannuation: "Superannuation",
   accounting_breakeven: "Break-Even",
   true_breakeven: "What you really need to bring in (loan repayments, tax, drawings)",
@@ -128,7 +124,6 @@ export function canonicalWidget(key: string): string {
 export const DEFAULT_CARD_ORDER: WidgetKey[] = [
   // Standard section
   "health",
-  "unreconciled",
   "receivables",
   "payables",
   "pnl",

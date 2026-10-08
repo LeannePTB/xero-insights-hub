@@ -29,7 +29,6 @@ import { GstReconciliationWidget, type GstCycle } from "@/components/dashboard/G
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
 import { PayablesWidget } from "@/components/dashboard/PayablesWidget";
 import { ReceivablesWidget } from "@/components/dashboard/ReceivablesWidget";
-import { UnreconciledCard } from "@/components/dashboard/UnreconciledCard";
 import { HealthWidget } from "@/components/dashboard/HealthWidget";
 import { SortableCardGrid, type SortableCard } from "@/components/dashboard/SortableCardGrid";
 import { renderableWidgets, defaultCardRank, type DashboardTier } from "@/lib/tiers";
@@ -223,8 +222,6 @@ function ClientDashboard() {
       );
       standard.push({ id: "health", fullWidth: true, node: healthNode });
     }
-    if (widgets.includes("unreconciled"))
-      standard.push({ id: "unreconciled", node: <UnreconciledCard clientId={clientId} /> });
 
     for (const o of orgs) {
       const tenantId = o.xero_connections?.tenant_id;
@@ -330,9 +327,9 @@ function ClientDashboard() {
   const standardIds = new Set(standardCards.map((c) => c.id));
   const advancedIds = new Set(advancedCards.map((c) => c.id));
   const standardSavedRaw = savedOrder.filter((id) => standardIds.has(id));
-  const defaultTopStandardIds = ["health", "unreconciled"].filter((id) => standardIds.has(id));
-  // Business Health and Uncoded Bankfeed Questions default to the top of the
-  // Standard section when they have not been explicitly reordered.
+  const defaultTopStandardIds = ["health"].filter((id) => standardIds.has(id));
+  // Business Health defaults to the top of the
+  // Standard section when it has not been explicitly reordered.
   const standardSaved = defaultTopStandardIds.some((id) => standardSavedRaw.includes(id))
     ? standardSavedRaw
     : [...defaultTopStandardIds, ...standardSavedRaw];

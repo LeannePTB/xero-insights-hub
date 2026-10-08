@@ -30,7 +30,10 @@ import { ALL_WIDGETS, DEPRECATED_WIDGET_ALIASES } from "../src/lib/tiers";
 
 const ROOT = join(import.meta.dirname, "..");
 const FIXTURE = process.env["CARD_CATALOGUE_FIXTURE"] ?? "tests/fixtures/card-catalogue.sql";
+// Notes renders on the management reports page only (removed from the live
+// dashboard 8 Oct 2026), so both routes are scanned for rendered cards.
 const DASHBOARD = "src/routes/_authenticated/clients.$clientId.index.tsx";
+const REPORTS = "src/routes/_authenticated/clients.$clientId.reports.tsx";
 
 /**
  * Every card key the catalogue offers, in any purchasable group, parsed out of
@@ -49,10 +52,14 @@ const offered = [
  * Every card key the dashboard has a component branch for. Read from the
  * dashboard source, so this cannot drift from what actually renders.
  */
-const dashboard = readFileSync(join(ROOT, DASHBOARD), "utf8");
+const dashboard =
+  readFileSync(join(ROOT, DASHBOARD), "utf8") + readFileSync(join(ROOT, REPORTS), "utf8");
 const rendered = new Set(
   [...dashboard.matchAll(/widgets\.includes\(\s*"([a-z_]+)"\s*\)/g)].map((m) => m[1]!),
 );
+// Notes renders unconditionally on the management reports page (no
+// widgets.includes branch), so the regex above cannot see it.
+if (readFileSync(join(ROOT, REPORTS), "utf8").includes("<NotesCard")) rendered.add("notes");
 
 /**
  * A deprecated key draws a card when the card it was merged into is rendered.

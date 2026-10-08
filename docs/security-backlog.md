@@ -1577,3 +1577,14 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Defect: `CostClassificationPanel` in wages-only mode (client has Business Health, no Break-Even card) requested the P&L as widget `accounting_breakeven`, so `assert_widget_access` refused and the panel showed "This widget is not enabled for your dashboard".
 - Fix: the panel now authorises as `health` when wages-only; `getProfitAndLoss`'s validator union gained `"health"`. Every value still goes through the same database `assert_widget_access` gate against the caller's own entitlement — no one gains figures they are not entitled to.
 - Checks: `bun run security:check` green (123 tests, 18 live access checks); `bunx tsgo` clean.
+
+## 8 Oct 2026 — Uncoded Bankfeed Questions card retired everywhere (CLOSED)
+- Classification: SECURITY-RELEVANT (touches `app_private.card_group_cards`, which `client_available_cards` / `client_cards_v2` read, and rewrites `public.client_cards`). Owner instruction: the practice will not use this option.
+- Migration `0006_remove_unreconciled_card`: `unreconciled` removed from the standard card group, from every client's ticked list and from `org_card_defaults`, with an audited `card_catalogue_cards_removed` row. No policy, grant, role, entitlement or authorisation rule changed; legacy rollback rows (`plan_levels`, `tier_widget_config`, `firms.default_widgets`) deliberately untouched; `unreconciled_uploads` / `unreconciled_lines` tables remain with RLS unchanged — nothing links to them any more.
+- Migration `0007_fix_card_catalogue_true_breakeven`: 0006's function body was copied from the earlier 20 Sep migration and accidentally re-added the retired `true_breakeven` key to the advisory group; 0007 restores the retired state. Caught by the card-catalogue guard test before this shipped.
+- Code: the card, its page (`/clients/$clientId/unreconciled`) and its data functions deleted; the key removed from `tiers.ts` (catalogue, tier defaults, labels, card order); the admin-client register row for the deleted file removed.
+- Guard updated: `tests/card-catalogue.test.ts` now also scans the management reports route, because Notes renders there unconditionally after its removal from the live dashboard.
+- Checks: `bun run security:check` green (123 tests, 18 live access checks); `bunx tsgo` clean; catalogue snapshot and RLS fixture regenerated.
+
+## 8 Oct 2026 — Notes card removed from the live dashboard (CLOSED)
+- Presentation only: the Notes card no longer renders on the live client dashboard; it remains on the management reports page. No data, entitlement or policy change.

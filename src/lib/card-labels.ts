@@ -8,7 +8,8 @@ import { ALL_WIDGETS, WIDGET_LABEL } from "@/lib/tiers";
  * 20 September 2026 `bank_reconciliation` and `tax_liability` were removed from
  * the catalogue and from every client's ticked list: neither had ever drawn a
  * card, Tax Liability having been superseded by the GST activity statement and
- * PAYG Withholding cards and Bank Reconciliation by Uncoded Bankfeed Questions.
+ * PAYG Withholding cards and Bank Reconciliation by Uncoded Bankfeed Questions
+ * (itself retired on 8 October 2026 when the practice stopped using it).
  * tests/card-catalogue.test.ts now fails the build if the catalogue names a card
  * the dashboard has no component for.
  */
