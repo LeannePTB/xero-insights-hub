@@ -1614,3 +1614,5 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 ## 8 Oct 2026 — Xero request burst fix and CSP nonce (CLOSED)
 - PAYG position (live Balance Sheet + Accounts read) is now one shared cache entry per Xero file, 30-minute freshness, no refetch on window focus or reconnect; the Tax obligations card and PAYG card share it. GST card reads the stored completed-period snapshot with the same limits. No access rule changed.
 - `script-src 'unsafe-inline'` removed: a per-request random nonce is generated in the security-headers middleware and stamped by the router on every inline script. `style-src 'unsafe-inline'` remains (inline styles only). Verified locally: header nonce matches every script tag, sign-in page hydrates with zero CSP violations. Published-site check pending after publish.
+
+- 2026-10-08: Credit-card debt sign fixed — cards Xero places under Current Liabilities (positive = owed) were read as overpaid, so Net cash equalled Cash at bank (Bangkok on King, Amex $14,896.69). Calculation only; no access change. Closed.
