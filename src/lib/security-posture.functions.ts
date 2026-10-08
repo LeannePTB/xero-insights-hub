@@ -147,7 +147,7 @@ async function serverConfigChecks(attestations: Attestation[]): Promise<PostureC
 
     const permissive: string[] = [];
     if (csp && !cspEnforced) permissive.push("CSP is report-only, so nothing is blocked");
-    if (csp && /'unsafe-inline'/.test(csp)) permissive.push("CSP allows 'unsafe-inline'");
+    if (csp && /script-src[^;]*'unsafe-inline'/.test(csp)) permissive.push("CSP allows 'unsafe-inline' scripts");
     if (csp && /'unsafe-eval'/.test(csp)) permissive.push("CSP allows 'unsafe-eval'");
 
     const status: PostureStatus =
