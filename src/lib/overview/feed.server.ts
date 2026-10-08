@@ -145,8 +145,7 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
     // the file has none at all. Only for connected files with nightly figures.
     if (kAnchor && conns.some((x) => x.status === "connected")) {
       const rec = kf.get(kAnchor)?.bank_reconciled_to ?? null;
-      const stale = rec === null || rec <= addDays(kAnchor, -BANK_NOT_RECONCILED.staleDays);
-      if (stale) {
+      if (bankReconciledStale(rec, kAnchor)) {
         events.push({
           ...base,
           eventKey: "data:bank_not_reconciled",
