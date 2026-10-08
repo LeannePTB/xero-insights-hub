@@ -1508,4 +1508,11 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Server fn `setOverviewAlert`: requireAal2, Zod, generic error. The feed hides an item while it is acknowledged or snoozed, and shows it again if its severity rises above the recorded level or the snooze ends. Un-acknowledge is supported. Names of who cleared an item come from `organisation_members` (auth.users email), never from profiles.email.
 - Matrix: 12 execute rows (owner and staff allowed; other organisation, viewer, business owner, all-clients viewer, support grant, super admin only, suspended, removed, aal1 and anon denied), plus table rows from the client-data and server-written sets.
 
+## 8 Oct 2026 — Bank reconciled-to date on the client overview (CLOSED)
+- Additive column `client_key_figures.bank_reconciled_to` (nullable date): the newest reconciled bank transaction in the client's Xero file. No policy, grant or function changes — the table's existing RLS, aal2 guard and SELECT policy cover the new column; no new access path.
+- One extra nightly Xero call per file (`BankTransactions`, `IsReconciled==true`, newest first, first page only) by the existing scheduled refresh (already registered system context). Uses the already-granted `accounting.banktransactions.read` scope; no new scopes, no tokens leave the server. Fits inside the 25-calls-per-file nightly budget.
+- New feed event `data:bank_not_reconciled` (never reconciled, or newest reconciled transaction ≥14 days before the data anchor; connected files with nightly figures only) reuses the Batch 4 acknowledge/snooze machinery — no new write path. Rule tested in `feed.test.ts`.
+- Checks: `bun run security:check` (123 tests, 18 live checks, all pass); linter shows no new issues (the change adds no table or function).
+
+
 - 2026-10-08 — R01 protected-money check: a client registered for neither GST nor PAYG (so no super expected) now returns silence before the cash comparison. Previously a super-named loan line (e.g. "<name> Superannuation Fund") let the check reach "cash not positive" and show "Partial data". Logic-only; no access, policy or Xero change. Open follow-up (owner decision): name-based "super" matching can still pick up SMSF loan accounts for registered clients.
