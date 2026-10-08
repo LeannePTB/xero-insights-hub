@@ -274,9 +274,9 @@ function Feed({ events, cleared, notes, loading }: { events: FeedEvent[]; cleare
               </Link>
               <span className="text-xs text-muted-foreground">{e.firmName}</span>
               {e.href ? (
-                <Link to={e.href} className="flex-1 underline-offset-2 hover:underline">
+                <a href={e.href} className="flex-1 underline-offset-2 hover:underline">
                   {e.headline}
-                </Link>
+                </a>
               ) : (
                 <span className="flex-1">{e.headline}</span>
               )}
