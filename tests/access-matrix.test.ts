@@ -566,7 +566,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const p = await probe(
       `select 1 from public.overview_clients() where client_id = '${target}'`,
     );
-    if (!(p.ok && p.rows > 0)) console.log("DEBUG overview_clients probe:", JSON.stringify(p));
     return p.ok && p.rows > 0 ? "allow" : "deny";
   }
   if (r === "me_is_practice_member()") {
