@@ -1,5 +1,6 @@
 import { QueryClient, QueryCache, MutationCache } from "@tanstack/react-query";
 import { createRouter } from "@tanstack/react-router";
+import { getGlobalStartContext } from "@tanstack/react-start";
 import { routeTree } from "./routeTree.gen";
 import { handleIfSessionEnded } from "./lib/session-ended";
 
@@ -17,7 +18,20 @@ export const getRouter = () => {
     context: { queryClient },
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
+    // Server: the per-request CSP nonce from the security-headers middleware.
+    // Browser: the router reads it back from the csp-nonce meta tag itself.
+    ssr: typeof window === "undefined"
+      ? { nonce: readRequestNonce() }
+      : undefined,
   });
 
   return router;
 };
+
+function readRequestNonce(): string | undefined {
+  try {
+    return (getGlobalStartContext() as { cspNonce?: string } | undefined)?.cspNonce;
+  } catch {
+    return undefined;
+  }
+}

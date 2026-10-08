@@ -1,3 +1,4 @@
+import { paygQueryKey, paygQueryLimits } from "./payg-query";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
@@ -39,9 +40,9 @@ export function PaygWithholdingWidget({
   const fmt = (n: number) => formatMoneyExact(n, currency);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["xero-payg-withholding", tenantId, clientId ?? null],
+    queryKey: paygQueryKey(tenantId, clientId),
     queryFn: () => fetchPayg({ data: { tenantId, clientId, months: 6 } }),
-    retry: false,
+    ...paygQueryLimits,
   });
 
   const available = data?.status === "available" ? data : null;

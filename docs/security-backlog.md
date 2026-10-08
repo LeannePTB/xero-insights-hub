@@ -1608,3 +1608,7 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 
 ### 2026-10-08 — Bank reconciled date now uses the oldest unreconciled line
 - `client_key_figures.bank_reconciled_to` now stores the date of the oldest unreconciled (AUTHORISED) bank transaction, or the as-at date when none are open; previously the newest reconciled transaction (misleading). Snapshot key renamed `bank_reconciled_latest` → `bank_unreconciled_oldest`; same one call per file per night. No policy, grant, function or access change. Limitation: Xero's API does not expose uncoded bank statement lines.
+
+## 8 Oct 2026 — Xero request burst fix and CSP nonce (CLOSED)
+- PAYG position (live Balance Sheet + Accounts read) is now one shared cache entry per Xero file, 30-minute freshness, no refetch on window focus or reconnect; the Tax obligations card and PAYG card share it. GST card reads the stored completed-period snapshot with the same limits. No access rule changed.
+- `script-src 'unsafe-inline'` removed: a per-request random nonce is generated in the security-headers middleware and stamped by the router on every inline script. `style-src 'unsafe-inline'` remains (inline styles only). Verified locally: header nonce matches every script tag, sign-in page hydrates with zero CSP violations. Published-site check pending after publish.

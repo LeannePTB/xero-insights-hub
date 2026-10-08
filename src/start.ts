@@ -110,11 +110,16 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 // Layer 4 — security headers on every response.
 // HSTS, MIME sniffing, referrer, framing, permissions, and an enforcing CSP.
 // The CSP ran report-only until 8 Oct 2026 with no violations observed; it is
-// now enforced (owner request). 'unsafe-inline' on script-src is required by
-// the framework's inline hydration scripts and cannot be removed without a
-// nonce pipeline — the posture check keeps it as a known, documented warn.
+// now enforced (owner request). Inline scripts are allowed only with the
+// per-request nonce; 'unsafe-inline' remains on style-src only.
 const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => {
-  const result = await next();
+  // One unguessable nonce per request. The router stamps it on every inline
+  // script it writes (see getRouter), so script-src no longer needs
+  // 'unsafe-inline'.
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const cspNonce = btoa(String.fromCharCode(...bytes));
+  const result = await next({ context: { cspNonce } });
   const h = result.response.headers;
   if (!h.has("strict-transport-security")) {
     h.set("strict-transport-security", "max-age=31536000; includeSubDomains; preload");
@@ -133,7 +138,7 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => 
         "img-src 'self' data: https:",
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com data:",
-        "script-src 'self' 'unsafe-inline'",
+        `script-src 'self' 'nonce-${cspNonce}'`,
         "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.xero.com",
         "frame-ancestors 'none'",
         "base-uri 'self'",

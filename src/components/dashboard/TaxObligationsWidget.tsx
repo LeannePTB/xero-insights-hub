@@ -1,3 +1,4 @@
+import { paygQueryKey, paygQueryLimits } from "./payg-query";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -58,13 +59,15 @@ export function TaxObligationsWidget({
     queryKey: ["gst-reconciliation", clientId, tenantId, gstPeriod.kind, gstPeriod.asAt],
     queryFn: () => fetchGst({ data: { clientId, tenantId, asAt: gstPeriod.asAt, window: gstPeriod.kind } }),
     retry: false,
-    staleTime: 5 * 60 * 1000,
+    staleTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
     enabled: gstCycle !== "not_registered",
   });
   const paygQuery = useQuery({
-    queryKey: ["xero-payg-withholding", tenantId, clientId],
+    queryKey: paygQueryKey(tenantId, clientId),
     queryFn: () => fetchPayg({ data: { tenantId, clientId, months: 6 } }),
-    retry: false,
+    ...paygQueryLimits,
     enabled: paygRegistered,
   });
   const instalmentsQuery = useQuery({
