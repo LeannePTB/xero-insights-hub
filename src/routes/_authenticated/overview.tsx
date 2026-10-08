@@ -154,7 +154,7 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
     <>
       {name && (
         <tr className="border-y bg-muted/60">
-          <td colSpan={9} className="px-3 py-2.5">
+          <td colSpan={10} className="px-3 py-2.5">
             <div className="flex items-baseline gap-2">
               <span className="text-sm font-semibold uppercase tracking-wide">{name}</span>
               <span className="text-xs text-muted-foreground">
