@@ -267,7 +267,13 @@ export function ruleProtectedMoneyVsCash(
   // numerator is a separate decision and is deliberately not made here.
   const total = protectedMoney.total;
   const cashAmount = cash as number;
-  const ratio = total / cashAmount;
+  // Cash already spoken for by a credit card bill is not available to cover
+  // GST, PAYG or super, so the comparison is against cash less card debt.
+  const cardDebt = analysed.creditCardDebt.status === "assessed" ? analysed.creditCardDebt.total : 0;
+  const netCash = cashAmount - cardDebt;
+  const ratio = netCash > 0 ? total / netCash : Infinity;
+  const cardPhrase = cardDebt > 0 ? ` less ${money(cardDebt)} of credit card debt` : "";
+  const availablePhrase = cardDebt > 0 ? ` (${money(netCash)} available)` : "";
 
 
 
