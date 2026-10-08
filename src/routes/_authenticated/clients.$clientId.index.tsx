@@ -240,7 +240,6 @@ function ClientDashboard() {
       if (widgets.includes("xero_audit"))
         advanced.push({
           id: `${o.id}:xero_audit`,
-          fullWidth: true,
           node: <AuditSummaryCard tenantId={tenantId} tenantName={tenantName} clientId={clientId} />,
         });
       if (widgets.includes("receivables"))
@@ -504,13 +503,13 @@ function ClientDashboard() {
                 <div key={b.orgId} className="mb-6 space-y-6">
                   {b.taxObligations && <div>{b.taxObligations}</div>}
                   {b.activity && <div>{b.activity}</div>}
-                  {(b.gst || b.payg) && (
+                  {(b.gst || b.payg || b.superannuation) && (
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                      {b.gst && <div className={b.payg ? undefined : "lg:col-span-2"}>{b.gst}</div>}
-                      {b.payg && <div className={b.gst ? undefined : "lg:col-span-2"}>{b.payg}</div>}
+                      {b.gst && <div>{b.gst}</div>}
+                      {b.payg && <div>{b.payg}</div>}
+                      {b.superannuation && <div>{b.superannuation}</div>}
                     </div>
                   )}
-                  {b.superannuation && <div>{b.superannuation}</div>}
                 </div>
               ))}
 
