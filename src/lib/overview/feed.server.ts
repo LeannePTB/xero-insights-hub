@@ -35,6 +35,15 @@ function money(n: number | null): string {
   return n < 0 ? `(${s})` : s;
 }
 
+/**
+ * Bank-not-reconciled rule: the newest reconciled bank transaction is at least
+ * BANK_NOT_RECONCILED.staleDays before the data anchor, or there is none at all.
+ */
+export function bankReconciledStale(reconciledTo: string | null, anchor: string): boolean {
+  if (reconciledTo === null) return true;
+  return reconciledTo <= addDays(anchor, -BANK_NOT_RECONCILED.staleDays);
+}
+
 export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared: FeedEvent[]; notes: string[] } {
   const events: FeedEvent[] = [];
   const notes = new Set<string>();
