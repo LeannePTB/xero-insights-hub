@@ -321,7 +321,7 @@ export function ruleProtectedMoneyVsCash(
     finding: {
       ruleId: "R01",
       title,
-      detail: `${money(total)} of GST, PAYG withholding and superannuation is accruing toward the next lodgement against ${money(cashAmount)} cash at bank.${splitSentence}${gap}`,
+      detail: `${money(total)} of GST, PAYG withholding and superannuation is accruing toward the next lodgement against ${money(cashAmount)} cash at bank${cardPhrase}${availablePhrase}.${splitSentence}${gap}`,
       severity,
       consequenceScore: t.consequence[severity],
       daysToConsequence: null,
