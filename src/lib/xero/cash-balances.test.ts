@@ -37,4 +37,21 @@ describe("cash at bank and net cash", () => {
     assert.equal(result.creditCardDebt.status, "absent");
     assert.equal(result.creditCardDebt.total, 0);
   });
+  it("a card shown under Current Liabilities with a positive balance is debt owed", () => {
+    const accounts = { Accounts: [
+      { AccountID: "bank", Type: "BANK", Class: "ASSET", BankAccountType: "BANK", Status: "ACTIVE" },
+      { AccountID: "card", Type: "BANK", Class: "ASSET", BankAccountType: "CREDITCARD", Status: "ACTIVE" },
+    ] };
+    const report = { Rows: [
+      { RowType: "Section", Title: "Bank", Rows: [
+        { RowType: "Row", Cells: [{ Value: "Transaction account", Attributes: [{ Id: "account", Value: "bank" }] }, { Value: "21784" }] },
+      ] },
+      { RowType: "Section", Title: "Current Liabilities", Rows: [
+        { RowType: "Row", Cells: [{ Value: "Amex", Attributes: [{ Id: "account", Value: "card" }] }, { Value: "14896.69" }] },
+      ] },
+    ] };
+    const result = analyseBalanceSheet(report, accounts);
+    assert.equal(result.cashAtBank.total, 21784);
+    assert.equal(result.creditCardDebt.total, 14896.69);
+  });
 });
