@@ -84,7 +84,12 @@ export const STALENESS_SECONDS: Record<string, number> = {
   payroll_payruns: 30 * 3600,
   bank_unreconciled_oldest: 30 * 3600,
   user_activities: 30 * 3600,
+  rent_bank_receipts: 30 * 3600,
+  rent_invoices_paid: 30 * 3600,
 };
+
+/** Pages pulled for each rent receipt list. Only files with rental properties pay this. */
+export const RENT_PAGE_LIMIT = 3;
 
 export type SnapshotReport = {
   reportKey: string;
@@ -101,6 +106,12 @@ export type SnapshotReport = {
    * scope — a missing grant is not a failed report.
    */
   api?: "accounting" | "payroll" | "finance";
+  /** Collection key inside each page when paginated (default `Invoices`). */
+  itemsKey?: string;
+  /** Page cap when paginated (default INVOICE_PAGE_LIMIT). */
+  pageLimit?: number;
+  /** Fetched only for clients that have rental properties set up. */
+  rentOnly?: boolean;
 };
 
 /**
@@ -115,6 +126,10 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
   const priorMonthStart = startOfMonth(priorMonthEnd);
   const fyStart = startOfFinancialYear(today);
   const bankFrom = addMonths(today, -12);
+  // Anchored to a month start so the stored parameter hash holds all month.
+  const rentFrom = startOfMonth(addMonths(today, -13));
+  const [ry, rm, rd] = rentFrom.split("-").map(Number);
+  const rentWhereDate = `DateTime(${ry},${String(rm).padStart(2, "0")},${String(rd).padStart(2, "0")})`;
 
   return [
     { reportKey: "balance_sheet", path: "Reports/BalanceSheet", params: { date: today }, asAt: today },
@@ -201,6 +216,33 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       params: {},
       asAt: today,
       api: "finance",
+    },
+    {
+      // Rent received straight into the bank (spend-money's opposite).
+      reportKey: "rent_bank_receipts",
+      path: "BankTransactions",
+      params: {
+        where: `Type=="RECEIVE"&&Status=="AUTHORISED"&&Date>=${rentWhereDate}`,
+        order: "Date DESC",
+      },
+      asAt: today,
+      paginated: true,
+      itemsKey: "BankTransactions",
+      pageLimit: RENT_PAGE_LIMIT,
+      rentOnly: true,
+    },
+    {
+      // Rent invoiced to tenants and paid in full.
+      reportKey: "rent_invoices_paid",
+      path: "Invoices",
+      params: {
+        where: `Type=="ACCREC"&&Status=="PAID"&&Date>=${rentWhereDate}`,
+        order: "Date DESC",
+      },
+      asAt: today,
+      paginated: true,
+      pageLimit: RENT_PAGE_LIMIT,
+      rentOnly: true,
     },
   ];
 }

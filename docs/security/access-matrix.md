@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1843**. Known failures: **0**.
+Rows: **1903**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -52,6 +52,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -191,6 +195,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -347,6 +355,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -494,6 +506,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -604,6 +620,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -723,6 +743,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -835,6 +859,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_statutory_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -1021,6 +1049,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_statutory_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -1130,6 +1162,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_statutory_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
@@ -1221,6 +1257,7 @@ None.
 | client_cost_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_true_breakeven_inputs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_income_tax_instalments | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_rental_properties | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -1311,6 +1348,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
+| client_rental_properties | read | ALLOW | pglite, live | Path A / Path E — authorised readers can see exact-client rental property setup; aal2 required |  |
+| client_rental_properties | insert | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | reset a cost classification to Unclassified deletes its stored row | execute | ALLOW | pglite | PK 1 / Spec §3 — the existing caller-scoped delete restores the fixed calculation fallback without storing a new classification value | The UI-only Unclassified choice calls removeCostClassifications. Absence of the row remains the resolver's existing fixed fallback; no unclassified database value or access path exists. |
 | set_client_access_relationship() for own organisation | execute | ALLOW | pglite, live | PK paths D/E — owner classifies selected-client access through an audited function |  |
 | two Business owners on one client remain independently client-scoped | execute | ALLOW | pglite, live | PK path E — several Business owners are valid; each exact client_access row stands alone |  |
@@ -1399,6 +1440,7 @@ None.
 | client_cost_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_true_breakeven_inputs | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_income_tax_instalments | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_rental_properties | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -1489,6 +1531,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
+| client_rental_properties | read | ALLOW | pglite, live | Path A / Path E — authorised readers can see exact-client rental property setup; aal2 required |  |
+| client_rental_properties | insert | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | membership governs a simultaneous Business owner relationship | execute | ALLOW | pglite, live | PK paths A/E — active membership is broader and does not conflict with the relationship row |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
@@ -1577,6 +1623,9 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
+| client_rental_properties | insert | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
@@ -1648,6 +1697,7 @@ None.
 | client_cost_classifications | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | client_true_breakeven_inputs | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | client_income_tax_instalments | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_rental_properties | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | client_subscriptions | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
 | client_reports | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
@@ -1686,6 +1736,9 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_income_tax_instalments | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_income_tax_instalments | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_rental_properties | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_rental_properties | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_rental_properties | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_statutory_accounts | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_statutory_accounts | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
 | client_statutory_accounts | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
@@ -1740,6 +1793,9 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
+| client_rental_properties | insert | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
@@ -1794,6 +1850,10 @@ None.
 | client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | delete | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
+| client_rental_properties | read | ALLOW | pglite, live | Path A / Path E — authorised readers can see exact-client rental property setup; aal2 required |  |
+| client_rental_properties | insert | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | save_client_income_tax_instalment() for another client | execute | DENY | pglite, live | PK 1.4 — caller-supplied client and tenant are filters, never grants |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
 | set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |

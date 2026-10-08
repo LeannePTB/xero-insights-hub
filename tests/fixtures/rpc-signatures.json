@@ -146,6 +146,13 @@
     },
     {
         "args": [
+            "_client_id"
+        ],
+        "name": "can_manage_client_rental_properties",
+        "required": 1
+    },
+    {
+        "args": [
         ],
         "name": "card_group_list",
         "required": 0
@@ -290,6 +297,13 @@
         ],
         "name": "copy_client_cards",
         "required": 2
+    },
+    {
+        "args": [
+            "_id"
+        ],
+        "name": "delete_client_rental_property",
+        "required": 1
     },
     {
         "args": [
@@ -774,6 +788,21 @@
         ],
         "name": "save_client_income_tax_instalment",
         "required": 5
+    },
+    {
+        "args": [
+            "_id",
+            "_client_id",
+            "_tenant_id",
+            "_name",
+            "_match_type",
+            "_match_ids",
+            "_expected_amount",
+            "_frequency",
+            "_lease_start"
+        ],
+        "name": "save_client_rental_property",
+        "required": 9
     },
     {
         "args": [

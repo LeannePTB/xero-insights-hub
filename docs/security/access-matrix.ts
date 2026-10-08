@@ -98,6 +98,7 @@ export const CLIENT_DATA_TABLES = [
   "client_cost_classifications",
   "client_true_breakeven_inputs",
   "client_income_tax_instalments",
+  "client_rental_properties",
   "client_statutory_accounts",
   "client_subscriptions",
   "client_reports",
@@ -210,7 +211,7 @@ const SERVER_WRITTEN_TABLES = [
 const MEMBER_MANAGED_TABLES = CLIENT_DATA_TABLES.filter(
   (t) =>
     !(SERVER_WRITTEN_TABLES as readonly string[]).includes(t) &&
-    !["clients", "client_subscriptions", "report_cache", "client_access", "client_income_tax_instalments"].includes(t),
+    !["clients", "client_subscriptions", "report_cache", "client_access", "client_income_tax_instalments", "client_rental_properties"].includes(t),
 );
 
 export const MATRIX: MatrixRow[] = [
@@ -467,6 +468,22 @@ export const MATRIX: MatrixRow[] = [
     WRITES,
     "deny",
     "Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "business_owner"],
+    ["client_rental_properties"],
+    ["read"],
+    "allow",
+    "Path A / Path E — authorised readers can see exact-client rental property setup; aal2 required",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "business_owner", "client_viewer", "support_grant_active"],
+    ["client_rental_properties"],
+    WRITES,
+    "deny",
+    "Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path",
     ["pglite", "live"],
   ),
   {

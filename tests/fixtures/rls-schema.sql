@@ -75,6 +75,7 @@ create table public.client_cost_classifications (id uuid, client_id uuid, tenant
 create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric, last_xero_login_at timestamp with time zone);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
+create table public.client_rental_properties (id uuid, client_id uuid, tenant_id text, name text, match_type text, match_ids text[], expected_amount numeric(14,2), frequency text, lease_start date, created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
 create table public.client_statutory_accounts (id uuid, client_id uuid, tenant_id text, account_name text, category statutory_category, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_subscriptions (id uuid, client_id uuid, stripe_customer_id text, stripe_subscription_id text, plan_name text, subscription_type client_subscription_type, status client_subscription_status, current_period_end timestamp with time zone, trial_end timestamp with time zone, past_due_since timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, dashboard_tier dashboard_tier, promotion_code text, coupon_id text, comp_reason text, comped_by uuid, comped_at timestamp with time zone);
@@ -2676,6 +2677,7 @@ alter table public.client_cost_classifications enable row level security;
 alter table public.client_income_tax_instalments enable row level security;
 alter table public.client_key_figures enable row level security;
 alter table public.client_notes enable row level security;
+alter table public.client_rental_properties enable row level security;
 alter table public.client_reports enable row level security;
 alter table public.client_statutory_accounts enable row level security;
 alter table public.client_subscriptions enable row level security;
@@ -2838,6 +2840,14 @@ grant SELECT on table public.client_notes to service_role;
 grant TRIGGER on table public.client_notes to service_role;
 grant TRUNCATE on table public.client_notes to service_role;
 grant UPDATE on table public.client_notes to service_role;
+grant SELECT on table public.client_rental_properties to authenticated;
+grant DELETE on table public.client_rental_properties to service_role;
+grant INSERT on table public.client_rental_properties to service_role;
+grant REFERENCES on table public.client_rental_properties to service_role;
+grant SELECT on table public.client_rental_properties to service_role;
+grant TRIGGER on table public.client_rental_properties to service_role;
+grant TRUNCATE on table public.client_rental_properties to service_role;
+grant UPDATE on table public.client_rental_properties to service_role;
 grant SELECT on table public.client_reports to authenticated;
 grant DELETE on table public.client_reports to service_role;
 grant INSERT on table public.client_reports to service_role;
@@ -3429,6 +3439,14 @@ create policy "manage client notes by firm (update)" on public.client_notes as p
    FROM clients c
   WHERE ((c.id = client_notes.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy mfa_aal2_required on public.client_notes as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "Client access reads rental properties" on public.client_rental_properties as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
+create policy "Members read rental properties" on public.client_rental_properties as permissive for select to authenticated using ((EXISTS ( SELECT 1
+   FROM clients c
+  WHERE ((c.id = client_rental_properties.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
+create policy "Support reads rental properties" on public.client_rental_properties as permissive for select to authenticated using ((EXISTS ( SELECT 1
+   FROM clients c
+  WHERE ((c.id = client_rental_properties.client_id) AND (c.firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id)))));
+create policy mfa_aal2_required on public.client_rental_properties as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "client viewers read their finalised reports" on public.client_reports as permissive for select to authenticated using ((app_private.has_client_read_access(auth.uid(), client_id) AND (status = ANY (ARRAY['final'::text, 'sent'::text]))));
 create policy mfa_aal2_required on public.client_reports as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "staff read client reports" on public.client_reports as permissive for select to authenticated using (app_private.user_can_manage_client(auth.uid(), client_id));
@@ -3753,4 +3771,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 72805539cbb1fd22122ba91c9198e5f6548b6da081c35fff35a46b2af5823455
+-- catalogue-fingerprint: dd911c89e5887becdae4b4f8b9733f284478ceab9322e9fde221455ffa0ee5d1
