@@ -458,7 +458,7 @@ export const MATRIX: MatrixRow[] = [
     ["client_income_tax_instalments"],
     ["read"],
     "allow",
-    "Path A / amended Path E — exact-client tax instalment read; aal2 required",
+    "Path A / Path E — authorised readers can see exact-client tax instalments; aal2 required",
     ["pglite", "live"],
   ),
   ...rows(
@@ -471,26 +471,18 @@ export const MATRIX: MatrixRow[] = [
   ),
   {
     role: "business_owner",
-    resource: "save_client_income_tax_instalment() for their exact client",
-    operation: "execute",
-    expect: "allow",
-    rule: "Amended Path E — exact-client income tax instalment self-service; aal2, tenant proof and audit",
-    layers: ["pglite", "live"],
-  },
-  {
-    role: "business_owner",
     resource: "save_client_income_tax_instalment() for another client",
     operation: "execute",
     expect: "deny",
-    rule: "PK 1.4 / amended Path E — caller-supplied client and tenant are filters, never grants",
+    rule: "PK 1.4 — caller-supplied client and tenant are filters, never grants",
     layers: ["pglite", "live"],
   },
   ...rows(
-    ["client_viewer", "standing_viewer", "support_grant_active", "super_admin_no_membership", "aal1_member", "idle_session_member"],
+    ["business_owner", "client_viewer", "standing_viewer", "support_grant_active", "super_admin_no_membership", "aal1_member", "idle_session_member"],
     ["save_client_income_tax_instalment()"],
     ["execute"],
     "deny",
-    "Only active organisation members or an exact-client business owner at aal2 may save",
+    "Only active organisation members at aal2 may save; client viewers remain read-only",
     ["pglite", "live"],
   ),
 

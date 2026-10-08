@@ -1,5 +1,5 @@
 # Roadmap
-- [x] Add the Advisory Tax obligations card with latest completed GST/PAYG figures and audited, period-based income tax instalments editable by organisation members and the exact-client business owner.
+- [x] Add the Advisory Tax obligations card with latest completed GST/PAYG figures and audited, period-based income tax instalments editable by organisation members.
 - [x] Correct cash at bank and credit-card separation using Xero's CREDITCARD subtype; 57 calculation/health tests and full security suite pass. Real-user AAL2 browser readback and tooling-denied security_posture remain unverified; no refresh or historical rewrite.
 
 - [x] Repair organisation overview hide/restore calls to the existing write predicate; synthetic hide/readback/restore and security suite pass. Real-user visual check and security_posture remain blocked by second-factor/tooling permissions.
