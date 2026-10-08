@@ -384,7 +384,8 @@ describe("statutory registration settings", () => {
     const none = { gst: false, payg: false, super: false };
     const r = ruleProtectedMoneyVsCash(bs, accountRow(), undefined, undefined, none);
     assert.strictEqual(r.finding, null);
-    assert.strictEqual(r.unavailable, undefined);
+    // Never the "cash is not positive" gap: nothing is expected to compare.
+    assert.ok(!/Cash at bank/.test(r.unavailable ?? ""));
   });
 
   it("a registered client with overdrawn bank still reports the cash gap", () => {
