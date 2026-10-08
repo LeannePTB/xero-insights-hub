@@ -221,7 +221,8 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
           <td className="p-3">{date(r.lastReportSentAt)}</td>
           <td className="p-3 text-muted-foreground">{date(r.freshAsAt)}</td>
         </tr>
-      ))}
+        );
+      })}
     </>
   );
 }
