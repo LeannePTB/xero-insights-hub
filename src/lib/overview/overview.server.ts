@@ -2,6 +2,7 @@
 // caller (RLS applies). Zero Xero calls: this module must never import
 // `@/lib/xero/api.server`.
 
+import { unreconciledSinceFor } from "./reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
 import { VERDICT_REPORT_KEYS } from "@/lib/health/rule-thresholds";
 import { debtorBook, evaluateClient, type SnapshotRow, type Verdict } from "@/lib/health/rules.server";
@@ -297,7 +298,7 @@ export async function buildOverview(
     const prot = today?.protectedMoney ?? null;
     // Bank reconciled to: from the most recent nightly key-figures row.
     const kfRows = (ctx.keyFigures.get(c.client_id) ?? []).sort((a: any, b: any) => (a.as_at < b.as_at ? 1 : -1));
-    const bankReconciledTo: string | null = kfRows.length ? (kfRows[0].bank_reconciled_to ?? null) : null;
+    const bankReconciledTo: string | null = unreconciledSinceFor(kfRows[0]);
     out.push({
       clientId: c.client_id,
       clientName: c.client_name,

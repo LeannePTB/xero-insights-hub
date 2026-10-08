@@ -1616,3 +1616,5 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - `script-src 'unsafe-inline'` removed: a per-request random nonce is generated in the security-headers middleware and stamped by the router on every inline script. `style-src 'unsafe-inline'` remains (inline styles only). Verified locally: header nonce matches every script tag, sign-in page hydrates with zero CSP violations. Published-site check pending after publish.
 
 - 2026-10-08: Credit-card debt sign fixed — cards Xero places under Current Liabilities (positive = owed) were read as overpaid, so Net cash equalled Cash at bank (Bangkok on King, Amex $14,896.69). Calculation only; no access change. Closed.
+
+- 2026-10-08 CLOSED: overview "Unreconciled since" showed dates stored under the retired "newest reconciled line" rule. Rows dated before 2026-10-09 are now treated as unavailable (`unreconciledSinceFor`). Presentation/read only; no access, policy or Xero-call change. OPEN: Xero does not expose uncoded bank-feed statement lines to apps; Bangkok on King's July lines unverified until tonight's refresh.
