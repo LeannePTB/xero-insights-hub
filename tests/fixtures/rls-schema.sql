@@ -1760,7 +1760,7 @@ CREATE OR REPLACE FUNCTION app_private.card_group_cards(_group text)
 AS $function$
   select case _group
     when 'standard' then array['health','receivables','payables','pnl','notes']
-    when 'advisory' then array['cashflow','cashflow_scenario','accounting_breakeven','true_breakeven','gst_reconciliation','superannuation','payg_withholding','xero_audit','transaction_search']
+    when 'advisory' then array['cashflow','cashflow_scenario','accounting_breakeven','gst_reconciliation','superannuation','payg_withholding','xero_audit','transaction_search']
     when 'consolidation' then array['loan_consolidation']
     else '{}'::text[]
   end
@@ -3560,4 +3560,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 86102aa70ca1c8af1616f24d03f6b7f390a2a7281ecbf6cbe6e5e6ee9724907b
+-- catalogue-fingerprint: 147acc955c6cca24c6e27e35205f8eb3167154444f96dd5dff6ad13fd514c7d9
