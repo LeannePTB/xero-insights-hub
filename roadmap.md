@@ -1,5 +1,7 @@
 # Roadmap
 
+- [x] Repair organisation overview hide/restore calls to the existing write predicate; synthetic hide/readback/restore and security suite pass. Real-user visual check and security_posture remain blocked by second-factor/tooling permissions.
+
 - [x] Remove the duplicate bank-reconciliation badge, correct timestamp staleness, and diagnose missing overview dates without changing access; remaining dates await completion of the interrupted scheduled refresh.
 
 - [x] Replace ambiguous FY YTD headings in monthly reports with exact current and same-period-last-year date ranges, without changing calculations.
