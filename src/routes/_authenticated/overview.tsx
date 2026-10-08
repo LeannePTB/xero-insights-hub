@@ -129,6 +129,7 @@ function OverviewPage() {
                 <th className="p-3">Client</th>
                 <th className="p-3">Status</th>
                 <th className="p-3 text-right">Cash at bank</th>
+                <th className="p-3 text-right">Net cash</th>
                 <th className="p-3 text-right">7-day change</th>
                 <th className="p-3 text-right">Protected money</th>
                 <th className="p-3 text-right">Net profit MTD</th>
@@ -155,7 +156,7 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
     <>
       {name && (
         <tr className="border-y bg-muted/60">
-          <td colSpan={10} className="px-3 py-2.5">
+          <td colSpan={11} className="px-3 py-2.5">
             <div className="flex items-baseline gap-2">
               <span className="text-sm font-semibold uppercase tracking-wide">{name}</span>
               <span className="text-xs text-muted-foreground">
@@ -202,6 +203,21 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
               <Sparkline values={r.cashSpark} />
               {money(r.cash)}
             </div>
+          </td>
+          <td
+            className="p-3 text-right tabular-nums"
+            title={
+              staleBank
+                ? staleTitle
+                : r.creditCardDebt !== null && r.creditCardDebt > 0
+                  ? `Cash at bank less ${money(r.creditCardDebt)} of credit card debt.`
+                  : "Cash at bank; this client has no credit card debt."
+            }
+          >
+            <span className="inline-flex items-center justify-end gap-1">
+              {staleMark}
+              {money(r.netCash)}
+            </span>
           </td>
           <td className={`p-3 text-right tabular-nums ${r.cashBigMove ? "font-semibold text-destructive" : ""}`} title={staleBank ? staleTitle : (r.historyNote ?? undefined)}>
             <span className="inline-flex items-center justify-end gap-1">
