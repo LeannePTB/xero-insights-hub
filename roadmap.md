@@ -197,4 +197,4 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Batch 2 — "What changed" feed (7 Oct)
 - [x] Batch 3 — nightly key-figures table (7 Oct; retention decision OPEN, first rows after tonight's run)
 - [x] Batch 4 — shared acknowledge/snooze via audited definer function (7 Oct)
-- [ ] Login: 'Continue to dashboard' does nothing (investigating)
+- [ ] Login stuck: backend unreachable (hosting); add clear error on Continue button once back

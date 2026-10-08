@@ -82,7 +82,7 @@ export const STALENESS_SECONDS: Record<string, number> = {
   invoices_accrec_open: 30 * 3600,
   invoices_accpay_open: 30 * 3600,
   payroll_payruns: 30 * 3600,
-  bank_reconciled_latest: 30 * 3600,
+  bank_unreconciled_oldest: 30 * 3600,
 };
 
 export type SnapshotReport = {
@@ -181,12 +181,14 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       api: "payroll",
     },
     {
-      // The most recent reconciled bank transaction gives the "bank
-      // reconciled to" date for the client overview. One call: first page
-      // only, newest first.
-      reportKey: "bank_reconciled_latest",
+      // The OLDEST unreconciled bank transaction gives the "unreconciled
+      // since" date for the client overview (the newest reconciled line was
+      // misleading: one recent reconciliation hid months of open lines).
+      // One call: first page only, oldest first. Xero only exposes lines
+      // already coded in Xero; untouched raw feed lines are not visible.
+      reportKey: "bank_unreconciled_oldest",
       path: "BankTransactions",
-      params: { where: "IsReconciled==true", order: "Date DESC" },
+      params: { where: 'IsReconciled==false&&Status=="AUTHORISED"', order: "Date ASC" },
       asAt: today,
     },
   ];
