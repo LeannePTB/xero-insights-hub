@@ -1,6 +1,6 @@
 import { describe, test } from "node:test";
 import assert from "node:assert";
-import { applyAlertStates, type FeedEvent } from "./feed.server";
+import { applyAlertStates, bankReconciledStale, type FeedEvent } from "./feed.server";
 
 const ev = (severity: number): FeedEvent => ({ eventKey: "escalation:warning", clientId: "c1", clientName: "C", firmName: "O", kind: "escalation", severity, headline: "h", before: null, after: null, date: "2026-10-07" });
 const now = new Date("2026-10-07T00:00:00Z");
@@ -23,5 +23,20 @@ describe("shared acknowledge and snooze", () => {
   test("hidden while snoozed", () => {
     const r = applyAlertStates([ev(2)], ctx({ event_key: "escalation:warning", severity_at_ack: 2, snoozed_until: "2026-10-10T00:00:00Z", snoozed_by: "u1" }));
     assert.strictEqual(r.visible.length, 0);
+  });
+});
+
+describe("bank not reconciled rule", () => {
+  test("never reconciled is stale", () => {
+    assert.strictEqual(bankReconciledStale(null, "2026-10-08"), true);
+  });
+  test("reconciled 14 days before the anchor is stale", () => {
+    assert.strictEqual(bankReconciledStale("2026-09-24", "2026-10-08"), true);
+  });
+  test("reconciled 13 days before the anchor is not stale", () => {
+    assert.strictEqual(bankReconciledStale("2026-09-25", "2026-10-08"), false);
+  });
+  test("reconciled on the anchor day is not stale", () => {
+    assert.strictEqual(bankReconciledStale("2026-10-08", "2026-10-08"), false);
   });
 });
