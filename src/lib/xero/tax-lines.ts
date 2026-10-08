@@ -31,7 +31,8 @@ export type CashAtBankExtraction =
   | { status: "input_invalid"; total: 0; accounts: []; reason: string };
 
 /**
- * Credit card debt, from Xero accounts typed BANK with Class LIABILITY.
+ * Credit card debt, from Xero BANK accounts with BankAccountType CREDITCARD
+ * (including Class ASSET), or legacy BANK accounts with Class LIABILITY.
  * `total` is the amount owed (a positive number): a card balance is negative
  * on the Balance Sheet when money is owed; an overpaid card contributes nil.
  */
@@ -68,6 +69,7 @@ export type XeroAccountRef = {
   Status?: string;
   SystemAccount?: string;
   Type?: string;
+  BankAccountType?: string;
 };
 
 export type BalanceSheetAnalysis =
@@ -358,21 +360,23 @@ function isActiveBankAccount(account: XeroAccountRef | undefined): boolean {
   if (!account) return false;
   return (
     normaliseText(account.Type).toUpperCase() === "BANK" &&
+    normaliseText(account.BankAccountType).toUpperCase() !== "CREDITCARD" &&
     normaliseText(account.Class).toUpperCase() === "ASSET" &&
     normaliseText(account.Status).toUpperCase() === "ACTIVE"
   );
 }
 
 /**
- * A credit card in Xero is typed BANK with Class LIABILITY — the mirror of a
- * bank account. Matching on account metadata, not the card's name, keeps a
+ * Xero identifies cards by BankAccountType CREDITCARD, often with Class ASSET.
+ * Legacy BANK/LIABILITY metadata is also accepted. Matching metadata, not name, keeps a
  * card named like a bank account (or vice versa) from being miscounted.
  */
 function isActiveCreditCardAccount(account: XeroAccountRef | undefined): boolean {
   if (!account) return false;
   return (
     normaliseText(account.Type).toUpperCase() === "BANK" &&
-    normaliseText(account.Class).toUpperCase() === "LIABILITY" &&
+    (normaliseText(account.BankAccountType).toUpperCase() === "CREDITCARD" ||
+      normaliseText(account.Class).toUpperCase() === "LIABILITY") &&
     normaliseText(account.Status).toUpperCase() === "ACTIVE"
   );
 }
@@ -430,7 +434,7 @@ function extractCashAtBankFromReport(
 
 /**
  * Credit card debt, resolved the same way as cash at bank: rows matched on
- * account ID against accounts typed BANK with Class LIABILITY. A card balance
+ * account ID against Xero credit-card metadata. A card balance
  * is negative on the Balance Sheet when money is owed; `total` is the amount
  * owed as a positive number, and an overpaid card contributes nil.
  */
