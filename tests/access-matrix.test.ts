@@ -254,6 +254,16 @@ const TARGET: Record<string, Record<string, string>> = {
     as_at: "current_date",
     cash: "1000",
   },
+  client_income_tax_instalments: {
+    id: q("c0000100-1111-4111-8111-111111111111"),
+    client_id: q(CLIENT_A),
+    tenant_id: q(TENANT_A),
+    period_start: q("2026-07-01"),
+    period_end: q("2026-09-30"),
+    amount: "1000",
+    created_by: q(U.ownerA),
+    updated_by: q(U.ownerA),
+  },
   xero_snapshots: {
     id: q("c0000016-1111-4111-8111-111111111111"),
     client_id: q(CLIENT_A),
@@ -522,6 +532,15 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
 
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
+
+  if (r.startsWith("save_client_income_tax_instalment()")) {
+    const targetClient = r.includes("another client") ? CLIENT_B : CLIENT_A;
+    const targetTenant = r.includes("another client") ? "tenant-b" : TENANT_A;
+    const p = await probe(
+      `select public.save_client_income_tax_instalment('${targetClient}'::uuid, '${targetTenant}', '2026-07-01'::date, '2026-09-30'::date, 1234.56)`,
+    );
+    return p.ok ? "allow" : "deny";
+  }
 
   if (r === "reset a cost classification to Unclassified deletes its stored row") {
     const removed = await probe(
@@ -1398,6 +1417,10 @@ beforeAll(async () => {
   // overview_alert_states is unique on (client_id, event_key) live (7 Oct 2026); the
   // acknowledge upsert depends on it.
   await db.exec(`alter table public.overview_alert_states add unique (client_id, event_key);`);
+  // The live income-tax history has one amount per client, Xero file and
+  // period; its audited save function relies on that key for the upsert.
+  await db.exec(`create unique index client_income_tax_instalments_period_key
+                   on public.client_income_tax_instalments (client_id, tenant_id, period_start, period_end);`);
   // clients/firms.overview_hidden are `not null default false` live (8 Oct 2026); the
   // dump drops defaults, so rows seeded below would be NULL and overview_clients()
   // would filter everything out. Test-copy fidelity only — no application object changes.

@@ -64,6 +64,20 @@
       "when": 1791432849951,
       "tag": "0008_fix_overview_organisation_write_predicate",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791441596299,
+      "tag": "0009_add_income_tax_instalments_and_tax_obligations_card",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791441633963,
+      "tag": "0010_add_income_tax_instalment_permission_check",
+      "breakpoints": true
     }
   ]
 }

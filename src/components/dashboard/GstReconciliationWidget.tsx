@@ -19,6 +19,7 @@ import { getGstReconciliation, type GstResponse } from "@/lib/xero/gst.functions
 import {
   money as fmt,
   gstPeriodOptions,
+  type GstCycle,
   type GstPeriodOption,
   type GstWindowKind,
 } from "@/components/dashboard/recon-periods";
@@ -79,7 +80,7 @@ function clientTieCause(codes: GstResponse["tieReasonCodes"] | undefined) {
   return ` — because of ${joined}`;
 }
 
-export type GstCycle = "monthly" | "quarterly" | "annual" | "not_registered";
+export type { GstCycle } from "@/components/dashboard/recon-periods";
 
 /** The period the card opens on for a lodgement cycle. `null` (cycle not
  *  set) keeps the long-standing default — the last completed month — and the

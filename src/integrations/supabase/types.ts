@@ -437,6 +437,53 @@ export type Database = {
           },
         ]
       }
+      client_income_tax_instalments: {
+        Row: {
+          amount: number
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          period_end: string
+          period_start: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          amount: number
+          client_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          period_end: string
+          period_start: string
+          tenant_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          amount?: number
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          period_end?: string
+          period_start?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_income_tax_instalments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_key_figures: {
         Row: {
           as_at: string
@@ -3109,6 +3156,10 @@ export type Database = {
         Args: { _tenant_id: string; _widget: string }
         Returns: boolean
       }
+      can_manage_client_income_tax_instalments: {
+        Args: { _client_id: string }
+        Returns: boolean
+      }
       card_group_list: {
         Args: never
         Returns: {
@@ -3576,6 +3627,33 @@ export type Database = {
       revoke_firm_member_invite: { Args: { _id: string }; Returns: undefined }
       revoke_firm_viewer_access: { Args: { _id: string }; Returns: undefined }
       revoke_viewer_invite: { Args: { _id: string }; Returns: undefined }
+      save_client_income_tax_instalment: {
+        Args: {
+          _amount: number
+          _client_id: string
+          _period_end: string
+          _period_start: string
+          _tenant_id: string
+        }
+        Returns: {
+          amount: number
+          client_id: string
+          created_at: string
+          created_by: string
+          id: string
+          period_end: string
+          period_start: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_income_tax_instalments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       security_attestations_list: {
         Args: never
         Returns: {

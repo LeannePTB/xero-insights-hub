@@ -29,7 +29,7 @@ fns as (
       or (ns.nspname = 'public' and p.proname in (
         'user_can_access_firm','user_can_access_client','firm_access_path',
         'client_entitlement','client_allowed_widgets','client_can_use_widget',
-        'assert_client_write_access','set_client_widget_enabled',
+        'assert_client_write_access','assert_tenant_belongs_to_client','set_client_widget_enabled',
         'delete_client_report','transfer_organisation_ownership','remove_firm_member',
         'set_all_client_tiers','online_users','set_profile_display_name_admin',
         'xero_missing_scopes','xero_required_scopes','has_role',
@@ -43,6 +43,7 @@ fns as (
         'org_card_defaults','set_org_card_defaults','apply_org_card_defaults',
         'my_firm_memberships','me_is_practice_member','overview_clients',
          'set_overview_alert_state','user_can_write_firm',
+         'can_manage_client_income_tax_instalments','save_client_income_tax_instalment',
          'set_client_overview_hidden','set_firm_overview_hidden','overview_hidden_items'))
     )
 ),

@@ -72,6 +72,7 @@ create table public.billing_events (id uuid, firm_id uuid, stripe_event_id text,
 create table public.client_access (id uuid, client_id uuid, user_id uuid, tier text, created_at timestamp with time zone, updated_at timestamp with time zone, relationship client_access_relationship, inviter_label text);
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
+create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
@@ -1772,12 +1773,12 @@ CREATE OR REPLACE FUNCTION app_private.card_group_cards(_group text)
  IMMUTABLE
  SET search_path TO 'public'
 AS $function$
-  select case _group
-    when 'standard' then array['health','receivables','payables','pnl','notes']
-    when 'advisory' then array['cashflow','cashflow_scenario','accounting_breakeven','gst_reconciliation','superannuation','payg_withholding','xero_audit','transaction_search']
-    when 'consolidation' then array['loan_consolidation']
-    else '{}'::text[]
-  end
+  SELECT CASE _group
+    WHEN 'standard' THEN ARRAY['health','receivables','payables','pnl','notes']
+    WHEN 'advisory' THEN ARRAY['cashflow','cashflow_scenario','accounting_breakeven','tax_obligations','gst_reconciliation','superannuation','payg_withholding','xero_audit','transaction_search']
+    WHEN 'consolidation' THEN ARRAY['loan_consolidation']
+    ELSE '{}'::text[]
+  END
 $function$
 ;
 CREATE OR REPLACE FUNCTION app_private.client_available_cards(_client_id uuid)
@@ -2496,6 +2497,102 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.save_client_income_tax_instalment(_client_id uuid, _tenant_id text, _period_start date, _period_end date, _amount numeric)
+ RETURNS client_income_tax_instalments
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  _actor uuid := auth.uid();
+  _firm_id uuid;
+  _allowed boolean := false;
+  _saved public.client_income_tax_instalments;
+BEGIN
+  PERFORM app_private.assert_aal2();
+
+  IF _actor IS NULL THEN
+    RAISE EXCEPTION 'AUTH_REQUIRED' USING ERRCODE = '42501';
+  END IF;
+  IF _client_id IS NULL OR _tenant_id IS NULL OR btrim(_tenant_id) = '' THEN
+    RAISE EXCEPTION 'INVALID_CLIENT_OR_XERO_FILE' USING ERRCODE = '22023';
+  END IF;
+  IF _period_start IS NULL OR _period_end IS NULL OR _period_end < _period_start THEN
+    RAISE EXCEPTION 'INVALID_INSTALMENT_PERIOD' USING ERRCODE = '22023';
+  END IF;
+  IF _amount IS NULL OR _amount < 0 OR _amount > 999999999999.99 OR round(_amount, 2) <> _amount THEN
+    RAISE EXCEPTION 'INVALID_INSTALMENT_AMOUNT' USING ERRCODE = '22023';
+  END IF;
+
+  SELECT c.firm_id,
+         app_private.user_can_write_client(_actor, c.id)
+         OR EXISTS (
+           SELECT 1 FROM public.client_access ca
+           WHERE ca.client_id = c.id
+             AND ca.user_id = _actor
+             AND ca.relationship = 'business_owner'
+         )
+    INTO _firm_id, _allowed
+    FROM public.clients c
+   WHERE c.id = _client_id;
+
+  IF NOT coalesce(_allowed, false) THEN
+    RAISE EXCEPTION 'CLIENT_INCOME_TAX_INSTALMENT_FORBIDDEN' USING ERRCODE = '42501';
+  END IF;
+
+  PERFORM public.assert_tenant_belongs_to_client(_client_id, _tenant_id);
+
+  INSERT INTO public.client_income_tax_instalments (
+    client_id, tenant_id, period_start, period_end, amount, created_by, updated_by
+  ) VALUES (
+    _client_id, btrim(_tenant_id), _period_start, _period_end, _amount, _actor, _actor
+  )
+  ON CONFLICT (client_id, tenant_id, period_start, period_end)
+  DO UPDATE SET amount = EXCLUDED.amount, updated_by = _actor, updated_at = now()
+  RETURNING * INTO _saved;
+
+  INSERT INTO public.audit_log (
+    actor_user_id, firm_id, action, target_type, target_id, meta
+  ) VALUES (
+    _actor,
+    _firm_id,
+    'client_income_tax_instalment_saved',
+    'client',
+    _client_id::text,
+    jsonb_build_object(
+      'tenant_id', btrim(_tenant_id),
+      'period_start', _period_start,
+      'period_end', _period_end
+    )
+  );
+
+  RETURN _saved;
+END;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.can_manage_client_income_tax_instalments(_client_id uuid)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  _actor uuid := auth.uid();
+BEGIN
+  PERFORM app_private.assert_aal2();
+  IF _actor IS NULL OR _client_id IS NULL THEN
+    RETURN false;
+  END IF;
+  RETURN app_private.user_can_write_client(_actor, _client_id)
+    OR EXISTS (
+      SELECT 1 FROM public.client_access ca
+      WHERE ca.client_id = _client_id
+        AND ca.user_id = _actor
+        AND ca.relationship = 'business_owner'
+    );
+END;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2570,6 +2667,7 @@ alter table public.billing_events enable row level security;
 alter table public.client_access enable row level security;
 alter table public.client_cards enable row level security;
 alter table public.client_cost_classifications enable row level security;
+alter table public.client_income_tax_instalments enable row level security;
 alter table public.client_key_figures enable row level security;
 alter table public.client_notes enable row level security;
 alter table public.client_reports enable row level security;
@@ -2707,6 +2805,14 @@ grant SELECT on table public.client_cost_classifications to service_role;
 grant TRIGGER on table public.client_cost_classifications to service_role;
 grant TRUNCATE on table public.client_cost_classifications to service_role;
 grant UPDATE on table public.client_cost_classifications to service_role;
+grant SELECT on table public.client_income_tax_instalments to authenticated;
+grant DELETE on table public.client_income_tax_instalments to service_role;
+grant INSERT on table public.client_income_tax_instalments to service_role;
+grant REFERENCES on table public.client_income_tax_instalments to service_role;
+grant SELECT on table public.client_income_tax_instalments to service_role;
+grant TRIGGER on table public.client_income_tax_instalments to service_role;
+grant TRUNCATE on table public.client_income_tax_instalments to service_role;
+grant UPDATE on table public.client_income_tax_instalments to service_role;
 grant SELECT on table public.client_key_figures to authenticated;
 grant DELETE on table public.client_key_figures to service_role;
 grant INSERT on table public.client_key_figures to service_role;
@@ -3293,6 +3399,14 @@ create policy "Manage cost classifications by firm (update)" on public.client_co
   WHERE ((c.id = client_cost_classifications.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy "Viewers read cost classifications" on public.client_cost_classifications as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_cost_classifications as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "Client access reads income tax instalments" on public.client_income_tax_instalments as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
+create policy "MFA required for income tax instalments" on public.client_income_tax_instalments as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy "Members read income tax instalments" on public.client_income_tax_instalments as permissive for select to authenticated using ((EXISTS ( SELECT 1
+   FROM clients c
+  WHERE ((c.id = client_income_tax_instalments.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
+create policy "Support reads income tax instalments" on public.client_income_tax_instalments as permissive for select to authenticated using ((EXISTS ( SELECT 1
+   FROM clients c
+  WHERE ((c.id = client_income_tax_instalments.client_id) AND (c.firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id)))));
 create policy "entitled users read client key figures" on public.client_key_figures as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.client_key_figures as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Client viewers read notes" on public.client_notes as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
@@ -3633,4 +3747,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: b901e79df4024fc7779fe86de0877cb5affa038c74304d39aff9860f50690f16
+-- catalogue-fingerprint: d1d2ce47121d2645b08c710e33fdda11ddf262a3d965910b41df192a9e06d9fb

@@ -1,3 +1,4 @@
 - Client overview reads stored snapshots only and derives status from `evaluateClient`; its client list comes from the caller-scoped `overview_clients()` — never re-implement who-can-see-what in TypeScript.
 - Bank/card extraction is shared in `tax-lines.ts` and uses Xero account IDs and BankAccountType, not names or Class alone, because Xero credit cards can be asset-class BANK accounts.
 - Sidebar layouts reserve width through the non-shrinking sidebar spacer; the main inset uses flex-1 and min-w-0 without w-full, so collapsed navigation cannot crowd or clip page content.
+- Client income tax instalments use one dedicated period-history table and one audited caller-scoped save function, because business-owner self-service must not widen the general client write predicate.
