@@ -413,24 +413,21 @@ function ClientDashboard() {
             </p>
           </div>
           {isAdvisor && (
-            <div className="flex shrink-0 items-center gap-2">
-              {/* One refresh control per dashboard. The throttle is enforced
-                  server-side, per tenant; this button is a courtesy only. */}
-              <RefreshSnapshotsButton
-                tenantIds={orgs
-                  .map((o: any) => o.xero_connections?.tenant_id)
-                  .filter((t: string | undefined): t is string => !!t)}
-              />
-              <Button variant="outline" asChild>
-                <Link to="/clients/$clientId/reports" params={{ clientId }}>
-                  <FileText className="mr-2 h-4 w-4" /> Monthly Management Reports
-                </Link>
-              </Button>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+              <ViewToggle clientId={clientId} active="live" />
               <Button variant="outline" asChild>
                 <Link to="/clients/$clientId/settings" params={{ clientId }}>
                   <Settings className="mr-2 h-4 w-4" /> Client Settings
                 </Link>
               </Button>
+              {/* One refresh control per dashboard. The throttle is enforced
+                  server-side, per tenant; this button is a courtesy only.
+                  Sits next to Client Settings, per the owner's layout. */}
+              <RefreshSnapshotsButton
+                tenantIds={orgs
+                  .map((o: any) => o.xero_connections?.tenant_id)
+                  .filter((t: string | undefined): t is string => !!t)}
+              />
             </div>
           )}
 
