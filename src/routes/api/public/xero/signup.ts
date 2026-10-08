@@ -34,7 +34,11 @@ export const Route = createFileRoute("/api/public/xero/signup")({
         }
 
         // Blunt abuse brake: this endpoint writes a state row per call.
-        await enforceRateLimit("xero-signup-start:global", 60, 3600);
+        try {
+          await enforceRateLimit("xero-signup-start:global", 60, 3600);
+        } catch {
+          return Response.redirect(`${origin}/auth?xero_error=rate_limited`, 302);
+        }
 
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
