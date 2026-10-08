@@ -30,6 +30,17 @@ export type CashAtBankExtraction =
   | { status: "unrecognised"; total: 0; accounts: []; reason: string }
   | { status: "input_invalid"; total: 0; accounts: []; reason: string };
 
+/**
+ * Credit card debt, from Xero accounts typed BANK with Class LIABILITY.
+ * `total` is the amount owed (a positive number): a card balance is negative
+ * on the Balance Sheet when money is owed; an overpaid card contributes nil.
+ */
+export type CreditCardDebtExtraction =
+  | { status: "assessed"; total: number; accounts: { name: string; balance: number }[] }
+  | { status: "absent"; total: 0; accounts: [] }
+  | { status: "unrecognised"; total: 0; accounts: []; reason: string }
+  | { status: "input_invalid"; total: 0; accounts: []; reason: string };
+
 
 type Cell = {
   Value?: string;
@@ -65,12 +76,14 @@ export type BalanceSheetAnalysis =
       report: BalanceSheetReport;
       taxLines: TaxLineExtraction;
       cashAtBank: CashAtBankExtraction;
+      creditCardDebt: CreditCardDebtExtraction;
     }
   | {
       status: "input_invalid";
       report: null;
       taxLines: Extract<TaxLineExtraction, { status: "input_invalid" }>;
       cashAtBank: Extract<CashAtBankExtraction, { status: "input_invalid" }>;
+      creditCardDebt: Extract<CreditCardDebtExtraction, { status: "input_invalid" }>;
     };
 
 export function parseTaxAmount(v: string | undefined): number {
