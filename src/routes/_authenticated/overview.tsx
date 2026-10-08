@@ -169,7 +169,7 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
             <Link to="/clients/$clientId" params={{ clientId: r.clientId }} className="font-medium" onClick={(e) => e.stopPropagation()}>
               {r.clientName}
             </Link>
-            <div className="text-xs text-muted-foreground">{r.firmName}</div>
+            {!name && <div className="text-xs text-muted-foreground">{r.firmName}</div>}
           </td>
           <td className="max-w-[16rem] p-3 [&>span]:mt-0">
             <ClientHealthBadge verdict={r.verdict} />
