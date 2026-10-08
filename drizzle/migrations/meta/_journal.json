@@ -78,6 +78,13 @@
       "when": 1791441633963,
       "tag": "0010_add_income_tax_instalment_permission_check",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791442051805,
+      "tag": "0011_restrict_income_tax_instalment_edits_to_organisation_team",
+      "breakpoints": true
     }
   ]
 }
