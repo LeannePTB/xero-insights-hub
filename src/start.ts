@@ -108,8 +108,11 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 });
 
 // Layer 4 — security headers on every response.
-// HSTS, MIME sniffing, referrer, framing, permissions, and a permissive CSP in
-// report-only mode (tightened later once we know what we'd block).
+// HSTS, MIME sniffing, referrer, framing, permissions, and an enforcing CSP.
+// The CSP ran report-only until 8 Oct 2026 with no violations observed; it is
+// now enforced (owner request). 'unsafe-inline' on script-src is required by
+// the framework's inline hydration scripts and cannot be removed without a
+// nonce pipeline — the posture check keeps it as a known, documented warn.
 const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => {
   const result = await next();
   const h = result.response.headers;
@@ -122,9 +125,9 @@ const securityHeadersMiddleware = createMiddleware().server(async ({ next }) => 
   if (!h.has("permissions-policy")) {
     h.set("permissions-policy", "camera=(), microphone=(), geolocation=(), interest-cohort=()");
   }
-  if (!h.has("content-security-policy-report-only")) {
+  if (!h.has("content-security-policy")) {
     h.set(
-      "content-security-policy-report-only",
+      "content-security-policy",
       [
         "default-src 'self'",
         "img-src 'self' data: https:",
