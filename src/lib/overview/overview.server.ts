@@ -310,6 +310,7 @@ export async function buildOverview(
       debtorsOverduePct,
       lastReportSentAt: ctx.lastSent.get(c.client_id) ?? null,
       freshAsAt,
+      bankReconciledTo,
       cashSpark: (ctx.keyFigures.get(c.client_id) ?? [])
         .filter((k) => k.as_at >= addDays(ctx.today, -30) && k.cash !== null)
         .sort((a, b) => (a.as_at < b.as_at ? -1 : 1))

@@ -29,6 +29,8 @@ export type OverviewRow = {
   debtorsOverduePct: number | null;
   lastReportSentAt: string | null;
   freshAsAt: string | null;
+  /** Date of the newest reconciled bank transaction, from the nightly key figures. */
+  bankReconciledTo: string | null;
   historyNote: string | null;
   /** Up to 30 daily cash figures from the nightly key figures, oldest first. */
   cashSpark: number[];
