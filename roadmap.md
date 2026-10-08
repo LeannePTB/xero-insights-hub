@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Remove the duplicate bank-reconciliation badge and diagnose missing overview dates without changing access.
+- [x] Remove the duplicate bank-reconciliation badge, correct timestamp staleness, and diagnose missing overview dates without changing access; remaining dates await completion of the interrupted scheduled refresh.
 
 - [x] Replace ambiguous FY YTD headings in monthly reports with exact current and same-period-last-year date ranges, without changing calculations.
 - [x] Make Unclassified an explicit cost-classification state, delete its stored row on reset, prioritise undecided accounts, and preserve the fixed calculation fallback.

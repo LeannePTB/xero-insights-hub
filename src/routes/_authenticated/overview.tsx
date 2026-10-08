@@ -231,7 +231,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide }: {
         const staleBank = r.freshAsAt !== null && bankReconciledStale(r.bankReconciledTo, r.freshAsAt);
         const staleTitle =
           r.bankReconciledTo === null
-            ? "The bank has never been reconciled in this Xero file — these figures may not reflect the real position."
+            ? "The bank reconciliation date is not available yet — these figures may not reflect the real position."
             : `Bank not reconciled since ${date(r.bankReconciledTo)} — these figures may not reflect the real position.`;
         const staleMark = staleBank ? (
           <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label={staleTitle} />
@@ -285,7 +285,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide }: {
           </td>
           <td className="p-3 text-right tabular-nums">{money(r.netProfitMtd)}</td>
           <td className="p-3 text-right tabular-nums">{pct(r.debtorsOverduePct)}</td>
-          <td className="p-3">{r.bankReconciledTo === null ? "—" : date(r.bankReconciledTo)}</td>
+          <td className="p-3" title={r.bankReconciledTo === null ? "Reconciliation date not available in the stored figures yet." : undefined}>{r.bankReconciledTo === null ? "—" : date(r.bankReconciledTo)}</td>
           <td className="p-3">{date(r.lastReportSentAt)}</td>
           <td className="p-3 text-muted-foreground">{date(r.freshAsAt)}</td>
           <td className="p-3">
