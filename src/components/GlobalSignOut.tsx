@@ -18,8 +18,12 @@ export function GlobalSignOut() {
 
   useEffect(() => {
     // Run after paint so the page's own header (if any) has mounted.
+    // Hidden when the side menu is showing — it carries its own Sign out.
     const id = window.setTimeout(() => {
-      setShow(!document.querySelector("[data-app-header]"));
+      setShow(
+        !document.querySelector("[data-app-header]") &&
+          !document.querySelector('[data-sidebar="sidebar"]'),
+      );
     }, 0);
     return () => window.clearTimeout(id);
   }, [pathname]);
