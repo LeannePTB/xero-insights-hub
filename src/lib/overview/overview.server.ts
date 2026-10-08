@@ -292,6 +292,8 @@ export async function buildOverview(
     const all = [...(ctx.rowsByClient.get(c.client_id) ?? []), ...(ctx.datedByClient.get(c.client_id) ?? [])];
     const freshAsAt = all.reduce<string | null>((m, r) => (!m || r.fetched_at > m ? r.fetched_at : m), null);
     const cash = today?.cash ?? null;
+    const creditCardDebt = today?.creditCardDebt ?? null;
+    const netCash = cash !== null ? cash - (creditCardDebt ?? 0) : null;
     const prot = today?.protectedMoney ?? null;
     // Bank reconciled to: from the most recent nightly key-figures row.
     const kfRows = (ctx.keyFigures.get(c.client_id) ?? []).sort((a: any, b: any) => (a.as_at < b.as_at ? 1 : -1));

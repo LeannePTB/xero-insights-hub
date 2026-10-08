@@ -22,8 +22,13 @@ export type OverviewRow = {
   rank: number;
   bucket: import("./changes").OverviewBucket;
   cash: number | null;
+  /** Credit card debt owed (positive number), from the Balance Sheet. */
+  creditCardDebt: number | null;
+  /** Cash at bank less credit card debt — the cash actually available. */
+  netCash: number | null;
   cashChange7d: number | null;
   cashBigMove: boolean;
+  /** Protected money as a share of net cash (cash at bank less credit card debt). */
   protectedPctOfCash: number | null;
   netProfitMtd: number | null;
   debtorsOverduePct: number | null;
