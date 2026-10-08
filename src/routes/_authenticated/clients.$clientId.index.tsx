@@ -27,6 +27,7 @@ import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidatio
 import { GstReconciliationWidget, type GstCycle } from "@/components/dashboard/GstReconciliationWidget";
 import { TaxObligationsWidget } from "@/components/dashboard/TaxObligationsWidget";
 import { XeroActivityWidget } from "@/components/dashboard/XeroActivityWidget";
+import { RentReportWidget } from "@/components/dashboard/RentReportWidget";
 
 
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
@@ -281,6 +282,7 @@ function ClientDashboard() {
         // Xero file activity shares the Tax obligations entitlement: it is
         // read-only client data from the stored nightly snapshot.
         block.activity = <XeroActivityWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} />;
+        advanced.push({ id: `${o.id}:rent_report`, node: <RentReportWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
       }
 
       // PAYG withholding stands alone: the activity statement card reports the

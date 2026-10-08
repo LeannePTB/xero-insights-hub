@@ -174,18 +174,20 @@ async function fetchReport(
 
   const items: any[] = [];
   let truncated = false;
-  for (let page = 1; page <= INVOICE_PAGE_LIMIT; page++) {
+  const itemsKey = report.itemsKey ?? "Invoices";
+  const pageLimit = report.pageLimit ?? INVOICE_PAGE_LIMIT;
+  for (let page = 1; page <= pageLimit; page++) {
     budget.spend();
     const res = await withSlot(() =>
-      xeroGet<{ Invoices?: any[] }>(conn, report.path, { ...report.params, page: String(page) }),
+      xeroGet<Record<string, any[] | undefined>>(conn, report.path, { ...report.params, page: String(page) }),
     );
-    const batch = res?.Invoices ?? [];
+    const batch = res?.[itemsKey] ?? [];
     items.push(...batch);
     if (batch.length < XERO_PAGE_SIZE) break;
     // Last allowed page came back full: there is more we are not fetching.
-    if (page === INVOICE_PAGE_LIMIT) truncated = true;
+    if (page === pageLimit) truncated = true;
   }
-  return { payload: { Invoices: items }, truncated };
+  return { payload: { [itemsKey]: items }, truncated };
 }
 
 async function writeSnapshot(opts: {
@@ -275,7 +277,15 @@ export async function refreshTenant(
     );
 
     const grantedScopes = (conn.scopes ?? "").split(/\s+/).filter(Boolean);
+    // Rent receipt lists are only worth their calls where rent is tracked.
+    const { count: rentalCount } = await (supabaseAdmin as any)
+      .from("client_rental_properties")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", target.clientId)
+      .eq("tenant_id", target.tenantId);
+    const hasRentals = (rentalCount ?? 0) > 0;
     for (const report of reports) {
+      if (report.rentOnly && !hasRentals) continue;
       // Payroll is opt-in per organisation: skip it silently where the
       // connection never granted it, rather than failing the run nightly.
       if (

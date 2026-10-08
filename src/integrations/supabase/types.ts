@@ -604,6 +604,62 @@ export type Database = {
           },
         ]
       }
+      client_rental_properties: {
+        Row: {
+          client_id: string
+          created_at: string
+          created_by: string
+          expected_amount: number
+          frequency: string
+          id: string
+          lease_start: string | null
+          match_ids: string[]
+          match_type: string
+          name: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          created_by: string
+          expected_amount: number
+          frequency: string
+          id?: string
+          lease_start?: string | null
+          match_ids: string[]
+          match_type: string
+          name: string
+          tenant_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          created_by?: string
+          expected_amount?: number
+          frequency?: string
+          id?: string
+          lease_start?: string | null
+          match_ids?: string[]
+          match_type?: string
+          name?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_rental_properties_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_reports: {
         Row: {
           client_id: string
@@ -3163,6 +3219,10 @@ export type Database = {
         Args: { _client_id: string }
         Returns: boolean
       }
+      can_manage_client_rental_properties: {
+        Args: { _client_id: string }
+        Returns: boolean
+      }
       card_group_list: {
         Args: never
         Returns: {
@@ -3260,6 +3320,7 @@ export type Database = {
         Args: { _from_client_id: string; _to_client_ids: string[] }
         Returns: number
       }
+      delete_client_rental_property: { Args: { _id: string }; Returns: boolean }
       delete_client_report: {
         Args: { _reason?: string; _report_id: string }
         Returns: {
@@ -3653,6 +3714,40 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "client_income_tax_instalments"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      save_client_rental_property: {
+        Args: {
+          _client_id: string
+          _expected_amount: number
+          _frequency: string
+          _id: string
+          _lease_start: string
+          _match_ids: string[]
+          _match_type: string
+          _name: string
+          _tenant_id: string
+        }
+        Returns: {
+          client_id: string
+          created_at: string
+          created_by: string
+          expected_amount: number
+          frequency: string
+          id: string
+          lease_start: string | null
+          match_ids: string[]
+          match_type: string
+          name: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "client_rental_properties"
           isOneToOne: true
           isSetofReturn: false
         }
