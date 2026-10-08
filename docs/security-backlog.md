@@ -1571,3 +1571,9 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 ## 2026-10-08 — Add organisation → Connect Xero file(s) (UI only)
 - After "Create organisation", the dialog offers "Connect Xero file(s)". This is the existing aal2 onboard flow (`startXeroOnboardConnect` → callback → picker → `createClientsFromSelectedTenants`). It is gated by `user_can_write_firm` (the creator is an active member) and by the plan limit from `firm_plan_limits`.
 - No new access path, function, policy or admin use. Customer self-service creation (stage 2) is NOT built: it needs a rules amendment and payments.
+
+## 8 Oct 2026 — Cost classification: wages-only clients could not load P&L (CLOSED)
+- Classification: SECURITY-RELEVANT (server function input validator widened; no policy, grant, role or access path touched).
+- Defect: `CostClassificationPanel` in wages-only mode (client has Business Health, no Break-Even card) requested the P&L as widget `accounting_breakeven`, so `assert_widget_access` refused and the panel showed "This widget is not enabled for your dashboard".
+- Fix: the panel now authorises as `health` when wages-only; `getProfitAndLoss`'s validator union gained `"health"`. Every value still goes through the same database `assert_widget_access` gate against the caller's own entitlement — no one gains figures they are not entitled to.
+- Checks: `bun run security:check` green (123 tests, 18 live access checks); `bunx tsgo` clean.
