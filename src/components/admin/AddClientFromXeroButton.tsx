@@ -14,7 +14,9 @@ export function AddClientFromXeroButton({
   disabled,
   className,
   variant = "default",
+  label = "Add client from Xero",
 }: {
+  label?: string;
   firmId: string;
   disabled?: boolean;
   className?: string;
@@ -41,7 +43,7 @@ export function AddClientFromXeroButton({
       ) : (
         <Plug className="mr-2 h-4 w-4" />
       )}
-      Add client from Xero
+      {label}
     </Button>
   );
 }

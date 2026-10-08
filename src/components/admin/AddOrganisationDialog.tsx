@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Loader2, UserPlus, Copy, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 
 /** Super-admin dialog that creates an organisation and optionally its owner login. */
 export function AddOrganisationDialog({
@@ -42,7 +43,7 @@ export function AddOrganisationDialog({
   // How they want it set up — a starting point for clients added later, never a purchase.
   const [unticked, setUnticked] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [done, setDone] = useState<null | { mode: "password" | "invite" | "none"; email?: string | null; password?: string; inviteUrl?: string; emailStatus?: string | null }>(null);
+  const [done, setDone] = useState<null | { mode: "password" | "invite" | "none"; email?: string | null; password?: string; inviteUrl?: string; emailStatus?: string | null; firmId?: string }>(null);
   const [copied, setCopied] = useState(false);
 
   const groupsQ = useQuery({
@@ -96,12 +97,13 @@ export function AddOrganisationDialog({
     onMutate: () => setErrorMsg(null),
     onSuccess: (res: any) => {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
+      const firmId: string | undefined = res.firmId;
       setDone(
         res.mode === "none"
-          ? { mode: "none" }
+          ? { mode: "none", firmId }
           : res.mode === "password"
-          ? { mode: "password", email: res.email, password }
-          : { mode: "invite", email: res.email, inviteUrl: `${origin}/signup/${res.token}`, emailStatus: res.emailStatus },
+          ? { mode: "password", email: res.email, password, firmId }
+          : { mode: "invite", email: res.email, inviteUrl: `${origin}/signup/${res.token}`, emailStatus: res.emailStatus, firmId },
       );
 
       toast.success("Organisation created");
@@ -353,6 +355,12 @@ export function AddOrganisationDialog({
             <p className="text-xs text-muted-foreground">Backup link — expires in 14 days.</p>
           </div>
         )}
+        {done?.firmId ? (
+          <p className="text-xs text-muted-foreground">
+            Next: connect their Xero file. Each file they tick becomes a client, named from Xero, up to the {limitNum} client{limitNum === 1 ? "" : "s"} in their package.
+          </p>
+        ) : null}
+
 
         <DialogFooter>
           {!done ? (
@@ -361,7 +369,12 @@ export function AddOrganisationDialog({
               Create organisation
             </Button>
           ) : (
-            <Button variant="outline" onClick={() => setOpen(false)}>Done</Button>
+            <>
+              <Button variant="outline" onClick={() => setOpen(false)}>Done</Button>
+              {done.firmId ? (
+                <AddClientFromXeroButton firmId={done.firmId} label="Connect Xero file(s)" />
+              ) : null}
+            </>
           )}
         </DialogFooter>
       </DialogContent>
