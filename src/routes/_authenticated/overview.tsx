@@ -165,7 +165,16 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
           </td>
         </tr>
       )}
-      {rows.map((r) => (
+      {rows.map((r) => {
+        const staleBank = r.freshAsAt !== null && bankReconciledStale(r.bankReconciledTo, r.freshAsAt);
+        const staleTitle =
+          r.bankReconciledTo === null
+            ? "The bank has never been reconciled in this Xero file — these figures may not reflect the real position."
+            : `Bank not reconciled since ${date(r.bankReconciledTo)} — these figures may not reflect the real position.`;
+        const staleMark = staleBank ? (
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label={staleTitle} />
+        ) : null;
+        return (
         <tr key={r.clientId} className="cursor-pointer border-t hover:bg-muted/30" onClick={() => onOpen(r.clientId)}>
           <td className="p-3">
             <Link to="/clients/$clientId" params={{ clientId: r.clientId }} className="font-medium" onClick={(e) => e.stopPropagation()}>
@@ -174,18 +183,38 @@ function GroupRows({ name, rows, onOpen }: { name: string | null; rows: Overview
             {!name && <div className="text-xs text-muted-foreground">{r.firmName}</div>}
           </td>
           <td className="max-w-[16rem] p-3 [&>span]:mt-0">
-            <ClientHealthBadge verdict={r.verdict} />
+            <div className="flex flex-wrap items-center gap-1.5">
+              <ClientHealthBadge verdict={r.verdict} />
+              {staleBank && (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-600 dark:text-amber-400"
+                  title={staleTitle}
+                >
+                  <AlertTriangle className="h-3 w-3" />
+                  Bank not reconciled
+                </span>
+              )}
+            </div>
           </td>
-          <td className="p-3 text-right tabular-nums">
+          <td className="p-3 text-right tabular-nums" title={staleBank ? staleTitle : undefined}>
             <div className="flex items-center justify-end gap-2">
+              {staleMark}
               <Sparkline values={r.cashSpark} />
               {money(r.cash)}
             </div>
           </td>
-          <td className={`p-3 text-right tabular-nums ${r.cashBigMove ? "font-semibold text-destructive" : ""}`} title={r.historyNote ?? undefined}>
-            {r.cashChange7d === null ? "—" : `${r.cashChange7d >= 0 ? "+" : ""}${money(r.cashChange7d)}`}
+          <td className={`p-3 text-right tabular-nums ${r.cashBigMove ? "font-semibold text-destructive" : ""}`} title={staleBank ? staleTitle : (r.historyNote ?? undefined)}>
+            <span className="inline-flex items-center justify-end gap-1">
+              {staleMark}
+              {r.cashChange7d === null ? "—" : `${r.cashChange7d >= 0 ? "+" : ""}${money(r.cashChange7d)}`}
+            </span>
           </td>
-          <td className="p-3 text-right tabular-nums">{pct(r.protectedPctOfCash)}</td>
+          <td className="p-3 text-right tabular-nums" title={staleBank ? staleTitle : undefined}>
+            <span className="inline-flex items-center justify-end gap-1">
+              {staleMark}
+              {pct(r.protectedPctOfCash)}
+            </span>
+          </td>
           <td className="p-3 text-right tabular-nums">{money(r.netProfitMtd)}</td>
           <td className="p-3 text-right tabular-nums">{pct(r.debtorsOverduePct)}</td>
           <td className="p-3">{r.bankReconciledTo === null ? "—" : date(r.bankReconciledTo)}</td>
