@@ -155,7 +155,7 @@ function OverviewPage() {
                 <th className="p-3 text-right">Protected money</th>
                 <th className="p-3 text-right">Net profit MTD</th>
                 <th className="p-3 text-right">Debtors overdue</th>
-                <th className="p-3">Bank reconciled to</th>
+                <th className="p-3">Unreconciled since</th>
                 <th className="p-3">Last report sent</th>
                 <th className="p-3">Data as at</th>
                 <th className="p-3" aria-label="Actions" />
@@ -285,7 +285,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide }: {
           </td>
           <td className="p-3 text-right tabular-nums">{money(r.netProfitMtd)}</td>
           <td className="p-3 text-right tabular-nums">{pct(r.debtorsOverduePct)}</td>
-          <td className="p-3" title={r.bankReconciledTo === null ? "Reconciliation date not available in the stored figures yet." : undefined}>{r.bankReconciledTo === null ? "—" : date(r.bankReconciledTo)}</td>
+          <td className="p-3" title={r.bankReconciledTo === null ? "Not available in the stored figures yet." : "Date of the oldest bank line in Xero that is not reconciled. Bank feed lines nobody has coded yet are not visible to the app."}>{r.bankReconciledTo === null ? "—" : r.freshAsAt !== null && r.bankReconciledTo >= r.freshAsAt.slice(0, 10) ? "Up to date" : date(r.bankReconciledTo)}</td>
           <td className="p-3">{date(r.lastReportSentAt)}</td>
           <td className="p-3 text-muted-foreground">{date(r.freshAsAt)}</td>
           <td className="p-3">
