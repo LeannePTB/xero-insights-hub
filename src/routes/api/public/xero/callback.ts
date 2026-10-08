@@ -78,7 +78,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               ? `Xero rejected the requested read-only permissions${errorDescription ? ` (${errorDescription})` : ""}. The app now requests Xero's current granular Accounting API read scopes; please check those scopes are assigned to the Xero app, then try Reconnect again.`
               : error;
           const errorPath =
-            flow === "signin"
+            flow === "signin" || flow === "signup"
               ? `/auth?xero_error=${encodeURIComponent(message)}`
               : flow === "onboard"
                 ? `${onboardReturnPath}?xero_error=${encodeURIComponent(message)}`
@@ -92,13 +92,13 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         const clientId = process.env.XERO_CLIENT_ID;
         if (!clientId || !clientSecret) {
           return redirectTo(
-            `${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=not_configured`,
+            `${returnOrigin}${flow === "signin" || flow === "signup" ? "/auth" : "/dashboard"}?xero_error=not_configured`,
           );
         }
 
         if (!stateRow) {
           return redirectTo(
-            `${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=invalid_state`,
+            `${returnOrigin}${flow === "signin" || flow === "signup" ? "/auth" : "/dashboard"}?xero_error=invalid_state`,
           );
         }
         if (
@@ -107,7 +107,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         ) {
           await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
           return redirectTo(
-            `${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=state_expired`,
+            `${returnOrigin}${flow === "signin" || flow === "signup" ? "/auth" : "/dashboard"}?xero_error=state_expired`,
           );
         }
         const codeVerifier: string | null = stateRow.code_verifier ?? null;
@@ -143,7 +143,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             flow,
           });
           return redirectTo(
-            `${returnOrigin}${flow === "signin" ? "/auth" : "/dashboard"}?xero_error=token_exchange`,
+            `${returnOrigin}${flow === "signin" || flow === "signup" ? "/auth" : "/dashboard"}?xero_error=token_exchange`,
           );
         }
         const tokens = (await tokenRes.json()) as {
