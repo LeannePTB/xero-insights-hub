@@ -79,7 +79,7 @@ create table public.client_statutory_accounts (id uuid, client_id uuid, tenant_i
 create table public.client_subscriptions (id uuid, client_id uuid, stripe_customer_id text, stripe_subscription_id text, plan_name text, subscription_type client_subscription_type, status client_subscription_status, current_period_end timestamp with time zone, trial_end timestamp with time zone, past_due_since timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone, dashboard_tier dashboard_tier, promotion_code text, coupon_id text, comp_reason text, comped_by uuid, comped_at timestamp with time zone);
 create table public.client_true_breakeven_inputs (id uuid, client_id uuid, tenant_id text, loan_principal numeric, credit_card_interest numeric, owner_drawings numeric, tax_payments numeric, ato_payment_plan numeric, equipment_finance numeric, other numeric, notes text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_xero_orgs (id uuid, client_id uuid, xero_connection_id uuid, created_at timestamp with time zone);
-create table public.clients (id uuid, name text, owner_user_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone, notes text, report_basis report_basis, firm_id uuid, cost_classification_enabled boolean, basis_overrides jsonb, max_xero_orgs integer, dashboard_widgets text[], consolidation_mode text, consolidation_org_ids uuid[], logo_path text, gst_cycle gst_cycle, payg_withholding_cycle payg_withholding_cycle, setup_ack jsonb);
+create table public.clients (id uuid, name text, owner_user_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone, notes text, report_basis report_basis, firm_id uuid, cost_classification_enabled boolean, basis_overrides jsonb, max_xero_orgs integer, dashboard_widgets text[], consolidation_mode text, consolidation_org_ids uuid[], logo_path text, gst_cycle gst_cycle, payg_withholding_cycle payg_withholding_cycle, setup_ack jsonb, overview_hidden boolean);
 create table public.consolidation_group_members (id uuid, group_id uuid, client_id uuid, created_at timestamp with time zone);
 create table public.consolidation_groups (id uuid, firm_id uuid, name text, created_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.dashboard_card_order (user_id uuid, client_id uuid, "order" text[], updated_at timestamp with time zone);
@@ -90,7 +90,7 @@ create table public.email_unsubscribe_tokens (id uuid, email text, created_at ti
 create table public.firm_members (id uuid, firm_id uuid, user_id uuid, role firm_member_role, created_at timestamp with time zone, updated_at timestamp with time zone, status text);
 create table public.firm_support_access (firm_id uuid, granted boolean, granted_by uuid, granted_at timestamp with time zone, revoked_at timestamp with time zone, note text, created_at timestamp with time zone, updated_at timestamp with time zone, id uuid, grantee_user_id uuid, expires_at timestamp with time zone, requested_by uuid, reason text);
 create table public.firm_viewer_access (id uuid, firm_id uuid, user_id uuid, tier dashboard_tier, granted_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone, inviter_label text);
-create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean);
+create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean, overview_hidden boolean);
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
@@ -2352,6 +2352,8 @@ begin
       join public.firms f on f.id = c.firm_id
      where app_private.is_practice_member_of(auth.uid(), c.firm_id)
        and app_private.user_can_read_client(auth.uid(), c.id)
+       and not c.overview_hidden
+       and not f.overview_hidden
      order by f.name, c.name
      limit 1000;
 end;
@@ -3558,4 +3560,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 67698ac47decda2bbd91c7715ebf93d72cd9f081a3b471eea9b58cc1d2d6356c
+-- catalogue-fingerprint: 43c0baad149cd7e7ce57f9be187d6e71d89e5cf912724fae297b49d6b9d468aa
