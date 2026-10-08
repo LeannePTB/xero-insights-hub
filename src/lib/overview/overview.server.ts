@@ -16,6 +16,7 @@ type Row = SnapshotRow & { client_id: string; tenant_id: string; params: any };
 /** Dated figures for one client at one Sydney date. */
 export type DayFigures = {
   cash: number | null;
+  creditCardDebt: number | null;
   protectedMoney: number | null;
   revenueMtd: number | null;
   netProfitMtd: number | null;
@@ -201,7 +202,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
   const get = (d: string) => {
     let f = byDate.get(d);
     if (!f) {
-      f = { cash: null, protectedMoney: null, revenueMtd: null, netProfitMtd: null };
+      f = { cash: null, creditCardDebt: null, protectedMoney: null, revenueMtd: null, netProfitMtd: null };
       byDate.set(d, f);
     }
     return f;
@@ -213,6 +214,7 @@ export function seriesFor(ctx: OverviewContext, clientId: string): ClientSeries 
       const a = analyseBalanceSheet(row.payload, accounts?.payload, overrides);
       const f = get(d);
       if (a.cashAtBank.status === "assessed") f.cash = a.cashAtBank.total;
+      if (a.creditCardDebt.status === "assessed") f.creditCardDebt = a.creditCardDebt.total;
       if (a.taxLines.status === "assessed") f.protectedMoney = buildProtectedMoney(d, a.taxLines.lines).total;
     } else if (row.report_key === "profit_and_loss_mtd") {
       const report = row.payload?.Reports?.[0];
@@ -290,6 +292,8 @@ export async function buildOverview(
     const all = [...(ctx.rowsByClient.get(c.client_id) ?? []), ...(ctx.datedByClient.get(c.client_id) ?? [])];
     const freshAsAt = all.reduce<string | null>((m, r) => (!m || r.fetched_at > m ? r.fetched_at : m), null);
     const cash = today?.cash ?? null;
+    const creditCardDebt = today?.creditCardDebt ?? null;
+    const netCash = cash !== null ? cash - (creditCardDebt ?? 0) : null;
     const prot = today?.protectedMoney ?? null;
     // Bank reconciled to: from the most recent nightly key-figures row.
     const kfRows = (ctx.keyFigures.get(c.client_id) ?? []).sort((a: any, b: any) => (a.as_at < b.as_at ? 1 : -1));
@@ -303,9 +307,11 @@ export async function buildOverview(
       rank: verdictRank(verdict as any),
       bucket: bucketOf(verdict as any),
       cash,
+      creditCardDebt,
+      netCash,
       cashChange7d: m7.state === "evaluated" ? m7.change : null,
       cashBigMove: m7.state === "evaluated" && m7.big,
-      protectedPctOfCash: cash && cash > 0 && prot !== null ? (prot / cash) * 100 : null,
+      protectedPctOfCash: netCash !== null && netCash > 0 && prot !== null ? (prot / netCash) * 100 : null,
       netProfitMtd: today?.netProfitMtd ?? null,
       debtorsOverduePct,
       lastReportSentAt: ctx.lastSent.get(c.client_id) ?? null,

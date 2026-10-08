@@ -45,12 +45,14 @@ export async function writeKeyFigures(target: { clientId: string; firmId: string
   const fig: Record<string, number | null> = {
     cash: null, debtors_total: null, debtors_overdue: null, creditors: null,
     protected_money: null, revenue_mtd: null, net_profit_mtd: null,
+    credit_card_debt: null,
   };
 
   const bs = latest.get("balance_sheet");
   if (bs?.complete) {
     const a = analyseBalanceSheet(bs.payload, latest.get("accounts")?.payload, overrides);
     if (a.cashAtBank.status === "assessed") fig.cash = a.cashAtBank.total;
+    if (a.creditCardDebt.status === "assessed") fig.credit_card_debt = a.creditCardDebt.total;
     if (a.taxLines.status === "assessed")
       fig.protected_money = buildProtectedMoney(bs.params?.date ?? asAt, a.taxLines.lines).total;
   }

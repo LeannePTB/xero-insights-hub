@@ -160,6 +160,63 @@ describe("R01 protected money vs cash", () => {
     assert.strictEqual(r.finding, null);
     assert.match(r.unavailable ?? "", /not a positive balance/i);
   });
+
+  const CC_ACCOUNT = { AccountID: "cc-1", Name: "Business Credit Card", Class: "LIABILITY", Status: "ACTIVE", Type: "BANK" };
+
+  function balanceSheetWithCard(bank: number, card: number, tax: TestLine[]) {
+    const p = balanceSheet(bank, tax) as any;
+    p.Rows.push({
+      RowType: "Section",
+      Title: "Credit Cards",
+      Rows: [{ RowType: "Row", Cells: [accountCell("Business Credit Card", "cc-1"), { Value: String(card) }] }],
+    });
+    return p;
+  }
+
+  function accountRowWithCard() {
+    const a = JSON.parse(JSON.stringify(ACCOUNTS));
+    a.Accounts.push(CC_ACCOUNT);
+    return accountRow(a);
+  }
+
+  it("compares protected money against cash less credit card debt", () => {
+    // $500k in the bank but $490k owed on the card leaves $10k available —
+    // $65k of protected money is well over that, so this is critical.
+    const r = ruleProtectedMoneyVsCash(
+      row({ report_key: "balance_sheet", payload: balanceSheetWithCard(500_000, -490_000, FULL_TAX) }),
+      accountRowWithCard(),
+    );
+    assert.ok(r.finding);
+    assert.strictEqual(r.finding!.severity, "critical");
+    assert.match(r.finding!.detail, /credit card debt/);
+  });
+
+  it("is critical when credit card debt absorbs the cash entirely", () => {
+    const r = ruleProtectedMoneyVsCash(
+      row({ report_key: "balance_sheet", payload: balanceSheetWithCard(50_000, -60_000, FULL_TAX) }),
+      accountRowWithCard(),
+    );
+    assert.ok(r.finding);
+    assert.strictEqual(r.finding!.severity, "critical");
+  });
+
+  it("ignores an overpaid credit card", () => {
+    const r = ruleProtectedMoneyVsCash(
+      row({ report_key: "balance_sheet", payload: balanceSheetWithCard(500_000, 5_000, FULL_TAX) }),
+      accountRowWithCard(),
+    );
+    assert.strictEqual(r.finding, null);
+  });
+
+  it("does not count a credit card as cash at bank", () => {
+    const a = analyseBalanceSheet(balanceSheetWithCard(50_000, -20_000, FULL_TAX), {
+      Accounts: [...ACCOUNTS.Accounts, CC_ACCOUNT],
+    });
+    assert.ok(a.status === "assessed" && a.cashAtBank.status === "assessed");
+    assert.strictEqual(a.cashAtBank.total, 50_000);
+    assert.ok(a.creditCardDebt.status === "assessed");
+    assert.strictEqual(a.creditCardDebt.total, 20_000);
+  });
 });
 
 describe("cash at bank", () => {

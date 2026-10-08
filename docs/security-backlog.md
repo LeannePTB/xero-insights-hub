@@ -1516,3 +1516,10 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 
 
 - 2026-10-08 — R01 protected-money check: a client registered for neither GST nor PAYG (so no super expected) now returns silence before the cash comparison. Previously a super-named loan line (e.g. "<name> Superannuation Fund") let the check reach "cash not positive" and show "Partial data". Logic-only; no access, policy or Xero change. Open follow-up (owner decision): name-based "super" matching can still pick up SMSF loan accounts for registered clients.
+
+## 8 Oct 2026 — Credit card debt and net cash (CLOSED)
+- `analyseBalanceSheet` now also extracts credit card debt: Xero accounts typed BANK with Class LIABILITY, matched on account ID. `total` is the amount owed as a positive number; an overpaid card contributes nil. Cash at bank is unchanged (asset bank accounts only).
+- R01 protected-money check now compares against net cash (cash at bank less credit card debt); when card debt absorbs the cash entirely the finding is critical. The detail sentence names the card debt when present. This changes badges and the monthly report wording for clients with credit cards — owner-approved.
+- Additive column `client_key_figures.credit_card_debt` (nullable numeric); the table's existing RLS, aal2 guard and SELECT policy cover it — no new access path, no policy, grant or function changes.
+- Overview: new "Net cash" column; the Protected money percentage is now a share of net cash. Read-only presentation of data the viewer already sees.
+- Tests: 4 new cases in `rules.test.ts` (net-cash comparison, card-absorbs-cash critical, overpaid card ignored, card never counted as cash). Checks: `bun run security:check` (123 tests, 18 live checks, all pass); rules tests 53 pass; typecheck clean.

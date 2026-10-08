@@ -8,6 +8,13 @@
       "when": 1791425757248,
       "tag": "0000_client_key_figures_bank_reconciled_to",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791426615404,
+      "tag": "0001_client_key_figures_credit_card_debt",
+      "breakpoints": true
     }
   ]
 }
