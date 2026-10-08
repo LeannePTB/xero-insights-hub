@@ -1216,6 +1216,26 @@ AS $function$
   ), '{}'::text[])
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.assert_tenant_belongs_to_client(_client_id uuid, _tenant_id text)
+ RETURNS boolean
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if not exists (
+    select 1 from public.client_xero_orgs cxo
+    join public.xero_connections xc on xc.id = cxo.xero_connection_id
+    where cxo.client_id = _client_id and xc.tenant_id = _tenant_id
+  ) then
+    raise exception 'That Xero organisation does not belong to this client.'
+      using errcode = 'raise_exception';
+  end if;
+  return true;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.user_can_write_client_scenario(_client_id uuid)
  RETURNS boolean
  LANGUAGE plpgsql
