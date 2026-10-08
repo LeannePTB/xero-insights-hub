@@ -444,6 +444,7 @@ export type Database = {
           cash: number | null
           client_id: string
           created_at: string
+          credit_card_debt: number | null
           creditors: number | null
           debtors_overdue: number | null
           debtors_total: number | null
@@ -461,6 +462,7 @@ export type Database = {
           cash?: number | null
           client_id: string
           created_at?: string
+          credit_card_debt?: number | null
           creditors?: number | null
           debtors_overdue?: number | null
           debtors_total?: number | null
@@ -478,6 +480,7 @@ export type Database = {
           cash?: number | null
           client_id?: string
           created_at?: string
+          credit_card_debt?: number | null
           creditors?: number | null
           debtors_overdue?: number | null
           debtors_total?: number | null
