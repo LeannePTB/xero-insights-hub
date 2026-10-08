@@ -82,6 +82,7 @@ export const STALENESS_SECONDS: Record<string, number> = {
   invoices_accrec_open: 30 * 3600,
   invoices_accpay_open: 30 * 3600,
   payroll_payruns: 30 * 3600,
+  bank_reconciled_latest: 30 * 3600,
 };
 
 export type SnapshotReport = {
@@ -178,6 +179,15 @@ export function snapshotReports(today: string = sydneyDate()): SnapshotReport[] 
       params: {},
       asAt: today,
       api: "payroll",
+    },
+    {
+      // The most recent reconciled bank transaction gives the "bank
+      // reconciled to" date for the client overview. One call: first page
+      // only, newest first.
+      reportKey: "bank_reconciled_latest",
+      path: "BankTransactions",
+      params: { where: "IsReconciled==true", order: "Date DESC" },
+      asAt: today,
     },
   ];
 }
