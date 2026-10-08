@@ -488,6 +488,7 @@ export function analyseBalanceSheet(
       report: null,
       taxLines: invalidTax(reason),
       cashAtBank: invalidCash(reason),
+      creditCardDebt: invalidCreditCard(reason),
     };
   }
 
@@ -500,8 +501,12 @@ export function analyseBalanceSheet(
     accountsResult.status === "assessed"
       ? extractCashAtBankFromReport(reportResult.report, accountsResult.byId)
       : invalidCash(accountsResult.reason);
+  const creditCardDebt =
+    accountsResult.status === "assessed"
+      ? extractCreditCardDebtFromReport(reportResult.report, accountsResult.byId)
+      : invalidCreditCard(accountsResult.reason);
 
-  return { status: "assessed", report: reportResult.report, taxLines, cashAtBank };
+  return { status: "assessed", report: reportResult.report, taxLines, cashAtBank, creditCardDebt };
 }
 
 /**
