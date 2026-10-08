@@ -73,7 +73,7 @@ create table public.client_access (id uuid, client_id uuid, user_id uuid, tier t
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
 create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
-create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric);
+create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric, last_xero_login_at timestamp with time zone);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
 create table public.client_statutory_accounts (id uuid, client_id uuid, tenant_id text, account_name text, category statutory_category, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -598,7 +598,7 @@ CREATE OR REPLACE FUNCTION public.xero_required_scopes()
  STABLE SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
-  SELECT ARRAY[
+  select array[
     'offline_access',
     'accounting.settings.read',
     'accounting.contacts.read',
@@ -616,7 +616,8 @@ AS $function$
     'payroll.employees.read',
     'payroll.payruns.read',
     'payroll.payslip.read',
-    'payroll.settings.read'
+    'payroll.settings.read',
+    'finance.accountingactivity.read'
   ]
 $function$
 ;
@@ -3752,4 +3753,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 4f901cf111fc2b32b09f27483ae7ceeec55181ccf526977ec21fa1fbdbf19d0f
+-- catalogue-fingerprint: 72805539cbb1fd22122ba91c9198e5f6548b6da081c35fff35a46b2af5823455
