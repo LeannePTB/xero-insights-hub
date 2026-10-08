@@ -1758,7 +1758,7 @@ describe("audit trigger — every Path C table records its changes (backlog 29)"
 
 describe("overview organisation hide and restore", () => {
   it("an active organisation member can hide the group, read it back and restore it with an audit record", async () => {
-    await asRole("owner_org_a", async () => {
+    await asRole("org_owner", async () => {
       await db.query(`select public.set_firm_overview_hidden($1::uuid, true)`, [ORG_A]);
       const hidden = await db.query<{ kind: string; id: string }>(`select kind, id from public.overview_hidden_items()`);
       expect(hidden.rows).toContainEqual({ kind: "organisation", id: ORG_A });
