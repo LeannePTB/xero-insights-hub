@@ -50,6 +50,28 @@ export type GstPeriodOption = {
   to: string;
 };
 
+export type GstCycle = "monthly" | "quarterly" | "annual" | "not_registered";
+
+/** Most recently completed lodgement period; never returns a period still in progress. */
+export function completedGstPeriod(cycle: GstCycle | null | undefined): GstPeriodOption {
+  const now = new Date();
+  if (cycle === "quarterly") {
+    const currentQuarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
+    const end = new Date(currentQuarterStart.getFullYear(), currentQuarterStart.getMonth(), 0);
+    const start = quarterStart(end);
+    return { value: `quarter:${iso(end)}`, label: "Latest completed quarter", kind: "quarter", asAt: iso(end), from: iso(start), to: iso(end) };
+  }
+  if (cycle === "annual") {
+    const endYear = now.getMonth() >= 6 ? now.getFullYear() : now.getFullYear() - 1;
+    const end = new Date(endYear, 5, 30);
+    const start = new Date(endYear - 1, 6, 1);
+    return { value: `year:${iso(end)}`, label: "Latest completed financial year", kind: "year", asAt: iso(end), from: iso(start), to: iso(end) };
+  }
+  const end = new Date(now.getFullYear(), now.getMonth(), 0);
+  const start = new Date(end.getFullYear(), end.getMonth(), 1);
+  return { value: `month:${iso(end)}`, label: "Latest completed month", kind: "month", asAt: iso(end), from: iso(start), to: iso(end) };
+}
+
 /** First day of the calendar quarter containing `d` (BAS quarters align to these). */
 function quarterStart(d: Date) {
   return new Date(d.getFullYear(), Math.floor(d.getMonth() / 3) * 3, 1);

@@ -42,7 +42,7 @@ const REPORTS = "src/routes/_authenticated/clients.$clientId.reports.tsx";
 const catalogueSql = readFileSync(join(ROOT, FIXTURE), "utf8");
 const offered = [
   ...new Set(
-    [...catalogueSql.matchAll(/when\s+'[a-z_]+'\s+then\s+array\[([^\]]*)\]/g)].flatMap((m) =>
+    [...catalogueSql.matchAll(/when\s+'[a-z_]+'\s+then\s+array\[([^\]]*)\]/gi)].flatMap((m) =>
       [...m[1]!.matchAll(/'([a-z_]+)'/g)].map((c) => c[1]!),
     ),
   ),

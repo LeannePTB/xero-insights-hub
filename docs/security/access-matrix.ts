@@ -97,6 +97,7 @@ export const CLIENT_DATA_TABLES = [
   "client_access",
   "client_cost_classifications",
   "client_true_breakeven_inputs",
+  "client_income_tax_instalments",
   "client_statutory_accounts",
   "client_subscriptions",
   "client_reports",
@@ -209,7 +210,7 @@ const SERVER_WRITTEN_TABLES = [
 const MEMBER_MANAGED_TABLES = CLIENT_DATA_TABLES.filter(
   (t) =>
     !(SERVER_WRITTEN_TABLES as readonly string[]).includes(t) &&
-    !["clients", "client_subscriptions", "report_cache", "client_access"].includes(t),
+    !["clients", "client_subscriptions", "report_cache", "client_access", "client_income_tax_instalments"].includes(t),
 );
 
 export const MATRIX: MatrixRow[] = [
@@ -451,6 +452,39 @@ export const MATRIX: MatrixRow[] = [
     "pglite",
     "live",
   ]),
+
+  ...rows(
+    ["org_owner", "org_staff", "business_owner"],
+    ["client_income_tax_instalments"],
+    ["read"],
+    "allow",
+    "Path A / Path E — authorised readers can see exact-client tax instalments; aal2 required",
+    ["pglite", "live"],
+  ),
+  ...rows(
+    ["org_owner", "org_staff", "business_owner", "client_viewer", "support_grant_active"],
+    ["client_income_tax_instalments"],
+    WRITES,
+    "deny",
+    "Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path",
+    ["pglite", "live"],
+  ),
+  {
+    role: "business_owner",
+    resource: "save_client_income_tax_instalment() for another client",
+    operation: "execute",
+    expect: "deny",
+    rule: "PK 1.4 — caller-supplied client and tenant are filters, never grants",
+    layers: ["pglite", "live"],
+  },
+  ...rows(
+    ["business_owner", "client_viewer", "standing_viewer", "support_grant_active", "super_admin_no_membership", "aal1_member", "idle_session_member"],
+    ["save_client_income_tax_instalment()"],
+    ["execute"],
+    "deny",
+    "Only active organisation members at aal2 may save; client viewers remain read-only",
+    ["pglite", "live"],
+  ),
 
   {
     role: "org_owner",
@@ -1391,6 +1425,7 @@ export const MATRIX: MatrixRow[] = [
       "client_cost_classifications",
       "client_statutory_accounts",
       "client_true_breakeven_inputs",
+      "client_income_tax_instalments",
       "client_xero_orgs",
       "unreconciled_lines",
       "unreconciled_uploads",
@@ -1433,6 +1468,7 @@ export const MATRIX: MatrixRow[] = [
       "client_cost_classifications",
       "client_statutory_accounts",
       "client_true_breakeven_inputs",
+      "client_income_tax_instalments",
       "client_xero_orgs",
       "unreconciled_lines",
       "unreconciled_uploads",

@@ -64,6 +64,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Stops the call unless the named Xero file really belongs to the named client.",
   "public.assert_widget_access":
     "Stops the call unless the caller's plan allows this dashboard card for this Xero file.",
+  "public.can_manage_client_income_tax_instalments":
+    "Caller-scoped UI check: whether an active organisation member may maintain this client's ATO income tax instalment periods; aal2 required.",
+  "public.save_client_income_tax_instalment":
+    "Saves one ATO income tax instalment period after aal2, organisation-team write access and Xero-file ownership checks, with an audit row in the same transaction.",
   "public.me_has_role": "Whether the caller holds a given platform role.",
   "public.me_is_super_admin": "Whether the caller is a platform super admin.",
   "public.my_client_access":

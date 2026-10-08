@@ -13,6 +13,7 @@ export type WidgetKey =
   | "xero_audit"
   | "loan_consolidation"
   | "gst_reconciliation"
+  | "tax_obligations"
   | "payg_withholding"
   | "transaction_search";
 
@@ -31,6 +32,7 @@ export const ALL_WIDGETS: WidgetKey[] = [
   "xero_audit",
   "loan_consolidation",
   "gst_reconciliation",
+  "tax_obligations",
   "payg_withholding",
   "transaction_search",
 ];
@@ -87,6 +89,7 @@ export const WIDGET_LABEL: Record<WidgetKey, string> = {
   xero_audit: "Xero File Audit",
   loan_consolidation: "Loan Consolidation",
   gst_reconciliation: "Activity statement — GST (indicative)",
+  tax_obligations: "Tax obligations",
   payg_withholding: "PAYG Withholding by Month",
   transaction_search: "Transaction Search",
 };
@@ -131,6 +134,7 @@ export const DEFAULT_CARD_ORDER: WidgetKey[] = [
   "xero_audit",
   "transaction_search",
   "gst_reconciliation",
+  "tax_obligations",
   "payg_withholding",
   "superannuation",
   "accounting_breakeven",

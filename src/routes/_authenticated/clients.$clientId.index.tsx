@@ -25,6 +25,7 @@ import { BreakevenWidget } from "@/components/dashboard/BreakevenWidget";
 import { ScenarioWidget } from "@/components/dashboard/ScenarioWidget";
 import { LoanConsolidationWidget } from "@/components/dashboard/LoanConsolidationWidget";
 import { GstReconciliationWidget, type GstCycle } from "@/components/dashboard/GstReconciliationWidget";
+import { TaxObligationsWidget } from "@/components/dashboard/TaxObligationsWidget";
 
 
 import { CashflowWidget } from "@/components/dashboard/CashflowWidget";
@@ -194,6 +195,7 @@ function ClientDashboard() {
   // a card only enters the block if it would have been rendered before.
   type StatutoryBlock = {
     orgId: string;
+    taxObligations: ReactNode | null;
     gst: ReactNode | null;
     payg: ReactNode | null;
     superannuation: ReactNode | null;
@@ -231,7 +233,7 @@ function ClientDashboard() {
       // Fixed statutory block for this Xero file. Populated below under the
       // exact same conditions the sortable cards used, then pushed only if it
       // holds at least one card.
-      const block: StatutoryBlock = { orgId: String(o.id), gst: null, payg: null, superannuation: null };
+      const block: StatutoryBlock = { orgId: String(o.id), taxObligations: null, gst: null, payg: null, superannuation: null };
 
       if (widgets.includes("xero_audit"))
         advanced.push({
@@ -265,6 +267,17 @@ function ClientDashboard() {
       if (widgets.includes("gst_reconciliation") && !structurallyHidden(tenantId, "gst_reconciliation"))
         block.gst = <GstReconciliationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} gstCycle={(client?.gst_cycle as GstCycle | null) ?? null} showWarnings={isAdvisor} />;
 
+      if (widgets.includes("tax_obligations"))
+        block.taxObligations = (
+          <TaxObligationsWidget
+            clientId={clientId}
+            tenantId={tenantId}
+            tenantName={tenantName}
+            gstCycle={(client?.gst_cycle as GstCycle | null) ?? null}
+            paygRegistered={client?.payg_withholding_cycle !== "not_registered"}
+          />
+        );
+
       // PAYG withholding stands alone: the activity statement card reports the
       // period's GST only, and this answers what is still owing month by month.
       // Structural hide: a file that has never run a pay run. Missing payroll
@@ -282,7 +295,7 @@ function ClientDashboard() {
       if (widgets.includes("loan_consolidation"))
         advanced.push({ id: `${o.id}:loan_consolidation`, node: <LoanConsolidationWidget clientId={clientId} tenantId={tenantId} tenantName={tenantName} /> });
 
-      if (block.gst || block.payg || block.superannuation) statutory.push(block);
+      if (block.taxObligations || block.gst || block.payg || block.superannuation) statutory.push(block);
     }
 
     // Transaction Search is organisation-wide, not per-org, so it lives in the
@@ -483,6 +496,7 @@ function ClientDashboard() {
                   superannuation full width. Not draggable, always first. */}
               {statutoryBlocks.map((b) => (
                 <div key={b.orgId} className="mb-6 space-y-6">
+                  {b.taxObligations && <div>{b.taxObligations}</div>}
                   {(b.gst || b.payg) && (
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                       {b.gst && <div className={b.payg ? undefined : "lg:col-span-2"}>{b.gst}</div>}
