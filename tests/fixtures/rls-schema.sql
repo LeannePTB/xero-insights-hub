@@ -617,8 +617,7 @@ AS $function$
     'payroll.employees.read',
     'payroll.payruns.read',
     'payroll.payslip.read',
-    'payroll.settings.read',
-    'finance.accountingactivity.read'
+    'payroll.settings.read'
   ]
 $function$
 ;
@@ -3771,4 +3770,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: dd911c89e5887becdae4b4f8b9733f284478ceab9322e9fde221455ffa0ee5d1
+-- catalogue-fingerprint: d856e0812b542c0f9f5a6af4b940095f1f87a14e1097339620679dbbb30de976
