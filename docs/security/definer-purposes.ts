@@ -71,6 +71,12 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.my_firm_ids": "The organisations the caller may reach.",
   "app_private.set_overview_alert_state":
     "Client overview: shared acknowledge, snooze or clear of one feed alert for one client. aal2, write predicate user_can_write_client (never a read predicate), audited. Called only by the SECURITY INVOKER public wrapper.",
+  "public.set_client_overview_hidden":
+    "Client overview: hide or restore one client. aal2, write predicate user_can_write_client (never a read predicate), audited. Caller-scoped, no user-id parameter.",
+  "public.set_firm_overview_hidden":
+    "Client overview: hide or restore a whole organisation. aal2, write predicate user_can_write_firm (never a read predicate), audited. Caller-scoped, no user-id parameter.",
+  "public.overview_hidden_items":
+    "Client overview: the hidden clients/organisations the caller could bring back. aal2, caller-scoped, returns only rows the caller's write predicate covers — never a leak of other organisations.",
   "public.my_firm_memberships": "The caller's organisation memberships and roles.",
   "public.my_roles": "The caller's platform roles.",
 
