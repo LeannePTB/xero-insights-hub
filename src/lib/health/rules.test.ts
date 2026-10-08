@@ -374,6 +374,35 @@ describe("statutory registration settings", () => {
     assert.strictEqual(r.unavailable, undefined);
   });
 
+  it("a client registered for nothing, with a super-named loan and overdrawn bank, shows no protected-money gap", () => {
+    const bs = row({
+      report_key: "balance_sheet",
+      payload: balanceSheet(-600_813, [
+        { name: "TracyFinlay Superannuation Fund", amount: -687, accountId: "smsf-loan" },
+      ]),
+    });
+    const none = { gst: false, payg: false, super: false };
+    const r = ruleProtectedMoneyVsCash(bs, accountRow(), undefined, undefined, none);
+    assert.strictEqual(r.finding, null);
+    // Never the "cash is not positive" gap: nothing is expected to compare.
+    assert.ok(!/Cash at bank/.test(r.unavailable ?? ""));
+  });
+
+  it("a registered client with overdrawn bank still reports the cash gap", () => {
+    const bs = row({
+      report_key: "balance_sheet",
+      payload: balanceSheet(-600_813, [
+        { name: "GST", amount: 5_000, accountId: "gst-1" },
+      ]),
+    });
+    const r = ruleProtectedMoneyVsCash(bs, accountRow(), undefined, undefined, {
+      gst: true,
+      payg: false,
+      super: false,
+    });
+    assert.notStrictEqual(r.unavailable, undefined);
+  });
+
   it("a GST-registered client that does not withhold PAYG is not told PAYG or super are unmatched", () => {
     // GST matched on the Balance Sheet; PAYG and super unresolved. With PAYG
     // withholding off, neither is expected, so they stay silent.

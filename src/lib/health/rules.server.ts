@@ -197,6 +197,13 @@ export function ruleProtectedMoneyVsCash(
     return { finding: null, unavailable };
   }
 
+  // A client expected to carry no GST, PAYG or super has no protected money to
+  // compare with cash, whatever lines happen to match by name (for example a
+  // loan to a "Superannuation Fund"). Silence, not a gap.
+  if (!expected.gst && !expected.payg && !expected.super) {
+    return { finding: null };
+  }
+
   const protectedMoney = buildProtectedMoney(balanceSheet.as_at, analysed.taxLines.lines);
   const cash = analysed.cashAtBank.status === "assessed" ? analysed.cashAtBank.total : null;
 
