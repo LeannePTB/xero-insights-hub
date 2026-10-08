@@ -48,6 +48,7 @@ import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_
 import { Route as ApiPublicSecurityRunAccessTestsRouteImport } from './routes/api/public/security/run-access-tests'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
+import { Route as ApiPublicXeroConnectionCleanupRouteImport } from './routes/api/public/xero/connection-cleanup'
 import { Route as ApiPublicXeroSnapshotRefreshRouteImport } from './routes/api/public/xero/snapshot-refresh'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -276,6 +277,12 @@ const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
   path: '/api/public/xero/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicXeroConnectionCleanupRoute =
+  ApiPublicXeroConnectionCleanupRouteImport.update({
+    id: '/api/public/xero/connection-cleanup',
+    path: '/api/public/xero/connection-cleanup',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicXeroSnapshotRefreshRoute =
   ApiPublicXeroSnapshotRefreshRouteImport.update({
     id: '/api/public/xero/snapshot-refresh',
@@ -390,6 +397,7 @@ export interface FileRoutesByFullPath {
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
+  '/api/public/xero/connection-cleanup': typeof ApiPublicXeroConnectionCleanupRoute
   '/api/public/xero/snapshot-refresh': typeof ApiPublicXeroSnapshotRefreshRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -440,6 +448,7 @@ export interface FileRoutesByTo {
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
+  '/api/public/xero/connection-cleanup': typeof ApiPublicXeroConnectionCleanupRoute
   '/api/public/xero/snapshot-refresh': typeof ApiPublicXeroSnapshotRefreshRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -495,6 +504,7 @@ export interface FileRoutesById {
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
+  '/api/public/xero/connection-cleanup': typeof ApiPublicXeroConnectionCleanupRoute
   '/api/public/xero/snapshot-refresh': typeof ApiPublicXeroSnapshotRefreshRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -550,6 +560,7 @@ export interface FileRouteTypes {
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
+    | '/api/public/xero/connection-cleanup'
     | '/api/public/xero/snapshot-refresh'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -600,6 +611,7 @@ export interface FileRouteTypes {
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
+    | '/api/public/xero/connection-cleanup'
     | '/api/public/xero/snapshot-refresh'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -654,6 +666,7 @@ export interface FileRouteTypes {
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
+    | '/api/public/xero/connection-cleanup'
     | '/api/public/xero/snapshot-refresh'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -687,6 +700,7 @@ export interface RootRouteChildren {
   ApiPublicSecurityRunAccessTestsRoute: typeof ApiPublicSecurityRunAccessTestsRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
   ApiPublicXeroCallbackRoute: typeof ApiPublicXeroCallbackRoute
+  ApiPublicXeroConnectionCleanupRoute: typeof ApiPublicXeroConnectionCleanupRoute
   ApiPublicXeroSnapshotRefreshRoute: typeof ApiPublicXeroSnapshotRefreshRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -970,6 +984,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicXeroCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/xero/connection-cleanup': {
+      id: '/api/public/xero/connection-cleanup'
+      path: '/api/public/xero/connection-cleanup'
+      fullPath: '/api/public/xero/connection-cleanup'
+      preLoaderRoute: typeof ApiPublicXeroConnectionCleanupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/xero/snapshot-refresh': {
       id: '/api/public/xero/snapshot-refresh'
       path: '/api/public/xero/snapshot-refresh'
@@ -1202,6 +1223,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSecurityRunAccessTestsRoute: ApiPublicSecurityRunAccessTestsRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
   ApiPublicXeroCallbackRoute: ApiPublicXeroCallbackRoute,
+  ApiPublicXeroConnectionCleanupRoute: ApiPublicXeroConnectionCleanupRoute,
   ApiPublicXeroSnapshotRefreshRoute: ApiPublicXeroSnapshotRefreshRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
