@@ -51,9 +51,11 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           }
         }
 
-        const flow: "connect" | "signin" | "onboard" | "reconnect" =
+        const flow: "connect" | "signin" | "signup" | "onboard" | "reconnect" =
           stateRow?.flow === "signin"
             ? "signin"
+            : stateRow?.flow === "signup"
+              ? "signup"
             : stateRow?.flow === "onboard"
               ? "onboard"
               : stateRow?.flow === "reconnect"
