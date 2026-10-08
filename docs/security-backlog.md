@@ -1620,3 +1620,11 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - 2026-10-08: Credit-card debt sign fixed — cards Xero places under Current Liabilities (positive = owed) were read as overpaid, so Net cash equalled Cash at bank (Bangkok on King, Amex $14,896.69). Calculation only; no access change. Closed.
 
 - 2026-10-08 CLOSED: overview "Unreconciled since" showed dates stored under the retired "newest reconciled line" rule. Rows dated before 2026-10-09 are now treated as unavailable (`unreconciledSinceFor`). Presentation/read only; no access, policy or Xero-call change. OPEN: Xero does not expose uncoded bank-feed statement lines to apps; Bangkok on King's July lines unverified until tonight's refresh.
+
+## 2026-10-08 — Rent report and rental consolidation (security-relevant)
+- New table `client_rental_properties`: RLS on, revoke all then SELECT to authenticated; read policies mirror `client_income_tax_instalments` (members, exact-client read, support read-only) plus restrictive aal2. No direct writes; `save_client_rental_property` / `delete_client_rental_property` are aal2, caller-scoped via `user_can_write_client`, tenant ownership checked, audited. Business owners and external advisers read only.
+- Nightly refresh adds `rent_bank_receipts` and `rent_invoices_paid` snapshots (≤3 pages each), only for files with rental properties. Existence check uses `supabaseAdmin` inside the existing system refresh worker (already registered system context).
+- Pickers (TrackingCategories, Contacts) are one guarded `xeroGet` each, editors only, cached 30 min client-side.
+- Consolidation reads group, members, clients and properties as the caller under RLS; each file passes `assert_widget_access` or is skipped.
+- OPEN: tracking matching relies on `TrackingOptionID` being present on Xero line items; verify against a real file after the first refresh. Part-paid invoices count only once fully paid (FullyPaidOnDate).
+- Not built yet: overview "Rent arrears" column and a Monthly management reports section.
