@@ -2,6 +2,7 @@
 // caller (RLS applies). Zero Xero calls: this module must never import
 // `@/lib/xero/api.server`.
 
+import { unreconciledSinceFor } from "./reconciliation";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, sydneyDate } from "@/lib/sydney-time";
 import { VERDICT_REPORT_KEYS } from "@/lib/health/rule-thresholds";
 import { debtorBook, evaluateClient, type SnapshotRow, type Verdict } from "@/lib/health/rules.server";

@@ -40,7 +40,7 @@ function money(n: number | null): string {
 // The rule lives in ./reconciliation so the overview table can share it;
 // re-exported here for existing imports and tests.
 export { bankReconciledStale } from "./reconciliation";
-import { bankReconciledStale } from "./reconciliation";
+import { bankReconciledStale, unreconciledSinceFor, UNRECONCILED_SINCE_RULE_FROM } from "./reconciliation";
 
 export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared: FeedEvent[]; notes: string[] } {
   const events: FeedEvent[] = [];
@@ -143,7 +143,7 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
 
     // Bank not reconciled: the newest reconciled bank transaction is old, or
     // the file has none at all. Only for connected files with nightly figures.
-    if (kAnchor && conns.some((x) => x.status === "connected")) {
+    if (kAnchor && kAnchor.slice(0, 10) >= UNRECONCILED_SINCE_RULE_FROM && conns.some((x) => x.status === "connected")) {
       const rec = unreconciledSinceFor(kf.get(kAnchor));
       if (bankReconciledStale(rec, kAnchor)) {
         events.push({
