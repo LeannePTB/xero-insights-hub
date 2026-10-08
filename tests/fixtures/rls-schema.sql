@@ -3405,13 +3405,13 @@ create policy "Manage cost classifications by firm (update)" on public.client_co
 create policy "Viewers read cost classifications" on public.client_cost_classifications as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy mfa_aal2_required on public.client_cost_classifications as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Client access reads income tax instalments" on public.client_income_tax_instalments as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
-create policy "MFA required for income tax instalments" on public.client_income_tax_instalments as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Members read income tax instalments" on public.client_income_tax_instalments as permissive for select to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_income_tax_instalments.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))));
 create policy "Support reads income tax instalments" on public.client_income_tax_instalments as permissive for select to authenticated using ((EXISTS ( SELECT 1
    FROM clients c
   WHERE ((c.id = client_income_tax_instalments.client_id) AND (c.firm_id IS NOT NULL) AND app_private.platform_staff_can_access_firm(auth.uid(), c.firm_id)))));
+create policy mfa_aal2_required on public.client_income_tax_instalments as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "entitled users read client key figures" on public.client_key_figures as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
 create policy mfa_aal2_required on public.client_key_figures as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "Client viewers read notes" on public.client_notes as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
@@ -3752,4 +3752,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 5635dcaec59a8b11298b6ea526d3f18441913bdda1fa139373dd0242d3d13a01
+-- catalogue-fingerprint: 4d130c744fb9fad273030bc5d290870a1d599f3e7ccf97edbd490bbceea3fe94
