@@ -115,7 +115,7 @@ export async function loadOverviewContext(sb: Sb): Promise<OverviewContext> {
       sb.from("client_reports").select("client_id, period_end, sent_at").not("sent_at", "is", null).in("client_id", part),
       sb.from("xero_snapshot_runs").select("client_id, status, started_at").in("client_id", part).gte("started_at", addDays(today, -9)),
       sb.from("overview_alert_states").select("client_id, event_key, severity_at_ack, acknowledged_by, acknowledged_at, snoozed_by, snoozed_until").in("client_id", part),
-      sb.from("client_key_figures").select("client_id, as_at, cash, debtors_total, debtors_overdue, creditors, bank_reconciled_to").in("client_id", part).gte("as_at", addDays(today, -40)),
+      sb.from("client_key_figures").select("client_id, as_at, cash, debtors_total, debtors_overdue, creditors, bank_reconciled_to, last_xero_login_at").in("client_id", part).gte("as_at", addDays(today, -40)),
     ]);
     for (const r of [undated, bs, pnl, ytd]) if (r.error) throw new Error(r.error.message);
     for (const row of (undated.data ?? []) as Row[]) push(ctx.rowsByClient, row.client_id, row);
@@ -318,6 +318,7 @@ export async function buildOverview(
       lastReportSentAt: ctx.lastSent.get(c.client_id) ?? null,
       freshAsAt,
       bankReconciledTo,
+      lastXeroLoginAt: kfRows.find((k: any) => k.last_xero_login_at != null)?.last_xero_login_at ?? null,
       cashSpark: (ctx.keyFigures.get(c.client_id) ?? [])
         .filter((k) => k.as_at >= addDays(ctx.today, -30) && k.cash !== null)
         .sort((a, b) => (a.as_at < b.as_at ? -1 : 1))

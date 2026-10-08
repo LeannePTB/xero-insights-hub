@@ -36,6 +36,8 @@ export type OverviewRow = {
   freshAsAt: string | null;
   /** Date of the newest reconciled bank transaction, from the nightly key figures. */
   bankReconciledTo: string | null;
+  /** Most recent Xero sign-in by anyone in the file (Finance API), from the nightly key figures. */
+  lastXeroLoginAt: string | null;
   historyNote: string | null;
   /** Up to 30 daily cash figures from the nightly key figures, oldest first. */
   cashSpark: number[];
