@@ -63,9 +63,11 @@ export function AppHeader({ actions }: Props) {
           >
             {initial}
           </span>
-          <Button variant="ghost" size="sm" onClick={() => void handleSignOut()} className="font-semibold">
-            <LogOut className="mr-2 h-4 w-4" /> Sign out
-          </Button>
+          {!sideMenuPresent && (
+            <Button variant="ghost" size="sm" onClick={() => void handleSignOut()} className="font-semibold">
+              <LogOut className="mr-2 h-4 w-4" /> Sign out
+            </Button>
+          )}
         </div>
       </div>
     </header>
