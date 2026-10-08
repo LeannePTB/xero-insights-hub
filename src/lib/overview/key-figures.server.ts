@@ -9,7 +9,17 @@ import { debtorBook } from "@/lib/health/rules.server";
 import { analyseBalanceSheet, buildProtectedMoney, statutoryOverrideMap } from "@/lib/xero/tax-lines";
 import { parsePnl, totalsForPeriod } from "@/lib/reports/monthly-report.server";
 
-const KEYS = ["balance_sheet", "accounts", "invoices_accrec_open", "invoices_accpay_open", "profit_and_loss_mtd"];
+const KEYS = ["balance_sheet", "accounts", "invoices_accrec_open", "invoices_accpay_open", "profit_and_loss_mtd", "bank_reconciled_latest"];
+
+/** Xero serialises dates like "/Date(1700000000000+0000)/"; some payloads carry ISO. */
+function xeroDateOnly(v: any): string | null {
+  if (typeof v !== "string") return null;
+  const m = v.match(/Date\((\d+)/);
+  const iso = v.match(/^(\d{4}-\d{2}-\d{2})/);
+  if (iso) return iso[1];
+  if (!m) return null;
+  return new Date(Number(m[1])).toISOString().slice(0, 10);
+}
 
 export async function writeKeyFigures(target: { clientId: string; firmId: string; tenantId: string }): Promise<void> {
   const db = supabaseAdmin as any;

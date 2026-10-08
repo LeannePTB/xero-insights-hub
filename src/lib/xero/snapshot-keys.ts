@@ -19,7 +19,7 @@ export const MAX_XERO_CALLS_PER_RUN = 400;
 
 /**
  * Nightly run allowance per connected, client-linked Xero file. A file needs
- * about 12 report calls plus up to INVOICE_PAGE_LIMIT pages for each of the two
+ * about 13 report calls plus up to INVOICE_PAGE_LIMIT pages for each of the two
  * open-invoice lists; 25 covers that with a little slack.
  */
 export const XERO_CALLS_PER_FILE_PER_RUN = 25;
