@@ -67,6 +67,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
+import { XeroSyncStatusCard } from "@/components/clients/XeroSyncStatusCard";
 import { CostClassificationPanel } from "@/components/dashboard/CostClassificationPanel";
 import { getClientWidgets } from "@/lib/tier-config.functions";
 import {
@@ -563,6 +564,11 @@ function ClientSettings() {
                 );
               })}
             </ul>
+          )}
+          {linkedOrgs.length > 0 && (
+            <div className="mt-4">
+              <XeroSyncStatusCard clientId={clientId} />
+            </div>
           )}
           {chooserState && availableConns.length === 0 && !optionsQ.isFetching && (
             <p className="mt-4 rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
