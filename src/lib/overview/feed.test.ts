@@ -39,4 +39,8 @@ describe("bank not reconciled rule", () => {
   test("reconciled on the anchor day is not stale", () => {
     assert.strictEqual(bankReconciledStale("2026-10-08", "2026-10-08"), false);
   });
+  test("a refresh timestamp does not flag yesterday's reconciliation as 14 days old", () => {
+    assert.strictEqual(bankReconciledStale("2026-10-07", "2026-10-08T03:43:12.459+00:00"), false);
+    assert.strictEqual(bankReconciledStale("2026-09-24", "2026-10-08T03:43:12.459+00:00"), true);
+  });
 });

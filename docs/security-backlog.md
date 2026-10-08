@@ -1588,3 +1588,10 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 
 ## 8 Oct 2026 — Notes card removed from the live dashboard (CLOSED)
 - Presentation only: the Notes card no longer renders on the live client dashboard; it remains on the management reports page. No data, entitlement or policy change.
+
+## 8 Oct 2026 — Overview reconciliation display and missing-date diagnosis
+- Removed the duplicate Bank not reconciled status chip at the owner's request; retained the date and cash-figure caution markers.
+- Corrected the shared 14-day calculation to accept the overview's fetched-at timestamp as well as the feed's calendar date. The timestamp previously reached calendar arithmetic unchanged, yielding NaN and falsely flagging 7 Oct as stale against 8 Oct. Regression test covers both recent and 14-day-old dates against a timestamp.
+- Missing-date wording now says unavailable, not never reconciled. Live read-only evidence: Bangkok on King and DRTABT Projects have no reconciliation snapshot or key-figures row; Cars Connect's last refresh is still marked running from 03:43 UTC. Autotek and Positive Traction have complete snapshots and 7 Oct dates. No date invented or backfilled, no new refresh triggered. Completion of the interrupted refresh remains operationally unverified.
+- Classification: SECURITY-RELEVANT diagnosis of stored client data; presentation and pure date arithmetic only. Threat: misleading stale/unavailable status. Invariants 1–9 and 11 unchanged: no database mutation, policy, grant, authorisation, Xero request, token handling or admin-client use added; live overview_clients definition retains caller-scoped AAL2 and practice membership guards.
+- Checks: 9 overview feed/rule tests pass; security:check passes (123 tests and 18 live checks), known failures unchanged; preview build OK. Database linter reports 116 findings (115 authenticated definer warnings, 1 locked RLS table); no database objects changed. security_posture() was attempted but denied to the tool's role, so its current result is unverified; no privilege bypass attempted. Authenticated visual verification remains unperformed.

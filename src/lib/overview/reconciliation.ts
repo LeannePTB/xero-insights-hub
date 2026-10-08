@@ -10,5 +10,5 @@ import { BANK_NOT_RECONCILED } from "./thresholds";
  */
 export function bankReconciledStale(reconciledTo: string | null, anchor: string): boolean {
   if (reconciledTo === null) return true;
-  return reconciledTo <= addDays(anchor, -BANK_NOT_RECONCILED.staleDays);
+  return reconciledTo <= addDays(anchor.slice(0, 10), -BANK_NOT_RECONCILED.staleDays);
 }
