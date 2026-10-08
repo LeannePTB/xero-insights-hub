@@ -55,10 +55,11 @@ const offered = [
 const dashboard =
   readFileSync(join(ROOT, DASHBOARD), "utf8") + readFileSync(join(ROOT, REPORTS), "utf8");
 const rendered = new Set(
-  [...dashboard.matchAll(/(?:widgets\.includes|renderWidget)\(\s*"([a-z_]+)"\s*\)/g)].map(
-    (m) => m[1]!,
-  ),
+  [...dashboard.matchAll(/widgets\.includes\(\s*"([a-z_]+)"\s*\)/g)].map((m) => m[1]!),
 );
+// Notes renders unconditionally on the management reports page (no
+// widgets.includes branch), so the regex above cannot see it.
+if (readFileSync(join(ROOT, REPORTS), "utf8").includes("<NotesCard")) rendered.add("notes");
 
 /**
  * A deprecated key draws a card when the card it was merged into is rendered.
