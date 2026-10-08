@@ -9,7 +9,7 @@ import { debtorBook } from "@/lib/health/rules.server";
 import { analyseBalanceSheet, buildProtectedMoney, statutoryOverrideMap } from "@/lib/xero/tax-lines";
 import { parsePnl, totalsForPeriod } from "@/lib/reports/monthly-report.server";
 
-const KEYS = ["balance_sheet", "accounts", "invoices_accrec_open", "invoices_accpay_open", "profit_and_loss_mtd", "bank_reconciled_latest"];
+const KEYS = ["balance_sheet", "accounts", "invoices_accrec_open", "invoices_accpay_open", "profit_and_loss_mtd", "bank_unreconciled_oldest"];
 
 /** Xero serialises dates like "/Date(1700000000000+0000)/"; some payloads carry ISO. */
 function xeroDateOnly(v: any): string | null {
@@ -72,11 +72,12 @@ export async function writeKeyFigures(target: { clientId: string; firmId: string
     fig.net_profit_mtd = t.netProfit;
   }
 
-  // Bank reconciled to: the newest reconciled bank transaction. Null means the
-  // file has no reconciled transactions (or the report has not run yet).
-  const br = latest.get("bank_reconciled_latest");
-  const txs = br?.complete ? (br.payload?.BankTransactions ?? []) : [];
-  const bankReconciledTo: string | null = txs.length ? xeroDateOnly(txs[0]?.Date) : null;
+  // Bank reconciled to: the date of the OLDEST unreconciled bank transaction
+  // (everything before it is reconciled). No open lines = reconciled to the
+  // as-at date. Null = the report has not run (unavailable, never invented).
+  const br = latest.get("bank_unreconciled_oldest");
+  const txs = br?.complete ? (br.payload?.BankTransactions ?? []) : null;
+  const bankReconciledTo: string | null = txs === null ? null : txs.length ? xeroDateOnly(txs[0]?.Date) : asAt;
 
   if (Object.values(fig).every((v) => v === null) && bankReconciledTo === null) return;
   const { error: wErr } = await db.from("client_key_figures").upsert(
