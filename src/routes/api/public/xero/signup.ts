@@ -67,7 +67,7 @@ export const Route = createFileRoute("/api/public/xero/signup")({
         url.searchParams.set("state", state);
         url.searchParams.set("code_challenge", codeChallenge);
         url.searchParams.set("code_challenge_method", "S256");
-        return Response.redirect(url.toString(), 302);
+        return new Response(null, { status: 302, headers: { Location: url.toString() } });
       },
     },
   },
