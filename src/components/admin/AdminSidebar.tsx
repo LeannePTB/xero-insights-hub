@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { BrandMark } from "@/components/BrandMark";
+import ptLogo from "@/assets/traction-advisory-logo.png";
 import { SecurityStatusCard } from "@/components/admin/SecurityStatusCard";
 import { Building2, LayoutGrid, Shield, Users } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -43,9 +43,13 @@ export function AdminSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <Link to="/dashboard" className="flex items-center gap-2 px-2 py-1">
-          <BrandMark logoHeightClass="h-6" />
+      <SidebarHeader className="overflow-hidden">
+        <Link to="/dashboard" aria-label="Traction Advisory" className="flex h-8 min-w-0 items-center gap-2 px-2 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
+          <img src={ptLogo} alt="Traction Advisory" className="h-6 w-auto max-w-full shrink-0 object-contain group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:w-8" />
+          <span className="min-w-0 text-[10px] font-semibold uppercase text-accent group-data-[collapsible=icon]:hidden">
+            Traction Advisory
+            <span className="block">Dashboards</span>
+          </span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
