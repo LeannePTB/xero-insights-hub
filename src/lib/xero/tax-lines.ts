@@ -429,6 +429,48 @@ function extractCashAtBankFromReport(
 }
 
 /**
+ * Credit card debt, resolved the same way as cash at bank: rows matched on
+ * account ID against accounts typed BANK with Class LIABILITY. A card balance
+ * is negative on the Balance Sheet when money is owed; `total` is the amount
+ * owed as a positive number, and an overpaid card contributes nil.
+ */
+function extractCreditCardDebtFromReport(
+  report: BalanceSheetReport,
+  accountsById: Map<string, XeroAccountRef>,
+): CreditCardDebtExtraction {
+  const accounts: { name: string; balance: number }[] = [];
+  let total = 0;
+
+  walkTaxRows(report.Rows, (r) => {
+    if (r.RowType !== "Row" || !r.Cells || r.Cells.length < 2) return;
+    const name = r.Cells[0]?.Value;
+    if (!name) return;
+    const accountId = accountIdFromCells(r.Cells);
+    if (!accountId) return;
+    const account = accountsById.get(accountId);
+    if (!isActiveCreditCardAccount(account)) return;
+    const amount = parseTaxAmount(r.Cells[1]?.Value);
+    const owed = amount < 0 ? -amount : 0;
+    total += owed;
+    accounts.push({ name, balance: amount });
+  });
+
+  if (accounts.length > 0) return { status: "assessed", total, accounts };
+
+  const fileHasCreditCards = [...accountsById.values()].some(isActiveCreditCardAccount);
+  if (fileHasCreditCards) {
+    return {
+      status: "unrecognised",
+      total: 0,
+      accounts: [],
+      reason:
+        "The file has active credit card accounts, but none of them could be matched to a line on the Balance Sheet, so credit card debt could not be read.",
+    };
+  }
+  return { status: "absent", total: 0, accounts: [] };
+}
+
+/**
  * The single Balance Sheet normalisation boundary. It accepts either Xero's full
  * `{ Reports: [...] }` envelope or the inner report object and turns malformed
  * inputs into `input_invalid` instead of empty figures.
