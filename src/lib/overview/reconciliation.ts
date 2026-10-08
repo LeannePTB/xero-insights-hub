@@ -12,3 +12,15 @@ export function bankReconciledStale(reconciledTo: string | null, anchor: string)
   if (reconciledTo === null) return true;
   return reconciledTo <= addDays(anchor.slice(0, 10), -BANK_NOT_RECONCILED.staleDays);
 }
+
+/**
+ * Key-figures rows dated before this were written under the retired rule
+ * ("newest reconciled line"), which hid months of open lines. Their stored
+ * date means something else, so it is treated as unavailable, never shown.
+ */
+export const UNRECONCILED_SINCE_RULE_FROM = "2026-10-09";
+
+export function unreconciledSinceFor(row: { as_at: string; bank_reconciled_to: string | null } | undefined): string | null {
+  if (!row || row.as_at.slice(0, 10) < UNRECONCILED_SINCE_RULE_FROM) return null;
+  return row.bank_reconciled_to ?? null;
+}

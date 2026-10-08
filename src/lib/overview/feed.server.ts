@@ -144,7 +144,7 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
     // Bank not reconciled: the newest reconciled bank transaction is old, or
     // the file has none at all. Only for connected files with nightly figures.
     if (kAnchor && conns.some((x) => x.status === "connected")) {
-      const rec = kf.get(kAnchor)?.bank_reconciled_to ?? null;
+      const rec = unreconciledSinceFor(kf.get(kAnchor));
       if (bankReconciledStale(rec, kAnchor)) {
         events.push({
           ...base,

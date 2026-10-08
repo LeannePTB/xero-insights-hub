@@ -297,7 +297,7 @@ export async function buildOverview(
     const prot = today?.protectedMoney ?? null;
     // Bank reconciled to: from the most recent nightly key-figures row.
     const kfRows = (ctx.keyFigures.get(c.client_id) ?? []).sort((a: any, b: any) => (a.as_at < b.as_at ? 1 : -1));
-    const bankReconciledTo: string | null = kfRows.length ? (kfRows[0].bank_reconciled_to ?? null) : null;
+    const bankReconciledTo: string | null = unreconciledSinceFor(kfRows[0]);
     out.push({
       clientId: c.client_id,
       clientName: c.client_name,
