@@ -15,6 +15,13 @@
       "when": 1791426615404,
       "tag": "0001_client_key_figures_credit_card_debt",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791427771295,
+      "tag": "0002_allow_signup_flow_in_xero_oauth_states",
+      "breakpoints": true
     }
   ]
 }

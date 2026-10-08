@@ -21,6 +21,8 @@ export type FeedEvent = {
   date: string;
   /** Present when an acknowledgement or snooze hides this item. */
   cleared?: { how: "acknowledged" | "snoozed"; by: string; at: string; until?: string | null };
+  /** Where to look for detail — set on data events, pointing at client settings. */
+  href?: string;
 };
 
 const FIGURE_LABEL: Partial<Record<FigureKey, string>> = {
@@ -122,19 +124,21 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
       }
     }
 
-    // Data events.
+    // Data events. Each links to the client settings page, where the Xero
+    // sync status section shows the reason in plain English.
+    const settingsHref = `/clients/${c.client_id}/settings`;
     const conns = ctx.connections.get(c.client_id) ?? [];
     if (conns.length && !conns.some((x) => x.status === "connected")) {
-      events.push({ ...base, eventKey: "data:disconnected", kind: "data", severity: 1, headline: "Xero disconnected", before: "Connected", after: "Disconnected", date: ctx.today });
+      events.push({ ...base, eventKey: "data:disconnected", kind: "data", severity: 1, headline: "Xero disconnected", before: "Connected", after: "Disconnected", date: ctx.today, href: settingsHref });
     }
     const failed = (ctx.runs.get(c.client_id) ?? [])
       .filter((r) => r.status === "failed" && r.started_at >= addDays(ctx.today, -7))
       .sort((a, b) => (a.started_at < b.started_at ? 1 : -1))[0];
     if (failed) {
-      events.push({ ...base, eventKey: `data:refresh_failed`, kind: "data", severity: 1, headline: "Overnight refresh failed", before: null, after: null, date: failed.started_at.slice(0, 10) });
+      events.push({ ...base, eventKey: `data:refresh_failed`, kind: "data", severity: 1, headline: "Overnight refresh failed", before: null, after: null, date: failed.started_at.slice(0, 10), href: settingsHref });
     }
     if (now.state === "stale") {
-      events.push({ ...base, eventKey: "data:stale", kind: "data", severity: 1, headline: "Snapshot out of date", before: null, after: now.detail, date: ctx.today });
+      events.push({ ...base, eventKey: "data:stale", kind: "data", severity: 1, headline: "Snapshot out of date", before: null, after: now.detail, date: ctx.today, href: settingsHref });
     }
 
     // Bank not reconciled: the newest reconciled bank transaction is old, or
@@ -151,6 +155,7 @@ export function buildFeed(ctx: OverviewContext): { events: FeedEvent[]; cleared:
           before: null,
           after: rec === null ? "No reconciled bank transactions" : `Last reconciled to ${rec}`,
           date: kAnchor,
+          href: settingsHref,
         });
       }
     }

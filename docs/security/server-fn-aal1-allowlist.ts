@@ -90,6 +90,15 @@ export const AAL1_ALLOWLIST: Aal1Exception[] = [
       "Mints a PKCE state row with user_id null and returns Xero's authorize URL. It grants nothing: the callback matches the Xero identity email against already-invited users, so it cannot create access.",
   },
   {
+    file: "src/lib/signup-request.functions.ts",
+    fn: "requestSignup",
+    kind: "unauthenticated",
+    reason:
+      "Request-access form (Sign Up with Xero modified flow) — the caller has no account yet, so no session can exist. Approved as part of the Xero App Store certification work, 8 Oct 2026.",
+    containment:
+      "Writes one signup_requests row of Zod-validated, unverified free text; reads nothing and returns nothing about existing accounts. Rate limited per email (3/day) and globally (30/hour); honeypot field silently drops bots. The table is revoked from anon/authenticated, so the insert is a registered system-context service-role use. It grants nothing: access still requires an invite created by the owner.",
+  },
+  {
     file: "src/routes/api/public/security/run-access-tests.ts",
     fn: "Route",
     kind: "unauthenticated",

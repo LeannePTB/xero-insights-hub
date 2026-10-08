@@ -5,6 +5,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { requestSignup } from "@/lib/signup-request.functions";
 import { toast } from "sonner";
 import { logFailedSignIn } from "@/lib/audit.functions";
 import { Loader2, LogOut } from "lucide-react";
@@ -56,6 +58,17 @@ function AuthPage() {
   const [signedInEmail, setSignedInEmail] = useState<string | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
   const [endedReason, setEndedReason] = useState<SignOutReason | null>(null);
+  // Request access (Sign Up with Xero modified flow): the Xero callback lands
+  // here with ?signup=1&email=…&name=… to pre-fill the form. Every field is
+  // re-validated server-side; the pre-fill is convenience only.
+  const [signupMode, setSignupMode] = useState(false);
+  const [reqName, setReqName] = useState("");
+  const [reqEmail, setReqEmail] = useState("");
+  const [reqFirm, setReqFirm] = useState("");
+  const [reqNote, setReqNote] = useState("");
+  const [reqWebsite, setReqWebsite] = useState(""); // honeypot
+  const [reqLoading, setReqLoading] = useState(false);
+  const [reqSent, setReqSent] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -69,6 +82,13 @@ function AuthPage() {
     }
     if (params.get("xero") === "signedin") {
       toast.success("Signed in with Xero");
+    }
+    if (params.get("signup") === "1") {
+      setSignupMode(true);
+      const preEmail = params.get("email");
+      const preName = params.get("name");
+      if (preEmail) setReqEmail(preEmail.slice(0, 254));
+      if (preName) setReqName(preName.slice(0, 120));
     }
     // The session ended: say so plainly. This is NOT a second-factor prompt, so
     // nobody is sent to their authenticator app when they simply need to sign in
@@ -173,6 +193,26 @@ function AuthPage() {
     }
   }
 
+  async function handleRequestAccess() {
+    setReqLoading(true);
+    try {
+      await requestSignup({
+        data: {
+          contactName: reqName,
+          email: reqEmail,
+          firmName: reqFirm,
+          note: reqNote || undefined,
+          website: reqWebsite || undefined,
+        },
+      });
+      setReqSent(true);
+    } catch (e: any) {
+      toast.error(e?.message ?? "Could not send your request. Please try again.");
+    } finally {
+      setReqLoading(false);
+    }
+  }
+
 
   return (
     <div className="grid min-h-screen md:grid-cols-2">
@@ -227,6 +267,68 @@ function AuthPage() {
               <Button variant="outline" className="w-full" onClick={signOut}>
                 <LogOut className="mr-2 h-4 w-4" /> Sign out
               </Button>
+            </div>
+          ) : signupMode ? (
+            <div className="space-y-3">
+              <h1 className="font-display text-2xl font-semibold">Request access</h1>
+              {reqSent ? (
+                <>
+                  <p className="text-sm text-muted-foreground" role="status">
+                    Thanks — your request has been sent. Traction Advisory will be in touch at{" "}
+                    <span className="font-medium text-foreground">{reqEmail}</span>.
+                  </p>
+                  <Button variant="outline" className="w-full" onClick={() => setSignupMode(false)}>
+                    Back to sign in
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="mt-1 text-sm text-muted-foreground">
+                    Access is invite-only. Tell us who you are and we'll be in touch.
+                  </p>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="req-name">Your name</Label>
+                    <Input id="req-name" autoComplete="name" value={reqName} onChange={(e) => setReqName(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="req-email">Email</Label>
+                    <Input id="req-email" type="email" autoComplete="email" value={reqEmail} onChange={(e) => setReqEmail(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="req-firm">Practice or business name</Label>
+                    <Input id="req-firm" autoComplete="organization" value={reqFirm} onChange={(e) => setReqFirm(e.target.value)} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="req-note">Anything we should know? (optional)</Label>
+                    <Textarea id="req-note" rows={3} value={reqNote} onChange={(e) => setReqNote(e.target.value)} />
+                  </div>
+                  {/* Honeypot — hidden from people, attractive to bots. */}
+                  <input
+                    type="text"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    className="hidden"
+                    value={reqWebsite}
+                    onChange={(e) => setReqWebsite(e.target.value)}
+                  />
+                  <Button
+                    className="w-full"
+                    onClick={handleRequestAccess}
+                    disabled={reqLoading || !reqName.trim() || !reqEmail.includes("@") || !reqFirm.trim()}
+                  >
+                    {reqLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Send request
+                  </Button>
+                  <button
+                    type="button"
+                    onClick={() => setSignupMode(false)}
+                    className="w-full pt-1 text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                  >
+                    Back to sign in
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <>
@@ -286,7 +388,14 @@ function AuthPage() {
                   }}
                 />
                 <p className="pt-1 text-center text-xs text-muted-foreground">
-                  Access is invite-only. Contact Traction Advisory.
+                  Access is invite-only.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setSignupMode(true)}
+                    className="underline underline-offset-2 hover:text-foreground"
+                  >
+                    Request access
+                  </button>
                 </p>
                 <p className="text-center text-xs text-muted-foreground">
                   <Link to="/security" className="underline-offset-2 hover:text-foreground hover:underline">

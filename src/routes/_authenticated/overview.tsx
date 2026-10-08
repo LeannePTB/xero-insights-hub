@@ -273,7 +273,13 @@ function Feed({ events, cleared, notes, loading }: { events: FeedEvent[]; cleare
                 {e.clientName}
               </Link>
               <span className="text-xs text-muted-foreground">{e.firmName}</span>
-              <span className="flex-1">{e.headline}</span>
+              {e.href ? (
+                <a href={e.href} className="flex-1 underline-offset-2 hover:underline">
+                  {e.headline}
+                </a>
+              ) : (
+                <span className="flex-1">{e.headline}</span>
+              )}
               {(e.before || e.after) && (
                 <span className="text-xs tabular-nums text-muted-foreground">
                   {e.before ?? "—"} → {e.after ?? "—"}
