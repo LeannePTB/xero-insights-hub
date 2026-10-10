@@ -1,19 +1,67 @@
 import { describe, expect, it } from "vitest";
 import {
   ORGANISATION_NAV,
+  allOrganisationsNav,
   clientFileItems,
   isBranchActive,
   isItemActive,
   navForWorkspace,
+  resolveWorkspace,
   workspaceFromPath,
 } from "./sidebar-nav";
 
 describe("workspaceFromPath", () => {
   it("maps addresses to workspaces", () => {
+    expect(workspaceFromPath("/system")).toEqual({ kind: "system" });
     expect(workspaceFromPath("/system/security")).toEqual({ kind: "system" });
+    expect(workspaceFromPath("/overview")).toEqual({ kind: "all" });
+    expect(workspaceFromPath("/overview/")).toEqual({ kind: "all" });
+    expect(workspaceFromPath("/firms/f1")).toEqual({ kind: "organisation", firmId: "f1" });
     expect(workspaceFromPath("/firms/f1/people")).toEqual({ kind: "organisation", firmId: "f1" });
+    expect(workspaceFromPath("/clients/c1")).toEqual({ kind: "client", clientId: "c1" });
     expect(workspaceFromPath("/clients/c1/reports")).toEqual({ kind: "client", clientId: "c1" });
     expect(workspaceFromPath("/clients/new")).toEqual({ kind: "none" });
+    expect(workspaceFromPath("/settings/account")).toEqual({ kind: "none" });
+    expect(workspaceFromPath("/settings/activity")).toEqual({ kind: "none" });
+  });
+});
+
+describe("resolveWorkspace", () => {
+  it("never keeps a stale workspace once the address names one", () => {
+    expect(resolveWorkspace("/overview", { kind: "organisation", firmId: "f1" })).toEqual({ kind: "all" });
+    expect(resolveWorkspace("/firms/f2", { kind: "all" })).toEqual({ kind: "organisation", firmId: "f2" });
+    expect(resolveWorkspace("/system", { kind: "organisation", firmId: "f1" })).toEqual({ kind: "system" });
+  });
+  it("keeps the last workspace on account pages only", () => {
+    expect(resolveWorkspace("/settings/account", { kind: "all" })).toEqual({ kind: "all" });
+    expect(resolveWorkspace("/settings/activity", { kind: "organisation", firmId: "f1" })).toEqual({
+      kind: "organisation",
+      firmId: "f1",
+    });
+  });
+});
+
+describe("all organisations menu", () => {
+  const orgs = [
+    { id: "f1", name: "Autotek NSW", clientCount: 4 },
+    { id: "f2", name: "Empty Org", clientCount: 0 },
+  ];
+  it("lists the overview then each organisation, with no organisation settings", () => {
+    const groups = allOrganisationsNav(orgs);
+    expect(groups[0].items[0].to).toBe("/overview");
+    expect(groups[1].label).toBe("Your organisations");
+    expect(groups[1].items.map((i) => i.to)).toEqual(["/firms/f1/overview", "/firms/f2"]);
+    const ids = groups.flatMap((g) => g.items.map((i) => i.id));
+    expect(ids.some((id) => ["settings", "people", "xero-files"].includes(id))).toBe(false);
+  });
+  it("is the menu chosen for the all-organisations workspace", () => {
+    const groups = navForWorkspace({ kind: "all" }, { canSeeSystem: false, organisations: orgs });
+    expect(groups[0].items[0].label).toBe("All organisations");
+  });
+  it("highlights the overview item on /overview", () => {
+    const [group] = allOrganisationsNav([]);
+    expect(isItemActive(group.items[0], "/overview", {})).toBe(true);
+    expect(isItemActive(group.items[0], "/firms/f1/overview", {})).toBe(false);
   });
 });
 
