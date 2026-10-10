@@ -67,6 +67,13 @@ import { Route as LovableEmailTransactionalSendRouteImport } from './routes/lova
 import { Route as AuthenticatedClientsClientIdAuditTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.audit.$tenantId'
 import { Route as AuthenticatedClientsClientIdPayablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.payables.$tenantId'
 import { Route as AuthenticatedClientsClientIdReceivablesTenantIdRouteImport } from './routes/_authenticated/clients.$clientId.receivables.$tenantId'
+import { Route as AuthenticatedClientsClientIdSettingsCardsRouteImport } from './routes/_authenticated/clients.$clientId.settings.cards'
+import { Route as AuthenticatedClientsClientIdSettingsCostsRouteImport } from './routes/_authenticated/clients.$clientId.settings.costs'
+import { Route as AuthenticatedClientsClientIdSettingsDangerRouteImport } from './routes/_authenticated/clients.$clientId.settings.danger'
+import { Route as AuthenticatedClientsClientIdSettingsGeneralRouteImport } from './routes/_authenticated/clients.$clientId.settings.general'
+import { Route as AuthenticatedClientsClientIdSettingsPeopleRouteImport } from './routes/_authenticated/clients.$clientId.settings.people'
+import { Route as AuthenticatedClientsClientIdSettingsTaxReportingRouteImport } from './routes/_authenticated/clients.$clientId.settings.tax-reporting'
+import { Route as AuthenticatedClientsClientIdSettingsXeroRouteImport } from './routes/_authenticated/clients.$clientId.settings.xero'
 import { Route as AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport } from './routes/_authenticated/firms.$firmId.consolidated.$groupId'
 import { Route as AuthenticatedFirmsFirmIdLoansIndexRouteImport } from './routes/_authenticated/firms.$firmId.loans.index'
 import { Route as AuthenticatedFirmsFirmIdLoansAccountsRouteImport } from './routes/_authenticated/firms.$firmId.loans.accounts'
@@ -401,6 +408,48 @@ const AuthenticatedClientsClientIdReceivablesTenantIdRoute =
     path: '/clients/$clientId/receivables/$tenantId',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedClientsClientIdSettingsCardsRoute =
+  AuthenticatedClientsClientIdSettingsCardsRouteImport.update({
+    id: '/cards',
+    path: '/cards',
+    getParentRoute: () => AuthenticatedClientsClientIdSettingsRoute,
+  } as any)
+const AuthenticatedClientsClientIdSettingsCostsRoute =
+  AuthenticatedClientsClientIdSettingsCostsRouteImport.update({
+    id: '/costs',
+    path: '/costs',
+    getParentRoute: () => AuthenticatedClientsClientIdSettingsRoute,
+  } as any)
+const AuthenticatedClientsClientIdSettingsDangerRoute =
+  AuthenticatedClientsClientIdSettingsDangerRouteImport.update({
+    id: '/danger',
+    path: '/danger',
+    getParentRoute: () => AuthenticatedClientsClientIdSettingsRoute,
+  } as any)
+const AuthenticatedClientsClientIdSettingsGeneralRoute =
+  AuthenticatedClientsClientIdSettingsGeneralRouteImport.update({
+    id: '/general',
+    path: '/general',
+    getParentRoute: () => AuthenticatedClientsClientIdSettingsRoute,
+  } as any)
+const AuthenticatedClientsClientIdSettingsPeopleRoute =
+  AuthenticatedClientsClientIdSettingsPeopleRouteImport.update({
+    id: '/people',
+    path: '/people',
+    getParentRoute: () => AuthenticatedClientsClientIdSettingsRoute,
+  } as any)
+const AuthenticatedClientsClientIdSettingsTaxReportingRoute =
+  AuthenticatedClientsClientIdSettingsTaxReportingRouteImport.update({
+    id: '/tax-reporting',
+    path: '/tax-reporting',
+    getParentRoute: () => AuthenticatedClientsClientIdSettingsRoute,
+  } as any)
+const AuthenticatedClientsClientIdSettingsXeroRoute =
+  AuthenticatedClientsClientIdSettingsXeroRouteImport.update({
+    id: '/xero',
+    path: '/xero',
+    getParentRoute: () => AuthenticatedClientsClientIdSettingsRoute,
+  } as any)
 const AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute =
   AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport.update({
     id: '/consolidated/$groupId',
@@ -496,7 +545,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
-  '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
+  '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRouteWithChildren
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/firms/$firmId/overview': typeof AuthenticatedFirmsFirmIdOverviewRoute
@@ -520,6 +569,13 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  '/clients/$clientId/settings/cards': typeof AuthenticatedClientsClientIdSettingsCardsRoute
+  '/clients/$clientId/settings/costs': typeof AuthenticatedClientsClientIdSettingsCostsRoute
+  '/clients/$clientId/settings/danger': typeof AuthenticatedClientsClientIdSettingsDangerRoute
+  '/clients/$clientId/settings/general': typeof AuthenticatedClientsClientIdSettingsGeneralRoute
+  '/clients/$clientId/settings/people': typeof AuthenticatedClientsClientIdSettingsPeopleRoute
+  '/clients/$clientId/settings/tax-reporting': typeof AuthenticatedClientsClientIdSettingsTaxReportingRoute
+  '/clients/$clientId/settings/xero': typeof AuthenticatedClientsClientIdSettingsXeroRoute
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
   '/firms/$firmId/loans/accounts': typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   '/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
@@ -562,7 +618,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
   '/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
-  '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
+  '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRouteWithChildren
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/overview': typeof AuthenticatedFirmsFirmIdOverviewRoute
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
@@ -584,6 +640,13 @@ export interface FileRoutesByTo {
   '/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  '/clients/$clientId/settings/cards': typeof AuthenticatedClientsClientIdSettingsCardsRoute
+  '/clients/$clientId/settings/costs': typeof AuthenticatedClientsClientIdSettingsCostsRoute
+  '/clients/$clientId/settings/danger': typeof AuthenticatedClientsClientIdSettingsDangerRoute
+  '/clients/$clientId/settings/general': typeof AuthenticatedClientsClientIdSettingsGeneralRoute
+  '/clients/$clientId/settings/people': typeof AuthenticatedClientsClientIdSettingsPeopleRoute
+  '/clients/$clientId/settings/tax-reporting': typeof AuthenticatedClientsClientIdSettingsTaxReportingRoute
+  '/clients/$clientId/settings/xero': typeof AuthenticatedClientsClientIdSettingsXeroRoute
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
   '/firms/$firmId/loans/accounts': typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   '/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
@@ -631,7 +694,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
   '/_authenticated/clients/$clientId/loans-accounts': typeof AuthenticatedClientsClientIdLoansAccountsRoute
   '/_authenticated/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
-  '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
+  '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRouteWithChildren
   '/_authenticated/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/_authenticated/firms/$firmId/overview': typeof AuthenticatedFirmsFirmIdOverviewRoute
@@ -655,6 +718,13 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/audit/$tenantId': typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   '/_authenticated/clients/$clientId/payables/$tenantId': typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
   '/_authenticated/clients/$clientId/receivables/$tenantId': typeof AuthenticatedClientsClientIdReceivablesTenantIdRoute
+  '/_authenticated/clients/$clientId/settings/cards': typeof AuthenticatedClientsClientIdSettingsCardsRoute
+  '/_authenticated/clients/$clientId/settings/costs': typeof AuthenticatedClientsClientIdSettingsCostsRoute
+  '/_authenticated/clients/$clientId/settings/danger': typeof AuthenticatedClientsClientIdSettingsDangerRoute
+  '/_authenticated/clients/$clientId/settings/general': typeof AuthenticatedClientsClientIdSettingsGeneralRoute
+  '/_authenticated/clients/$clientId/settings/people': typeof AuthenticatedClientsClientIdSettingsPeopleRoute
+  '/_authenticated/clients/$clientId/settings/tax-reporting': typeof AuthenticatedClientsClientIdSettingsTaxReportingRoute
+  '/_authenticated/clients/$clientId/settings/xero': typeof AuthenticatedClientsClientIdSettingsXeroRoute
   '/_authenticated/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
   '/_authenticated/firms/$firmId/loans/accounts': typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   '/_authenticated/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
@@ -726,6 +796,13 @@ export interface FileRouteTypes {
     | '/clients/$clientId/audit/$tenantId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
+    | '/clients/$clientId/settings/cards'
+    | '/clients/$clientId/settings/costs'
+    | '/clients/$clientId/settings/danger'
+    | '/clients/$clientId/settings/general'
+    | '/clients/$clientId/settings/people'
+    | '/clients/$clientId/settings/tax-reporting'
+    | '/clients/$clientId/settings/xero'
     | '/firms/$firmId/consolidated/$groupId'
     | '/firms/$firmId/loans/accounts'
     | '/firms/$firmId/loans/groups'
@@ -790,6 +867,13 @@ export interface FileRouteTypes {
     | '/clients/$clientId/audit/$tenantId'
     | '/clients/$clientId/payables/$tenantId'
     | '/clients/$clientId/receivables/$tenantId'
+    | '/clients/$clientId/settings/cards'
+    | '/clients/$clientId/settings/costs'
+    | '/clients/$clientId/settings/danger'
+    | '/clients/$clientId/settings/general'
+    | '/clients/$clientId/settings/people'
+    | '/clients/$clientId/settings/tax-reporting'
+    | '/clients/$clientId/settings/xero'
     | '/firms/$firmId/consolidated/$groupId'
     | '/firms/$firmId/loans/accounts'
     | '/firms/$firmId/loans/groups'
@@ -860,6 +944,13 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/audit/$tenantId'
     | '/_authenticated/clients/$clientId/payables/$tenantId'
     | '/_authenticated/clients/$clientId/receivables/$tenantId'
+    | '/_authenticated/clients/$clientId/settings/cards'
+    | '/_authenticated/clients/$clientId/settings/costs'
+    | '/_authenticated/clients/$clientId/settings/danger'
+    | '/_authenticated/clients/$clientId/settings/general'
+    | '/_authenticated/clients/$clientId/settings/people'
+    | '/_authenticated/clients/$clientId/settings/tax-reporting'
+    | '/_authenticated/clients/$clientId/settings/xero'
     | '/_authenticated/firms/$firmId/consolidated/$groupId'
     | '/_authenticated/firms/$firmId/loans/accounts'
     | '/_authenticated/firms/$firmId/loans/groups'
@@ -1306,6 +1397,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedClientsClientIdReceivablesTenantIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/clients/$clientId/settings/cards': {
+      id: '/_authenticated/clients/$clientId/settings/cards'
+      path: '/cards'
+      fullPath: '/clients/$clientId/settings/cards'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsCardsRouteImport
+      parentRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+    }
+    '/_authenticated/clients/$clientId/settings/costs': {
+      id: '/_authenticated/clients/$clientId/settings/costs'
+      path: '/costs'
+      fullPath: '/clients/$clientId/settings/costs'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsCostsRouteImport
+      parentRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+    }
+    '/_authenticated/clients/$clientId/settings/danger': {
+      id: '/_authenticated/clients/$clientId/settings/danger'
+      path: '/danger'
+      fullPath: '/clients/$clientId/settings/danger'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsDangerRouteImport
+      parentRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+    }
+    '/_authenticated/clients/$clientId/settings/general': {
+      id: '/_authenticated/clients/$clientId/settings/general'
+      path: '/general'
+      fullPath: '/clients/$clientId/settings/general'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsGeneralRouteImport
+      parentRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+    }
+    '/_authenticated/clients/$clientId/settings/people': {
+      id: '/_authenticated/clients/$clientId/settings/people'
+      path: '/people'
+      fullPath: '/clients/$clientId/settings/people'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsPeopleRouteImport
+      parentRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+    }
+    '/_authenticated/clients/$clientId/settings/tax-reporting': {
+      id: '/_authenticated/clients/$clientId/settings/tax-reporting'
+      path: '/tax-reporting'
+      fullPath: '/clients/$clientId/settings/tax-reporting'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsTaxReportingRouteImport
+      parentRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+    }
+    '/_authenticated/clients/$clientId/settings/xero': {
+      id: '/_authenticated/clients/$clientId/settings/xero'
+      path: '/xero'
+      fullPath: '/clients/$clientId/settings/xero'
+      preLoaderRoute: typeof AuthenticatedClientsClientIdSettingsXeroRouteImport
+      parentRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+    }
     '/_authenticated/firms/$firmId/consolidated/$groupId': {
       id: '/_authenticated/firms/$firmId/consolidated/$groupId'
       path: '/consolidated/$groupId'
@@ -1501,6 +1641,39 @@ const AuthenticatedFirmsFirmIdRouteWithChildren =
     AuthenticatedFirmsFirmIdRouteChildren,
   )
 
+interface AuthenticatedClientsClientIdSettingsRouteChildren {
+  AuthenticatedClientsClientIdSettingsCardsRoute: typeof AuthenticatedClientsClientIdSettingsCardsRoute
+  AuthenticatedClientsClientIdSettingsCostsRoute: typeof AuthenticatedClientsClientIdSettingsCostsRoute
+  AuthenticatedClientsClientIdSettingsDangerRoute: typeof AuthenticatedClientsClientIdSettingsDangerRoute
+  AuthenticatedClientsClientIdSettingsGeneralRoute: typeof AuthenticatedClientsClientIdSettingsGeneralRoute
+  AuthenticatedClientsClientIdSettingsPeopleRoute: typeof AuthenticatedClientsClientIdSettingsPeopleRoute
+  AuthenticatedClientsClientIdSettingsTaxReportingRoute: typeof AuthenticatedClientsClientIdSettingsTaxReportingRoute
+  AuthenticatedClientsClientIdSettingsXeroRoute: typeof AuthenticatedClientsClientIdSettingsXeroRoute
+}
+
+const AuthenticatedClientsClientIdSettingsRouteChildren: AuthenticatedClientsClientIdSettingsRouteChildren =
+  {
+    AuthenticatedClientsClientIdSettingsCardsRoute:
+      AuthenticatedClientsClientIdSettingsCardsRoute,
+    AuthenticatedClientsClientIdSettingsCostsRoute:
+      AuthenticatedClientsClientIdSettingsCostsRoute,
+    AuthenticatedClientsClientIdSettingsDangerRoute:
+      AuthenticatedClientsClientIdSettingsDangerRoute,
+    AuthenticatedClientsClientIdSettingsGeneralRoute:
+      AuthenticatedClientsClientIdSettingsGeneralRoute,
+    AuthenticatedClientsClientIdSettingsPeopleRoute:
+      AuthenticatedClientsClientIdSettingsPeopleRoute,
+    AuthenticatedClientsClientIdSettingsTaxReportingRoute:
+      AuthenticatedClientsClientIdSettingsTaxReportingRoute,
+    AuthenticatedClientsClientIdSettingsXeroRoute:
+      AuthenticatedClientsClientIdSettingsXeroRoute,
+  }
+
+const AuthenticatedClientsClientIdSettingsRouteWithChildren =
+  AuthenticatedClientsClientIdSettingsRoute._addFileChildren(
+    AuthenticatedClientsClientIdSettingsRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -1516,7 +1689,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedClientsClientIdLoansRoute: typeof AuthenticatedClientsClientIdLoansRoute
   AuthenticatedClientsClientIdLoansAccountsRoute: typeof AuthenticatedClientsClientIdLoansAccountsRoute
   AuthenticatedClientsClientIdReportsRoute: typeof AuthenticatedClientsClientIdReportsRoute
-  AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRoute
+  AuthenticatedClientsClientIdSettingsRoute: typeof AuthenticatedClientsClientIdSettingsRouteWithChildren
   AuthenticatedClientsClientIdIndexRoute: typeof AuthenticatedClientsClientIdIndexRoute
   AuthenticatedClientsClientIdAuditTenantIdRoute: typeof AuthenticatedClientsClientIdAuditTenantIdRoute
   AuthenticatedClientsClientIdPayablesTenantIdRoute: typeof AuthenticatedClientsClientIdPayablesTenantIdRoute
@@ -1544,7 +1717,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedClientsClientIdReportsRoute:
     AuthenticatedClientsClientIdReportsRoute,
   AuthenticatedClientsClientIdSettingsRoute:
-    AuthenticatedClientsClientIdSettingsRoute,
+    AuthenticatedClientsClientIdSettingsRouteWithChildren,
   AuthenticatedClientsClientIdIndexRoute:
     AuthenticatedClientsClientIdIndexRoute,
   AuthenticatedClientsClientIdAuditTenantIdRoute:
