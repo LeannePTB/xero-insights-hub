@@ -42,6 +42,7 @@ import {
 } from "@/lib/scenario-basis";
 import { UnclassifiedNotice } from "@/components/dashboard/UnclassifiedNotice";
 import { CostBasisControls } from "@/components/dashboard/CostBasisControls";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/cashflow-scenario")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -205,7 +206,7 @@ function CashflowScenarioPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <PageContainer>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-2xl font-semibold">Cashflow Scenario</h1>
@@ -670,7 +671,7 @@ function CashflowScenarioPage() {
 
           </>
         ) : null}
-      </main>
+      </PageContainer>
     </div>
   );
 }

@@ -48,6 +48,7 @@ import { getClientWidgets } from "@/lib/tier-config.functions";
 import { RefreshSnapshotsButton } from "@/components/dashboard/RefreshSnapshotsButton";
 import { OrganisationLapsedNotice } from "@/components/dashboard/OrganisationLapsedNotice";
 import { ClientTrialNotice } from "@/components/dashboard/ClientTrialNotice";
+import { PageContainer } from "@/components/PageContainer";
 // import { SubscriptionGate } from "@/components/billing/SubscriptionGate";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/")({
@@ -395,7 +396,7 @@ function ClientDashboard() {
           note="Preview only; data access is unchanged"
         />
       )}
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <PageContainer>
         {/* SubscriptionGate disabled until payments re-enabled */}
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
           <div className="min-w-0">
@@ -496,7 +497,7 @@ function ClientDashboard() {
 
 
         {/* /SubscriptionGate */}
-      </main>
+      </PageContainer>
     </div>
   );
 }

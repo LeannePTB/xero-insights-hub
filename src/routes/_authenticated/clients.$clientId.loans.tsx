@@ -30,6 +30,7 @@ import {
 import { MismatchDetailDialog } from "@/components/loan/MismatchDetailDialog";
 import { Loader2, ExternalLink, Settings2, AlertTriangle } from "lucide-react";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
+import { PageContainer } from "@/components/PageContainer";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -109,7 +110,7 @@ function LoansPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <PageContainer width="full">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-display text-2xl font-semibold">Company Loan Consolidation</h1>
@@ -285,7 +286,7 @@ function LoansPage() {
             )}
           </>
         )}
-      </main>
+      </PageContainer>
 
       <MismatchDetailDialog
         open={dialogOpen}

@@ -31,6 +31,7 @@ import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION, wasRateLimited } from "@/lib/reports/monthly-report";
 import { reportVideoFrom } from "@/lib/reports/report-video";
 import { ReportVideoEditor } from "@/components/reports/ReportVideoEditor";
+import { PageContainer } from "@/components/PageContainer";
 
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/reports")({
@@ -196,7 +197,7 @@ function ReportsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <PageContainer>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="font-display text-2xl font-semibold sm:text-3xl">
@@ -443,7 +444,7 @@ function ReportsPage() {
         />
         <DeleteReportDialog report={toDelete} clientId={clientId} onClose={() => setToDelete(null)} />
         <SendReportDialog report={toSend} clientId={clientId} onClose={() => setToSend(null)} />
-      </main>
+      </PageContainer>
     </div>
   );
 }

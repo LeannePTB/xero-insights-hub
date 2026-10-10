@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { RefreshCw, Loader2, ExternalLink, BellOff, Bell, Play, Check, Undo2, Search, X } from "lucide-react";
 import { toast } from "sonner";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/audit/$tenantId")({
   head: () => ({ meta: [{ title: "Xero file audit — Traction Advisory" }] }),
@@ -179,7 +180,7 @@ function AuditPage() {
   });
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 p-6">
+    <PageContainer as="div" width="wide" className="space-y-4">
       <div className="flex items-center justify-between">
         <div />
         {canManage && <Button size="sm" onClick={() => runMut.mutate()} disabled={runMut.isPending}>
@@ -360,7 +361,7 @@ function AuditPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }
 

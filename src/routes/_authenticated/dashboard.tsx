@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
+import { PageContainer } from "@/components/PageContainer";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -85,7 +86,7 @@ function Dashboard() {
     <div className="min-h-screen bg-background">
       <AppHeader />
 
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <PageContainer>
         <div className="flex items-end justify-between">
           <div>
             <h1 className="font-display text-3xl font-semibold">Your dashboards</h1>
@@ -130,7 +131,7 @@ function Dashboard() {
             </div>
           )}
         </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }
