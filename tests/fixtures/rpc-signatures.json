@@ -472,6 +472,12 @@
     },
     {
         "args": [
+        ],
+        "name": "get_platform_branding",
+        "required": 0
+    },
+    {
+        "args": [
             "_client_id",
             "_user_id",
             "_tier",
@@ -803,6 +809,17 @@
         ],
         "name": "save_client_rental_property",
         "required": 9
+    },
+    {
+        "args": [
+            "_product_name",
+            "_logo_light",
+            "_logo_dark",
+            "_favicon",
+            "_email_sender_name"
+        ],
+        "name": "save_platform_branding",
+        "required": 5
     },
     {
         "args": [
