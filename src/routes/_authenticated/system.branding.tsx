@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { savePlatformBranding } from "@/lib/platform-branding.functions";
 import { PLATFORM_BRANDING_KEY, usePlatformBranding, DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/branding")({
   head: () => ({
@@ -105,7 +106,7 @@ function BrandingPage() {
   );
 
   return (
-    <main className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
+    <PageContainer width="readable" className="space-y-6">
       <FirmPageHeader
         title="Platform branding"
         description="Used in the menu, header, sign-in pages and email sender name. Anything left empty uses the built-in Traction Advisory branding."
@@ -128,6 +129,6 @@ function BrandingPage() {
           </Button>
         </CardContent>
       </Card>
-    </main>
+    </PageContainer>
   );
 }

@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { listLoginEvents } from "@/lib/login-log.functions";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, Activity } from "lucide-react";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/settings/activity")({
   head: () => ({ meta: [{ title: "Login activity — Traction Advisory" }] }),
@@ -23,7 +24,7 @@ function ActivityPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <PageContainer>
         <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
           <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back to clients</Link>
         </Button>
@@ -75,7 +76,7 @@ function ActivityPage() {
             </div>
           )}
         </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }

@@ -53,6 +53,7 @@ import { recordViewAs } from "@/lib/view-as.functions";
 import { getOrgPurchase } from "@/lib/card-model.functions";
 import { listOrganisationUsage } from "@/lib/admin-plan-usage.functions";
 import { organisationOptionDisplay } from "@/lib/organisation-option-display";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/organisations/$firmId")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -164,12 +165,12 @@ function FirmDetailPage() {
     return (
       <div className="min-h-screen grid place-items-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      </PageContainer>
     );
   }
   if (detailQ.error) {
     return (
-      <div className="max-w-3xl mx-auto p-8">
+      <PageContainer as="div" width="readable">
         <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
           <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
           <p className="text-sm">{(detailQ.error as Error).message}</p>
@@ -182,7 +183,7 @@ function FirmDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+      <PageContainer className="space-y-6">
         <FirmPageHeader title={firm.name} actions={firm.is_always_free ? <Badge variant="secondary">Always free</Badge> : undefined} />
         <Tabs value={tab} onValueChange={(value) => void navigate({ to: "/system/organisations/$firmId", params: { firmId }, search: { tab: value as SystemOrganisationTab }, replace: true })}>
           <SystemOrganisationTabs />
@@ -197,7 +198,7 @@ function FirmDetailPage() {
           <TabsContent value="support"><SupportPanel firmId={firmId} /></TabsContent>
           <TabsContent value="audit"><AuditSection events={auditQ.data?.events ?? []} loading={auditQ.isLoading} /></TabsContent>
         </Tabs>
-      </main>
+      </PageContainer>
     </div>
   );
 }

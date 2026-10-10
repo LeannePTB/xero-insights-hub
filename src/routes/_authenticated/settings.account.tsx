@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Loader2, KeyRound, Eye, EyeOff, LogOut } from "lucide-react";
 import { recordSignOutOtherDevices } from "@/lib/session-activity.functions";
 import { toast } from "sonner";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/settings/account")({
   head: () => ({ meta: [{ title: "Account — Traction Advisory" }] }),
@@ -101,7 +102,7 @@ function AccountSettings() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-xl px-6 py-10 space-y-6">
+      <PageContainer width="readable" className="space-y-6">
         <Button variant="ghost" size="sm" asChild className="-ml-2">
           <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
         </Button>
@@ -207,7 +208,7 @@ function AccountSettings() {
             Update password
           </Button>
         </section>
-      </main>
+      </PageContainer>
     </div>
   );
 }
