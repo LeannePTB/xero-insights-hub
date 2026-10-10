@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, ChevronsUpDown, LayoutGrid, ShieldCheck } from "lucide-react";
+import { Briefcase, Building2, ChevronsUpDown, LayoutGrid, ShieldCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
