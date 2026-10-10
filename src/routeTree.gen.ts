@@ -37,6 +37,7 @@ import { Route as AuthenticatedSystemIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedSystemBrandingRouteImport } from './routes/_authenticated/system.branding'
 import { Route as AuthenticatedSystemSecurityRouteImport } from './routes/_authenticated/system.security'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
+import { Route as AuthenticatedSystemTrixieRouteImport } from './routes/_authenticated/system.trixie'
 import { Route as AuthenticatedSystemXeroRouteImport } from './routes/_authenticated/system.xero'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
@@ -233,6 +234,12 @@ const AuthenticatedSystemStaffRoute =
   AuthenticatedSystemStaffRouteImport.update({
     id: '/staff',
     path: '/staff',
+    getParentRoute: () => AuthenticatedSystemRoute,
+  } as any)
+const AuthenticatedSystemTrixieRoute =
+  AuthenticatedSystemTrixieRouteImport.update({
+    id: '/trixie',
+    path: '/trixie',
     getParentRoute: () => AuthenticatedSystemRoute,
   } as any)
 const AuthenticatedSystemXeroRoute = AuthenticatedSystemXeroRouteImport.update({
@@ -543,6 +550,7 @@ export interface FileRoutesByFullPath {
   '/system/branding': typeof AuthenticatedSystemBrandingRoute
   '/system/security': typeof AuthenticatedSystemSecurityRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/system/trixie': typeof AuthenticatedSystemTrixieRoute
   '/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -617,6 +625,7 @@ export interface FileRoutesByTo {
   '/system/branding': typeof AuthenticatedSystemBrandingRoute
   '/system/security': typeof AuthenticatedSystemSecurityRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/system/trixie': typeof AuthenticatedSystemTrixieRoute
   '/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -694,6 +703,7 @@ export interface FileRoutesById {
   '/_authenticated/system/branding': typeof AuthenticatedSystemBrandingRoute
   '/_authenticated/system/security': typeof AuthenticatedSystemSecurityRoute
   '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/_authenticated/system/trixie': typeof AuthenticatedSystemTrixieRoute
   '/_authenticated/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -773,6 +783,7 @@ export interface FileRouteTypes {
     | '/system/branding'
     | '/system/security'
     | '/system/staff'
+    | '/system/trixie'
     | '/system/xero'
     | '/lovable/email/suppression'
     | '/admin/'
@@ -847,6 +858,7 @@ export interface FileRouteTypes {
     | '/system/branding'
     | '/system/security'
     | '/system/staff'
+    | '/system/trixie'
     | '/system/xero'
     | '/lovable/email/suppression'
     | '/admin'
@@ -923,6 +935,7 @@ export interface FileRouteTypes {
     | '/_authenticated/system/branding'
     | '/_authenticated/system/security'
     | '/_authenticated/system/staff'
+    | '/_authenticated/system/trixie'
     | '/_authenticated/system/xero'
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
@@ -1198,6 +1211,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/system/staff'
       preLoaderRoute: typeof AuthenticatedSystemStaffRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
+    '/_authenticated/system/trixie': {
+      id: '/_authenticated/system/trixie'
+      path: '/trixie'
+      fullPath: '/system/trixie'
+      preLoaderRoute: typeof AuthenticatedSystemTrixieRouteImport
       parentRoute: typeof AuthenticatedSystemRoute
     }
     '/_authenticated/system/xero': {
@@ -1558,6 +1578,7 @@ interface AuthenticatedSystemRouteChildren {
   AuthenticatedSystemBrandingRoute: typeof AuthenticatedSystemBrandingRoute
   AuthenticatedSystemSecurityRoute: typeof AuthenticatedSystemSecurityRoute
   AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
+  AuthenticatedSystemTrixieRoute: typeof AuthenticatedSystemTrixieRoute
   AuthenticatedSystemXeroRoute: typeof AuthenticatedSystemXeroRoute
   AuthenticatedSystemIndexRoute: typeof AuthenticatedSystemIndexRoute
   AuthenticatedSystemOrganisationsFirmIdRoute: typeof AuthenticatedSystemOrganisationsFirmIdRoute
@@ -1567,6 +1588,7 @@ const AuthenticatedSystemRouteChildren: AuthenticatedSystemRouteChildren = {
   AuthenticatedSystemBrandingRoute: AuthenticatedSystemBrandingRoute,
   AuthenticatedSystemSecurityRoute: AuthenticatedSystemSecurityRoute,
   AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
+  AuthenticatedSystemTrixieRoute: AuthenticatedSystemTrixieRoute,
   AuthenticatedSystemXeroRoute: AuthenticatedSystemXeroRoute,
   AuthenticatedSystemIndexRoute: AuthenticatedSystemIndexRoute,
   AuthenticatedSystemOrganisationsFirmIdRoute:
