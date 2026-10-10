@@ -48,12 +48,12 @@ export function AppShell({ children }: { children: ReactNode }) {
                 aria-label={brand.productName}
                  className="flex min-w-0 items-center gap-3"
               >
+                {/* The logo already contains the wordmark — no duplicate text. */}
                 <img
                   src={brand.logoLight}
                   alt={brand.productName}
                   className="h-12 w-auto max-w-32 shrink-0 object-contain"
                 />
-                <span className="min-w-0 text-base font-semibold leading-tight text-foreground">{brand.productName}</span>
               </Link>
             )}
           </header>

@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, ChevronsUpDown, LayoutGrid, ShieldCheck } from "lucide-react";
+import { Briefcase, Building2, ChevronsUpDown, LayoutGrid, ShieldCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,19 +15,25 @@ type Props = {
   workspace: Workspace;
   canSeeSystem: boolean;
   organisations: { id: string; name: string }[];
+  clientName?: string | null;
+  clientOrgName?: string | null;
 };
 
 /** Moves you to another address; the address decides the menu. Grants nothing. */
-export function WorkspaceSwitcher({ workspace, canSeeSystem, organisations }: Props) {
+export function WorkspaceSwitcher({ workspace, canSeeSystem, organisations, clientName, clientOrgName }: Props) {
   const navigate = useNavigate();
   const current =
     workspace.kind === "system"
       ? "System Admin"
-      : workspace.kind === "organisation"
-        ? (organisations.find((o) => o.id === workspace.firmId)?.name ?? "Organisation")
-        : workspace.kind === "client"
-          ? "Client"
-          : "Choose workspace";
+      : workspace.kind === "all"
+        ? "All organisations"
+        : workspace.kind === "organisation"
+          ? (organisations.find((o) => o.id === workspace.firmId)?.name ?? "Organisation")
+          : workspace.kind === "client"
+            ? (clientName ?? "Client")
+            : "Choose workspace";
+  const Icon =
+    workspace.kind === "system" ? ShieldCheck : workspace.kind === "all" ? LayoutGrid : workspace.kind === "client" ? Briefcase : Building2;
 
   if (!canSeeSystem && organisations.length === 0) return null;
 
@@ -37,8 +43,13 @@ export function WorkspaceSwitcher({ workspace, canSeeSystem, organisations }: Pr
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton size="lg" tooltip={current} className="border border-border/60">
-              {workspace.kind === "system" ? <ShieldCheck className="h-4 w-4" /> : <Building2 className="h-4 w-4" />}
-              <span className="min-w-0 flex-1 truncate text-left text-sm font-semibold">{current}</span>
+              <Icon className="h-4 w-4" />
+              <span className="flex min-w-0 flex-1 flex-col text-left leading-tight">
+                <span className="truncate text-sm font-semibold">{current}</span>
+                {workspace.kind === "client" && clientOrgName && (
+                  <span className="truncate text-xs text-muted-foreground">{clientOrgName}</span>
+                )}
+              </span>
               <ChevronsUpDown className="h-4 w-4 opacity-60" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>

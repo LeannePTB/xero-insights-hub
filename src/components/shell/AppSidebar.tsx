@@ -47,10 +47,12 @@ import { getClient } from "@/lib/clients.functions";
 import { getMyClientCapabilities } from "@/lib/roles.functions";
 import { useSignOut } from "@/lib/use-sign-out";
 
+import { useRef } from "react";
 import {
   isBranchActive,
   isItemActive,
   navForWorkspace,
+  resolveWorkspace,
   workspaceFromPath,
   type NavIcon,
   type NavItem,
@@ -89,11 +91,17 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
   const canSeeSystem = ctxQ.data?.isSuperAdmin === true;
   const organisations = firmsQ.data?.firms ?? [];
 
-  let workspace: Workspace = workspaceFromPath(pathname);
+  // The address decides the workspace. Account pages (workspace-neutral) keep
+  // the menu the person was last using; on a fresh load of one of those pages
+  // we pick a neutral default — never "the first organisation".
+  const lastWorkspace = useRef<Workspace>({ kind: "none" });
+  let workspace: Workspace = resolveWorkspace(pathname, lastWorkspace.current);
   if (workspace.kind === "none") {
-    if (organisations[0]) workspace = { kind: "organisation", firmId: organisations[0].id };
+    if (organisations.length === 1) workspace = { kind: "organisation", firmId: organisations[0].id };
+    else if (organisations.length > 1) workspace = { kind: "all" };
     else if (canSeeSystem) workspace = { kind: "system" };
   }
+  if (workspaceFromPath(pathname).kind !== "none") lastWorkspace.current = workspace;
   const params: Record<string, string> =
     workspace.kind === "organisation"
       ? { firmId: workspace.firmId }
@@ -120,7 +128,13 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
     enabled: !!clientId,
     retry: false,
   });
-  const groups = navForWorkspace(workspace, { canSeeSystem, clientFiles }).map((group) => ({
+  // Owning organisation comes from the caller-scoped client read, never the URL.
+  const clientRow = (clientQ.data as any)?.client as { name?: string; firm_id?: string } | undefined;
+  const clientName = clientRow?.name ?? null;
+  const clientOrgName = clientRow?.firm_id
+    ? (organisations.find((o) => o.id === clientRow.firm_id)?.name ?? null)
+    : null;
+  const groups = navForWorkspace(workspace, { canSeeSystem, clientFiles, organisations }).map((group) => ({
     ...group,
     items: workspace.kind === "client" && manageQ.data?.canManageClient !== true
       ? group.items.filter((item) => !["cashflow", "loans", "client-settings"].includes(item.id))
@@ -144,7 +158,13 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="gap-2 overflow-hidden">
-        <WorkspaceSwitcher workspace={workspace} canSeeSystem={canSeeSystem} organisations={organisations} />
+        <WorkspaceSwitcher
+          workspace={workspace}
+          canSeeSystem={canSeeSystem}
+          organisations={organisations}
+          clientName={clientName}
+          clientOrgName={clientOrgName}
+        />
       </SidebarHeader>
 
       <SidebarContent>
