@@ -319,14 +319,14 @@ export function GstReconciliationWidget({
                 : "PAYG withheld is not included — see the reasons below."}
             </p>
             {data.vintages && !data.vintages.payRunsCoverPeriodEnd && (
-              <p className="mt-1 text-info text-info">
+              <p className="mt-1 text-info">
                 The saved pay-run list stops before this period ends, so a pay run paid after{" "}
                 {data.vintages.payRunsAsAt} is not in the PAYG figure. Nothing has been assumed or
                 added in its place.
               </p>
             )}
             {data.vintages && !data.vintages.payRunsComplete && (
-              <p className="mt-1 text-info text-info">
+              <p className="mt-1 text-info">
                 That saved list was a partial pull, so an older pay run inside this period may be
                 missing. Nothing has been estimated in its place.
               </p>
@@ -417,10 +417,10 @@ export function GstReconciliationWidget({
 
                   {!data.ties && (data.tieReasons?.length ?? 0) > 0 && (
                     <div className="rounded-xl border border-info/30 bg-info/10 p-3 border-info/30 bg-info/10">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-info text-info">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-info">
                         Why it doesn't tie
                       </p>
-                      <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-info text-info">
+                      <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-info">
                         {data.tieReasons.map((r, i) => (
                           <li key={i}>{r}</li>
                         ))}
@@ -435,7 +435,7 @@ export function GstReconciliationWidget({
                   </p>
 
                   {(data.issues.length ?? 0) > 0 && (
-                    <ul className="space-y-1 text-xs text-info text-info">
+                    <ul className="space-y-1 text-xs text-info">
                       {data.issues.map((m, i) => (
                         <li key={i}>{m}</li>
                       ))}

@@ -74,7 +74,7 @@ const STATUS_BADGE: Record<ReconRow["status"], { label: string; cls: string }> =
   },
   unpaired: {
     label: "Unpaired",
-    cls: "border-transparent bg-info/10 text-info hover:bg-info/10 bg-info/10 text-info",
+    cls: "border-transparent bg-info/10 text-info hover:bg-info/10 text-info",
   },
   missing: { label: "Missing", cls: "border-transparent bg-muted text-muted-foreground" },
 };

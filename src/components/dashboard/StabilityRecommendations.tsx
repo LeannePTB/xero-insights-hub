@@ -12,14 +12,14 @@ export function StabilityRecommendations({ metrics }: { metrics: PillarMetric[] 
           r.severity === "danger"
             ? "border-l-destructive bg-destructive/5"
             : r.severity === "watch"
-              ? "border-l-info bg-info/10 bg-info/10"
+              ? "border-l-info bg-info/10"
               : "border-l-emerald-500 bg-emerald-50 dark:bg-emerald-950/20";
         const Icon = r.severity === "danger" ? AlertTriangle : r.severity === "watch" ? TrendingUp : Info;
         const iconColor =
           r.severity === "danger"
             ? "text-destructive"
             : r.severity === "watch"
-              ? "text-info text-info"
+              ? "text-info"
               : "text-emerald-700 dark:text-emerald-400";
         return (
           <div key={i} className={`rounded-lg border border-border border-l-4 p-3 ${tone}`}>

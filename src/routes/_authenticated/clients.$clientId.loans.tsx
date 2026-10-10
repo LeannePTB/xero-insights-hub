@@ -43,7 +43,7 @@ function fmt(n: number | null | undefined): string {
 const STATUS_BADGE: Record<ReconRow["status"], { label: string; cls: string }> = {
   balanced: { label: "Balanced", cls: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" },
   mismatch: { label: "Mismatch", cls: "bg-destructive/10 text-destructive" },
-  unpaired: { label: "Unpaired", cls: "bg-info/10 text-info text-info" },
+  unpaired: { label: "Unpaired", cls: "bg-info/10 text-info" },
   missing: { label: "Missing", cls: "bg-muted text-muted-foreground" },
 };
 
@@ -187,7 +187,7 @@ function LoansPage() {
         {result && !reconQ.isError && (
           <>
             {result.tenantErrors.length > 0 && (
-              <div className="mb-4 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info text-info">
+              <div className="mb-4 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info">
                 {result.tenantErrors.map((e) => (
                   <div key={e.tenantId} className="flex items-start gap-1.5">
                     <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {e.error}

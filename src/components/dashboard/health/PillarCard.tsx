@@ -19,7 +19,7 @@ const BAR: Record<"good" | "watch" | "bad" | "neutral", string> = {
 
 const SCORE_TEXT: Record<"good" | "watch" | "bad" | "neutral", string> = {
   good: "text-emerald-700 dark:text-emerald-400",
-  watch: "text-info text-info",
+  watch: "text-info",
   bad: "text-rose-700 dark:text-rose-400",
   neutral: "text-muted-foreground",
 };

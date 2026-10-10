@@ -103,7 +103,7 @@ export function CardFreshness({
       <span>
         {parts.join(" · ")}
         {overdue && (
-          <span className="text-info text-info">
+          <span className="text-info">
             {" · not updated since before last night — may be out of date"}
           </span>
         )}

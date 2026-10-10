@@ -544,7 +544,7 @@ function ClientSettings() {
                     </div>
                     {missingScopes.length > 0 ? (
                       <div className="w-full rounded-md border border-info/30 bg-info/10 p-3 text-xs">
-                        <p className="font-semibold text-info text-info">
+                        <p className="font-semibold text-info">
                           This connection needs reauthorising to enable additional reports.
                         </p>
                         <p className="mt-1 text-muted-foreground">

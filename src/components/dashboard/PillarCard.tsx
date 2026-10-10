@@ -21,7 +21,7 @@ function pillClasses(status: PillarStatus): string {
 function scoreColors(score: number | null) {
   if (score === null) return { text: "text-muted-foreground", bar: "bg-muted" };
   if (score >= 70) return { text: "text-emerald-700 dark:text-emerald-400", bar: "bg-emerald-500" };
-  if (score >= 50) return { text: "text-info text-info", bar: "bg-info/10" };
+  if (score >= 50) return { text: "text-info", bar: "bg-info/10" };
   return { text: "text-destructive", bar: "bg-destructive" };
 }
 

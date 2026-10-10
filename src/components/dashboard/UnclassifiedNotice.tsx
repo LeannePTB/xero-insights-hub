@@ -20,7 +20,7 @@ export function UnclassifiedNotice({
   // the tooling link, because a client cannot act on it.
   const advisorView = isAdvisor && !!clientId;
   return (
-    <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info text-info">
+    <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info">
       <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
       <div className="flex-1">
         {advisorView ? (

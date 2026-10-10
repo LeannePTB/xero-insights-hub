@@ -339,7 +339,7 @@ export function BreakevenWidget({
             </details>
 
             {s.unitemisedBalance !== 0 && s.unitemisedMaterial && (
-              <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info text-info">
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1">
                   {fmtAUD(s.unitemisedBalance)} of the fixed costs below could not be matched to a
@@ -353,7 +353,7 @@ export function BreakevenWidget({
                 a figure they are shown rests on an assumption. Same disclosure
                 either way; only the action link is preparer-facing. */}
             {s.classificationEnabled && s.unclassifiedCount > 0 && (
-              <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info text-info">
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1">
                   {isAdvisor && clientId ? (

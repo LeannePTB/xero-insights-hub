@@ -42,7 +42,7 @@ export function ClientTrialNotice({ clientId }: { clientId: string }) {
       <Clock
         className={
           t.endingSoon
-            ? "mt-0.5 h-4 w-4 shrink-0 text-info text-info"
+            ? "mt-0.5 h-4 w-4 shrink-0 text-info"
             : "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
         }
       />

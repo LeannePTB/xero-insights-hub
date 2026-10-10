@@ -114,7 +114,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
                     : q.data.band === "strong"
                       ? "text-foreground"
                       : q.data.band === "watch"
-                        ? "text-info text-info"
+                        ? "text-info"
                         : "text-destructive")
                 }
               >

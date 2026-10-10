@@ -65,7 +65,7 @@ export function ClientSetupSection({ clientId }: { clientId: string }) {
             <li key={item.key} className="flex items-start gap-3 p-4">
               <span className="mt-0.5 shrink-0">
                 {flagged ? (
-                  <AlertTriangle className="h-4 w-4 text-info text-info" />
+                  <AlertTriangle className="h-4 w-4 text-info" />
                 ) : item.status === "done" ? (
                   <Check className="h-4 w-4 text-muted-foreground" />
                 ) : item.status === "unknown" ? (
