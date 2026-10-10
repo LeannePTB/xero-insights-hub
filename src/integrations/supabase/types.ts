@@ -1644,7 +1644,9 @@ export type Database = {
           trial_branding_enabled: boolean
           trial_consolidation_enabled: boolean
           trial_ends_at: string | null
+          trial_white_label_enabled: boolean
           updated_at: string
+          white_label_enabled: boolean
         }
         Insert: {
           advisory_enabled?: boolean
@@ -1658,7 +1660,9 @@ export type Database = {
           trial_branding_enabled?: boolean
           trial_consolidation_enabled?: boolean
           trial_ends_at?: string | null
+          trial_white_label_enabled?: boolean
           updated_at?: string
+          white_label_enabled?: boolean
         }
         Update: {
           advisory_enabled?: boolean
@@ -1672,7 +1676,9 @@ export type Database = {
           trial_branding_enabled?: boolean
           trial_consolidation_enabled?: boolean
           trial_ends_at?: string | null
+          trial_white_label_enabled?: boolean
           updated_at?: string
+          white_label_enabled?: boolean
         }
         Relationships: [
           {
@@ -3639,12 +3645,15 @@ export type Database = {
           effective_advisory: boolean
           effective_branding: boolean
           effective_consolidation: boolean
+          effective_white_label: boolean
           firm_id: string
           trial_active: boolean
           trial_advisory_enabled: boolean
           trial_branding_enabled: boolean
           trial_consolidation_enabled: boolean
           trial_ends_at: string
+          trial_white_label_enabled: boolean
+          white_label_enabled: boolean
         }[]
       }
       organisation_members: {
@@ -3909,28 +3918,54 @@ export type Database = {
         Args: { _cards: string[]; _firm_id: string }
         Returns: string[]
       }
-      set_org_purchase: {
-        Args: {
-          _advisory: boolean
-          _billing_mode: string
-          _branding: boolean
-          _client_limit: number
-          _consolidation: boolean
-          _firm_id: string
-        }
-        Returns: undefined
-      }
-      set_org_trial: {
-        Args: {
-          _advisory: boolean
-          _branding: boolean
-          _consolidation: boolean
-          _ends_at: string
-          _firm_id: string
-          _reason: string
-        }
-        Returns: string
-      }
+      set_org_purchase:
+        | {
+            Args: {
+              _advisory: boolean
+              _billing_mode: string
+              _branding: boolean
+              _client_limit: number
+              _consolidation: boolean
+              _firm_id: string
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              _advisory: boolean
+              _billing_mode: string
+              _branding: boolean
+              _client_limit: number
+              _consolidation: boolean
+              _firm_id: string
+              _white_label: boolean
+            }
+            Returns: undefined
+          }
+      set_org_trial:
+        | {
+            Args: {
+              _advisory: boolean
+              _branding: boolean
+              _consolidation: boolean
+              _ends_at: string
+              _firm_id: string
+              _reason: string
+            }
+            Returns: string
+          }
+        | {
+            Args: {
+              _advisory: boolean
+              _branding: boolean
+              _consolidation: boolean
+              _ends_at: string
+              _firm_id: string
+              _reason: string
+              _white_label: boolean
+            }
+            Returns: undefined
+          }
       set_org_widget_enabled: {
         Args: {
           _enabled: boolean
@@ -4017,6 +4052,24 @@ export type Database = {
       user_can_write_firm: {
         Args: { _firm_id: string; _user_id: string }
         Returns: boolean
+      }
+      workspace_branding_for_client: {
+        Args: { _client_id: string }
+        Returns: {
+          firm_id: string
+          logo_path: string
+          organisation_name: string
+          white_label_enabled: boolean
+        }[]
+      }
+      workspace_branding_for_firm: {
+        Args: { _firm_id: string }
+        Returns: {
+          firm_id: string
+          logo_path: string
+          organisation_name: string
+          white_label_enabled: boolean
+        }[]
       }
       xero_error_breakdown: {
         Args: { _days?: number }

@@ -104,12 +104,12 @@ function AdminOrganisations({ firms, loading, error }: { firms: FirmRow[]; loadi
         <thead className="bg-muted/50 text-left text-xs text-muted-foreground"><tr>
           <SortableHead label="Organisation" value="name" current={sort} direction={direction} onSort={changeSort} />
           <SortableHead label="Clients" value="clients" current={sort} direction={direction} onSort={changeSort} />
-          <th className="px-3 py-2.5">Advisory</th><th className="px-3 py-2.5">Consolidation</th><th className="px-3 py-2.5">Branding</th>
+           <th className="px-3 py-2.5">Advisory</th><th className="px-3 py-2.5">Consolidation</th><th className="px-3 py-2.5">Branding</th><th className="px-3 py-2.5">White label</th>
           <SortableHead label="Billing" value="billing" current={sort} direction={direction} onSort={changeSort} />
           <SortableHead label="Trial ends" value="trial" current={sort} direction={direction} onSort={changeSort} />
           <SortableHead label="Needs attention" value="attention" current={sort} direction={direction} onSort={changeSort} />
         </tr></thead>
-        <tbody>{rows.map((row) => <OrganisationTableRow key={row.firm.firm_id} row={row} onOpen={() => open(row)} />)}{rows.length === 0 && <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No organisations match.</td></tr>}</tbody>
+        <tbody>{rows.map((row) => <OrganisationTableRow key={row.firm.firm_id} row={row} onOpen={() => open(row)} />)}{rows.length === 0 && <tr><td colSpan={9} className="px-4 py-10 text-center text-muted-foreground">No organisations match.</td></tr>}</tbody>
       </table>
     </div>
     <div className="grid gap-3 lg:hidden">{rows.map((row) => <OrganisationCard key={row.firm.firm_id} row={row} onOpen={() => open(row)} />)}{rows.length === 0 && <p className="rounded-md border p-6 text-center text-sm text-muted-foreground">No organisations match.</p>}</div>
@@ -124,7 +124,7 @@ function SortableHead({ label, value, current, direction, onSort }: { label: str
 function OrganisationTableRow({ row, onOpen }: { row: AdminOrganisationRow; onOpen: () => void }) {
   return <tr className="cursor-pointer border-t hover:bg-muted/30 focus-within:bg-muted/30" tabIndex={0} onClick={onOpen} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(); } }}>
     <td className="px-3 py-3"><OrganisationName row={row} /></td><td className="px-3 py-3"><ClientUsage row={row} /></td>
-    {(["advisory", "consolidation", "branding"] as const).map((key) => <td key={key} className="px-3 py-3"><OptionState row={row} option={key} /></td>)}
+    {(["advisory", "consolidation", "branding", "whiteLabel"] as const).map((key) => <td key={key} className="px-3 py-3"><OptionState row={row} option={key} /></td>)}
     <td className="px-3 py-3">{row.purchase?.billingMode === "external" ? "External" : row.purchase ? "Bookkeeping" : "—"}</td>
     <td className="px-3 py-3 tabular-nums">{row.purchase?.trialActive ? organisationTrialEndLabel(row.purchase.trialEndsAt) : ""}</td>
     <td className="px-3 py-3"><Attention row={row} /></td>
@@ -134,14 +134,14 @@ function OrganisationTableRow({ row, onOpen }: { row: AdminOrganisationRow; onOp
 function OrganisationCard({ row, onOpen }: { row: AdminOrganisationRow; onOpen: () => void }) {
   return <button onClick={onOpen} className="rounded-md border bg-card p-4 text-left hover:bg-muted/30"><OrganisationName row={row} /><dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 text-sm">
     <Fact label="Clients"><ClientUsage row={row} /></Fact><Fact label="Billing">{row.purchase?.billingMode === "external" ? "External" : row.purchase ? "Bookkeeping" : "—"}</Fact>
-    <Fact label="Advisory"><OptionState row={row} option="advisory" /></Fact><Fact label="Consolidation"><OptionState row={row} option="consolidation" /></Fact><Fact label="Branding"><OptionState row={row} option="branding" /></Fact><Fact label="Trial ends">{row.purchase?.trialActive ? organisationTrialEndLabel(row.purchase.trialEndsAt) : "—"}</Fact><Fact label="Needs attention"><Attention row={row} /></Fact>
+    <Fact label="Advisory"><OptionState row={row} option="advisory" /></Fact><Fact label="Consolidation"><OptionState row={row} option="consolidation" /></Fact><Fact label="Branding"><OptionState row={row} option="branding" /></Fact><Fact label="White label"><OptionState row={row} option="whiteLabel" /></Fact><Fact label="Trial ends">{row.purchase?.trialActive ? organisationTrialEndLabel(row.purchase.trialEndsAt) : "—"}</Fact><Fact label="Needs attention"><Attention row={row} /></Fact>
   </dl></button>;
 }
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) { return <div><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5">{children}</dd></div>; }
 function OrganisationName({ row }: { row: AdminOrganisationRow }) { const status = organisationStatus(row); return <div className="flex flex-wrap items-center gap-2 font-medium">{row.firm.firm_name}{status && <Badge variant={status.tone === "bad" ? "destructive" : status.tone === "info" ? "info" : "secondary"}>{status.label}</Badge>}</div>; }
 function ClientUsage({ row }: { row: AdminOrganisationRow }) { const used = row.usage?.clientsUsed; const limit = row.usage?.clientLimit; if (used == null || limit == null) return <>—</>; const over = used > limit; return <span className={over ? "font-medium text-destructive" : "tabular-nums"}>{used} / {limit >= 9999 ? "∞" : limit}{over ? " · over limit" : ""}</span>; }
-function OptionState({ row, option }: { row: AdminOrganisationRow; option: "advisory" | "consolidation" | "branding" }) { const state = row.purchase ? organisationOptionDisplay(row.purchase).find((item) => item.key === option) : undefined; return <span className="inline-flex items-center gap-1.5">{state?.on ? <Check className="h-4 w-4 text-success" aria-label="On" /> : <span className="text-muted-foreground">—</span>}{state?.trial && <span className="text-xs text-info">trial</span>}</span>; }
+function OptionState({ row, option }: { row: AdminOrganisationRow; option: "advisory" | "consolidation" | "branding" | "whiteLabel" }) { const state = row.purchase ? organisationOptionDisplay(row.purchase).find((item) => item.key === option) : undefined; return <span className="inline-flex items-center gap-1.5">{state?.on ? <Check className="h-4 w-4 text-success" aria-label="On" /> : <span className="text-muted-foreground">—</span>}{state?.trial && <span className="text-xs text-info">trial</span>}</span>; }
 function Attention({ row }: { row: AdminOrganisationRow }) { const count = organisationNeedsAttention(row); if (!count) return <span className="text-muted-foreground">—</span>; const copy = `${count} client${count === 1 ? "" : "s"} need lodgement cycles`; return <Tooltip><TooltipTrigger asChild><span className="inline-flex items-center gap-1 text-info"><AlertCircle className="h-4 w-4" /><span className="tabular-nums">{count}</span></span></TooltipTrigger><TooltipContent>{copy}</TooltipContent></Tooltip>; }
 
 function MemberOrganisations({ firms, loading }: { firms: { id: string; name: string }[]; loading: boolean }) { if (loading) return <CenteredLoader />; return <div className="overflow-hidden rounded-md border"><table className="w-full text-sm"><tbody>{firms.map((firm) => <tr key={firm.id} className="border-t first:border-t-0"><td className="px-4 py-3 font-medium"><Link to="/firms/$firmId/overview" params={{ firmId: firm.id }} className="block">{firm.name}</Link></td></tr>)}</tbody></table></div>; }

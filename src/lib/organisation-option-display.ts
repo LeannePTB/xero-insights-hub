@@ -2,19 +2,22 @@ export type OrganisationOptionState = {
   advisory: boolean;
   consolidation: boolean;
   branding: boolean;
+  whiteLabel: boolean;
   trialAdvisory: boolean;
   trialConsolidation: boolean;
   trialBranding: boolean;
+  trialWhiteLabel: boolean;
   trialEndsAt: string | null;
   trialActive: boolean;
   effectiveAdvisory: boolean;
   effectiveConsolidation: boolean;
   effectiveBranding: boolean;
+  effectiveWhiteLabel: boolean;
 };
 
 export type OrganisationOptionDisplay = {
-  key: "advisory" | "consolidation" | "branding";
-  label: "Advisory" | "Consolidation" | "Branding";
+  key: "advisory" | "consolidation" | "branding" | "whiteLabel";
+  label: "Advisory" | "Consolidation" | "Branding" | "White label";
   on: boolean;
   trial: boolean;
 };
@@ -45,6 +48,12 @@ export function organisationOptionDisplay(
       label: "Branding",
       on: state.effectiveBranding,
       trial: state.trialActive && state.trialBranding && !state.branding,
+    },
+    {
+      key: "whiteLabel",
+      label: "White label",
+      on: state.effectiveWhiteLabel,
+      trial: state.trialActive && state.trialWhiteLabel && !state.whiteLabel,
     },
   ];
 }
