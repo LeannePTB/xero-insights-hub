@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { SuperAdminChip } from "@/components/admin/SuperAdminOnly";
+import { useLocation } from "@tanstack/react-router";
 import {
   getOrgPurchase,
   saveOrgPurchase,
@@ -39,6 +39,7 @@ import {
  * here.
  */
 export function OrgPurchaseCard({ firmId }: { firmId: string }) {
+  const showAdminLabel = !useLocation().pathname.startsWith("/system");
   const qc = useQueryClient();
   const fetchPurchase = useServerFn(getOrgPurchase);
   const save = useServerFn(saveOrgPurchase);
@@ -131,7 +132,6 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
       <div className="flex flex-wrap items-center gap-2">
         <ShoppingCart className="h-4 w-4" />
         <h2 className="text-lg font-semibold">What this organisation has bought</h2>
-        {canEdit && <SuperAdminChip />}
       </div>
       <p className="text-sm text-muted-foreground">
         These options decide which cards exist for every client in this organisation. Each client's
@@ -271,17 +271,20 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
       </div>
 
       {canEdit ? (
-        <Button onClick={() => mut.mutate()} disabled={mut.isPending || !dirty}>
-          {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Save purchase
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending || !dirty}>
+            {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save purchase
+          </Button>
+          {showAdminLabel && <span className="text-xs text-muted-foreground">Super admin</span>}
+        </div>
       ) : (
         <p className="text-xs text-muted-foreground">
           Read-only — contact support to change what this organisation has bought.
         </p>
       )}
 
-      <OrgTrialBlock firmId={firmId} purchase={purchase} canEdit={canEdit} />
+      <OrgTrialBlock firmId={firmId} purchase={purchase} canEdit={canEdit} showAdminLabel={showAdminLabel} />
     </section>
   );
 }
@@ -297,10 +300,12 @@ function OrgTrialBlock({
   firmId,
   purchase,
   canEdit,
+  showAdminLabel,
 }: {
   firmId: string;
   purchase: OrgPurchase;
   canEdit: boolean;
+  showAdminLabel: boolean;
 }) {
   const qc = useQueryClient();
   const saveTrial = useServerFn(saveOrgTrial);
@@ -373,9 +378,12 @@ function OrgTrialBlock({
           </p>
         </div>
         {canEdit && !open && (
-          <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
-            {status.kind === "active" ? "Change trial" : "Start a trial"}
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
+              {status.kind === "active" ? "Change trial" : "Start a trial"}
+            </Button>
+            {showAdminLabel && <span className="text-xs text-muted-foreground">Super admin</span>}
+          </div>
         )}
       </div>
 

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { listFirmsAdmin } from "@/lib/admin.functions";
+import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
 import { XeroErrorBreakdownCard } from "@/components/admin/XeroErrorBreakdownCard";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
@@ -26,7 +27,7 @@ function XeroMonitoringPage() {
   const firms = (((firmsQ.data as any)?.firms ?? []) as any[]).map((f) => ({ id: f.firm_id as string, name: f.firm_name as string }));
   return (
     <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
-      <h1 className="text-2xl font-semibold text-foreground">Xero monitoring</h1>
+      <FirmPageHeader title="Xero monitoring" />
       <XeroUsageCard />
       <XeroErrorBreakdownCard />
       <OrphanXeroConnectionsCard firms={firms} />

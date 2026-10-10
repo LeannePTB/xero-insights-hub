@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -105,12 +106,10 @@ function BrandingPage() {
 
   return (
     <main className="mx-auto max-w-3xl space-y-6 px-4 py-8 sm:px-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground">Platform branding</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Used in the menu, header, sign-in pages and email sender name. Anything left empty uses the built-in Traction Advisory branding.
-        </p>
-      </div>
+      <FirmPageHeader
+        title="Platform branding"
+        description="Used in the menu, header, sign-in pages and email sender name. Anything left empty uses the built-in Traction Advisory branding."
+      />
       <Card>
         <CardContent className="space-y-5 p-6">
           <div className="space-y-2">

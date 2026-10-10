@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -31,14 +31,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users, LogOut } from "lucide-react";
+import { Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users, LogOut } from "lucide-react";
 import { toast } from "sonner";
-import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
+import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { siteUrl } from "@/lib/site-origin";
 
 
 export const Route = createFileRoute("/_authenticated/system/staff")({
-  head: () => ({ meta: [{ title: "Advisors — Traction Advisory" }] }),
+  head: () => ({ meta: [
+    { title: "Platform staff — Traction Advisory" },
+    { name: "description", content: "Manage Traction Advisory platform staff and practice team membership." },
+    { property: "og:title", content: "Platform staff — Traction Advisory" },
+    { property: "og:description", content: "Manage platform staff and practice team membership." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: AdvisorSettings,
 });
 
@@ -232,16 +239,7 @@ function AdvisorSettings() {
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
 
-        <Button variant="ghost" size="sm" asChild className="-ml-2">
-          <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
-        </Button>
-        <div>
-          <h1 className="font-display text-3xl font-semibold">Advisors</h1>
-          {viewerIsSuperAdmin && <SuperAdminBadge className="ml-2 align-middle" />}
-          <p className="mt-1 text-sm text-muted-foreground">
-            Invite teammates to manage clients and dashboards. Advisors have full access to every client.
-          </p>
-        </div>
+        <FirmPageHeader title="Platform staff" />
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
           <h2 className="mb-3 font-display text-lg font-semibold">Add an advisor</h2>
