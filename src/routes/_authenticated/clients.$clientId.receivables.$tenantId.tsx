@@ -4,7 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getReceivablesList } from "@/lib/xero/receivables.functions";
 import { Button } from "@/components/ui/button";
 import { AwaitingSnapshot, DataSourceLine } from "@/components/dashboard/DataSourceLine";
-import { ArrowLeft, Loader2, RefreshCw, HandCoins, ExternalLink } from "lucide-react";
+import { Loader2, RefreshCw, HandCoins, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/receivables/$tenantId")({
   head: () => ({ meta: [{ title: "Receivables — Traction Advisory" }] }),
