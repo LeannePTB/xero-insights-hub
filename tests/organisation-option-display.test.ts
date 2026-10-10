@@ -10,20 +10,24 @@ describe("organisation option display", () => {
       advisory: false,
       consolidation: false,
       branding: false,
+      whiteLabel: false,
       trialAdvisory: true,
       trialConsolidation: true,
       trialBranding: false,
+      trialWhiteLabel: false,
       trialEndsAt: "2026-11-30T15:59:59.000Z",
       trialActive: true,
       effectiveAdvisory: true,
       effectiveConsolidation: true,
       effectiveBranding: false,
+      effectiveWhiteLabel: false,
     });
 
     expect(options).toEqual([
       { key: "advisory", label: "Advisory", on: true, trial: true },
       { key: "consolidation", label: "Consolidation", on: true, trial: true },
       { key: "branding", label: "Branding", on: false, trial: false },
+      { key: "whiteLabel", label: "White label", on: false, trial: false },
     ]);
     expect(organisationTrialEndLabel("2026-11-30T15:59:59.000Z")).toBe("30 Nov 2026");
   });
@@ -33,14 +37,17 @@ describe("organisation option display", () => {
       advisory: true,
       consolidation: false,
       branding: false,
+      whiteLabel: false,
       trialAdvisory: true,
       trialConsolidation: false,
       trialBranding: false,
+      trialWhiteLabel: false,
       trialEndsAt: "2026-11-30T15:59:59.000Z",
       trialActive: true,
       effectiveAdvisory: true,
       effectiveConsolidation: false,
       effectiveBranding: false,
+      effectiveWhiteLabel: false,
     });
 
     expect(advisory).toMatchObject({ on: true, trial: false });

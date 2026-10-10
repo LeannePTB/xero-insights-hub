@@ -991,10 +991,11 @@
             "_advisory",
             "_consolidation",
             "_branding",
+            "_white_label",
             "_billing_mode"
         ],
         "name": "set_org_purchase",
-        "required": 6
+        "required": 7
     },
     {
         "args": [
@@ -1002,11 +1003,12 @@
             "_advisory",
             "_consolidation",
             "_branding",
+            "_white_label",
             "_ends_at",
             "_reason"
         ],
         "name": "set_org_trial",
-        "required": 6
+        "required": 7
     },
     {
         "args": [

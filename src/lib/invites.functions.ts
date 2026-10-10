@@ -160,6 +160,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         _advisory: advisory,
         _consolidation: consolidation,
         _branding: branding,
+        _white_label: false,
         _billing_mode: billingMode,
       });
       if (pErr) throw new Error(pErr.message);
