@@ -168,20 +168,30 @@ async function resolvedWorkspaceBranding(supabase: any, rpc: string, args: any) 
   if (error) throw new Error(error.message);
   const row = (data ?? [])[0];
   if (!row) throw new Error("Organisation not found.");
+  let logoPath: string | null = null;
+  if (row.white_label_enabled === true) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: firm } = await (supabaseAdmin as any)
+      .from("firms")
+      .select("logo_path")
+      .eq("id", row.firm_id)
+      .maybeSingle();
+    logoPath = firm?.logo_path ?? null;
+  }
   return {
     firmId: row.firm_id as string,
     organisationName: row.organisation_name as string,
     whiteLabelEnabled: row.white_label_enabled === true,
-    logoUrl: row.white_label_enabled === true ? await signLogo(row.logo_path ?? null) : null,
+    logoUrl: row.white_label_enabled === true ? await signLogo(logoPath) : null,
   };
 }
 
 export function workspaceBrandingForFirm(supabase: any, firmId: string) {
-  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_firm", { _firm_id: firmId });
+  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_firm_v2", { _firm_id: firmId });
 }
 
 export function workspaceBrandingForClient(supabase: any, clientId: string) {
-  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_client", { _client_id: clientId });
+  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_client_v2", { _client_id: clientId });
 }
 
 export async function getOrganisationLogo(userId: string, firmId: string) {

@@ -158,8 +158,12 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Whether the caller currently holds a support grant for an organisation.",
   "public.workspace_branding_for_firm":
     "Returns an organisation's effective name and logo path only after aal2 and active membership; caller ids are filters, never grants.",
+  "public.workspace_branding_for_firm_v2":
+    "Returns only effective organisation identity metadata after aal2 and active membership; private storage paths are excluded.",
   "public.workspace_branding_for_client":
     "Returns effective organisation identity for exactly one readable client after aal2 and the existing client-read predicate.",
+  "public.workspace_branding_for_client_v2":
+    "Returns only effective identity metadata for exactly one readable client; private storage paths are excluded.",
   "public.firm_support_access_audit":
     "Trigger: records every support grant change in the audit log.",
   "public.organisation_members": "The members of an organisation with their verified email.",
