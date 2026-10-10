@@ -33,8 +33,6 @@ import vulnMgmt from "../../../docs/security/vulnerability-management.md?raw";
 import xeroMapping from "../../../docs/security/xero-assessment-mapping.md?raw";
 import { SecurityPostureCard } from "@/components/admin/SecurityPostureCard";
 import { AuditMonitoringCard } from "@/components/admin/AuditMonitoringCard";
-import { XeroErrorBreakdownCard } from "@/components/admin/XeroErrorBreakdownCard";
-import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
 
 export const Route = createFileRoute("/_authenticated/system/security")({
   head: () => ({
@@ -306,12 +304,7 @@ function SecurityDocsPage() {
 
       {isSuper && <AuditMonitoringCard />}
 
-      {isSuper && (
-        <div className="mt-6 space-y-6">
-          <XeroUsageCard />
-          <XeroErrorBreakdownCard />
-        </div>
-      )}
+      {/* Xero usage and errors moved to System Admin → Xero monitoring. */}
 
       {isSuper && (
       <Card>

@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye, Users } from "lucide-react";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
-import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
 
 
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
@@ -137,14 +136,7 @@ function AdminPage() {
         {/* Xero request allowance now sits with the other Xero monitoring on
             Security & compliance, so usage and failures are read together. */}
 
-        {isSuper && (
-          <OrphanXeroConnectionsCard
-            firms={((firmsQ.data?.firms as FirmRow[] | undefined) ?? []).map((f) => ({
-              id: f.firm_id,
-              name: f.firm_name,
-            }))}
-          />
-        )}
+        {/* Orphan Xero connections moved to System Admin → Xero monitoring. */}
 
 
         {isSuper && (
