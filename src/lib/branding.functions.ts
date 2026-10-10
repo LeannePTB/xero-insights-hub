@@ -28,6 +28,23 @@ export const getClientBrandingEnabled = createServerFn({ method: "POST" })
     return { enabled: await clientBrandingEnabled(context.supabase, data.clientId) };
   });
 
+/** Caller-scoped effective identity. The browser receives no private storage path. */
+export const getFirmWorkspaceBranding = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((input: { firmId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { workspaceBrandingForFirm } = await import("./branding.server");
+    return workspaceBrandingForFirm(context.supabase, data.firmId);
+  });
+
+export const getClientWorkspaceBranding = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((input: { clientId: string }) => input)
+  .handler(async ({ data, context }) => {
+    const { workspaceBrandingForClient } = await import("./branding.server");
+    return workspaceBrandingForClient(context.supabase, data.clientId);
+  });
+
 export const uploadOrganisationLogo = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((input: { firmId: string; fileBase64: string; contentType: string }) => input)

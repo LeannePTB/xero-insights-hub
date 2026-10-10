@@ -163,6 +163,27 @@ export async function signLogo(path: string | null): Promise<string | null> {
   return data?.signedUrl ?? null;
 }
 
+async function resolvedWorkspaceBranding(supabase: any, rpc: string, args: any) {
+  const { data, error } = await supabase.rpc(rpc, args);
+  if (error) throw new Error(error.message);
+  const row = (data ?? [])[0];
+  if (!row) throw new Error("Organisation not found.");
+  return {
+    firmId: row.firm_id as string,
+    organisationName: row.organisation_name as string,
+    whiteLabelEnabled: row.white_label_enabled === true,
+    logoUrl: row.white_label_enabled === true ? await signLogo(row.logo_path ?? null) : null,
+  };
+}
+
+export function workspaceBrandingForFirm(supabase: any, firmId: string) {
+  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_firm", { _firm_id: firmId });
+}
+
+export function workspaceBrandingForClient(supabase: any, clientId: string) {
+  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_client", { _client_id: clientId });
+}
+
 export async function getOrganisationLogo(userId: string, firmId: string) {
   await assertOrganisationStaff(userId, firmId);
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
