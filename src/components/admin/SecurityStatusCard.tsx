@@ -101,7 +101,7 @@ export function SecurityStatusCard() {
     status === "action"
       ? "text-destructive"
       : status === "warn"
-        ? "text-amber-500"
+        ? "text-info"
         : status === "ok"
           ? "text-emerald-500"
           : "text-muted-foreground";
@@ -119,7 +119,7 @@ export function SecurityStatusCard() {
     status === "action"
       ? "bg-destructive text-destructive-foreground"
       : status === "warn"
-        ? "bg-amber-500 text-white"
+        ? "bg-info text-info-foreground"
         : status === "ok"
           ? "bg-emerald-600 text-white"
           : "bg-muted text-muted-foreground";

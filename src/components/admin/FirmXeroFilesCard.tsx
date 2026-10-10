@@ -24,10 +24,12 @@ import { listFirmXeroFiles, startXeroReconnectAll } from "@/lib/xero/reconnect-a
 export function FirmXeroFilesCard({
   firmId,
   variant = "card",
+  metadataOnly = false,
 }: {
   firmId: string;
   /** "plain" matches the bordered sections on the admin organisation page. */
   variant?: "card" | "plain";
+  metadataOnly?: boolean;
 }) {
   const fetchFiles = useServerFn(listFirmXeroFiles);
   const startAll = useServerFn(startXeroReconnectAll);
@@ -106,7 +108,7 @@ export function FirmXeroFilesCard({
               : "Xero files linked to this organisation. Reconnecting refreshes their permissions — it never links anything new."}
           </p>
         </div>
-        {files.length >= 1 && (
+        {files.length >= 1 && !metadataOnly && (
           <Button variant="outline" size="sm" onClick={() => setConfirmOpen(true)} disabled={starting}>
             {starting ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -130,7 +132,7 @@ export function FirmXeroFilesCard({
             <li key={f.connectionId} className="flex items-center justify-between gap-3 px-3 py-2">
               <span className="truncate text-sm">{f.tenantName}</span>
               {f.missingScopes.length > 0 ? (
-                <span className="flex shrink-0 items-center gap-1.5 text-xs text-amber-500">
+                <span className="flex shrink-0 items-center gap-1.5 text-xs text-destructive">
                   <AlertTriangle className="h-3.5 w-3.5" />
                   Missing permissions ({f.missingScopes.length})
                 </span>
@@ -147,7 +149,7 @@ export function FirmXeroFilesCard({
       )}
 
       {needsAttention.length > 0 && (
-        <p className="mt-3 text-xs text-amber-500">
+        <p className="mt-3 text-xs text-destructive">
           {needsAttention.length} file{needsAttention.length === 1 ? "" : "s"} still need
           reauthorising: {needsAttention.map((f) => f.tenantName).join(", ")}.
         </p>

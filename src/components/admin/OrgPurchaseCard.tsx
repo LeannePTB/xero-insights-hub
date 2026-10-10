@@ -157,7 +157,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
           ))}
         </div>
         {activeTrialEnd && (
-          <p className="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+          <p className="mt-2 text-xs font-medium text-info">
             Trial ends {activeTrialEnd}
           </p>
         )}
@@ -402,7 +402,7 @@ function OrgTrialBlock({
         <p
           className={`text-sm ${
             status.warn
-              ? "rounded-md border border-amber-300 bg-amber-50 px-3 py-2 font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
+              ? "rounded-md border border-info/30 bg-info/10 px-3 py-2 font-medium text-info"
               : "text-muted-foreground"
           }`}
         >
@@ -453,7 +453,7 @@ function OrgTrialBlock({
             />
           </div>
           {overlap.length > 0 && (
-            <div className="space-y-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-200">
+            <div className="space-y-2 rounded-md border border-info/30 bg-info/10 px-3 py-2 text-sm text-info">
               <p className="font-medium">This organisation has already bought {overlapLabel}.</p>
               <p>
                 A trial of something already purchased grants nothing new, and nothing changes when

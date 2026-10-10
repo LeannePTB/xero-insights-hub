@@ -15,7 +15,7 @@ import {
 
 function StatusPill({ status }: { status: "ok" | "warn" | "action" }) {
   if (status === "ok") return <Badge className="bg-green-600 hover:bg-green-600 text-white">OK</Badge>;
-  if (status === "warn") return <Badge className="bg-amber-500 hover:bg-amber-500 text-white">Watch</Badge>;
+  if (status === "warn") return <Badge variant="info">Watch</Badge>;
   return <Badge variant="destructive">Investigate</Badge>;
 }
 

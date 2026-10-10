@@ -1,552 +1,149 @@
+import { useMemo, useState } from "react";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { AlertCircle, ArrowDown, ArrowUp, Check, Loader2, Search, ShieldAlert } from "lucide-react";
 import { listFirmsAdmin } from "@/lib/admin.functions";
 import { listMyFirms } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
-import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Loader2, ShieldAlert, Eye, Users } from "lucide-react";
-import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
-
-
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
 import { listSubscriptionStates } from "@/lib/subscription-state.functions";
 import { listOrgPurchases, type OrgPurchase } from "@/lib/card-model.functions";
-import { recordViewAs } from "@/lib/view-as.functions";
-import { toast } from "sonner";
+import { organisationOptionDisplay, organisationTrialEndLabel } from "@/lib/organisation-option-display";
+import { filterAndSortOrganisations, organisationNeedsAttention, organisationStatus, type AdminOrganisationRow, type OrganisationFilter, type OrganisationSort, type SortDirection } from "@/lib/system-organisations";
+import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
+import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SubscriptionState } from "@/lib/subscription-state";
-import {
-  organisationOptionDisplay,
-  organisationTrialEndLabel,
-} from "@/lib/organisation-option-display";
-
-
 
 export const Route = createFileRoute("/_authenticated/system/")({
-  head: () => ({
-    meta: [
-      { title: "Organisations Admin — Traction Advisory" },
-      { name: "description", content: "Manage Traction Advisory organisations, advisors and dashboard settings." },
-      { property: "og:title", content: "Organisations Admin — Traction Advisory" },
-      { property: "og:description", content: "Manage Traction Advisory organisations, advisors and dashboard settings." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-    ],
-  }),
-  component: AdminPage,
+  head: () => ({ meta: [
+    { title: "Organisations — Traction Advisory" },
+    { name: "description", content: "Manage organisation plans, billing and platform metadata." },
+    { property: "og:title", content: "Organisations — Traction Advisory" },
+    { property: "og:description", content: "Manage organisation plans, billing and platform metadata." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
+  component: OrganisationsPage,
 });
 
-type FirmRow = {
-  firm_id: string;
-  firm_name: string;
-  is_always_free: boolean;
-  firm_created_at: string;
-  tier: string | null;
-  status: string | null;
-  trial_ends_at: string | null;
-  current_period_end: string | null;
-  cancel_at_period_end: boolean | null;
-  connection_count: number;
-  recent_error_count: number;
-};
+type FirmRow = AdminOrganisationRow["firm"] & { connection_count?: number; recent_error_count?: number };
 
-function AdminPage() {
+function OrganisationsPage() {
   const fetchCtx = useServerFn(getMyContext);
   const fetchFirms = useServerFn(listFirmsAdmin);
-  const fetchMyFirms = useServerFn(listMyFirms);
-  const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
-  const isSuper = ctxQ.data?.isSuperAdmin ?? false;
-  const hasAdminAreaAccess = ctxQ.data?.isPlatformStaff ?? isSuper;
-  const myFirmsQ = useQuery({
-    queryKey: ["my-firms"],
-    queryFn: () => fetchMyFirms(),
-    enabled: hasAdminAreaAccess,
-  });
-  const firmsQ = useQuery({
-    queryKey: ["admin-firms"],
-    queryFn: () => fetchFirms(),
-    enabled: isSuper,
-  });
+  const fetchMine = useServerFn(listMyFirms);
+  const context = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
+  const isSuper = context.data?.isSuperAdmin ?? false;
+  const isPlatformStaff = context.data?.isPlatformStaff ?? false;
+  const firms = useQuery({ queryKey: ["admin-firms"], queryFn: () => fetchFirms(), enabled: isSuper });
+  const mine = useQuery({ queryKey: ["my-firms"], queryFn: () => fetchMine(), enabled: isPlatformStaff && !isSuper });
 
-  if (ctxQ.isLoading) {
-    return (
-      <div className="min-h-screen grid place-items-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  if (!hasAdminAreaAccess) {
-    return (
-      <div className="min-h-screen bg-background">
-        <main className="mx-auto max-w-3xl px-6 py-10">
-          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
-            <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
-            <div>
-              <p className="font-medium text-destructive">Admin access required</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                This area is for advisor or admin accounts. Your login is currently a viewer account.
-              </p>
-            </div>
-          </div>
-        </main>
-      </div>
-    );
-  }
+  if (context.isLoading) return <CenteredLoader />;
+  if (!isPlatformStaff) return <AccessDenied />;
 
   return (
-    <div className="min-h-screen bg-background">
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
-        <FirmPageHeader
-          title="Organisations"
-          actions={isSuper && <AddOrganisationDialog onCreated={() => firmsQ.refetch()} />}
-        />
-        <OrganisationsSection
-          isSuper={isSuper}
-          firms={firmsQ.data?.firms as FirmRow[] | undefined}
-          firmsLoading={isSuper ? firmsQ.isLoading : myFirmsQ.isLoading}
-          firmsError={isSuper ? firmsQ.error : myFirmsQ.error}
-          myFirms={myFirmsQ.data?.firms ?? []}
-          onCreated={() => firmsQ.refetch()}
-        />
-
-        {!isSuper && (
-          <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
-            Your account has advisor admin access. Organisation-wide billing, security documentation and compliance settings require the super-admin role.
-          </div>
-        )}
-
-        {/* Xero request allowance now sits with the other Xero monitoring on
-            Security & compliance, so usage and failures are read together. */}
-
-        {/* Orphan Xero connections moved to System Admin → Xero monitoring. */}
-
-
-        {isSuper && (
-          <p className="text-sm text-muted-foreground">
-            Organisation name, what each has bought, usage and billing state only. No balances or
-            client data are visible from this page — enforced at the database level.
-          </p>
-        )}
-
-
-      </main>
-    </div>
+    <main className="mx-auto max-w-[96rem] space-y-5 px-4 py-8 sm:px-6">
+      <FirmPageHeader title="Organisations" actions={isSuper ? <AddOrganisationDialog onCreated={() => firms.refetch()} /> : undefined} />
+      <p className="text-sm text-muted-foreground">Plan and usage metadata only — no client figures.</p>
+      {isSuper ? (
+        <AdminOrganisations firms={(firms.data?.firms ?? []) as FirmRow[]} loading={firms.isLoading} error={firms.error} />
+      ) : (
+        <MemberOrganisations firms={mine.data?.firms ?? []} loading={mine.isLoading} />
+      )}
+    </main>
   );
 }
 
-function OrganisationsSection({
-  isSuper,
-  firms,
-  firmsLoading,
-  firmsError,
-  myFirms,
-  onCreated,
-}: {
-  isSuper: boolean;
-  firms: FirmRow[] | undefined;
-  firmsLoading: boolean;
-  firmsError: unknown;
-  myFirms: { id: string; name: string }[];
-  onCreated: () => void;
-}) {
+function AdminOrganisations({ firms, loading, error }: { firms: FirmRow[]; loading: boolean; error: unknown }) {
   const navigate = useNavigate();
-  // Limits and usage for every visible organisation in one call.
-  const firmIds = (firms ?? []).map((f) => f.firm_id);
+  const firmIds = firms.map((firm) => firm.firm_id);
   const fetchUsage = useServerFn(listOrganisationUsage);
-  const usageQ = useQuery({
-    queryKey: ["admin-org-usage", firmIds.join(",")],
-    queryFn: () => fetchUsage({ data: { firmIds } }),
-    enabled: isSuper && firmIds.length > 0,
-  });
-  const usageByFirm = new Map<string, OrganisationUsage>(
-    (usageQ.data?.usage ?? []).map((u) => [u.firmId, u]),
-  );
-
-  // Expiry, day counts and the consolidation add-on come from the database
-  // (public.firm_subscription_state) — never recomputed here.
   const fetchStates = useServerFn(listSubscriptionStates);
-  const statesQ = useQuery({
-    queryKey: ["subscription-states", firmIds.join(",")],
-    queryFn: () => fetchStates({ data: { firmIds } }),
-    enabled: firmIds.length > 0,
-  });
-  const stateByFirm = new Map<string, SubscriptionState>(
-    (statesQ.data?.states ?? []).map((st) => [st.firmId, st]),
-  );
-
-  // Purchased, trialled and effective options come from public.org_purchase.
-  // The row must describe effective availability, never purchased flags alone.
   const fetchPurchases = useServerFn(listOrgPurchases);
-  const purchasesQ = useQuery({
-    queryKey: ["admin-org-purchases", firmIds.join(",")],
-    queryFn: () => fetchPurchases({ data: { firmIds } }),
-    enabled: firmIds.length > 0,
-  });
-  const purchaseByFirm = new Map<string, OrgPurchase>(
-    (purchasesQ.data?.purchases ?? []).map((p) => [p.firmId, p]),
-  );
+  const usage = useQuery({ queryKey: ["admin-org-usage", firmIds.join(",")], queryFn: () => fetchUsage({ data: { firmIds } }), enabled: firmIds.length > 0 });
+  const states = useQuery({ queryKey: ["subscription-states", firmIds.join(",")], queryFn: () => fetchStates({ data: { firmIds } }), enabled: firmIds.length > 0 });
+  const purchases = useQuery({ queryKey: ["admin-org-purchases", firmIds.join(",")], queryFn: () => fetchPurchases({ data: { firmIds } }), enabled: firmIds.length > 0 });
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<OrganisationFilter>("all");
+  const [sort, setSort] = useState<OrganisationSort>("name");
+  const [direction, setDirection] = useState<SortDirection>("asc");
 
+  const rows = useMemo(() => {
+    const usageMap = new Map<string, OrganisationUsage>((usage.data?.usage ?? []).map((value) => [value.firmId, value]));
+    const stateMap = new Map<string, SubscriptionState>((states.data?.states ?? []).map((value) => [value.firmId, value]));
+    const purchaseMap = new Map<string, OrgPurchase>((purchases.data?.purchases ?? []).map((value) => [value.firmId, value]));
+    return filterAndSortOrganisations(firms.map((firm) => ({ firm, usage: usageMap.get(firm.firm_id), state: stateMap.get(firm.firm_id), purchase: purchaseMap.get(firm.firm_id) })), search, filter, sort, direction);
+  }, [direction, filter, firms, purchases.data?.purchases, search, sort, states.data?.states, usage.data?.usage]);
 
-
-
-  if (firmsLoading) {
-    return (
-      <section className="space-y-3">
-        <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading organisations…</div>
-      </section>
-    );
+  function open(row: AdminOrganisationRow) {
+    void navigate({ to: "/system/organisations/$firmId", params: { firmId: row.firm.firm_id } });
+  }
+  function changeSort(next: OrganisationSort) {
+    if (next === sort) setDirection((value) => value === "asc" ? "desc" : "asc");
+    else { setSort(next); setDirection("asc"); }
   }
 
-  if (firmsError) {
-    return (
-      <section className="space-y-3">
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
-          <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
-          <div>
-            <p className="font-medium text-destructive">Organisations could not load</p>
-            <p className="text-sm text-muted-foreground">{(firmsError as Error).message}</p>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  if (loading) return <p className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading organisations…</p>;
+  if (error) return <div className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-4"><ShieldAlert className="mt-0.5 h-5 w-5 text-destructive" /><p className="text-sm">{(error as Error).message}</p></div>;
 
-  if (!isSuper) {
-    return (
-      <section className="space-y-3">
-        <div className="rounded-lg border overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-              <tr>
-                <th className="px-4 py-3">Organisation name</th>
-                <th className="px-4 py-3 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {myFirms.map((firm) => (
-                <tr key={firm.id} className="border-t">
-                  <td className="px-4 py-3 font-medium">{firm.name}</td>
-                  <td className="px-4 py-3 text-right">
-                    <Button size="sm" variant="outline" asChild>
-                      <Link to="/firms/$firmId" params={{ firmId: firm.id }}>Clients &amp; plan</Link>
-                    </Button>
-                  </td>
-
-                </tr>
-              ))}
-              {myFirms.length === 0 && (
-                <tr><td colSpan={2} className="px-4 py-8 text-center text-muted-foreground">No organisations yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    );
-  }
-
-  const empty = (firms ?? []).length === 0;
-
-  const rows = (firms ?? []).map((f) => ({
-    f,
-    usage: usageByFirm.get(f.firm_id),
-    state: stateByFirm.get(f.firm_id),
-  }));
-
-  return (
-    <section className="space-y-3">
-
-      {/* Table from 900px up */}
-      <div className="hidden min-[900px]:block rounded-lg border overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 whitespace-nowrap">Organisation</th>
-              <th className="px-4 py-3 whitespace-nowrap">Plan</th>
-              <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(({ f, usage, state }) => (
-              <tr
-                key={f.firm_id}
-                className="border-t hover:bg-muted/30 cursor-pointer align-top"
-                onClick={() => navigate({ to: "/system/organisations/$firmId", params: { firmId: f.firm_id } })}
-              >
-                <td className="px-4 py-3">
-                  <OrganisationCell
-                    name={f.firm_name}
-                    alwaysFree={f.is_always_free}
-                    state={state}
-                    subscriptionStatus={f.status}
-                    unsetLodgementCycles={usage?.unsetLodgementCycles ?? 0}
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <PlanCell
-                    usage={usage}
-                    purchase={purchaseByFirm.get(f.firm_id)}
-                  />
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
-                    <RowActions firmId={f.firm_id} organisationName={f.firm_name} isSuper={isSuper} />
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {empty && (
-              <tr>
-                <td colSpan={3} className="px-4 py-8 text-center text-muted-foreground">
-                  <p>No organisations yet.</p>
-                  <div className="mt-3 flex justify-center">
-                    <AddOrganisationDialog onCreated={onCreated} variant="outline" />
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+  return <section className="space-y-4">
+    <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative w-full max-w-md"><Search className="pointer-events-none absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search organisations…" className="pl-9" aria-label="Search organisations" /></div>
+      <div className="flex flex-wrap gap-2" aria-label="Filter organisations">
+        {([['all','All'],['trialling','Trialling'],['attention','Needs attention'],['overdue','Lapsed / overdue']] as const).map(([value, label]) => <Button key={value} size="sm" variant={filter === value ? "default" : "outline"} onClick={() => setFilter(value)}>{label}</Button>)}
       </div>
-
-      {/* Stacked cards below 900px */}
-      <div className="min-[900px]:hidden space-y-3">
-        {rows.map(({ f, usage, state }) => (
-          <div
-            key={f.firm_id}
-            className="rounded-lg border bg-card p-4 space-y-3 cursor-pointer"
-            onClick={() => navigate({ to: "/system/organisations/$firmId", params: { firmId: f.firm_id } })}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <OrganisationCell
-                name={f.firm_name}
-                alwaysFree={f.is_always_free}
-                state={state}
-                subscriptionStatus={f.status}
-                unsetLodgementCycles={usage?.unsetLodgementCycles ?? 0}
-              />
-              <div onClick={(e) => e.stopPropagation()}>
-                <RowActions firmId={f.firm_id} organisationName={f.firm_name} isSuper={isSuper} />
-              </div>
-            </div>
-            <div className="text-sm">
-              <div>
-                <div className="text-xs uppercase tracking-wide text-muted-foreground">Plan</div>
-                <div className="mt-0.5">
-                <PlanCell
-                    usage={usage}
-                    purchase={purchaseByFirm.get(f.firm_id)}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        ))}
-        {empty && (
-          <div className="rounded-lg border p-6 text-center text-muted-foreground">
-            <p>No organisations yet.</p>
-            <div className="mt-3 flex justify-center">
-              <AddOrganisationDialog onCreated={onCreated} variant="outline" />
-            </div>
-          </div>
-        )}
-      </div>
-    </section>
-  );
-}
-
-function OrganisationCell({
-  name,
-  alwaysFree,
-  state,
-  subscriptionStatus,
-  unsetLodgementCycles,
-}: {
-  name: string;
-  alwaysFree: boolean;
-  state?: SubscriptionState;
-  subscriptionStatus: string | null;
-  unsetLodgementCycles: number;
-}) {
-  const status = abnormalStatus(state, subscriptionStatus);
-  return (
-    <div>
-      <div className="flex flex-wrap items-center gap-2 font-medium">
-        <span>{name}</span>
-        {status && <Badge variant={status.variant}>{status.label}</Badge>}
-        {alwaysFree && <Badge variant="outline">always free</Badge>}
-      </div>
-      {unsetLodgementCycles > 0 && (
-        <div className="mt-1 flex items-center gap-1 text-xs font-medium text-amber-600 dark:text-amber-400">
-          <ShieldAlert className="h-3 w-3" />
-          {unsetLodgementCycles} client{unsetLodgementCycles === 1 ? "" : "s"} need lodgement cycles
-        </div>
-      )}
     </div>
-  );
-}
 
-function abnormalStatus(state: SubscriptionState | undefined, status: string | null) {
-  if (state?.lapsed) return { label: "Lapsed", variant: "destructive" as const };
-  if (status === "canceled") return { label: "Cancelled", variant: "destructive" as const };
-  if (status === "past_due") return { label: "Past due", variant: "outline" as const };
-  if (status === "paused") return { label: "Suspended", variant: "outline" as const };
-  return null;
-}
-
-/**
- * What the organisation can use now.
- *
- * public.org_purchase resolves purchased OR unexpired trial in the database.
- * Purchased fields remain available to the editor, but this summary always
- * uses the effective fields and identifies trial-only availability.
- */
-function PlanCell({
-  usage,
-  purchase,
-}: {
-  usage: OrganisationUsage | undefined;
-  purchase: OrgPurchase | undefined;
-}) {
-  if (!purchase) {
-    return (
-      <div className="leading-tight">
-        <div className="text-muted-foreground">—</div>
-      </div>
-    );
-  }
-    const options = organisationOptionDisplay(purchase);
-    const advisory = options.find((option) => option.key === "advisory");
-    const consolidation = options.find((option) => option.key === "consolidation");
-    const branding = options.find((option) => option.key === "branding");
-    const consolidationBlocked = !!advisory?.on && purchase.clientCount <= 1;
-    const trialEnd = purchase.trialActive
-      ? organisationTrialEndLabel(purchase.trialEndsAt)
-      : null;
-    return (
-      <div className="leading-tight space-y-0.5">
-        <div
-          className={`whitespace-nowrap tabular-nums ${
-            usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed > usage.clientLimit
-              ? "font-medium text-destructive"
-              : usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed === usage.clientLimit
-                ? "font-medium text-amber-600 dark:text-amber-400"
-                : ""
-          }`}
-        >
-          {purchase.clientLimit >= 9999 ? "Unlimited" : purchase.clientLimit} client
-          {purchase.clientLimit === 1 ? "" : "s"}
-          {usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed > usage.clientLimit
-            ? " · over limit"
-            : usage?.clientLimit != null && usage.clientsUsed != null && usage.clientsUsed === usage.clientLimit
-              ? " · at limit"
-              : ""}
-        </div>
-        <div className="flex flex-wrap items-center gap-1">
-          <OptionPill on={!!advisory?.on} trial={!!advisory?.trial} label="Advisory" />
-          <OptionPill
-            on={!!consolidation?.on}
-            trial={!!consolidation?.trial}
-            label="Consolidation"
-            offNote={
-              !advisory?.on
-                ? "needs Advisory"
-                : consolidationBlocked
-                  ? "single client"
-                  : undefined
-            }
-          />
-          <OptionPill on={!!branding?.on} trial={!!branding?.trial} label="Branding" />
-        </div>
-        {trialEnd && (
-          <div className="text-xs font-medium text-amber-600 dark:text-amber-400">
-            Trial ends {trialEnd}
-          </div>
-        )}
-        <div className="text-xs text-muted-foreground whitespace-nowrap">
-          {purchase.billingMode === "external" ? "billed externally" : "billed with bookkeeping"}
-        </div>
-      </div>
-    );
-}
-
-/** "Advisory on" / "Advisory off", with the reason it cannot be on when there is one. */
-function OptionPill({
-  on,
-  trial,
-  label,
-  offNote,
-}: {
-  on: boolean;
-  trial?: boolean;
-  label: string;
-  offNote?: string;
-}) {
-  return (
-    <span
-      className={`whitespace-nowrap rounded-full px-2 py-0.5 text-xs ${
-        on
-          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-medium"
-          : "bg-muted text-muted-foreground"
-      }`}
-    >
-      {label} {on ? "on" : "off"}
-      {on && trial ? " · trial" : ""}
-      {!on && offNote ? ` · ${offNote}` : ""}
-    </span>
-  );
-}
-
-function RowActions({
-  firmId,
-  organisationName,
-  isSuper,
-}: {
-  firmId: string;
-  organisationName: string;
-  isSuper: boolean;
-}) {
-  const navigate = useNavigate();
-  const record = useServerFn(recordViewAs);
-
-  // Previewing is recorded before it starts. The database function is the
-  // control (aal2 + super admin + an access path this person already holds);
-  // if it refuses, no preview opens.
-  async function startPreview() {
-    try {
-      await record({ data: { firmId, mode: "owner" } });
-      navigate({ to: "/firms/$firmId", params: { firmId }, search: { viewAs: "owner" } });
-    } catch (e: any) {
-      toast.error(e?.message ?? "Could not start the preview.");
-    }
-  }
-
-  return (
-    <div className="flex flex-wrap items-center justify-end gap-1">
-      <Button size="sm" variant="outline" className="h-8 px-2 text-xs" asChild>
-        <Link to="/system/organisations/$firmId" params={{ firmId }}>
-          Options &amp; members
-        </Link>
-      </Button>
-      <Button size="sm" variant="outline" className="h-8 px-2 text-xs" asChild>
-        <Link to="/firms/$firmId" params={{ firmId }}>
-          <Users className="mr-1 h-3.5 w-3.5" /> Clients
-        </Link>
-      </Button>
-      {isSuper && (
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-8 px-2 text-xs"
-          onClick={() => void startPreview()}
-          aria-label={`View as ${organisationName}`}
-        >
-          <Eye className="mr-1 h-3.5 w-3.5" /> View As
-        </Button>
-      )}
+    <div className="hidden overflow-x-auto rounded-md border lg:block">
+      <table className="w-full min-w-[1050px] text-sm">
+        <thead className="bg-muted/50 text-left text-xs text-muted-foreground"><tr>
+          <SortableHead label="Organisation" value="name" current={sort} direction={direction} onSort={changeSort} />
+          <SortableHead label="Clients" value="clients" current={sort} direction={direction} onSort={changeSort} />
+          <th className="px-3 py-2.5">Advisory</th><th className="px-3 py-2.5">Consolidation</th><th className="px-3 py-2.5">Branding</th>
+          <SortableHead label="Billing" value="billing" current={sort} direction={direction} onSort={changeSort} />
+          <SortableHead label="Trial ends" value="trial" current={sort} direction={direction} onSort={changeSort} />
+          <SortableHead label="Needs attention" value="attention" current={sort} direction={direction} onSort={changeSort} />
+        </tr></thead>
+        <tbody>{rows.map((row) => <OrganisationTableRow key={row.firm.firm_id} row={row} onOpen={() => open(row)} />)}{rows.length === 0 && <tr><td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">No organisations match.</td></tr>}</tbody>
+      </table>
     </div>
-  );
+    <div className="grid gap-3 lg:hidden">{rows.map((row) => <OrganisationCard key={row.firm.firm_id} row={row} onOpen={() => open(row)} />)}{rows.length === 0 && <p className="rounded-md border p-6 text-center text-sm text-muted-foreground">No organisations match.</p>}</div>
+  </section>;
 }
 
+function SortableHead({ label, value, current, direction, onSort }: { label: string; value: OrganisationSort; current: OrganisationSort; direction: SortDirection; onSort: (value: OrganisationSort) => void }) {
+  const Icon = direction === "asc" ? ArrowUp : ArrowDown;
+  return <th className="px-3 py-2.5"><button className="inline-flex items-center gap-1 font-medium hover:text-foreground" onClick={() => onSort(value)}>{label}{current === value && <Icon className="h-3 w-3" />}</button></th>;
+}
+
+function OrganisationTableRow({ row, onOpen }: { row: AdminOrganisationRow; onOpen: () => void }) {
+  return <tr className="cursor-pointer border-t hover:bg-muted/30 focus-within:bg-muted/30" tabIndex={0} onClick={onOpen} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); onOpen(); } }}>
+    <td className="px-3 py-3"><OrganisationName row={row} /></td><td className="px-3 py-3"><ClientUsage row={row} /></td>
+    {(["advisory", "consolidation", "branding"] as const).map((key) => <td key={key} className="px-3 py-3"><OptionState row={row} option={key} /></td>)}
+    <td className="px-3 py-3">{row.purchase?.billingMode === "external" ? "External" : row.purchase ? "Bookkeeping" : "—"}</td>
+    <td className="px-3 py-3 tabular-nums">{row.purchase?.trialActive ? organisationTrialEndLabel(row.purchase.trialEndsAt) : ""}</td>
+    <td className="px-3 py-3"><Attention row={row} /></td>
+  </tr>;
+}
+
+function OrganisationCard({ row, onOpen }: { row: AdminOrganisationRow; onOpen: () => void }) {
+  return <button onClick={onOpen} className="rounded-md border bg-card p-4 text-left hover:bg-muted/30"><OrganisationName row={row} /><dl className="mt-4 grid grid-cols-2 gap-x-5 gap-y-3 text-sm">
+    <Fact label="Clients"><ClientUsage row={row} /></Fact><Fact label="Billing">{row.purchase?.billingMode === "external" ? "External" : row.purchase ? "Bookkeeping" : "—"}</Fact>
+    <Fact label="Advisory"><OptionState row={row} option="advisory" /></Fact><Fact label="Consolidation"><OptionState row={row} option="consolidation" /></Fact><Fact label="Branding"><OptionState row={row} option="branding" /></Fact><Fact label="Trial ends">{row.purchase?.trialActive ? organisationTrialEndLabel(row.purchase.trialEndsAt) : "—"}</Fact><Fact label="Needs attention"><Attention row={row} /></Fact>
+  </dl></button>;
+}
+
+function Fact({ label, children }: { label: string; children: React.ReactNode }) { return <div><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-0.5">{children}</dd></div>; }
+function OrganisationName({ row }: { row: AdminOrganisationRow }) { const status = organisationStatus(row); return <div className="flex flex-wrap items-center gap-2 font-medium">{row.firm.firm_name}{status && <Badge variant={status.tone === "bad" ? "destructive" : status.tone === "info" ? "info" : "secondary"}>{status.label}</Badge>}</div>; }
+function ClientUsage({ row }: { row: AdminOrganisationRow }) { const used = row.usage?.clientsUsed; const limit = row.usage?.clientLimit; if (used == null || limit == null) return <>—</>; const over = used > limit; return <span className={over ? "font-medium text-destructive" : "tabular-nums"}>{used} / {limit >= 9999 ? "∞" : limit}{over ? " · over limit" : ""}</span>; }
+function OptionState({ row, option }: { row: AdminOrganisationRow; option: "advisory" | "consolidation" | "branding" }) { const state = row.purchase ? organisationOptionDisplay(row.purchase).find((item) => item.key === option) : undefined; return <span className="inline-flex items-center gap-1.5">{state?.on ? <Check className="h-4 w-4 text-success" aria-label="On" /> : <span className="text-muted-foreground">—</span>}{state?.trial && <span className="text-xs text-info">trial</span>}</span>; }
+function Attention({ row }: { row: AdminOrganisationRow }) { const count = organisationNeedsAttention(row); if (!count) return <span className="text-muted-foreground">—</span>; const copy = `${count} client${count === 1 ? "" : "s"} need lodgement cycles`; return <Tooltip><TooltipTrigger asChild><span className="inline-flex items-center gap-1 text-info"><AlertCircle className="h-4 w-4" /><span className="tabular-nums">{count}</span></span></TooltipTrigger><TooltipContent>{copy}</TooltipContent></Tooltip>; }
+
+function MemberOrganisations({ firms, loading }: { firms: { id: string; name: string }[]; loading: boolean }) { if (loading) return <CenteredLoader />; return <div className="overflow-hidden rounded-md border"><table className="w-full text-sm"><tbody>{firms.map((firm) => <tr key={firm.id} className="border-t first:border-t-0"><td className="px-4 py-3 font-medium"><Link to="/firms/$firmId/overview" params={{ firmId: firm.id }} className="block">{firm.name}</Link></td></tr>)}</tbody></table></div>; }
+function CenteredLoader() { return <div className="grid min-h-64 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>; }
+function AccessDenied() { return <main className="mx-auto max-w-3xl p-8"><div className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-4"><ShieldAlert className="h-5 w-5 text-destructive" /><div><p className="font-medium text-destructive">System Admin access required</p><p className="mt-1 text-sm text-muted-foreground">This area is for platform staff.</p></div></div></main>; }
