@@ -103,7 +103,7 @@ function SignupPage() {
           <h2 className="text-3xl font-bold leading-tight">
             Welcome to
             <br />
-            <span className="font-serif italic text-accent">Traction Advisory</span>
+            <span className="font-serif italic text-accent">{platformBrand.productName}</span>
           </h2>
           <p className="mt-4 max-w-md text-sm text-primary-foreground/75">
             Clean Xero dashboards built around the metrics that matter.

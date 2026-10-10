@@ -41,6 +41,7 @@ export function LogoUploadCard({
   title?: string;
   description?: string;
 }) {
+  const platformBrand = usePlatformBranding();
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);

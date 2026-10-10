@@ -64,6 +64,7 @@ function fmtDate(iso: string | null) {
 }
 
 function ReportsPage() {
+  const platformBrand = usePlatformBranding();
   const { clientId } = Route.useParams();
   const qc = useQueryClient();
   const fetchClient = useServerFn(getClient);
@@ -204,7 +205,7 @@ function ReportsPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {isAdvisor
                 ? `${client?.name ?? "Client"} · a report is a point-in-time snapshot; the dashboard stays live.`
-                : `${client?.name ?? "Client"} · a snapshot of your business for the period, prepared by {platformBrand.productName}.`}
+                : <>{client?.name ?? "Client"} · a snapshot of your business for the period, prepared by {platformBrand.productName}.</>}
             </p>
           </div>
           <ViewToggle clientId={clientId} active="reports" />

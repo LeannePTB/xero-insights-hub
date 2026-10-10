@@ -202,6 +202,7 @@ export function MonthlyReportPreview({
   /** Optional personal video. Lives outside the payload, so never in the PDF. */
   video?: ReportVideo | null;
 }) {
+  const platformBrand = usePlatformBranding();
   const m = payload.meta;
   const ytdLabels = yearToDateComparisonLabels(m.periodEnd);
   const shownFailures = renderableFailedSections(payload);
