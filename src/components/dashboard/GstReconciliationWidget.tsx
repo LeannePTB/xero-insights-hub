@@ -157,7 +157,7 @@ export function GstReconciliationWidget({
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Percent className="h-4 w-4 text-primary" />
+            <Percent className="h-4 w-4 text-emphasis" />
             Activity statement — GST (indicative)
           </h3>
           <p className="text-xs text-muted-foreground">

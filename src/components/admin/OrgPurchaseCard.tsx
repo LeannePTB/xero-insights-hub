@@ -152,7 +152,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
               key={option.key}
               className={
                 option.on
-                  ? "rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
+                  ? "rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-emphasis"
                   : "rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground"
               }
             >

@@ -546,7 +546,7 @@ function LatestReportPageOne({ clientId }: { clientId: string }) {
         <Link
           to="/clients/$clientId/reports"
           params={{ clientId }}
-          className="text-sm font-medium text-primary hover:underline"
+          className="text-sm font-medium text-emphasis hover:underline"
         >
           Read the full report
         </Link>

@@ -98,7 +98,7 @@ export function TaxObligationsWidget({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-            <Calculator className="h-4 w-4 text-primary" /> Tax obligations
+            <Calculator className="h-4 w-4 text-emphasis" /> Tax obligations
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">Latest completed periods and the ATO-set instalment</p>
         </div>

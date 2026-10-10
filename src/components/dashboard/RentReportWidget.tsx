@@ -273,7 +273,7 @@ export function RentReportWidget({ clientId, tenantId, tenantName }: { clientId:
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{groupView ? group.data?.groupName ?? "Group" : tenantName}</p>
           <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-            <Home className="h-4 w-4 text-primary" /> {groupView ? "Rental consolidation" : "Rent report"}
+            <Home className="h-4 w-4 text-emphasis" /> {groupView ? "Rental consolidation" : "Rent report"}
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">Rent received per property from Xero. Updated overnight.</p>
         </div>

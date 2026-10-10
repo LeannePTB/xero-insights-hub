@@ -53,7 +53,7 @@ export function ReceivablesWidget({
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <HandCoins className="h-4 w-4 text-primary" /> Accounts Receivable Ageing
+            <HandCoins className="h-4 w-4 text-emphasis" /> Accounts Receivable Ageing
             <BasisBadge basis={basis} />
           </h3>
           <DataSourceLine source={data?.source} isFetching={isFetching} />
@@ -94,7 +94,7 @@ export function ReceivablesWidget({
         <Link
           to="/clients/$clientId/receivables/$tenantId"
           params={{ clientId, tenantId }}
-          className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-emphasis hover:underline"
         >
           View all receivables <ArrowRight className="h-3 w-3" />
         </Link>

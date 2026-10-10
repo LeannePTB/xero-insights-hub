@@ -154,7 +154,7 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
           <div className="flex flex-wrap items-center justify-between gap-2">
             <button
               type="button"
-              className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+              className="text-xs font-medium text-emphasis underline-offset-2 hover:underline"
               onClick={() => setPicked(allPicked ? [] : clients.map((c) => c.id))}
             >
               {allPicked ? "Untick all" : "Tick all"}

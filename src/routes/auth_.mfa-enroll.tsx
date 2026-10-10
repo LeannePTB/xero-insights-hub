@@ -111,7 +111,7 @@ function MfaEnrollPage() {
       <div className="w-full max-w-md">
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
+            <ShieldCheck className="h-5 w-5 text-emphasis" />
             <h1 className="font-display text-lg font-semibold">Set up two-factor</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">

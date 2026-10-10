@@ -71,7 +71,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
             {[clientName, tenantName, currency, q.data?.fyLabel].filter(Boolean).join(" · ")}
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4 text-primary" /> Business Health
+            <Activity className="h-4 w-4 text-emphasis" /> Business Health
           </h3>
         </div>
       </div>
@@ -263,7 +263,7 @@ function Placeholder({ tenantName }: { tenantName?: string }) {
     <div className="rounded-2xl border border-dashed border-border bg-card p-6 shadow-[var(--shadow-soft)]">
       <p className="text-xs text-muted-foreground">{tenantName}</p>
       <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-        <Activity className="h-4 w-4 text-primary" /> Business Health
+        <Activity className="h-4 w-4 text-emphasis" /> Business Health
       </h3>
       <p className="mt-2 text-sm text-muted-foreground">
         Link a Xero organisation to see the business health overview.

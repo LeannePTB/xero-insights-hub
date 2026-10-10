@@ -31,7 +31,7 @@ function ReceivablesPage() {
         <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-lg font-semibold sm:text-lg flex items-center gap-2">
-              <HandCoins className="h-6 w-6 text-primary" /> All Receivables
+              <HandCoins className="h-6 w-6 text-emphasis" /> All Receivables
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Unpaid customer invoices · as of {data?.asOf ?? "—"} · {data?.invoices.length ?? 0} invoices
@@ -78,7 +78,7 @@ function ReceivablesPage() {
                             href={inv.deepLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                            className="inline-flex items-center gap-1 text-emphasis hover:underline"
                             title="Open in Xero"
                           >
                             {inv.invoiceNumber || "—"}

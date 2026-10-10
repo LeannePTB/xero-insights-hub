@@ -183,7 +183,7 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
     <div className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
       <div className="mb-3">
         <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-          <Search className="h-4 w-4 text-primary" /> Transaction Search
+          <Search className="h-4 w-4 text-emphasis" /> Transaction Search
         </h3>
         <p className="text-xs text-muted-foreground">
           Invoices, bills, credit notes, prepayments and overpayments across every Xero
@@ -319,7 +319,7 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
                               href={h.deepLink}
                               target="_blank"
                               rel="noreferrer"
-                              className="inline-flex items-center text-primary hover:underline"
+                              className="inline-flex items-center text-emphasis hover:underline"
                               title="Open in Xero"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />

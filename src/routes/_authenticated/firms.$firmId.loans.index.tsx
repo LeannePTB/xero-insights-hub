@@ -233,7 +233,7 @@ function LoanMatrixTab() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="font-display text-lg font-semibold text-primary">Loan Consolidation</h2>
+          <h2 className="font-display text-lg font-semibold text-emphasis">Loan Consolidation</h2>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
             Pick a Xero file to reconcile its selected loan accounts against the counterparty file and
             account configured in the Accounts tab.
@@ -366,7 +366,7 @@ function LoanMatrixTab() {
         const hasErrors = file.tenantErrors && file.tenantErrors.length > 0;
         return (
           <section key={file.tenant.tenantId} className="space-y-2">
-            <h3 className="font-display text-lg font-semibold text-primary">
+            <h3 className="font-display text-lg font-semibold text-emphasis">
               {file.tenant.clientName ?? file.tenant.tenantName}
               <span className="ml-2 text-sm font-normal text-muted-foreground">{file.tenant.tenantName}</span>
             </h3>
@@ -503,11 +503,11 @@ function LoanMatrixTab() {
                     <TableRow className="border-t-2 border-primary/30 bg-primary/5 hover:bg-primary/5">
                       <TableCell
                         colSpan={6}
-                        className="text-right text-xs font-semibold uppercase tracking-wider text-primary"
+                        className="text-right text-xs font-semibold uppercase tracking-wider text-emphasis"
                       >
                         Total net
                       </TableCell>
-                      <TableCell className="border-l border-border text-right tabular-nums font-semibold text-primary">
+                      <TableCell className="border-l border-border text-right tabular-nums font-semibold text-emphasis">
                         {num(totalNet)}
                       </TableCell>
                       <TableCell />

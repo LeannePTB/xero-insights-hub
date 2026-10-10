@@ -67,7 +67,7 @@ export function ScenarioWidget({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-primary" /> Cashflow Scenario
+            <SlidersHorizontal className="h-4 w-4 text-emphasis" /> Cashflow Scenario
           </h3>
           <p className="text-xs text-muted-foreground">{monthLabelOf(month)}</p>
 

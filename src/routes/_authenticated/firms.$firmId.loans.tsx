@@ -34,7 +34,7 @@ function LoansLayout() {
   return (
     <div className="min-h-screen bg-background">
       <PageContainer width="full">
-        <h1 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-[0.15em] text-primary">
+        <h1 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-[0.15em] text-emphasis">
           <Layers className="h-4 w-4" /> Company Loan Consolidation
         </h1>
 

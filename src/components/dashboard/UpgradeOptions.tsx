@@ -45,7 +45,7 @@ export function UpgradeOptions({
   return (
     <section className="mt-10 rounded-2xl border border-dashed border-border bg-muted/30 p-6">
       <div className="mb-4 flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-primary" />
+        <Sparkles className="h-4 w-4 text-emphasis" />
         <h2 className="font-display text-lg font-semibold">Other dashboards available</h2>
       </div>
       <p className="mb-5 text-sm text-muted-foreground">
@@ -76,7 +76,7 @@ export function UpgradeOptions({
                   {u.extraWidgets.map((w) => (
                     <span
                       key={w}
-                      className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+                      className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-emphasis"
                     >
                       {WIDGET_LABEL[w]}
                     </span>

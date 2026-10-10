@@ -367,7 +367,7 @@ function SidePanel({
 }) {
   return (
     <div className="rounded-lg border border-border p-4">
-      <div className="text-xs font-semibold uppercase tracking-wider text-primary">{title}</div>
+      <div className="text-xs font-semibold uppercase tracking-wider text-emphasis">{title}</div>
       <div className="mt-3 space-y-3">
         <div>
           <Label className="mb-1 block text-sm">Xero file</Label>

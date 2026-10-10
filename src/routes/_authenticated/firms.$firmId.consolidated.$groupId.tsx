@@ -65,7 +65,7 @@ function ConsolidatedGroupPage() {
         <>
           <header>
             <h1 className="font-display text-lg font-semibold flex items-center gap-2">
-              <Layers className="h-5 w-5 text-primary" /> {group.name}
+              <Layers className="h-5 w-5 text-emphasis" /> {group.name}
             </h1>
             <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
               {group.clients.map((c) => (

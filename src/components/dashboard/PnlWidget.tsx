@@ -81,7 +81,7 @@ export function PnlWidget({
             {tenantName}
           </p>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><LineChart className="h-4 w-4 text-primary" />Profit & Loss</h3>
+            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><LineChart className="h-4 w-4 text-emphasis" />Profit & Loss</h3>
             <BasisBadge basis={basis ?? "accrual"} />
           </div>
           <CardFreshness from={fromDate} to={toDate} source={data?.current.source} isFetching={isFetching} />

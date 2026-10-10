@@ -49,7 +49,7 @@ export function LoanConsolidationWidget({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Building2 className="h-4 w-4 text-primary" /> Loan Consolidation
+            <Building2 className="h-4 w-4 text-emphasis" /> Loan Consolidation
           </h3>
           <p className="text-xs text-muted-foreground">Inter-company loan accounts as at {asAt}</p>
         </div>

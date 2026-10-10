@@ -316,11 +316,11 @@ export function FirmClientsSection({
                     .join(", ");
                   const nameBlock = (
                     <>
-                      <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary shrink-0">
+                      <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-emphasis shrink-0">
                         <Building2 className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <div className="font-medium leading-tight group-hover:text-primary transition-colors">
+                        <div className="font-medium leading-tight group-hover:text-emphasis transition-colors">
                           {c.name}
                         </div>
                         <div className="mt-0.5 text-xs text-muted-foreground truncate">

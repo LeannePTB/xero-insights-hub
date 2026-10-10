@@ -95,7 +95,7 @@ export function ClientSetupSection({ clientId }: { clientId: string }) {
                     to="/clients/$clientId/settings"
                     params={{ clientId }}
                     hash={item.anchor}
-                    className="text-xs font-medium text-primary hover:underline"
+                    className="text-xs font-medium text-emphasis hover:underline"
                   >
                     Open the section that fixes this
                   </Link>

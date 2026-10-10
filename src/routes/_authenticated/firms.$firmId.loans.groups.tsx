@@ -128,7 +128,7 @@ function LoanGroupsTab() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-                      <Bookmark className="h-5 w-5 text-primary" />
+                      <Bookmark className="h-5 w-5 text-emphasis" />
                       {g.name}
                     </h3>
                     <p className="mt-1 text-sm text-muted-foreground">

@@ -385,7 +385,7 @@ function Sparkline({ values }: { values: number[] }) {
   const span = max - min || 1;
   const pts = values.map((v, i) => `${(i / (values.length - 1)) * 60},${18 - ((v - min) / span) * 16}`).join(" ");
   return (
-    <svg width="60" height="20" aria-label="Cash at bank, last 30 days" className="text-primary">
+    <svg width="60" height="20" aria-label="Cash at bank, last 30 days" className="text-emphasis">
       <polyline points={pts} fill="none" stroke="currentColor" strokeWidth="1.5" />
     </svg>
   );

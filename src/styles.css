@@ -56,6 +56,7 @@
   --color-link: var(--link);
   --color-chart-6: var(--chart-6);
   --color-info-surface: var(--info-surface);
+  --color-emphasis: var(--emphasis);
   --color-xero: var(--xero);
   --color-xero-foreground: var(--xero-foreground);
   --text-xs: 11px;
@@ -104,6 +105,7 @@
   --popover: #FFFFFF;
   --popover-foreground: #002A5F;
   --primary: #054492;
+  --emphasis: #054492;
   --primary-foreground: #FFFFFF;
   --secondary: #EBF1F8;
   --secondary-foreground: #002A5F;
@@ -147,6 +149,7 @@
   --popover: #111F30;
   --popover-foreground: #EDF4FC;
   --primary: #054492;
+  --emphasis: #85CFF5;
   --primary-foreground: #FFFFFF;
   --secondary: #22354B;
   --secondary-foreground: #EDF4FC;

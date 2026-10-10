@@ -45,7 +45,7 @@ export function BreakevenWidget({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Target className="h-4 w-4 text-primary" /> Breaking even
+            <Target className="h-4 w-4 text-emphasis" /> Breaking even
             <BasisBadge basis={basis} />
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">

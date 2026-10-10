@@ -66,7 +66,7 @@ export function SuperannuationWidget({
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <PiggyBank className="h-4 w-4 text-primary" />
+            <PiggyBank className="h-4 w-4 text-emphasis" />
             Superannuation not yet paid
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">

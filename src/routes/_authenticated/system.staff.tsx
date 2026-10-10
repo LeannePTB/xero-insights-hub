@@ -381,7 +381,7 @@ function AdvisorSettings() {
                 return (
                   <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                      <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-primary/10 text-emphasis">
                         <ShieldCheck className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
@@ -396,7 +396,7 @@ function AdvisorSettings() {
                           )}
                           {isPending && <span className="ml-2 rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">Pending invite</span>}
                           {viewerIsSuperAdmin && onPracticeTeam && (
-                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-emphasis">
                               <Users className="h-3 w-3" /> Practice team
                             </span>
                           )}
@@ -441,7 +441,7 @@ function AdvisorSettings() {
                           }}
                           disabled={practiceMut.isPending}
                           title={onPracticeTeam ? "Remove from the practice team" : "Add to the practice team"}
-                          className={onPracticeTeam ? "text-primary" : undefined}
+                          className={onPracticeTeam ? "text-emphasis" : undefined}
                         >
                           <Users className="h-3.5 w-3.5" />
                         </Button>

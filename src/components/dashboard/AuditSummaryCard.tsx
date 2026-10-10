@@ -52,7 +52,7 @@ export function AuditSummaryCard({ tenantId, tenantName, clientId }: Props) {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
-            <ShieldCheck className="h-4 w-4 text-primary" /> File audit — {tenantName}
+            <ShieldCheck className="h-4 w-4 text-emphasis" /> File audit — {tenantName}
           </CardTitle>
           <Button size="sm" variant="outline" onClick={() => runMut.mutate()} disabled={runMut.isPending}>
             {runMut.isPending ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : run ? <RefreshCw className="mr-1 h-3 w-3" /> : <Play className="mr-1 h-3 w-3" />}

@@ -58,7 +58,7 @@ export function PaygWithholdingWidget({
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-primary" />
+            <Receipt className="h-4 w-4 text-emphasis" />
             PAYG withholding by month
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
