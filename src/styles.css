@@ -11,6 +11,14 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-primary-foreground: var(--primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-ring: var(--ring);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -98,6 +106,10 @@
   --brand-surface: #FFFFFF;
   --xero: #13B5EA;
   --xero-foreground: #002A5F;
+  --sidebar: #FFFFFF;
+  --sidebar-foreground: #002A5F;
+  --sidebar-accent: #054492;
+  --sidebar-accent-foreground: #FFFFFF;
   --background: #F7F9FC;
   --foreground: #002A5F;
   --card: #FFFFFF;
@@ -142,6 +154,10 @@
 }
 
 .dark {
+  --sidebar: #111F30;
+  --sidebar-foreground: #EDF4FC;
+  --sidebar-accent: #054492;
+  --sidebar-accent-foreground: #FFFFFF;
   --background: #0B1523;
   --foreground: #EDF4FC;
   --card: #111F30;

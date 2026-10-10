@@ -161,7 +161,7 @@ function renderMarkdown(ctx: Ctx, md: string) {
       flushPara();
       const level = h[1].length;
       const text = stripInlineMd(h[2]);
-      const size = level === 1 ? 14 : level === 2 ? 12 : 11;
+      const size = level === 1 ? 13.5 : level === 2 ? 12 : 11;
       ctx.y += 6;
       writeWrapped(ctx, text, { size, bold: true, lineGap: 3 });
       ctx.y += 2;
