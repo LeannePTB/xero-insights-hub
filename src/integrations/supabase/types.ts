@@ -2484,6 +2484,190 @@ export type Database = {
           },
         ]
       }
+      trixie_knowledge: {
+        Row: {
+          active: boolean
+          audience: string
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          tags: string[]
+          title: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active?: boolean
+          audience?: string
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active?: boolean
+          audience?: string
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      trixie_org_limits: {
+        Row: {
+          firm_id: string
+          monthly_allowance: number | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          firm_id: string
+          monthly_allowance?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          firm_id?: string
+          monthly_allowance?: number | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trixie_org_limits_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "trixie_org_limits_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: true
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trixie_settings: {
+        Row: {
+          default_monthly_allowance: number | null
+          enabled: boolean
+          model: string
+          platform_monthly_allowance: number | null
+          singleton: boolean
+          token_cost_guard_usd: number | null
+          updated_at: string
+          updated_by: string | null
+          warning_threshold: number
+        }
+        Insert: {
+          default_monthly_allowance?: number | null
+          enabled?: boolean
+          model?: string
+          platform_monthly_allowance?: number | null
+          singleton?: boolean
+          token_cost_guard_usd?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          warning_threshold?: number
+        }
+        Update: {
+          default_monthly_allowance?: number | null
+          enabled?: boolean
+          model?: string
+          platform_monthly_allowance?: number | null
+          singleton?: boolean
+          token_cost_guard_usd?: number | null
+          updated_at?: string
+          updated_by?: string | null
+          warning_threshold?: number
+        }
+        Relationships: []
+      }
+      trixie_usage: {
+        Row: {
+          client_id: string | null
+          completed_at: string | null
+          error_code: string | null
+          estimated_cost_usd: number | null
+          firm_id: string | null
+          gateway_run_id: string | null
+          id: string
+          input_tokens: number | null
+          model: string
+          output_tokens: number | null
+          reasoning_tokens: number | null
+          requested_at: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          client_id?: string | null
+          completed_at?: string | null
+          error_code?: string | null
+          estimated_cost_usd?: number | null
+          firm_id?: string | null
+          gateway_run_id?: string | null
+          id?: string
+          input_tokens?: number | null
+          model: string
+          output_tokens?: number | null
+          reasoning_tokens?: number | null
+          requested_at?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string | null
+          completed_at?: string | null
+          error_code?: string | null
+          estimated_cost_usd?: number | null
+          firm_id?: string | null
+          gateway_run_id?: string | null
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          output_tokens?: number | null
+          reasoning_tokens?: number | null
+          requested_at?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trixie_usage_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trixie_usage_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "trixie_usage_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       unreconciled_lines: {
         Row: {
           account_name: string
@@ -3235,6 +3419,50 @@ export type Database = {
         Args: { _make: boolean; _user_id: string }
         Returns: boolean
       }
+      admin_trixie_knowledge: {
+        Args: never
+        Returns: {
+          active: boolean
+          audience: string
+          body: string
+          id: string
+          tags: string[]
+          title: string
+          updated_at: string
+        }[]
+      }
+      admin_trixie_limits: {
+        Args: never
+        Returns: {
+          firm_id: string
+          firm_name: string
+          monthly_allowance: number
+        }[]
+      }
+      admin_trixie_settings: {
+        Args: never
+        Returns: {
+          default_monthly_allowance: number
+          enabled: boolean
+          model: string
+          platform_monthly_allowance: number
+          token_cost_guard_usd: number
+          warning_threshold: number
+        }[]
+      }
+      admin_trixie_usage: {
+        Args: { _from?: string }
+        Returns: {
+          estimated_cost_usd: number
+          failed: number
+          firm_id: string
+          firm_name: string
+          input_tokens: number
+          output_tokens: number
+          questions: number
+          reasoning_tokens: number
+        }[]
+      }
       apply_org_card_defaults: { Args: { _firm_id: string }; Returns: number }
       apply_viewer_invite: {
         Args: { _invite_id: string; _user_id: string }
@@ -3387,6 +3615,19 @@ export type Database = {
       enqueue_email: {
         Args: { payload: Json; queue_name: string }
         Returns: number
+      }
+      finalise_trixie_usage: {
+        Args: {
+          _error_code?: string
+          _estimated_cost_usd?: number
+          _gateway_run_id?: string
+          _input_tokens?: number
+          _output_tokens?: number
+          _reasoning_tokens?: number
+          _reservation_id: string
+          _status: string
+        }
+        Returns: boolean
       }
       firm_access_path: {
         Args: { _firm_id: string; _user_id: string }
@@ -3696,6 +3937,7 @@ export type Database = {
         Returns: number
       }
       purge_expired_security_logs: { Args: never; Returns: Json }
+      purge_trixie_usage: { Args: never; Returns: number }
       read_audit_posture: { Args: never; Returns: Json }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
@@ -3744,6 +3986,21 @@ export type Database = {
       rename_my_organisation: {
         Args: { _firm_id: string; _name: string }
         Returns: string
+      }
+      reserve_trixie_usage: {
+        Args: { _client_id?: string; _firm_id?: string; _system?: boolean }
+        Returns: {
+          audience: string
+          client_id: string
+          enabled: boolean
+          firm_id: string
+          mode: string
+          model: string
+          monthly_allowance: number
+          reservation_id: string
+          used: number
+          warning_threshold: number
+        }[]
       }
       reset_org_tier_widgets: {
         Args: { _firm_id: string; _tier: string }
@@ -3823,6 +4080,48 @@ export type Database = {
           _product_name: string
         }
         Returns: undefined
+      }
+      save_trixie_article: {
+        Args: {
+          _active: boolean
+          _audience: string
+          _body: string
+          _id: string
+          _tags: string[]
+          _title: string
+        }
+        Returns: string
+      }
+      save_trixie_org_limit: {
+        Args: { _allowance: number; _firm_id: string }
+        Returns: boolean
+      }
+      save_trixie_settings: {
+        Args: {
+          _default: number
+          _enabled: boolean
+          _guard: number
+          _model: string
+          _platform: number
+          _warning: number
+        }
+        Returns: boolean
+      }
+      search_trixie_knowledge: {
+        Args: {
+          _client_id?: string
+          _firm_id?: string
+          _limit?: number
+          _query: string
+          _system?: boolean
+        }
+        Returns: {
+          audience: string
+          body: string
+          id: string
+          tags: string[]
+          title: string
+        }[]
       }
       security_attestations_list: {
         Args: never
@@ -4012,6 +4311,20 @@ export type Database = {
           _new_owner_user_id: string
         }
         Returns: undefined
+      }
+      trixie_access_context: {
+        Args: { _client_id?: string; _firm_id?: string; _system?: boolean }
+        Returns: {
+          audience: string
+          client_id: string
+          enabled: boolean
+          firm_id: string
+          mode: string
+          model: string
+          monthly_allowance: number
+          used: number
+          warning_threshold: number
+        }[]
       }
       upsert_xero_snapshot: {
         Args: {
