@@ -165,7 +165,7 @@ function FirmDetailPage() {
     return (
       <div className="min-h-screen grid place-items-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </PageContainer>
+      </div>
     );
   }
   if (detailQ.error) {
@@ -175,7 +175,7 @@ function FirmDetailPage() {
           <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
           <p className="text-sm">{(detailQ.error as Error).message}</p>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 

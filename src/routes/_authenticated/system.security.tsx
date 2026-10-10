@@ -34,6 +34,7 @@ import vulnMgmt from "../../../docs/security/vulnerability-management.md?raw";
 import xeroMapping from "../../../docs/security/xero-assessment-mapping.md?raw";
 import { SecurityPostureCard } from "@/components/admin/SecurityPostureCard";
 import { AuditMonitoringCard } from "@/components/admin/AuditMonitoringCard";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/security")({
   head: () => ({
@@ -210,7 +211,7 @@ function SecurityDocsPage() {
 
   if (!hasAccess) {
     return (
-      <div className="container mx-auto p-6">
+      <PageContainer as="div" width="full">
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
           <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
           <div>
@@ -220,7 +221,7 @@ function SecurityDocsPage() {
             </p>
           </div>
         </div>
-      </div>
+      </PageContainer>
     );
   }
 
@@ -252,7 +253,7 @@ function SecurityDocsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <PageContainer as="div" width="full" className="space-y-6">
       <FirmPageHeader title="Security & Compliance" />
 
 
@@ -406,6 +407,6 @@ function SecurityDocsPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageContainer>
   );
 }
