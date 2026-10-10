@@ -12,6 +12,7 @@ export type TrixieContext = {
   firmId: string | null;
   clientId: string | null;
   tenantId: string | null;
+  tenantIds: string[];
   model: string;
   allowance: number | null;
   warningThreshold: number;
@@ -67,6 +68,16 @@ export async function resolveTrixieContext(request: Request, pathname: unknown):
     const { data: resolved, error: tenantError } = await (supabase as any).rpc("client_for_tenant", { _tenant_id: tenantId });
     if (tenantError || resolved !== route.clientId) tenantId = null;
   }
+  let tenantIds: string[] = [];
+  if (route.clientId) {
+    const { data: links } = await (supabase as any)
+      .from("client_xero_orgs")
+      .select("xero_connections!inner(tenant_id)")
+      .eq("client_id", route.clientId);
+    tenantIds = (links ?? [])
+      .map((link: any) => link.xero_connections?.tenant_id)
+      .filter((id: unknown): id is string => typeof id === "string" && id.length > 0 && id.length <= 255);
+  }
   return {
     supabase,
     reservationId: row.reservation_id,
@@ -75,6 +86,7 @@ export async function resolveTrixieContext(request: Request, pathname: unknown):
     firmId: row.firm_id ?? null,
     clientId: row.client_id ?? null,
     tenantId,
+    tenantIds,
     model: row.model,
     allowance: row.monthly_allowance ?? null,
     warningThreshold: row.warning_threshold,
