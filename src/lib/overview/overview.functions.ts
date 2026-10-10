@@ -1,7 +1,7 @@
-// The client overview (practice-team landing page). Staff-only.
+// The client overview: an organisation team's landing page. Members only.
 //
 // Zero Xero calls: stored snapshots only. The client list comes from the
-// caller-scoped `overview_clients()` (practice team AND active membership);
+// caller-scoped `overview_clients()` (active membership AND client read access; optional organisation filter);
 // every snapshot read runs as the caller through `context.supabase`, so RLS
 // applies. Status is the existing `evaluateClient`, never a second engine.
 
@@ -11,7 +11,8 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 
 export type FeedEvent = import("./feed.server").FeedEvent;
 
-const Input = z.object({}).strict().optional();
+const Input = z.object({ firmId: z.string().uuid().optional() }).strict().optional();
+const HiddenInput = z.object({}).strict().optional();
 
 export type OverviewRow = {
   clientId: string;
@@ -48,11 +49,13 @@ export const getClientOverview = createServerFn({ method: "POST" })
   .inputValidator((i: unknown) => Input.parse(i))
   .handler(
     async ({
+      data,
       context,
     }): Promise<{ rows: OverviewRow[]; feed: FeedEvent[]; cleared: FeedEvent[]; feedNotes: string[] }> => {
     try {
       const { buildOverview } = await import("./overview.server");
-      return await buildOverview(context.supabase as any, context.userId as string);
+      // firmId is a FILTER inside overview_clients(); access stays caller-scoped.
+      return await buildOverview(context.supabase as any, context.userId as string, data?.firmId ?? null);
     } catch (e) {
       console.error("[overview] failed", e instanceof Error ? e.message : e);
       throw new Error("The client overview could not be loaded.");
@@ -145,7 +148,7 @@ export type HiddenItem = {
 /** What the caller has hidden and could bring back (caller-scoped in the DB). */
 export const getHiddenOverviewItems = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: unknown) => Input.parse(i))
+  .inputValidator((i: unknown) => HiddenInput.parse(i))
   .handler(async ({ context }): Promise<{ items: HiddenItem[] }> => {
     const { data, error } = await (context.supabase as any).rpc("overview_hidden_items");
     if (error) {

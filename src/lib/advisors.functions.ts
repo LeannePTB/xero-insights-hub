@@ -4,7 +4,6 @@ import { siteUrl } from "@/lib/site-origin";
 import { findVerifiedAuthUserByEmail } from "@/lib/auth-users.server";
 import { meIsSuperAdmin } from "@/lib/auth/super-admin.server";
 
-export const PRIMARY_ADVISOR_USER_ID = "57d544ad-db50-4330-9b12-bcffdf4c6065";
 
 /**
  * Who may manage advisors is decided by the database (aal2 + advisor role) in
@@ -201,13 +200,10 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
   .inputValidator((i: { userId: string }) => i)
   .handler(async ({ data, context }) => {
     await assertAdvisor(context.supabase);
-    if (data.userId === PRIMARY_ADVISOR_USER_ID) {
-      throw new Error("The primary advisor account can't be removed.");
-    }
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // The database removes the roles and access grants, and enforces
-    // "at least one advisor must remain" itself.
+    // "at least one advisor and one super admin must remain" itself.
     const { error: roleErr } = await (context.supabase as any).rpc("admin_remove_advisor", {
       _user_id: data.userId,
     });

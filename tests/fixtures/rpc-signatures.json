@@ -536,6 +536,13 @@
         "args": [
             "_client_id"
         ],
+        "name": "me_can_manage_client",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
         "name": "me_can_manage_client_viewers",
         "required": 1
     },
@@ -644,6 +651,7 @@
     },
     {
         "args": [
+            "_firm_id"
         ],
         "name": "overview_clients",
         "required": 0

@@ -1650,3 +1650,8 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - DONE (tightening): set_org_card_defaults now keeps only cards the organisation is entitled to (standard; advisory when effective; consolidation when effective and more than one client), using the same rule as the purchase screen. Same guards, audit row and grants. Existing saved defaults were not rewritten. firm_allowed_widgets was NOT used: under card_model_v2 it is derived from current clients' cards and returns nothing for an organisation with no clients.
 - DONE (new write path, owner-approved): public.rename_my_organisation(), aal2, OWNER-ONLY, audited. Matrix rows and definer purpose added.
 - CHECKED, no violation: branding.server.ts delegates to database predicates (user_can_write_firm, user_can_access_firm), and its admin-client use is already registered (admin-client-register.md, backlog 32). No invariant 6 or 7 finding.
+
+## Step 4 (Oct 2026) — closed
+- CLOSED: hard-coded PRIMARY_ADVISOR_USER_ID removed. `admin_remove_advisor` now refuses removing the last super admin in the database (self-removal still allowed while another advisor and super admin remain).
+- CLOSED: getMyContext conflated `isAdvisor` / `hasAdminAreaAccess` replaced by `isPlatformStaff`, `memberships`, `isOrganisationMember`, `isClientViewer`; client staff controls use `me_can_manage_client` (screen signal only).
+- CHANGED (owner-approved): `overview_clients(_firm_id)` requires active organisation membership instead of practice_team; still requires `user_can_read_client`; `_firm_id` is a filter only.

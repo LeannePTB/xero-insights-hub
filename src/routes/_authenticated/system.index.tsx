@@ -58,7 +58,7 @@ function AdminPage() {
   const fetchMyFirms = useServerFn(listMyFirms);
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   const isSuper = ctxQ.data?.isSuperAdmin ?? false;
-  const hasAdminAreaAccess = ctxQ.data?.hasAdminAreaAccess ?? isSuper;
+  const hasAdminAreaAccess = ctxQ.data?.isPlatformStaff ?? isSuper;
   const myFirmsQ = useQuery({
     queryKey: ["my-firms"],
     queryFn: () => fetchMyFirms(),

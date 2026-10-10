@@ -1,3 +1,4 @@
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useState } from "react";
@@ -296,15 +297,16 @@ function ClientSettings() {
   // Defence in depth: this page is preparer tooling. Anyone who is not an
   // advisor is sent to their own client dashboard. Server-side checks are
   // unchanged and remain the real protection.
-  const isAdvisorHere = !!myCtxQ.data?.isAdvisor;
+  const capsQ = useCanManageClient(clientId);
+  const isAdvisorHere = capsQ.canManage;
   useEffect(() => {
-    if (myCtxQ.isLoading || !myCtxQ.data) return;
+    if (capsQ.isLoading || myCtxQ.isLoading || !myCtxQ.data) return;
     if (!isAdvisorHere) {
       navigate({ to: "/clients/$clientId", params: { clientId }, replace: true });
     }
-  }, [myCtxQ.isLoading, myCtxQ.data, isAdvisorHere, clientId, navigate]);
+  }, [capsQ.isLoading, myCtxQ.isLoading, myCtxQ.data, isAdvisorHere, clientId, navigate]);
 
-  if (clientQ.isLoading || myCtxQ.isLoading || !myCtxQ.data || !isAdvisorHere) {
+  if (clientQ.isLoading || capsQ.isLoading || myCtxQ.isLoading || !myCtxQ.data || !isAdvisorHere) {
     return (
       <div className="grid min-h-screen place-items-center text-muted-foreground">
         <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…

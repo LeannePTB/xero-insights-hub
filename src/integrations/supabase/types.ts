@@ -3549,6 +3549,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      me_can_manage_client: { Args: { _client_id: string }; Returns: boolean }
       me_can_manage_client_viewers: {
         Args: { _client_id: string }
         Returns: boolean
@@ -3658,7 +3659,7 @@ export type Database = {
         }[]
       }
       overview_clients: {
-        Args: never
+        Args: { _firm_id?: string }
         Returns: {
           client_id: string
           client_name: string

@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { getEfficiencyRecommendations } from "@/lib/health.recommendations";
 import type { PillarMetric } from "@/lib/health.functions";
 import { AlertTriangle, Info, Settings, TrendingUp } from "lucide-react";
-import { useIsAdvisor } from "@/hooks/useIsAdvisor";
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 
 export function EfficiencyRecommendations({
   metrics,
@@ -11,7 +11,7 @@ export function EfficiencyRecommendations({
   metrics: PillarMetric[];
   clientId?: string;
 }) {
-  const { isAdvisor } = useIsAdvisor();
+  const { canManage: isAdvisor } = useCanManageClient(clientId);
   const recs = getEfficiencyRecommendations(metrics);
   const wagesUntagged = metrics.some((m) => m.key === "wages" && m.pill === "Not tagged");
 

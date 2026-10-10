@@ -14,7 +14,6 @@ import {
   sendAdvisorPasswordReset,
   setAdvisorPassword,
   setAdvisorSuperAdmin,
-  PRIMARY_ADVISOR_USER_ID,
 } from "@/lib/advisors.functions";
 import { listPracticeTeam, setPracticeMembership } from "@/lib/practice-team.functions";
 import { updateProfileNameAsAdmin } from "@/lib/profile.functions";
@@ -74,12 +73,12 @@ function AdvisorSettings() {
   const listQ = useQuery({
     queryKey: ["advisors"],
     queryFn: () => fetchList(),
-    enabled: ctxQ.data?.isAdvisor ?? false,
+    enabled: ctxQ.data?.isPlatformStaff ?? false,
   });
   const pendingQ = useQuery({
     queryKey: ["advisors-pending"],
     queryFn: () => fetchPending(),
-    enabled: ctxQ.data?.isAdvisor ?? false,
+    enabled: ctxQ.data?.isPlatformStaff ?? false,
   });
   // The practice team list is platform metadata: readable by super admins only,
   // so only they see the indicator and the control.
@@ -226,7 +225,7 @@ function AdvisorSettings() {
   if (ctxQ.isLoading) {
     return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>;
   }
-  if (!ctxQ.data?.isAdvisor) return <p className="p-6 text-sm text-destructive">Advisors only.</p>;
+  if (!ctxQ.data?.isPlatformStaff) return <p className="p-6 text-sm text-destructive">Advisors only.</p>;
 
   const advisors = listQ.data?.advisors ?? [];
   const viewerIsSuperAdmin = listQ.data?.viewerIsSuperAdmin ?? false;
@@ -377,7 +376,6 @@ function AdvisorSettings() {
             <ul className="space-y-1.5">
               {advisors.map((a) => {
                 const isPending = pendingIds.has(a.user_id);
-                const isPrimary = a.user_id === PRIMARY_ADVISOR_USER_ID;
                 const onPracticeTeam = practiceIds.has(a.user_id);
                 return (
                   <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
@@ -389,7 +387,7 @@ function AdvisorSettings() {
                         <p className="truncate text-sm font-medium">
                           {isRealDisplayName(a.display_name) ? a.display_name : "Name not set"}
                           {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
-                          {isPrimary && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Primary</span>}
+                          
                           {a.is_super_admin && (
                             <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600">
                               <Crown className="h-3 w-3" /> Super admin
@@ -519,8 +517,8 @@ function AdvisorSettings() {
                             : `Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`;
                           if (confirm(msg)) revokeMut.mutate(a.user_id);
                         }}
-                        disabled={isPrimary || revokeMut.isPending}
-                        title={isPrimary ? "The primary advisor can't be removed" : a.is_self ? "Remove your own advisor access (you'll be signed out)" : "Remove advisor access"}
+                        disabled={revokeMut.isPending}
+                        title={a.is_self ? "Remove your own advisor access (you'll be signed out)" : "Remove advisor access"}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>

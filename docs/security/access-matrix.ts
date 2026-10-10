@@ -1256,8 +1256,23 @@ export const MATRIX: MatrixRow[] = [
     ["pglite"],
   ),
   ...rows(
+    ["org_staff"],
+    ["overview_clients() — own organisation's clients"],
+    ["execute"],
+    "allow",
+    "Step 4 (owner-approved): any active owner or staff member gets their own organisation's Overview without practice team (PK 2 path A); still capped by user_can_read_client",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_staff"],
+    ["me_is_practice_member()"],
+    ["execute"],
+    "deny",
+    "Practice-team signal stays practice-team only (routing, never a grant)",
+    ["pglite"],
+  ),
+  ...rows(
     [
-      "org_staff",
       "other_org_member",
       "client_viewer",
       "business_owner",
@@ -1272,7 +1287,7 @@ export const MATRIX: MatrixRow[] = [
     ["overview_clients() — own organisation's clients", "me_is_practice_member()"],
     ["execute"],
     "deny",
-    "Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2)",
+    "Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2)",
     ["pglite"],
   ),
 

@@ -1,3 +1,4 @@
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -94,7 +95,7 @@ function ReportsPage() {
     queryFn: () => listFn({ data: { clientId } }),
   });
 
-  const isAdvisor = ctxQ.data?.isAdvisor ?? false;
+  const { canManage: isAdvisor } = useCanManageClient(clientId);
   const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
 
 

@@ -2384,30 +2384,6 @@ begin
 end;
 $function$
 ;
-CREATE OR REPLACE FUNCTION public.overview_clients()
- RETURNS TABLE(client_id uuid, client_name text, firm_id uuid, firm_name text)
- LANGUAGE plpgsql
- STABLE
- SET search_path TO 'public'
-AS $function$
-begin
-  perform app_private.assert_aal2();
-  if auth.uid() is null then
-    return;
-  end if;
-  return query
-    select c.id, c.name, f.id, f.name
-      from public.clients c
-      join public.firms f on f.id = c.firm_id
-     where app_private.is_practice_member_of(auth.uid(), c.firm_id)
-       and app_private.user_can_read_client(auth.uid(), c.id)
-       and not c.overview_hidden
-       and not f.overview_hidden
-     order by f.name, c.name
-     limit 1000;
-end;
-$function$
-;
 CREATE OR REPLACE FUNCTION app_private.set_overview_alert_state(_client_id uuid, _event_key text, _action text, _severity smallint DEFAULT 0, _snooze_until timestamp with time zone DEFAULT NULL::timestamp with time zone)
  RETURNS void
  LANGUAGE plpgsql
@@ -2640,6 +2616,30 @@ begin
   values (auth.uid(), _firm_id, 'organisation_renamed_by_owner', 'firm', _firm_id::text,
           jsonb_build_object('from', _old, 'to', _clean));
   return _clean;
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.overview_clients(_firm_id uuid DEFAULT NULL::uuid)
+ RETURNS TABLE(client_id uuid, client_name text, firm_id uuid, firm_name text)
+ LANGUAGE plpgsql
+ STABLE
+ SET search_path TO 'public'
+AS $function$
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null then return; end if;
+  return query
+    select c.id, c.name, f.id, f.name
+      from public.clients c
+      join public.firms f on f.id = c.firm_id
+     where exists (select 1 from public.firm_members fm
+                    where fm.firm_id = c.firm_id and fm.user_id = auth.uid() and fm.status = 'active')
+       and app_private.user_can_read_client(auth.uid(), c.id)
+       and (_firm_id is null or c.firm_id = _firm_id)
+       and not c.overview_hidden
+       and not f.overview_hidden
+     order by f.name, c.name
+     limit 1000;
 end;
 $function$
 ;
@@ -3823,4 +3823,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: e85dc2a753503d9fcc66fedadab2f98277098ef3757d7287ab7b44b4263ca64f
+-- catalogue-fingerprint: 107ed1c229b1321aa68df00befdfcfab5be27cf0b9242bf684f17b009ff6b254

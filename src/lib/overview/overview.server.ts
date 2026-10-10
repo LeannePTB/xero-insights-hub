@@ -72,10 +72,10 @@ export function comparisonDates(today: string): string[] {
   return [...out];
 }
 
-export async function loadOverviewContext(sb: Sb): Promise<OverviewContext> {
+export async function loadOverviewContext(sb: Sb, firmId: string | null = null): Promise<OverviewContext> {
   const now = new Date();
   const today = sydneyDate(now);
-  const { data: list, error } = await sb.rpc("overview_clients");
+  const { data: list, error } = await sb.rpc("overview_clients", { _firm_id: firmId });
   if (error) throw new Error(error.message);
   const clients = (list ?? []) as OverviewContext["clients"];
   const ids = clients.map((c) => c.client_id);
@@ -267,13 +267,14 @@ export function moveFor(s: ClientSeries, key: FigureKey, days: number): MoveResu
 export async function buildOverview(
   sb: Sb,
   userId: string,
+  firmId: string | null = null,
 ): Promise<{
   rows: OverviewRow[];
   feed: import("./feed.server").FeedEvent[];
   cleared: import("./feed.server").FeedEvent[];
   feedNotes: string[];
 }> {
-  const ctx = await loadOverviewContext(sb);
+  const ctx = await loadOverviewContext(sb, firmId);
   const { logClientDataRead } = await import("@/lib/audit.server");
   const out: OverviewRow[] = [];
   for (const c of ctx.clients) {

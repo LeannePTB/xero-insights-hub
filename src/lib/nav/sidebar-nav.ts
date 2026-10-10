@@ -69,6 +69,7 @@ export const ORGANISATION_NAV: NavGroup[] = [
     label: "Practice",
     items: [
       { id: "overview", label: "Overview", icon: "grid", to: "/overview" },
+      { id: "overview", label: "Overview", icon: "activity", to: "/firms/$firmId/overview" },
       { id: "clients", label: "Clients", icon: "briefcase", to: "/firms/$firmId", exact: true },
       { id: "xero-files", label: "Xero files", icon: "link", to: "/firms/$firmId/xero-files" },
       {

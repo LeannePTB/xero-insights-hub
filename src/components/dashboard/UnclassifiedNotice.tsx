@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle } from "lucide-react";
-import { useIsAdvisor } from "@/hooks/useIsAdvisor";
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 
 /**
  * Shown on every card whose figures rest on cost classification. A break-even
@@ -14,7 +14,7 @@ export function UnclassifiedNotice({
   clientId?: string;
   count: number;
 }) {
-  const { isAdvisor } = useIsAdvisor();
+  const { canManage: isAdvisor } = useCanManageClient(clientId);
   if (count <= 0) return null;
   // Everyone is told the figure rests on an assumption. Only the preparer gets
   // the tooling link, because a client cannot act on it.
