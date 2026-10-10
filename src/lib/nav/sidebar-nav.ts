@@ -1,0 +1,139 @@
+/**
+ * Menu definitions for the three navigation layers.
+ *
+ * Presentation only. Items are plain data (no React, no functions) so the
+ * definition could later be loaded from the database. Hiding an item grants
+ * or removes nothing: every route keeps its own server-side guard.
+ */
+
+export type NavIcon =
+  | "building"
+  | "layers"
+  | "users"
+  | "palette"
+  | "shield"
+  | "activity"
+  | "grid"
+  | "briefcase"
+  | "link"
+  | "settings"
+  | "chart"
+  | "file"
+  | "trending"
+  | "landmark";
+
+export type NavItem = {
+  id: string;
+  label: string;
+  icon: NavIcon;
+  /** Route path pattern, e.g. "/firms/$firmId/people". */
+  to: string;
+  /** Exact match only (otherwise prefix match). */
+  exact?: boolean;
+  children?: NavItem[];
+  /** Key into the optional badge counts map. */
+  badgeKey?: string;
+};
+
+export type NavGroup = { id: string; label: string; items: NavItem[] };
+
+export type Workspace =
+  | { kind: "system" }
+  | { kind: "organisation"; firmId: string }
+  | { kind: "client"; clientId: string }
+  | { kind: "none" };
+
+export const SYSTEM_NAV: NavGroup[] = [
+  {
+    id: "platform",
+    label: "Platform",
+    items: [
+      { id: "orgs", label: "Organisations", icon: "building", to: "/system", exact: true },
+      { id: "staff", label: "Platform staff", icon: "users", to: "/system/staff" },
+      { id: "branding", label: "Platform branding", icon: "palette", to: "/system/branding" },
+    ],
+  },
+  {
+    id: "monitoring",
+    label: "Monitoring",
+    items: [
+      { id: "security", label: "Security & Compliance", icon: "shield", to: "/system/security" },
+      { id: "xero", label: "Xero monitoring", icon: "activity", to: "/system/xero" },
+    ],
+  },
+];
+
+export const ORGANISATION_NAV: NavGroup[] = [
+  {
+    id: "practice",
+    label: "Practice",
+    items: [
+      { id: "overview", label: "Overview", icon: "grid", to: "/overview" },
+      { id: "clients", label: "Clients", icon: "briefcase", to: "/firms/$firmId", exact: true },
+      {
+        id: "consolidations",
+        label: "Consolidations",
+        icon: "layers",
+        to: "/firms/$firmId/consolidations",
+        children: [
+          { id: "groups", label: "Groups", icon: "layers", to: "/firms/$firmId/consolidations" },
+          { id: "loan-matrix", label: "Loan matrix", icon: "link", to: "/firms/$firmId/loans", exact: true },
+          { id: "loan-accounts", label: "Loan accounts", icon: "landmark", to: "/firms/$firmId/loans/accounts" },
+        ],
+      },
+      { id: "people", label: "People & access", icon: "users", to: "/firms/$firmId/people" },
+      { id: "settings", label: "Settings", icon: "settings", to: "/firms/$firmId/settings" },
+    ],
+  },
+];
+
+export const CLIENT_NAV: NavGroup[] = [
+  {
+    id: "client",
+    label: "Client",
+    items: [
+      { id: "dashboard", label: "Live Dashboard", icon: "chart", to: "/clients/$clientId", exact: true },
+      { id: "reports", label: "Monthly reports", icon: "file", to: "/clients/$clientId/reports" },
+      { id: "cashflow", label: "Cash flow scenario", icon: "trending", to: "/clients/$clientId/cashflow-scenario" },
+      { id: "loans", label: "Loans", icon: "landmark", to: "/clients/$clientId/loans" },
+      { id: "client-settings", label: "Client settings", icon: "settings", to: "/clients/$clientId/settings" },
+    ],
+  },
+];
+
+/** Which workspace the current address belongs to. */
+export function workspaceFromPath(pathname: string): Workspace {
+  if (pathname === "/system" || pathname.startsWith("/system/")) return { kind: "system" };
+  const firm = /^\/firms\/([^/]+)/.exec(pathname);
+  if (firm) return { kind: "organisation", firmId: firm[1] };
+  const client = /^\/clients\/([^/]+)/.exec(pathname);
+  if (client && client[1] !== "new") return { kind: "client", clientId: client[1] };
+  return { kind: "none" };
+}
+
+export function fillPath(pattern: string, params: Record<string, string>): string {
+  return pattern.replace(/\$(\w+)/g, (_, k) => params[k] ?? "");
+}
+
+export function isItemActive(item: NavItem, pathname: string, params: Record<string, string>): boolean {
+  const target = fillPath(item.to, params).replace(/\/$/, "") || "/";
+  const path = pathname.replace(/\/$/, "") || "/";
+  if (item.exact) return path === target;
+  return path === target || path.startsWith(target + "/");
+}
+
+export function isBranchActive(item: NavItem, pathname: string, params: Record<string, string>): boolean {
+  if (isItemActive(item, pathname, params)) return true;
+  return (item.children ?? []).some((c) => isBranchActive(c, pathname, params));
+}
+
+/**
+ * Pick the menu for a workspace. `canSeeSystem` must come from the server
+ * signal (getMyContext.isSuperAdmin) — never from browser storage.
+ */
+export function navForWorkspace(ws: Workspace, opts: { canSeeSystem: boolean }): NavGroup[] {
+  if (ws.kind === "system") return opts.canSeeSystem ? SYSTEM_NAV : [];
+  if (ws.kind === "organisation") return ORGANISATION_NAV;
+  if (ws.kind === "client") return CLIENT_NAV;
+  return [];
+}
