@@ -3631,6 +3631,7 @@ create policy "plan_levels_write (delete)" on public.plan_levels as permissive f
 create policy "plan_levels_write (insert)" on public.plan_levels as permissive for insert to authenticated with check (app_private.me_is_super_admin());
 create policy "plan_levels_write (select)" on public.plan_levels as permissive for select to authenticated using (app_private.me_is_super_admin());
 create policy "plan_levels_write (update)" on public.plan_levels as permissive for update to authenticated using (app_private.me_is_super_admin()) with check (app_private.me_is_super_admin());
+create policy mfa_aal2_required on public.platform_branding as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.practice_team as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "practice team readable by super admin" on public.practice_team as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
 create policy "Users update own display name" on public.profiles as permissive for update to authenticated using ((auth.uid() = id)) with check ((auth.uid() = id));
@@ -3779,4 +3780,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: efa6c088d08264217261d42c0f2b4282f285ac51630ce9af0bef03330ad8de97
+-- catalogue-fingerprint: 5b8eb32b7f5cc9f3ae664c3258445046d9a4bae64ecd6a68dea78883284646c6
