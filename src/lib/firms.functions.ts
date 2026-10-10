@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 import { assertSuperAdminDb } from "@/lib/auth/super-admin.server";
 
@@ -183,3 +184,25 @@ export const getMyFirm = createServerFn({ method: "POST" })
     return { firm: { id: (firm as any).id, name: (firm as any).name }, plan };
   });
 
+
+/**
+ * Owner renames their own organisation. The owner-only, aal2 and audit rules
+ * live in public.rename_my_organisation(); this only validates and forwards.
+ */
+export const renameMyOrganisation = createServerFn({ method: "POST" })
+  .middleware([requireAal2])
+  .inputValidator((i: unknown) =>
+    z.object({ firmId: z.string().uuid(), name: z.string().trim().min(2).max(120) }).parse(i),
+  )
+  .handler(async ({ data, context }) => {
+    const { data: name, error } = await (context.supabase as any).rpc("rename_my_organisation", {
+      _firm_id: data.firmId,
+      _name: data.name,
+    });
+    if (error) {
+      if (/NO_ACCESS|insufficient/i.test(error.message)) throw new Error("Forbidden");
+      if (/INVALID_NAME/.test(error.message)) throw new Error("Name must be 2–120 characters.");
+      throw new Error("Could not rename the organisation.");
+    }
+    return { name: name as string };
+  });

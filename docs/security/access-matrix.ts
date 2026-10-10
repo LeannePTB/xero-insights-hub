@@ -1187,6 +1187,22 @@ export const MATRIX: MatrixRow[] = [
     ["pglite"],
   ),
   ...rows(
+    ["org_owner"],
+    ["rename_my_organisation(an organisation)"],
+    ["execute"],
+    "allow",
+    "PK 2 path A — the organisation's own owner renames it, audited (owner-only, 10 Oct 2026)",
+    ["pglite"],
+  ),
+  ...rows(
+    ["org_staff", "support_grant_active", "other_org_member", "client_viewer", "business_owner", "aal1_member"],
+    ["rename_my_organisation(an organisation)"],
+    ["execute"],
+    "deny",
+    "Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused",
+    ["pglite"],
+  ),
+  ...rows(
     ["aal1_member"],
     ["set_org_card_defaults(an organisation)", "apply_org_card_defaults(an organisation)"],
     ["execute"],

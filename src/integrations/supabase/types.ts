@@ -3727,6 +3727,10 @@ export type Database = {
         Args: { _firm_id: string; _user_id: string }
         Returns: undefined
       }
+      rename_my_organisation: {
+        Args: { _firm_id: string; _name: string }
+        Returns: string
+      }
       reset_org_tier_widgets: {
         Args: { _firm_id: string; _tier: string }
         Returns: undefined

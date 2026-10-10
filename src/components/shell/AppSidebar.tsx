@@ -42,6 +42,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { SecurityStatusCard } from "@/components/admin/SecurityStatusCard";
 import { getMyContext } from "@/lib/roles.functions";
 import { listMyFirms } from "@/lib/firms.functions";
+import { getClient } from "@/lib/clients.functions";
 import { useSignOut } from "@/lib/use-sign-out";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import {
@@ -97,7 +98,20 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
       : workspace.kind === "client"
         ? { clientId: workspace.clientId }
         : {};
-  const groups = navForWorkspace(workspace, { canSeeSystem });
+  // Client Xero files come from the existing guarded getClient call (same cache as the dashboard).
+  const fetchClient = useServerFn(getClient);
+  const clientId = workspace.kind === "client" ? workspace.clientId : null;
+  const clientQ = useQuery({
+    queryKey: ["client", clientId],
+    queryFn: () => fetchClient({ data: { clientId: clientId! } }),
+    enabled: !!clientId,
+    retry: false,
+  });
+  const clientFiles = (((clientQ.data as any)?.client?.client_xero_orgs ?? []) as any[])
+    .map((o) => o?.xero_connections)
+    .filter((c) => c?.tenant_id)
+    .map((c) => ({ tenantId: c.tenant_id as string, name: (c.tenant_name as string) || "Xero file" }));
+  const groups = navForWorkspace(workspace, { canSeeSystem, clientFiles });
 
   const onNavigate = () => {
     if (isMobile) setOpenMobile(false);

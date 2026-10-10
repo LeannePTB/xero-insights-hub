@@ -50,6 +50,7 @@ import { Route as AuthenticatedFirmsFirmIdConsolidationsRouteImport } from './ro
 import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
 import { Route as AuthenticatedFirmsFirmIdPeopleRouteImport } from './routes/_authenticated/firms.$firmId.people'
 import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
+import { Route as AuthenticatedFirmsFirmIdXeroFilesRouteImport } from './routes/_authenticated/firms.$firmId.xero-files'
 import { Route as AuthenticatedSystemOrganisationsFirmIdRouteImport } from './routes/_authenticated/system.organisations.$firmId'
 import { Route as ApiPublicSecurityRunAccessTestsRouteImport } from './routes/api/public/security/run-access-tests'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
@@ -69,6 +70,12 @@ import { Route as AuthenticatedFirmsFirmIdConsolidatedGroupIdRouteImport } from 
 import { Route as AuthenticatedFirmsFirmIdLoansIndexRouteImport } from './routes/_authenticated/firms.$firmId.loans.index'
 import { Route as AuthenticatedFirmsFirmIdLoansAccountsRouteImport } from './routes/_authenticated/firms.$firmId.loans.accounts'
 import { Route as AuthenticatedFirmsFirmIdLoansGroupsRouteImport } from './routes/_authenticated/firms.$firmId.loans.groups'
+import { Route as AuthenticatedFirmsFirmIdSettingsIndexRouteImport } from './routes/_authenticated/firms.$firmId.settings.index'
+import { Route as AuthenticatedFirmsFirmIdSettingsCardsRouteImport } from './routes/_authenticated/firms.$firmId.settings.cards'
+import { Route as AuthenticatedFirmsFirmIdSettingsGeneralRouteImport } from './routes/_authenticated/firms.$firmId.settings.general'
+import { Route as AuthenticatedFirmsFirmIdSettingsOwnershipRouteImport } from './routes/_authenticated/firms.$firmId.settings.ownership'
+import { Route as AuthenticatedFirmsFirmIdSettingsSubscriptionRouteImport } from './routes/_authenticated/firms.$firmId.settings.subscription'
+import { Route as AuthenticatedFirmsFirmIdSettingsSupportRouteImport } from './routes/_authenticated/firms.$firmId.settings.support'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -296,6 +303,12 @@ const AuthenticatedFirmsFirmIdSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
   } as any)
+const AuthenticatedFirmsFirmIdXeroFilesRoute =
+  AuthenticatedFirmsFirmIdXeroFilesRouteImport.update({
+    id: '/xero-files',
+    path: '/xero-files',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
 const AuthenticatedSystemOrganisationsFirmIdRoute =
   AuthenticatedSystemOrganisationsFirmIdRouteImport.update({
     id: '/organisations/$firmId',
@@ -405,6 +418,42 @@ const AuthenticatedFirmsFirmIdLoansGroupsRoute =
     path: '/groups',
     getParentRoute: () => AuthenticatedFirmsFirmIdLoansRoute,
   } as any)
+const AuthenticatedFirmsFirmIdSettingsIndexRoute =
+  AuthenticatedFirmsFirmIdSettingsIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedFirmsFirmIdSettingsRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdSettingsCardsRoute =
+  AuthenticatedFirmsFirmIdSettingsCardsRouteImport.update({
+    id: '/cards',
+    path: '/cards',
+    getParentRoute: () => AuthenticatedFirmsFirmIdSettingsRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdSettingsGeneralRoute =
+  AuthenticatedFirmsFirmIdSettingsGeneralRouteImport.update({
+    id: '/general',
+    path: '/general',
+    getParentRoute: () => AuthenticatedFirmsFirmIdSettingsRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdSettingsOwnershipRoute =
+  AuthenticatedFirmsFirmIdSettingsOwnershipRouteImport.update({
+    id: '/ownership',
+    path: '/ownership',
+    getParentRoute: () => AuthenticatedFirmsFirmIdSettingsRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdSettingsSubscriptionRoute =
+  AuthenticatedFirmsFirmIdSettingsSubscriptionRouteImport.update({
+    id: '/subscription',
+    path: '/subscription',
+    getParentRoute: () => AuthenticatedFirmsFirmIdSettingsRoute,
+  } as any)
+const AuthenticatedFirmsFirmIdSettingsSupportRoute =
+  AuthenticatedFirmsFirmIdSettingsSupportRouteImport.update({
+    id: '/support',
+    path: '/support',
+    getParentRoute: () => AuthenticatedFirmsFirmIdSettingsRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -444,7 +493,8 @@ export interface FileRoutesByFullPath {
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
-  '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
+  '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRouteWithChildren
+  '/firms/$firmId/xero-files': typeof AuthenticatedFirmsFirmIdXeroFilesRoute
   '/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -465,7 +515,13 @@ export interface FileRoutesByFullPath {
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
   '/firms/$firmId/loans/accounts': typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   '/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
+  '/firms/$firmId/settings/cards': typeof AuthenticatedFirmsFirmIdSettingsCardsRoute
+  '/firms/$firmId/settings/general': typeof AuthenticatedFirmsFirmIdSettingsGeneralRoute
+  '/firms/$firmId/settings/ownership': typeof AuthenticatedFirmsFirmIdSettingsOwnershipRoute
+  '/firms/$firmId/settings/subscription': typeof AuthenticatedFirmsFirmIdSettingsSubscriptionRoute
+  '/firms/$firmId/settings/support': typeof AuthenticatedFirmsFirmIdSettingsSupportRoute
   '/firms/$firmId/loans/': typeof AuthenticatedFirmsFirmIdLoansIndexRoute
+  '/firms/$firmId/settings/': typeof AuthenticatedFirmsFirmIdSettingsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -501,7 +557,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
-  '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
+  '/firms/$firmId/xero-files': typeof AuthenticatedFirmsFirmIdXeroFilesRoute
   '/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -522,7 +578,13 @@ export interface FileRoutesByTo {
   '/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
   '/firms/$firmId/loans/accounts': typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   '/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
+  '/firms/$firmId/settings/cards': typeof AuthenticatedFirmsFirmIdSettingsCardsRoute
+  '/firms/$firmId/settings/general': typeof AuthenticatedFirmsFirmIdSettingsGeneralRoute
+  '/firms/$firmId/settings/ownership': typeof AuthenticatedFirmsFirmIdSettingsOwnershipRoute
+  '/firms/$firmId/settings/subscription': typeof AuthenticatedFirmsFirmIdSettingsSubscriptionRoute
+  '/firms/$firmId/settings/support': typeof AuthenticatedFirmsFirmIdSettingsSupportRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansIndexRoute
+  '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -564,7 +626,8 @@ export interface FileRoutesById {
   '/_authenticated/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/_authenticated/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
-  '/_authenticated/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
+  '/_authenticated/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRouteWithChildren
+  '/_authenticated/firms/$firmId/xero-files': typeof AuthenticatedFirmsFirmIdXeroFilesRoute
   '/_authenticated/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
@@ -585,7 +648,13 @@ export interface FileRoutesById {
   '/_authenticated/firms/$firmId/consolidated/$groupId': typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
   '/_authenticated/firms/$firmId/loans/accounts': typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   '/_authenticated/firms/$firmId/loans/groups': typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
+  '/_authenticated/firms/$firmId/settings/cards': typeof AuthenticatedFirmsFirmIdSettingsCardsRoute
+  '/_authenticated/firms/$firmId/settings/general': typeof AuthenticatedFirmsFirmIdSettingsGeneralRoute
+  '/_authenticated/firms/$firmId/settings/ownership': typeof AuthenticatedFirmsFirmIdSettingsOwnershipRoute
+  '/_authenticated/firms/$firmId/settings/subscription': typeof AuthenticatedFirmsFirmIdSettingsSubscriptionRoute
+  '/_authenticated/firms/$firmId/settings/support': typeof AuthenticatedFirmsFirmIdSettingsSupportRoute
   '/_authenticated/firms/$firmId/loans/': typeof AuthenticatedFirmsFirmIdLoansIndexRoute
+  '/_authenticated/firms/$firmId/settings/': typeof AuthenticatedFirmsFirmIdSettingsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -628,6 +697,7 @@ export interface FileRouteTypes {
     | '/firms/$firmId/loans'
     | '/firms/$firmId/people'
     | '/firms/$firmId/settings'
+    | '/firms/$firmId/xero-files'
     | '/system/organisations/$firmId'
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
@@ -648,7 +718,13 @@ export interface FileRouteTypes {
     | '/firms/$firmId/consolidated/$groupId'
     | '/firms/$firmId/loans/accounts'
     | '/firms/$firmId/loans/groups'
+    | '/firms/$firmId/settings/cards'
+    | '/firms/$firmId/settings/general'
+    | '/firms/$firmId/settings/ownership'
+    | '/firms/$firmId/settings/subscription'
+    | '/firms/$firmId/settings/support'
     | '/firms/$firmId/loans/'
+    | '/firms/$firmId/settings/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -684,7 +760,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/settings'
     | '/firms/$firmId/consolidations'
     | '/firms/$firmId/people'
-    | '/firms/$firmId/settings'
+    | '/firms/$firmId/xero-files'
     | '/system/organisations/$firmId'
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
@@ -705,7 +781,13 @@ export interface FileRouteTypes {
     | '/firms/$firmId/consolidated/$groupId'
     | '/firms/$firmId/loans/accounts'
     | '/firms/$firmId/loans/groups'
+    | '/firms/$firmId/settings/cards'
+    | '/firms/$firmId/settings/general'
+    | '/firms/$firmId/settings/ownership'
+    | '/firms/$firmId/settings/subscription'
+    | '/firms/$firmId/settings/support'
     | '/firms/$firmId/loans'
+    | '/firms/$firmId/settings'
   id:
     | '__root__'
     | '/'
@@ -747,6 +829,7 @@ export interface FileRouteTypes {
     | '/_authenticated/firms/$firmId/loans'
     | '/_authenticated/firms/$firmId/people'
     | '/_authenticated/firms/$firmId/settings'
+    | '/_authenticated/firms/$firmId/xero-files'
     | '/_authenticated/system/organisations/$firmId'
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
@@ -767,7 +850,13 @@ export interface FileRouteTypes {
     | '/_authenticated/firms/$firmId/consolidated/$groupId'
     | '/_authenticated/firms/$firmId/loans/accounts'
     | '/_authenticated/firms/$firmId/loans/groups'
+    | '/_authenticated/firms/$firmId/settings/cards'
+    | '/_authenticated/firms/$firmId/settings/general'
+    | '/_authenticated/firms/$firmId/settings/ownership'
+    | '/_authenticated/firms/$firmId/settings/subscription'
+    | '/_authenticated/firms/$firmId/settings/support'
     | '/_authenticated/firms/$firmId/loans/'
+    | '/_authenticated/firms/$firmId/settings/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -1085,6 +1174,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdRoute
     }
+    '/_authenticated/firms/$firmId/xero-files': {
+      id: '/_authenticated/firms/$firmId/xero-files'
+      path: '/xero-files'
+      fullPath: '/firms/$firmId/xero-files'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdXeroFilesRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
     '/_authenticated/system/organisations/$firmId': {
       id: '/_authenticated/system/organisations/$firmId'
       path: '/organisations/$firmId'
@@ -1218,6 +1314,48 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansGroupsRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdLoansRoute
     }
+    '/_authenticated/firms/$firmId/settings/': {
+      id: '/_authenticated/firms/$firmId/settings/'
+      path: '/'
+      fullPath: '/firms/$firmId/settings/'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsIndexRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
+    }
+    '/_authenticated/firms/$firmId/settings/cards': {
+      id: '/_authenticated/firms/$firmId/settings/cards'
+      path: '/cards'
+      fullPath: '/firms/$firmId/settings/cards'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsCardsRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
+    }
+    '/_authenticated/firms/$firmId/settings/general': {
+      id: '/_authenticated/firms/$firmId/settings/general'
+      path: '/general'
+      fullPath: '/firms/$firmId/settings/general'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsGeneralRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
+    }
+    '/_authenticated/firms/$firmId/settings/ownership': {
+      id: '/_authenticated/firms/$firmId/settings/ownership'
+      path: '/ownership'
+      fullPath: '/firms/$firmId/settings/ownership'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsOwnershipRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
+    }
+    '/_authenticated/firms/$firmId/settings/subscription': {
+      id: '/_authenticated/firms/$firmId/settings/subscription'
+      path: '/subscription'
+      fullPath: '/firms/$firmId/settings/subscription'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsSubscriptionRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
+    }
+    '/_authenticated/firms/$firmId/settings/support': {
+      id: '/_authenticated/firms/$firmId/settings/support'
+      path: '/support'
+      fullPath: '/firms/$firmId/settings/support'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsSupportRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
+    }
   }
 }
 
@@ -1279,11 +1417,42 @@ const AuthenticatedFirmsFirmIdLoansRouteWithChildren =
     AuthenticatedFirmsFirmIdLoansRouteChildren,
   )
 
+interface AuthenticatedFirmsFirmIdSettingsRouteChildren {
+  AuthenticatedFirmsFirmIdSettingsCardsRoute: typeof AuthenticatedFirmsFirmIdSettingsCardsRoute
+  AuthenticatedFirmsFirmIdSettingsGeneralRoute: typeof AuthenticatedFirmsFirmIdSettingsGeneralRoute
+  AuthenticatedFirmsFirmIdSettingsOwnershipRoute: typeof AuthenticatedFirmsFirmIdSettingsOwnershipRoute
+  AuthenticatedFirmsFirmIdSettingsSubscriptionRoute: typeof AuthenticatedFirmsFirmIdSettingsSubscriptionRoute
+  AuthenticatedFirmsFirmIdSettingsSupportRoute: typeof AuthenticatedFirmsFirmIdSettingsSupportRoute
+  AuthenticatedFirmsFirmIdSettingsIndexRoute: typeof AuthenticatedFirmsFirmIdSettingsIndexRoute
+}
+
+const AuthenticatedFirmsFirmIdSettingsRouteChildren: AuthenticatedFirmsFirmIdSettingsRouteChildren =
+  {
+    AuthenticatedFirmsFirmIdSettingsCardsRoute:
+      AuthenticatedFirmsFirmIdSettingsCardsRoute,
+    AuthenticatedFirmsFirmIdSettingsGeneralRoute:
+      AuthenticatedFirmsFirmIdSettingsGeneralRoute,
+    AuthenticatedFirmsFirmIdSettingsOwnershipRoute:
+      AuthenticatedFirmsFirmIdSettingsOwnershipRoute,
+    AuthenticatedFirmsFirmIdSettingsSubscriptionRoute:
+      AuthenticatedFirmsFirmIdSettingsSubscriptionRoute,
+    AuthenticatedFirmsFirmIdSettingsSupportRoute:
+      AuthenticatedFirmsFirmIdSettingsSupportRoute,
+    AuthenticatedFirmsFirmIdSettingsIndexRoute:
+      AuthenticatedFirmsFirmIdSettingsIndexRoute,
+  }
+
+const AuthenticatedFirmsFirmIdSettingsRouteWithChildren =
+  AuthenticatedFirmsFirmIdSettingsRoute._addFileChildren(
+    AuthenticatedFirmsFirmIdSettingsRouteChildren,
+  )
+
 interface AuthenticatedFirmsFirmIdRouteChildren {
   AuthenticatedFirmsFirmIdConsolidationsRoute: typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   AuthenticatedFirmsFirmIdLoansRoute: typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   AuthenticatedFirmsFirmIdPeopleRoute: typeof AuthenticatedFirmsFirmIdPeopleRoute
-  AuthenticatedFirmsFirmIdSettingsRoute: typeof AuthenticatedFirmsFirmIdSettingsRoute
+  AuthenticatedFirmsFirmIdSettingsRoute: typeof AuthenticatedFirmsFirmIdSettingsRouteWithChildren
+  AuthenticatedFirmsFirmIdXeroFilesRoute: typeof AuthenticatedFirmsFirmIdXeroFilesRoute
   AuthenticatedFirmsFirmIdIndexRoute: typeof AuthenticatedFirmsFirmIdIndexRoute
   AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute: typeof AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute
 }
@@ -1296,7 +1465,9 @@ const AuthenticatedFirmsFirmIdRouteChildren: AuthenticatedFirmsFirmIdRouteChildr
       AuthenticatedFirmsFirmIdLoansRouteWithChildren,
     AuthenticatedFirmsFirmIdPeopleRoute: AuthenticatedFirmsFirmIdPeopleRoute,
     AuthenticatedFirmsFirmIdSettingsRoute:
-      AuthenticatedFirmsFirmIdSettingsRoute,
+      AuthenticatedFirmsFirmIdSettingsRouteWithChildren,
+    AuthenticatedFirmsFirmIdXeroFilesRoute:
+      AuthenticatedFirmsFirmIdXeroFilesRoute,
     AuthenticatedFirmsFirmIdIndexRoute: AuthenticatedFirmsFirmIdIndexRoute,
     AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute:
       AuthenticatedFirmsFirmIdConsolidatedGroupIdRoute,

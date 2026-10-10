@@ -40,6 +40,8 @@ export type FirmSettingsSummary = {
   firm: { id: string; name: string };
   clientCount: number;
   clientLimit: number;
+  /** UI hint only; the rename function re-checks ownership in the database. */
+  isOwner: boolean;
   isMember: boolean;
   isSuperAdmin: boolean;
 };
@@ -97,6 +99,7 @@ export const getFirmSettingsSummary = createServerFn({ method: "POST" })
       firm: { id: firm.id, name: firm.name },
       clientCount: count ?? 0,
       clientLimit: (options as any)?.client_limit ?? 0,
+      isOwner: access.isOwner,
       isMember: access.isMember,
       isSuperAdmin: access.isSuperAdmin,
     };

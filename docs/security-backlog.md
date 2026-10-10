@@ -1643,3 +1643,10 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - OPEN: PRIMARY_ADVISOR_USER_ID hard-coded in advisors.functions.ts and system.staff.tsx (invariant 6).
 - OPEN: getMyContext sets isAdvisor/hasAdminAreaAccess for any organisation member; the new menu does not use them.
 - OPEN: platform branding not yet applied to favicon, report PDF or email sender name (sources still hard-coded).
+
+## 2026-10-10 — Navigation restructure, step 3 (Organisation workspace)
+- DONE: /firms/:firmId split into Clients (with add-client actions), Xero files, People & access and Settings (General, Card defaults, Subscription, Ownership, Support access). The old Settings page and #people links redirect. Presentation and routing only; every page keeps its server guard.
+- DONE: the System organisation page no longer renders the clients list or card defaults.
+- DONE (tightening): set_org_card_defaults now keeps only cards the organisation is entitled to (standard; advisory when effective; consolidation when effective and more than one client), using the same rule as the purchase screen. Same guards, audit row and grants. Existing saved defaults were not rewritten. firm_allowed_widgets was NOT used: under card_model_v2 it is derived from current clients' cards and returns nothing for an organisation with no clients.
+- DONE (new write path, owner-approved): public.rename_my_organisation(), aal2, OWNER-ONLY, audited. Matrix rows and definer purpose added.
+- CHECKED, no violation: branding.server.ts delegates to database predicates (user_can_write_firm, user_can_access_firm), and its admin-client use is already registered (admin-client-register.md, backlog 32). No invariant 6 or 7 finding.

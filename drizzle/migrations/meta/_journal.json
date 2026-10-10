@@ -127,6 +127,13 @@
       "when": 1791599456742,
       "tag": "0017_platform_branding_aal2_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791600531233,
+      "tag": "0018_org_card_defaults_entitlement_and_owner_rename",
+      "breakpoints": true
     }
   ]
 }

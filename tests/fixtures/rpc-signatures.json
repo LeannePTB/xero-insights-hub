@@ -751,6 +751,14 @@
     {
         "args": [
             "_firm_id",
+            "_name"
+        ],
+        "name": "rename_my_organisation",
+        "required": 2
+    },
+    {
+        "args": [
+            "_firm_id",
             "_tier"
         ],
         "name": "reset_org_tier_widgets",

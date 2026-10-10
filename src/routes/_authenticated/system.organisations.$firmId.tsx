@@ -1,5 +1,4 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -45,7 +44,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
-import { OrgCardDefaultsCard } from "@/components/admin/OrgCardDefaultsCard";
 import { BillingLifecycleCard } from "@/components/admin/BillingLifecycleCard";
 
 export const Route = createFileRoute("/_authenticated/system/organisations/$firmId")({
@@ -192,8 +190,6 @@ function FirmDetailPage() {
 
         <OrgPurchaseCard firmId={firmId} />
 
-        <OrgCardDefaultsCard firmId={firmId} />
-
         <BillingLifecycleCard
           firmId={firmId}
           subscription={detailQ.data?.subscription ?? null}
@@ -208,22 +204,6 @@ function FirmDetailPage() {
         />
 
         <FirmXeroFilesCard firmId={firmId} variant="plain" />
-
-        <section className="rounded-lg border p-6 space-y-4">
-          <FirmClientsSection
-            firmId={firmId}
-            firmName={firm.name}
-            clientLimit={(detailQ.data as any)?.clientLimit}
-            showHealth={false}
-            allowClientData={false}
-            onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
-          />
-          <p className="text-xs text-muted-foreground">
-            Client names and linked Xero files only — nothing here opens client data. Client
-            dashboards are reachable through “View as”, and only when this organisation has granted
-            support access or you are a member of it.
-          </p>
-        </section>
 
         <AuditSection events={auditQ.data?.events ?? []} loading={auditQ.isLoading} />
       </main>

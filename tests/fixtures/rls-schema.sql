@@ -2296,6 +2296,10 @@ CREATE OR REPLACE FUNCTION public.set_org_card_defaults(_firm_id uuid, _cards te
 AS $function$
 declare
   _clean text[];
+  _allowed text[];
+  _adv boolean;
+  _cons boolean;
+  _n int;
 begin
   perform app_private.assert_aal2();
   perform app_private.assert_firm_member_write(_firm_id);
@@ -2304,9 +2308,17 @@ begin
     raise exception 'NO_SUCH_ORGANISATION' using errcode = 'no_data_found';
   end if;
 
+  -- Entitlement: the same groups the purchase screen offers.
+  select e.advisory, e.consolidation into _adv, _cons from app_private.org_effective_options(_firm_id) e;
+  select count(*)::int into _n from public.clients c where c.firm_id = _firm_id;
+  _allowed := app_private.card_group_cards('standard')
+    || case when coalesce(_adv, false) then app_private.card_group_cards('advisory') else '{}'::text[] end
+    || case when coalesce(_cons, false) and _n > 1 then app_private.card_group_cards('consolidation') else '{}'::text[] end;
+
   _clean := coalesce(array(
     select distinct x from unnest(coalesce(_cards, '{}'::text[])) x
      where x = any(app_private.known_cards())
+       and x = any(_allowed)
      order by x
   ), '{}'::text[]);
 
@@ -3780,4 +3792,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 5b8eb32b7f5cc9f3ae664c3258445046d9a4bae64ecd6a68dea78883284646c6
+-- catalogue-fingerprint: e85dc2a753503d9fcc66fedadab2f98277098ef3757d7287ab7b44b4263ca64f

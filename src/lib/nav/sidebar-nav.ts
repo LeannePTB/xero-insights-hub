@@ -70,6 +70,7 @@ export const ORGANISATION_NAV: NavGroup[] = [
     items: [
       { id: "overview", label: "Overview", icon: "grid", to: "/overview" },
       { id: "clients", label: "Clients", icon: "briefcase", to: "/firms/$firmId", exact: true },
+      { id: "xero-files", label: "Xero files", icon: "link", to: "/firms/$firmId/xero-files" },
       {
         id: "consolidations",
         label: "Consolidations",
@@ -78,11 +79,24 @@ export const ORGANISATION_NAV: NavGroup[] = [
         children: [
           { id: "groups", label: "Groups", icon: "layers", to: "/firms/$firmId/consolidations" },
           { id: "loan-matrix", label: "Loan matrix", icon: "link", to: "/firms/$firmId/loans", exact: true },
+          { id: "loan-groups", label: "Loan groups", icon: "layers", to: "/firms/$firmId/loans/groups" },
           { id: "loan-accounts", label: "Loan accounts", icon: "landmark", to: "/firms/$firmId/loans/accounts" },
         ],
       },
       { id: "people", label: "People & access", icon: "users", to: "/firms/$firmId/people" },
-      { id: "settings", label: "Settings", icon: "settings", to: "/firms/$firmId/settings" },
+      {
+        id: "settings",
+        label: "Settings",
+        icon: "settings",
+        to: "/firms/$firmId/settings",
+        children: [
+          { id: "s-general", label: "General", icon: "settings", to: "/firms/$firmId/settings/general" },
+          { id: "s-cards", label: "Card defaults", icon: "grid", to: "/firms/$firmId/settings/cards" },
+          { id: "s-subscription", label: "Subscription", icon: "file", to: "/firms/$firmId/settings/subscription" },
+          { id: "s-ownership", label: "Ownership", icon: "users", to: "/firms/$firmId/settings/ownership" },
+          { id: "s-support", label: "Support access", icon: "shield", to: "/firms/$firmId/settings/support" },
+        ],
+      },
     ],
   },
 ];
@@ -100,6 +114,31 @@ export const CLIENT_NAV: NavGroup[] = [
     ],
   },
 ];
+
+export type ClientXeroFile = { tenantId: string; name: string };
+
+/**
+ * Payables / Receivables need a Xero file: one file links straight through,
+ * several become sub-items, none hides the items. Pages keep their own guards.
+ */
+export function clientFileItems(files: ClientXeroFile[]): NavItem[] {
+  if (files.length === 0) return [];
+  const make = (kind: "payables" | "receivables", label: string, icon: NavIcon): NavItem =>
+    files.length === 1
+      ? { id: kind, label, icon, to: `/clients/$clientId/${kind}/${files[0].tenantId}` }
+      : {
+          id: kind,
+          label,
+          icon,
+          to: `/clients/$clientId/${kind}`,
+          children: files.map((f) => ({ id: `${kind}-${f.tenantId}`, label: f.name, icon, to: `/clients/$clientId/${kind}/${f.tenantId}` })),
+        };
+  return [make("payables", "Payables", "file"), make("receivables", "Receivables", "file")];
+}
+
+export function clientNav(files: ClientXeroFile[]): NavGroup[] {
+  return [{ ...CLIENT_NAV[0], items: [...CLIENT_NAV[0].items, ...clientFileItems(files)] }];
+}
 
 /** Which workspace the current address belongs to. */
 export function workspaceFromPath(pathname: string): Workspace {
@@ -131,9 +170,9 @@ export function isBranchActive(item: NavItem, pathname: string, params: Record<s
  * Pick the menu for a workspace. `canSeeSystem` must come from the server
  * signal (getMyContext.isSuperAdmin) — never from browser storage.
  */
-export function navForWorkspace(ws: Workspace, opts: { canSeeSystem: boolean }): NavGroup[] {
+export function navForWorkspace(ws: Workspace, opts: { canSeeSystem: boolean; clientFiles?: ClientXeroFile[] }): NavGroup[] {
   if (ws.kind === "system") return opts.canSeeSystem ? SYSTEM_NAV : [];
   if (ws.kind === "organisation") return ORGANISATION_NAV;
-  if (ws.kind === "client") return CLIENT_NAV;
+  if (ws.kind === "client") return clientNav(opts.clientFiles ?? []);
   return [];
 }

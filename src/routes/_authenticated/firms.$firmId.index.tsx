@@ -1,15 +1,14 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getMyFirm } from "@/lib/firms.functions";
 import { getMyContext } from "@/lib/roles.functions";
-import { Button } from "@/components/ui/button";
-import { ArrowLeft, Layers, Loader2, Settings } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { ViewAsBanner } from "@/components/admin/ViewAsBanner";
 import { FirmClientsSection } from "@/components/admin/FirmClientsSection";
+import { AddClientsPanel } from "@/components/firm/AddClientsPanel";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
-import { useFirmWidgets } from "@/hooks/useFirmWidget";
 
 import { toast } from "sonner";
 
@@ -53,8 +52,6 @@ function FirmPage() {
   const qc = useQueryClient();
   const fetchFirm = useServerFn(getMyFirm);
   const fetchCtx = useServerFn(getMyContext);
-  // Organisation-level features are database-resolved from purchased or trialled options.
-  const canConsolidate = useFirmWidgets(firmId).can("loan_consolidation");
 
   const firmQ = useQuery({
     queryKey: ["my-firm", firmId],
@@ -107,34 +104,12 @@ function FirmPage() {
         />
       )}
       <main className="mx-auto max-w-6xl px-6 py-10">
-        {!previewing && (
-          <Button variant="ghost" size="sm" asChild className="mb-4">
-            <Link to="/dashboard">
-              <ArrowLeft className="mr-1 h-4 w-4" /> All organisations
-            </Link>
-          </Button>
-        )}
-
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-3xl font-semibold">{firm.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Clients for this organisation. Add or remove them here.
             </p>
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            {canConsolidate && (
-              <Button variant="outline" size="sm" asChild>
-                <Link to="/firms/$firmId/consolidations" params={{ firmId }}>
-                  <Layers className="mr-1 h-4 w-4" /> Company Consolidations
-                </Link>
-              </Button>
-            )}
-            <Button variant="outline" size="sm" asChild>
-              <Link to="/firms/$firmId/settings" params={{ firmId }}>
-                <Settings className="mr-1 h-4 w-4" /> Organisation Settings
-              </Link>
-            </Button>
           </div>
         </div>
 
@@ -152,6 +127,12 @@ function FirmPage() {
               });
             }}
           />
+        )}
+
+        {!previewing && (
+          <div className="mt-6">
+            <AddClientsPanel firmId={firmId} />
+          </div>
         )}
 
         <div className="mt-8">
