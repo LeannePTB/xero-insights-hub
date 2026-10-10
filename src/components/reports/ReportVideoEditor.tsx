@@ -7,7 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { SuperAdminSection } from "@/components/admin/SuperAdminOnly";
 import { setReportVideo } from "@/lib/reports/report-video.functions";
 import {
   DEFAULT_VIDEO_HEADING,
@@ -65,8 +64,8 @@ export function ReportVideoEditor({
   const hasVideo = !!(report.video_url ?? "").trim();
 
   return (
-    <SuperAdminSection title="Personal video (Loom)" className="mt-6">
-      <div className="rounded-xl bg-card p-6">
+    <section className="mt-6 rounded-lg border border-border bg-card p-6">
+        <h2 className="mb-3 text-sm font-medium">Personal video (Loom)</h2>
         <p className="text-sm text-muted-foreground">
           Optional. Anyone who can see this report — including a client opening their
           emailed link — sees the player at the top. It never appears in the PDF, and it
@@ -112,7 +111,7 @@ export function ReportVideoEditor({
           </div>
         </div>
 
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex flex-wrap items-center gap-2">
           <Button
             onClick={() => mut.mutate({})}
             disabled={mut.isPending || invalid || !trimmed}
@@ -124,6 +123,7 @@ export function ReportVideoEditor({
             )}
             Save video
           </Button>
+          <span className="text-xs text-muted-foreground">Super admin</span>
           {hasVideo && (
             <Button
               variant="ghost"
@@ -135,7 +135,6 @@ export function ReportVideoEditor({
             </Button>
           )}
         </div>
-      </div>
-    </SuperAdminSection>
+    </section>
   );
 }

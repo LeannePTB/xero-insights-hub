@@ -7,8 +7,8 @@ import { getMyContext } from "@/lib/roles.functions";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Loader2, ShieldAlert, ArrowLeft, Eye, Users } from "lucide-react";
-import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
+import { Loader2, ShieldAlert, Eye, Users } from "lucide-react";
+import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 
 
 import { listOrganisationUsage, type OrganisationUsage } from "@/lib/admin-plan-usage.functions";
@@ -98,26 +98,11 @@ function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            {!isSuper && (
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/dashboard"><ArrowLeft className="h-4 w-4 mr-1" /> Back</Link>
-              </Button>
-            )}
-
-            <h1 className="text-xl font-semibold">Admin</h1>
-            {isSuper ? <SuperAdminBadge /> : <Badge variant="outline">advisor admin</Badge>}
-          </div>
-          <div className="flex items-center gap-2">
-            {isSuper && <AddOrganisationDialog onCreated={() => firmsQ.refetch()} />}
-          </div>
-        </div>
-
-      </header>
-
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        <FirmPageHeader
+          title="Organisations"
+          actions={isSuper && <AddOrganisationDialog onCreated={() => firmsQ.refetch()} />}
+        />
         <OrganisationsSection
           isSuper={isSuper}
           firms={firmsQ.data?.firms as FirmRow[] | undefined}
@@ -210,7 +195,6 @@ function OrganisationsSection({
   if (firmsLoading) {
     return (
       <section className="space-y-3">
-        <SectionTitle />
         <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading organisations…</div>
       </section>
     );
@@ -219,7 +203,6 @@ function OrganisationsSection({
   if (firmsError) {
     return (
       <section className="space-y-3">
-        <SectionTitle />
         <div className="rounded-md border border-destructive/40 bg-destructive/10 p-4 flex items-start gap-3">
           <ShieldAlert className="h-5 w-5 text-destructive mt-0.5" />
           <div>
@@ -234,7 +217,6 @@ function OrganisationsSection({
   if (!isSuper) {
     return (
       <section className="space-y-3">
-        <SectionTitle />
         <div className="rounded-lg border overflow-hidden">
           <table className="w-full text-sm">
             <thead className="bg-muted/40 text-left text-xs uppercase tracking-wide text-muted-foreground">
@@ -275,7 +257,6 @@ function OrganisationsSection({
 
   return (
     <section className="space-y-3">
-      <SectionTitle />
 
       {/* Table from 900px up */}
       <div className="hidden min-[900px]:block rounded-lg border overflow-hidden">
@@ -565,15 +546,6 @@ function RowActions({
           <Eye className="mr-1 h-3.5 w-3.5" /> View As
         </Button>
       )}
-    </div>
-  );
-}
-
-function SectionTitle() {
-  return (
-    <div className="flex items-center gap-2">
-      <Building2 className="h-5 w-5 text-muted-foreground" />
-      <h2 className="text-xl font-semibold">Organisations</h2>
     </div>
   );
 }

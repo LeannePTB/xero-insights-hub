@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
+import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { BillingLifecycleCard } from "@/components/admin/BillingLifecycleCard";
 
 export const Route = createFileRoute("/_authenticated/system/organisations/$firmId")({
@@ -103,7 +104,7 @@ function SupportAccessBadge({ firmId }: { firmId: string }) {
       </Badge>
     );
   return (
-    <div className="ml-auto flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <Badge variant={s.viewerHasClientData ? "default" : "secondary"}>
         {s.viewerHasClientData ? "client data available" : "no client data"}
       </Badge>
@@ -173,15 +174,14 @@ function FirmDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-3">
-          <h1 className="text-xl font-semibold">{firm.name}</h1>
-          {firm.is_always_free && <Badge variant="outline">always free</Badge>}
-          <SupportAccessBadge firmId={firmId} />
-        </div>
-      </header>
-
       <main className="max-w-6xl mx-auto px-6 py-8 space-y-10">
+        <FirmPageHeader
+          title={firm.name}
+          actions={<>
+            {firm.is_always_free && <Badge variant="outline">always free</Badge>}
+            <SupportAccessBadge firmId={firmId} />
+          </>}
+        />
         <BusinessNameSection
           firmId={firmId}
           currentName={firm.name}

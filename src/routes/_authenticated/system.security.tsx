@@ -6,6 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { buildXeroAssessmentPdf } from "@/lib/xero-assessment-pdf";
 import { toast } from "sonner";
+import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -252,7 +253,7 @@ function SecurityDocsPage() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <h1 className="text-2xl font-semibold">Security &amp; Compliance</h1>
+      <FirmPageHeader title="Security & Compliance" />
 
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
