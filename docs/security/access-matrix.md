@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1903**. Known failures: **0**.
+Rows: **1910**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -285,6 +285,7 @@ None.
 | public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
 | record_view_as(their own organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
 | set_org_trial(their own organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
+| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_org_card_defaults(an organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | PK 2 (aal2 required before anything else) |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
@@ -439,6 +440,7 @@ None.
 | public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
 | set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
@@ -1391,6 +1393,7 @@ None.
 | an organisation created with Advisory on and cards unticked has those cards available but off | read | ALLOW | pglite | Card preferences are not a purchase: unticking a card leaves it bought and available, simply not shown | Added 17 Sep 2026 with the creation flow. Proves the unticked Advisory cards stay in client_available_cards (so they can be turned back on) while being absent from the resolved dashboard. |
 | set_org_card_defaults(an organisation) | execute | ALLOW | pglite | PK 2 path A — the organisation's own owner sets its template and may overwrite its own clients' ticks, audited |  |
 | apply_org_card_defaults(an organisation) | execute | ALLOW | pglite | PK 2 path A — the organisation's own owner sets its template and may overwrite its own clients' ticks, audited |  |
+| rename_my_organisation(an organisation) | execute | ALLOW | pglite | PK 2 path A — the organisation's own owner renames it, audited (owner-only, 10 Oct 2026) |  |
 | set_overview_alert_state(own organisation's client) | execute | ALLOW | pglite | PK 2 path A — members acknowledge or snooze an alert for everyone, through the write predicate user_can_write_client, audited |  |
 | overview_clients() — own organisation's clients | execute | ALLOW | pglite | PK 2 path A — a practice-team member who is an active member sees that organisation's clients; routing only, never a grant |  |
 | me_is_practice_member() | execute | ALLOW | pglite | PK 2 path A — a practice-team member who is an active member sees that organisation's clients; routing only, never a grant |  |
@@ -1571,6 +1574,7 @@ None.
 | public.transfer_organisation_ownership() | execute | DENY | pglite, live | Spec §4 (current owner only) |  |
 | public.set_profile_display_name_admin() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
 | public.security_posture() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
+| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | ALLOW | pglite | PK 2 path A — members acknowledge or snooze an alert for everyone, through the write predicate user_can_write_client, audited |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
@@ -1653,6 +1657,7 @@ None.
 | set_org_trial(the organisation of the client they can see) | execute | DENY | pglite | PK 2 path D — an adviser grant is read-only and never organisation or platform data |  |
 | set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
@@ -1816,6 +1821,7 @@ None.
 | set_org_trial(the organisation they support) | execute | ALLOW | pglite | PK 2 path C — this person is a platform super admin, so the change is plan metadata; the support grant contributes nothing to it | Support grants are only ever held by a Positive Traction super admin, so this row cannot separate the two paths. What it does prove is that the trial function reads and returns no client data, so invariant 5 (support grants are read-only over CLIENT data) is untouched: org_owner and client_viewer above are refused outright. |
 | set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
@@ -1858,6 +1864,7 @@ None.
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
 | set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | me_is_practice_member() | execute | DENY | pglite | Staff-only overview: practice team AND active membership (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |

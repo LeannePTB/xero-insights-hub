@@ -636,6 +636,10 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     );
     return p.ok ? "allow" : "deny";
   }
+  if (r.startsWith("rename_my_organisation(")) {
+    const p = await probe(`select public.rename_my_organisation('${ORG_A}'::uuid, 'Matrix renamed')`);
+    return p.ok ? "allow" : "deny";
+  }
   if (r.startsWith("set_org_card_defaults(")) {
     const p = await probe(
       `select public.set_org_card_defaults('${ORG_A}'::uuid, array['cashflow','profit_loss'])`,

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, Building2, Layers, Loader2, ShieldAlert } from "lucide-react";
+import { Building2, Layers, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getConsolidationsAccess } from "@/lib/consolidations.functions";
 
@@ -50,13 +50,7 @@ function ConsolidationsPage() {
     retry: false,
   });
 
-  const backButton = (
-    <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-      <Link to="/firms/$firmId" params={{ firmId }} search={{}}>
-        <ArrowLeft className="mr-1 h-4 w-4" /> Back to organisation
-      </Link>
-    </Button>
-  );
+  const backButton = null;
 
   if (accessQ.isLoading) {
     return (

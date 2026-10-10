@@ -47,8 +47,8 @@ function ConsolidatedGroupPage() {
     <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
       <div>
         <Button asChild variant="ghost" size="sm" className="-ml-2">
-          <Link to="/firms/$firmId" params={{ firmId }}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to organisation
+          <Link to="/firms/$firmId/consolidations" params={{ firmId }}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> All groups
           </Link>
         </Button>
       </div>
