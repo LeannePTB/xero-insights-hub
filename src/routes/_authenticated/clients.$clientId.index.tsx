@@ -1,3 +1,4 @@
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -88,7 +89,7 @@ function ClientDashboard() {
     queryKey: ["client", clientId],
     queryFn: () => fetchClient({ data: { clientId } }),
   });
-  const realIsAdvisor = canManageHere;
+  const { canManage: realIsAdvisor } = useCanManageClient(clientId);
   // Preview mode: render exactly what a client viewer on this tier would get.
   // Only platform admins and advisors may preview.
   const previewing = !!previewTier && (ctxQ.data?.canViewAs ?? false);

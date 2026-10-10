@@ -1,3 +1,4 @@
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
