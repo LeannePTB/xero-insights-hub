@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { InAppShellContext } from "./shell-context";
+import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
+import { DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
 
 /**
  * Remembers whether the menu was collapsed, per browser.
