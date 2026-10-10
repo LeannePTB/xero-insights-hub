@@ -75,6 +75,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.delete_client_rental_property":
     "Removes one rental property after aal2 and organisation-team write access checks, with an audit row in the same transaction.",
   "public.me_has_role": "Whether the caller holds a given platform role.",
+  "public.me_can_manage_client":
+    "Screen signal only: whether the caller (aal2, auth.uid()) can manage one client, using the same user_can_write_client predicate as client writes. Grants nothing.",
   "public.rename_my_organisation":
     "Owner renames their own organisation after aal2 and an owner-only check (firms.owner_user_id = auth.uid()), with an audit row in the same transaction.",
   "public.get_platform_branding":
