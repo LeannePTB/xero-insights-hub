@@ -785,7 +785,6 @@ function Section({
   children: React.ReactNode;
 }) {
   const activeSection = useContext(ActiveSettingsSection);
-  if ((SETTINGS_SECTION_BY_TITLE[title] ?? "general") !== activeSection) return null;
   const key = storageKey ?? sectionStorageKey("client-settings", title);
   // A deep link to a section opens it.
   const hashTargeted =
@@ -793,6 +792,7 @@ function Section({
   const [open, setOpen] = usePersistedDisclosure(key, {
     forceOpen: hashTargeted || defaultOpen,
   });
+  if ((SETTINGS_SECTION_BY_TITLE[title] ?? "general") !== activeSection) return null;
 
   if (!collapsible) {
     return (
