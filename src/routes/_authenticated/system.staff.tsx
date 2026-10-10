@@ -34,7 +34,6 @@ import {
 import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
-import { AdminShell } from "@/components/admin/AdminShell";
 import { siteUrl } from "@/lib/site-origin";
 
 
@@ -229,7 +228,7 @@ function AdvisorSettings() {
   const practiceIds = new Set((practiceQ.data?.members ?? []).map((m) => m.userId));
 
   return (
-    <AdminShell>
+    <>
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
 
@@ -625,7 +624,7 @@ function AdvisorSettings() {
         </DialogContent>
       </Dialog>
     </div>
-    </AdminShell>
+    </>
   );
 }
 
