@@ -18,7 +18,7 @@ Public platform email logos now use the uploaded image with bundled data-image f
 
 ## Verification
 
-Navigation/landing: 15 passed. Monthly-report period tests: 3 passed (Bun runner). Contrast/email tests: 29 passed. Full security run: 130 tests and 18 live-access tests passed; schema fingerprints, RPCs, catalogue, guards and definer register passed. Initial contrast test exposed navy-on-sky failure, addressed by restricting sky to decorative use. Initial report-test invocation used Vitest for a node:test suite; corrected to Bun, passing.
+Navigation/landing: 15 passed. Monthly-report period tests: 3 passed (Bun runner). Contrast/email tests: 29 passed. Final full security run: 159 tests and 18 live-access tests passed; schema fingerprints, RPCs, catalogue, guards and definer register passed. Initial contrast test exposed navy-on-sky failure, addressed by restricting sky to decorative use. Initial report-test invocation used Vitest for a node:test suite; corrected to Bun, passing.
 
 Typecheck/build are run automatically by the platform harness, not launched manually; final results must be taken from that run. Prior build log predates this refresh and is not evidence for these changes.
 
