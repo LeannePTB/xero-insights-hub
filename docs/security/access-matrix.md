@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1910**. Known failures: **0**.
+Rows: **1914**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -438,6 +438,7 @@ None.
 | tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
+| workspace_branding_for_firm(another organisation) | execute | DENY | live | PK 2 — caller-supplied organisation id is a filter, never a grant |  |
 | set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
@@ -988,6 +989,7 @@ None.
 | xero_error_breakdown() | execute | ALLOW | pglite | PK 2 path C — Xero telemetry is platform metadata: status codes and endpoints, never client data |  |
 | set_org_trial(any organisation) | execute | ALLOW | pglite | PK 2 path C — plan and billing metadata is platform operations; no client data is read or returned | Added 16 Sep 2026 when trials moved from the client to the organisation. |
 | starting a trial over purchased Advisory converts the purchase and keeps ticks | execute | ALLOW | pglite | The audited trial change is atomic: selected purchased options become trialled while client card selections remain untouched | Added 16 Sep 2026 after a purchase-plus-trial overlap could create a cosmetic trial that granted nothing. |
+| workspace_branding_for_firm(any organisation) | execute | DENY | live | PK 3 — super admin grants zero organisation data access on its own |  |
 | toggling Consolidation off and on preserves all consolidation working data | execute | ALLOW | pglite | Availability is an entitlement filter, never a data operation — switching an option off hides cards and deletes nothing | Added 16 Sep 2026 at the owner's direction — her single biggest concern about this model. Proves, on every check, that set_org_purchase with Consolidation false leaves consolidation_groups, consolidation_group_members, loan_consolidation_accounts and loan_consolidation_snapshots row-for-row unchanged, that the loan_consolidation card stops being available while it is off, and that switching it back on restores the card with the working data and the per-client ticks intact. No foreign key or trigger on those four tables references the option: their only cascades are from deleting a firm, client or group. |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
 | overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
@@ -1384,6 +1386,7 @@ None.
 | record_view_as(their own organisation) | execute | DENY | pglite | Platform operations only (assert_super_admin) — an organisation owner has no impersonation action |  |
 | xero_error_breakdown() | execute | DENY | pglite | PK 2 path C is platform operations only; an organisation reads its own Xero errors elsewhere |  |
 | set_org_trial(their own organisation) | execute | DENY | pglite | Commercial change — assert_super_admin, same treatment as a comp; an organisation cannot grant itself a trial |  |
+| workspace_branding_for_firm(their own organisation) | execute | ALLOW | live | White label is a narrowing presentation entitlement; active membership remains the grant and aal2 is enforced |  |
 | purchased Advisory keeps its cards with no trial or an expired trial | read | ALLOW | pglite | Effective options = purchased OR unexpired trial — an absent or expired trial can never take away a purchase | Added 16 Sep 2026 at the owner's direction: this is the case that protects an organisation whose Advisory is granted rather than trialled. |
 | trial-only organisation options are available and identified as trialled | read | ALLOW | pglite | Every organisation-option display uses effective state (purchased OR unexpired trial), while preserving the trial marker and end date | Added 17 Sep 2026 after the Organisations row incorrectly described a genuine Advisory and Consolidation trial as both options being off. |
 | an expired trial with nothing purchased shows no Advisory cards, and the ticks survive | read | DENY | pglite | A trial ends at read time with no scheduled job; per-client ticked lists are never rewritten |  |
@@ -1655,6 +1658,7 @@ None.
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
 | record_view_as(their own organisation) | execute | DENY | pglite | PK 2 path D — a viewer grant is read-only and never platform operations |  |
 | set_org_trial(the organisation of the client they can see) | execute | DENY | pglite | PK 2 path D — an adviser grant is read-only and never organisation or platform data |  |
+| workspace_branding_for_client(their granted client) | execute | ALLOW | live | PK 2 path D — the existing exact-client read predicate scopes the identity and never reveals another organisation |  |
 | set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
 | rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
