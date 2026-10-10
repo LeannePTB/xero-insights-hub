@@ -1,5 +1,6 @@
 # Roadmap
-- [ ] Tidy System Admin titles and remove orange admin markers; verify navigation and preview.
+- [x] Tidy System Admin titles and remove orange admin markers; automatic typecheck/build passed and all 8 navigation tests passed; guards unchanged.
+- [ ] Visually verify System Admin headers on desktop/mobile — blocked by the signed-in account's second-factor verification.
 - [x] Add the Advisory Tax obligations card with latest completed GST/PAYG figures and audited, period-based income tax instalments editable by organisation members.
 - [x] Correct cash at bank and credit-card separation using Xero's CREDITCARD subtype; 57 calculation/health tests and full security suite pass. Real-user AAL2 browser readback and tooling-denied security_posture remain unverified; no refresh or historical rewrite.
 
