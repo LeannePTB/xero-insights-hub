@@ -6,7 +6,6 @@ import { createFileRoute } from '@tanstack/react-router'
 import { TEMPLATES } from '@/lib/email-templates/registry'
 
 // Configuration baked in at scaffold time
-const SITE_NAME = "xero-shine-dashboards"
 // SENDER_DOMAIN is the verified sender subdomain FQDN (e.g., "notify.example.com").
 // It MUST match the subdomain delegated to Lovable's nameservers. NEVER use the root domain.
 const SENDER_DOMAIN = "notify.tractionadvisory.app"
@@ -39,6 +38,8 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const { getPlatformBrandingServer } = await import('@/lib/platform-branding.server')
+        const branding = await getPlatformBrandingServer()
         const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
         const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -220,6 +221,7 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
         }
 
         // 4. Render React Email template to HTML and plain text
+        templateData = { ...templateData, siteName: branding.productName }
         const element = React.createElement(template.component, templateData)
         const html = await render(element)
         const plainText = await render(element, { plainText: true })
@@ -246,7 +248,7 @@ export const Route = createFileRoute("/lovable/email/transactional/send")({
           payload: {
             message_id: messageId,
             to: effectiveRecipient,
-            from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+            from: `${branding.emailSenderName} <noreply@${FROM_DOMAIN}>`,
             sender_domain: SENDER_DOMAIN,
             subject: resolvedSubject,
             html,

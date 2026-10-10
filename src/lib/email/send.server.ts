@@ -10,7 +10,6 @@ import { createHash } from "crypto";
 import { render } from "@react-email/components";
 import { TEMPLATES } from "@/lib/email-templates/registry";
 
-const SITE_NAME = "Traction Advisory";
 const SENDER_DOMAIN = "notify.tractionadvisory.app";
 const FROM_DOMAIN = "tractionadvisory.app";
 
@@ -36,6 +35,8 @@ export async function enqueueAppEmail(opts: {
   templateData?: Record<string, any>;
   idempotencyKey?: string;
 }): Promise<EnqueueResult> {
+  const { getPlatformBrandingServer } = await import("@/lib/platform-branding.server");
+  const branding = await getPlatformBrandingServer();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const supabase = supabaseAdmin as any;
 
@@ -71,7 +72,7 @@ export async function enqueueAppEmail(opts: {
     .insert({ email: normalized, token_hash: hashToken(unsubscribeToken) });
 
   // Render
-  const data = opts.templateData ?? {};
+  const data = { ...(opts.templateData ?? {}), siteName: branding.productName };
   const element = React.createElement(template.component as any, data);
   const html = await render(element);
   const text = await render(element, { plainText: true });
@@ -88,7 +89,7 @@ export async function enqueueAppEmail(opts: {
     payload: {
       message_id: messageId,
       to: recipient,
-      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+      from: `${branding.emailSenderName} <noreply@${FROM_DOMAIN}>`,
       sender_domain: SENDER_DOMAIN,
       subject,
       html,
