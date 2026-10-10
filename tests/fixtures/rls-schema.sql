@@ -100,6 +100,7 @@ create table public.org_card_defaults (firm_id uuid, cards text[], created_at ti
 create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean);
 create table public.overview_alert_states (id uuid, client_id uuid, event_key text, severity_at_ack smallint, acknowledged_by uuid, acknowledged_at timestamp with time zone, snoozed_by uuid, snoozed_at timestamp with time zone, snoozed_until timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
+create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid);
 create table public.practice_team (user_id uuid, added_by uuid, created_at timestamp with time zone);
 create table public.profiles (id uuid, email text, display_name text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.rate_limit_buckets (key text, window_start timestamp with time zone, count integer);
@@ -2701,6 +2702,7 @@ alter table public.org_card_defaults enable row level security;
 alter table public.org_subscription_options enable row level security;
 alter table public.overview_alert_states enable row level security;
 alter table public.plan_levels enable row level security;
+alter table public.platform_branding enable row level security;
 alter table public.practice_team enable row level security;
 alter table public.profiles enable row level security;
 alter table public.rate_limit_buckets enable row level security;
@@ -3077,6 +3079,13 @@ grant SELECT on table public.plan_levels to service_role;
 grant TRIGGER on table public.plan_levels to service_role;
 grant TRUNCATE on table public.plan_levels to service_role;
 grant UPDATE on table public.plan_levels to service_role;
+grant DELETE on table public.platform_branding to service_role;
+grant INSERT on table public.platform_branding to service_role;
+grant REFERENCES on table public.platform_branding to service_role;
+grant SELECT on table public.platform_branding to service_role;
+grant TRIGGER on table public.platform_branding to service_role;
+grant TRUNCATE on table public.platform_branding to service_role;
+grant UPDATE on table public.platform_branding to service_role;
 grant SELECT on table public.practice_team to authenticated;
 grant DELETE on table public.practice_team to service_role;
 grant INSERT on table public.practice_team to service_role;
@@ -3770,4 +3779,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: d856e0812b542c0f9f5a6af4b940095f1f87a14e1097339620679dbbb30de976
+-- catalogue-fingerprint: efa6c088d08264217261d42c0f2b4282f285ac51630ce9af0bef03330ad8de97
