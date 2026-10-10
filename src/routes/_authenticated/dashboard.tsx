@@ -12,11 +12,17 @@ import { toast } from "sonner";
 import { Loader2, Building2, ChevronRight, KeyRound, Shield, Lock } from "lucide-react";
 import { AppHeader } from "@/components/AppHeader";
 import { AddOrganisationDialog } from "@/components/admin/AddOrganisationDialog";
-import { SuperAdminBadge, SuperAdminChip } from "@/components/admin/SuperAdminOnly";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  head: () => ({ meta: [{ title: "Organisations — Traction Advisory" }] }),
+  head: () => ({ meta: [
+    { title: "Your workspaces — Traction Advisory" },
+    { name: "description", content: "Open your Traction Advisory organisations and client dashboards." },
+    { property: "og:title", content: "Your workspaces — Traction Advisory" },
+    { property: "og:description", content: "Open your organisations and client dashboards." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: Dashboard,
 });
 
@@ -133,7 +139,6 @@ function Dashboard() {
                 : isAdvisor
                  ? "Your organisations"
                 : "Your dashboards"}
-              {isSuperAdmin && <SuperAdminBadge />}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {isSuperAdmin
@@ -145,7 +150,10 @@ function Dashboard() {
           </div>
           <div className="flex flex-wrap gap-2">
             {isSuperAdmin && (
-              <AddOrganisationDialog size="default" variant="outline" onCreated={() => superFirmsQ.refetch()} />
+              <div className="flex items-center gap-2">
+                <AddOrganisationDialog size="default" variant="outline" onCreated={() => superFirmsQ.refetch()} />
+                <span className="text-xs text-muted-foreground">Super admin</span>
+              </div>
             )}
             {hasAdminAreaAccess && (
               <Button variant="outline" asChild>
@@ -280,7 +288,7 @@ function SubscriptionCard({
 
       {isSuperAdmin && f.isOwn && (
         <div className="mt-5 flex items-center justify-end gap-2">
-          <SuperAdminChip />
+          <span className="text-xs text-muted-foreground">Super admin</span>
           <Button variant="ghost" size="sm" asChild>
             <Link to="/system/organisations/$firmId" params={{ firmId: f.id }}>
               Manage organisation
