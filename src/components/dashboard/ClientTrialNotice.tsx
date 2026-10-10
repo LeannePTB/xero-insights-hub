@@ -8,7 +8,7 @@ import { formatEndDate } from "@/lib/subscription-state";
  * Tells the people who use a client dashboard — including the business owner —
  * when the organisation is trialling the extra cards, and when that trial ends.
  * Deliberately calm: a trial ending is a reversion, not a failure, so this is
- * an informational note that only turns amber in the last fortnight.
+ * an informational note that becomes more prominent in the last fortnight.
  *
  * The server function returns null to anyone who may not see billing state
  * (external advisers, standing viewers, support grants), so this renders

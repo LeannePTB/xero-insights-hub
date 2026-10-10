@@ -49,7 +49,7 @@
 
 :root {
   --radius: 0.75rem;
-  /* Traction Advisory palette — Purple #53318D, Lavender #6F60AA, Gold #C5AB71, Cool Grey #939497 */
+  /* Traction Advisory palette with semantic blue notes, green success and red failure states. */
   --background: oklch(0.985 0.003 290);
   --foreground: oklch(0.20 0.04 290);
   --card: oklch(1 0 0);

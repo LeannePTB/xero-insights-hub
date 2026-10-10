@@ -6,3 +6,4 @@
 - Platform branding is read through the anon-callable `get_platform_branding()` with bundled-asset fallback and written only via `save_platform_branding()`, because sign-in pages need it before login while the table stays grant-free.
 
 - System Admin pages reuse FirmPageHeader for a single title and right-aligned actions, keeping workspace headers consistent without duplicating header markup.
+- System Admin organisation detail uses URL-backed tabs on its existing guarded route, so deep links do not duplicate authorisation boundaries.
