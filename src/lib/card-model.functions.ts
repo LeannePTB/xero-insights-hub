@@ -28,18 +28,22 @@ export type OrgPurchase = {
   consolidation: boolean;
   /** Report branding: the per-client logo. Extends Advisory, charged separately. */
   branding: boolean;
+  /** Organisation identity in its app, emails and report chrome. Independent option. */
+  whiteLabel: boolean;
   billingMode: "bookkeeping" | "external";
   clientCount: number;
   /** Trial grants, stored separately so an expiry reverts to the purchase. */
   trialAdvisory: boolean;
   trialConsolidation: boolean;
   trialBranding: boolean;
+  trialWhiteLabel: boolean;
   trialEndsAt: string | null;
   trialActive: boolean;
   /** Purchased OR unexpired trial — what the database actually allows today. */
   effectiveAdvisory: boolean;
   effectiveConsolidation: boolean;
   effectiveBranding: boolean;
+  effectiveWhiteLabel: boolean;
 };
 
 /** Maps one `public.org_purchase` row. The database decides every value here. */
@@ -50,6 +54,7 @@ function mapPurchase(r: any): OrgPurchase {
     advisory: !!r.advisory_enabled,
     consolidation: !!r.consolidation_enabled,
     branding: !!r.branding_enabled,
+    whiteLabel: !!r.white_label_enabled,
     billingMode: (r.billing_mode === "external" ? "external" : "bookkeeping") as
       | "bookkeeping"
       | "external",
@@ -57,11 +62,13 @@ function mapPurchase(r: any): OrgPurchase {
     trialAdvisory: !!r.trial_advisory_enabled,
     trialConsolidation: !!r.trial_consolidation_enabled,
     trialBranding: !!r.trial_branding_enabled,
+    trialWhiteLabel: !!r.trial_white_label_enabled,
     trialEndsAt: (r.trial_ends_at as string | null) ?? null,
     trialActive: !!r.trial_active,
     effectiveAdvisory: !!r.effective_advisory,
     effectiveConsolidation: !!r.effective_consolidation,
     effectiveBranding: !!r.effective_branding,
+    effectiveWhiteLabel: !!r.effective_white_label,
   };
 }
 
@@ -124,6 +131,7 @@ export const saveOrgPurchase = createServerFn({ method: "POST" })
       advisory: boolean;
       consolidation: boolean;
       branding: boolean;
+      whiteLabel: boolean;
       billingMode: "bookkeeping" | "external";
     }) => {
       if (!i?.firmId) throw new Error("firmId is required");
@@ -140,6 +148,7 @@ export const saveOrgPurchase = createServerFn({ method: "POST" })
         advisory: !!i.advisory,
         consolidation: !!i.consolidation,
         branding: !!i.branding,
+        whiteLabel: !!i.whiteLabel,
         billingMode: i.billingMode,
       };
     },
@@ -151,6 +160,7 @@ export const saveOrgPurchase = createServerFn({ method: "POST" })
       _advisory: data.advisory,
       _consolidation: data.consolidation,
       _branding: data.branding,
+      _white_label: data.whiteLabel,
       _billing_mode: data.billingMode,
     });
     if (error) {
@@ -295,6 +305,7 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
       advisory: boolean;
       consolidation: boolean;
       branding: boolean;
+      whiteLabel: boolean;
       endsAt: string | null;
       reason: string;
     }) => {
@@ -304,13 +315,14 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
       const advisory = !!i.advisory;
       const consolidation = !!i.consolidation;
       const branding = !!i.branding;
+      const whiteLabel = !!i.whiteLabel;
       if (consolidation && !advisory) {
         throw new Error("A Consolidation trial needs Advisory as well.");
       }
       if (branding && !advisory) {
         throw new Error("A Branding trial needs Advisory as well.");
       }
-      const ending = !advisory && !consolidation && !branding;
+      const ending = !advisory && !consolidation && !branding && !whiteLabel;
       let endsAt: string | null = null;
       if (!ending) {
         if (!i.endsAt) throw new Error("Choose the date the trial ends.");
@@ -318,7 +330,7 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
         if (Number.isNaN(when.getTime())) throw new Error("That end date is not valid.");
         endsAt = when.toISOString();
       }
-      return { firmId: i.firmId, advisory, consolidation, branding, endsAt, reason };
+      return { firmId: i.firmId, advisory, consolidation, branding, whiteLabel, endsAt, reason };
     },
   )
   .handler(async ({ data, context }) => {
@@ -327,6 +339,7 @@ export const saveOrgTrial = createServerFn({ method: "POST" })
       _advisory: data.advisory,
       _consolidation: data.consolidation,
       _branding: data.branding,
+      _white_label: data.whiteLabel,
       _ends_at: data.endsAt,
       _reason: data.reason,
     });
