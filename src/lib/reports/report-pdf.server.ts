@@ -59,21 +59,20 @@ function marker(arrow: string) {
 
 const INK = { text: [17, 24, 39], muted: [107, 114, 128], line: [226, 232, 240], bad: [185, 28, 28] };
 
-// Fixed Traction Advisory palette. These are the app's own theme tokens
-// converted to sRGB — --primary (#53318D), --lavender (#6F60AA) and
-// --accent (#C5AB71). Branding is never read from the organisation record.
+// Fixed Traction Advisory palette. These are the app's own semantic theme
+// colours converted to sRGB. Branding is never read from the organisation record.
 const BRAND = {
   purple: [83, 49, 141], // --primary
   lavender: [111, 96, 170], // --lavender
   lavenderFill: [237, 234, 246], // light tint of --lavender, table header fill
   band: [246, 245, 250], // very light row banding
-  gold: [176, 141, 74], // --accent, thin rules only — never text
+  rule: [59, 130, 246], // --info, thin rules only — never text
   watermark: [203, 200, 214],
 };
 
 const SPACING = {
   titleInner: 5, // extra breathing room between the title-block lines
-  // Headings now carry their own hierarchy (colour, size, gold rule), so the
+  // Headings carry their own hierarchy through colour, size and a blue rule, so the
   // pre-heading gap no longer has to do that work on its own.
   beforeSection: 14,
   afterSectionHeading: 9, // heading rule to first row of content
@@ -125,8 +124,8 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   const drawHeaderBand = () => {
     doc.setFillColor(BRAND.purple[0], BRAND.purple[1], BRAND.purple[2]);
     doc.rect(0, 0, PAGE.w, BAND_H, "F");
-    // Thin gold rule closes the band off.
-    doc.setDrawColor(BRAND.gold[0], BRAND.gold[1], BRAND.gold[2]);
+    // Thin blue rule closes the band off.
+    doc.setDrawColor(BRAND.rule[0], BRAND.rule[1], BRAND.rule[2]);
     doc.setLineWidth(1.2);
     doc.line(0, BAND_H, PAGE.w, BAND_H);
     doc.setLineWidth(0.4);
@@ -211,7 +210,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   };
 
   const heading = (text: string) => {
-    // Reserve space for the pre-heading gap, the heading, its gold rule, the
+    // Reserve space for the pre-heading gap, the heading, its blue rule, the
     // post-heading gap and at least the first row of content.
     need(SPACING.beforeSection + 16 + SPACING.afterSectionHeading + 14);
     y += SPACING.beforeSection;
@@ -220,7 +219,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     doc.setTextColor(BRAND.purple[0], BRAND.purple[1], BRAND.purple[2]);
     doc.text(text, M.left, y);
     y += 5;
-    doc.setDrawColor(BRAND.gold[0], BRAND.gold[1], BRAND.gold[2]);
+    doc.setDrawColor(BRAND.rule[0], BRAND.rule[1], BRAND.rule[2]);
     doc.setLineWidth(1);
     doc.line(M.left, y, PAGE.w - M.right, y);
     doc.setLineWidth(0.4);
@@ -445,7 +444,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
         doc.setDrawColor(INK.line[0], INK.line[1], INK.line[2]);
         doc.rect(x, top, tileW, tileH, "FD");
         // Gold accent rule along the top edge of each tile.
-        doc.setDrawColor(BRAND.gold[0], BRAND.gold[1], BRAND.gold[2]);
+        doc.setDrawColor(BRAND.rule[0], BRAND.rule[1], BRAND.rule[2]);
         doc.setLineWidth(1.2);
         doc.line(x, top, x + tileW, top);
         doc.setLineWidth(0.4);
