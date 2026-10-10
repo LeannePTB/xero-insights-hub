@@ -68,7 +68,6 @@ export const ORGANISATION_NAV: NavGroup[] = [
     id: "practice",
     label: "Practice",
     items: [
-      { id: "overview", label: "Overview", icon: "grid", to: "/overview" },
       { id: "overview", label: "Overview", icon: "activity", to: "/firms/$firmId/overview" },
       { id: "clients", label: "Clients", icon: "briefcase", to: "/firms/$firmId", exact: true },
       { id: "xero-files", label: "Xero files", icon: "link", to: "/firms/$firmId/xero-files" },
@@ -110,8 +109,25 @@ export const CLIENT_NAV: NavGroup[] = [
       { id: "dashboard", label: "Live Dashboard", icon: "chart", to: "/clients/$clientId", exact: true },
       { id: "reports", label: "Monthly reports", icon: "file", to: "/clients/$clientId/reports" },
       { id: "cashflow", label: "Cash flow scenario", icon: "trending", to: "/clients/$clientId/cashflow-scenario" },
-      { id: "loans", label: "Loans", icon: "landmark", to: "/clients/$clientId/loans" },
-      { id: "client-settings", label: "Client settings", icon: "settings", to: "/clients/$clientId/settings" },
+      {
+        id: "loans", label: "Loans", icon: "landmark", to: "/clients/$clientId/loans",
+        children: [
+          { id: "loan-matrix", label: "Loan matrix", icon: "landmark", to: "/clients/$clientId/loans", exact: true },
+          { id: "loan-accounts", label: "Loan accounts", icon: "settings", to: "/clients/$clientId/loans-accounts" },
+        ],
+      },
+      {
+        id: "client-settings", label: "Client settings", icon: "settings", to: "/clients/$clientId/settings",
+        children: [
+          { id: "client-general", label: "General", icon: "settings", to: "/clients/$clientId/settings/general" },
+          { id: "client-cards", label: "Cards & report branding", icon: "grid", to: "/clients/$clientId/settings/cards" },
+          { id: "client-people", label: "People", icon: "users", to: "/clients/$clientId/settings/people" },
+          { id: "client-xero", label: "Xero connections", icon: "link", to: "/clients/$clientId/settings/xero" },
+          { id: "client-tax", label: "Tax & reporting", icon: "file", to: "/clients/$clientId/settings/tax-reporting" },
+          { id: "client-costs", label: "Cost & cash commitments", icon: "trending", to: "/clients/$clientId/settings/costs" },
+          { id: "client-danger", label: "Danger zone", icon: "shield", to: "/clients/$clientId/settings/danger" },
+        ],
+      },
     ],
   },
 ];
@@ -124,7 +140,7 @@ export type ClientXeroFile = { tenantId: string; name: string };
  */
 export function clientFileItems(files: ClientXeroFile[]): NavItem[] {
   if (files.length === 0) return [];
-  const make = (kind: "payables" | "receivables", label: string, icon: NavIcon): NavItem =>
+  const make = (kind: "payables" | "receivables" | "audit", label: string, icon: NavIcon): NavItem =>
     files.length === 1
       ? { id: kind, label, icon, to: `/clients/$clientId/${kind}/${files[0].tenantId}` }
       : {
@@ -134,7 +150,10 @@ export function clientFileItems(files: ClientXeroFile[]): NavItem[] {
           to: `/clients/$clientId/${kind}`,
           children: files.map((f) => ({ id: `${kind}-${f.tenantId}`, label: f.name, icon, to: `/clients/$clientId/${kind}/${f.tenantId}` })),
         };
-  return [make("payables", "Payables", "file"), make("receivables", "Receivables", "file")];
+  return [{
+    id: "xero-files", label: "Xero files", icon: "link", to: files.length === 1 ? `/clients/$clientId/audit/${files[0].tenantId}` : "/clients/$clientId/audit",
+    children: [make("payables", "Payables", "file"), make("receivables", "Receivables", "file"), make("audit", "Xero audit", "activity")],
+  }];
 }
 
 export function clientNav(files: ClientXeroFile[]): NavGroup[] {

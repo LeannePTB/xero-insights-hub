@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { landingFor } from "@/lib/nav/landing";
 import { getMyContext } from "@/lib/roles.functions";
+import { listMyFirms } from "@/lib/firms.functions";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -30,12 +31,15 @@ function Dashboard() {
   const fetchCtx = useServerFn(getMyContext);
 
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
+  const fetchFirms = useServerFn(listMyFirms);
+  const firmsQ = useQuery({ queryKey: ["nav-my-firms"], queryFn: () => fetchFirms() });
   const viewerClients = ctxQ.data?.viewerClients ?? [];
   const landing = ctxQ.data
     ? landingFor({
         isPlatformStaff: ctxQ.data.isPlatformStaff,
         isPracticeMember: ctxQ.data.isPracticeMember,
         firmIds: ctxQ.data.memberships.map((m) => m.firmId),
+        firmClientCounts: Object.fromEntries((firmsQ.data?.firms ?? []).map((f) => [f.id, f.clientCount])),
         viewerClientIds: viewerClients.map((c) => c.id),
       })
     : null;
@@ -44,7 +48,7 @@ function Dashboard() {
   useEffect(() => {
     if (!landing) return;
     if (landing.to === "/system" || landing.to === "/overview") navigate({ to: landing.to, replace: true });
-    else if (landing.to === "/firms/$firmId/overview") navigate({ to: landing.to, params: { firmId: landing.firmId }, replace: true });
+    else if (landing.to === "/firms/$firmId/overview" || landing.to === "/firms/$firmId") navigate({ to: landing.to, params: { firmId: landing.firmId }, replace: true });
     else if (landing.to === "/clients/$clientId") navigate({ to: landing.to, params: { clientId: landing.clientId }, replace: true });
   }, [landing?.to, (landing as any)?.firmId, (landing as any)?.clientId, navigate]);
 
