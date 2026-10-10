@@ -14,7 +14,7 @@ import {
 } from "@/lib/audit.functions";
 
 function StatusPill({ status }: { status: "ok" | "warn" | "action" }) {
-  if (status === "ok") return <Badge className="bg-green-600 hover:bg-green-600 text-brand-surface">OK</Badge>;
+  if (status === "ok") return <Badge className="bg-success hover:bg-success text-success-foreground">OK</Badge>;
   if (status === "warn") return <Badge variant="info">Watch</Badge>;
   return <Badge variant="destructive">Investigate</Badge>;
 }

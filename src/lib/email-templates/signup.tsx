@@ -1,3 +1,4 @@
+import { EmailLogo } from "./EmailLogo";
 import { presentation as theme } from "@/lib/presentation-tokens";
 import * as React from 'react'
 
@@ -14,6 +15,7 @@ import {
 } from '@react-email/components'
 
 interface SignupEmailProps {
+  logoSrc?: string | null
   siteName: string
   siteUrl: string
   recipient: string
@@ -21,6 +23,7 @@ interface SignupEmailProps {
 }
 
 export const SignupEmail = ({
+  logoSrc,
   siteName,
   siteUrl,
   recipient,
@@ -31,6 +34,7 @@ export const SignupEmail = ({
     <Preview>Confirm your email for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailLogo logoSrc={logoSrc} siteName={siteName} />
         <Heading style={h1}>Confirm your email</Heading>
         <Text style={text}>
           Thanks for signing up for{' '}
@@ -63,7 +67,7 @@ const main = { backgroundColor: theme.surface, fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
 const h1 = {
   fontSize: '18px',
-  fontWeight: 'bold' as const,
+  fontWeight: '600' as const,
   color: theme.primary,
   margin: '0 0 20px',
 }

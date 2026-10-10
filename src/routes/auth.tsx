@@ -228,7 +228,7 @@ function AuthPage() {
           className="absolute inset-0 z-10 opacity-70 mix-blend-multiply"
           style={{ background: "var(--gradient-hero)" }}
         />
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-b from-brand-navy/50 via-brand-navy/30 to-brand-navy/60" />
         <div className="relative z-20">
           <BrandMark onDark logoHeightClass="h-9" />
         </div>

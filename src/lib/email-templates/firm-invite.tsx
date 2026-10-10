@@ -1,3 +1,4 @@
+import { EmailLogo } from "./EmailLogo";
 import { presentation as theme } from "@/lib/presentation-tokens";
 import * as React from 'react'
 import {
@@ -6,6 +7,7 @@ import {
 import type { TemplateEntry } from './registry'
 
 interface InviteEmailProps {
+  logoSrc?: string | null
   inviteUrl?: string
   role?: 'owner' | 'staff'
   firmName?: string | null
@@ -14,6 +16,7 @@ interface InviteEmailProps {
 }
 
 const InviteEmail = ({
+  logoSrc,
   inviteUrl = 'https://tractionadvisory.com.au',
   role = 'owner',
   firmName = null,
@@ -30,6 +33,7 @@ const InviteEmail = ({
       <Preview>{headline}</Preview>
       <Body style={main}>
         <Container style={container}>
+        <EmailLogo logoSrc={logoSrc} siteName={siteName} />
           <Heading style={h1}>{headline}</Heading>
           <Text style={text}>
             {inviterName ? `${inviterName} has invited` : "You've been invited"} you to set up{' '}

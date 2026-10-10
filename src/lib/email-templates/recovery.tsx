@@ -1,3 +1,4 @@
+import { EmailLogo } from "./EmailLogo";
 import { presentation as theme } from "@/lib/presentation-tokens";
 import * as React from 'react'
 
@@ -13,11 +14,13 @@ import {
 } from '@react-email/components'
 
 interface RecoveryEmailProps {
+  logoSrc?: string | null
   siteName: string
   confirmationUrl: string
 }
 
 export const RecoveryEmail = ({
+  logoSrc,
   siteName,
   confirmationUrl,
 }: RecoveryEmailProps) => (
@@ -26,6 +29,7 @@ export const RecoveryEmail = ({
     <Preview>Reset your password for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailLogo logoSrc={logoSrc} siteName={siteName} />
         <Heading style={h1}>Reset your password</Heading>
         <Text style={text}>
           We received a request to reset your password for {siteName}. Click
@@ -49,7 +53,7 @@ const main = { backgroundColor: theme.surface, fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
 const h1 = {
   fontSize: '18px',
-  fontWeight: 'bold' as const,
+  fontWeight: '600' as const,
   color: theme.primary,
   margin: '0 0 20px',
 }

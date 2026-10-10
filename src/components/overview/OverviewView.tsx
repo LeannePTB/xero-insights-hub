@@ -88,7 +88,7 @@ export function OverviewView({ firmId }: { firmId?: string }) {
   return (
     <PageContainer as="div" width="full" className="space-y-6">
       <div>
-        <h1 className="text-kpi font-semibold">Client overview</h1>
+        <h1 className="text-lg font-semibold">Client overview</h1>
         <p className="text-sm text-muted-foreground">
           Every client you look after, worst first. Figures come from the overnight Xero snapshot.
         </p>

@@ -465,7 +465,7 @@ export async function buildLoanReconciliationXlsx(
 
   const purpleFill = `FF${presentation.primary.slice(1)}`;
   const goldFill = `FF${presentation.link.slice(1)}`;
-  const zebra = "FFF6F4FA";
+  const zebra = `FF${presentation.background.slice(1)}`;
 
   const multi = input.sections.length > 1;
   const usedNames = new Set<string>();
@@ -594,7 +594,7 @@ export async function buildLoanReconciliationXlsx(
         color: {
           argb:
             row.status === "balanced"
-              ? "FF267A3B"
+              ? `FF${presentation.success.slice(1)}`
               : row.status === "mismatch" || row.status === "missing"
                 ? `FF${presentation.destructive.slice(1)}`
                 : goldFill,

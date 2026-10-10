@@ -73,11 +73,11 @@ function SetPasswordPage() {
             <br />
             <span className="font-serif italic text-accent">Set your password.</span>
           </h2>
-          <p className="mt-4 max-w-md text-sm text-primary-foreground/75">
+          <p className="mt-4 max-w-md text-sm text-primary-foreground/85">
             Choose a password so you can sign back in any time.
           </p>
         </div>
-        <p className="text-xs text-primary-foreground/55">© {new Date().getFullYear()} {platformBrand.productName}</p>
+        <p className="text-xs text-primary-foreground/85">© {new Date().getFullYear()} {platformBrand.productName}</p>
       </div>
 
       <div className="flex items-center justify-center p-6">

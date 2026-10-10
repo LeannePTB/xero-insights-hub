@@ -86,7 +86,7 @@ export async function enqueueAppEmail(opts: {
 
   // Render
   const siteName = effectiveName ?? branding.productName;
-  const data = { ...(opts.templateData ?? {}), siteName };
+  const data = { ...(opts.templateData ?? {}), siteName, logoSrc: effectiveName ? null : (branding.logoLight ?? undefined) };
   const element = React.createElement(template.component as any, data);
   const html = await render(element);
   const text = await render(element, { plainText: true });

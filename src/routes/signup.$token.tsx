@@ -105,11 +105,11 @@ function SignupPage() {
             <br />
             <span className="font-serif italic text-accent">{platformBrand.productName}</span>
           </h2>
-          <p className="mt-4 max-w-md text-sm text-primary-foreground/75">
+          <p className="mt-4 max-w-md text-sm text-primary-foreground/85">
             Clean Xero dashboards built around the metrics that matter.
           </p>
         </div>
-        <p className="text-xs text-primary-foreground/55">
+        <p className="text-xs text-primary-foreground/85">
           © {new Date().getFullYear()} {platformBrand.productName}
         </p>
       </div>

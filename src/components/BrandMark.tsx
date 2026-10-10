@@ -5,7 +5,7 @@ type Props = {
   className?: string;
   /** Use on dark backgrounds — wraps the logo in a light pill so it stays readable. */
   onDark?: boolean;
-  /** Tailwind height class for the logo image. Defaults to h-10. */
+  /** Tailwind height class for the logo image. Defaults to h-9. */
   logoHeightClass?: string;
 };
 
