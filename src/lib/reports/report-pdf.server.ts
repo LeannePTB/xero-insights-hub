@@ -723,7 +723,8 @@ export async function buildAndStoreReportPdf(report: ReportRow, actor?: { userId
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { getPlatformBrandingServer } = await import("@/lib/platform-branding.server");
   const platform = await getPlatformBrandingServer();
-  const { data: firm } = await (supabaseAdmin as any).from("firms").select("logo_path").eq("id", report.firm_id).maybeSingle();
+  const { data: firm } = await (supabaseAdmin as any).from("firms").select("name, logo_path").eq("id", report.firm_id).maybeSingle();
+  const { data: whiteLabel } = await (supabaseAdmin as any).rpc("firm_white_label_enabled_service", { _firm_id: report.firm_id });
   const { data: client } = await (supabaseAdmin as any).from("clients").select("logo_path").eq("id", report.client_id).maybeSingle();
   const { signLogo, clientBrandingEnabled } = await import("@/lib/branding.server");
   const organisationLogo = await signLogo((firm as any)?.logo_path ?? null);
@@ -735,7 +736,7 @@ export async function buildAndStoreReportPdf(report: ReportRow, actor?: { userId
     status: report.status,
     version: report.version,
     title: report.title ?? "Monthly Management Report",
-    branding: { productName: platform.productName, primaryLogo, clientLogo },
+    branding: { productName: whiteLabel === true ? ((firm as any)?.name ?? platform.productName) : platform.productName, primaryLogo, clientLogo },
   });
 
 

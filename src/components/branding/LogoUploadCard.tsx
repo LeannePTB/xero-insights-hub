@@ -87,8 +87,9 @@ export function LogoUploadCard({
         : putCli({ data: { clientId: id, fileBase64, contentType: file.type } });
     },
     onSuccess: () => {
-      toast.success("Logo updated. New reports will use it.");
+      toast.success("Logo updated. New reports and active White label workspaces will use it.");
       qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ["workspace-branding"] });
     },
     onError: (e: any) => toast.error(e.message),
     onSettled: () => setBusy(false),
@@ -100,8 +101,9 @@ export function LogoUploadCard({
         ? delOrg({ data: { firmId: id } })
         : delCli({ data: { clientId: id } }),
     onSuccess: () => {
-      toast.success("Logo removed. Reports fall back to text only.");
+      toast.success("Logo removed. Reports and White label workspaces use their fallback identity.");
       qc.invalidateQueries({ queryKey });
+      qc.invalidateQueries({ queryKey: ["workspace-branding"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
