@@ -294,7 +294,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       didParseCell: (data: any) => {
         if (data.section === "body" && opts.boldRows?.has(data.row.index)) {
           data.cell.styles.fontStyle = "bold";
-          data.cell.styles.fillColor = [255, 255, 255];
+          data.cell.styles.fillColor = printRgb(presentation.surface);
         }
         if (data.section === "body") {
           const c = opts.cellColours?.[`${data.row.index}:${data.column.index}`];
@@ -337,7 +337,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   const shownFailures = renderableFailedSections(payload);
   if (!payload.complete && shownFailures.length > 0) {
     need(60);
-    doc.setFillColor(254, 242, 242);
+    doc.setFillColor(...printRgb(presentation.infoSurface));
     doc.setDrawColor(INK.bad[0], INK.bad[1], INK.bad[2]);
     const lines = shownFailures.map(
       (f) => `${SECTION_LABELS[f.section] ?? f.section}: ${f.message}`,

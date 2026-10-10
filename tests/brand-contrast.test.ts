@@ -32,8 +32,8 @@ describe("brand text contrast", () => {
       });
     }
   }
-  it("uses navy, not white, on light brand blues", () => {
+  it("uses navy on cyan; sky is decorative, not a small-text surface", () => {
     expect(contrast("#002A5F", "#00B5EE")).toBeGreaterThanOrEqual(4.5);
-    expect(contrast("#002A5F", "#0091D5")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast("#002A5F", "#0091D5")).toBeLessThan(4.5);
   });
 });
