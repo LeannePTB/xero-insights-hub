@@ -4,7 +4,7 @@ import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useSignOut } from "@/lib/use-sign-out";
-import { usePlatformBranding } from "@/hooks/usePlatformBranding";
+import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
 import { useInAppShell, useRegisterHeader } from "@/components/shell/shell-context";
 
 type Props = {
@@ -19,7 +19,7 @@ type Props = {
  */
 export function AppHeader({ actions }: Props) {
   const handleSignOut = useSignOut();
-  const brand = usePlatformBranding();
+  const brand = useWorkspaceBranding();
   const inShell = useInAppShell();
   useRegisterHeader();
   const [initial, setInitial] = useState("");
