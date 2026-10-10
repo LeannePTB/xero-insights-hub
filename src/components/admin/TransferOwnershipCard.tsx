@@ -94,7 +94,7 @@ export function TransferOwnershipCard({ firmId }: { firmId: string }) {
             {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
             Transfer ownership
           </Button>
-          <Badge variant="outline" className="text-[10px]">
+          <Badge variant="outline" className="text-xs">
             You remain as staff
           </Badge>
         </div>

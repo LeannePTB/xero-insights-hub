@@ -186,7 +186,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
                 }
               />
             </div>
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Dollar figures live in the Profit &amp; Loss card.
             </p>
           </div>
@@ -233,7 +233,7 @@ function Driver({
       >
         {value}
       </p>
-      {note && <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>}
+      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
     </div>
   );
 }

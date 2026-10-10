@@ -52,7 +52,7 @@ function Invalid({ message }: { message: string }) {
   return (
     <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-8 text-center">
       <ShieldAlert className="mx-auto h-8 w-8 text-muted-foreground" />
-      <h1 className="mt-3 font-display text-xl font-semibold">{message}</h1>
+      <h1 className="mt-3 font-display text-lg font-semibold">{message}</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         Ask whoever sent it to share a new link.
       </p>
@@ -101,7 +101,7 @@ function ReportLinkPage() {
       <Shell>
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="font-display text-2xl font-semibold">{opened.report.title}</h1>
+            <h1 className="font-display text-lg font-semibold">{opened.report.title}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Version {opened.report.version} · shared with you privately.
             </p>
@@ -128,7 +128,7 @@ function ReportLinkPage() {
   return (
     <Shell>
       <div className="mx-auto max-w-md rounded-2xl border border-border bg-card p-8">
-        <h1 className="font-display text-xl font-semibold">{link.reportTitle}</h1>
+        <h1 className="font-display text-lg font-semibold">{link.reportTitle}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           This link is personal. Confirm the email address it was sent to ({link.emailHint})
           to open the report.

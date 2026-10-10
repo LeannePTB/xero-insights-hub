@@ -89,7 +89,7 @@ function Dashboard() {
       <PageContainer>
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="font-display text-3xl font-semibold">Your dashboards</h1>
+            <h1 className="font-display text-lg font-semibold">Your dashboards</h1>
             <p className="mt-1 text-sm text-muted-foreground">Select a dashboard to view.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -105,7 +105,7 @@ function Dashboard() {
               <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
                 <Building2 className="h-6 w-6" />
               </div>
-              <h3 className="mt-4 font-display text-xl font-semibold">No dashboards assigned yet</h3>
+              <h3 className="mt-4 font-display text-lg font-semibold">No dashboards assigned yet</h3>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                 Your advisor hasn't granted you access to any dashboards yet.
               </p>

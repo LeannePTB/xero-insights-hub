@@ -39,7 +39,7 @@ export function OnlineChip({
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]">
+        <span className="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-xs">
           <Icon className={`h-3 w-3 ${hasMfa ? "text-emerald-500" : "text-destructive"}`} />
           <span className={`max-w-[80px] truncate ${hasName ? "" : "text-muted-foreground"}`}>
             {label}
@@ -121,7 +121,7 @@ export function SecurityStatusCard() {
       : status === "warn"
         ? "bg-info text-info-foreground"
         : status === "ok"
-          ? "bg-emerald-600 text-white"
+          ? "bg-emerald-600 text-brand-surface"
           : "bg-muted text-muted-foreground";
 
   const onlineList = online.data ?? [];
@@ -155,7 +155,7 @@ export function SecurityStatusCard() {
         <div className="flex items-center gap-2 min-w-0">
           <Icon className={`h-4 w-4 shrink-0 ${tone}`} />
           <span className="truncate text-xs font-medium">Security</span>
-          <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-medium ${pillTone}`}>
+          <span className={`rounded-full px-1.5 py-0.5 text-xs font-medium ${pillTone}`}>
             {pill}
           </span>
         </div>
@@ -176,8 +176,8 @@ export function SecurityStatusCard() {
         </button>
       </div>
 
-      <p className="mt-1 text-[11px] text-muted-foreground">{counts}</p>
-      <p className="text-[11px] text-muted-foreground">
+      <p className="mt-1 text-xs text-muted-foreground">{counts}</p>
+      <p className="text-xs text-muted-foreground">
         Checked {relativeMinutes(data?.generatedAt)}
       </p>
 
@@ -196,7 +196,7 @@ export function SecurityStatusCard() {
           {onlineList.length > 6 && (
             <Link
               to="/system/security"
-              className="text-[10px] underline text-muted-foreground hover:text-foreground self-center"
+              className="text-xs underline text-muted-foreground hover:text-foreground self-center"
             >
               +{onlineList.length - 6} more
             </Link>
@@ -204,7 +204,7 @@ export function SecurityStatusCard() {
         </div>
       )}
 
-      <Button asChild size="sm" variant="outline" className="mt-3 h-7 w-full text-[11px]">
+      <Button asChild size="sm" variant="outline" className="mt-3 h-7 w-full text-xs">
         <Link to="/system/security">View details</Link>
       </Button>
     </div>

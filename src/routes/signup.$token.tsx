@@ -100,7 +100,7 @@ function SignupPage() {
       >
         <BrandMark onDark logoHeightClass="h-9" />
         <div>
-          <h2 className="text-3xl font-bold leading-tight">
+          <h2 className="text-lg font-bold leading-tight">
             Welcome to
             <br />
             <span className="font-serif italic text-accent">{platformBrand.productName}</span>
@@ -117,7 +117,7 @@ function SignupPage() {
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm space-y-5">
           <div>
-            <h1 className="font-display text-2xl font-semibold">Set up your account</h1>
+            <h1 className="font-display text-lg font-semibold">Set up your account</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               You've been invited as <span className="font-medium">{invitationRole}</span>.
             </p>

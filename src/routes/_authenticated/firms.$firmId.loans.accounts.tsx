@@ -161,7 +161,7 @@ function LoanPairingsTab() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-xl font-semibold">Loan Account Pairings</h2>
+        <h2 className="font-display text-lg font-semibold">Loan Account Pairings</h2>
         <p className="mt-1 text-sm text-muted-foreground">
           Match a loan account in one Xero file with its counterparty in another. Both sides show
           the full liability + asset account list so you can line them up.

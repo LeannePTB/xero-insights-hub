@@ -88,7 +88,7 @@ export function OverviewView({ firmId }: { firmId?: string }) {
   return (
     <PageContainer as="div" width="full" className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold">Client overview</h1>
+        <h1 className="text-kpi font-semibold">Client overview</h1>
         <p className="text-sm text-muted-foreground">
           Every client you look after, worst first. Figures come from the overnight Xero snapshot.
         </p>
@@ -103,7 +103,7 @@ export function OverviewView({ firmId }: { firmId?: string }) {
               filter === b.key ? "border-primary bg-primary/10" : "bg-card hover:bg-muted/50"
             }`}
           >
-            <div className="text-2xl font-semibold">{counts[b.key] ?? 0}</div>
+            <div className="text-kpi font-semibold">{counts[b.key] ?? 0}</div>
             <div className="text-xs text-muted-foreground">{b.label}</div>
           </button>
         ))}

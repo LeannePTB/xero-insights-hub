@@ -78,15 +78,15 @@ export function ClientSetupSection({ clientId }: { clientId: string }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium">{item.title}</span>
                   {flagged ? (
-                    <span className="rounded-md border border-info/30 bg-info/10 px-1.5 py-0.5 text-[11px] font-medium text-info border-info/30 bg-info/10 text-info">
+                    <span className="rounded-md border border-info/30 bg-info/10 px-1.5 py-0.5 text-xs font-medium text-info border-info/30 bg-info/10 text-info">
                       Needs a decision
                     </span>
                   ) : item.status === "not_applicable" ? (
-                    <span className="text-[11px] text-muted-foreground">Not applicable</span>
+                    <span className="text-xs text-muted-foreground">Not applicable</span>
                   ) : item.status === "unknown" ? (
-                    <span className="text-[11px] text-muted-foreground">Cannot tell yet</span>
+                    <span className="text-xs text-muted-foreground">Cannot tell yet</span>
                   ) : (
-                    <span className="text-[11px] text-muted-foreground">Done</span>
+                    <span className="text-xs text-muted-foreground">Done</span>
                   )}
                 </div>
                 <p className="mt-1 text-xs text-muted-foreground">{item.detail}</p>

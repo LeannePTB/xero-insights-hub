@@ -223,8 +223,8 @@ function Kpi({ title, value, note }: { title: string; value: string; note?: stri
   return (
     <div className="rounded-lg border border-border bg-background p-4">
       <p className="text-xs text-muted-foreground">{title}</p>
-      <p className="mt-1 font-display text-2xl font-semibold">{value}</p>
-      {note && <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>}
+      <p className="mt-1 font-display text-lg font-semibold">{value}</p>
+      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
     </div>
   );
 }

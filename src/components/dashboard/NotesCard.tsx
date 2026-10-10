@@ -163,7 +163,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                       {n.updated_at !== n.created_at && " (edited)"}
                     </span>
                     {n.include_in_report && (
-                      <span className="rounded-full border border-accent/40 bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
+                      <span className="rounded-full border border-accent/40 bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent-foreground">
                         In report
                       </span>
                     )}

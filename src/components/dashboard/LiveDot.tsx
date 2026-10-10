@@ -116,7 +116,7 @@ export function LiveDot({
         )}
         <span className={`relative inline-flex h-2 w-2 rounded-full ${s.dot}`} />
       </span>
-      <span className={showLabel ? `text-[11px] leading-none ${s.tone}` : "sr-only"}>
+      <span className={showLabel ? `text-xs leading-none ${s.tone}` : "sr-only"}>
         {s.label}
       </span>
     </span>

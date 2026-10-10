@@ -62,7 +62,7 @@ export function UpgradeOptions({
               <div className="flex items-center gap-2">
                 <h3 className="font-display text-base font-semibold">{tierLabel(u.tier, u.label)}</h3>
                 {u.allowsMultiOrg && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                     {u.xeroFiles} Xero files
                   </span>
                 )}

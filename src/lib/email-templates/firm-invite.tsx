@@ -1,3 +1,4 @@
+import { presentation as theme } from "@/lib/presentation-tokens";
 import * as React from 'react'
 import {
   Body, Button, Container, Head, Heading, Html, Link, Preview, Text,
@@ -65,15 +66,15 @@ export const template = {
   },
 } satisfies TemplateEntry
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const main = { backgroundColor: theme.surface, fontFamily: 'Arial, sans-serif' }
 const container = { padding: '32px 28px', maxWidth: '560px' }
-const h1 = { color: '#0f172a', fontSize: '22px', fontWeight: '600', margin: '0 0 16px' }
-const text = { color: '#334155', fontSize: '14px', lineHeight: '22px', margin: '0 0 12px' }
-const small = { color: '#64748b', fontSize: '12px', lineHeight: '18px', margin: '16px 0 0' }
-const footer = { color: '#94a3b8', fontSize: '12px', marginTop: '32px' }
-const link = { color: '#1d4ed8', textDecoration: 'underline' }
+const h1 = { color: theme.text, fontSize: '18px', fontWeight: '600', margin: '0 0 16px' }
+const text = { color: theme.text, fontSize: '12px', lineHeight: '18px', margin: '0 0 12px' }
+const small = { color: theme.muted, fontSize: '12px', lineHeight: '18px', margin: '16px 0 0' }
+const footer = { color: theme.muted, fontSize: '12px', marginTop: '32px' }
+const link = { color: theme.link, textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#0f172a', color: '#ffffff', borderRadius: '6px',
-  padding: '10px 18px', fontSize: '14px', fontWeight: '600',
+  backgroundColor: theme.text, color: theme.surface, borderRadius: '6px',
+  padding: '10px 18px', fontSize: '12px', fontWeight: '600',
   textDecoration: 'none', display: 'inline-block', margin: '12px 0',
 }

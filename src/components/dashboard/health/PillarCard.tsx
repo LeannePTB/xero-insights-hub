@@ -36,7 +36,7 @@ export function PillarCard({ pillar, onCta }: { pillar: Pillar; onCta?: () => vo
 
       <div className="mt-4">
         <div className="flex items-baseline gap-1">
-          <span className={`font-display text-3xl font-semibold tabular-nums ${SCORE_TEXT[band]}`}>
+          <span className={`font-display text-lg font-semibold tabular-nums ${SCORE_TEXT[band]}`}>
             {pillar.score === null ? "—" : pillar.score}
           </span>
           <span className="text-sm text-muted-foreground">/100</span>

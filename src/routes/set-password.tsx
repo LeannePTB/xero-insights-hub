@@ -68,7 +68,7 @@ function SetPasswordPage() {
       <div className="hidden flex-col justify-between p-12 text-primary-foreground md:flex" style={{ background: "var(--gradient-hero)" }}>
         <BrandMark onDark logoHeightClass="h-9" />
         <div>
-          <h2 className="text-3xl font-bold leading-tight">
+          <h2 className="text-lg font-bold leading-tight">
             Welcome aboard.
             <br />
             <span className="font-serif italic text-accent">Set your password.</span>
@@ -82,7 +82,7 @@ function SetPasswordPage() {
 
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm">
-          <h1 className="font-display text-2xl font-semibold">Set your password</h1>
+          <h1 className="font-display text-lg font-semibold">Set your password</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Pick a password to finish setting up your account.
           </p>

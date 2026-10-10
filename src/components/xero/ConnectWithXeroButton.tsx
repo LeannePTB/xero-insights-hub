@@ -37,7 +37,7 @@ export const ConnectWithXeroButton = React.forwardRef<
       type={props.type ?? "button"}
       {...props}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-md font-semibold tracking-tight",
+        "inline-flex items-center justify-center gap-2 rounded-md font-semibold tracking-normal",
         "transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
         "disabled:cursor-not-allowed disabled:opacity-60",
         size === "sm" ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm",

@@ -110,7 +110,7 @@ function Badge({
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className={`mt-3 inline-flex max-w-full cursor-help items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-[11px] ${style}`}
+            className={`mt-3 inline-flex max-w-full cursor-help items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs ${style}`}
             onClick={(e) => {
               e.preventDefault();
               e.stopPropagation();

@@ -65,7 +65,7 @@ export function MonthPicker({
 
   return (
     <div className={`flex items-center gap-1.5 ${className}`}>
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Month
       </span>
       <Select value={value} onValueChange={onChange}>

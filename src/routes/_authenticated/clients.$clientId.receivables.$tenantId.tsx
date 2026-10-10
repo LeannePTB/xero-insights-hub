@@ -30,7 +30,7 @@ function ReceivablesPage() {
       <PageContainer width="full">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl font-semibold sm:text-3xl flex items-center gap-2">
+            <h1 className="font-display text-lg font-semibold sm:text-lg flex items-center gap-2">
               <HandCoins className="h-6 w-6 text-primary" /> All Receivables
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">

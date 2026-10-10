@@ -157,7 +157,7 @@ function LoansAccountsPage() {
       <PageContainer width="wide">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="font-display text-2xl font-semibold">Set up loan accounts</h1>
+            <h1 className="font-display text-lg font-semibold">Set up loan accounts</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {clientQ.data?.client?.name ?? "Client"} — choose the loan account in each Xero file and
               pair it with its counterpart.

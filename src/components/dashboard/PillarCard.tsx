@@ -45,7 +45,7 @@ export function PillarCard({ pillar, expandable = false, renderExpanded }: Props
 
       <div className="mt-4">
         <div className="flex items-baseline gap-1">
-          <span className={cn("font-display text-4xl font-bold tabular-nums", colors.text)}>
+          <span className={cn("font-display text-lg font-bold tabular-nums", colors.text)}>
             {pillar.score ?? "—"}
           </span>
           <span className="text-sm text-muted-foreground">/100</span>
@@ -61,7 +61,7 @@ export function PillarCard({ pillar, expandable = false, renderExpanded }: Props
             <span className="text-sm text-foreground/90">{m.label}</span>
             <span
               className={cn(
-                "shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium leading-tight",
+                "shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-tight",
                 pillClasses(m.status),
               )}
             >

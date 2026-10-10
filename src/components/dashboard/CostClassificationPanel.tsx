@@ -277,7 +277,7 @@ export function CostClassificationPanel({
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm">{a.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {new Intl.NumberFormat(undefined, {
                         style: "currency",
                         currency: "AUD",
@@ -366,7 +366,7 @@ export function CostClassificationPanel({
           {orphans.length > 0 && (
             <div className="mt-4 rounded-md border border-border bg-muted/30 p-3">
               <p className="text-xs font-semibold">Stale tags</p>
-              <p className="mb-2 text-[11px] text-muted-foreground">
+              <p className="mb-2 text-xs text-muted-foreground">
                 These accounts are no longer in Xero — most likely renamed. Their tags do nothing.
               </p>
               <ul className="space-y-1">

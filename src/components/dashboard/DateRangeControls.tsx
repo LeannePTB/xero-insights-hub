@@ -102,7 +102,7 @@ export function DateField({
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </span>
       <Popover>
@@ -245,7 +245,7 @@ export function PeriodSelect({
   ];
   return (
     <div className="mt-4 flex flex-wrap items-center gap-2">
-      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         Period
       </span>
       <Select value={value} onValueChange={onChange}>

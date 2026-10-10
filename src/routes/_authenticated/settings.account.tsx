@@ -107,7 +107,7 @@ function AccountSettings() {
           <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
         </Button>
         <div>
-          <h1 className="font-display text-3xl font-semibold">Account</h1>
+          <h1 className="font-display text-lg font-semibold">Account</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Update your sign-in details.
           </p>

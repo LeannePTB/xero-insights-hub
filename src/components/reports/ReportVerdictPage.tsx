@@ -16,7 +16,7 @@ export function ReportVerdictPage({ verdict }: { verdict: ReportVerdict }) {
       <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         This month
       </p>
-      <h3 className="mt-2 font-display text-xl font-semibold">{verdict.headline}</h3>
+      <h3 className="mt-2 font-display text-lg font-semibold">{verdict.headline}</h3>
       {verdict.detail ? <p className="mt-2 text-sm leading-relaxed">{verdict.detail}</p> : null}
 
       {verdict.findings.length > 1 && (

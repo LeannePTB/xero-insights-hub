@@ -390,13 +390,13 @@ function AdvisorSettings() {
                           {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
                           
                           {a.is_super_admin && (
-                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5 text-[10px] font-medium text-info">
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
                               <Crown className="h-3 w-3" /> Super admin
                             </span>
                           )}
-                          {isPending && <span className="ml-2 rounded-full bg-info/10 px-2 py-0.5 text-[10px] font-medium text-info">Pending invite</span>}
+                          {isPending && <span className="ml-2 rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">Pending invite</span>}
                           {viewerIsSuperAdmin && onPracticeTeam && (
-                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
                               <Users className="h-3 w-3" /> Practice team
                             </span>
                           )}

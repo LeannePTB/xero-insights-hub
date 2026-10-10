@@ -200,7 +200,7 @@ function ReportsPage() {
       <PageContainer>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="font-display text-2xl font-semibold sm:text-3xl">
+            <h1 className="font-display text-lg font-semibold sm:text-lg">
               Monthly management reports
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -361,7 +361,7 @@ function ReportsPage() {
                         v{r.version}
                         {isAdvisor && isStalePayload(r) && (
                           <span
-                            className="ml-2 rounded-full border border-destructive/40 bg-destructive/5 px-2 py-0.5 text-[10px] font-medium text-destructive"
+                            className="ml-2 rounded-full border border-destructive/40 bg-destructive/5 px-2 py-0.5 text-xs font-medium text-destructive"
                             title={`Calculated with payload v${r.payload_version ?? 0}; current is v${MONTHLY_REPORT_PAYLOAD_VERSION}.`}
                           >
                             calculated with an older version — regenerate

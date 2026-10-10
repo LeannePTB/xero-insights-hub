@@ -299,7 +299,7 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
                     {hits.map((h) => (
                       <tr key={`${h.tenantId}-${h.type}-${h.id}`} className="border-t border-border/60 hover:bg-muted/30">
                         <td className="px-3 py-2">
-                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${TYPE_TONE[h.type]}`}>
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${TYPE_TONE[h.type]}`}>
                             {h.type}
                           </span>
                         </td>

@@ -178,7 +178,7 @@ export function MfaGate() {
               <div className="flex justify-center">
                 <img
                   alt="MFA QR code"
-                  className="rounded border bg-white p-2"
+                  className="rounded border bg-brand-surface p-2"
                   src={status.qrCode}
                 />
               </div>

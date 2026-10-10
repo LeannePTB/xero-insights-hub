@@ -98,7 +98,7 @@ export function DataSourceLine({
   }
 
   return (
-    <div className={`mt-1 space-y-0.5 text-[11px] leading-snug ${className}`}>
+    <div className={`mt-1 space-y-0.5 text-xs leading-snug ${className}`}>
       <div className="flex items-start gap-1.5">
         <span className="mt-1">
           <LiveDot state={liveState} />

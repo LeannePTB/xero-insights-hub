@@ -112,7 +112,7 @@ function MfaEnrollPage() {
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-primary" />
-            <h1 className="font-display text-xl font-semibold">Set up two-factor</h1>
+            <h1 className="font-display text-lg font-semibold">Set up two-factor</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Required for every account. Use 1Password, Authy, or Google Authenticator.
@@ -129,9 +129,9 @@ function MfaEnrollPage() {
             <li>
               <span className="font-medium">1.</span> Scan the QR code with your authenticator app
               {enroll ? (
-                <div className="mt-2 flex flex-col items-center gap-2 rounded-md border bg-white p-3">
+                <div className="mt-2 flex flex-col items-center gap-2 rounded-md border bg-brand-surface p-3">
                   <img src={enroll.qr} alt="MFA QR code" className="h-44 w-44" />
-                  <code className="break-all text-[11px] text-muted-foreground">{enroll.secret}</code>
+                  <code className="break-all text-xs text-muted-foreground">{enroll.secret}</code>
                 </div>
               ) : (
                 <div className="mt-2 flex h-44 items-center justify-center rounded-md border bg-muted/30">

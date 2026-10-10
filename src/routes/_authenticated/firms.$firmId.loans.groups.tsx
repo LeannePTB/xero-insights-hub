@@ -83,7 +83,7 @@ function LoanGroupsTab() {
 
   return (
     <div>
-      <h2 className="font-display text-3xl font-semibold tracking-tight">Loan Consolidation groups</h2>
+      <h2 className="font-display text-lg font-semibold tracking-normal">Loan Consolidation groups</h2>
       <p className="mt-2 text-muted-foreground">
         Create saved groups of client companies. The Loan Consolidation matrix runs against a group's member Xero
         files.
@@ -127,7 +127,7 @@ function LoanGroupsTab() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h3 className="flex items-center gap-2 font-display text-xl font-semibold">
+                    <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
                       <Bookmark className="h-5 w-5 text-primary" />
                       {g.name}
                     </h3>

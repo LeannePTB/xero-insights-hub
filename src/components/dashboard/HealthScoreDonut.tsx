@@ -50,12 +50,12 @@ export function HealthScoreDonut({ score, band, size = 96 }: Props) {
           />
         </svg>
         <div
-          className={`absolute inset-0 grid place-items-center font-display text-2xl font-semibold ${textColor}`}
+          className={`absolute inset-0 grid place-items-center font-display text-kpi font-semibold ${textColor}`}
         >
           {score}
         </div>
       </div>
-      <p className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">Overall score</p>
+      <p className="mt-1 text-xs uppercase tracking-wider text-muted-foreground">Overall score</p>
     </div>
   );
 }
