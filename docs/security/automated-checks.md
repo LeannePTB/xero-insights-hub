@@ -76,6 +76,7 @@ without reading the source.
 | Check | Excluded | Why |
 | ----- | -------- | --- |
 | `definer_guards` | `public.xero_required_scopes()` | A constant list of Xero scope strings; reads no table and returns no data. |
+| `definer_guards` | `public.get_platform_branding()` | Anon-callable by design so sign-in pages can show public platform branding. Returns no organisation, client or personal data. |
 | `definer_guards` | `public.session_is_active()` | `app_private.is_aal2()` calls it to decide whether a session is idle, so asserting aal2 inside it would be circular. It returns one boolean about the calling session and no data. |
 | `aal2_tables` | `public.session_activity` | `app_private.is_aal2()` reads this table to decide whether a session is idle, so a restrictive aal2 policy on it would be circular. It keeps RLS on, grants nothing to `anon`, is readable only on the caller's own row, holds no organisation, client or Xero data (a session id, a user id and a timestamp), and is written solely by `public.touch_session_activity()` — signed-in users hold no INSERT, UPDATE or DELETE privilege on it. |
 | `aal2_tables`, `using_true` | `plan_levels`, `tier_settings` | Deliberately readable plan catalogues; no organisation, client or personal data. |
