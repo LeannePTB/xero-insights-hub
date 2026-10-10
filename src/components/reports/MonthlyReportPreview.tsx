@@ -1,4 +1,4 @@
-import { usePlatformBranding } from "@/hooks/usePlatformBranding";
+import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
 import { AlertTriangle } from "lucide-react";
 import { ReportVerdictPage } from "@/components/reports/ReportVerdictPage";
 import {
@@ -202,7 +202,7 @@ export function MonthlyReportPreview({
   /** Optional personal video. Lives outside the payload, so never in the PDF. */
   video?: ReportVideo | null;
 }) {
-  const platformBrand = usePlatformBranding();
+  const workspaceBrand = useWorkspaceBranding();
   const m = payload.meta;
   const ytdLabels = yearToDateComparisonLabels(m.periodEnd);
   const shownFailures = renderableFailedSections(payload);
@@ -224,7 +224,7 @@ export function MonthlyReportPreview({
           {!namesEqual(m.clientName, m.tenantName) && ` · ${m.tenantName}`}
         </p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Generated {fmtDate(m.generatedAt)} by {platformBrand.productName}
+           Generated {fmtDate(m.generatedAt)} by {workspaceBrand.productName}
           {showWorkflowDetails && version ? ` · Version ${version}` : ""}
           {showWorkflowDetails && status ? ` · ${status}` : ""}
           {showWorkflowDetails ? ` · payload v${payload.payloadVersion}` : ""} · amounts in {m.currency}
@@ -587,7 +587,7 @@ export function MonthlyReportPreview({
       {/* Footer */}
       <footer className="rounded-2xl border border-border bg-card px-6 py-4 text-xs text-muted-foreground">
         {uniqueNames([m.organisationName, m.clientName]).join(" · ")} · {m.monthLabel} · generated{" "}
-        {fmtDate(m.generatedAt)} by {platformBrand.productName} · Version {version}
+        {fmtDate(m.generatedAt)} by {workspaceBrand.productName} · Version {version}
       </footer>
     </div>
   );

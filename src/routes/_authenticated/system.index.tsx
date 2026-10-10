@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SubscriptionState } from "@/lib/subscription-state";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/")({
   head: () => ({ meta: [
@@ -47,7 +48,7 @@ function OrganisationsPage() {
   if (!isPlatformStaff) return <AccessDenied />;
 
   return (
-    <main className="mx-auto max-w-[96rem] space-y-5 px-4 py-8 sm:px-6">
+    <PageContainer width="full" className="space-y-5">
       <FirmPageHeader title="Organisations" actions={isSuper ? <AddOrganisationDialog onCreated={() => firms.refetch()} /> : undefined} />
       <p className="text-sm text-muted-foreground">Plan and usage metadata only — no client figures.</p>
       {isSuper ? (
@@ -55,7 +56,7 @@ function OrganisationsPage() {
       ) : (
         <MemberOrganisations firms={mine.data?.firms ?? []} loading={mine.isLoading} />
       )}
-    </main>
+    </PageContainer>
   );
 }
 
@@ -146,4 +147,4 @@ function Attention({ row }: { row: AdminOrganisationRow }) { const count = organ
 
 function MemberOrganisations({ firms, loading }: { firms: { id: string; name: string }[]; loading: boolean }) { if (loading) return <CenteredLoader />; return <div className="overflow-hidden rounded-md border"><table className="w-full text-sm"><tbody>{firms.map((firm) => <tr key={firm.id} className="border-t first:border-t-0"><td className="px-4 py-3 font-medium"><Link to="/firms/$firmId/overview" params={{ firmId: firm.id }} className="block">{firm.name}</Link></td></tr>)}</tbody></table></div>; }
 function CenteredLoader() { return <div className="grid min-h-64 place-items-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>; }
-function AccessDenied() { return <main className="mx-auto max-w-3xl p-8"><div className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-4"><ShieldAlert className="h-5 w-5 text-destructive" /><div><p className="font-medium text-destructive">System Admin access required</p><p className="mt-1 text-sm text-muted-foreground">This area is for platform staff.</p></div></div></main>; }
+function AccessDenied() { return <PageContainer width="readable"><div className="flex items-start gap-3 rounded-md border border-destructive/40 bg-destructive/10 p-4"><ShieldAlert className="h-5 w-5 text-destructive" /><div><p className="font-medium text-destructive">System Admin access required</p><p className="mt-1 text-sm text-muted-foreground">This area is for platform staff.</p></div></div></PageContainer>; }

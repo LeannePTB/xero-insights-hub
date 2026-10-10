@@ -32,6 +32,8 @@ export interface EnqueueResult {
 export async function enqueueAppEmail(opts: {
   templateName: string;
   recipientEmail: string;
+  /** Organisation identity is always resolved here; callers cannot supply branding. */
+  firmId?: string;
   templateData?: Record<string, any>;
   idempotencyKey?: string;
 }): Promise<EnqueueResult> {
@@ -39,6 +41,17 @@ export async function enqueueAppEmail(opts: {
   const branding = await getPlatformBrandingServer();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const supabase = supabaseAdmin as any;
+  let effectiveName: string | null = null;
+  if (opts.firmId) {
+    const { data: enabled, error: enabledError } = await supabase.rpc(
+      "firm_white_label_enabled_service",
+      { _firm_id: opts.firmId },
+    );
+    if (!enabledError && enabled === true) {
+      const { data: firm } = await supabase.from("firms").select("name").eq("id", opts.firmId).maybeSingle();
+      effectiveName = firm?.name ?? null;
+    }
+  }
 
   const template = TEMPLATES[opts.templateName];
   if (!template) {
@@ -72,7 +85,8 @@ export async function enqueueAppEmail(opts: {
     .insert({ email: normalized, token_hash: hashToken(unsubscribeToken) });
 
   // Render
-  const data = { ...(opts.templateData ?? {}), siteName: branding.productName };
+  const siteName = effectiveName ?? branding.productName;
+  const data = { ...(opts.templateData ?? {}), siteName };
   const element = React.createElement(template.component as any, data);
   const html = await render(element);
   const text = await render(element, { plainText: true });
@@ -89,7 +103,7 @@ export async function enqueueAppEmail(opts: {
     payload: {
       message_id: messageId,
       to: recipient,
-      from: `${branding.emailSenderName} <noreply@${FROM_DOMAIN}>`,
+      from: `${effectiveName ?? branding.emailSenderName} <noreply@${FROM_DOMAIN}>`,
       sender_domain: SENDER_DOMAIN,
       subject,
       html,

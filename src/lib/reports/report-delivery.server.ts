@@ -282,6 +282,7 @@ export async function sendReport(opts: {
     const link = `${origin}/report/${token}`;
     const send = await enqueueAppEmail({
       templateName: "report-ready",
+      firmId: report.firm_id,
       recipientEmail: email,
       idempotencyKey: `report-${report.id}-${inserted.id}`,
       templateData: {

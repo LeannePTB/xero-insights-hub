@@ -6,6 +6,7 @@ import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
 import { XeroErrorBreakdownCard } from "@/components/admin/XeroErrorBreakdownCard";
 import { OrphanXeroConnectionsCard } from "@/components/admin/OrphanXeroConnectionsCard";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/system/xero")({
   head: () => ({
@@ -26,11 +27,11 @@ function XeroMonitoringPage() {
   const firmsQ = useQuery({ queryKey: ["admin-firms"], queryFn: () => fetchFirms() });
   const firms = (((firmsQ.data as any)?.firms ?? []) as any[]).map((f) => ({ id: f.firm_id as string, name: f.firm_name as string }));
   return (
-    <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+    <PageContainer className="space-y-6">
       <FirmPageHeader title="Xero monitoring" />
       <XeroUsageCard />
       <XeroErrorBreakdownCard />
       <OrphanXeroConnectionsCard firms={firms} />
-    </main>
+    </PageContainer>
   );
 }

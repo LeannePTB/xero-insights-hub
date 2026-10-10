@@ -346,6 +346,7 @@ export const inviteViewer = createServerFn({ method: "POST" })
       const { enqueueAppEmail } = await import("@/lib/email/send.server");
       const res = await enqueueAppEmail({
         templateName: "firm-invite",
+        firmId: data.firmId,
         recipientEmail: email,
         idempotencyKey: `viewer-invite-${data.firmId}-${token.slice(0, 8)}`,
         templateData: {

@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
 import { listStandingViewers } from "@/lib/viewers.functions";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/new")({
   head: () => ({ meta: [{ title: "New client — Traction Advisory" }] }),
@@ -47,7 +48,7 @@ function NewClient() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-2xl px-6 py-10">
+      <PageContainer width="readable">
         <Button variant="ghost" size="sm" asChild className="mb-4">
           {firmId ? (
             <Link to="/firms/$firmId" params={{ firmId }}><ArrowLeft className="mr-1 h-4 w-4" /> Back to organisation</Link>
@@ -99,7 +100,7 @@ function NewClient() {
             </Button>
           </div>
         </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { Layers } from "lucide-react";
 import { useFirmWidgets } from "@/hooks/useFirmWidget";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/loans")({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -32,7 +33,7 @@ function LoansLayout() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto w-full max-w-6xl px-6 py-8">
+      <PageContainer width="full">
         <h1 className="flex items-center gap-2 font-display text-xs font-semibold uppercase tracking-[0.15em] text-primary">
           <Layers className="h-4 w-4" /> Company Loan Consolidation
         </h1>
@@ -50,7 +51,7 @@ function LoansLayout() {
             </div>
           </>
         )}
-      </main>
+      </PageContainer>
 
     </div>
   );

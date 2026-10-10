@@ -6,13 +6,14 @@
  */
 
 export const TRIAL_MAX_DAYS = 120;
-/** Amber from here on. Long enough to talk to the customer before it lapses. */
+/** Note from here on. Long enough to talk to the customer before it lapses. */
 export const TRIAL_WARN_DAYS = 14;
 
 export type TrialShape = {
   trialAdvisory: boolean;
   trialConsolidation: boolean;
   trialBranding: boolean;
+  trialWhiteLabel: boolean;
   trialEndsAt: string | null;
   trialActive: boolean;
 };
@@ -38,7 +39,7 @@ export type TrialStatus =
   | { kind: "active"; endsAt: string; endLabel: string; daysLeft: number; warn: boolean; grants: string };
 
 export function trialStatus(t: TrialShape, now: Date = new Date()): TrialStatus {
-  const trialled = t.trialAdvisory || t.trialConsolidation || t.trialBranding;
+  const trialled = t.trialAdvisory || t.trialConsolidation || t.trialBranding || t.trialWhiteLabel;
   if (!trialled || !t.trialEndsAt) return { kind: "none" };
   const endLabel = trialEndLabel(t.trialEndsAt) ?? t.trialEndsAt;
   if (!t.trialActive) return { kind: "expired", endsAt: t.trialEndsAt, endLabel };
@@ -47,6 +48,7 @@ export function trialStatus(t: TrialShape, now: Date = new Date()): TrialStatus 
     t.trialAdvisory ? "Advisory" : null,
     t.trialConsolidation ? "Consolidation" : null,
     t.trialBranding ? "Branding" : null,
+    t.trialWhiteLabel ? "White label" : null,
   ]
     .filter(Boolean)
     .join(", ")

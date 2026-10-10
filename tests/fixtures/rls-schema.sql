@@ -97,7 +97,7 @@ create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
 create table public.org_card_defaults (firm_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
-create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean);
+create table public.org_subscription_options (firm_id uuid, client_limit integer, advisory_enabled boolean, consolidation_enabled boolean, billing_mode text, created_at timestamp with time zone, updated_at timestamp with time zone, trial_advisory_enabled boolean, trial_consolidation_enabled boolean, trial_ends_at timestamp with time zone, branding_enabled boolean, trial_branding_enabled boolean, white_label_enabled boolean, trial_white_label_enabled boolean);
 create table public.overview_alert_states (id uuid, client_id uuid, event_key text, severity_at_ack smallint, acknowledged_by uuid, acknowledged_at timestamp with time zone, snoozed_by uuid, snoozed_at timestamp with time zone, snoozed_until timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.plan_levels (id uuid, scope text, key text, label text, description text, client_limit integer, xero_org_limit integer, allows_multi_org boolean, widgets text[], sort_order integer, enabled boolean, created_at timestamp with time zone, updated_at timestamp with time zone, allowed_tiers text[], is_free boolean);
 create table public.platform_branding (id boolean, product_name text, logo_light text, logo_dark text, favicon text, email_sender_name text, updated_at timestamp with time zone, updated_by uuid);
@@ -1980,47 +1980,6 @@ begin
 end;
 $function$
 ;
-CREATE OR REPLACE FUNCTION app_private.org_effective_options(_firm_id uuid)
- RETURNS TABLE(advisory boolean, consolidation boolean, branding boolean, purchased_advisory boolean, purchased_consolidation boolean, purchased_branding boolean, trial_advisory boolean, trial_consolidation boolean, trial_branding boolean, trial_ends_at timestamp with time zone, trial_active boolean)
- LANGUAGE sql
- STABLE SECURITY DEFINER
- SET search_path TO 'public'
-AS $function$
-  with o as (
-    select coalesce(opt.advisory_enabled, false) as p_adv,
-           coalesce(opt.consolidation_enabled, false) as p_con,
-           coalesce(opt.branding_enabled, false) as p_brand,
-           coalesce(opt.trial_advisory_enabled, false) as t_adv,
-           coalesce(opt.trial_consolidation_enabled, false) as t_con,
-           coalesce(opt.trial_branding_enabled, false) as t_brand,
-           opt.trial_ends_at as t_end
-      from public.org_subscription_options opt
-     where opt.firm_id = _firm_id
-  ),
-  r as (
-    select coalesce((select p_adv from o), false) as p_adv,
-           coalesce((select p_con from o), false) as p_con,
-           coalesce((select p_brand from o), false) as p_brand,
-           coalesce((select t_adv from o), false) as t_adv,
-           coalesce((select t_con from o), false) as t_con,
-           coalesce((select t_brand from o), false) as t_brand,
-           (select t_end from o) as t_end
-  ),
-  live as (
-    select r.*, (r.t_end is not null and r.t_end > now()) as t_live from r
-  )
-  select
-    (live.p_adv or (live.t_live and live.t_adv)) as advisory,
-    (live.p_con or (live.t_live and live.t_con))
-      and (live.p_adv or (live.t_live and live.t_adv)) as consolidation,
-    (live.p_brand or (live.t_live and live.t_brand))
-      and (live.p_adv or (live.t_live and live.t_adv)) as branding,
-    live.p_adv, live.p_con, live.p_brand,
-    live.t_adv, live.t_con, live.t_brand,
-    live.t_end, live.t_live
-  from live
-$function$
-;
 CREATE OR REPLACE FUNCTION app_private.firm_branding_enabled(_firm_id uuid)
  RETURNS boolean
  LANGUAGE sql
@@ -2642,6 +2601,34 @@ begin
      limit 1000;
 end;
 $function$
+;
+CREATE OR REPLACE FUNCTION app_private.org_effective_options(_firm_id uuid)
+ RETURNS TABLE(advisory boolean, consolidation boolean, branding boolean, white_label boolean, purchased_advisory boolean, purchased_consolidation boolean, purchased_branding boolean, purchased_white_label boolean, trial_advisory boolean, trial_consolidation boolean, trial_branding boolean, trial_white_label boolean, trial_ends_at timestamp with time zone, trial_active boolean)
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$ WITH o AS (SELECT coalesce(opt.advisory_enabled,false) p_adv,coalesce(opt.consolidation_enabled,false) p_con,coalesce(opt.branding_enabled,false) p_brand,coalesce(opt.white_label_enabled,false) p_white,coalesce(opt.trial_advisory_enabled,false) t_adv,coalesce(opt.trial_consolidation_enabled,false) t_con,coalesce(opt.trial_branding_enabled,false) t_brand,coalesce(opt.trial_white_label_enabled,false) t_white,opt.trial_ends_at t_end FROM public.org_subscription_options opt WHERE opt.firm_id=_firm_id),r AS (SELECT coalesce((SELECT p_adv FROM o),false) p_adv,coalesce((SELECT p_con FROM o),false) p_con,coalesce((SELECT p_brand FROM o),false) p_brand,coalesce((SELECT p_white FROM o),false) p_white,coalesce((SELECT t_adv FROM o),false) t_adv,coalesce((SELECT t_con FROM o),false) t_con,coalesce((SELECT t_brand FROM o),false) t_brand,coalesce((SELECT t_white FROM o),false) t_white,(SELECT t_end FROM o) t_end),live AS (SELECT r.*,(r.t_end IS NOT NULL AND r.t_end>now()) t_live FROM r) SELECT (p_adv OR (t_live AND t_adv)),(p_con OR (t_live AND t_con)) AND (p_adv OR (t_live AND t_adv)),(p_brand OR (t_live AND t_brand)) AND (p_adv OR (t_live AND t_adv)),(p_white OR (t_live AND t_white)),p_adv,p_con,p_brand,p_white,t_adv,t_con,t_brand,t_white,t_end,t_live FROM live $function$
+;
+CREATE OR REPLACE FUNCTION app_private.firm_white_label_enabled(_firm_id uuid)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$ SELECT coalesce((SELECT e.white_label FROM app_private.org_effective_options(_firm_id) e),false) AND NOT app_private.firm_subscription_lapsed(_firm_id) $function$
+;
+CREATE OR REPLACE FUNCTION public.set_org_purchase(_firm_id uuid, _client_limit integer, _advisory boolean, _consolidation boolean, _branding boolean, _white_label boolean, _billing_mode text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$ DECLARE _prev_advisory boolean:=false; _prev_consolidation boolean:=false; _siblings int; BEGIN PERFORM app_private.assert_aal2(); PERFORM public.assert_super_admin(); IF _billing_mode IS NULL OR _billing_mode NOT IN ('bookkeeping','external') THEN RAISE EXCEPTION 'INVALID_BILLING_MODE' USING errcode='check_violation'; END IF; IF _client_limit IS NULL OR _client_limit<0 OR _client_limit>9999 THEN RAISE EXCEPTION 'INVALID_CLIENT_LIMIT' USING errcode='check_violation'; END IF; IF coalesce(_consolidation,false) AND NOT coalesce(_advisory,false) THEN RAISE EXCEPTION 'CONSOLIDATION_REQUIRES_ADVISORY' USING errcode='check_violation'; END IF; IF coalesce(_branding,false) AND NOT coalesce(_advisory,false) THEN RAISE EXCEPTION 'BRANDING_REQUIRES_ADVISORY' USING errcode='check_violation'; END IF; IF NOT EXISTS(SELECT 1 FROM public.firms f WHERE f.id=_firm_id) THEN RAISE EXCEPTION 'NO_SUCH_ORGANISATION' USING errcode='no_data_found'; END IF; SELECT o.advisory_enabled,o.consolidation_enabled INTO _prev_advisory,_prev_consolidation FROM public.org_subscription_options o WHERE o.firm_id=_firm_id; INSERT INTO public.org_subscription_options(firm_id,client_limit,advisory_enabled,consolidation_enabled,branding_enabled,white_label_enabled,billing_mode) VALUES(_firm_id,_client_limit,coalesce(_advisory,false),coalesce(_consolidation,false),coalesce(_branding,false),coalesce(_white_label,false),_billing_mode) ON CONFLICT(firm_id) DO UPDATE SET client_limit=excluded.client_limit,advisory_enabled=excluded.advisory_enabled,consolidation_enabled=excluded.consolidation_enabled,branding_enabled=excluded.branding_enabled,white_label_enabled=excluded.white_label_enabled,billing_mode=excluded.billing_mode,updated_at=now(); IF coalesce(_advisory,false) AND NOT coalesce(_prev_advisory,false) THEN UPDATE public.client_cards cc SET cards=ARRAY(SELECT DISTINCT x FROM unnest(cc.cards||app_private.card_group_cards('advisory')) x ORDER BY x),updated_at=now() WHERE cc.client_id IN(SELECT c.id FROM public.clients c WHERE c.firm_id=_firm_id); END IF; SELECT count(*) INTO _siblings FROM public.clients c WHERE c.firm_id=_firm_id; IF coalesce(_consolidation,false) AND NOT coalesce(_prev_consolidation,false) AND _siblings>1 THEN UPDATE public.client_cards cc SET cards=ARRAY(SELECT DISTINCT x FROM unnest(cc.cards||app_private.card_group_cards('consolidation')) x ORDER BY x),updated_at=now() WHERE cc.client_id IN(SELECT c.id FROM public.clients c WHERE c.firm_id=_firm_id); END IF; INSERT INTO public.audit_log(actor_user_id,firm_id,action,target_type,target_id,meta) VALUES(auth.uid(),_firm_id,'org_purchase_set','firm',_firm_id::text,jsonb_build_object('client_limit',_client_limit,'advisory',coalesce(_advisory,false),'consolidation',coalesce(_consolidation,false),'branding',coalesce(_branding,false),'white_label',coalesce(_white_label,false),'billing_mode',_billing_mode)); END $function$
+;
+CREATE OR REPLACE FUNCTION public.set_org_trial(_firm_id uuid, _advisory boolean, _consolidation boolean, _branding boolean, _white_label boolean, _ends_at timestamp with time zone, _reason text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$ DECLARE _ending boolean; BEGIN PERFORM app_private.assert_aal2(); PERFORM public.assert_super_admin(); _ending:=NOT coalesce(_advisory,false) AND NOT coalesce(_consolidation,false) AND NOT coalesce(_branding,false) AND NOT coalesce(_white_label,false); IF NOT _ending THEN IF _ends_at IS NULL OR _ends_at<=now() OR _ends_at>now()+interval '120 days' THEN RAISE EXCEPTION 'INVALID_TRIAL_END' USING errcode='check_violation'; END IF; IF coalesce(_consolidation,false) AND NOT coalesce(_advisory,false) THEN RAISE EXCEPTION 'CONSOLIDATION_REQUIRES_ADVISORY' USING errcode='check_violation'; END IF; IF coalesce(_branding,false) AND NOT coalesce(_advisory,false) THEN RAISE EXCEPTION 'BRANDING_REQUIRES_ADVISORY' USING errcode='check_violation'; END IF; IF nullif(btrim(_reason),'') IS NULL THEN RAISE EXCEPTION 'REASON_REQUIRED' USING errcode='check_violation'; END IF; END IF; INSERT INTO public.org_subscription_options(firm_id,trial_advisory_enabled,trial_consolidation_enabled,trial_branding_enabled,trial_white_label_enabled,trial_ends_at) VALUES(_firm_id,coalesce(_advisory,false),coalesce(_consolidation,false),coalesce(_branding,false),coalesce(_white_label,false),CASE WHEN _ending THEN NULL ELSE _ends_at END) ON CONFLICT(firm_id) DO UPDATE SET trial_advisory_enabled=excluded.trial_advisory_enabled,trial_consolidation_enabled=excluded.trial_consolidation_enabled,trial_branding_enabled=excluded.trial_branding_enabled,trial_white_label_enabled=excluded.trial_white_label_enabled,trial_ends_at=excluded.trial_ends_at,advisory_enabled=CASE WHEN coalesce(_advisory,false) THEN false ELSE org_subscription_options.advisory_enabled END,consolidation_enabled=CASE WHEN coalesce(_consolidation,false) THEN false ELSE org_subscription_options.consolidation_enabled END,branding_enabled=CASE WHEN coalesce(_branding,false) THEN false ELSE org_subscription_options.branding_enabled END,white_label_enabled=CASE WHEN coalesce(_white_label,false) THEN false ELSE org_subscription_options.white_label_enabled END,updated_at=now(); INSERT INTO public.audit_log(actor_user_id,firm_id,action,target_type,target_id,meta) VALUES(auth.uid(),_firm_id,CASE WHEN _ending THEN 'org_trial_ended' ELSE 'org_trial_set' END,'firm',_firm_id::text,jsonb_build_object('advisory',coalesce(_advisory,false),'consolidation',coalesce(_consolidation,false),'branding',coalesce(_branding,false),'white_label',coalesce(_white_label,false),'ends_at',CASE WHEN _ending THEN NULL ELSE _ends_at END,'reason',nullif(btrim(_reason),''))); END $function$
 ;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
@@ -3823,4 +3810,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 107ed1c229b1321aa68df00befdfcfab5be27cf0b9242bf684f17b009ff6b254
+-- catalogue-fingerprint: 21e681c1200da7a48dfda6be5f3684826bb1eb18444d1f67da45168989df639d

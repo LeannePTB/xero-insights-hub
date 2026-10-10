@@ -71,6 +71,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       advisory?: boolean | null;
       consolidation?: boolean | null;
       branding?: boolean | null;
+      whiteLabel?: boolean | null;
       cards?: string[] | null;
     }) => i,
   )
@@ -92,6 +93,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     const advisory = !!data.advisory;
     const consolidation = !!data.consolidation && advisory;
     const branding = !!data.branding && advisory;
+    const whiteLabel = !!data.whiteLabel;
     // Card preferences: a template for clients added later, never a purchase.
     const cards = Array.isArray(data.cards)
       ? Array.from(new Set(data.cards.filter((c) => typeof c === "string" && c))).slice(0, 100)
@@ -160,7 +162,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         _advisory: advisory,
         _consolidation: consolidation,
         _branding: branding,
-        _white_label: false,
+        _white_label: whiteLabel,
         _billing_mode: billingMode,
       });
       if (pErr) throw new Error(pErr.message);
@@ -308,6 +310,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         advisory_enabled: advisory,
         consolidation_enabled: consolidation,
         branding_enabled: branding,
+        white_label_enabled: whiteLabel,
         billing_mode: billingMode,
         default_cards: cards,
         owner_mode: "invite",
@@ -320,6 +323,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         const { enqueueAppEmail } = await import("@/lib/email/send.server");
         const res = await enqueueAppEmail({
           templateName: "firm-invite",
+          firmId: firm.id,
           recipientEmail: email,
           idempotencyKey: `firm-invite-${firm.id}-${token.slice(0, 8)}`,
           templateData: { inviteUrl, role: "owner", firmName: firm.name, inviterName: null },
@@ -411,6 +415,7 @@ export const adminCreateFirmAndInvite = createServerFn({ method: "POST" })
       const { enqueueAppEmail } = await import("@/lib/email/send.server");
       const res = await enqueueAppEmail({
         templateName: "firm-invite",
+        firmId: firm.id,
         recipientEmail: email,
         idempotencyKey: `firm-invite-${firm.id}-${token.slice(0, 8)}`,
         templateData: {
@@ -486,6 +491,7 @@ export const adminInviteFirmMember = createServerFn({ method: "POST" })
       const { enqueueAppEmail } = await import("@/lib/email/send.server");
       const res = await enqueueAppEmail({
         templateName: "firm-invite",
+        firmId: data.firmId,
         recipientEmail: email,
         idempotencyKey: `firm-invite-${data.firmId}-${token.slice(0, 8)}`,
         templateData: {

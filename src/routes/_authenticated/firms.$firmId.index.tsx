@@ -11,6 +11,7 @@ import { AddClientsPanel } from "@/components/firm/AddClientsPanel";
 import { XeroOnboardPickerDialog } from "@/components/admin/XeroOnboardPickerDialog";
 
 import { toast } from "sonner";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/")({
   validateSearch: (
@@ -103,7 +104,7 @@ function FirmPage() {
           note="Layout and controls only; data access is unchanged"
         />
       )}
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <PageContainer>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h1 className="font-display text-3xl font-semibold">{firm.name}</h1>
@@ -143,7 +144,7 @@ function FirmPage() {
             showAddActions={false}
           />
         </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }

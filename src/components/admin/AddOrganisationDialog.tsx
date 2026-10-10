@@ -40,6 +40,7 @@ export function AddOrganisationDialog({
   const [advisory, setAdvisory] = useState(false);
   const [consolidation, setConsolidation] = useState(false);
   const [branding, setBranding] = useState(false);
+  const [whiteLabel, setWhiteLabel] = useState(false);
   // How they want it set up — a starting point for clients added later, never a purchase.
   const [unticked, setUnticked] = useState<string[]>([]);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -91,6 +92,7 @@ export function AddOrganisationDialog({
           advisory,
           consolidation: advisory && consolidation,
           branding: advisory && branding,
+          whiteLabel,
           cards: cardsPayload,
         },
       }),
@@ -124,7 +126,7 @@ export function AddOrganisationDialog({
     setOwnerMode("none"); setEmail(""); setOwnerName("");
     setPassword(""); setDone(null); setCopied(false); setErrorMsg(null);
     setClientLimit("1"); setBillingMode("bookkeeping");
-    setAdvisory(false); setConsolidation(false); setBranding(false); setUnticked([]);
+    setAdvisory(false); setConsolidation(false); setBranding(false); setWhiteLabel(false); setUnticked([]);
   }
 
   function generatePassword() {
@@ -211,6 +213,15 @@ export function AddOrganisationDialog({
                     }}
                   />
                   <span>Advisory</span>
+                </label>
+                <label className="flex items-start gap-2 text-sm">
+                  <Checkbox checked={whiteLabel} onCheckedChange={(v) => setWhiteLabel(!!v)} />
+                  <span>
+                    White label
+                    <span className="block text-xs text-muted-foreground">
+                      Uses the organisation's name and logo in its app, organisation emails and new reports. Independent of Advisory and Branding.
+                    </span>
+                  </span>
                 </label>
                 <label className="flex items-start gap-2 text-sm">
                   <Checkbox

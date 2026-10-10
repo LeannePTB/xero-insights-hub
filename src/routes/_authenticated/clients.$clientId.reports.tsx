@@ -1,4 +1,4 @@
-import { usePlatformBranding } from "@/hooks/usePlatformBranding";
+import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -31,6 +31,7 @@ import type { MonthlyReportPayload } from "@/lib/reports/monthly-report";
 import { MONTHLY_REPORT_PAYLOAD_VERSION, wasRateLimited } from "@/lib/reports/monthly-report";
 import { reportVideoFrom } from "@/lib/reports/report-video";
 import { ReportVideoEditor } from "@/components/reports/ReportVideoEditor";
+import { PageContainer } from "@/components/PageContainer";
 
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/reports")({
@@ -64,7 +65,7 @@ function fmtDate(iso: string | null) {
 }
 
 function ReportsPage() {
-  const platformBrand = usePlatformBranding();
+  const workspaceBrand = useWorkspaceBranding();
   const { clientId } = Route.useParams();
   const qc = useQueryClient();
   const fetchClient = useServerFn(getClient);
@@ -196,7 +197,7 @@ function ReportsPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader />
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <PageContainer>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="font-display text-2xl font-semibold sm:text-3xl">
@@ -205,7 +206,7 @@ function ReportsPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {isAdvisor
                 ? `${client?.name ?? "Client"} · a report is a point-in-time snapshot; the dashboard stays live.`
-                : <>{client?.name ?? "Client"} · a snapshot of your business for the period, prepared by {platformBrand.productName}.</>}
+                : <>{client?.name ?? "Client"} · a snapshot of your business for the period, prepared by {workspaceBrand.productName}.</>}
             </p>
           </div>
           <ViewToggle clientId={clientId} active="reports" />
@@ -443,7 +444,7 @@ function ReportsPage() {
         />
         <DeleteReportDialog report={toDelete} clientId={clientId} onClose={() => setToDelete(null)} />
         <SendReportDialog report={toSend} clientId={clientId} onClose={() => setToSend(null)} />
-      </main>
+      </PageContainer>
     </div>
   );
 }

@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, Link2, Unlink, Trash2, Search } from "lucide-react";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/loans-accounts")({
   head: () => ({ meta: [{ title: "Loan accounts — Traction Advisory" }] }),
@@ -153,7 +154,7 @@ function LoansAccountsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-5xl px-6 py-10">
+      <PageContainer width="wide">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="font-display text-2xl font-semibold">Set up loan accounts</h1>
@@ -239,7 +240,7 @@ function LoansAccountsPage() {
             </TableBody>
           </Table>
         </div>
-      </main>
+      </PageContainer>
 
       <AddAccountDialog
         open={addOpen}

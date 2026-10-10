@@ -112,7 +112,7 @@ export async function setOrganisationLogo(opts: {
     targetId: opts.firmId,
     meta: { logo_path: path },
   });
-  return { path, url: await signLogo(path) };
+  return { url: await signLogo(path) };
 }
 
 export async function setClientLogo(opts: {
@@ -153,7 +153,7 @@ export async function setClientLogo(opts: {
     targetId: opts.clientId,
     meta: { logo_path: path },
   });
-  return { path, url: await signLogo(path) };
+  return { url: await signLogo(path) };
 }
 
 export async function signLogo(path: string | null): Promise<string | null> {
@@ -168,20 +168,30 @@ async function resolvedWorkspaceBranding(supabase: any, rpc: string, args: any) 
   if (error) throw new Error(error.message);
   const row = (data ?? [])[0];
   if (!row) throw new Error("Organisation not found.");
+  let logoPath: string | null = null;
+  if (row.white_label_enabled === true) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: firm } = await (supabaseAdmin as any)
+      .from("firms")
+      .select("logo_path")
+      .eq("id", row.firm_id)
+      .maybeSingle();
+    logoPath = firm?.logo_path ?? null;
+  }
   return {
     firmId: row.firm_id as string,
     organisationName: row.organisation_name as string,
     whiteLabelEnabled: row.white_label_enabled === true,
-    logoUrl: row.white_label_enabled === true ? await signLogo(row.logo_path ?? null) : null,
+    logoUrl: row.white_label_enabled === true ? await signLogo(logoPath) : null,
   };
 }
 
 export function workspaceBrandingForFirm(supabase: any, firmId: string) {
-  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_firm", { _firm_id: firmId });
+  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_firm_v2", { _firm_id: firmId });
 }
 
 export function workspaceBrandingForClient(supabase: any, clientId: string) {
-  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_client", { _client_id: clientId });
+  return resolvedWorkspaceBranding(supabase, "workspace_branding_for_client_v2", { _client_id: clientId });
 }
 
 export async function getOrganisationLogo(userId: string, firmId: string) {
@@ -193,7 +203,7 @@ export async function getOrganisationLogo(userId: string, firmId: string) {
     .eq("id", firmId)
     .maybeSingle();
   const path = (data as any)?.logo_path ?? null;
-  return { path, url: await signLogo(path) };
+  return { url: await signLogo(path) };
 }
 
 export async function getClientLogo(userId: string, clientId: string, supabase?: any) {
@@ -201,7 +211,7 @@ export async function getClientLogo(userId: string, clientId: string, supabase?:
   await assertClientDataAccessForClient(userId, clientId);
   // Hide, never delete: with Branding off the stored logo stays put but is not served.
   if (supabase && !(await clientBrandingEnabled(supabase, clientId))) {
-    return { path: null, url: null };
+    return { url: null };
   }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await (supabaseAdmin as any)
@@ -210,7 +220,7 @@ export async function getClientLogo(userId: string, clientId: string, supabase?:
     .eq("id", clientId)
     .maybeSingle();
   const path = (data as any)?.logo_path ?? null;
-  return { path, url: await signLogo(path) };
+  return { url: await signLogo(path) };
 }
 
 export async function clearOrganisationLogo(userId: string, firmId: string) {

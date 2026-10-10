@@ -8,7 +8,7 @@ Nine plans in `plan_levels`, three per-client tiers, and four layers of card con
 
 ## The model
 
-An organisation's subscription is **five fields** (Branding added by owner decision, 16 September 2026):
+An organisation's subscription is **six fields** (White label added by owner decision, 10 October 2026):
 
 | Field | Values | Notes |
 | --- | --- | --- |
@@ -16,9 +16,12 @@ An organisation's subscription is **five fields** (Branding added by owner decis
 | **Advisory** | on / off | Applies to every client in the organisation |
 | **Consolidation** | on / off | Separately chargeable. Requires Advisory |
 | **Branding** | on / off | Separately chargeable. Requires Advisory. Client logos on the monthly management report |
+| **White label** | on / off | Separately chargeable and independent. Organisation name/logo in its app, organisation-bound emails and report chrome |
 | **Billing** | `bookkeeping` / `external` | `bookkeeping` = absorbed in Positive Traction's fees. `external` = they pay us directly |
 
-That is the whole thing. Nine plans collapse into four purchasable things — Clients, Advisory, Consolidation, Branding — plus a billing arrangement, and every combination is expressible without inventing a plan name.
+That is the whole thing. Nine plans collapse into five purchasable things — Clients, Advisory, Consolidation, Branding and White label — plus a billing arrangement, and every combination is expressible without inventing a plan name.
+
+**White label is independent of Advisory and Branding** (owner decision, 10 October 2026). Any non-lapsed organisation may buy or trial it. It changes only identity presentation: the organisation name and existing private organisation logo replace platform identity in that organisation's app, organisation-bound emails and new report PDFs. Auth emails, sign-in, System Admin and cross-organisation screens remain platform-branded. Lapse/removal falls back immediately and never deletes the uploaded logo.
 
 **Consolidation is a separately chargeable option.** It is not included in Advisory and does not switch itself on. The rules:
 - It can only be purchased when **Advisory is on** — it extends Advisory rather than standing alone.

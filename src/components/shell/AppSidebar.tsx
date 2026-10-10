@@ -45,7 +45,7 @@ import { listMyFirms } from "@/lib/firms.functions";
 import { getClient } from "@/lib/clients.functions";
 import { getMyClientCapabilities } from "@/lib/roles.functions";
 import { useSignOut } from "@/lib/use-sign-out";
-import { usePlatformBranding } from "@/hooks/usePlatformBranding";
+import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
 import {
   isBranchActive,
   isItemActive,
@@ -76,7 +76,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
 
 export function AppSidebar({ badges = {} }: { badges?: Record<string, number> }) {
   const signOut = useSignOut();
-  const brand = usePlatformBranding();
+  const brand = useWorkspaceBranding();
   const { isMobile, setOpenMobile } = useSidebar();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 

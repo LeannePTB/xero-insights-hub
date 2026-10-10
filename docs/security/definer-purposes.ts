@@ -26,6 +26,8 @@ export const DEFINER_PURPOSES: Record<string, string> = {
     "Trigger: same limit check when a Xero file is moved between clients.",
   "app_private.firm_ids_for_tenant": "Which organisations a Xero file belongs to.",
   "app_private.firm_limits": "The client and Xero file limits for an organisation's plan.",
+  "app_private.firm_white_label_enabled":
+    "Canonical database entitlement: whether an organisation has purchased or unexpired White label and is not lapsed.",
   "app_private.firm_subscription_lapsed": "Whether an organisation's subscription has lapsed.",
   "app_private.firm_support_access_active":
     "Whether this person holds a live, unexpired support grant for this organisation.",
@@ -146,12 +148,22 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.firm_allowed_widgets": "The dashboard cards an organisation's plan allows.",
   "public.firm_can_use_widget": "Whether an organisation's plan allows one dashboard card.",
   "public.firm_has_consolidation": "Whether an organisation's plan includes consolidation.",
+  "public.firm_white_label_enabled_service":
+    "Service-role-only White label entitlement reader for organisation-bound email and immutable PDF generation.",
   "public.firm_member_invites": "The pending team member invitations for an organisation.",
   "public.firm_plan_limits": "An organisation's client and Xero file limits.",
   "public.firm_subscription_state": "An organisation's subscription status and period.",
   "public.firm_support_grants": "The support grants recorded against an organisation.",
   "public.firm_support_viewer_state":
     "Whether the caller currently holds a support grant for an organisation.",
+  "public.workspace_branding_for_firm":
+    "Returns an organisation's effective name and logo path only after aal2 and active membership; caller ids are filters, never grants.",
+  "public.workspace_branding_for_firm_v2":
+    "Returns only effective organisation identity metadata after aal2 and active membership; private storage paths are excluded.",
+  "public.workspace_branding_for_client":
+    "Returns effective organisation identity for exactly one readable client after aal2 and the existing client-read predicate.",
+  "public.workspace_branding_for_client_v2":
+    "Returns only effective identity metadata for exactly one readable client; private storage paths are excluded.",
   "public.firm_support_access_audit":
     "Trigger: records every support grant change in the audit log.",
   "public.organisation_members": "The members of an organisation with their verified email.",

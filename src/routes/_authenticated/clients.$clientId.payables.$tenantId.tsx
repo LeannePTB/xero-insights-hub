@@ -5,6 +5,7 @@ import { getPayablesList } from "@/lib/xero/payables.functions";
 import { Button } from "@/components/ui/button";
 import { AwaitingSnapshot, DataSourceLine } from "@/components/dashboard/DataSourceLine";
 import { Loader2, RefreshCw, Wallet, ExternalLink } from "lucide-react";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/payables/$tenantId")({
   head: () => ({ meta: [{ title: "Payables — Traction Advisory" }] }),
@@ -26,7 +27,7 @@ function PayablesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <PageContainer width="full">
         <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-semibold sm:text-3xl flex items-center gap-2">
@@ -101,7 +102,7 @@ function PayablesPage() {
             </div>
           )}
         </div>
-      </main>
+      </PageContainer>
     </div>
   );
 }

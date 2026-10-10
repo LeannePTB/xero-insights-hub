@@ -466,6 +466,13 @@
     },
     {
         "args": [
+            "_firm_id"
+        ],
+        "name": "firm_white_label_enabled_service",
+        "required": 1
+    },
+    {
+        "args": [
         ],
         "name": "get_mfa_posture_counts",
         "required": 0
@@ -991,11 +998,35 @@
             "_advisory",
             "_consolidation",
             "_branding",
+            "_billing_mode"
+        ],
+        "name": "set_org_purchase",
+        "required": 6
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_client_limit",
+            "_advisory",
+            "_consolidation",
+            "_branding",
             "_white_label",
             "_billing_mode"
         ],
         "name": "set_org_purchase",
         "required": 7
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_advisory",
+            "_consolidation",
+            "_branding",
+            "_ends_at",
+            "_reason"
+        ],
+        "name": "set_org_trial",
+        "required": 6
     },
     {
         "args": [
@@ -1173,6 +1204,34 @@
         ],
         "name": "user_can_write_firm",
         "required": 2
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "workspace_branding_for_client",
+        "required": 1
+    },
+    {
+        "args": [
+            "_client_id"
+        ],
+        "name": "workspace_branding_for_client_v2",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "workspace_branding_for_firm",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "workspace_branding_for_firm_v2",
+        "required": 1
     },
     {
         "args": [

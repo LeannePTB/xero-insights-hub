@@ -34,6 +34,7 @@ import { Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, Eye
 import { toast } from "sonner";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { siteUrl } from "@/lib/site-origin";
+import { PageContainer } from "@/components/PageContainer";
 
 
 export const Route = createFileRoute("/_authenticated/system/staff")({
@@ -236,7 +237,7 @@ function AdvisorSettings() {
   return (
     <>
     <div className="min-h-screen bg-background">
-      <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
+      <PageContainer width="readable" className="space-y-6">
 
         <FirmPageHeader title="Platform staff" />
 
@@ -531,7 +532,7 @@ function AdvisorSettings() {
           )}
         </section>
 
-      </main>
+      </PageContainer>
 
       <Dialog open={!!resetTarget} onOpenChange={(o) => { if (!o) { setResetTarget(null); setNewPw(""); } }}>
         <DialogContent>
