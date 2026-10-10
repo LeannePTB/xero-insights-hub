@@ -113,6 +113,13 @@
       "when": 1791447387208,
       "tag": "0015_add_client_rental_properties",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791599182683,
+      "tag": "0016_add_platform_branding",
+      "breakpoints": true
     }
   ]
 }
