@@ -55,6 +55,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
   const [advisory, setAdvisory] = useState(false);
   const [consolidation, setConsolidation] = useState(false);
   const [branding, setBranding] = useState(false);
+  const [whiteLabel, setWhiteLabel] = useState(false);
   const [billingMode, setBillingMode] = useState<"bookkeeping" | "external">("bookkeeping");
 
   useEffect(() => {
@@ -64,6 +65,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     setAdvisory(p.advisory);
     setConsolidation(p.consolidation);
     setBranding(p.branding);
+    setWhiteLabel(p.whiteLabel);
     setBillingMode(p.billingMode);
   }, [q.data?.purchase]);
 
@@ -76,6 +78,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
           advisory,
           consolidation,
           branding,
+          whiteLabel,
           billingMode,
         },
       }),
@@ -85,6 +88,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
       qc.invalidateQueries({ queryKey: ["admin-org-purchases"] });
       qc.invalidateQueries({ queryKey: ["client-branding"] });
       qc.invalidateQueries({ queryKey: ["report-logo"] });
+      qc.invalidateQueries({ queryKey: ["workspace-branding"] });
       qc.invalidateQueries({ queryKey: ["client-card-setup"] });
       qc.invalidateQueries({ queryKey: ["client-widgets"] });
       qc.invalidateQueries({ queryKey: ["effective-widgets"] });
@@ -121,6 +125,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
     advisory !== purchase.advisory ||
     consolidation !== purchase.consolidation ||
     branding !== purchase.branding ||
+    whiteLabel !== purchase.whiteLabel ||
     billingMode !== purchase.billingMode;
   const availableNow = organisationOptionDisplay(purchase);
   const activeTrialEnd = purchase.trialActive
@@ -268,6 +273,16 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
             }}
           />
         </div>
+
+        <div className="flex items-start justify-between gap-4 rounded-md border p-3">
+          <div>
+            <p className="text-sm font-medium">White label</p>
+            <p className="text-xs text-muted-foreground">
+              Replaces platform identity with this organisation's name and logo in its app, organisation-bound emails and new report PDFs. Independent of Advisory and Branding. Switching it off keeps the uploaded logo.
+            </p>
+          </div>
+          <Switch checked={whiteLabel} disabled={!canEdit} onCheckedChange={setWhiteLabel} />
+        </div>
       </div>
 
       {canEdit ? (
@@ -315,6 +330,7 @@ function OrgTrialBlock({
   const [tAdvisory, setTAdvisory] = useState(purchase.trialAdvisory);
   const [tConsolidation, setTConsolidation] = useState(purchase.trialConsolidation);
   const [tBranding, setTBranding] = useState(purchase.trialBranding);
+  const [tWhiteLabel, setTWhiteLabel] = useState(purchase.trialWhiteLabel);
   const [endsAt, setEndsAt] = useState(
     purchase.trialEndsAt ? purchase.trialEndsAt.slice(0, 10) : "",
   );
@@ -326,6 +342,7 @@ function OrgTrialBlock({
     tAdvisory && purchase.advisory ? "Advisory" : null,
     tConsolidation && purchase.consolidation ? "Consolidation" : null,
     tBranding && purchase.branding ? "Branding" : null,
+    tWhiteLabel && purchase.whiteLabel ? "White label" : null,
   ].filter(Boolean) as string[];
   const overlapLabel = overlap.join(", ").replace(/, ([^,]*)$/, " and $1");
 
@@ -334,6 +351,7 @@ function OrgTrialBlock({
       advisory: boolean;
       consolidation: boolean;
       branding: boolean;
+      whiteLabel: boolean;
       endsAt: string | null;
     }) => {
       return await saveTrial({
@@ -342,6 +360,7 @@ function OrgTrialBlock({
           advisory: vars.advisory,
           consolidation: vars.consolidation,
           branding: vars.branding,
+          whiteLabel: vars.whiteLabel,
           endsAt: vars.endsAt,
           reason,
         },
@@ -359,6 +378,7 @@ function OrgTrialBlock({
       qc.invalidateQueries({ queryKey: ["effective-widgets"] });
       qc.invalidateQueries({ queryKey: ["client-branding"] });
       qc.invalidateQueries({ queryKey: ["report-logo"] });
+      qc.invalidateQueries({ queryKey: ["workspace-branding"] });
       qc.invalidateQueries({ queryKey: ["client-org-trial"] });
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not update the trial"),
@@ -452,6 +472,13 @@ function OrgTrialBlock({
               onCheckedChange={setTBranding}
             />
           </div>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <Label htmlFor="trial-white-label">White label on trial</Label>
+              <p className="text-xs text-muted-foreground">Independent of Advisory and Branding.</p>
+            </div>
+            <Switch id="trial-white-label" checked={tWhiteLabel} onCheckedChange={setTWhiteLabel} />
+          </div>
           {overlap.length > 0 && (
             <div className="space-y-2 rounded-md border border-info/30 bg-info/10 px-3 py-2 text-sm text-info">
               <p className="font-medium">This organisation has already bought {overlapLabel}.</p>
@@ -499,6 +526,7 @@ function OrgTrialBlock({
                   advisory: tAdvisory,
                   consolidation: tConsolidation,
                   branding: tBranding,
+                  whiteLabel: tWhiteLabel,
                   endsAt: endsAt || null,
                 })
               }
@@ -516,6 +544,7 @@ function OrgTrialBlock({
                     advisory: false,
                     consolidation: false,
                     branding: false,
+                    whiteLabel: false,
                     endsAt: null,
                   })
                 }
