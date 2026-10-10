@@ -46,6 +46,8 @@ import { getClient } from "@/lib/clients.functions";
 import { getMyClientCapabilities } from "@/lib/roles.functions";
 import { useSignOut } from "@/lib/use-sign-out";
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
+import { DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
+
 import {
   isBranchActive,
   isItemActive,
