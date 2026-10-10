@@ -12,6 +12,7 @@ import { ClientHealthBadge } from "@/components/dashboard/ClientHealthBadge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { PageContainer } from "@/components/PageContainer";
 
 
 type Bucket = OverviewRow["bucket"];
@@ -85,7 +86,7 @@ export function OverviewView({ firmId }: { firmId?: string }) {
     : [{ name: null as string | null, rows: shown }];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-6 p-6">
+    <PageContainer as="div" width="full" className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Client overview</h1>
         <p className="text-sm text-muted-foreground">
@@ -187,7 +188,7 @@ export function OverviewView({ firmId }: { firmId?: string }) {
           </ul>
         </div>
       )}
-    </div>
+    </PageContainer>
   );
 }
 

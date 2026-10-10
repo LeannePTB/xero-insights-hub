@@ -112,7 +112,7 @@ export async function setOrganisationLogo(opts: {
     targetId: opts.firmId,
     meta: { logo_path: path },
   });
-  return { path, url: await signLogo(path) };
+  return { url: await signLogo(path) };
 }
 
 export async function setClientLogo(opts: {
@@ -153,7 +153,7 @@ export async function setClientLogo(opts: {
     targetId: opts.clientId,
     meta: { logo_path: path },
   });
-  return { path, url: await signLogo(path) };
+  return { url: await signLogo(path) };
 }
 
 export async function signLogo(path: string | null): Promise<string | null> {
@@ -193,7 +193,7 @@ export async function getOrganisationLogo(userId: string, firmId: string) {
     .eq("id", firmId)
     .maybeSingle();
   const path = (data as any)?.logo_path ?? null;
-  return { path, url: await signLogo(path) };
+  return { url: await signLogo(path) };
 }
 
 export async function getClientLogo(userId: string, clientId: string, supabase?: any) {
@@ -201,7 +201,7 @@ export async function getClientLogo(userId: string, clientId: string, supabase?:
   await assertClientDataAccessForClient(userId, clientId);
   // Hide, never delete: with Branding off the stored logo stays put but is not served.
   if (supabase && !(await clientBrandingEnabled(supabase, clientId))) {
-    return { path: null, url: null };
+    return { url: null };
   }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await (supabaseAdmin as any)
@@ -210,7 +210,7 @@ export async function getClientLogo(userId: string, clientId: string, supabase?:
     .eq("id", clientId)
     .maybeSingle();
   const path = (data as any)?.logo_path ?? null;
-  return { path, url: await signLogo(path) };
+  return { url: await signLogo(path) };
 }
 
 export async function clearOrganisationLogo(userId: string, firmId: string) {

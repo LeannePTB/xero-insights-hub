@@ -52,4 +52,27 @@ describe("organisation option display", () => {
 
     expect(advisory).toMatchObject({ on: true, trial: false });
   });
+
+  it("keeps White label independent and marks a White-label-only trial", () => {
+    const options = organisationOptionDisplay({
+      advisory: false,
+      consolidation: false,
+      branding: false,
+      whiteLabel: false,
+      trialAdvisory: false,
+      trialConsolidation: false,
+      trialBranding: false,
+      trialWhiteLabel: true,
+      trialEndsAt: "2026-11-30T15:59:59.000Z",
+      trialActive: true,
+      effectiveAdvisory: false,
+      effectiveConsolidation: false,
+      effectiveBranding: false,
+      effectiveWhiteLabel: true,
+    });
+
+    expect(options).toContainEqual({ key: "whiteLabel", label: "White label", on: true, trial: true });
+    expect(options.find((option) => option.key === "advisory")?.on).toBe(false);
+    expect(options.find((option) => option.key === "branding")?.on).toBe(false);
+  });
 });
