@@ -35,7 +35,7 @@ function StatusChip({ p, money }: { p: RentPosition | null; money: (n: number) =
   if (!p) return <span className="text-muted-foreground">Not available yet</span>;
   if (p.status === "no_rent") return <span className="text-muted-foreground">No rent found</span>;
   if (p.status === "ahead") return <span className="font-medium text-success">Paid ahead</span>;
-  if (p.status === "due") return <span className="font-medium text-amber-500">Due</span>;
+  if (p.status === "due") return <span className="font-medium text-info">Due</span>;
   return (
     <span className="font-medium text-destructive">
       In arrears {money(p.arrearsAmount)} · {p.daysBehind} days

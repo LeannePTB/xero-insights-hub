@@ -56,7 +56,7 @@ export function DataSourceLine({
 
   if (source.connection === "disconnected") {
     rows.push(
-      <span key="disc" className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+      <span key="disc" className="flex items-start gap-1.5 text-destructive">
         <PlugZap className="mt-0.5 h-3 w-3 shrink-0" />
         <span>
           Xero is disconnected. Figures are as at {fmtDate(source.asAt ?? source.fetchedAt)} and will not
@@ -72,7 +72,7 @@ export function DataSourceLine({
     );
   } else if (source.stale) {
     rows.push(
-      <span key="stale" className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+      <span key="stale" className="flex items-start gap-1.5 text-info">
         <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
         <span>
           Figures may be out of date — as at {fmtDate(source.asAt)} · figures pulled{" "}
@@ -90,7 +90,7 @@ export function DataSourceLine({
 
   if (!source.complete) {
     rows.push(
-      <span key="partial" className="flex items-start gap-1.5 text-amber-700 dark:text-amber-400">
+      <span key="partial" className="flex items-start gap-1.5 text-destructive">
         <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
         <span>Partial data — some records were not retrieved. Totals may be understated.</span>
       </span>,

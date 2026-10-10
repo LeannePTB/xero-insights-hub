@@ -37,7 +37,7 @@ export function ReconAgeNotice({
   if (!fromSnapshot || !generatedAt || !reconIsOlderThanNightlyCycle(generatedAt)) return null;
   return (
     <p
-      className={`flex items-start gap-1.5 text-[11px] leading-snug text-amber-700 dark:text-amber-400 ${className}`}
+      className={`flex items-start gap-1.5 text-[11px] leading-snug text-info ${className}`}
     >
       <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
       <span>

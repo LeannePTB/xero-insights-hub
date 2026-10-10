@@ -426,7 +426,7 @@ function PaymentRows({ finding }: { finding: any }) {
 function SeverityBadge({ severity }: { severity: string }) {
   const map: Record<string, string> = {
     high: "border-destructive/40 text-destructive",
-    medium: "border-amber-500/40 text-amber-700 dark:text-amber-400",
+    medium: "border-info/30 text-info",
     low: "border-muted-foreground/30 text-muted-foreground",
   };
   return <Badge variant="outline" className={map[severity] ?? ""}>{severity}</Badge>;

@@ -389,11 +389,11 @@ function AdvisorSettings() {
                           {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
                           
                           {a.is_super_admin && (
-                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5 text-[10px] font-medium text-info">
                               <Crown className="h-3 w-3" /> Super admin
                             </span>
                           )}
-                          {isPending && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">Pending invite</span>}
+                          {isPending && <span className="ml-2 rounded-full bg-info/10 px-2 py-0.5 text-[10px] font-medium text-info">Pending invite</span>}
                           {viewerIsSuperAdmin && onPracticeTeam && (
                             <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                               <Users className="h-3 w-3" /> Practice team
@@ -471,7 +471,7 @@ function AdvisorSettings() {
                           }}
                           disabled={superMut.isPending || (a.is_super_admin && a.is_self)}
                           title={a.is_super_admin ? (a.is_self ? "You can't remove your own super admin access" : "Remove super admin") : "Make super admin"}
-                          className={a.is_super_admin ? "text-amber-600" : undefined}
+                          className={a.is_super_admin ? "text-info" : undefined}
                         >
                           <Crown className="h-3.5 w-3.5" />
                         </Button>

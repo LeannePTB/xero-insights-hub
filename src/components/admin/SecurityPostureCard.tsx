@@ -87,7 +87,7 @@ function StatusPill({ status }: { status: PostureStatus }) {
     return <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">All OK</Badge>;
   }
   if (status === "warn") {
-    return <Badge className="bg-amber-500 hover:bg-amber-500 text-white">Warn</Badge>;
+    return <Badge variant="info">Warn</Badge>;
   }
   return <Badge variant="destructive">Action</Badge>;
 }

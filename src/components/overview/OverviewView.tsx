@@ -222,7 +222,7 @@ function GroupRows({ name, rows, onOpen, onHideClient, onHideFirm, busyHide }: {
             ? "The bank reconciliation date is not available yet — these figures may not reflect the real position."
             : `Bank not reconciled since ${date(r.bankReconciledTo)} — these figures may not reflect the real position.`;
         const staleMark = staleBank ? (
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label={staleTitle} />
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-info" aria-label={staleTitle} />
         ) : null;
         return (
         <tr key={r.clientId} className="cursor-pointer border-t hover:bg-muted/30" onClick={() => onOpen(r.clientId)}>

@@ -1,4 +1,5 @@
 # Roadmap
+- [ ] Redesign System Admin Organisations and organisation detail; remove warm warning colours site-wide without changing access rules.
 - [x] Tidy System Admin titles and remove orange admin markers; automatic typecheck/build passed and all 8 navigation tests passed; guards unchanged.
 - [ ] Visually verify System Admin headers on desktop/mobile — blocked by the signed-in account's second-factor verification.
 - [x] Add the Advisory Tax obligations card with latest completed GST/PAYG figures and audited, period-based income tax instalments editable by organisation members.

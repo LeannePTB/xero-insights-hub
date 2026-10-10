@@ -33,7 +33,7 @@ export function EfficiencyRecommendations({
           r.severity === "danger"
             ? "border-l-destructive bg-destructive/5"
             : r.severity === "watch"
-              ? "border-l-amber-500 bg-amber-50 dark:bg-amber-950/20"
+              ? "border-l-info bg-info/10"
               : "border-l-emerald-500 bg-emerald-50 dark:bg-emerald-950/20";
         const Icon =
           r.severity === "danger" ? AlertTriangle : r.severity === "watch" ? TrendingUp : Info;
@@ -41,7 +41,7 @@ export function EfficiencyRecommendations({
           r.severity === "danger"
             ? "text-destructive"
             : r.severity === "watch"
-              ? "text-amber-700 dark:text-amber-400"
+              ? "text-info"
               : "text-emerald-700 dark:text-emerald-400";
         return (
           <div key={i} className={`rounded-lg border border-border border-l-4 p-3 ${tone}`}>

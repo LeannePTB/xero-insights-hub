@@ -10,10 +10,10 @@ import { Button } from "@/components/ui/button";
  */
 export function ViewAsBanner({ label, note }: { label: string; note?: string }) {
   return (
-    <div className="sticky top-0 z-50 border-b border-amber-500/40 bg-amber-500/15 backdrop-blur">
+    <div className="sticky top-0 z-50 border-b border-info/40 bg-info/10 backdrop-blur">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-6 py-2.5">
         <div className="flex min-w-0 items-center gap-2 text-sm">
-          <Eye className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-400" />
+          <Eye className="h-4 w-4 shrink-0 text-info" />
           <span className="truncate font-semibold uppercase tracking-wide">Viewing as</span>
           <span className="truncate font-medium">{label}</span>
           {note && <span className="hidden truncate text-muted-foreground sm:inline">· {note}</span>}

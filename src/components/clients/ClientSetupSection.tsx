@@ -65,7 +65,7 @@ export function ClientSetupSection({ clientId }: { clientId: string }) {
             <li key={item.key} className="flex items-start gap-3 p-4">
               <span className="mt-0.5 shrink-0">
                 {flagged ? (
-                  <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                  <AlertTriangle className="h-4 w-4 text-info" />
                 ) : item.status === "done" ? (
                   <Check className="h-4 w-4 text-muted-foreground" />
                 ) : item.status === "unknown" ? (
@@ -78,7 +78,7 @@ export function ClientSetupSection({ clientId }: { clientId: string }) {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-medium">{item.title}</span>
                   {flagged ? (
-                    <span className="rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300">
+                    <span className="rounded-md border border-info/30 bg-info/10 px-1.5 py-0.5 text-[11px] font-medium text-info border-info/30 bg-info/10 text-info">
                       Needs a decision
                     </span>
                   ) : item.status === "not_applicable" ? (

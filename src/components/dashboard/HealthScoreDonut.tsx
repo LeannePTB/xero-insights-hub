@@ -15,14 +15,14 @@ export function HealthScoreDonut({ score, band, size = 96 }: Props) {
     band === "strong"
       ? "hsl(var(--primary, 142 76% 36%))"
       : band === "watch"
-        ? "#b45309" // amber-700
+        ? "var(--info)"
         : "hsl(var(--destructive))";
 
   const textColor =
     band === "strong"
       ? "text-foreground"
       : band === "watch"
-        ? "text-amber-700 dark:text-amber-400"
+        ? "text-info"
         : "text-destructive";
 
   return (

@@ -67,10 +67,10 @@ const STATES: Record<LiveState, { dot: string; ring: boolean; label: string; ton
     tone: "text-muted-foreground",
   },
   stale: {
-    dot: "bg-amber-500",
+    dot: "bg-info/10",
     ring: false,
     label: "May be out of date",
-    tone: "text-amber-700 dark:text-amber-400",
+    tone: "text-info",
   },
   stored: {
     dot: "bg-muted-foreground/60",

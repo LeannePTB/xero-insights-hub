@@ -366,7 +366,7 @@ export function FirmClientsSection({
                               params={{ clientId: c.id }}
                               hash="setup"
                               title={setupTitles.join(" · ")}
-                              className="flex w-fit items-center gap-1.5 rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300"
+                              className="flex w-fit items-center gap-1.5 rounded-lg border border-info/30 bg-info/10 px-2.5 py-1 text-[11px] font-medium text-info border-info/30 bg-info/10 text-info"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <AlertTriangle className="h-3 w-3" /> {missingLabel}

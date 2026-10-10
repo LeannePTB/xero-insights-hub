@@ -65,7 +65,7 @@ export type FirmPlanView = {
   clientLimit: number;
   planLabel: string;
   statusLabel: string;
-  statusTone: "emerald" | "sky" | "amber" | "red" | "slate";
+  statusTone: "emerald" | "sky" | "red" | "slate";
   dueLabel: string;
   currentPeriodEnd: string | null;
   trialEndsAt: string | null;
@@ -123,7 +123,7 @@ export function firmPlanView(input: {
     if (periodEndMs) dueLabel = `Renews ${new Date(periodEndMs).toLocaleDateString()}`;
   } else if (status === "past_due") {
     statusLabel = "Overdue";
-    statusTone = "amber";
+    statusTone = "red";
     if (periodEndMs) dueLabel = `Was due ${new Date(periodEndMs).toLocaleDateString()}`;
   } else if (status === "canceled" || status === "unpaid" || status === "incomplete_expired") {
     statusLabel = "Cancelled";
@@ -152,7 +152,6 @@ export function toneClasses(tone: FirmPlanView["statusTone"]): string {
   switch (tone) {
     case "emerald": return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900";
     case "sky": return "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900";
-    case "amber": return "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900";
     case "red": return "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900";
     default: return "bg-muted text-muted-foreground border-border";
   }

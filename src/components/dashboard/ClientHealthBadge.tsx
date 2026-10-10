@@ -19,7 +19,7 @@ const SEVERITY_STYLES: Record<string, string> = {
   critical:
     "border-rose-300 bg-rose-50 text-rose-800 dark:border-rose-800/60 dark:bg-rose-950/40 dark:text-rose-300",
   warning:
-    "border-amber-300 bg-amber-50 text-amber-800 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-300",
+    "border-info/30 bg-info/10 text-info border-info/30 bg-info/10 text-info",
   watch:
     "border-sky-300 bg-sky-50 text-sky-800 dark:border-sky-800/60 dark:bg-sky-950/40 dark:text-sky-300",
 };

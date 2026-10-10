@@ -71,7 +71,7 @@ export function AuditSummaryCard({ tenantId, tenantName, clientId }: Props) {
               <Badge variant="outline" className="border-destructive/40 text-destructive">
                 <AlertCircle className="mr-1 h-3 w-3" /> {sev.high} high
               </Badge>
-              <Badge variant="outline" className="border-amber-500/40 text-amber-700 dark:text-amber-400">
+              <Badge variant="outline" className="border-info/30 text-info">
                 <AlertTriangle className="mr-1 h-3 w-3" /> {sev.medium} medium
               </Badge>
               <Badge variant="outline" className="text-muted-foreground">

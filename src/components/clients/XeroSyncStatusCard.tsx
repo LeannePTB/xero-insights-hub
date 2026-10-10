@@ -23,7 +23,7 @@ function FileStatus({ f }: { f: XeroSyncStatusFile }) {
             <CheckCircle2 className="h-3.5 w-3.5" /> Syncing normally
           </span>
         ) : (
-          <span className="inline-flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+          <span className="inline-flex items-center gap-1 text-xs text-destructive">
             <AlertCircle className="h-3.5 w-3.5" /> Needs attention
           </span>
         )}
@@ -42,7 +42,7 @@ function FileStatus({ f }: { f: XeroSyncStatusFile }) {
       </dl>
 
       {disconnected && (
-        <p className="text-xs text-amber-600 dark:text-amber-400">
+        <p className="text-xs text-destructive">
           This file was disconnected{f.disconnectedReason ? `: ${f.disconnectedReason}` : ""}. Use
           “Reconnect to Xero” below to restore it.
         </p>

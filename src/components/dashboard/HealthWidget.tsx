@@ -114,7 +114,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
                     : q.data.band === "strong"
                       ? "text-foreground"
                       : q.data.band === "watch"
-                        ? "text-amber-700 dark:text-amber-400"
+                        ? "text-info"
                         : "text-destructive")
                 }
               >
@@ -139,7 +139,7 @@ export function HealthWidget({ tenantId, tenantName, clientName, clientId }: Pro
                     "mt-2 flex items-start gap-2 rounded-lg border px-3 py-2 text-xs " +
                     (q.data.alert.severity === "danger"
                       ? "border-destructive/30 bg-destructive/10 text-destructive"
-                      : "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100")
+                      : "border-info/30 bg-info/10 text-info border-info/30 bg-info/10 text-info")
                   }
                 >
                   <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />

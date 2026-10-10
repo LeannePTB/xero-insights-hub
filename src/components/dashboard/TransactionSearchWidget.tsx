@@ -32,7 +32,7 @@ function toIso(d?: Date) {
 
 const TYPE_TONE: Record<SearchHit["type"], string> = {
   Invoice: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
-  Bill: "bg-amber-500/10 text-amber-700 dark:text-amber-400",
+  Bill: "bg-info/10 text-info",
   CreditNote: "bg-sky-500/10 text-sky-700 dark:text-sky-400",
   Prepayment: "bg-violet-500/10 text-violet-700 dark:text-violet-400",
   Overpayment: "bg-rose-500/10 text-rose-700 dark:text-rose-400",
@@ -230,7 +230,7 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
       )}
 
       {unavailable.length > 0 && (
-        <div className="mt-3 rounded-lg bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-400">
+        <div className="mt-3 rounded-lg bg-info/10 p-3 text-xs text-info">
           <p className="font-medium">
             {unavailable.length} Xero organisation{unavailable.length === 1 ? " was" : "s were"} not
             searched — results below are incomplete:

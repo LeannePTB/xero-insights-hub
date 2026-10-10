@@ -26,7 +26,7 @@ function pct(remaining: number | null, cap: number): number | null {
 function tone(p: number | null): string {
   if (p === null) return "text-muted-foreground";
   if (p < 5) return "text-destructive font-medium";
-  if (p < 20) return "text-amber-600 dark:text-amber-500 font-medium";
+  if (p < 20) return "text-info font-medium";
   return "text-foreground";
 }
 
@@ -107,7 +107,7 @@ export function XeroUsageCard() {
                         : ""}
                     </span>
                     {r.rejections > 0 ? (
-                      <Badge variant="destructive" className="text-[10px]">
+                      <Badge variant="info" className="text-[10px]">
                         {r.rejections} paused by Xero
                         {r.lastProblem ? ` (${r.lastProblem} limit)` : ""}
                         {r.lastRejectedAt

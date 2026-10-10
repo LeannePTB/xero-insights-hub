@@ -1,8 +1,8 @@
-import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   getFirmDetailAdmin,
   getFirmAuditAdmin,
@@ -41,13 +41,25 @@ import {
   Check,
   X,
   Pencil,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { BillingLifecycleCard } from "@/components/admin/BillingLifecycleCard";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { SystemOrganisationTabs, SYSTEM_ORGANISATION_TABS, type SystemOrganisationTab } from "@/components/admin/SystemOrganisationTabs";
+import { recordViewAs } from "@/lib/view-as.functions";
+import { getOrgPurchase } from "@/lib/card-model.functions";
+import { listOrganisationUsage } from "@/lib/admin-plan-usage.functions";
+import { organisationOptionDisplay } from "@/lib/organisation-option-display";
 
 export const Route = createFileRoute("/_authenticated/system/organisations/$firmId")({
+  validateSearch: (search: Record<string, unknown>) => ({
+    tab: SYSTEM_ORGANISATION_TABS.some(([value]) => value === search.tab)
+      ? (search.tab as SystemOrganisationTab)
+      : ("overview" as const),
+  }),
   head: () => ({
     meta: [
       { title: "Organisation Admin — Traction Advisory" },
@@ -77,10 +89,12 @@ function fmtDate(s: string | null | undefined) {
   return new Date(s).toISOString().slice(0, 10);
 }
 
-function SupportAccessBadge({ firmId }: { firmId: string }) {
+function SupportPanel({ firmId }: { firmId: string }) {
   const qc = useQueryClient();
   const fetchState = useServerFn(getSupportAccess);
   const setMembership = useServerFn(adminSetSelfFirmMembership);
+  const record = useServerFn(recordViewAs);
+  const navigate = useNavigate();
   const q = useQuery({
     queryKey: ["support-access", firmId],
     queryFn: () => fetchState({ data: { firmId } }),
@@ -97,51 +111,42 @@ function SupportAccessBadge({ firmId }: { firmId: string }) {
     onError: (e: any) => toast.error(e.message),
   });
   const s = q.data;
-  if (!s)
-    return (
-      <Badge variant="secondary" className="ml-auto">
-        no client data
-      </Badge>
-    );
+  async function preview() {
+    try {
+      await record({ data: { firmId, mode: "owner" } });
+      navigate({ to: "/firms/$firmId", params: { firmId }, search: { viewAs: "owner" } });
+    } catch (error) {
+      toast.error((error as Error).message || "Could not start the preview.");
+    }
+  }
+
+  if (!s) return <p className="text-sm text-muted-foreground">Support status is unavailable.</p>;
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <Badge variant={s.viewerHasClientData ? "default" : "secondary"}>
-        {s.viewerHasClientData ? "client data available" : "no client data"}
-      </Badge>
-      {s.viewerIsMember ? (
-        <Badge variant="outline">you are a member</Badge>
-      ) : (
-        <Badge
-          variant={s.granted ? "default" : "outline"}
-          title={
-            s.granted
-              ? `Support access granted${s.grantedByName ? ` by ${s.grantedByName}` : ""}${s.grantedAt ? ` on ${new Date(s.grantedAt).toLocaleString()}` : ""}`
-              : "This organisation hasn't granted support access"
-          }
-        >
-          {s.granted ? "support access on" : "support access off"}
-        </Badge>
-      )}
-      {s.viewerIsPlatformStaff && (
-        <Button
-          size="sm"
-          variant={s.viewerIsMember ? "outline" : "default"}
-          disabled={mut.isPending}
-          onClick={() => mut.mutate(!s.viewerIsMember)}
-        >
-          {mut.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-          {s.viewerIsMember ? "Leave organisation" : "Add me as staff"}
-        </Button>
-      )}
-    </div>
+    <section className="space-y-5 rounded-lg border p-6">
+      <div><h2 className="text-lg font-semibold">Support access</h2><p className="mt-1 text-sm text-muted-foreground">Membership and approved support access are separate, audited paths.</p></div>
+      <div className="flex flex-wrap items-center gap-2">
+        <Badge variant={s.viewerHasClientData ? "success" : "secondary"}>{s.viewerHasClientData ? "Client data available" : "No client data"}</Badge>
+        {s.viewerIsMember ? <Badge variant="outline">You are a member</Badge> : <Badge variant={s.granted ? "info" : "outline"}>{s.granted ? "Support access on" : "Support access off"}</Badge>}
+      </div>
+      {s.grants.length > 0 && <div className="space-y-2"><h3 className="text-sm font-medium">Support history</h3><ul className="divide-y rounded-md border text-sm">{s.grants.map((grant) => <li key={grant.id} className="flex flex-wrap justify-between gap-2 px-3 py-2"><span>{grant.granteeName ?? "Support staff"}</span><span className="capitalize text-muted-foreground">{grant.status} · expires {fmt(grant.expiresAt)}</span></li>)}</ul></div>}
+      <div className="flex flex-wrap gap-2">
+        {s.viewerIsPlatformStaff && <Button size="sm" variant={s.viewerIsMember ? "outline" : "default"} disabled={mut.isPending} onClick={() => mut.mutate(!s.viewerIsMember)}>{mut.isPending && <Loader2 className="h-3 w-3 animate-spin" />}{s.viewerIsMember ? "Leave organisation" : "Add me as staff"}</Button>}
+        <Button size="sm" variant="outline" onClick={() => void preview()} disabled={!s.viewerHasClientData}><Eye className="h-4 w-4" /> Preview as owner</Button>
+      </div>
+      {!s.viewerHasClientData && <p className="text-xs text-muted-foreground">Preview becomes available when you are a member or hold approved support access.</p>}
+    </section>
   );
 }
 
 function FirmDetailPage() {
   const { firmId } = Route.useParams();
+  const { tab } = Route.useSearch();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const getDetail = useServerFn(getFirmDetailAdmin);
   const getAudit = useServerFn(getFirmAuditAdmin);
+  const getPurchase = useServerFn(getOrgPurchase);
+  const getUsage = useServerFn(listOrganisationUsage);
 
   const detailQ = useQuery({
     queryKey: ["admin-firm", firmId],
@@ -150,7 +155,10 @@ function FirmDetailPage() {
   const auditQ = useQuery({
     queryKey: ["admin-firm-audit", firmId],
     queryFn: () => getAudit({ data: { firmId } }),
+    enabled: tab === "audit",
   });
+  const purchaseQ = useQuery({ queryKey: ["org-purchase", firmId], queryFn: () => getPurchase({ data: { firmId } }) });
+  const usageQ = useQuery({ queryKey: ["admin-org-usage", firmId], queryFn: () => getUsage({ data: { firmIds: [firmId] } }) });
 
   if (detailQ.isLoading) {
     return (
@@ -174,42 +182,39 @@ function FirmDetailPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-10">
-        <FirmPageHeader
-          title={firm.name}
-          actions={<>
-            {firm.is_always_free && <Badge variant="outline">always free</Badge>}
-            <SupportAccessBadge firmId={firmId} />
-          </>}
-        />
-        <BusinessNameSection
-          firmId={firmId}
-          currentName={firm.name}
-          onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
-        />
-
-        <OrgPurchaseCard firmId={firmId} />
-
-        <BillingLifecycleCard
-          firmId={firmId}
-          subscription={detailQ.data?.subscription ?? null}
-          isAlwaysFree={firm.is_always_free}
-          onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
-        />
-
-        <MembersSection
-          firmId={firmId}
-          members={members}
-          onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })}
-        />
-
-        <FirmXeroFilesCard firmId={firmId} variant="plain" />
-
-        <AuditSection events={auditQ.data?.events ?? []} loading={auditQ.isLoading} />
+      <main className="mx-auto max-w-6xl space-y-6 px-4 py-8 sm:px-6">
+        <FirmPageHeader title={firm.name} actions={firm.is_always_free ? <Badge variant="secondary">Always free</Badge> : undefined} />
+        <Tabs value={tab} onValueChange={(value) => void navigate({ to: "/system/organisations/$firmId", params: { firmId }, search: { tab: value as SystemOrganisationTab }, replace: true })}>
+          <SystemOrganisationTabs />
+          <TabsContent value="overview" className="space-y-6">
+            <BusinessNameSection firmId={firmId} currentName={firm.name} onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })} />
+            <OverviewFacts firm={firm} members={members} usage={usageQ.data?.usage?.[0]} purchase={purchaseQ.data?.purchase} subscription={detailQ.data?.subscription ?? null} />
+          </TabsContent>
+          <TabsContent value="plan"><OrgPurchaseCard firmId={firmId} /></TabsContent>
+          <TabsContent value="billing"><BillingLifecycleCard firmId={firmId} subscription={detailQ.data?.subscription ?? null} isAlwaysFree={firm.is_always_free} onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })} /></TabsContent>
+          <TabsContent value="members"><MembersSection firmId={firmId} members={members} onChanged={() => qc.invalidateQueries({ queryKey: ["admin-firm", firmId] })} /></TabsContent>
+          <TabsContent value="xero"><FirmXeroFilesCard firmId={firmId} variant="plain" metadataOnly /></TabsContent>
+          <TabsContent value="support"><SupportPanel firmId={firmId} /></TabsContent>
+          <TabsContent value="audit"><AuditSection events={auditQ.data?.events ?? []} loading={auditQ.isLoading} /></TabsContent>
+        </Tabs>
       </main>
     </div>
   );
 }
+
+function OverviewFacts({ firm, members, usage, purchase, subscription }: { firm: any; members: any[]; usage: any; purchase: any; subscription: any }) {
+  const owner = members.find((member) => member.user_id === firm.owner_user_id || member.role === "owner");
+  const options = purchase ? organisationOptionDisplay(purchase).filter((option) => option.on).map((option) => `${option.label}${option.trial ? " (trial)" : ""}`) : [];
+  const status = firm.is_always_free ? "Always free" : subscription?.status === "past_due" ? "Past due" : subscription?.status === "canceled" ? "Cancelled" : subscription?.status === "paused" ? "Suspended" : subscription?.status === "trialing" ? "Trial" : "Active";
+  const limit = usage?.clientLimit >= 9999 ? "∞" : usage?.clientLimit ?? "—";
+  return <section className="rounded-lg border p-6"><h2 className="text-lg font-semibold">Quick facts</h2><dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+    <Fact label="Status">{status}</Fact><Fact label="Clients">{usage?.clientsUsed ?? "—"} / {limit}</Fact><Fact label="Created">{new Date(firm.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}</Fact>
+    <Fact label="Owner"><span>{owner?.display_name || owner?.email || "Not assigned"}</span>{owner?.display_name && owner?.email && <span className="block text-xs text-muted-foreground">{owner.email}</span>}</Fact>
+    <Fact label="Billing">{purchase?.billingMode === "external" ? "External" : purchase ? "Bookkeeping" : "—"}</Fact><Fact label="Options">{options.length ? options.join(" · ") : "Standard only"}</Fact>
+  </dl></section>;
+}
+
+function Fact({ label, children }: { label: string; children: ReactNode }) { return <div><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm font-medium">{children}</dd></div>; }
 
 function MembersSection({
   firmId,

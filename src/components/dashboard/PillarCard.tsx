@@ -8,11 +8,11 @@ function pillClasses(status: PillarStatus): string {
     case "good":
       return "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300";
     case "watch":
-      return "bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300";
+      return "bg-info/10 text-info bg-info/10 text-info";
     case "bad":
       return "bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300";
     case "not_in_xero":
-      return "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400";
+      return "bg-info/10 text-info bg-info/10 text-info";
     default:
       return "bg-muted text-muted-foreground";
   }
@@ -21,7 +21,7 @@ function pillClasses(status: PillarStatus): string {
 function scoreColors(score: number | null) {
   if (score === null) return { text: "text-muted-foreground", bar: "bg-muted" };
   if (score >= 70) return { text: "text-emerald-700 dark:text-emerald-400", bar: "bg-emerald-500" };
-  if (score >= 50) return { text: "text-amber-700 dark:text-amber-400", bar: "bg-amber-500" };
+  if (score >= 50) return { text: "text-info", bar: "bg-info/10" };
   return { text: "text-destructive", bar: "bg-destructive" };
 }
 
