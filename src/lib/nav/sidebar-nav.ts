@@ -165,14 +165,60 @@ export function clientNav(files: ClientXeroFile[]): NavGroup[] {
   return [{ ...CLIENT_NAV[0], items: [...CLIENT_NAV[0].items, ...clientFileItems(files)] }];
 }
 
-/** Which workspace the current address belongs to. */
+/**
+ * Which workspace the current address belongs to. Every address maps to
+ * exactly one answer; "none" means the page is workspace-neutral (account
+ * pages) and the caller keeps the previous menu. Never guesses an organisation.
+ */
 export function workspaceFromPath(pathname: string): Workspace {
-  if (pathname === "/system" || pathname.startsWith("/system/")) return { kind: "system" };
-  const firm = /^\/firms\/([^/]+)/.exec(pathname);
+  const path = pathname.replace(/\/+$/, "") || "/";
+  if (path === "/system" || path.startsWith("/system/")) return { kind: "system" };
+  if (path === "/overview") return { kind: "all" };
+  const firm = /^\/firms\/([^/]+)/.exec(path);
   if (firm) return { kind: "organisation", firmId: firm[1] };
-  const client = /^\/clients\/([^/]+)/.exec(pathname);
+  const client = /^\/clients\/([^/]+)/.exec(path);
   if (client && client[1] !== "new") return { kind: "client", clientId: client[1] };
   return { kind: "none" };
+}
+
+/** Account pages keep whichever menu the person was last using. */
+export function isWorkspaceNeutralPath(pathname: string): boolean {
+  return workspaceFromPath(pathname).kind === "none";
+}
+
+/**
+ * The menu to show for an address: the address decides, except on
+ * workspace-neutral pages, which keep the previous workspace.
+ */
+export function resolveWorkspace(pathname: string, previous: Workspace): Workspace {
+  const ws = workspaceFromPath(pathname);
+  return ws.kind === "none" ? previous : ws;
+}
+
+export type OrganisationSummary = { id: string; name: string; clientCount?: number };
+
+/** Cross-organisation menu for /overview. Links use concrete paths. */
+export function allOrganisationsNav(organisations: OrganisationSummary[]): NavGroup[] {
+  const groups: NavGroup[] = [
+    {
+      id: "all",
+      label: "All organisations",
+      items: [{ id: "all-overview", label: "All organisations", icon: "grid", to: "/overview", exact: true }],
+    },
+  ];
+  if (organisations.length > 0) {
+    groups.push({
+      id: "your-organisations",
+      label: "Your organisations",
+      items: organisations.map((o) => ({
+        id: `org-${o.id}`,
+        label: o.name,
+        icon: "building",
+        to: o.clientCount === 0 ? `/firms/${o.id}` : `/firms/${o.id}/overview`,
+      })),
+    });
+  }
+  return groups;
 }
 
 export function fillPath(pattern: string, params: Record<string, string>): string {
@@ -195,8 +241,12 @@ export function isBranchActive(item: NavItem, pathname: string, params: Record<s
  * Pick the menu for a workspace. `canSeeSystem` must come from the server
  * signal (getMyContext.isSuperAdmin) — never from browser storage.
  */
-export function navForWorkspace(ws: Workspace, opts: { canSeeSystem: boolean; clientFiles?: ClientXeroFile[] }): NavGroup[] {
+export function navForWorkspace(
+  ws: Workspace,
+  opts: { canSeeSystem: boolean; clientFiles?: ClientXeroFile[]; organisations?: OrganisationSummary[] },
+): NavGroup[] {
   if (ws.kind === "system") return opts.canSeeSystem ? SYSTEM_NAV : [];
+  if (ws.kind === "all") return allOrganisationsNav(opts.organisations ?? []);
   if (ws.kind === "organisation") return ORGANISATION_NAV;
   if (ws.kind === "client") return clientNav(opts.clientFiles ?? []);
   return [];
