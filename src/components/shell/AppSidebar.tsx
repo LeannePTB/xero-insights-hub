@@ -146,16 +146,10 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
         <Link
           to="/"
           aria-label={brand.productName}
-          className="flex h-8 min-w-0 items-center gap-2 px-2 py-1 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+          className="flex h-11 min-w-0 items-center px-2 group-data-[collapsible=icon]:px-0"
         >
-          <img
-            src={brand.logoLight}
-            alt={brand.productName}
-            className="h-6 w-auto max-w-full shrink-0 object-contain group-data-[collapsible=icon]:h-auto group-data-[collapsible=icon]:w-8"
-          />
-          <span className="min-w-0 text-[10px] font-semibold uppercase text-accent group-data-[collapsible=icon]:hidden">
-            {brand.productName}
-            <span className="block">Dashboards</span>
+          <span className="block h-9 max-w-full overflow-hidden group-data-[collapsible=icon]:w-9 group-data-[collapsible=icon]:shrink-0">
+            <img src={brand.logoLight} alt={brand.productName} className="h-9 w-auto max-w-full object-contain group-data-[collapsible=icon]:w-[72px] group-data-[collapsible=icon]:max-w-none group-data-[collapsible=icon]:object-cover group-data-[collapsible=icon]:object-left" />
           </span>
         </Link>
         <WorkspaceSwitcher workspace={workspace} canSeeSystem={canSeeSystem} organisations={organisations} />
