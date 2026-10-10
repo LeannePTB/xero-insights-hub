@@ -10,6 +10,9 @@ describe("landingFor", () => {
   it("sends a one-organisation member to that organisation's Overview, without practice team", () => {
     expect(landingFor({ ...base, firmIds: ["f1"] })).toEqual({ to: "/firms/$firmId/overview", firmId: "f1" });
   });
+  it("sends a one-organisation member with no clients to Clients", () => {
+    expect(landingFor({ ...base, firmIds: ["f1"], firmClientCounts: { f1: 0 } })).toEqual({ to: "/firms/$firmId", firmId: "f1" });
+  });
   it("sends a member of several organisations to the cross-organisation Overview", () => {
     expect(landingFor({ ...base, firmIds: ["f1", "f2"] })).toEqual({ to: "/overview" });
   });
