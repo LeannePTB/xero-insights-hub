@@ -9,6 +9,10 @@ export const Route = createFileRoute("/_authenticated/clients/$clientId/settings
       throw redirect({ to: "/clients/$clientId/settings/general", params: { clientId: params.clientId }, search: location.search });
     }
   },
+  validateSearch: (search: Record<string, unknown>) => ({
+    xero: typeof search.xero === "string" ? search.xero : undefined,
+    error: typeof search.error === "string" ? search.error : undefined,
+  }),
   component: ClientSettingsLayout,
 });
 

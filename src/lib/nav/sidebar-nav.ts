@@ -147,11 +147,13 @@ export function clientFileItems(files: ClientXeroFile[]): NavItem[] {
           id: kind,
           label,
           icon,
-          to: `/clients/$clientId/${kind}`,
+          // Multi-file parents are disclosure controls only; use the first
+          // authorised file as a valid fallback destination.
+          to: `/clients/$clientId/${kind}/${files[0].tenantId}`,
           children: files.map((f) => ({ id: `${kind}-${f.tenantId}`, label: f.name, icon, to: `/clients/$clientId/${kind}/${f.tenantId}` })),
         };
   return [{
-    id: "xero-files", label: "Xero files", icon: "link", to: files.length === 1 ? `/clients/$clientId/audit/${files[0].tenantId}` : "/clients/$clientId/audit",
+    id: "xero-files", label: "Xero files", icon: "link", to: `/clients/$clientId/audit/${files[0].tenantId}`,
     children: [make("payables", "Payables", "file"), make("receivables", "Receivables", "file"), make("audit", "Xero audit", "activity")],
   }];
 }
@@ -197,9 +199,3 @@ export function navForWorkspace(ws: Workspace, opts: { canSeeSystem: boolean; cl
   return [];
 }
 
-/** Viewer-safe client menu. Route guards remain authoritative. */
-export function viewerClientNav(files: ClientXeroFile[]): NavGroup[] {
-  const allowed = new Set(["dashboard", "reports"]);
-  const base = CLIENT_NAV[0].items.filter((item) => allowed.has(item.id));
-  return [{ ...CLIENT_NAV[0], items: [...base, ...clientFileItems(files)] }];
-}
