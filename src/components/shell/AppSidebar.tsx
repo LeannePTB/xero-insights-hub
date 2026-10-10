@@ -10,6 +10,7 @@ import {
   FileText,
   LayoutGrid,
   Landmark,
+  MessageCircle,
   Layers,
   Link2,
   LogOut,
@@ -72,6 +73,7 @@ const ICONS: Record<NavIcon, LucideIcon> = {
   file: FileText,
   trending: TrendingUp,
   landmark: Landmark,
+  message: MessageCircle,
 };
 
 export function AppSidebar({ badges = {} }: { badges?: Record<string, number> }) {

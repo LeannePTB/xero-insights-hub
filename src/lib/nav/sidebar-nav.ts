@@ -21,6 +21,7 @@ export type NavIcon =
   | "file"
   | "trending"
   | "landmark";
+  | "message";
 
 export type NavItem = {
   id: string;
@@ -51,6 +52,7 @@ export const SYSTEM_NAV: NavGroup[] = [
       { id: "orgs", label: "Organisations", icon: "building", to: "/system", exact: true },
       { id: "staff", label: "Platform staff", icon: "users", to: "/system/staff" },
       { id: "branding", label: "Platform branding", icon: "palette", to: "/system/branding" },
+      { id: "trixie", label: "Trixie", icon: "message", to: "/system/trixie" },
     ],
   },
   {
