@@ -196,3 +196,10 @@ export function navForWorkspace(ws: Workspace, opts: { canSeeSystem: boolean; cl
   if (ws.kind === "client") return clientNav(opts.clientFiles ?? []);
   return [];
 }
+
+/** Viewer-safe client menu. Route guards remain authoritative. */
+export function viewerClientNav(files: ClientXeroFile[]): NavGroup[] {
+  const allowed = new Set(["dashboard", "reports"]);
+  const base = CLIENT_NAV[0].items.filter((item) => allowed.has(item.id));
+  return [{ ...CLIENT_NAV[0], items: [...base, ...clientFileItems(files)] }];
+}

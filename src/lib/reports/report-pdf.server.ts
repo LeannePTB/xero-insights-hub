@@ -136,7 +136,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     const logoH = (LOGO_WHITE.h / LOGO_WHITE.w) * logoW;
     let drewLogo = false;
     try {
-      doc.addImage(branding.primaryLogo, undefined, M.left, (BAND_H - logoH) / 2, logoW, logoH);
+      doc.addImage(branding.primaryLogo, "PNG", M.left, (BAND_H - logoH) / 2, logoW, logoH);
       drewLogo = true;
     } catch {
       /* fall back to a typographic wordmark below */
@@ -148,7 +148,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       doc.text(branding.productName, M.left, BAND_H / 2 + 5);
     }
     if (branding.clientLogo) {
-      try { doc.addImage(branding.clientLogo, undefined, 180, 17, 76, 28); } catch { /* optional secondary mark */ }
+      try { doc.addImage(branding.clientLogo, "PNG", 180, 17, 76, 28); } catch { /* optional secondary mark */ }
     }
 
     const right = PAGE.w - M.right;
