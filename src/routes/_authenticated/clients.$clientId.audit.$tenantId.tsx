@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getLatestAudit, runXeroAudit, snoozeFinding, unsnoozeFinding, resolveFinding } from "@/lib/xero/audit.functions";
@@ -9,8 +9,9 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { ArrowLeft, RefreshCw, Loader2, ExternalLink, BellOff, Bell, Play, Check, Undo2, Search, X } from "lucide-react";
+import { RefreshCw, Loader2, ExternalLink, BellOff, Bell, Play, Check, Undo2, Search, X } from "lucide-react";
 import { toast } from "sonner";
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/audit/$tenantId")({
   head: () => ({ meta: [{ title: "Xero file audit — Traction Advisory" }] }),
@@ -27,6 +28,7 @@ const SEV_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
 function AuditPage() {
   const { clientId, tenantId } = Route.useParams();
+  const { canManage } = useCanManageClient(clientId);
   const qc = useQueryClient();
   const fetchLatest = useServerFn(getLatestAudit);
   const runFn = useServerFn(runXeroAudit);
@@ -179,15 +181,11 @@ function AuditPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-4 p-6">
       <div className="flex items-center justify-between">
-        <Button asChild variant="ghost" size="sm">
-          <Link to="/clients/$clientId" params={{ clientId }}>
-            <ArrowLeft className="mr-2 h-4 w-4" /> Back to dashboard
-          </Link>
-        </Button>
-        <Button size="sm" onClick={() => runMut.mutate()} disabled={runMut.isPending}>
+        <div />
+        {canManage && <Button size="sm" onClick={() => runMut.mutate()} disabled={runMut.isPending}>
           {runMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : run ? <RefreshCw className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
           {run ? "Re-run audit" : "Run audit"}
-        </Button>
+        </Button>}
       </div>
 
       <Card>
@@ -247,7 +245,7 @@ function AuditPage() {
             <Button size="sm" variant={showResolved ? "secondary" : "ghost"} onClick={() => setShowResolved((v) => !v)}>
               {showResolved ? "Hide resolved" : "Show resolved"}
             </Button>
-            {selectableKeys.length > 0 && (
+            {canManage && selectableKeys.length > 0 && (
               <label className="ml-2 flex items-center gap-2 text-sm">
                 <Checkbox checked={allSelected} onCheckedChange={toggleAll} />
                 Select all {selectableKeys.length} shown
@@ -255,7 +253,7 @@ function AuditPage() {
             )}
           </div>
 
-          {selected.size > 0 && (
+          {canManage && selected.size > 0 && (
             <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-sm">
               <span className="font-medium">{selected.size} selected</span>
               <Button size="sm" disabled={bulkResolveMut.isPending} onClick={() => bulkResolveMut.mutate()}>
