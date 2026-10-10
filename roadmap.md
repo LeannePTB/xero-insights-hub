@@ -1,4 +1,5 @@
 # Roadmap
+- [x] Add independent organisation White label identity and align authenticated pages with one left-aligned container. Email identity is name-only; private email-logo embedding remains deferred because no safe provider attachment path is available.
 - [x] Redesign System Admin Organisations and organisation detail; remove warm warning colours site-wide without changing access rules. Typecheck, 16 focused tests and the full security gate passed; authenticated visual review remains blocked by interactive second factor.
 - [x] Tidy System Admin titles and remove orange admin markers; automatic typecheck/build passed and all 8 navigation tests passed; guards unchanged.
 - [ ] Visually verify System Admin headers on desktop/mobile — blocked by the signed-in account's second-factor verification.
