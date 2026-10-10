@@ -7,6 +7,6 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
  */
 export const Route = createFileRoute("/_authenticated/settings/practice-team")({
   beforeLoad: () => {
-    throw redirect({ to: "/settings/advisors" });
+    throw redirect({ to: "/system/staff" });
   },
 });

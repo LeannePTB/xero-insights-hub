@@ -20,9 +20,9 @@ import { getMyContext } from "@/lib/roles.functions";
 import { useSignOut } from "@/lib/use-sign-out";
 
 const baseItems = [
-  { title: "Organisations", url: "/admin", icon: Building2 },
-  { title: "Security & Compliance", url: "/admin/security", icon: Shield },
-  { title: "Advisors", url: "/settings/advisors", icon: Users },
+  { title: "Organisations", url: "/system", icon: Building2 },
+  { title: "Security & Compliance", url: "/system/security", icon: Shield },
+  { title: "Advisors", url: "/system/staff", icon: Users },
 ];
 
 
@@ -40,7 +40,7 @@ export function AdminSidebar() {
   ];
 
   const isActive = (path: string) => {
-    if (path === "/admin") return currentPath === "/admin";
+    if (path === "/system") return currentPath === "/system";
     return currentPath.startsWith(path);
   };
 

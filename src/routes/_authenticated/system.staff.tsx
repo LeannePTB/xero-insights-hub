@@ -38,7 +38,7 @@ import { AdminShell } from "@/components/admin/AdminShell";
 import { siteUrl } from "@/lib/site-origin";
 
 
-export const Route = createFileRoute("/_authenticated/settings/advisors")({
+export const Route = createFileRoute("/_authenticated/system/staff")({
   head: () => ({ meta: [{ title: "Advisors — Traction Advisory" }] }),
   component: AdvisorSettings,
 });

@@ -19,7 +19,7 @@ export function ViewAsBanner({ label, note }: { label: string; note?: string }) 
           {note && <span className="hidden truncate text-muted-foreground sm:inline">· {note}</span>}
         </div>
         <Button size="sm" variant="outline" asChild>
-          <Link to="/admin">Exit preview</Link>
+          <Link to="/system">Exit preview</Link>
         </Button>
       </div>
     </div>

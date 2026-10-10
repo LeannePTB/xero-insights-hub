@@ -25,7 +25,7 @@ import {
 
 
 
-export const Route = createFileRoute("/_authenticated/admin/")({
+export const Route = createFileRoute("/_authenticated/system/")({
   head: () => ({
     meta: [
       { title: "Organisations Admin — Traction Advisory" },
@@ -300,7 +300,7 @@ function OrganisationsSection({
               <tr
                 key={f.firm_id}
                 className="border-t hover:bg-muted/30 cursor-pointer align-top"
-                onClick={() => navigate({ to: "/admin/firms/$firmId", params: { firmId: f.firm_id } })}
+                onClick={() => navigate({ to: "/system/organisations/$firmId", params: { firmId: f.firm_id } })}
               >
                 <td className="px-4 py-3">
                   <OrganisationCell
@@ -344,7 +344,7 @@ function OrganisationsSection({
           <div
             key={f.firm_id}
             className="rounded-lg border bg-card p-4 space-y-3 cursor-pointer"
-            onClick={() => navigate({ to: "/admin/firms/$firmId", params: { firmId: f.firm_id } })}
+            onClick={() => navigate({ to: "/system/organisations/$firmId", params: { firmId: f.firm_id } })}
           >
             <div className="flex items-start justify-between gap-3">
               <OrganisationCell
@@ -553,7 +553,7 @@ function RowActions({
   return (
     <div className="flex flex-wrap items-center justify-end gap-1">
       <Button size="sm" variant="outline" className="h-8 px-2 text-xs" asChild>
-        <Link to="/admin/firms/$firmId" params={{ firmId }}>
+        <Link to="/system/organisations/$firmId" params={{ firmId }}>
           Options &amp; members
         </Link>
       </Button>

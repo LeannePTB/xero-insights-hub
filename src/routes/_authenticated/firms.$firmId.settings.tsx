@@ -160,7 +160,7 @@ function FirmSettingsPage() {
       {view.isSuperAdmin && (
         <div className="mt-6">
           <Link
-            to="/admin/firms/$firmId"
+            to="/system/organisations/$firmId"
             params={{ firmId }}
             className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
           >

@@ -36,7 +36,7 @@ import { AuditMonitoringCard } from "@/components/admin/AuditMonitoringCard";
 import { XeroErrorBreakdownCard } from "@/components/admin/XeroErrorBreakdownCard";
 import { XeroUsageCard } from "@/components/admin/XeroUsageCard";
 
-export const Route = createFileRoute("/_authenticated/admin/security")({
+export const Route = createFileRoute("/_authenticated/system/security")({
   head: () => ({
     meta: [
       { title: "Security & Compliance — Traction Advisory" },

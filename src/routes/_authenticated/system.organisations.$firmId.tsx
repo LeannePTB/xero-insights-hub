@@ -48,7 +48,7 @@ import { OrgPurchaseCard } from "@/components/admin/OrgPurchaseCard";
 import { OrgCardDefaultsCard } from "@/components/admin/OrgCardDefaultsCard";
 import { BillingLifecycleCard } from "@/components/admin/BillingLifecycleCard";
 
-export const Route = createFileRoute("/_authenticated/admin/firms/$firmId")({
+export const Route = createFileRoute("/_authenticated/system/organisations/$firmId")({
   head: () => ({
     meta: [
       { title: "Organisation Admin — Traction Advisory" },
