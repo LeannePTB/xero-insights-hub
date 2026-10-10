@@ -1634,3 +1634,12 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 
 ## 2026-10-08 — finance.accountingactivity.read removed from required scopes (OPEN)
 - Xero rejected all authorisations with `invalid_scope`: finance scopes are enabled by Xero on request, not self-service in the developer portal. `public.xero_required_scopes()` reverted to the pre-0014 list (same definer function, grants unchanged; only the constant array changed). The `user_activities` snapshot key and `client_key_figures.last_xero_login_at` remain; the refresh already skips files lacking the scope, so the feature stays "not available" until Xero enables the scope on the app registration and the list is re-extended. OPEN: email api@xero.com requesting finance.accountingactivity.read for the app, then re-add the scope.
+
+## 2026-10-10 — Navigation restructure, steps 1–2
+- DONE: one AppShell/AppSidebar replaces AdminShell/AdminNavShell/AdminSidebar; menu visibility from getMyContext only (isSuperAdmin, isPracticeMember, firmIds); no DOM checks for Sign out. Presentation only; no guard changed.
+- DONE: System Admin area under /system (organisations, organisation platform page, security, Xero monitoring, platform staff, branding); old /admin*, /settings/advisors URLs redirect. /system layout re-checks isSuperAdmin; page server functions keep assertSuperAdminDb.
+- DONE: public.platform_branding (no direct grants, RLS + restrictive aal2), get_platform_branding() anon-callable documented exception (display fields only), save_platform_branding() aal2 + super admin + audit. Logos stored as size-limited data URLs, so no storage bucket or admin-client use was added.
+- OPEN: /system/organisations/:firmId still contains organisation-run sections (clients, consolidation groups, transfer ownership, OrgCardDefaultsCard). Split onto /firms/:firmId in a later step.
+- OPEN: PRIMARY_ADVISOR_USER_ID hard-coded in advisors.functions.ts and system.staff.tsx (invariant 6).
+- OPEN: getMyContext sets isAdvisor/hasAdminAreaAccess for any organisation member; the new menu does not use them.
+- OPEN: platform branding not yet applied to favicon, report PDF or email sender name (sources still hard-coded).
