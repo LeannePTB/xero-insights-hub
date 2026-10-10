@@ -40,6 +40,7 @@ export type NavGroup = { id: string; label: string; items: NavItem[] };
 
 export type Workspace =
   | { kind: "system" }
+  | { kind: "all" }
   | { kind: "organisation"; firmId: string }
   | { kind: "client"; clientId: string }
   | { kind: "none" };
@@ -68,7 +69,7 @@ export const SYSTEM_NAV: NavGroup[] = [
 export const ORGANISATION_NAV: NavGroup[] = [
   {
     id: "practice",
-    label: "Practice",
+    label: "Organisation",
     items: [
       { id: "overview", label: "Overview", icon: "activity", to: "/firms/$firmId/overview" },
       { id: "clients", label: "Clients", icon: "briefcase", to: "/firms/$firmId", exact: true },
