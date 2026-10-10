@@ -19,6 +19,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
 import { Route as AuthenticatedSystemRouteImport } from './routes/_authenticated/system'
+import { Route as ApiTrixieRouteImport } from './routes/api/trixie'
 import { Route as AuthMfaEnrollRouteImport } from './routes/auth_.mfa-enroll'
 import { Route as AuthMfaVerifyRouteImport } from './routes/auth_.mfa-verify'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
@@ -133,6 +134,11 @@ const AuthenticatedSystemRoute = AuthenticatedSystemRouteImport.update({
   id: '/system',
   path: '/system',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiTrixieRoute = ApiTrixieRouteImport.update({
+  id: '/api/trixie',
+  path: '/api/trixie',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthMfaEnrollRoute = AuthMfaEnrollRouteImport.update({
   id: '/auth_/mfa-enroll',
@@ -521,6 +527,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/system': typeof AuthenticatedSystemRouteWithChildren
+  '/api/trixie': typeof ApiTrixieRoute
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -595,6 +602,7 @@ export interface FileRoutesByTo {
   '/unsubscribe': typeof UnsubscribeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/overview': typeof AuthenticatedOverviewRoute
+  '/api/trixie': typeof ApiTrixieRoute
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -670,6 +678,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/overview': typeof AuthenticatedOverviewRoute
   '/_authenticated/system': typeof AuthenticatedSystemRouteWithChildren
+  '/api/trixie': typeof ApiTrixieRoute
   '/auth_/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -748,6 +757,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/overview'
     | '/system'
+    | '/api/trixie'
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
@@ -822,6 +832,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/dashboard'
     | '/overview'
+    | '/api/trixie'
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
@@ -896,6 +907,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/overview'
     | '/_authenticated/system'
+    | '/api/trixie'
     | '/auth_/mfa-enroll'
     | '/auth_/mfa-verify'
     | '/email/unsubscribe'
@@ -970,6 +982,7 @@ export interface RootRouteChildren {
   SecurityRoute: typeof SecurityRoute
   SetPasswordRoute: typeof SetPasswordRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  ApiTrixieRoute: typeof ApiTrixieRoute
   AuthMfaEnrollRoute: typeof AuthMfaEnrollRoute
   AuthMfaVerifyRoute: typeof AuthMfaVerifyRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -1060,6 +1073,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/system'
       preLoaderRoute: typeof AuthenticatedSystemRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/trixie': {
+      id: '/api/trixie'
+      path: '/api/trixie'
+      fullPath: '/api/trixie'
+      preLoaderRoute: typeof ApiTrixieRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth_/mfa-enroll': {
       id: '/auth_/mfa-enroll'
@@ -1738,6 +1758,7 @@ const rootRouteChildren: RootRouteChildren = {
   SecurityRoute: SecurityRoute,
   SetPasswordRoute: SetPasswordRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  ApiTrixieRoute: ApiTrixieRoute,
   AuthMfaEnrollRoute: AuthMfaEnrollRoute,
   AuthMfaVerifyRoute: AuthMfaVerifyRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,
