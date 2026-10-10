@@ -87,7 +87,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
       <div className="mb-4 flex items-center gap-2">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent/15 text-accent-foreground">
+        <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent/15 text-emphasis">
           <StickyNote className="h-4 w-4" />
         </div>
         <h2 className="font-display text-lg font-semibold">Notes</h2>

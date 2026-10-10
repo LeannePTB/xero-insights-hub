@@ -210,6 +210,10 @@
   h2 { font-size: 16px; line-height: 22px; }
   h3, h4 { font-size: 14px; line-height: 20px; }
   table { font-size: 12px; }
+  .prose { font-size: 12px; line-height: 1.5; }
+  .prose h1 { font-size: 18px; }
+  .prose h2 { font-size: 16px; }
+  .prose h3, .prose h4 { font-size: 14px; }
   small { font-size: 11px; }
   button, input:not([type="checkbox"]):not([type="radio"]), select { min-height: 32px; }
   .font-serif { font-family: var(--font-sans); }

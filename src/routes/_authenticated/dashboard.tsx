@@ -102,7 +102,7 @@ function Dashboard() {
         <div className="mt-8">
           {viewerClients.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center">
-              <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-emphasis">
                 <Building2 className="h-6 w-6" />
               </div>
               <h3 className="mt-4 font-display text-lg font-semibold">No dashboards assigned yet</h3>
