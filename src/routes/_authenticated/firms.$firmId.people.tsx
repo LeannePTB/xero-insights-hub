@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { PeopleSection } from "@/components/people/PeopleSection";
 import { useFirmSettingsSummary } from "@/components/firm/useFirmSettingsSummary";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/people")({
   head: () => ({
@@ -21,7 +22,7 @@ function PeoplePage() {
   const { firmId } = Route.useParams();
   const q = useFirmSettingsSummary(firmId);
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-6 py-10">
+    <PageContainer className="space-y-6">
       <FirmPageHeader
         title="People & access"
         description="Manage Team members, Business owners and External advisers. Access is shown separately by relationship and scope."
@@ -31,6 +32,6 @@ function PeoplePage() {
       ) : (
         <p className="text-sm text-muted-foreground">Only members of this organisation can manage its people.</p>
       )}
-    </main>
+    </PageContainer>
   );
 }

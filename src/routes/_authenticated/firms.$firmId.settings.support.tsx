@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { SupportAccessCard } from "@/components/admin/SupportAccessCard";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/support")({
   head: () => ({
@@ -19,9 +20,9 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/sup
 function SupportPage() {
   const { firmId } = Route.useParams();
   return (
-    <main className="mx-auto max-w-4xl space-y-6 px-6 py-10">
+    <PageContainer width="readable" className="space-y-6">
       <FirmPageHeader title="Support access" description="Grant or revoke read-only support access for Traction Advisory staff." />
       <SupportAccessCard firmId={firmId} />
-    </main>
+    </PageContainer>
   );
 }

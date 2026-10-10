@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ArrowLeft, Building2, Layers, Loader2, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PageContainer } from "@/components/PageContainer";
 import { getConsolidationGroup } from "@/lib/consolidation-groups.functions";
 import {
   ConsolidatedReceivablesWidget,
@@ -44,7 +45,7 @@ function ConsolidatedGroupPage() {
   const group = q.data;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 p-6">
+    <PageContainer as="div" width="full" className="space-y-6">
       <div>
         <Button asChild variant="ghost" size="sm" className="-ml-2">
           <Link to="/firms/$firmId/consolidations" params={{ firmId }}>
@@ -104,6 +105,6 @@ function ConsolidatedGroupPage() {
           )}
         </>
       )}
-    </div>
+    </PageContainer>
   );
 }

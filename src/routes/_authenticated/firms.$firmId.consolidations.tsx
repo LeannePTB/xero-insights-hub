@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { Building2, Layers, Loader2, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getConsolidationsAccess } from "@/lib/consolidations.functions";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/consolidations")({
   head: () => ({
@@ -54,9 +55,9 @@ function ConsolidationsPage() {
 
   if (accessQ.isLoading) {
     return (
-      <main className="mx-auto grid min-h-[60vh] max-w-6xl place-items-center px-6 py-10">
+      <PageContainer className="grid min-h-[60vh] place-items-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </main>
+      </PageContainer>
     );
   }
 
@@ -68,7 +69,7 @@ function ConsolidationsPage() {
       (accessQ.error as Error | null)?.message ??
       "Consolidation tools aren't available for this organisation.";
     return (
-      <main className="mx-auto max-w-6xl px-6 py-10">
+      <PageContainer>
         {backButton}
         <div className="mt-4 flex max-w-xl items-start gap-3 rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)]">
           <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
@@ -77,12 +78,12 @@ function ConsolidationsPage() {
             <p className="mt-1 text-sm text-muted-foreground">{message}</p>
           </div>
         </div>
-      </main>
+      </PageContainer>
     );
   }
 
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
+    <PageContainer>
       {backButton}
 
       <div className="flex items-center gap-2 text-muted-foreground">
@@ -124,6 +125,6 @@ function ConsolidationsPage() {
           </div>
         ))}
       </div>
-    </main>
+    </PageContainer>
   );
 }

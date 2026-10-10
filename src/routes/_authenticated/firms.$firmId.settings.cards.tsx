@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { OrgCardDefaultsCard } from "@/components/admin/OrgCardDefaultsCard";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/cards")({
   head: () => ({
@@ -19,9 +20,9 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/settings/car
 function CardDefaultsPage() {
   const { firmId } = Route.useParams();
   return (
-    <main className="mx-auto max-w-4xl space-y-6 px-6 py-10">
+    <PageContainer width="readable" className="space-y-6">
       <FirmPageHeader title="Card defaults" description="The dashboard cards new clients start with." />
       <OrgCardDefaultsCard firmId={firmId} />
-    </main>
+    </PageContainer>
   );
 }

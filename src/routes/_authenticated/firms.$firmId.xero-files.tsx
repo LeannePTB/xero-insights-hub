@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
+import { PageContainer } from "@/components/PageContainer";
 
 export const Route = createFileRoute("/_authenticated/firms/$firmId/xero-files")({
   head: () => ({
@@ -19,9 +20,9 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/xero-files")
 function XeroFilesPage() {
   const { firmId } = Route.useParams();
   return (
-    <main className="mx-auto max-w-5xl space-y-6 px-6 py-10">
+    <PageContainer className="space-y-6">
       <FirmPageHeader title="Xero files" description="Xero files connected to this organisation." />
       <FirmXeroFilesCard firmId={firmId} />
-    </main>
+    </PageContainer>
   );
 }
