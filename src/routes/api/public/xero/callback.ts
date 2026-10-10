@@ -213,7 +213,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
             });
             await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
             return redirectTo(
-              `${returnOrigin}/auth?xero_error=${encodeURIComponent(`No invited account found for ${xeroEmail}. Access is invite-only — contact Traction Advisory to be added.`)}`,
+              `${returnOrigin}/auth?xero_error=${encodeURIComponent(`No invited account found for ${xeroEmail}. Access is invite-only — contact the platform team to be added.`)}`,
             );
           }
 
