@@ -73,12 +73,10 @@ function AuthenticatedLayout() {
   usePresenceHeartbeat();
 
   // Presentation only, from the server signal (never browser storage): the
-  // side menu shows for super admins, practice-team members and organisation
-  // members. Client viewers keep the bare layout. Every route keeps its own guard.
+  // side menu shows for platform staff and organisation members. Client viewers keep the bare layout. Every route keeps its own guard.
   const showMenu =
-    ctxQ.data?.isSuperAdmin === true ||
-    ctxQ.data?.isPracticeMember === true ||
-    (ctxQ.data?.firmIds?.length ?? 0) > 0;
+    ctxQ.data?.isPlatformStaff === true ||
+    ctxQ.data?.isOrganisationMember === true;
 
   if (!showMenu)
     return (
