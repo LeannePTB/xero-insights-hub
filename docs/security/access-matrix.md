@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1911**. Known failures: **0**.
+Rows: **1910**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -1538,8 +1538,7 @@ None.
 | client_rental_properties | insert | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
-| overview_clients() — own organisation's clients | execute | ALLOW | pglite | Step 4 (owner-approved): any active owner or staff member gets their own organisation's Overview without practice team (PK 2 path A); still capped by user_can_read_client |  |
-| me_is_practice_member() | execute | DENY | pglite | Practice-team signal stays practice-team only (routing, never a grant) |  |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | membership governs a simultaneous Business owner relationship | execute | ALLOW | pglite, live | PK paths A/E — active membership is broader and does not conflict with the relationship row |  |
 | xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
 | xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
@@ -1577,8 +1576,8 @@ None.
 | public.security_posture() | execute | DENY | pglite, live | PK 2 path C; super admin only |  |
 | rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
 | set_overview_alert_state(own organisation's client) | execute | ALLOW | pglite | PK 2 path A — members acknowledge or snooze an alert for everyone, through the write predicate user_can_write_client, audited |  |
-| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| overview_clients() — own organisation's clients | execute | ALLOW | pglite | Step 4 (owner-approved): any active owner or staff member gets their own organisation's Overview without practice team (PK 2 path A); still capped by user_can_read_client |  |
+| me_is_practice_member() | execute | DENY | pglite | Practice-team signal stays practice-team only (routing, never a grant) |  |
 | server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
 | server fn: set a client logo when the organisation has not bought Branding | execute | DENY | live | Spec §5 — Branding is a purchasable option; an entitlement is never a grant | setClientLogo calls public.client_branding_enabled (aal2 + user_can_read_client + effective branding + NOT lapsed) after the write gate. A direct upload call is refused, and getClientLogo returns no path or signed URL, so an existing report link cannot render the logo either. |
 | server fn: set a client logo when the organisation has bought Branding | execute | ALLOW | live | Path A — membership writes within its own organisation | With effective branding on (purchased OR unexpired trial that explicitly includes Branding) and the organisation not lapsed, an active member may upload, replace and clear the client logo. Switching Branding off hides the logo; storage and clients.logo_path are untouched, so it returns when Branding comes back. |
