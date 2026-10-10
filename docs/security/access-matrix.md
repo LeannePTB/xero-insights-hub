@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1914**. Known failures: **0**.
+Rows: **1922**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -154,6 +154,7 @@ None.
 | security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| Trixie tables and functions | execute | DENY | live | PK 1 — deny by default | All table privileges and function execution are revoked from anon and PUBLIC. |
 
 ## Active member, aal1 session only
 
@@ -315,6 +316,7 @@ None.
 | security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
 | server fn: getClientOrgTrial | execute | DENY | live | PK 2 — MFA is enforced on the server | app_private.assert_aal2() runs before anything is read, so an aal1 session is refused with MFA_REQUIRED even when the person would otherwise qualify. |
+| Trixie | execute | DENY | live | PK 2 — MFA is enforced on the server | The route validates the aal claim and every database function directly calls app_private.assert_aal2(). |
 
 ## Active member of a DIFFERENT organisation
 
@@ -582,6 +584,7 @@ None.
 | scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| Trixie: reserve for organisation B client | execute | DENY | live | PK 4 (ids are filters, never grants) | trixie_access_context refuses when user_can_read_client does not admit the exact client. |
 
 ## Member with status = suspended
 
@@ -1020,6 +1023,8 @@ None.
 | security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
 | admin_assert_can_sign_out_user(another person) | execute | ALLOW | pglite | Path C — platform operations; aal2 + super admin, audited, no client data |  |
 | admin_assert_can_sign_out_user(their own account) | execute | DENY | pglite | PK 1 — the caller uses Sign out my other devices for themselves |  |
+| Trixie: client figures | execute | DENY | live | PK 3 / Path C | System Admin receives platform how-to scope only; super admin alone is never passed to user_can_read_client as a financial-data grant. |
+| Trixie: platform how-to and administration | execute | ALLOW | live | Path C / PK 2 | The separate platform allowance applies; admin writers each assert aal2 and me_is_super_admin and expose metadata only. |
 
 ## Support-grant holder, grant expired
 
@@ -1609,6 +1614,7 @@ None.
 | admin_assert_can_sign_out_user(another person) | execute | DENY | pglite | Invariant 3/6 — only a super admin may sign another person out |  |
 | server fn: getClientSetupChecklist for a client in another organisation | execute | DENY | live | PK 4 (a caller-supplied client_id is a FILTER, never a GRANT) | assertClientDataAccessForClient runs first, and every read inside setup-checklist.server.ts goes through context.supabase, so RLS scopes the clients, client_statutory_accounts, client_cost_classifications and xero_snapshots reads. public.client_setup_account_counts is SECURITY INVOKER, so it counts only rows the caller may already read. |
 | server fn: getClientOrgTrial for a client in their organisation | execute | ALLOW | live | Path A — members see their own organisation's billing state | app_private.has_firm_access (active membership) admits the caller; the same row a super admin sees on the purchase card is what the banner renders. |
+| Trixie: reserve and read figures for a client in their organisation | execute | ALLOW | live | Path A / PK 2 / PK 4 | reserve_trixie_usage asserts aal2 and resolves the organisation from the exact readable client; figure reads remain caller-RLS and card-scoped. |
 
 ## External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)
 
@@ -1692,6 +1698,7 @@ None.
 | unreconciled_lines | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 | user_can_write_client_scenario() for the client they can read | execute | DENY | pglite | PK rule 11 — the read predicate is gone from the scenario write check |  |
 | server fn: getClientOrgTrial | execute | DENY | live | Path D — an external adviser never sees billing, plan or organisation-level data | A client_access row with relationship = 'external_adviser' (or NULL) does not match the business_owner predicate and the caller is not a member, so no rows are returned. |
+| Trixie: reserve and read figures for their exact client | execute | ALLOW | live | Path D / PK 2 / PK 4 | The client id is re-checked by user_can_read_client; the response is read-only, viewer-worded, and limited to visible client cards. |
 
 ## Support-grant holder, active, non-member organisation
 
@@ -1874,6 +1881,7 @@ None.
 | me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
 | server fn: getClientOrgTrial for their own client | execute | ALLOW | live | Path E — the business owner may see their client's plan and billing | public.client_org_trial asserts aal2, then returns the organisation's live trial (end date, days remaining, ending-soon flag) only when the caller is an active member of the client's organisation or holds a client_access row with relationship = 'business_owner' for that exact client. Only trial metadata is returned — never purchase detail, never another organisation. |
 | server fn: getClientOrgTrial for a client that is not theirs | execute | DENY | live | PK 4 (a caller-supplied client_id is a FILTER, never a GRANT) | Neither predicate holds — no membership of that organisation and no business_owner row for that client — so the function returns no rows and the banner never renders. |
+| Trixie: reserve and read figures for their exact client | execute | ALLOW | live | Path E / PK 2 / PK 4 | The existing exact-client business-owner read predicate admits the client; Trixie adds no write or organisation access. |
 
 ## External adviser — All clients (firm_viewer_access on one organisation, read-only; user-facing name only, the key is unchanged)
 
