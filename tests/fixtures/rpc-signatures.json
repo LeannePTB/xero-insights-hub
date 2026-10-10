@@ -1214,9 +1214,23 @@
     },
     {
         "args": [
+            "_client_id"
+        ],
+        "name": "workspace_branding_for_client_v2",
+        "required": 1
+    },
+    {
+        "args": [
             "_firm_id"
         ],
         "name": "workspace_branding_for_firm",
+        "required": 1
+    },
+    {
+        "args": [
+            "_firm_id"
+        ],
+        "name": "workspace_branding_for_firm_v2",
         "required": 1
     },
     {
