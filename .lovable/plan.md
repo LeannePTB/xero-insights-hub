@@ -16,11 +16,13 @@ The change will **not alter who can read or write any existing row**. It will pr
 
 **Primary threats:** a model requesting a different client/file, combining separately entitled cards into a broader read, prompt injection from financial/document text, accidental persistence of figures, and cost abuse.
 
-## What to reuse from Hubbie, and what changes
+## What to reuse from current CoCo, and what changes
+
+The current Business Hub Central assistant is displayed as **CoCo**. Its implementation still uses legacy `hubbie-*` file, table and route names internally; those names are implementation history, not the current product identity. The current checked-out CoCo implementation was re-reviewed for this revision.
 
 ### Reuse
 
-- One globally mounted floating launcher and side-panel chat.
+- CoCo's globally mounted floating launcher and side-panel chat.
 - AI SDK streaming with Stop, optimistic user messages, Markdown responses and gateway run-ID correlation.
 - Server-held Lovable AI Gateway key and OpenAI Responses integration.
 - A short built-in product guide plus admin-authored knowledge notes and a page map derived from real routes/navigation.
@@ -32,11 +34,11 @@ The change will **not alter who can read or write any existing row**. It will pr
 - Use the supplied Trixie SVG, the current Traction colour tokens and the app's 12px/18px scale.
 - Use AI Elements primitives for the transcript, messages, composer, loading and tool activity instead of Hubbie's custom chat markup.
 - Verify AAL2 in the streaming route; Hubbie's route verifies the token but does not independently enforce AAL2.
-- Do not copy Hubbie's broad `FOR ALL` RLS policies or direct browser CRUD for admin knowledge.
-- Do not copy its unbounded transcript retention. For Phase 1, use **one session-only conversation with no transcript persistence**. This best satisfies the requirement not to store financial answers. Usage metadata is stored separately.
-- Do not copy Hubbie's generic lookup layer. Trixie's financial tools remain card-specific and preserve each existing entitlement gate.
-- Add the admin switch, vetted model selector, organisation entitlement, usage limits and usage reporting that Hubbie does not have.
-- Replace Hubbie's six-step cap with the supported agent-loop contract while keeping the available tool set narrow and context-bound.
+- Do not copy CoCo's broad `FOR ALL` RLS policies or direct browser CRUD for admin knowledge.
+- Do not copy CoCo's indefinitely retained threads/messages. For Phase 1, use **one session-only conversation with no transcript persistence**. This best satisfies the requirement not to store financial answers. Usage metadata is stored separately.
+- Do not copy CoCo's generic record-lookup layer. Trixie's financial tools remain card-specific and preserve each existing entitlement gate.
+- Add the global switch, vetted model selector, fair-use limits and usage reporting that CoCo does not have.
+- Replace CoCo's six-step cap with the supported agent-loop contract while keeping the available tool set narrow and context-bound.
 
 ## Phase 1 scope
 
@@ -109,23 +111,25 @@ Add `/system/trixie` and a System Admin navigation entry with:
 - **Settings:** global on/off switch; an allow-listed model selector populated from models verified for the correct endpoint and zero-retention policy; default `openai/gpt-6-astra`; no free-text model IDs.
 - **Knowledge:** create/edit/archive articles, tags and audience; all writes through AAL2, super-admin, audited database functions.
 - **Usage:** current month questions, input/output tokens, estimated gateway cost, denied/failed requests and organisation breakdown. No prompts, answers or financial values.
-- **Limits:** default monthly allowance and per-organisation override; display warning at 80% and deny new calls at 100% with a clear message. No automatic overage charging.
+- **Limits:** default organisation allowance (initially 100 answered questions per calendar month), warning threshold (initially 80), token-cost guard, separate platform allowance, and per-organisation overrides. Each allowance supports a finite value or **Unlimited**.
 
-## Commercial recommendation
+## Inclusion and fair-use policy
 
-Make **Trixie a separate paid/trialled organisation option**, independent of Advisory, Branding, Consolidation and White label.
+Trixie is **included free for every organisation**. It is not a purchased or trialled option and has no relationship to Advisory, Branding, Consolidation or White label.
 
-Why: AI has a variable external cost, how-to help is useful beyond Advisory, and tying it to Advisory would obscure both pricing and usage. Any non-lapsed organisation can buy or trial it. Client viewers consume the allowance of the organisation owning their client. System Admin how-to calls use a separate platform allowance and can never consume an organisation's client-data allowance.
+Access depends only on the global System Admin on/off switch plus the caller's existing access to the current page/client. There will be no Trixie control or indicator in Plan & options, Subscription or the Organisations list.
 
-Recommended launch limits:
+Fair-use launch defaults:
 
 - 100 answered questions per organisation per calendar month;
-- warning at 80 questions;
-- hard stop at 100, with a System Admin override;
+- warning at 80 questions, with both values globally editable;
+- hard stop at the configured allowance, unless that organisation is set to Unlimited;
+- a per-organisation finite or Unlimited override in System Admin → Trixie;
 - a second token-cost guard to prevent a small number of unusually large requests exhausting credits;
-- trials use the same allowance and the existing maximum 120-day trial rule.
+- business-owner/client-viewer questions count against the organisation that owns that exact client;
+- System Admin how-to questions count against a separate finite or Unlimited platform allowance and never against an organisation.
 
-The exact selling price and token guard remain owner decisions before implementation.
+There is no selling-price decision. The token-cost guard amount remains an owner decision before implementation.
 
 ## Usage and retention recommendation
 
@@ -154,26 +158,26 @@ The exact selling price and token guard remain owner decisions before implementa
 
 ## Database changes
 
-### Existing organisation options
+### No organisation purchase/trial changes
 
-- Add `trixie_enabled` and `trial_trixie_enabled` to the existing organisation subscription-options model.
-- Extend the existing fixed-return effective-option resolver safely without dropping/recreating it; if its return shape cannot change in place, add a dedicated helper such as `firm_trixie_enabled` and update callers explicitly.
-- Extend `org_purchase`, `set_org_purchase` and trial handling with the same AAL2, super-admin and audit rules as other options.
-- Add Trixie to System Admin Plan & options and the organisation Subscription read-only summary.
+- Do not change `org_subscription_options`, `org_purchase`, `set_org_purchase`, trial handling or the fixed-return effective-option resolver.
+- Do not add `trixie_enabled` or `trial_trixie_enabled`.
+- Do not add Trixie to Plan & options, Subscription or the Organisations list.
+- Availability is resolved from the global switch, the applicable fair-use allowance and the caller's existing page/client access only.
 
 ### New tables
 
-- `trixie_settings`: singleton global enabled/model/default-limit configuration; authenticated direct access revoked; super-admin functions only.
+- `trixie_settings`: singleton global enabled/model/default organisation allowance/default warning threshold/token-cost guard/platform allowance configuration; finite or Unlimited allowances; authenticated direct access revoked; super-admin functions only.
 - `trixie_knowledge`: curated articles and audiences; RLS on; super-admin writes through audited functions; authenticated direct writes revoked.
-- `trixie_org_limits`: optional organisation allowance overrides; RLS on; super-admin functions only.
+- `trixie_org_limits`: optional finite or Unlimited organisation allowance overrides; RLS on; super-admin functions only.
 - `trixie_usage`: metadata-only request usage; direct authenticated writes revoked; caller-scoped usage reservation/finalisation functions prevent race-condition limit bypass.
 
 For every table: revoke defaults from `anon` and `authenticated`, grant only needed commands, add explicit per-command policies `TO authenticated`, add restrictive AAL2 policy, indexes, retention handling and access-matrix coverage. No `FOR ALL` permissive policy.
 
 ### New database functions
 
-- Caller-scoped `trixie_access_context(client_id default null)` resolves entitlement and exact permitted context without accepting a user ID.
-- Atomic `reserve_trixie_usage(...)` checks global switch, effective organisation entitlement and current allowance before a gateway call.
+- Caller-scoped `trixie_access_context(client_id default null)` resolves the global switch, applicable organisation/platform allowance and exact permitted page/client context without accepting a user ID. It does not resolve a paid entitlement.
+- Atomic `reserve_trixie_usage(...)` checks the global switch and applicable finite/Unlimited allowance before a gateway call, while retaining the caller's existing access checks as the only data-access authority.
 - `finalise_trixie_usage(...)` records token/cost/status metadata without content.
 - Super-admin-only settings, article and limit writers with `SET search_path`, `app_private.assert_aal2()`, caller guard first, audit entry and EXECUTE revoked from `PUBLIC`/`anon`.
 
@@ -202,9 +206,6 @@ No database function will return a private logo path, Xero token, prompt, answer
 - `src/components/shell/AppShell.tsx`
 - `src/routes/_authenticated/route.tsx`
 - `src/lib/nav/sidebar-nav.ts`
-- `src/lib/card-model.functions.ts`
-- `src/components/admin/OrgPurchaseCard.tsx`
-- the organisation Subscription summary component/route
 - `src/lib/xero/cashflow.functions.ts`
 - `src/lib/xero/reports.functions.ts`
 - `src/lib/xero/payables.functions.ts`
@@ -241,9 +242,9 @@ The final changed-file list will be generated from the implementation rather tha
 Approval of this plan will confirm these recommended defaults unless changed:
 
 1. **Conversation:** one session-only conversation, no saved transcripts or past-chat list.
-2. **Commercial:** separate Trixie add-on, independent of Advisory and other options.
-3. **Allowance:** 100 answered questions per organisation per calendar month, hard stop, no automatic overage charge.
+2. **Inclusion:** free for every organisation; no purchase, trial, plan switch, subscription line or list column.
+3. **Allowance:** default 100 answered questions per organisation per calendar month, warning at 80, finite or Unlimited overrides, separate platform allowance and no automatic overage charge.
 4. **Retention:** metadata-only usage for 13 months; no prompts/answers stored.
 5. **Model:** Astra as default, plus one reviewed lower-cost zero-retention option in the admin selector.
 6. **Phase 2:** commentary drafting and next-action suggestions remain out of scope.
-7. **Owner input still required:** selling price and the token-cost guard amount.
+7. **Owner input still required:** the token-cost guard amount only.
