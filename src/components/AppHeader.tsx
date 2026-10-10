@@ -4,8 +4,8 @@ import { Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useSignOut } from "@/lib/use-sign-out";
-import ptLogo from "@/assets/traction-advisory-logo.png";
-
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
+import { useInAppShell, useRegisterHeader } from "@/components/shell/shell-context";
 
 type Props = {
   /** Optional actions rendered before the notification / account cluster. */
@@ -13,18 +13,18 @@ type Props = {
 };
 
 /**
- * Global application header — mirrors the Business Hub bar:
- * logo · divider · wordmark on the left, actions / bell / avatar / sign out on the right.
+ * Global application header: logo · wordmark on the left, actions / bell /
+ * avatar / sign out on the right. Inside AppShell the side menu carries
+ * Sign out, so the header omits its own (decided by React context).
  */
 export function AppHeader({ actions }: Props) {
   const handleSignOut = useSignOut();
+  const brand = usePlatformBranding();
+  const inShell = useInAppShell();
+  useRegisterHeader();
   const [initial, setInitial] = useState("");
-  // The side menu carries Sign out when it is on screen; the header then
-  // hides its own button so no page shows two.
-  const [sideMenuPresent, setSideMenuPresent] = useState(false);
 
   useEffect(() => {
-    setSideMenuPresent(!!document.querySelector('[data-sidebar="sidebar"]'));
     let active = true;
     supabase.auth.getUser().then(({ data }) => {
       if (!active) return;
@@ -36,15 +36,14 @@ export function AppHeader({ actions }: Props) {
     };
   }, []);
 
-
   return (
     <header data-app-header className="sticky top-0 z-40 border-b border-border/60 bg-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link to="/" className="flex min-w-0 items-center gap-3" aria-label="Traction Advisory Dashboards">
-          <img src={ptLogo} alt="Traction Advisory" className="h-9 w-auto shrink-0" />
+        <Link to="/" className="flex min-w-0 items-center gap-3" aria-label={`${brand.productName} Dashboards`}>
+          <img src={brand.logoLight} alt={brand.productName} className="h-9 w-auto shrink-0" />
           <span className="hidden border-l border-border pl-3 leading-tight sm:block">
             <span className="block text-[11px] font-bold uppercase tracking-[0.28em] text-accent">
-              Traction Advisory
+              {brand.productName}
             </span>
             <span className="block text-[11px] font-bold uppercase tracking-[0.28em] text-primary">
               Dashboards
@@ -63,7 +62,7 @@ export function AppHeader({ actions }: Props) {
           >
             {initial}
           </span>
-          {!sideMenuPresent && (
+          {!inShell && (
             <Button variant="ghost" size="sm" onClick={() => void handleSignOut()} className="font-semibold">
               <LogOut className="mr-2 h-4 w-4" /> Sign out
             </Button>

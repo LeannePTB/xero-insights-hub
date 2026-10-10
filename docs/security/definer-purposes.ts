@@ -75,6 +75,10 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.delete_client_rental_property":
     "Removes one rental property after aal2 and organisation-team write access checks, with an audit row in the same transaction.",
   "public.me_has_role": "Whether the caller holds a given platform role.",
+  "public.get_platform_branding":
+    "Documented anon-callable exception: returns only public platform display branding (product name, logos, favicon, sender name) so sign-in pages can show it. No organisation, client or personal data.",
+  "public.save_platform_branding":
+    "Saves platform display branding after aal2 and super-admin checks (Path C metadata only), with an audit row in the same transaction.",
   "public.me_is_super_admin": "Whether the caller is a platform super admin.",
   "public.my_client_access":
     "The selected-client grants the caller holds, including display relationship and label metadata.",

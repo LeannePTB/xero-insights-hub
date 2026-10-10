@@ -134,7 +134,7 @@ export function SecurityStatusCard() {
       <div className="px-1 py-2">
         <Tooltip>
           <TooltipTrigger asChild>
-            <Link to="/admin/security" className="flex justify-center py-1">
+            <Link to="/system/security" className="flex justify-center py-1">
               <Icon className={`h-5 w-5 ${tone}`} />
             </Link>
           </TooltipTrigger>
@@ -195,7 +195,7 @@ export function SecurityStatusCard() {
           ))}
           {onlineList.length > 6 && (
             <Link
-              to="/admin/security"
+              to="/system/security"
               className="text-[10px] underline text-muted-foreground hover:text-foreground self-center"
             >
               +{onlineList.length - 6} more
@@ -205,7 +205,7 @@ export function SecurityStatusCard() {
       )}
 
       <Button asChild size="sm" variant="outline" className="mt-3 h-7 w-full text-[11px]">
-        <Link to="/admin/security">View details</Link>
+        <Link to="/system/security">View details</Link>
       </Button>
     </div>
   );

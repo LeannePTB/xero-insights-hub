@@ -56,7 +56,7 @@ function Dashboard() {
     }
     // Super admins manage the platform from the Admin area.
     if (ctxQ.data.isSuperAdmin) {
-      navigate({ to: "/admin", replace: true });
+      navigate({ to: "/system", replace: true });
       return;
     }
     // Advisors / owners with a single organisation go straight into it.
@@ -149,7 +149,7 @@ function Dashboard() {
             )}
             {hasAdminAreaAccess && (
               <Button variant="outline" asChild>
-                <Link to="/admin"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
+                <Link to="/system"><Shield className="mr-2 h-4 w-4" /> Admin</Link>
               </Button>
             )}
             <Button variant="outline" asChild>
@@ -282,7 +282,7 @@ function SubscriptionCard({
         <div className="mt-5 flex items-center justify-end gap-2">
           <SuperAdminChip />
           <Button variant="ghost" size="sm" asChild>
-            <Link to="/admin/firms/$firmId" params={{ firmId: f.id }}>
+            <Link to="/system/organisations/$firmId" params={{ firmId: f.id }}>
               Manage organisation
             </Link>
           </Button>

@@ -1795,6 +1795,39 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_branding: {
+        Row: {
+          email_sender_name: string | null
+          favicon: string | null
+          id: boolean
+          logo_dark: string | null
+          logo_light: string | null
+          product_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          email_sender_name?: string | null
+          favicon?: string | null
+          id?: boolean
+          logo_dark?: string | null
+          logo_light?: string | null
+          product_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          email_sender_name?: string | null
+          favicon?: string | null
+          id?: boolean
+          logo_dark?: string | null
+          logo_light?: string | null
+          product_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       practice_team: {
         Row: {
           added_by: string | null
@@ -3459,6 +3492,17 @@ export type Database = {
           total_staff: number
         }[]
       }
+      get_platform_branding: {
+        Args: never
+        Returns: {
+          email_sender_name: string
+          favicon: string
+          logo_dark: string
+          logo_light: string
+          product_name: string
+          updated_at: string
+        }[]
+      }
       grant_client_access: {
         Args: {
           _client_id: string
@@ -3751,6 +3795,16 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_platform_branding: {
+        Args: {
+          _email_sender_name: string
+          _favicon: string
+          _logo_dark: string
+          _logo_light: string
+          _product_name: string
+        }
+        Returns: undefined
       }
       security_attestations_list: {
         Args: never

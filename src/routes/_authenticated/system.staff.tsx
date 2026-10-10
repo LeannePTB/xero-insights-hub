@@ -1,0 +1,631 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import {
+  listAdvisors,
+  inviteAdvisor,
+  revokeAdvisor,
+  resendAdvisorInvite,
+  resendAllPendingAdvisorInvites,
+  listPendingAdvisors,
+  generateAdvisorInviteLink,
+  createAdvisorWithPassword,
+  sendAdvisorPasswordReset,
+  setAdvisorPassword,
+  setAdvisorSuperAdmin,
+  PRIMARY_ADVISOR_USER_ID,
+} from "@/lib/advisors.functions";
+import { listPracticeTeam, setPracticeMembership } from "@/lib/practice-team.functions";
+import { updateProfileNameAsAdmin } from "@/lib/profile.functions";
+import { adminSignOutAllDevices } from "@/lib/session-activity.functions";
+import { displayNameSchema, isRealDisplayName } from "@/lib/profile-name";
+import { getMyContext } from "@/lib/roles.functions";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users, LogOut } from "lucide-react";
+import { toast } from "sonner";
+import { SuperAdminBadge } from "@/components/admin/SuperAdminOnly";
+import { siteUrl } from "@/lib/site-origin";
+
+
+export const Route = createFileRoute("/_authenticated/system/staff")({
+  head: () => ({ meta: [{ title: "Advisors — Traction Advisory" }] }),
+  component: AdvisorSettings,
+});
+
+function AdvisorSettings() {
+  const qc = useQueryClient();
+  const fetchCtx = useServerFn(getMyContext);
+  const fetchList = useServerFn(listAdvisors);
+  const inviteFn = useServerFn(inviteAdvisor);
+  const revokeFn = useServerFn(revokeAdvisor);
+
+  const fetchPending = useServerFn(listPendingAdvisors);
+  const resendOneFn = useServerFn(resendAdvisorInvite);
+  const resendAllFn = useServerFn(resendAllPendingAdvisorInvites);
+  const genLinkFn = useServerFn(generateAdvisorInviteLink);
+  const createPwFn = useServerFn(createAdvisorWithPassword);
+  const sendResetFn = useServerFn(sendAdvisorPasswordReset);
+  const setPwFn = useServerFn(setAdvisorPassword);
+  const setSuperFn = useServerFn(setAdvisorSuperAdmin);
+  const setNameFn = useServerFn(updateProfileNameAsAdmin);
+  const signOutAllFn = useServerFn(adminSignOutAllDevices);
+  const fetchPracticeTeam = useServerFn(listPracticeTeam);
+  const setPracticeFn = useServerFn(setPracticeMembership);
+
+
+  const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
+  const listQ = useQuery({
+    queryKey: ["advisors"],
+    queryFn: () => fetchList(),
+    enabled: ctxQ.data?.isAdvisor ?? false,
+  });
+  const pendingQ = useQuery({
+    queryKey: ["advisors-pending"],
+    queryFn: () => fetchPending(),
+    enabled: ctxQ.data?.isAdvisor ?? false,
+  });
+  // The practice team list is platform metadata: readable by super admins only,
+  // so only they see the indicator and the control.
+  const practiceQ = useQuery({
+    queryKey: ["practice-team"],
+    queryFn: () => fetchPracticeTeam(),
+    enabled: ctxQ.data?.isSuperAdmin ?? false,
+  });
+
+  const [mode, setMode] = useState<"invite" | "password">("invite");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [nameTarget, setNameTarget] = useState<{ userId: string; email: string | null } | null>(null);
+  const [editedName, setEditedName] = useState("");
+  const [lastCreated, setLastCreated] = useState<{ email: string; password: string } | null>(null);
+
+  const inviteMut = useMutation({
+    mutationFn: () => inviteFn({ data: { email } }),
+    onSuccess: ({ invited }) => {
+      toast.success(invited ? "Invite email sent" : "Advisor access granted");
+      setEmail("");
+      qc.invalidateQueries({ queryKey: ["advisors"] });
+      qc.invalidateQueries({ queryKey: ["advisors-pending"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const createPwMut = useMutation({
+    mutationFn: () => createPwFn({ data: { email, password } }),
+    onSuccess: () => {
+      toast.success(`Advisor created — ${email}`);
+      setLastCreated({ email, password });
+      setEmail("");
+      setPassword("");
+      qc.invalidateQueries({ queryKey: ["advisors"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const resendOneMut = useMutation({
+    mutationFn: (userId: string) => resendOneFn({ data: { userId } }),
+    onSuccess: (r) => toast.success(`Invite re-sent to ${r.email}`),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const copyLinkMut = useMutation({
+    mutationFn: (userId: string) => genLinkFn({ data: { userId } }),
+    onSuccess: async (r) => {
+      try {
+        await navigator.clipboard.writeText(r.link);
+        toast.success(`Invite link copied for ${r.email}`);
+      } catch {
+        window.prompt("Copy this invite link:", r.link);
+      }
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const resendAllMut = useMutation({
+    mutationFn: () => resendAllFn(),
+    onSuccess: (r) => {
+      if (r.resent.length === 0) toast("No pending invites to resend");
+      else toast.success(`Re-sent ${r.resent.length} invite${r.resent.length === 1 ? "" : "s"}`);
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const revokeMut = useMutation({
+    mutationFn: (userId: string) => revokeFn({ data: { userId } }),
+    onSuccess: () => {
+      toast.success("Advisor removed");
+      qc.invalidateQueries({ queryKey: ["advisors"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const superMut = useMutation({
+    mutationFn: ({ userId, makeSuperAdmin }: { userId: string; makeSuperAdmin: boolean }) =>
+      setSuperFn({ data: { userId, makeSuperAdmin } }),
+    onSuccess: (r) => {
+      toast.success(r.isSuperAdmin ? "Super admin access granted" : "Super admin access removed");
+      qc.invalidateQueries({ queryKey: ["advisors"] });
+      qc.invalidateQueries({ queryKey: ["my-context"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const practiceMut = useMutation({
+    mutationFn: ({ userId, onTeam }: { userId: string; onTeam: boolean }) =>
+      setPracticeFn({ data: { userId, onTeam } }),
+    onSuccess: (r) => {
+      toast.success(r.onTeam ? "Added to the practice team" : "Removed from the practice team");
+      qc.invalidateQueries({ queryKey: ["practice-team"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const nameMut = useMutation({
+    mutationFn: () => {
+      if (!nameTarget) throw new Error("Choose a person.");
+      return setNameFn({ data: { userId: nameTarget.userId, displayName: editedName } });
+    },
+    onSuccess: async () => {
+      setNameTarget(null);
+      setEditedName("");
+      await qc.invalidateQueries({ queryKey: ["advisors"] });
+      await qc.invalidateQueries({ queryKey: ["online-users"] });
+      toast.success("Name updated and recorded in the audit log");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const signOutAllMut = useMutation({
+    mutationFn: (userId: string) => signOutAllFn({ data: { userId } }),
+    onSuccess: (r) =>
+      toast.success(
+        `${r.email} is signed out on every device. They've been emailed a link to choose a new password.`,
+      ),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const [resetTarget, setResetTarget] = useState<{ userId: string; label: string } | null>(null);
+  const [newPw, setNewPw] = useState("");
+  const [showNewPw, setShowNewPw] = useState(false);
+
+  const sendResetMut = useMutation({
+    mutationFn: (userId: string) => sendResetFn({ data: { userId } }),
+    onSuccess: (r) => toast.success(`Password reset email sent to ${r.email}`),
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const setPwMut = useMutation({
+    mutationFn: ({ userId, newPassword }: { userId: string; newPassword: string }) =>
+      setPwFn({ data: { userId, newPassword } }),
+    onSuccess: (r) => {
+      toast.success(`Password updated for ${r.email}`);
+      setResetTarget(null);
+      setNewPw("");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
+
+  if (ctxQ.isLoading) {
+    return <div className="grid min-h-screen place-items-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>;
+  }
+  if (!ctxQ.data?.isAdvisor) return <p className="p-6 text-sm text-destructive">Advisors only.</p>;
+
+  const advisors = listQ.data?.advisors ?? [];
+  const viewerIsSuperAdmin = listQ.data?.viewerIsSuperAdmin ?? false;
+  const pendingIds = new Set(pendingQ.data?.pendingUserIds ?? []);
+  const pendingCount = pendingIds.size;
+  const practiceIds = new Set((practiceQ.data?.members ?? []).map((m) => m.userId));
+
+  return (
+    <>
+    <div className="min-h-screen bg-background">
+      <main className="mx-auto max-w-3xl px-6 py-10 space-y-6">
+
+        <Button variant="ghost" size="sm" asChild className="-ml-2">
+          <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
+        </Button>
+        <div>
+          <h1 className="font-display text-3xl font-semibold">Advisors</h1>
+          {viewerIsSuperAdmin && <SuperAdminBadge className="ml-2 align-middle" />}
+          <p className="mt-1 text-sm text-muted-foreground">
+            Invite teammates to manage clients and dashboards. Advisors have full access to every client.
+          </p>
+        </div>
+
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+          <h2 className="mb-3 font-display text-lg font-semibold">Add an advisor</h2>
+          <div className="mb-3 inline-flex rounded-md border border-border p-0.5 text-xs">
+            <button
+              type="button"
+              onClick={() => { setMode("invite"); setLastCreated(null); }}
+              className={`rounded px-3 py-1.5 transition ${mode === "invite" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Send email invite
+            </button>
+            <button
+              type="button"
+              onClick={() => { setMode("password"); setLastCreated(null); }}
+              className={`rounded px-3 py-1.5 transition ${mode === "password" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+            >
+              Create with password
+            </button>
+          </div>
+
+          {mode === "invite" ? (
+            <>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input
+                  type="email"
+                  placeholder="advisor@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={() => inviteMut.mutate()} disabled={!email.includes("@") || inviteMut.isPending}>
+                  {inviteMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                  Invite
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                If the email isn't registered yet, they'll receive an invite link. Existing users are upgraded to advisor immediately.
+              </p>
+            </>
+          ) : (
+            <>
+              <div className="flex flex-col gap-2">
+                <Input
+                  type="email"
+                  placeholder="advisor@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                />
+                <div className="relative">
+                  <Input
+                    type={showPw ? "text" : "password"}
+                    placeholder="Starter password (min 8 chars, letter + number)"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="pr-9"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPw((v) => !v)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    aria-label={showPw ? "Hide password" : "Show password"}
+                  >
+                    {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <Button
+                  onClick={() => createPwMut.mutate()}
+                  disabled={!email.includes("@") || password.length < 8 || createPwMut.isPending}
+                  className="self-start"
+                >
+                  {createPwMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+                  Create advisor
+                </Button>
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                The account is active immediately — no email click required. Share the credentials securely. They can change the password from Account settings after signing in.
+              </p>
+              {lastCreated && (
+                <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 text-xs">
+                  <div className="mb-2 font-medium text-foreground">New advisor credentials</div>
+                  <div className="font-mono text-foreground">{lastCreated.email}</div>
+                  <div className="font-mono text-foreground">{lastCreated.password}</div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2"
+                    onClick={async () => {
+                      const text = `Email: ${lastCreated.email}\nPassword: ${lastCreated.password}\nSign in: ${siteUrl("/auth")}`;
+                      try {
+                        await navigator.clipboard.writeText(text);
+                        toast.success("Credentials copied");
+                      } catch {
+                        window.prompt("Copy credentials:", text);
+                      }
+                    }}
+                  >
+                    <Copy className="mr-2 h-3.5 w-3.5" /> Copy credentials
+                  </Button>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 className="font-display text-lg font-semibold">Current advisors</h2>
+
+            {pendingCount > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => resendAllMut.mutate()}
+                disabled={resendAllMut.isPending}
+              >
+                {resendAllMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                Resend {pendingCount} pending invite{pendingCount === 1 ? "" : "s"}
+              </Button>
+            )}
+          </div>
+          {viewerIsSuperAdmin && (
+            <p className="mb-3 text-xs text-muted-foreground">
+              People on the practice team are added as members automatically whenever Positive
+              Traction creates a new client organisation, so nobody has to add themselves
+              afterwards. Being on the list grants nothing by itself. Use the
+              <Users className="mx-1 inline h-3 w-3" /> button on a person's row to put them on or
+              take them off.
+            </p>
+          )}
+          {listQ.isLoading ? (
+            <div className="text-sm text-muted-foreground"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> Loading…</div>
+          ) : advisors.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No advisors yet.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {advisors.map((a) => {
+                const isPending = pendingIds.has(a.user_id);
+                const isPrimary = a.user_id === PRIMARY_ADVISOR_USER_ID;
+                const onPracticeTeam = practiceIds.has(a.user_id);
+                return (
+                  <li key={a.id} className="flex items-center justify-between rounded-md border border-border bg-background px-3 py-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full bg-primary/10 text-primary">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">
+                          {isRealDisplayName(a.display_name) ? a.display_name : "Name not set"}
+                          {a.is_self && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+                          {isPrimary && <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">Primary</span>}
+                          {a.is_super_admin && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-600">
+                              <Crown className="h-3 w-3" /> Super admin
+                            </span>
+                          )}
+                          {isPending && <span className="ml-2 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600">Pending invite</span>}
+                          {viewerIsSuperAdmin && onPracticeTeam && (
+                            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                              <Users className="h-3 w-3" /> Practice team
+                            </span>
+                          )}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{a.email ?? "Verified email unavailable"}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {isPending && (
+                        <>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => copyLinkMut.mutate(a.user_id)}
+                            disabled={copyLinkMut.isPending}
+                            title="Copy invite link"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => resendOneMut.mutate(a.user_id)}
+                            disabled={resendOneMut.isPending}
+                            title="Resend invite email"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                          </Button>
+                        </>
+                      )}
+                      {viewerIsSuperAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const label = a.email ?? a.display_name ?? a.user_id;
+                            const msg = onPracticeTeam
+                              ? `Take ${label} off the practice team? They'll stop being added to new client organisations. Memberships they already have are untouched.`
+                              : `Put ${label} on the practice team? They'll be added as a member whenever we create a new client organisation. This grants nothing on its own.`;
+                            if (confirm(msg))
+                              practiceMut.mutate({ userId: a.user_id, onTeam: !onPracticeTeam });
+                          }}
+                          disabled={practiceMut.isPending}
+                          title={onPracticeTeam ? "Remove from the practice team" : "Add to the practice team"}
+                          className={onPracticeTeam ? "text-primary" : undefined}
+                        >
+                          <Users className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {viewerIsSuperAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setNameTarget({ userId: a.user_id, email: a.email });
+                            setEditedName(isRealDisplayName(a.display_name) ? a.display_name : "");
+                          }}
+                          title="Edit name"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {viewerIsSuperAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const label = a.email ?? a.display_name ?? a.user_id;
+                            const msg = a.is_super_admin
+                              ? `Remove super admin access for ${label}?`
+                              : `Make ${label} a super admin? They'll get full platform access.`;
+                            if (confirm(msg)) superMut.mutate({ userId: a.user_id, makeSuperAdmin: !a.is_super_admin });
+                          }}
+                          disabled={superMut.isPending || (a.is_super_admin && a.is_self)}
+                          title={a.is_super_admin ? (a.is_self ? "You can't remove your own super admin access" : "Remove super admin") : "Make super admin"}
+                          className={a.is_super_admin ? "text-amber-600" : undefined}
+                        >
+                          <Crown className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {viewerIsSuperAdmin && !a.is_self && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const label = a.email ?? a.display_name ?? a.user_id;
+                            const msg =
+                              `Sign ${label} out of every device now?\n\n` +
+                              `This ends all their sessions immediately, including a lost or stolen device. ` +
+                              `Because it works by resetting their password, they'll be emailed a link to choose a new one before they can sign in again.`;
+                            if (confirm(msg)) signOutAllMut.mutate(a.user_id);
+                          }}
+                          disabled={signOutAllMut.isPending}
+                          title="Sign out of every device (resets their password)"
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setNewPw("");
+                          setResetTarget({
+                            userId: a.user_id,
+                            label: a.email ?? a.display_name ?? a.user_id,
+                          });
+                        }}
+                        title="Reset password"
+                      >
+                        <KeyRound className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const msg = a.is_self
+                            ? `Remove your own advisor access? You'll be signed out immediately.`
+                            : `Remove advisor access for ${a.email ?? a.display_name ?? a.user_id}?`;
+                          if (confirm(msg)) revokeMut.mutate(a.user_id);
+                        }}
+                        disabled={isPrimary || revokeMut.isPending}
+                        title={isPrimary ? "The primary advisor can't be removed" : a.is_self ? "Remove your own advisor access (you'll be signed out)" : "Remove advisor access"}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+      </main>
+
+      <Dialog open={!!resetTarget} onOpenChange={(o) => { if (!o) { setResetTarget(null); setNewPw(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset password</DialogTitle>
+            <DialogDescription>
+              For <span className="font-medium text-foreground">{resetTarget?.label}</span>. Send a reset email, or set a new password directly.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Button
+              variant="outline"
+              className="w-full justify-start"
+              onClick={() => resetTarget && sendResetMut.mutate(resetTarget.userId)}
+              disabled={sendResetMut.isPending}
+            >
+              {sendResetMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+              Send password reset email
+            </Button>
+            <div className="relative">
+              <Input
+                type={showNewPw ? "text" : "password"}
+                placeholder="New password (min 8 chars, letter + number)"
+                value={newPw}
+                onChange={(e) => setNewPw(e.target.value)}
+                className="pr-9"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewPw((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                aria-label={showNewPw ? "Hide password" : "Show password"}
+              >
+                {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Setting a password signs the advisor in with the new credentials immediately — share securely.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setResetTarget(null); setNewPw(""); }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => resetTarget && setPwMut.mutate({ userId: resetTarget.userId, newPassword: newPw })}
+              disabled={newPw.length < 8 || setPwMut.isPending}
+            >
+              {setPwMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
+              Set password
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!nameTarget} onOpenChange={(open) => { if (!open) { setNameTarget(null); setEditedName(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit name</DialogTitle>
+            <DialogDescription>
+              Verified account email: <span className="font-medium text-foreground">{nameTarget?.email ?? "Unavailable"}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              value={editedName}
+              onChange={(event) => setEditedName(event.target.value)}
+              maxLength={80}
+              aria-label="Display name"
+            />
+            {!displayNameSchema.safeParse(editedName).success && editedName.length > 0 && (
+              <p className="text-xs text-destructive">
+                {displayNameSchema.safeParse(editedName).error?.issues[0]?.message}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => { setNameTarget(null); setEditedName(""); }}>Cancel</Button>
+            <Button
+              onClick={() => nameMut.mutate()}
+              disabled={!displayNameSchema.safeParse(editedName).success || nameMut.isPending}
+            >
+              {nameMut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Save name
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+    </>
+  );
+}
+
+

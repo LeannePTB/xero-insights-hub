@@ -2,3 +2,5 @@
 - Bank/card extraction is shared in `tax-lines.ts` and uses Xero account IDs and BankAccountType, not names or Class alone, because Xero credit cards can be asset-class BANK accounts.
 - Sidebar layouts reserve width through the non-shrinking sidebar spacer; the main inset uses flex-1 and min-w-0 without w-full, so collapsed navigation cannot crowd or clip page content.
 - Client income tax instalments use one dedicated period-history table and one audited caller-scoped save function, because period history and organisation-team-only editing must stay explicit.
+- Navigation is one AppShell whose menu is data in `src/lib/nav/sidebar-nav.ts`, chosen by the URL (/system, /firms/:id, /clients/:id) and gated only by getMyContext server signals, because the menu must stay presentation-only and be movable to the database later.
+- Platform branding is read through the anon-callable `get_platform_branding()` with bundled-asset fallback and written only via `save_platform_branding()`, because sign-in pages need it before login while the table stays grant-free.

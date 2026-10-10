@@ -18,6 +18,7 @@ import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
+import { Route as AuthenticatedSystemRouteImport } from './routes/_authenticated/system'
 import { Route as AuthMfaEnrollRouteImport } from './routes/auth_.mfa-enroll'
 import { Route as AuthMfaVerifyRouteImport } from './routes/auth_.mfa-verify'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
@@ -31,6 +32,11 @@ import { Route as AuthenticatedSettingsAccountRouteImport } from './routes/_auth
 import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_authenticated/settings.activity'
 import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
 import { Route as AuthenticatedSettingsPracticeTeamRouteImport } from './routes/_authenticated/settings.practice-team'
+import { Route as AuthenticatedSystemIndexRouteImport } from './routes/_authenticated/system.index'
+import { Route as AuthenticatedSystemBrandingRouteImport } from './routes/_authenticated/system.branding'
+import { Route as AuthenticatedSystemSecurityRouteImport } from './routes/_authenticated/system.security'
+import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
+import { Route as AuthenticatedSystemXeroRouteImport } from './routes/_authenticated/system.xero'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
@@ -44,6 +50,7 @@ import { Route as AuthenticatedFirmsFirmIdConsolidationsRouteImport } from './ro
 import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
 import { Route as AuthenticatedFirmsFirmIdPeopleRouteImport } from './routes/_authenticated/firms.$firmId.people'
 import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
+import { Route as AuthenticatedSystemOrganisationsFirmIdRouteImport } from './routes/_authenticated/system.organisations.$firmId'
 import { Route as ApiPublicSecurityRunAccessTestsRouteImport } from './routes/api/public/security/run-access-tests'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
@@ -105,6 +112,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
 const AuthenticatedOverviewRoute = AuthenticatedOverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedSystemRoute = AuthenticatedSystemRouteImport.update({
+  id: '/system',
+  path: '/system',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthMfaEnrollRoute = AuthMfaEnrollRouteImport.update({
@@ -178,6 +190,35 @@ const AuthenticatedSettingsPracticeTeamRoute =
     path: '/settings/practice-team',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedSystemIndexRoute =
+  AuthenticatedSystemIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedSystemRoute,
+  } as any)
+const AuthenticatedSystemBrandingRoute =
+  AuthenticatedSystemBrandingRouteImport.update({
+    id: '/branding',
+    path: '/branding',
+    getParentRoute: () => AuthenticatedSystemRoute,
+  } as any)
+const AuthenticatedSystemSecurityRoute =
+  AuthenticatedSystemSecurityRouteImport.update({
+    id: '/security',
+    path: '/security',
+    getParentRoute: () => AuthenticatedSystemRoute,
+  } as any)
+const AuthenticatedSystemStaffRoute =
+  AuthenticatedSystemStaffRouteImport.update({
+    id: '/staff',
+    path: '/staff',
+    getParentRoute: () => AuthenticatedSystemRoute,
+  } as any)
+const AuthenticatedSystemXeroRoute = AuthenticatedSystemXeroRouteImport.update({
+  id: '/xero',
+  path: '/xero',
+  getParentRoute: () => AuthenticatedSystemRoute,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -254,6 +295,12 @@ const AuthenticatedFirmsFirmIdSettingsRoute =
     id: '/settings',
     path: '/settings',
     getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
+const AuthenticatedSystemOrganisationsFirmIdRoute =
+  AuthenticatedSystemOrganisationsFirmIdRouteImport.update({
+    id: '/organisations/$firmId',
+    path: '/organisations/$firmId',
+    getParentRoute: () => AuthenticatedSystemRoute,
   } as any)
 const ApiPublicSecurityRunAccessTestsRoute =
   ApiPublicSecurityRunAccessTestsRouteImport.update({
@@ -368,6 +415,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/overview': typeof AuthenticatedOverviewRoute
+  '/system': typeof AuthenticatedSystemRouteWithChildren
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -380,8 +428,13 @@ export interface FileRoutesByFullPath {
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
+  '/system/branding': typeof AuthenticatedSystemBrandingRoute
+  '/system/security': typeof AuthenticatedSystemSecurityRoute
+  '/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/system/': typeof AuthenticatedSystemIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
   '/clients/$clientId/cashflow-scenario': typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
@@ -392,6 +445,7 @@ export interface FileRoutesByFullPath {
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
+  '/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -432,8 +486,13 @@ export interface FileRoutesByTo {
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
+  '/system/branding': typeof AuthenticatedSystemBrandingRoute
+  '/system/security': typeof AuthenticatedSystemSecurityRoute
+  '/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/system': typeof AuthenticatedSystemIndexRoute
   '/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
   '/clients/$clientId/cashflow-scenario': typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   '/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
@@ -443,6 +502,7 @@ export interface FileRoutesByTo {
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
+  '/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -475,6 +535,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/overview': typeof AuthenticatedOverviewRoute
+  '/_authenticated/system': typeof AuthenticatedSystemRouteWithChildren
   '/auth_/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -487,8 +548,13 @@ export interface FileRoutesById {
   '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
+  '/_authenticated/system/branding': typeof AuthenticatedSystemBrandingRoute
+  '/_authenticated/system/security': typeof AuthenticatedSystemSecurityRoute
+  '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/_authenticated/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/system/': typeof AuthenticatedSystemIndexRoute
   '/_authenticated/admin/firms/$firmId': typeof AuthenticatedAdminFirmsFirmIdRoute
   '/_authenticated/clients/$clientId/cashflow-scenario': typeof AuthenticatedClientsClientIdCashflowScenarioRoute
   '/_authenticated/clients/$clientId/loans': typeof AuthenticatedClientsClientIdLoansRoute
@@ -499,6 +565,7 @@ export interface FileRoutesById {
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
   '/_authenticated/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/_authenticated/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRoute
+  '/_authenticated/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
@@ -531,6 +598,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/overview'
+    | '/system'
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
@@ -543,8 +611,13 @@ export interface FileRouteTypes {
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/practice-team'
+    | '/system/branding'
+    | '/system/security'
+    | '/system/staff'
+    | '/system/xero'
     | '/lovable/email/suppression'
     | '/admin/'
+    | '/system/'
     | '/admin/firms/$firmId'
     | '/clients/$clientId/cashflow-scenario'
     | '/clients/$clientId/loans'
@@ -555,6 +628,7 @@ export interface FileRouteTypes {
     | '/firms/$firmId/loans'
     | '/firms/$firmId/people'
     | '/firms/$firmId/settings'
+    | '/system/organisations/$firmId'
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
@@ -595,8 +669,13 @@ export interface FileRouteTypes {
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/practice-team'
+    | '/system/branding'
+    | '/system/security'
+    | '/system/staff'
+    | '/system/xero'
     | '/lovable/email/suppression'
     | '/admin'
+    | '/system'
     | '/admin/firms/$firmId'
     | '/clients/$clientId/cashflow-scenario'
     | '/clients/$clientId/loans'
@@ -606,6 +685,7 @@ export interface FileRouteTypes {
     | '/firms/$firmId/consolidations'
     | '/firms/$firmId/people'
     | '/firms/$firmId/settings'
+    | '/system/organisations/$firmId'
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
@@ -637,6 +717,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/overview'
+    | '/_authenticated/system'
     | '/auth_/mfa-enroll'
     | '/auth_/mfa-verify'
     | '/email/unsubscribe'
@@ -649,8 +730,13 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/activity'
     | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/practice-team'
+    | '/_authenticated/system/branding'
+    | '/_authenticated/system/security'
+    | '/_authenticated/system/staff'
+    | '/_authenticated/system/xero'
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
+    | '/_authenticated/system/'
     | '/_authenticated/admin/firms/$firmId'
     | '/_authenticated/clients/$clientId/cashflow-scenario'
     | '/_authenticated/clients/$clientId/loans'
@@ -661,6 +747,7 @@ export interface FileRouteTypes {
     | '/_authenticated/firms/$firmId/loans'
     | '/_authenticated/firms/$firmId/people'
     | '/_authenticated/firms/$firmId/settings'
+    | '/_authenticated/system/organisations/$firmId'
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
     | '/api/public/xero/callback'
@@ -774,6 +861,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedOverviewRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system': {
+      id: '/_authenticated/system'
+      path: '/system'
+      fullPath: '/system'
+      preLoaderRoute: typeof AuthenticatedSystemRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/auth_/mfa-enroll': {
       id: '/auth_/mfa-enroll'
       path: '/auth/mfa-enroll'
@@ -865,6 +959,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSettingsPracticeTeamRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/system/': {
+      id: '/_authenticated/system/'
+      path: '/'
+      fullPath: '/system/'
+      preLoaderRoute: typeof AuthenticatedSystemIndexRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
+    '/_authenticated/system/branding': {
+      id: '/_authenticated/system/branding'
+      path: '/branding'
+      fullPath: '/system/branding'
+      preLoaderRoute: typeof AuthenticatedSystemBrandingRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
+    '/_authenticated/system/security': {
+      id: '/_authenticated/system/security'
+      path: '/security'
+      fullPath: '/system/security'
+      preLoaderRoute: typeof AuthenticatedSystemSecurityRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
+    '/_authenticated/system/staff': {
+      id: '/_authenticated/system/staff'
+      path: '/staff'
+      fullPath: '/system/staff'
+      preLoaderRoute: typeof AuthenticatedSystemStaffRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
+    '/_authenticated/system/xero': {
+      id: '/_authenticated/system/xero'
+      path: '/xero'
+      fullPath: '/system/xero'
+      preLoaderRoute: typeof AuthenticatedSystemXeroRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
     '/lovable/email/suppression': {
       id: '/lovable/email/suppression'
       path: '/lovable/email/suppression'
@@ -955,6 +1084,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/firms/$firmId/settings'
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdSettingsRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
+    '/_authenticated/system/organisations/$firmId': {
+      id: '/_authenticated/system/organisations/$firmId'
+      path: '/organisations/$firmId'
+      fullPath: '/system/organisations/$firmId'
+      preLoaderRoute: typeof AuthenticatedSystemOrganisationsFirmIdRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
     }
     '/api/public/security/run-access-tests': {
       id: '/api/public/security/run-access-tests'
@@ -1100,6 +1236,28 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
+interface AuthenticatedSystemRouteChildren {
+  AuthenticatedSystemBrandingRoute: typeof AuthenticatedSystemBrandingRoute
+  AuthenticatedSystemSecurityRoute: typeof AuthenticatedSystemSecurityRoute
+  AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
+  AuthenticatedSystemXeroRoute: typeof AuthenticatedSystemXeroRoute
+  AuthenticatedSystemIndexRoute: typeof AuthenticatedSystemIndexRoute
+  AuthenticatedSystemOrganisationsFirmIdRoute: typeof AuthenticatedSystemOrganisationsFirmIdRoute
+}
+
+const AuthenticatedSystemRouteChildren: AuthenticatedSystemRouteChildren = {
+  AuthenticatedSystemBrandingRoute: AuthenticatedSystemBrandingRoute,
+  AuthenticatedSystemSecurityRoute: AuthenticatedSystemSecurityRoute,
+  AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
+  AuthenticatedSystemXeroRoute: AuthenticatedSystemXeroRoute,
+  AuthenticatedSystemIndexRoute: AuthenticatedSystemIndexRoute,
+  AuthenticatedSystemOrganisationsFirmIdRoute:
+    AuthenticatedSystemOrganisationsFirmIdRoute,
+}
+
+const AuthenticatedSystemRouteWithChildren =
+  AuthenticatedSystemRoute._addFileChildren(AuthenticatedSystemRouteChildren)
+
 interface AuthenticatedFirmsFirmIdLoansRouteChildren {
   AuthenticatedFirmsFirmIdLoansAccountsRoute: typeof AuthenticatedFirmsFirmIdLoansAccountsRoute
   AuthenticatedFirmsFirmIdLoansGroupsRoute: typeof AuthenticatedFirmsFirmIdLoansGroupsRoute
@@ -1153,6 +1311,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedOverviewRoute: typeof AuthenticatedOverviewRoute
+  AuthenticatedSystemRoute: typeof AuthenticatedSystemRouteWithChildren
   AuthenticatedClientsNewRoute: typeof AuthenticatedClientsNewRoute
   AuthenticatedFirmsFirmIdRoute: typeof AuthenticatedFirmsFirmIdRouteWithChildren
   AuthenticatedSettingsAccountRoute: typeof AuthenticatedSettingsAccountRoute
@@ -1174,6 +1333,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedOverviewRoute: AuthenticatedOverviewRoute,
+  AuthenticatedSystemRoute: AuthenticatedSystemRouteWithChildren,
   AuthenticatedClientsNewRoute: AuthenticatedClientsNewRoute,
   AuthenticatedFirmsFirmIdRoute: AuthenticatedFirmsFirmIdRouteWithChildren,
   AuthenticatedSettingsAccountRoute: AuthenticatedSettingsAccountRoute,
