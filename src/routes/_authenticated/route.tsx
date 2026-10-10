@@ -1,11 +1,12 @@
-import { createFileRoute, Outlet, redirect, useRouterState } from "@tanstack/react-router";
+import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyContext } from "@/lib/roles.functions";
 import { recordPresence } from "@/lib/security-posture.functions";
-import { AdminNavShell } from "@/components/admin/AdminNavShell";
+import { AppShell } from "@/components/shell/AppShell";
+import { HeaderPresenceProvider } from "@/components/shell/shell-context";
 import { GlobalSignOut } from "@/components/GlobalSignOut";
 import { SessionIdleGuard } from "@/components/SessionIdleGuard";
 
@@ -34,14 +35,6 @@ export const Route = createFileRoute("/_authenticated")({
 });
 
 
-/** Routes that already render the admin menu through AdminShell. */
-function ownsAdminMenu(pathname: string) {
-  return (
-    pathname === "/admin" ||
-    pathname.startsWith("/admin/") ||
-    pathname.startsWith("/settings/advisors")
-  );
-}
 
 /**
  * Every signed-in (aal2) person records a heartbeat, whatever their role, so
@@ -77,32 +70,29 @@ function usePresenceHeartbeat() {
 function AuthenticatedLayout() {
   const fetchCtx = useServerFn(getMyContext);
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
   usePresenceHeartbeat();
 
-  // Presentation only: the menu appears for platform super admins, decided by
-  // the same server-side signal the admin screens use. Anyone else — including
-  // client viewers and ordinary organisation members — never renders it, and
-  // every route behind it keeps its own unchanged guard.
-  // Practice-team members also get the menu, for the Overview link only.
-  const showAdminMenu =
-    (ctxQ.data?.isSuperAdmin === true || ctxQ.data?.isPracticeMember === true) &&
-    !ownsAdminMenu(pathname);
+  // Presentation only, from the server signal (never browser storage): the
+  // side menu shows for super admins, practice-team members and organisation
+  // members. Client viewers keep the bare layout. Every route keeps its own guard.
+  const showMenu =
+    ctxQ.data?.isSuperAdmin === true ||
+    ctxQ.data?.isPracticeMember === true ||
+    (ctxQ.data?.firmIds?.length ?? 0) > 0;
 
-  if (!showAdminMenu)
+  if (!showMenu)
     return (
-      <>
+      <HeaderPresenceProvider>
         <Outlet />
         <GlobalSignOut />
         <SessionIdleGuard />
-      </>
+      </HeaderPresenceProvider>
     );
   return (
-    <AdminNavShell>
+    <AppShell>
       <Outlet />
-      <GlobalSignOut />
       <SessionIdleGuard />
-    </AdminNavShell>
+    </AppShell>
   );
 }
 

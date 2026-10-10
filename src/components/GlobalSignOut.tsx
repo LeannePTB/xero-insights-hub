@@ -1,35 +1,16 @@
-import { useEffect, useState } from "react";
 import { LogOut } from "lucide-react";
-import { useRouterState } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { useSignOut } from "@/lib/use-sign-out";
+import { useHeaderPresent } from "@/components/shell/shell-context";
 
 /**
- * A Sign out control for every signed-in page that does not already render one.
- *
- * Presentation only — it calls the same shared sign-out as the app header and
- * grants nothing. Pages that render AppHeader mark it with `data-app-header`;
- * this control hides itself when such a header is present so no page shows two.
+ * Floating Sign out for the bare (no side menu) layout. Hidden when the page's
+ * own AppHeader shows one. Presentation only — grants nothing.
  */
 export function GlobalSignOut() {
   const signOut = useSignOut();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [show, setShow] = useState(false);
-
-  useEffect(() => {
-    // Run after paint so the page's own header (if any) has mounted.
-    // Hidden when the side menu is showing — it carries its own Sign out.
-    const id = window.setTimeout(() => {
-      setShow(
-        !document.querySelector("[data-app-header]") &&
-          !document.querySelector('[data-sidebar="sidebar"]'),
-      );
-    }, 0);
-    return () => window.clearTimeout(id);
-  }, [pathname]);
-
-
-  if (!show) return null;
+  const headerPresent = useHeaderPresent();
+  if (headerPresent) return null;
 
   return (
     <div className="pointer-events-none fixed bottom-4 right-4 z-50 print:hidden">
