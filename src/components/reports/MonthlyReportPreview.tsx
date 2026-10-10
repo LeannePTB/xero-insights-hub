@@ -587,7 +587,7 @@ export function MonthlyReportPreview({
       {/* Footer */}
       <footer className="rounded-2xl border border-border bg-card px-6 py-4 text-xs text-muted-foreground">
         {uniqueNames([m.organisationName, m.clientName]).join(" · ")} · {m.monthLabel} · generated{" "}
-        {fmtDate(m.generatedAt)} by {platformBrand.productName} · Version {version}
+        {fmtDate(m.generatedAt)} by {workspaceBrand.productName} · Version {version}
       </footer>
     </div>
   );
