@@ -3,10 +3,13 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 import type { DashboardTier } from "@/lib/tiers";
 import type { ClientAccessRelationship } from "@/lib/access-labels";
 
+export type OrganisationMembership = { firmId: string; role: "owner" | "staff" };
+
 /**
  * UI context for the signed-in person. Every fact here comes from a
  * caller-scoped database function — this file never looks up roles,
- * memberships or client grants itself.
+ * memberships or client grants itself. Presentation and routing only:
+ * every page and server function keeps its own server-side check.
  */
 export const getMyContext = createServerFn({ method: "GET" })
   .middleware([requireAal2])
@@ -14,23 +17,20 @@ export const getMyContext = createServerFn({ method: "GET" })
     const [{ data: roles }, { data: memberships }, { data: practice }] = await Promise.all([
       (context.supabase as any).rpc("my_roles"),
       (context.supabase as any).rpc("my_firm_memberships"),
-      // Routing only (client overview landing and link); never a grant.
+      // Routing only (cross-organisation overview); never a grant.
       (context.supabase as any).rpc("me_is_practice_member"),
     ]);
-    const isPracticeMember = practice === true;
     const roleNames = (roles ?? []) as string[];
-    const hasAdvisorRole = roleNames.includes("advisor");
     const isSuperAdmin = roleNames.includes("super_admin");
-    const isFirmOwner = roleNames.includes("firm_owner");
+    // Platform staff = Traction Advisory roles only. Membership never sets it.
+    const isPlatformStaff = isSuperAdmin || roleNames.includes("advisor");
 
-    const firmIds = ((memberships ?? []) as any[]).map((m) => m.firm_id as string);
-    const firmId: string | null = firmIds[0] ?? null;
-
-    // A firm member is treated as an advisor for UX purposes (sees client list, can add clients).
-    const isAdvisor = hasAdvisorRole || !!firmId;
-    const hasAdminAreaAccess = isSuperAdmin || hasAdvisorRole || isFirmOwner || !!firmId;
-    // Previewing the app as someone else is for platform admins and advisors only.
-    const canViewAs = isSuperAdmin || hasAdvisorRole;
+    const orgMemberships: OrganisationMembership[] = ((memberships ?? []) as any[]).map((m) => ({
+      firmId: m.firm_id as string,
+      role: m.role === "owner" ? "owner" : "staff",
+    }));
+    const isOrganisationMember = orgMemberships.length > 0;
+    const canViewAs = isPlatformStaff;
 
     let viewerClients: {
       id: string;
@@ -38,7 +38,7 @@ export const getMyContext = createServerFn({ method: "GET" })
       tier: DashboardTier;
       relationship: ClientAccessRelationship | null;
     }[] = [];
-    if (!isAdvisor) {
+    if (!isOrganisationMember && !isPlatformStaff) {
       const { data: access } = await (context.supabase as any).rpc("my_client_access");
       viewerClients = ((access ?? []) as any[]).map((a) => ({
         id: a.client_id as string,
@@ -48,14 +48,31 @@ export const getMyContext = createServerFn({ method: "GET" })
       }));
     }
     return {
-      isPracticeMember,
-      isAdvisor,
       isSuperAdmin,
-      isFirmOwner,
-      hasAdminAreaAccess,
+      isPlatformStaff,
+      isPracticeMember: practice === true,
+      memberships: orgMemberships,
+      isOrganisationMember,
+      isClientViewer: viewerClients.length > 0,
       canViewAs,
-      firmId,
-      firmIds,
       viewerClients,
     };
+  });
+
+/**
+ * Per-client screen signal: may the caller manage this client? Answered by
+ * the database (same predicate the client write paths use). Draws buttons
+ * only — every write keeps its own server check.
+ */
+export const getMyClientCapabilities = createServerFn({ method: "GET" })
+  .middleware([requireAal2])
+  .inputValidator((i: { clientId: string }) => {
+    if (!/^[0-9a-f-]{36}$/i.test(i?.clientId ?? "")) throw new Error("Invalid client");
+    return { clientId: i.clientId };
+  })
+  .handler(async ({ data, context }) => {
+    const { data: can } = await (context.supabase as any).rpc("me_can_manage_client", {
+      _client_id: data.clientId,
+    });
+    return { canManageClient: can === true };
   });
