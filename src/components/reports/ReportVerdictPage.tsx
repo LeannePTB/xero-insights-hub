@@ -1,3 +1,4 @@
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import type { ReportVerdict } from "@/lib/reports/monthly-report";
 
 /**

@@ -1,3 +1,4 @@
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -27,6 +28,7 @@ export const Route = createFileRoute("/signup/$token")({
 });
 
 function SignupPage() {
+  const platformBrand = usePlatformBranding();
   const { token } = Route.useParams();
   const navigate = useNavigate();
   const fetchInvite = useServerFn(getInvitePublic);
@@ -108,7 +110,7 @@ function SignupPage() {
           </p>
         </div>
         <p className="text-xs text-primary-foreground/55">
-          © {new Date().getFullYear()} Traction Advisory
+          © {new Date().getFullYear()} {platformBrand.productName}
         </p>
       </div>
 

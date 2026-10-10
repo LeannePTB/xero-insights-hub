@@ -1,3 +1,4 @@
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
@@ -203,7 +204,7 @@ function ReportsPage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {isAdvisor
                 ? `${client?.name ?? "Client"} · a report is a point-in-time snapshot; the dashboard stays live.`
-                : `${client?.name ?? "Client"} · a snapshot of your business for the period, prepared by Traction Advisory.`}
+                : `${client?.name ?? "Client"} · a snapshot of your business for the period, prepared by {platformBrand.productName}.`}
             </p>
           </div>
           <ViewToggle clientId={clientId} active="reports" />
