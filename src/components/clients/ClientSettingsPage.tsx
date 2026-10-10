@@ -1,7 +1,6 @@
 import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { useNavigate } from "@tanstack/react-router";
-import { useEffect } from "react";
-import { useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import {
@@ -83,6 +82,7 @@ import {
 } from "@/lib/cost-classification.functions";
 
 export type ClientSettingsSection = "general" | "cards" | "people" | "xero" | "tax-reporting" | "costs" | "danger";
+const ActiveSettingsSection = createContext<ClientSettingsSection>("general");
 
 export function ClientSettingsPage({ clientId, section }: { clientId: string; section: ClientSettingsSection }) {
   const navigate = useNavigate();
@@ -318,7 +318,8 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
 
   return (
     <div className="min-h-screen bg-background">
-      <main className={`mx-auto max-w-4xl px-6 py-8 space-y-6 [&>section:not([data-settings-section='${section}'])]:hidden`}>
+      <ActiveSettingsSection.Provider value={section}>
+      <main className="mx-auto max-w-4xl space-y-6 px-6 py-8">
 
         {/* Name */}
         <Section title="Client name">
@@ -747,6 +748,7 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
           </p>
         </Section>
       </main>
+      </ActiveSettingsSection.Provider>
     </div>
   );
 }
@@ -756,13 +758,12 @@ const SETTINGS_SECTION_BY_TITLE: Record<string, ClientSettingsSection> = {
   "Setup": "general",
   "Cards": "cards",
   "Report branding": "cards",
-  "People with access": "people",
+  "People access": "people",
   "Xero organisations": "xero",
   "Profit & Loss basis": "tax-reporting",
   "How often this client lodges": "tax-reporting",
   "How this client codes GST, PAYG and super": "tax-reporting",
-  "Cost classification": "costs",
-  "Committed cash costs": "costs",
+  "What you really need to bring in": "costs",
   "Danger zone": "danger",
 };
 
@@ -783,6 +784,8 @@ function Section({
   id?: string;
   children: React.ReactNode;
 }) {
+  const activeSection = useContext(ActiveSettingsSection);
+  if ((SETTINGS_SECTION_BY_TITLE[title] ?? "general") !== activeSection) return null;
   const key = storageKey ?? sectionStorageKey("client-settings", title);
   // A deep link to a section opens it.
   const hashTargeted =
