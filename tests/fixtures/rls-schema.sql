@@ -3774,25 +3774,13 @@ create policy "manage tier widget config by firm or super admin (update)" on pub
   WHERE ((c.id = tier_widget_config.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))))));
 create policy mfa_aal2_required on public.tier_widget_config as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.trixie_knowledge as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "trixie_knowledge service delete" on public.trixie_knowledge as permissive for delete to service_role using (true);
 create policy "trixie_knowledge service insert" on public.trixie_knowledge as permissive for insert to service_role with check (true);
-create policy "trixie_knowledge service select" on public.trixie_knowledge as permissive for select to service_role using (true);
-create policy "trixie_knowledge service update" on public.trixie_knowledge as permissive for update to service_role using (true) with check (true);
 create policy mfa_aal2_required on public.trixie_org_limits as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "trixie_org_limits service delete" on public.trixie_org_limits as permissive for delete to service_role using (true);
 create policy "trixie_org_limits service insert" on public.trixie_org_limits as permissive for insert to service_role with check (true);
-create policy "trixie_org_limits service select" on public.trixie_org_limits as permissive for select to service_role using (true);
-create policy "trixie_org_limits service update" on public.trixie_org_limits as permissive for update to service_role using (true) with check (true);
 create policy mfa_aal2_required on public.trixie_settings as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "trixie_settings service delete" on public.trixie_settings as permissive for delete to service_role using (true);
 create policy "trixie_settings service insert" on public.trixie_settings as permissive for insert to service_role with check (true);
-create policy "trixie_settings service select" on public.trixie_settings as permissive for select to service_role using (true);
-create policy "trixie_settings service update" on public.trixie_settings as permissive for update to service_role using (true) with check (true);
 create policy mfa_aal2_required on public.trixie_usage as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
-create policy "trixie_usage service delete" on public.trixie_usage as permissive for delete to service_role using (true);
 create policy "trixie_usage service insert" on public.trixie_usage as permissive for insert to service_role with check (true);
-create policy "trixie_usage service select" on public.trixie_usage as permissive for select to service_role using (true);
-create policy "trixie_usage service update" on public.trixie_usage as permissive for update to service_role using (true) with check (true);
 create policy "Members update comments for their client" on public.unreconciled_lines as permissive for update to authenticated using (app_private.user_can_write_client(auth.uid(), client_id)) with check (app_private.user_can_write_client(auth.uid(), client_id));
 create policy "Viewers can read lines for their client" on public.unreconciled_lines as permissive for select to authenticated using (app_private.has_client_read_access(auth.uid(), client_id));
 create policy "manage unreconciled lines by firm (delete)" on public.unreconciled_lines as permissive for delete to authenticated using ((EXISTS ( SELECT 1
@@ -3866,4 +3854,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 5e235745941c3adf53e1eaf31ff5575a6d25b879c32eb4c3e131a2a8ae704102
+-- catalogue-fingerprint: 29710e31a824938de47d101adcd9089df24bd20ed2549d9d253da0af3e9f09a6
