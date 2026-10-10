@@ -9,6 +9,7 @@ import { AppShell } from "@/components/shell/AppShell";
 import { HeaderPresenceProvider } from "@/components/shell/shell-context";
 import { GlobalSignOut } from "@/components/GlobalSignOut";
 import { SessionIdleGuard } from "@/components/SessionIdleGuard";
+import { ViewerClientNav } from "@/components/clients/ViewerClientNav";
 
 
 export const Route = createFileRoute("/_authenticated")({
@@ -81,6 +82,7 @@ function AuthenticatedLayout() {
   if (!showMenu)
     return (
       <HeaderPresenceProvider>
+        <ViewerClientNav />
         <Outlet />
         <GlobalSignOut />
         <SessionIdleGuard />
