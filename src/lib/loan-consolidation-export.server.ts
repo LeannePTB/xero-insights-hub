@@ -458,7 +458,8 @@ export async function buildLoanReconciliationXlsx(
 ): Promise<Uint8Array> {
   const ExcelJS = (await import("exceljs")).default;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "Traction Advisory";
+  const { getPlatformBrandingServer } = await import("@/lib/platform-branding.server");
+  wb.creator = (await getPlatformBrandingServer()).productName;
   wb.created = new Date();
 
   const purpleFill = "FF53318D";
