@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "./AppSidebar";
 import { InAppShellContext } from "./shell-context";
+import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
+import { DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
 
 /**
  * Remembers whether the menu was collapsed, per browser.
@@ -30,13 +33,28 @@ function usePersistedSidebarOpen(): [boolean, (open: boolean) => void] {
 /** The one app menu wrapped around page content. Presentation only. */
 export function AppShell({ children }: { children: ReactNode }) {
   const [open, setOpen] = usePersistedSidebarOpen();
+  const brand = useWorkspaceBranding();
+  const hasLogo = brand.logoLight !== DEFAULT_BRANDING.logoLight;
   return (
     <InAppShellContext.Provider value={true}>
       <SidebarProvider open={open} onOpenChange={setOpen}>
         <AppSidebar />
         <SidebarInset className="min-w-0 overflow-x-hidden">
-          <header className="flex h-12 items-center border-b px-4">
+          <header className="flex h-12 items-center gap-3 border-b px-4">
             <SidebarTrigger />
+            {hasLogo && (
+              <Link
+                to="/"
+                aria-label={brand.productName}
+                className="flex min-w-0 items-center"
+              >
+                <img
+                  src={brand.logoLight}
+                  alt={brand.productName}
+                  className="h-7 w-auto max-w-44 shrink-0 object-contain"
+                />
+              </Link>
+            )}
           </header>
           <div className="min-w-0 flex-1">{children}</div>
         </SidebarInset>
