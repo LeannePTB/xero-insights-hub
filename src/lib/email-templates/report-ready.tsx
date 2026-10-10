@@ -10,6 +10,7 @@ interface ReportReadyProps {
   clientName?: string | null
   recipientEmail?: string | null
   expiresInDays?: number
+  siteName?: string
 }
 
 const ReportReadyEmail = ({
@@ -18,6 +19,7 @@ const ReportReadyEmail = ({
   clientName = null,
   recipientEmail = null,
   expiresInDays = 30,
+  siteName = 'Traction Advisory',
 }: ReportReadyProps) => (
   <Html lang="en" dir="ltr">
     <Head />
@@ -40,7 +42,7 @@ const ReportReadyEmail = ({
           {expiresInDays} days and can be withdrawn at any time.
         </Text>
         <Text style={footer}>
-          If you weren&rsquo;t expecting this, you can safely ignore this email.
+          Sent by {siteName}. If you weren&rsquo;t expecting this, you can safely ignore this email.
         </Text>
       </Container>
     </Body>
