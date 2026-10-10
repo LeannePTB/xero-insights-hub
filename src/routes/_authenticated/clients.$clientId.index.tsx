@@ -88,7 +88,7 @@ function ClientDashboard() {
     queryKey: ["client", clientId],
     queryFn: () => fetchClient({ data: { clientId } }),
   });
-  const realIsAdvisor = ctxQ.data?.isAdvisor ?? false;
+  const realIsAdvisor = canManageHere;
   // Preview mode: render exactly what a client viewer on this tier would get.
   // Only platform admins and advisors may preview.
   const previewing = !!previewTier && (ctxQ.data?.canViewAs ?? false);

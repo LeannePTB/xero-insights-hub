@@ -8,7 +8,7 @@ import { DateRangeControls } from "@/components/dashboard/DateRangeControls";
 import { CardFreshness } from "@/components/dashboard/CardFreshness";
 import { cn } from "@/lib/utils";
 import { useBreakevenData, fmtAUD, fmtPct } from "@/components/dashboard/useBreakevenData";
-import { useIsAdvisor } from "@/hooks/useIsAdvisor";
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { TrueBreakevenSection } from "@/components/dashboard/TrueBreakevenSection";
 
 export function BreakevenWidget({
@@ -30,7 +30,7 @@ export function BreakevenWidget({
 }) {
   const s = useBreakevenData({ tenantId, clientId, basis, loadDelayMs });
   // Cost-classification prompts are preparer tooling; clients never see them.
-  const { isAdvisor } = useIsAdvisor();
+  const { canManage: isAdvisor } = useCanManageClient(clientId);
 
   // One basis for the whole card: every money figure is monthly. Null until the
   // report, the stored classifications and the account list have all resolved —

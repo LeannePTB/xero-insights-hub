@@ -94,7 +94,7 @@ function ReportsPage() {
     queryFn: () => listFn({ data: { clientId } }),
   });
 
-  const isAdvisor = ctxQ.data?.isAdvisor ?? false;
+  const { canManage: isAdvisor } = useCanManageClient(clientId);
   const isSuperAdmin = ctxQ.data?.isSuperAdmin ?? false;
 
 

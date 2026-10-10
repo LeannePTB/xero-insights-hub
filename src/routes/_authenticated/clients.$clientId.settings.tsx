@@ -296,7 +296,8 @@ function ClientSettings() {
   // Defence in depth: this page is preparer tooling. Anyone who is not an
   // advisor is sent to their own client dashboard. Server-side checks are
   // unchanged and remain the real protection.
-  const isAdvisorHere = !!myCtxQ.data?.isAdvisor;
+  const capsQ = useCanManageClient(clientId);
+  const isAdvisorHere = capsQ.canManage;
   useEffect(() => {
     if (myCtxQ.isLoading || !myCtxQ.data) return;
     if (!isAdvisorHere) {
