@@ -48,6 +48,7 @@ import { Route as AuthenticatedClientsClientIdSettingsRouteImport } from './rout
 import { Route as AuthenticatedFirmsFirmIdIndexRouteImport } from './routes/_authenticated/firms.$firmId.index'
 import { Route as AuthenticatedFirmsFirmIdConsolidationsRouteImport } from './routes/_authenticated/firms.$firmId.consolidations'
 import { Route as AuthenticatedFirmsFirmIdLoansRouteImport } from './routes/_authenticated/firms.$firmId.loans'
+import { Route as AuthenticatedFirmsFirmIdOverviewRouteImport } from './routes/_authenticated/firms.$firmId.overview'
 import { Route as AuthenticatedFirmsFirmIdPeopleRouteImport } from './routes/_authenticated/firms.$firmId.people'
 import { Route as AuthenticatedFirmsFirmIdSettingsRouteImport } from './routes/_authenticated/firms.$firmId.settings'
 import { Route as AuthenticatedFirmsFirmIdXeroFilesRouteImport } from './routes/_authenticated/firms.$firmId.xero-files'
@@ -291,6 +292,12 @@ const AuthenticatedFirmsFirmIdLoansRoute =
     path: '/loans',
     getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
   } as any)
+const AuthenticatedFirmsFirmIdOverviewRoute =
+  AuthenticatedFirmsFirmIdOverviewRouteImport.update({
+    id: '/overview',
+    path: '/overview',
+    getParentRoute: () => AuthenticatedFirmsFirmIdRoute,
+  } as any)
 const AuthenticatedFirmsFirmIdPeopleRoute =
   AuthenticatedFirmsFirmIdPeopleRouteImport.update({
     id: '/people',
@@ -492,6 +499,7 @@ export interface FileRoutesByFullPath {
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
+  '/firms/$firmId/overview': typeof AuthenticatedFirmsFirmIdOverviewRoute
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRouteWithChildren
   '/firms/$firmId/xero-files': typeof AuthenticatedFirmsFirmIdXeroFilesRoute
@@ -556,6 +564,7 @@ export interface FileRoutesByTo {
   '/clients/$clientId/reports': typeof AuthenticatedClientsClientIdReportsRoute
   '/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
+  '/firms/$firmId/overview': typeof AuthenticatedFirmsFirmIdOverviewRoute
   '/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/firms/$firmId/xero-files': typeof AuthenticatedFirmsFirmIdXeroFilesRoute
   '/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
@@ -625,6 +634,7 @@ export interface FileRoutesById {
   '/_authenticated/clients/$clientId/settings': typeof AuthenticatedClientsClientIdSettingsRoute
   '/_authenticated/firms/$firmId/consolidations': typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   '/_authenticated/firms/$firmId/loans': typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
+  '/_authenticated/firms/$firmId/overview': typeof AuthenticatedFirmsFirmIdOverviewRoute
   '/_authenticated/firms/$firmId/people': typeof AuthenticatedFirmsFirmIdPeopleRoute
   '/_authenticated/firms/$firmId/settings': typeof AuthenticatedFirmsFirmIdSettingsRouteWithChildren
   '/_authenticated/firms/$firmId/xero-files': typeof AuthenticatedFirmsFirmIdXeroFilesRoute
@@ -695,6 +705,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/settings'
     | '/firms/$firmId/consolidations'
     | '/firms/$firmId/loans'
+    | '/firms/$firmId/overview'
     | '/firms/$firmId/people'
     | '/firms/$firmId/settings'
     | '/firms/$firmId/xero-files'
@@ -759,6 +770,7 @@ export interface FileRouteTypes {
     | '/clients/$clientId/reports'
     | '/clients/$clientId/settings'
     | '/firms/$firmId/consolidations'
+    | '/firms/$firmId/overview'
     | '/firms/$firmId/people'
     | '/firms/$firmId/xero-files'
     | '/system/organisations/$firmId'
@@ -827,6 +839,7 @@ export interface FileRouteTypes {
     | '/_authenticated/clients/$clientId/settings'
     | '/_authenticated/firms/$firmId/consolidations'
     | '/_authenticated/firms/$firmId/loans'
+    | '/_authenticated/firms/$firmId/overview'
     | '/_authenticated/firms/$firmId/people'
     | '/_authenticated/firms/$firmId/settings'
     | '/_authenticated/firms/$firmId/xero-files'
@@ -1160,6 +1173,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFirmsFirmIdLoansRouteImport
       parentRoute: typeof AuthenticatedFirmsFirmIdRoute
     }
+    '/_authenticated/firms/$firmId/overview': {
+      id: '/_authenticated/firms/$firmId/overview'
+      path: '/overview'
+      fullPath: '/firms/$firmId/overview'
+      preLoaderRoute: typeof AuthenticatedFirmsFirmIdOverviewRouteImport
+      parentRoute: typeof AuthenticatedFirmsFirmIdRoute
+    }
     '/_authenticated/firms/$firmId/people': {
       id: '/_authenticated/firms/$firmId/people'
       path: '/people'
@@ -1450,6 +1470,7 @@ const AuthenticatedFirmsFirmIdSettingsRouteWithChildren =
 interface AuthenticatedFirmsFirmIdRouteChildren {
   AuthenticatedFirmsFirmIdConsolidationsRoute: typeof AuthenticatedFirmsFirmIdConsolidationsRoute
   AuthenticatedFirmsFirmIdLoansRoute: typeof AuthenticatedFirmsFirmIdLoansRouteWithChildren
+  AuthenticatedFirmsFirmIdOverviewRoute: typeof AuthenticatedFirmsFirmIdOverviewRoute
   AuthenticatedFirmsFirmIdPeopleRoute: typeof AuthenticatedFirmsFirmIdPeopleRoute
   AuthenticatedFirmsFirmIdSettingsRoute: typeof AuthenticatedFirmsFirmIdSettingsRouteWithChildren
   AuthenticatedFirmsFirmIdXeroFilesRoute: typeof AuthenticatedFirmsFirmIdXeroFilesRoute
@@ -1463,6 +1484,8 @@ const AuthenticatedFirmsFirmIdRouteChildren: AuthenticatedFirmsFirmIdRouteChildr
       AuthenticatedFirmsFirmIdConsolidationsRoute,
     AuthenticatedFirmsFirmIdLoansRoute:
       AuthenticatedFirmsFirmIdLoansRouteWithChildren,
+    AuthenticatedFirmsFirmIdOverviewRoute:
+      AuthenticatedFirmsFirmIdOverviewRoute,
     AuthenticatedFirmsFirmIdPeopleRoute: AuthenticatedFirmsFirmIdPeopleRoute,
     AuthenticatedFirmsFirmIdSettingsRoute:
       AuthenticatedFirmsFirmIdSettingsRouteWithChildren,

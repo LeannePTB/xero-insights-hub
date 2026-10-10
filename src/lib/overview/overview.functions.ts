@@ -148,7 +148,7 @@ export type HiddenItem = {
 /** What the caller has hidden and could bring back (caller-scoped in the DB). */
 export const getHiddenOverviewItems = createServerFn({ method: "POST" })
   .middleware([requireAal2])
-  .inputValidator((i: unknown) => Input.parse(i))
+  .inputValidator((i: unknown) => HiddenInput.parse(i))
   .handler(async ({ context }): Promise<{ items: HiddenItem[] }> => {
     const { data, error } = await (context.supabase as any).rpc("overview_hidden_items");
     if (error) {
