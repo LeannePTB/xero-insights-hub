@@ -4066,11 +4066,27 @@ export type Database = {
           white_label_enabled: boolean
         }[]
       }
+      workspace_branding_for_client_v2: {
+        Args: { _client_id: string }
+        Returns: {
+          firm_id: string
+          organisation_name: string
+          white_label_enabled: boolean
+        }[]
+      }
       workspace_branding_for_firm: {
         Args: { _firm_id: string }
         Returns: {
           firm_id: string
           logo_path: string
+          organisation_name: string
+          white_label_enabled: boolean
+        }[]
+      }
+      workspace_branding_for_firm_v2: {
+        Args: { _firm_id: string }
+        Returns: {
+          firm_id: string
           organisation_name: string
           white_label_enabled: boolean
         }[]

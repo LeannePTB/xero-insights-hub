@@ -155,6 +155,13 @@
       "when": 1791610538999,
       "tag": "0021_add_white_label_service_entitlement_reader",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1791611123204,
+      "tag": "0022_secure_workspace_branding_reader",
+      "breakpoints": true
     }
   ]
 }
