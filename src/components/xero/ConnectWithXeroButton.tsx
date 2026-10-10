@@ -42,13 +42,13 @@ export const ConnectWithXeroButton = React.forwardRef<
         "disabled:cursor-not-allowed disabled:opacity-60",
         size === "sm" ? "h-8 px-3 text-xs" : "h-10 px-4 text-sm",
         isDisconnect
-          ? "border border-[#13B5EA] bg-white text-[#13B5EA] hover:bg-[#13B5EA]/10 focus-visible:ring-[#13B5EA]/40"
-          : "bg-[#13B5EA] text-white hover:bg-[#0fa3d3] focus-visible:ring-[#13B5EA]/50",
+          ? "border border-xero bg-brand-surface text-brand-navy hover:bg-xero/10 focus-visible:ring-ring"
+          : "bg-xero text-xero-foreground hover:bg-xero/90 focus-visible:ring-ring",
         className,
       )}
       aria-label={text}
     >
-      <XeroMark className={cn(size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4", isDisconnect ? "text-[#13B5EA]" : "text-white")} />
+      <XeroMark className={cn(size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4", "text-brand-navy")} />
       <span>{children ?? text}</span>
     </button>
   );
