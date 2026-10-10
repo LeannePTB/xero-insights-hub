@@ -2,6 +2,8 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { BarChart3, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspaceBranding } from "@/hooks/useWorkspaceBranding";
+import { DEFAULT_BRANDING } from "@/hooks/usePlatformBranding";
+
 
 export function ViewerClientNav() {
   const brand = useWorkspaceBranding();
