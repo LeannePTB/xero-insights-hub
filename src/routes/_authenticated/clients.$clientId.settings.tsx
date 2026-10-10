@@ -6,13 +6,16 @@ import { ClientPageHeader } from "@/components/clients/ClientPageHeader";
 export const Route = createFileRoute("/_authenticated/clients/$clientId/settings")({
   beforeLoad: ({ params, location }) => {
     if (location.pathname.endsWith("/settings")) {
-      throw redirect({ to: "/clients/$clientId/settings/general", params: { clientId: params.clientId }, search: location.search });
+      const callback = location.search as { xero?: string; error?: string };
+      throw redirect({
+        to: callback.xero || callback.error
+          ? "/clients/$clientId/settings/xero"
+          : "/clients/$clientId/settings/general",
+        params: { clientId: params.clientId },
+        search: callback as never,
+      });
     }
   },
-  validateSearch: (search: Record<string, unknown>) => ({
-    xero: typeof search.xero === "string" ? search.xero : undefined,
-    error: typeof search.error === "string" ? search.error : undefined,
-  }),
   component: ClientSettingsLayout,
 });
 

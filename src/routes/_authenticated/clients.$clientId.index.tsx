@@ -11,7 +11,7 @@ import { getMyContext } from "@/lib/roles.functions";
 import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { LogOut, Loader2, Building2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle } from "lucide-react";
 import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.functions";
 import { toast } from "sonner";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
