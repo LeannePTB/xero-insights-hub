@@ -7,7 +7,7 @@ import trixieIcon from "@/assets/trixie-icon.svg";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Conversation, ConversationContent, ConversationEmptyState, ConversationScrollButton } from "@/components/ai-elements/conversation";
-import { Message, MessageAvatar, MessageContent, MessageResponse } from "@/components/ai-elements/message";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import { PromptInput, PromptInputFooter, PromptInputSubmit, PromptInputTextarea } from "@/components/ai-elements/prompt-input";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { Shimmer } from "@/components/ai-elements/shimmer";
@@ -20,9 +20,11 @@ export function TrixieWidget() {
   const location = useLocation();
   const transport = useMemo(() => new DefaultChatTransport({
     api: "/api/trixie",
-    headers: async () => {
+    fetch: async (input, init) => {
       const { data } = await supabase.auth.getSession();
-      return data.session?.access_token ? { Authorization: `Bearer ${data.session.access_token}` } : {};
+      const headers = new Headers(init?.headers);
+      if (data.session?.access_token) headers.set("Authorization", `Bearer ${data.session.access_token}`);
+      return fetch(input, { ...init, headers });
     },
     body: () => ({ pathname: location.pathname }),
   }), [location.pathname]);
@@ -47,7 +49,7 @@ export function TrixieWidget() {
                 <ConversationEmptyState icon={<img src={trixieIcon} alt="" className="h-12 w-12" />} title="Ask Trixie" description="Get help with this page or ask about the client figures shown here." />
               ) : messages.map((message) => (
                 <Message key={message.id} from={message.role}>
-                  {message.role === "assistant" && <MessageAvatar src={trixieIcon} name="Trixie" />}
+                  {message.role === "assistant" && <img src={trixieIcon} alt="" className="h-8 w-8 shrink-0" />}
                   <MessageContent className={message.role === "user" ? "bg-primary text-primary-foreground" : "bg-transparent px-0"}>
                     {message.parts.map((part, index) => part.type === "text" ? <MessageResponse key={`${message.id}-${index}`}>{part.text}</MessageResponse> : null)}
                   </MessageContent>

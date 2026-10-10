@@ -20,7 +20,7 @@ export type NavIcon =
   | "chart"
   | "file"
   | "trending"
-  | "landmark";
+  | "landmark"
   | "message";
 
 export type NavItem = {
