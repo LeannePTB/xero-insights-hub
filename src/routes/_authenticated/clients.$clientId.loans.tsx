@@ -28,7 +28,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { MismatchDetailDialog } from "@/components/loan/MismatchDetailDialog";
-import { ArrowLeft, Loader2, ExternalLink, Settings2, AlertTriangle } from "lucide-react";
+import { Loader2, ExternalLink, Settings2, AlertTriangle } from "lucide-react";
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
@@ -54,6 +55,7 @@ export const Route = createFileRoute("/_authenticated/clients/$clientId/loans")(
 
 function LoansPage() {
   const { clientId } = Route.useParams();
+  const { canManage } = useCanManageClient(clientId);
   const qc = useQueryClient();
 
   const fetchClient = useServerFn(getClient);
@@ -110,21 +112,16 @@ function LoansPage() {
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-              <Link to="/clients/$clientId" params={{ clientId }}>
-                <ArrowLeft className="mr-1 h-4 w-4" /> {clientQ.data?.client?.name ?? "Client"}
-              </Link>
-            </Button>
             <h1 className="font-display text-2xl font-semibold">Company Loan Consolidation</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Reconciles the loan account in each Xero file against its paired loan account.
             </p>
           </div>
-          <Button variant="outline" asChild>
+          {canManage && <Button variant="outline" asChild>
             <Link to="/clients/$clientId/loans-accounts" params={{ clientId }}>
               <Settings2 className="mr-2 h-4 w-4" /> Set up accounts
             </Link>
-          </Button>
+          </Button>}
         </div>
 
         <div className="mb-6 flex flex-wrap items-center gap-3">
