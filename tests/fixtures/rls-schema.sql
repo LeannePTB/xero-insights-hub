@@ -2612,6 +2612,37 @@ BEGIN
 END;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.rename_my_organisation(_firm_id uuid, _name text)
+ RETURNS text
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare
+  _clean text := btrim(coalesce(_name, ''));
+  _old text;
+begin
+  perform app_private.assert_aal2();
+  if auth.uid() is null or _firm_id is null then
+    raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+  end if;
+  -- Owner only: the organisation's name is an ownership-level decision.
+  select f.name into _old from public.firms f
+   where f.id = _firm_id and f.owner_user_id = auth.uid();
+  if not found then
+    raise exception 'NO_ACCESS' using errcode = 'insufficient_privilege';
+  end if;
+  if char_length(_clean) < 2 or char_length(_clean) > 120 then
+    raise exception 'INVALID_NAME' using errcode = 'check_violation';
+  end if;
+  update public.firms set name = _clean where id = _firm_id;
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm_id, 'organisation_renamed_by_owner', 'firm', _firm_id::text,
+          jsonb_build_object('from', _old, 'to', _clean));
+  return _clean;
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql

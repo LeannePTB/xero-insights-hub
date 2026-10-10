@@ -40,7 +40,7 @@ fns as (
         'admin_assert_can_sign_out_user','record_sign_out_all_devices',
         'assert_super_admin','user_can_read_client',
         'record_view_as','xero_error_breakdown','set_org_trial','set_org_purchase',
-        'org_card_defaults','set_org_card_defaults','apply_org_card_defaults',
+        'org_card_defaults','set_org_card_defaults','apply_org_card_defaults','rename_my_organisation',
         'my_firm_memberships','me_is_practice_member','overview_clients',
          'set_overview_alert_state','user_can_write_firm',
          'can_manage_client_income_tax_instalments','save_client_income_tax_instalment',
