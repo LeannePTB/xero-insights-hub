@@ -272,7 +272,7 @@ export function GstReconciliationWidget({
               names the reasons the calculation actually found — never assumes
               manual journals. No balances, arithmetic or transaction detail. */}
           {!showWarnings && !data.ties && (data.tieReasons?.length ?? 0) > 0 && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-xs text-info border-info/30 bg-info/10 text-info">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <p className="font-medium">
                 These figures don't fully tie to the balance sheet
@@ -286,7 +286,7 @@ export function GstReconciliationWidget({
 
 
           {showWarnings && !data.complete && (
-            <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
+            <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 px-3 py-2 text-xs text-info border-info/30 bg-info/10 text-info">
               <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
               <p className="font-medium">
                 Incomplete — this estimate is missing part of its inputs. See the reasons below.
@@ -319,14 +319,14 @@ export function GstReconciliationWidget({
                 : "PAYG withheld is not included — see the reasons below."}
             </p>
             {data.vintages && !data.vintages.payRunsCoverPeriodEnd && (
-              <p className="mt-1 text-amber-800 dark:text-amber-200">
+              <p className="mt-1 text-info text-info">
                 The saved pay-run list stops before this period ends, so a pay run paid after{" "}
                 {data.vintages.payRunsAsAt} is not in the PAYG figure. Nothing has been assumed or
                 added in its place.
               </p>
             )}
             {data.vintages && !data.vintages.payRunsComplete && (
-              <p className="mt-1 text-amber-800 dark:text-amber-200">
+              <p className="mt-1 text-info text-info">
                 That saved list was a partial pull, so an older pay run inside this period may be
                 missing. Nothing has been estimated in its place.
               </p>
@@ -416,11 +416,11 @@ export function GstReconciliationWidget({
                   </div>
 
                   {!data.ties && (data.tieReasons?.length ?? 0) > 0 && (
-                    <div className="rounded-xl border border-amber-300 bg-amber-50 p-3 dark:border-amber-700/50 dark:bg-amber-950/30">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-amber-900 dark:text-amber-100">
+                    <div className="rounded-xl border border-info/30 bg-info/10 p-3 border-info/30 bg-info/10">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-info text-info">
                         Why it doesn't tie
                       </p>
-                      <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-amber-900 dark:text-amber-100">
+                      <ul className="mt-2 list-disc space-y-1.5 pl-4 text-xs text-info text-info">
                         {data.tieReasons.map((r, i) => (
                           <li key={i}>{r}</li>
                         ))}
@@ -435,7 +435,7 @@ export function GstReconciliationWidget({
                   </p>
 
                   {(data.issues.length ?? 0) > 0 && (
-                    <ul className="space-y-1 text-xs text-amber-600 dark:text-amber-400">
+                    <ul className="space-y-1 text-xs text-info text-info">
                       {data.issues.map((m, i) => (
                         <li key={i}>{m}</li>
                       ))}

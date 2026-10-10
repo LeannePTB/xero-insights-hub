@@ -12,14 +12,14 @@ function bandFor(score: number | null): "good" | "watch" | "bad" | "neutral" {
 
 const BAR: Record<"good" | "watch" | "bad" | "neutral", string> = {
   good: "bg-emerald-500",
-  watch: "bg-amber-500",
+  watch: "bg-info/10",
   bad: "bg-rose-500",
   neutral: "bg-muted-foreground/30",
 };
 
 const SCORE_TEXT: Record<"good" | "watch" | "bad" | "neutral", string> = {
   good: "text-emerald-700 dark:text-emerald-400",
-  watch: "text-amber-700 dark:text-amber-400",
+  watch: "text-info text-info",
   bad: "text-rose-700 dark:text-rose-400",
   neutral: "text-muted-foreground",
 };

@@ -85,8 +85,8 @@ export function BreakevenWidget({
       ) : s.classificationError ? (
         // A failed classification read is said out loud. Falling back to the
         // defaults here would show a confident, wrong fixed-cost figure.
-        <div className="mt-6 flex items-start gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+        <div className="mt-6 flex items-start gap-3 rounded-lg border border-info/30 bg-info/10 p-4 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-info" />
           <div className="space-y-2">
             <p className="font-medium text-foreground">Break-even cannot be worked out just now</p>
             <p className="text-muted-foreground">
@@ -259,7 +259,7 @@ export function BreakevenWidget({
                               <span className="ml-1.5 text-[10px] text-muted-foreground">(cost of sales)</span>
                             )}
                             {l.unclassified && (
-                              <span className="ml-1.5 text-[10px] text-amber-600">(unclassified)</span>
+                              <span className="ml-1.5 text-[10px] text-info">(unclassified)</span>
                             )}
                           </span>
                           <span className="font-mono tabular-nums text-foreground">{fmtAUD(l.amount)}</span>
@@ -339,7 +339,7 @@ export function BreakevenWidget({
             </details>
 
             {s.unitemisedBalance !== 0 && s.unitemisedMaterial && (
-              <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info text-info">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1">
                   {fmtAUD(s.unitemisedBalance)} of the fixed costs below could not be matched to a
@@ -353,7 +353,7 @@ export function BreakevenWidget({
                 a figure they are shown rests on an assumption. Same disclosure
                 either way; only the action link is preparer-facing. */}
             {s.classificationEnabled && s.unclassifiedCount > 0 && (
-              <div className="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-xs text-amber-900 dark:text-amber-200">
+              <div className="mt-4 flex items-start gap-2 rounded-lg border border-info/30 bg-info/10 p-3 text-xs text-info text-info">
                 <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <div className="flex-1">
                   {isAdvisor && clientId ? (

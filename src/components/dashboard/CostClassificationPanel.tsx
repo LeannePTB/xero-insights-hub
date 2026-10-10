@@ -247,7 +247,7 @@ export function CostClassificationPanel({
       ) : (
         <>
           {!wagesOnly && unclassifiedCount > 0 && (
-            <p className="mb-3 rounded-md border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-amber-900 dark:text-amber-200">
+            <p className="mb-3 rounded-md border border-info/30 bg-info/10 px-3 py-2 text-xs text-info text-info">
               {unclassifiedCount} account{unclassifiedCount === 1 ? "" : "s"} still unclassified —
               treated as fixed in break-even and the cash-flow scenario.{" "}
               <Button

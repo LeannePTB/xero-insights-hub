@@ -35,14 +35,14 @@ export function ClientTrialNotice({ clientId }: { clientId: string }) {
     <div
       className={
         t.endingSoon
-          ? "mt-6 flex items-start gap-2 rounded-md border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm"
+          ? "mt-6 flex items-start gap-2 rounded-md border border-info/30 bg-info/10 px-4 py-3 text-sm"
           : "mt-6 flex items-start gap-2 rounded-md border bg-muted/40 px-4 py-3 text-sm"
       }
     >
       <Clock
         className={
           t.endingSoon
-            ? "mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400"
+            ? "mt-0.5 h-4 w-4 shrink-0 text-info text-info"
             : "mt-0.5 h-4 w-4 shrink-0 text-muted-foreground"
         }
       />

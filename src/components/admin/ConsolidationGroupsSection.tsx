@@ -229,7 +229,7 @@ export function ConsolidationGroupsSection({ firmId }: { firmId: string }) {
             </div>
 
             {selected.size < 2 && (
-              <p className="text-xs text-amber-600">Select at least two companies.</p>
+              <p className="text-xs text-info">Select at least two companies.</p>
             )}
 
             <Button

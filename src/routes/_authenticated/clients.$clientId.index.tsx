@@ -665,7 +665,7 @@ function XeroConnectionBanner({
   if (!checks.data || checks.data.length === 0) return null;
   const names = checks.data.map((c) => c.tenantName ?? "Xero org").join(", ");
   return (
-    <div className="mt-6 flex items-start gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 dark:border-amber-700/50 dark:bg-amber-950/30 dark:text-amber-100">
+    <div className="mt-6 flex items-start gap-3 rounded-2xl border border-info/30 bg-info/10 p-4 text-info border-info/30 bg-info/10 text-info">
       <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">Xero connection needs to be reconnected</p>

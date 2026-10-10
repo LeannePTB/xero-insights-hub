@@ -22,7 +22,7 @@ export function HealthScoreDonut({ score, band, size = 96 }: Props) {
     band === "strong"
       ? "text-foreground"
       : band === "watch"
-        ? "text-amber-700 dark:text-amber-400"
+        ? "text-info text-info"
         : "text-destructive";
 
   return (

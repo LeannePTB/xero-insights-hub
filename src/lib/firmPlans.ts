@@ -152,7 +152,7 @@ export function toneClasses(tone: FirmPlanView["statusTone"]): string {
   switch (tone) {
     case "emerald": return "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-900";
     case "sky": return "bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-950/40 dark:text-sky-300 dark:border-sky-900";
-    case "amber": return "bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-900";
+    case "amber": return "bg-info/10 text-info border-info/30 bg-info/10 text-info border-info/30";
     case "red": return "bg-red-50 text-red-700 border-red-200 dark:bg-red-950/40 dark:text-red-300 dark:border-red-900";
     default: return "bg-muted text-muted-foreground border-border";
   }
