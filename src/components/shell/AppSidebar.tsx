@@ -43,6 +43,7 @@ import { SecurityStatusCard } from "@/components/admin/SecurityStatusCard";
 import { getMyContext } from "@/lib/roles.functions";
 import { listMyFirms } from "@/lib/firms.functions";
 import { getClient } from "@/lib/clients.functions";
+import { getMyClientCapabilities } from "@/lib/roles.functions";
 import { useSignOut } from "@/lib/use-sign-out";
 import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import {
@@ -111,7 +112,19 @@ export function AppSidebar({ badges = {} }: { badges?: Record<string, number> })
     .map((o) => o?.xero_connections)
     .filter((c) => c?.tenant_id)
     .map((c) => ({ tenantId: c.tenant_id as string, name: (c.tenant_name as string) || "Xero file" }));
-  const groups = navForWorkspace(workspace, { canSeeSystem, clientFiles });
+  const fetchCanManage = useServerFn(getMyClientCapabilities);
+  const manageQ = useQuery({
+    queryKey: ["can-manage-client", clientId],
+    queryFn: () => fetchCanManage({ data: { clientId: clientId! } }),
+    enabled: !!clientId,
+    retry: false,
+  });
+  const groups = navForWorkspace(workspace, { canSeeSystem, clientFiles }).map((group) => ({
+    ...group,
+    items: workspace.kind === "client" && manageQ.data?.canManageClient !== true
+      ? group.items.filter((item) => !["cashflow", "loans", "client-settings"].includes(item.id))
+      : group.items,
+  }));
 
   const onNavigate = () => {
     if (isMobile) setOpenMobile(false);

@@ -1657,3 +1657,11 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - CLOSED: hard-coded PRIMARY_ADVISOR_USER_ID removed. `admin_remove_advisor` now refuses removing the last super admin in the database (self-removal still allowed while another advisor and super admin remain).
 - CLOSED: getMyContext conflated `isAdvisor` / `hasAdminAreaAccess` replaced by `isPlatformStaff`, `memberships`, `isOrganisationMember`, `isClientViewer`; client staff controls use `me_can_manage_client` (screen signal only).
 - CHANGED (owner-approved): `overview_clients(_firm_id)` requires active organisation membership instead of practice_team; still requires `user_can_read_client`; `_firm_id` is a filter only.
+
+## 2026-10-09 — Client workspace, platform branding and overview routing
+- Classification: SECURITY-RELEVANT review; presentation/routing implementation. Client/Xero data screens, PDFs and email rendering were touched, but no RLS policy, grant, role, entitlement or access predicate changed.
+- Guard review: Loans, Cash flow scenario and Xero Audit writes all retain their dedicated server/database write checks. `me_can_manage_client` is used only to hide staff-only navigation and mutation controls from read-only viewers. Route IDs and organisation IDs remain filters, never grants.
+- Reports: draft PDF generation resolves organisation → platform → bundled primary logos and keeps the entitled client logo secondary. Existing final/sent PDFs remain immutable. Email webhook verification, queueing, suppression and domains are unchanged; only sender display and product copy use public platform branding.
+- Verification: `bunx tsgo` clean; production build passed; focused sidebar/landing tests passed (15); `security:check` passed (129 tests, 1,754 matrix proofs, 18 live checks; no known failures). The generated definer register was refreshed to the current 200 functions after the first check detected it was stale.
+- Database evidence: no database objects changed. Database linter returned 131 permission-context findings across 131 functions for the tooling role. `security_posture()` remains unverified because the tooling role was denied EXECUTE; no privilege bypass was attempted.
+- Visual verification: authenticated browser review remains unperformed where the second sign-in factor is required.

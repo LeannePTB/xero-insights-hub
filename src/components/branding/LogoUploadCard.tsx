@@ -1,3 +1,4 @@
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -40,6 +41,7 @@ export function LogoUploadCard({
   title?: string;
   description?: string;
 }) {
+  const platformBrand = usePlatformBranding();
   const qc = useQueryClient();
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -116,7 +118,7 @@ export function LogoUploadCard({
         {title && <h3 className="font-display text-base font-semibold">{title}</h3>}
         <p className="text-sm text-muted-foreground">
           Client logos on reports are part of Branding, which this organisation has not taken up.
-          Reports use the Traction Advisory heading instead.
+          Reports use the {platformBrand.productName} heading instead.
         </p>
         <p className="text-xs text-muted-foreground">
           Any logo uploaded before is kept — it simply is not used, and returns if Branding is

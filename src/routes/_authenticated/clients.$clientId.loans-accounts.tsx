@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -43,7 +43,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Loader2, Plus, Link2, Unlink, Trash2, Search } from "lucide-react";
+import { Loader2, Plus, Link2, Unlink, Trash2, Search } from "lucide-react";
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/loans-accounts")({
   head: () => ({ meta: [{ title: "Loan accounts — Traction Advisory" }] }),
@@ -52,6 +53,7 @@ export const Route = createFileRoute("/_authenticated/clients/$clientId/loans-ac
 
 function LoansAccountsPage() {
   const { clientId } = Route.useParams();
+  const { canManage } = useCanManageClient(clientId);
   const qc = useQueryClient();
 
   const fetchClient = useServerFn(getClient);
@@ -154,11 +156,6 @@ function LoansAccountsPage() {
       <main className="mx-auto max-w-5xl px-6 py-10">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-              <Link to="/clients/$clientId/loans" params={{ clientId }}>
-                <ArrowLeft className="mr-1 h-4 w-4" /> Loan Consolidation
-              </Link>
-            </Button>
             <h1 className="font-display text-2xl font-semibold">Set up loan accounts</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {clientQ.data?.client?.name ?? "Client"} — choose the loan account in each Xero file and
@@ -182,20 +179,20 @@ function LoansAccountsPage() {
               </SelectContent>
             </Select>
           </div>
-          <Button
+          {canManage && <Button
             variant="outline"
             onClick={() => setAddOpen(true)}
             disabled={!tenantId}
           >
             <Plus className="mr-2 h-4 w-4" /> Add account
-          </Button>
-          {selectedArray.length === 2 && (
+          </Button>}
+          {canManage && selectedArray.length === 2 && (
             <Button onClick={() => pairMut.mutate([selectedArray[0], selectedArray[1]])} disabled={pairMut.isPending}>
               {pairMut.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
               Pair selected
             </Button>
           )}
-          {selectedArray.length > 2 && (
+          {canManage && selectedArray.length > 2 && (
             <p className="text-xs text-muted-foreground">Select exactly two accounts to pair.</p>
           )}
         </div>
@@ -236,6 +233,7 @@ function LoansAccountsPage() {
                   onDirection={(d) => updateMut.mutate({ id: row.id, direction: d })}
                   onUnpair={() => unpairMut.mutate(row.id)}
                   onDelete={() => deleteMut.mutate(row.id)}
+                  canManage={canManage}
                 />
               ))}
             </TableBody>
@@ -261,6 +259,7 @@ function Row({
   onDirection,
   onUnpair,
   onDelete,
+  canManage,
 }: {
   row: LoanAccountRow;
   checked: boolean;
@@ -268,11 +267,12 @@ function Row({
   onDirection: (d: "payable" | "receivable") => void;
   onUnpair: () => void;
   onDelete: () => void;
+  canManage: boolean;
 }) {
   return (
     <TableRow className={checked ? "bg-accent/40" : undefined}>
       <TableCell>
-        <Checkbox checked={checked} onCheckedChange={onToggle} />
+        {canManage ? <Checkbox checked={checked} onCheckedChange={onToggle} /> : null}
       </TableCell>
       <TableCell>
         <p className="font-medium">
@@ -283,7 +283,7 @@ function Row({
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">{row.tenant_name ?? row.tenant_id}</TableCell>
       <TableCell>
-        <Select value={row.direction} onValueChange={(v) => onDirection(v as "payable" | "receivable")}>
+        {canManage ? <Select value={row.direction} onValueChange={(v) => onDirection(v as "payable" | "receivable")}>
           <SelectTrigger className="h-8 w-32">
             <SelectValue />
           </SelectTrigger>
@@ -291,7 +291,7 @@ function Row({
             <SelectItem value="payable">Payable</SelectItem>
             <SelectItem value="receivable">Receivable</SelectItem>
           </SelectContent>
-        </Select>
+        </Select> : <span className="text-sm capitalize">{row.direction}</span>}
       </TableCell>
       <TableCell>
         {row.counterparty_account_id ? (
@@ -307,14 +307,14 @@ function Row({
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
-          {row.counterparty_account_id && (
+          {canManage && row.counterparty_account_id && (
             <Button variant="ghost" size="sm" onClick={onUnpair} title="Unpair">
               <Unlink className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={onDelete} title="Remove">
+          {canManage && <Button variant="ghost" size="sm" onClick={onDelete} title="Remove">
             <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          </Button>}
         </div>
       </TableCell>
     </TableRow>

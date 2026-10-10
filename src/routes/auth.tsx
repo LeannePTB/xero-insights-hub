@@ -1,3 +1,4 @@
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,6 +48,7 @@ async function routeAfterAuth(navigate: (opts: { to: string; replace?: boolean }
 }
 
 function AuthPage() {
+  const platformBrand = usePlatformBranding();
   const navigate = useNavigate();
   const signOut = useSignOut();
   const [email, setEmail] = useState("");
@@ -242,7 +244,7 @@ function AuthPage() {
           </p>
         </div>
         <p className="relative z-20 text-xs text-primary-foreground/70">
-          © {new Date().getFullYear()} Traction Advisory ·{" "}
+          © {new Date().getFullYear()} {platformBrand.productName} ·{" "}
           <Link to="/security" className="underline underline-offset-2 hover:text-primary-foreground">
             Report a security issue
           </Link>

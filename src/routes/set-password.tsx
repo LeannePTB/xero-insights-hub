@@ -1,3 +1,4 @@
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/set-password")({
 });
 
 function SetPasswordPage() {
+  const platformBrand = usePlatformBranding();
   const navigate = useNavigate();
   const [hasSession, setHasSession] = useState<boolean | null>(null);
   const [password, setPassword] = useState("");
@@ -75,7 +77,7 @@ function SetPasswordPage() {
             Choose a password so you can sign back in any time.
           </p>
         </div>
-        <p className="text-xs text-primary-foreground/55">© {new Date().getFullYear()} Traction Advisory</p>
+        <p className="text-xs text-primary-foreground/55">© {new Date().getFullYear()} {platformBrand.productName}</p>
       </div>
 
       <div className="flex items-center justify-center p-6">

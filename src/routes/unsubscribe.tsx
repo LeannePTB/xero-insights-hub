@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 
 export const Route = createFileRoute("/unsubscribe")({
   head: () => ({ meta: [{ title: "Unsubscribe — Traction Advisory" }] }),
@@ -17,6 +18,7 @@ type State =
   | { kind: "submitting" };
 
 function UnsubscribePage() {
+  const platformBrand = usePlatformBranding();
   const [state, setState] = useState<State>({ kind: "loading" });
   const token = typeof window !== "undefined"
     ? new URLSearchParams(window.location.search).get("token")
@@ -65,7 +67,7 @@ function UnsubscribePage() {
         {state.kind === "ready" && (
           <>
             <p className="text-sm text-muted-foreground">
-              Click below to unsubscribe from Traction Advisory emails.
+              Click below to unsubscribe from {platformBrand.productName} emails.
             </p>
             <Button onClick={confirm}>Confirm unsubscribe</Button>
           </>

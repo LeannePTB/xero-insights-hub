@@ -37,17 +37,22 @@ describe("active matching", () => {
 });
 
 describe("client Xero file items", () => {
-  it("hides Payables/Receivables with no files", () => {
+  it("hides Xero-file links with no files", () => {
     expect(clientFileItems([])).toEqual([]);
   });
   it("links straight through with one file", () => {
-    const [p] = clientFileItems([{ tenantId: "t1", name: "A" }]);
-    expect(p.to).toBe("/clients/$clientId/payables/t1");
-    expect(p.children).toBeUndefined();
+    const [xero] = clientFileItems([{ tenantId: "t1", name: "A" }]);
+    expect(xero.to).toBe("/clients/$clientId/audit/t1");
+    expect(xero.children?.map((child) => child.to)).toEqual([
+      "/clients/$clientId/payables/t1",
+      "/clients/$clientId/receivables/t1",
+      "/clients/$clientId/audit/t1",
+    ]);
   });
   it("lists each file as a sub-item with several", () => {
-    const [, r] = clientFileItems([{ tenantId: "t1", name: "A" }, { tenantId: "t2", name: "B" }]);
-    expect(r.children?.map((c) => c.to)).toEqual(["/clients/$clientId/receivables/t1", "/clients/$clientId/receivables/t2"]);
+    const [xero] = clientFileItems([{ tenantId: "t1", name: "A" }, { tenantId: "t2", name: "B" }]);
+    const receivables = xero.children?.find((child) => child.id === "receivables");
+    expect(receivables?.children?.map((c) => c.to)).toEqual(["/clients/$clientId/receivables/t1", "/clients/$clientId/receivables/t2"]);
   });
 });
 

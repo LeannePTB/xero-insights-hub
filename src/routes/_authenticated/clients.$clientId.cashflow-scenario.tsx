@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { ArrowLeft, ChevronRight, Loader2, RefreshCw, RotateCcw } from "lucide-react";
+import { ChevronRight, Loader2, RefreshCw, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Switch } from "@/components/ui/switch";
@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AppHeader } from "@/components/AppHeader";
+import { useCanManageClient } from "@/hooks/useCanManageClient";
 import { getClient } from "@/lib/clients.functions";
 import { formatMoney, useTenantCurrency } from "@/components/dashboard/useTenantCurrency";
 import { XeroErrorNotice } from "@/components/dashboard/XeroLoadState";
@@ -69,6 +69,7 @@ export const Route = createFileRoute("/_authenticated/clients/$clientId/cashflow
 
 function CashflowScenarioPage() {
   const { clientId } = Route.useParams();
+  const { canManage } = useCanManageClient(clientId);
   const search = Route.useSearch();
   const qc = useQueryClient();
 
@@ -204,16 +205,6 @@ function CashflowScenarioPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader
-        actions={
-          <Button variant="secondary" size="sm" asChild>
-            <Link to="/clients/$clientId" params={{ clientId }}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Back
-            </Link>
-          </Button>
-        }
-      />
-
       <main className="mx-auto max-w-6xl px-6 py-10">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -245,14 +236,14 @@ function CashflowScenarioPage() {
             <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
               <RefreshCw className={`mr-2 h-4 w-4 ${isFetching ? "animate-spin" : ""}`} /> Refresh
             </Button>
-            <Button
+            {canManage && <Button
               variant="outline"
               size="sm"
               onClick={() => resetMut.mutate()}
               disabled={resetMut.isPending}
             >
               <RotateCcw className="mr-2 h-4 w-4" /> Reset scenario
-            </Button>
+            </Button>}
           </div>
         </div>
 
@@ -434,7 +425,7 @@ function CashflowScenarioPage() {
                     {view.monthInvoices.length}
                   </span>
                 </h2>
-                {view.monthInvoices.length > 0 && (
+                {canManage && view.monthInvoices.length > 0 && (
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="outline"
@@ -470,7 +461,7 @@ function CashflowScenarioPage() {
               </button>
 
               <div className={`${invoicesOpen ? "" : "hidden"}`}>
-                {customerNames.length > 0 && (
+                {canManage && customerNames.length > 0 && (
                   <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
                     <span className="text-xs text-muted-foreground">What if</span>
                     <Select value={customer} onValueChange={setCustomer}>
@@ -560,13 +551,13 @@ function CashflowScenarioPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="tabular-nums text-sm">{fmt(inv.amount)}</span>
-                        <Switch
+                        {canManage && <Switch
                           checked={!inv.excluded}
                           onCheckedChange={(on) =>
                             excludeMut.mutate({ xeroInvoiceId: inv.id, excluded: !on })
                           }
                           aria-label="Include in scenario"
-                        />
+                        />}
                       </div>
                     </div>
                   ))}

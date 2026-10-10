@@ -1,10 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { getPayablesList } from "@/lib/xero/payables.functions";
 import { Button } from "@/components/ui/button";
 import { AwaitingSnapshot, DataSourceLine } from "@/components/dashboard/DataSourceLine";
-import { ArrowLeft, Loader2, RefreshCw, Wallet, ExternalLink } from "lucide-react";
+import { Loader2, RefreshCw, Wallet, ExternalLink } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/clients/$clientId/payables/$tenantId")({
   head: () => ({ meta: [{ title: "Payables — Traction Advisory" }] }),
@@ -27,11 +27,6 @@ function PayablesPage() {
   return (
     <div className="min-h-screen bg-background">
       <main className="mx-auto max-w-6xl px-6 py-10">
-        <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-          <Link to="/clients/$clientId" params={{ clientId }}>
-            <ArrowLeft className="mr-1 h-4 w-4" /> Back to dashboard
-          </Link>
-        </Button>
         <div className="flex items-end justify-between gap-4">
           <div>
             <h1 className="font-display text-2xl font-semibold sm:text-3xl flex items-center gap-2">

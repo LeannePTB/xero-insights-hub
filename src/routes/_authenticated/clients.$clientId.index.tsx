@@ -12,8 +12,6 @@ import { getCardOrder, saveCardOrder } from "@/lib/dashboard-layout.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Settings, LogOut, Loader2, Building2, AlertCircle } from "lucide-react";
-import { ViewToggle } from "@/components/dashboard/ViewToggle";
-import { AppHeader } from "@/components/AppHeader";
 import { checkXeroConnection, startXeroConnect } from "@/lib/xero/connections.functions";
 import { toast } from "sonner";
 import { ConnectWithXeroButton } from "@/components/xero/ConnectWithXeroButton";
@@ -397,40 +395,10 @@ function ClientDashboard() {
           note="Preview only; data access is unchanged"
         />
       )}
-      <AppHeader />
-
       <main className="mx-auto max-w-6xl px-6 py-10">
         {/* SubscriptionGate disabled until payments re-enabled */}
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
           <div className="min-w-0">
-            {isAdvisor && (
-              <div className="flex flex-wrap items-center gap-x-4">
-                <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-                  {sourceFirmId || client.firm_id ? (
-                    <Link
-                      to="/firms/$firmId"
-                      params={{ firmId: sourceFirmId ?? (client.firm_id as string) }}
-                    >
-                      <ArrowLeft className="mr-1 h-4 w-4" /> Back to organisation
-                    </Link>
-                  ) : (
-                    <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> Back to organisation</Link>
-                  )}
-                </Button>
-                <Button variant="ghost" size="sm" asChild className="-ml-2 mb-2">
-                  {sourceFirmId || client.firm_id ? (
-                    <Link
-                      to="/firms/$firmId"
-                      params={{ firmId: sourceFirmId ?? (client.firm_id as string) }}
-                    >
-                      <ArrowLeft className="mr-1 h-4 w-4" /> All clients
-                    </Link>
-                  ) : (
-                    <Link to="/dashboard"><ArrowLeft className="mr-1 h-4 w-4" /> All clients</Link>
-                  )}
-                </Button>
-              </div>
-            )}
             <h1 className="truncate font-display text-2xl font-semibold sm:text-3xl">{client.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {cardCount} card{cardCount === 1 ? "" : "s"} enabled · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
@@ -438,12 +406,6 @@ function ClientDashboard() {
           </div>
           {isAdvisor && (
             <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              <ViewToggle clientId={clientId} active="live" />
-              <Button variant="outline" asChild>
-                <Link to="/clients/$clientId/settings" params={{ clientId }}>
-                  <Settings className="mr-2 h-4 w-4" /> Client Settings
-                </Link>
-              </Button>
               {/* One refresh control per dashboard. The throttle is enforced
                   server-side, per tenant; this button is a courtesy only.
                   Sits next to Client Settings, per the owner's layout. */}

@@ -31,7 +31,6 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "Traction Advisory"
 const SENDER_DOMAIN = "notify.tractionadvisory.app"
 const ROOT_DOMAIN = "tractionadvisory.com.au"
 const FROM_DOMAIN = "tractionadvisory.app"
@@ -47,6 +46,8 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const { getPlatformBrandingServer } = await import('@/lib/platform-branding.server')
+        const branding = await getPlatformBrandingServer()
         const apiKey = process.env.LOVABLE_API_KEY
 
         if (!apiKey) {
@@ -133,7 +134,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
 
         // Build template props from payload.data (HookData structure)
         const templateProps = {
-          siteName: SITE_NAME,
+          siteName: branding.productName,
           siteUrl: `https://${ROOT_DOMAIN}`,
           recipient: payload.data.email,
           confirmationUrl: payload.data.url,
@@ -177,7 +178,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
             run_id,
             message_id: messageId,
             to: payload.data.email,
-            from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+            from: `${branding.emailSenderName} <noreply@${FROM_DOMAIN}>`,
             sender_domain: SENDER_DOMAIN,
             subject: EMAIL_SUBJECTS[emailType] || 'Notification',
             html,

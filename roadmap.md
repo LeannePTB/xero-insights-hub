@@ -203,3 +203,9 @@ Separate from the card-model migration; no file or object shared with it.
 - [x] Batch 3 — nightly key-figures table (7 Oct; retention decision OPEN, first rows after tonight's run)
 - [x] Batch 4 — shared acknowledge/snooze via audited definer function (7 Oct)
 - [ ] Login stuck: backend unreachable (hosting); add clear error on Continue button once back
+
+## 2026-10-09 — Client workspace and platform branding
+- Client settings now have dedicated General, Cards & report branding, People, Xero connections, Tax & reporting, Cost & cash commitments and Danger zone routes; client Xero files include Payables, Receivables and Audit navigation.
+- Pure client viewers keep a compact Dashboard/Reports header. Staff-only scenario, loan, audit and settings controls use the existing caller-scoped management signal for presentation only.
+- Platform branding now drives browser favicon/title replacement, report PDF primary branding, app-email sender/product copy and spreadsheet creator metadata, with bundled assets as fallback.
+- Single-organisation users with no clients land on Clients; All organisations appears in the workspace switcher for multi-organisation members.

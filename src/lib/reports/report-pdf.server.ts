@@ -105,12 +105,14 @@ export type RenderInput = {
   status: string;
   version: number;
   title: string;
+  branding?: { productName: string; primaryLogo: string; clientLogo?: string | null };
 };
 
 /** Deterministic render of the stored payload. No network, no Xero. */
 export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   const { payload, status, version } = input;
   const m = payload.meta;
+  const branding = input.branding ?? { productName: "Traction Advisory", primaryLogo: logoWhiteUrl, clientLogo: null };
   const isDraft = status !== "final" && status !== "sent";
   const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
 
@@ -134,7 +136,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     const logoH = (LOGO_WHITE.h / LOGO_WHITE.w) * logoW;
     let drewLogo = false;
     try {
-      doc.addImage(logoWhiteUrl, "PNG", M.left, (BAND_H - logoH) / 2, logoW, logoH);
+      doc.addImage(branding.primaryLogo, "PNG", M.left, (BAND_H - logoH) / 2, logoW, logoH);
       drewLogo = true;
     } catch {
       /* fall back to a typographic wordmark below */
@@ -143,7 +145,10 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       doc.setFont("helvetica", "bold");
       doc.setFontSize(15);
       doc.setTextColor(255, 255, 255);
-      doc.text("Traction Advisory", M.left, BAND_H / 2 + 5);
+      doc.text(branding.productName, M.left, BAND_H / 2 + 5);
+    }
+    if (branding.clientLogo) {
+      try { doc.addImage(branding.clientLogo, "PNG", 180, 17, 76, 28); } catch { /* optional secondary mark */ }
     }
 
     const right = PAGE.w - M.right;
@@ -165,7 +170,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     doc.setFontSize(7.5);
     doc.setTextColor(INK.muted[0], INK.muted[1], INK.muted[2]);
     doc.text(
-      `${m.clientName} · ${m.monthLabel} · generated ${fmtDate(m.generatedAt)} by Traction Advisory · Version ${version}`,
+      `${m.clientName} · ${m.monthLabel} · generated ${fmtDate(m.generatedAt)} by ${branding.productName} · Version ${version}`,
       M.left,
       PAGE.h - 28,
     );
@@ -677,7 +682,7 @@ export async function getReportPdfUrl(opts: {
   const mustRender = !path || (!isFinal && (opts.regenerate ?? false));
   if (mustRender) {
     if (!isStaff) throw new Error("Ask your adviser to prepare this report for download.");
-    const built = await buildAndStoreReportPdf(report);
+    const built = await buildAndStoreReportPdf(report, { userId: opts.userId, supabase: opts.supabase });
     path = built.path;
     regenerated = true;
   }
@@ -714,15 +719,23 @@ export async function getReportPdfUrl(opts: {
  * Render the stored payload and upload it. Callers MUST have authorised the
  * actor first — this helper performs no access check of its own.
  */
-export async function buildAndStoreReportPdf(report: ReportRow): Promise<{ path: string }> {
+export async function buildAndStoreReportPdf(report: ReportRow, actor?: { userId: string; supabase: any }): Promise<{ path: string }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-  // Single brand: no organisation or client logo is read or drawn.
+  const { getPlatformBrandingServer } = await import("@/lib/platform-branding.server");
+  const platform = await getPlatformBrandingServer();
+  const { data: firm } = await (supabaseAdmin as any).from("firms").select("logo_path").eq("id", report.firm_id).maybeSingle();
+  const { data: client } = await (supabaseAdmin as any).from("clients").select("logo_path").eq("id", report.client_id).maybeSingle();
+  const { signLogo, clientBrandingEnabled } = await import("@/lib/branding.server");
+  const organisationLogo = await signLogo((firm as any)?.logo_path ?? null);
+  const mayUseClientLogo = actor ? await clientBrandingEnabled(actor.supabase, report.client_id) : true;
+  const clientLogo = mayUseClientLogo ? await signLogo((client as any)?.logo_path ?? null) : null;
+  const primaryLogo = organisationLogo ?? platform.logoDark ?? platform.logoLight ?? logoWhiteUrl;
   const bytes = renderMonthlyReportPdf({
     payload: report.payload,
     status: report.status,
     version: report.version,
     title: report.title ?? "Monthly Management Report",
+    branding: { productName: platform.productName, primaryLogo, clientLogo },
   });
 
 

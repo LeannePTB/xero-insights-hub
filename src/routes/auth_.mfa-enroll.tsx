@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Loader2, ShieldCheck } from "lucide-react";
+import { usePlatformBranding } from "@/hooks/usePlatformBranding";
 
 export const Route = createFileRoute("/auth_/mfa-enroll")({
   ssr: false,
@@ -17,6 +18,7 @@ export const Route = createFileRoute("/auth_/mfa-enroll")({
 type EnrollState = { factorId: string; qr: string; secret: string } | null;
 
 function MfaEnrollPage() {
+  const platformBrand = usePlatformBranding();
   const navigate = useNavigate();
   const [enroll, setEnroll] = useState<EnrollState>(null);
   const [code, setCode] = useState("");
@@ -54,7 +56,7 @@ function MfaEnrollPage() {
         const { data, error } = await supabase.auth.mfa.enroll({
           factorType: "totp",
           friendlyName: `Authenticator ${new Date().toISOString()} ${Date.now()}`,
-          issuer: "Traction Advisory",
+          issuer: platformBrand.productName,
         });
         if (error) throw error;
         setEnroll({ factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
@@ -65,7 +67,7 @@ function MfaEnrollPage() {
         console.error("[mfa-enroll]", e);
       }
     })();
-  }, [navigate]);
+  }, [navigate, platformBrand.productName]);
 
   async function handleVerify(e: React.FormEvent) {
     e.preventDefault();

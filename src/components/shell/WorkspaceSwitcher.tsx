@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, ChevronsUpDown, ShieldCheck } from "lucide-react";
+import { Building2, ChevronsUpDown, LayoutGrid, ShieldCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -52,6 +52,11 @@ export function WorkspaceSwitcher({ workspace, canSeeSystem, organisations }: Pr
               </>
             )}
             <DropdownMenuLabel>Organisations</DropdownMenuLabel>
+            {organisations.length > 1 && (
+              <DropdownMenuItem onSelect={() => navigate({ to: "/overview" })}>
+                <LayoutGrid className="mr-2 h-4 w-4" /> All organisations
+              </DropdownMenuItem>
+            )}
             {organisations.map((o) => (
               <DropdownMenuItem
                 key={o.id}
