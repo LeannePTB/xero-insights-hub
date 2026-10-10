@@ -233,6 +233,7 @@ function LoansAccountsPage() {
                   onDirection={(d) => updateMut.mutate({ id: row.id, direction: d })}
                   onUnpair={() => unpairMut.mutate(row.id)}
                   onDelete={() => deleteMut.mutate(row.id)}
+                  canManage={canManage}
                 />
               ))}
             </TableBody>
@@ -258,6 +259,7 @@ function Row({
   onDirection,
   onUnpair,
   onDelete,
+  canManage,
 }: {
   row: LoanAccountRow;
   checked: boolean;
@@ -265,11 +267,12 @@ function Row({
   onDirection: (d: "payable" | "receivable") => void;
   onUnpair: () => void;
   onDelete: () => void;
+  canManage: boolean;
 }) {
   return (
     <TableRow className={checked ? "bg-accent/40" : undefined}>
       <TableCell>
-        <Checkbox checked={checked} onCheckedChange={onToggle} />
+        {canManage ? <Checkbox checked={checked} onCheckedChange={onToggle} /> : null}
       </TableCell>
       <TableCell>
         <p className="font-medium">
@@ -280,7 +283,7 @@ function Row({
       </TableCell>
       <TableCell className="text-sm text-muted-foreground">{row.tenant_name ?? row.tenant_id}</TableCell>
       <TableCell>
-        <Select value={row.direction} onValueChange={(v) => onDirection(v as "payable" | "receivable")}>
+        {canManage ? <Select value={row.direction} onValueChange={(v) => onDirection(v as "payable" | "receivable")}>
           <SelectTrigger className="h-8 w-32">
             <SelectValue />
           </SelectTrigger>
@@ -288,7 +291,7 @@ function Row({
             <SelectItem value="payable">Payable</SelectItem>
             <SelectItem value="receivable">Receivable</SelectItem>
           </SelectContent>
-        </Select>
+        </Select> : <span className="text-sm capitalize">{row.direction}</span>}
       </TableCell>
       <TableCell>
         {row.counterparty_account_id ? (
@@ -304,14 +307,14 @@ function Row({
       </TableCell>
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-1">
-          {row.counterparty_account_id && (
+          {canManage && row.counterparty_account_id && (
             <Button variant="ghost" size="sm" onClick={onUnpair} title="Unpair">
               <Unlink className="h-4 w-4" />
             </Button>
           )}
-          <Button variant="ghost" size="sm" onClick={onDelete} title="Remove">
+          {canManage && <Button variant="ghost" size="sm" onClick={onDelete} title="Remove">
             <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
+          </Button>}
         </div>
       </TableCell>
     </TableRow>

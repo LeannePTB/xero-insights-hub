@@ -300,7 +300,7 @@ function AuditPage() {
                 return (
                   <li key={f.id} className="py-3">
                     <div className="flex flex-wrap items-start gap-2">
-                      {!isSnoozed && !isResolved && (
+                      {canManage && !isSnoozed && !isResolved && (
                         <Checkbox
                           className="mt-1"
                           checked={isSelected}
@@ -320,7 +320,7 @@ function AuditPage() {
                           </Button>
                         ) : null}
 
-                        {isResolved ? (
+                        {canManage && (isResolved ? (
                           <Button size="sm" variant="ghost" onClick={() => resolveMut.mutate({ findingKey: f.finding_key, resolved: false })} disabled={resolveMut.isPending}>
                             <Undo2 className="mr-1 h-3 w-3" /> Reopen
                           </Button>
@@ -337,7 +337,7 @@ function AuditPage() {
                               <SnoozeMenu onPick={(days) => snoozeMut.mutate({ findingKey: f.finding_key, days })} />
                             )}
                           </>
-                        )}
+                        ))}
                       </div>
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">{f.message}</p>

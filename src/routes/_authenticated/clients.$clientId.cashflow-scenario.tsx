@@ -425,7 +425,7 @@ function CashflowScenarioPage() {
                     {view.monthInvoices.length}
                   </span>
                 </h2>
-                {view.monthInvoices.length > 0 && (
+                {canManage && view.monthInvoices.length > 0 && (
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <Button
                       variant="outline"
@@ -461,7 +461,7 @@ function CashflowScenarioPage() {
               </button>
 
               <div className={`${invoicesOpen ? "" : "hidden"}`}>
-                {customerNames.length > 0 && (
+                {canManage && customerNames.length > 0 && (
                   <div className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
                     <span className="text-xs text-muted-foreground">What if</span>
                     <Select value={customer} onValueChange={setCustomer}>
@@ -551,13 +551,13 @@ function CashflowScenarioPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="tabular-nums text-sm">{fmt(inv.amount)}</span>
-                        <Switch
+                        {canManage && <Switch
                           checked={!inv.excluded}
                           onCheckedChange={(on) =>
                             excludeMut.mutate({ xeroInvoiceId: inv.id, excluded: !on })
                           }
                           aria-label="Include in scenario"
-                        />
+                        />}
                       </div>
                     </div>
                   ))}
