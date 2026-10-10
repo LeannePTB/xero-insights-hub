@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { FirmXeroFilesCard } from "@/components/admin/FirmXeroFilesCard";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   getFirmDetailAdmin,
   getFirmAuditAdmin,
@@ -214,7 +214,7 @@ function OverviewFacts({ firm, members, usage, purchase, subscription }: { firm:
   </dl></section>;
 }
 
-function Fact({ label, children }: { label: string; children: React.ReactNode }) { return <div><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm font-medium">{children}</dd></div>; }
+function Fact({ label, children }: { label: string; children: ReactNode }) { return <div><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 text-sm font-medium">{children}</dd></div>; }
 
 function MembersSection({
   firmId,

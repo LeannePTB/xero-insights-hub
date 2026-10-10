@@ -81,7 +81,7 @@ function AdminOrganisations({ firms, loading, error }: { firms: FirmRow[]; loadi
   }, [direction, filter, firms, purchases.data?.purchases, search, sort, states.data?.states, usage.data?.usage]);
 
   function open(row: AdminOrganisationRow) {
-    void navigate({ to: "/system/organisations/$firmId", params: { firmId: row.firm.firm_id } });
+    void navigate({ to: "/system/organisations/$firmId", params: { firmId: row.firm.firm_id }, search: { tab: "overview" } });
   }
   function changeSort(next: OrganisationSort) {
     if (next === sort) setDirection((value) => value === "asc" ? "desc" : "asc");
