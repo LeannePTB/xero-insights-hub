@@ -3489,6 +3489,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      firm_white_label_enabled_service: {
+        Args: { _firm_id: string }
+        Returns: boolean
+      }
       get_mfa_posture_counts: {
         Args: never
         Returns: {
