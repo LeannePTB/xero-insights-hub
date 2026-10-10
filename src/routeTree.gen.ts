@@ -33,8 +33,10 @@ import { Route as AuthenticatedSettingsActivityRouteImport } from './routes/_aut
 import { Route as AuthenticatedSettingsAdvisorsRouteImport } from './routes/_authenticated/settings.advisors'
 import { Route as AuthenticatedSettingsPracticeTeamRouteImport } from './routes/_authenticated/settings.practice-team'
 import { Route as AuthenticatedSystemIndexRouteImport } from './routes/_authenticated/system.index'
+import { Route as AuthenticatedSystemBrandingRouteImport } from './routes/_authenticated/system.branding'
 import { Route as AuthenticatedSystemSecurityRouteImport } from './routes/_authenticated/system.security'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
+import { Route as AuthenticatedSystemXeroRouteImport } from './routes/_authenticated/system.xero'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
 import { Route as AuthenticatedClientsClientIdIndexRouteImport } from './routes/_authenticated/clients.$clientId.index'
@@ -194,6 +196,12 @@ const AuthenticatedSystemIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedSystemRoute,
   } as any)
+const AuthenticatedSystemBrandingRoute =
+  AuthenticatedSystemBrandingRouteImport.update({
+    id: '/branding',
+    path: '/branding',
+    getParentRoute: () => AuthenticatedSystemRoute,
+  } as any)
 const AuthenticatedSystemSecurityRoute =
   AuthenticatedSystemSecurityRouteImport.update({
     id: '/security',
@@ -206,6 +214,11 @@ const AuthenticatedSystemStaffRoute =
     path: '/staff',
     getParentRoute: () => AuthenticatedSystemRoute,
   } as any)
+const AuthenticatedSystemXeroRoute = AuthenticatedSystemXeroRouteImport.update({
+  id: '/xero',
+  path: '/xero',
+  getParentRoute: () => AuthenticatedSystemRoute,
+} as any)
 const LovableEmailSuppressionRoute = LovableEmailSuppressionRouteImport.update({
   id: '/lovable/email/suppression',
   path: '/lovable/email/suppression',
@@ -415,8 +428,10 @@ export interface FileRoutesByFullPath {
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
+  '/system/branding': typeof AuthenticatedSystemBrandingRoute
   '/system/security': typeof AuthenticatedSystemSecurityRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/system/': typeof AuthenticatedSystemIndexRoute
@@ -471,8 +486,10 @@ export interface FileRoutesByTo {
   '/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
+  '/system/branding': typeof AuthenticatedSystemBrandingRoute
   '/system/security': typeof AuthenticatedSystemSecurityRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/system': typeof AuthenticatedSystemIndexRoute
@@ -531,8 +548,10 @@ export interface FileRoutesById {
   '/_authenticated/settings/activity': typeof AuthenticatedSettingsActivityRoute
   '/_authenticated/settings/advisors': typeof AuthenticatedSettingsAdvisorsRoute
   '/_authenticated/settings/practice-team': typeof AuthenticatedSettingsPracticeTeamRoute
+  '/_authenticated/system/branding': typeof AuthenticatedSystemBrandingRoute
   '/_authenticated/system/security': typeof AuthenticatedSystemSecurityRoute
   '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/_authenticated/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/system/': typeof AuthenticatedSystemIndexRoute
@@ -592,8 +611,10 @@ export interface FileRouteTypes {
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/practice-team'
+    | '/system/branding'
     | '/system/security'
     | '/system/staff'
+    | '/system/xero'
     | '/lovable/email/suppression'
     | '/admin/'
     | '/system/'
@@ -648,8 +669,10 @@ export interface FileRouteTypes {
     | '/settings/activity'
     | '/settings/advisors'
     | '/settings/practice-team'
+    | '/system/branding'
     | '/system/security'
     | '/system/staff'
+    | '/system/xero'
     | '/lovable/email/suppression'
     | '/admin'
     | '/system'
@@ -707,8 +730,10 @@ export interface FileRouteTypes {
     | '/_authenticated/settings/activity'
     | '/_authenticated/settings/advisors'
     | '/_authenticated/settings/practice-team'
+    | '/_authenticated/system/branding'
     | '/_authenticated/system/security'
     | '/_authenticated/system/staff'
+    | '/_authenticated/system/xero'
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
     | '/_authenticated/system/'
@@ -941,6 +966,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedSystemIndexRouteImport
       parentRoute: typeof AuthenticatedSystemRoute
     }
+    '/_authenticated/system/branding': {
+      id: '/_authenticated/system/branding'
+      path: '/branding'
+      fullPath: '/system/branding'
+      preLoaderRoute: typeof AuthenticatedSystemBrandingRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
     '/_authenticated/system/security': {
       id: '/_authenticated/system/security'
       path: '/security'
@@ -953,6 +985,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/system/staff'
       preLoaderRoute: typeof AuthenticatedSystemStaffRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
+    '/_authenticated/system/xero': {
+      id: '/_authenticated/system/xero'
+      path: '/xero'
+      fullPath: '/system/xero'
+      preLoaderRoute: typeof AuthenticatedSystemXeroRouteImport
       parentRoute: typeof AuthenticatedSystemRoute
     }
     '/lovable/email/suppression': {
@@ -1198,15 +1237,19 @@ const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
 interface AuthenticatedSystemRouteChildren {
+  AuthenticatedSystemBrandingRoute: typeof AuthenticatedSystemBrandingRoute
   AuthenticatedSystemSecurityRoute: typeof AuthenticatedSystemSecurityRoute
   AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
+  AuthenticatedSystemXeroRoute: typeof AuthenticatedSystemXeroRoute
   AuthenticatedSystemIndexRoute: typeof AuthenticatedSystemIndexRoute
   AuthenticatedSystemOrganisationsFirmIdRoute: typeof AuthenticatedSystemOrganisationsFirmIdRoute
 }
 
 const AuthenticatedSystemRouteChildren: AuthenticatedSystemRouteChildren = {
+  AuthenticatedSystemBrandingRoute: AuthenticatedSystemBrandingRoute,
   AuthenticatedSystemSecurityRoute: AuthenticatedSystemSecurityRoute,
   AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
+  AuthenticatedSystemXeroRoute: AuthenticatedSystemXeroRoute,
   AuthenticatedSystemIndexRoute: AuthenticatedSystemIndexRoute,
   AuthenticatedSystemOrganisationsFirmIdRoute:
     AuthenticatedSystemOrganisationsFirmIdRoute,
