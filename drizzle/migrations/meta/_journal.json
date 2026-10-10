@@ -169,6 +169,20 @@
       "when": 1791614635104,
       "tag": "0023_posture_exclude_platform_branding",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1791618126702,
+      "tag": "0024_add_trixie_assistant_controls",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1791618589546,
+      "tag": "0025_remove_trixie_using_true_policies",
+      "breakpoints": true
     }
   ]
 }

@@ -77,6 +77,31 @@
     },
     {
         "args": [
+        ],
+        "name": "admin_trixie_knowledge",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "admin_trixie_limits",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "admin_trixie_settings",
+        "required": 0
+    },
+    {
+        "args": [
+            "_from"
+        ],
+        "name": "admin_trixie_usage",
+        "required": 0
+    },
+    {
+        "args": [
             "_firm_id"
         ],
         "name": "apply_org_card_defaults",
@@ -377,6 +402,20 @@
             "payload"
         ],
         "name": "enqueue_email",
+        "required": 2
+    },
+    {
+        "args": [
+            "_reservation_id",
+            "_status",
+            "_gateway_run_id",
+            "_input_tokens",
+            "_output_tokens",
+            "_reasoning_tokens",
+            "_estimated_cost_usd",
+            "_error_code"
+        ],
+        "name": "finalise_trixie_usage",
         "required": 2
     },
     {
@@ -693,6 +732,12 @@
     {
         "args": [
         ],
+        "name": "purge_trixie_usage",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
         "name": "read_audit_posture",
         "required": 0
     },
@@ -773,6 +818,15 @@
     },
     {
         "args": [
+            "_client_id",
+            "_firm_id",
+            "_system"
+        ],
+        "name": "reserve_trixie_usage",
+        "required": 0
+    },
+    {
+        "args": [
             "_firm_id",
             "_tier"
         ],
@@ -843,6 +897,49 @@
         ],
         "name": "save_platform_branding",
         "required": 5
+    },
+    {
+        "args": [
+            "_id",
+            "_title",
+            "_body",
+            "_tags",
+            "_audience",
+            "_active"
+        ],
+        "name": "save_trixie_article",
+        "required": 6
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_allowance"
+        ],
+        "name": "save_trixie_org_limit",
+        "required": 2
+    },
+    {
+        "args": [
+            "_enabled",
+            "_model",
+            "_default",
+            "_warning",
+            "_platform",
+            "_guard"
+        ],
+        "name": "save_trixie_settings",
+        "required": 6
+    },
+    {
+        "args": [
+            "_query",
+            "_client_id",
+            "_firm_id",
+            "_system",
+            "_limit"
+        ],
+        "name": "search_trixie_knowledge",
+        "required": 1
     },
     {
         "args": [
@@ -1124,6 +1221,15 @@
         ],
         "name": "transfer_organisation_ownership",
         "required": 2
+    },
+    {
+        "args": [
+            "_client_id",
+            "_firm_id",
+            "_system"
+        ],
+        "name": "trixie_access_context",
+        "required": 0
     },
     {
         "args": [

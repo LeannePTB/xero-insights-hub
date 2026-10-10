@@ -9,6 +9,18 @@
  * Keys are `schema.name` — overloads share one purpose.
  */
 export const DEFINER_PURPOSES: Record<string, string> = {
+  "public.trixie_access_context": "Resolves the caller's exact Trixie scope, audience and allowance after aal2 and database access checks.",
+  "public.reserve_trixie_usage": "Atomically reserves one Trixie question against the caller-scoped monthly allowance.",
+  "public.finalise_trixie_usage": "Finalises only the caller's own Trixie reservation with metadata-only usage accounting.",
+  "public.search_trixie_knowledge": "Returns active Trixie help articles for the database-resolved caller audience.",
+  "public.admin_trixie_settings": "Lists Trixie platform settings for an aal2 super admin.",
+  "public.save_trixie_settings": "Changes Trixie platform settings after aal2 and super-admin checks and audits the change.",
+  "public.admin_trixie_knowledge": "Lists Trixie's help library for an aal2 super admin.",
+  "public.save_trixie_article": "Saves a Trixie help article after aal2 and super-admin checks and audits the change.",
+  "public.admin_trixie_limits": "Lists organisation Trixie overrides for an aal2 super admin.",
+  "public.save_trixie_org_limit": "Sets one organisation's Trixie allowance after aal2 and super-admin checks and audits the change.",
+  "public.admin_trixie_usage": "Aggregates metadata-only Trixie usage for an aal2 super admin.",
+  "public.purge_trixie_usage": "Deletes Trixie usage metadata older than thirteen months after aal2 and super-admin checks.",
   // ── app_private: the access rules themselves (invariant 6). Never called from
   //    TypeScript; called by RLS policies and by the public wrappers.
   "app_private.assert_xero_connection_firm_match":

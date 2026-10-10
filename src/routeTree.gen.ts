@@ -19,6 +19,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedOverviewRouteImport } from './routes/_authenticated/overview'
 import { Route as AuthenticatedSystemRouteImport } from './routes/_authenticated/system'
+import { Route as ApiTrixieRouteImport } from './routes/api/trixie'
 import { Route as AuthMfaEnrollRouteImport } from './routes/auth_.mfa-enroll'
 import { Route as AuthMfaVerifyRouteImport } from './routes/auth_.mfa-verify'
 import { Route as EmailUnsubscribeRouteImport } from './routes/email/unsubscribe'
@@ -36,6 +37,7 @@ import { Route as AuthenticatedSystemIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedSystemBrandingRouteImport } from './routes/_authenticated/system.branding'
 import { Route as AuthenticatedSystemSecurityRouteImport } from './routes/_authenticated/system.security'
 import { Route as AuthenticatedSystemStaffRouteImport } from './routes/_authenticated/system.staff'
+import { Route as AuthenticatedSystemTrixieRouteImport } from './routes/_authenticated/system.trixie'
 import { Route as AuthenticatedSystemXeroRouteImport } from './routes/_authenticated/system.xero'
 import { Route as LovableEmailSuppressionRouteImport } from './routes/lovable/email/suppression'
 import { Route as AuthenticatedAdminFirmsFirmIdRouteImport } from './routes/_authenticated/admin.firms.$firmId'
@@ -134,6 +136,11 @@ const AuthenticatedSystemRoute = AuthenticatedSystemRouteImport.update({
   path: '/system',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiTrixieRoute = ApiTrixieRouteImport.update({
+  id: '/api/trixie',
+  path: '/api/trixie',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthMfaEnrollRoute = AuthMfaEnrollRouteImport.update({
   id: '/auth_/mfa-enroll',
   path: '/auth/mfa-enroll',
@@ -227,6 +234,12 @@ const AuthenticatedSystemStaffRoute =
   AuthenticatedSystemStaffRouteImport.update({
     id: '/staff',
     path: '/staff',
+    getParentRoute: () => AuthenticatedSystemRoute,
+  } as any)
+const AuthenticatedSystemTrixieRoute =
+  AuthenticatedSystemTrixieRouteImport.update({
+    id: '/trixie',
+    path: '/trixie',
     getParentRoute: () => AuthenticatedSystemRoute,
   } as any)
 const AuthenticatedSystemXeroRoute = AuthenticatedSystemXeroRouteImport.update({
@@ -521,6 +534,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/overview': typeof AuthenticatedOverviewRoute
   '/system': typeof AuthenticatedSystemRouteWithChildren
+  '/api/trixie': typeof ApiTrixieRoute
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -536,6 +550,7 @@ export interface FileRoutesByFullPath {
   '/system/branding': typeof AuthenticatedSystemBrandingRoute
   '/system/security': typeof AuthenticatedSystemSecurityRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/system/trixie': typeof AuthenticatedSystemTrixieRoute
   '/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -595,6 +610,7 @@ export interface FileRoutesByTo {
   '/unsubscribe': typeof UnsubscribeRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/overview': typeof AuthenticatedOverviewRoute
+  '/api/trixie': typeof ApiTrixieRoute
   '/auth/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -609,6 +625,7 @@ export interface FileRoutesByTo {
   '/system/branding': typeof AuthenticatedSystemBrandingRoute
   '/system/security': typeof AuthenticatedSystemSecurityRoute
   '/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/system/trixie': typeof AuthenticatedSystemTrixieRoute
   '/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -670,6 +687,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/overview': typeof AuthenticatedOverviewRoute
   '/_authenticated/system': typeof AuthenticatedSystemRouteWithChildren
+  '/api/trixie': typeof ApiTrixieRoute
   '/auth_/mfa-enroll': typeof AuthMfaEnrollRoute
   '/auth_/mfa-verify': typeof AuthMfaVerifyRoute
   '/email/unsubscribe': typeof EmailUnsubscribeRoute
@@ -685,6 +703,7 @@ export interface FileRoutesById {
   '/_authenticated/system/branding': typeof AuthenticatedSystemBrandingRoute
   '/_authenticated/system/security': typeof AuthenticatedSystemSecurityRoute
   '/_authenticated/system/staff': typeof AuthenticatedSystemStaffRoute
+  '/_authenticated/system/trixie': typeof AuthenticatedSystemTrixieRoute
   '/_authenticated/system/xero': typeof AuthenticatedSystemXeroRoute
   '/lovable/email/suppression': typeof LovableEmailSuppressionRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -748,6 +767,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/overview'
     | '/system'
+    | '/api/trixie'
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
@@ -763,6 +783,7 @@ export interface FileRouteTypes {
     | '/system/branding'
     | '/system/security'
     | '/system/staff'
+    | '/system/trixie'
     | '/system/xero'
     | '/lovable/email/suppression'
     | '/admin/'
@@ -822,6 +843,7 @@ export interface FileRouteTypes {
     | '/unsubscribe'
     | '/dashboard'
     | '/overview'
+    | '/api/trixie'
     | '/auth/mfa-enroll'
     | '/auth/mfa-verify'
     | '/email/unsubscribe'
@@ -836,6 +858,7 @@ export interface FileRouteTypes {
     | '/system/branding'
     | '/system/security'
     | '/system/staff'
+    | '/system/trixie'
     | '/system/xero'
     | '/lovable/email/suppression'
     | '/admin'
@@ -896,6 +919,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/overview'
     | '/_authenticated/system'
+    | '/api/trixie'
     | '/auth_/mfa-enroll'
     | '/auth_/mfa-verify'
     | '/email/unsubscribe'
@@ -911,6 +935,7 @@ export interface FileRouteTypes {
     | '/_authenticated/system/branding'
     | '/_authenticated/system/security'
     | '/_authenticated/system/staff'
+    | '/_authenticated/system/trixie'
     | '/_authenticated/system/xero'
     | '/lovable/email/suppression'
     | '/_authenticated/admin/'
@@ -970,6 +995,7 @@ export interface RootRouteChildren {
   SecurityRoute: typeof SecurityRoute
   SetPasswordRoute: typeof SetPasswordRoute
   UnsubscribeRoute: typeof UnsubscribeRoute
+  ApiTrixieRoute: typeof ApiTrixieRoute
   AuthMfaEnrollRoute: typeof AuthMfaEnrollRoute
   AuthMfaVerifyRoute: typeof AuthMfaVerifyRoute
   EmailUnsubscribeRoute: typeof EmailUnsubscribeRoute
@@ -1060,6 +1086,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/system'
       preLoaderRoute: typeof AuthenticatedSystemRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/trixie': {
+      id: '/api/trixie'
+      path: '/api/trixie'
+      fullPath: '/api/trixie'
+      preLoaderRoute: typeof ApiTrixieRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/auth_/mfa-enroll': {
       id: '/auth_/mfa-enroll'
@@ -1178,6 +1211,13 @@ declare module '@tanstack/react-router' {
       path: '/staff'
       fullPath: '/system/staff'
       preLoaderRoute: typeof AuthenticatedSystemStaffRouteImport
+      parentRoute: typeof AuthenticatedSystemRoute
+    }
+    '/_authenticated/system/trixie': {
+      id: '/_authenticated/system/trixie'
+      path: '/trixie'
+      fullPath: '/system/trixie'
+      preLoaderRoute: typeof AuthenticatedSystemTrixieRouteImport
       parentRoute: typeof AuthenticatedSystemRoute
     }
     '/_authenticated/system/xero': {
@@ -1538,6 +1578,7 @@ interface AuthenticatedSystemRouteChildren {
   AuthenticatedSystemBrandingRoute: typeof AuthenticatedSystemBrandingRoute
   AuthenticatedSystemSecurityRoute: typeof AuthenticatedSystemSecurityRoute
   AuthenticatedSystemStaffRoute: typeof AuthenticatedSystemStaffRoute
+  AuthenticatedSystemTrixieRoute: typeof AuthenticatedSystemTrixieRoute
   AuthenticatedSystemXeroRoute: typeof AuthenticatedSystemXeroRoute
   AuthenticatedSystemIndexRoute: typeof AuthenticatedSystemIndexRoute
   AuthenticatedSystemOrganisationsFirmIdRoute: typeof AuthenticatedSystemOrganisationsFirmIdRoute
@@ -1547,6 +1588,7 @@ const AuthenticatedSystemRouteChildren: AuthenticatedSystemRouteChildren = {
   AuthenticatedSystemBrandingRoute: AuthenticatedSystemBrandingRoute,
   AuthenticatedSystemSecurityRoute: AuthenticatedSystemSecurityRoute,
   AuthenticatedSystemStaffRoute: AuthenticatedSystemStaffRoute,
+  AuthenticatedSystemTrixieRoute: AuthenticatedSystemTrixieRoute,
   AuthenticatedSystemXeroRoute: AuthenticatedSystemXeroRoute,
   AuthenticatedSystemIndexRoute: AuthenticatedSystemIndexRoute,
   AuthenticatedSystemOrganisationsFirmIdRoute:
@@ -1738,6 +1780,7 @@ const rootRouteChildren: RootRouteChildren = {
   SecurityRoute: SecurityRoute,
   SetPasswordRoute: SetPasswordRoute,
   UnsubscribeRoute: UnsubscribeRoute,
+  ApiTrixieRoute: ApiTrixieRoute,
   AuthMfaEnrollRoute: AuthMfaEnrollRoute,
   AuthMfaVerifyRoute: AuthMfaVerifyRoute,
   EmailUnsubscribeRoute: EmailUnsubscribeRoute,

@@ -10,6 +10,7 @@ import { HeaderPresenceProvider } from "@/components/shell/shell-context";
 import { GlobalSignOut } from "@/components/GlobalSignOut";
 import { SessionIdleGuard } from "@/components/SessionIdleGuard";
 import { ViewerClientNav } from "@/components/clients/ViewerClientNav";
+import { TrixieWidget } from "@/components/trixie/TrixieWidget";
 
 
 export const Route = createFileRoute("/_authenticated")({
@@ -84,6 +85,7 @@ function AuthenticatedLayout() {
       <HeaderPresenceProvider>
         <ViewerClientNav />
         <Outlet />
+        <TrixieWidget />
         <GlobalSignOut />
         <SessionIdleGuard />
       </HeaderPresenceProvider>
@@ -91,6 +93,7 @@ function AuthenticatedLayout() {
   return (
     <AppShell>
       <Outlet />
+      <TrixieWidget />
       <SessionIdleGuard />
     </AppShell>
   );

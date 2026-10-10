@@ -17,3 +17,4 @@
 - Authenticated pages use the shared left-aligned PageContainer; wide tables and matrices select its full-width mode rather than adding centred route wrappers.
 - App typography is governed by the shared Tailwind size tokens and PageHeader; only explicitly marked dashboard KPI figures use the separate KPI utility, so density changes remain centralised.
 - Print and email rendering use server-safe presentation tokens mirroring the global semantic palette, because CSS variables are unavailable in PDFs and email clients.
+- Trixie conversations are session-only: store allowance and token metadata for 13 months, never prompts or answers, so financial conversations cannot become a second client-data repository.
