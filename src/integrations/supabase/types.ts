@@ -2484,6 +2484,63 @@ export type Database = {
           },
         ]
       }
+      trixie_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          acknowledged_by: string | null
+          created_at: string
+          dedupe_key: string
+          detail: string
+          emailed_at: string | null
+          firm_id: string | null
+          id: string
+          kind: string
+          severity: string
+          title: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          dedupe_key: string
+          detail: string
+          emailed_at?: string | null
+          firm_id?: string | null
+          id?: string
+          kind: string
+          severity?: string
+          title: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          acknowledged_by?: string | null
+          created_at?: string
+          dedupe_key?: string
+          detail?: string
+          emailed_at?: string | null
+          firm_id?: string | null
+          id?: string
+          kind?: string
+          severity?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trixie_alerts_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "admin_firm_overview"
+            referencedColumns: ["firm_id"]
+          },
+          {
+            foreignKeyName: "trixie_alerts_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trixie_knowledge: {
         Row: {
           active: boolean
@@ -2561,33 +2618,42 @@ export type Database = {
       }
       trixie_settings: {
         Row: {
+          daily_spike_floor_usd: number
+          daily_spike_multiplier: number
           default_monthly_allowance: number | null
           enabled: boolean
           model: string
           platform_monthly_allowance: number | null
           singleton: boolean
+          spend_alert_thresholds_usd: number[]
           token_cost_guard_usd: number | null
           updated_at: string
           updated_by: string | null
           warning_threshold: number
         }
         Insert: {
+          daily_spike_floor_usd?: number
+          daily_spike_multiplier?: number
           default_monthly_allowance?: number | null
           enabled?: boolean
           model?: string
           platform_monthly_allowance?: number | null
           singleton?: boolean
+          spend_alert_thresholds_usd?: number[]
           token_cost_guard_usd?: number | null
           updated_at?: string
           updated_by?: string | null
           warning_threshold?: number
         }
         Update: {
+          daily_spike_floor_usd?: number
+          daily_spike_multiplier?: number
           default_monthly_allowance?: number | null
           enabled?: boolean
           model?: string
           platform_monthly_allowance?: number | null
           singleton?: boolean
+          spend_alert_thresholds_usd?: number[]
           token_cost_guard_usd?: number | null
           updated_at?: string
           updated_by?: string | null
@@ -3358,6 +3424,7 @@ export type Database = {
       }
     }
     Functions: {
+      acknowledge_trixie_alert: { Args: { _id: string }; Returns: boolean }
       admin_add_practice_member: {
         Args: { _user_id: string }
         Returns: undefined
@@ -3419,6 +3486,20 @@ export type Database = {
         Args: { _make: boolean; _user_id: string }
         Returns: boolean
       }
+      admin_trixie_alerts: {
+        Args: { _limit?: number }
+        Returns: {
+          acknowledged_at: string
+          created_at: string
+          detail: string
+          firm_id: string
+          firm_name: string
+          id: string
+          kind: string
+          severity: string
+          title: string
+        }[]
+      }
       admin_trixie_knowledge: {
         Args: never
         Returns: {
@@ -3448,6 +3529,24 @@ export type Database = {
           platform_monthly_allowance: number
           token_cost_guard_usd: number
           warning_threshold: number
+        }[]
+      }
+      admin_trixie_spend_overview: {
+        Args: { _days?: number }
+        Returns: {
+          day: string
+          questions: number
+          spend_usd: number
+        }[]
+      }
+      admin_trixie_summary_preview: {
+        Args: { _month?: string }
+        Returns: {
+          label: string
+          model: string
+          questions: number
+          scope: string
+          spend_usd: number
         }[]
       }
       admin_trixie_usage: {
@@ -3616,6 +3715,18 @@ export type Database = {
         Args: { payload: Json; queue_name: string }
         Returns: number
       }
+      evaluate_trixie_alerts: {
+        Args: never
+        Returns: {
+          detail: string
+          firm_name: string
+          id: string
+          kind: string
+          severity: string
+          title: string
+        }[]
+      }
+      expire_trixie_reservations: { Args: never; Returns: number }
       finalise_trixie_usage: {
         Args: {
           _error_code?: string
@@ -3800,6 +3911,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      mark_trixie_alert_emailed: { Args: { _id: string }; Returns: boolean }
       me_can_manage_client: { Args: { _client_id: string }; Returns: boolean }
       me_can_manage_client_viewers: {
         Args: { _client_id: string }
@@ -4324,6 +4436,16 @@ export type Database = {
           monthly_allowance: number
           used: number
           warning_threshold: number
+        }[]
+      }
+      trixie_monthly_summary: {
+        Args: { _month?: string }
+        Returns: {
+          label: string
+          model: string
+          questions: number
+          scope: string
+          spend_usd: number
         }[]
       }
       upsert_xero_snapshot: {

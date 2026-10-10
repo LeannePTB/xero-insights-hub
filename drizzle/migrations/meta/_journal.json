@@ -183,6 +183,13 @@
       "when": 1791618589546,
       "tag": "0025_remove_trixie_using_true_policies",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791676721505,
+      "tag": "0026_add_trixie_usage_alerts",
+      "breakpoints": true
     }
   ]
 }
