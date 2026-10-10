@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { logLogin } from "@/lib/login-log-write.functions";
 import { Toaster } from "@/components/ui/sonner";
 import { clearIdleDeadline } from "@/lib/session-cutoff";
+import { DocumentBranding } from "@/components/branding/DocumentBranding";
 
 
 function NotFoundComponent() {
@@ -137,6 +138,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <DocumentBranding />
       <Outlet />
       <Toaster />
     </QueryClientProvider>
