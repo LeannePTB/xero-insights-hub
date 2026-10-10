@@ -22,7 +22,7 @@ function SecurityPage() {
     <div className="flex min-h-screen flex-col items-center justify-center p-6">
       <div className="w-full max-w-lg">
         <BrandMark logoHeightClass="h-9" />
-        <h1 className="mt-8 font-display text-2xl font-semibold">Reporting a security issue</h1>
+        <h1 className="mt-8 font-display text-lg font-semibold">Reporting a security issue</h1>
         <div className="mt-4 space-y-4 text-sm leading-relaxed text-muted-foreground">
           <p>
             If you believe you have found a security problem in Traction Advisory, email{" "}

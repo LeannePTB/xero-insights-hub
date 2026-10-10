@@ -98,7 +98,7 @@ export function CardFreshness({
   // Ageing figures must say so in words, not only in the colour of the dot.
   const overdue = !!source?.stale && !isFetching;
   return (
-    <p className={`flex items-center gap-1.5 text-[11px] leading-snug text-muted-foreground ${className}`}>
+    <p className={`flex items-center gap-1.5 text-xs leading-snug text-muted-foreground ${className}`}>
       <LiveDot state={liveState} />
       <span>
         {parts.join(" · ")}

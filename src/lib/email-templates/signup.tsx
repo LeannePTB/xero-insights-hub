@@ -1,3 +1,5 @@
+import { EmailLogo } from "./EmailLogo";
+import { presentation as theme } from "@/lib/presentation-tokens";
 import * as React from 'react'
 
 import {
@@ -13,6 +15,7 @@ import {
 } from '@react-email/components'
 
 interface SignupEmailProps {
+  logoSrc?: string | null
   siteName: string
   siteUrl: string
   recipient: string
@@ -20,6 +23,7 @@ interface SignupEmailProps {
 }
 
 export const SignupEmail = ({
+  logoSrc,
   siteName,
   siteUrl,
   recipient,
@@ -30,6 +34,7 @@ export const SignupEmail = ({
     <Preview>Confirm your email for {siteName}</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailLogo logoSrc={logoSrc} siteName={siteName} />
         <Heading style={h1}>Confirm your email</Heading>
         <Text style={text}>
           Thanks for signing up for{' '}
@@ -58,27 +63,27 @@ export const SignupEmail = ({
 
 export default SignupEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
+const main = { backgroundColor: theme.surface, fontFamily: 'Arial, sans-serif' }
 const container = { padding: '20px 25px' }
 const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
+  fontSize: '18px',
+  fontWeight: '600' as const,
+  color: theme.primary,
   margin: '0 0 20px',
 }
 const text = {
-  fontSize: '14px',
-  color: '#55575d',
+  fontSize: '12px',
+  color: theme.text,
   lineHeight: '1.5',
   margin: '0 0 25px',
 }
 const link = { color: 'inherit', textDecoration: 'underline' }
 const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
+  backgroundColor: theme.primary,
+  color: theme.surface,
+  fontSize: '12px',
   borderRadius: '8px',
   padding: '12px 20px',
   textDecoration: 'none',
 }
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const footer = { fontSize: '12px', color: theme.muted, margin: '30px 0 0' }

@@ -53,7 +53,7 @@ export function PayablesWidget({
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Wallet className="h-4 w-4 text-primary" /> Accounts Payable Ageing
+            <Wallet className="h-4 w-4 text-emphasis" /> Accounts Payable Ageing
             <BasisBadge basis={basis} />
           </h3>
           <DataSourceLine source={data?.source} isFetching={isFetching} />
@@ -94,7 +94,7 @@ export function PayablesWidget({
         <Link
           to="/clients/$clientId/payables/$tenantId"
           params={{ clientId, tenantId }}
-          className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+          className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-emphasis hover:underline"
         >
           View all payables <ArrowRight className="h-3 w-3" />
         </Link>

@@ -45,7 +45,7 @@ export function BreakevenWidget({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Target className="h-4 w-4 text-primary" /> Breaking even
+            <Target className="h-4 w-4 text-emphasis" /> Breaking even
             <BasisBadge basis={basis} />
           </h3>
           <p className="mt-0.5 text-xs text-muted-foreground">
@@ -208,7 +208,7 @@ export function BreakevenWidget({
               </summary>
               <div className="space-y-4 border-t border-border/60 px-3 py-3 text-xs">
                 <div>
-                  <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Formula</p>
+                  <p className="mb-1 font-semibold uppercase tracking-wider text-xs text-muted-foreground">Formula</p>
                   <p className="font-mono text-foreground">Break-Even Revenue (per month) = Monthly Fixed Costs ÷ Contribution Margin %</p>
                   <p className="mt-1 text-muted-foreground">
                     Contribution margin is what is left from each dollar of revenue after the variable
@@ -229,7 +229,7 @@ export function BreakevenWidget({
                   )}
                 </div>
                 <div>
-                  <p className="mb-1 font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">Contribution Margin %</p>
+                  <p className="mb-1 font-semibold uppercase tracking-wider text-xs text-muted-foreground">Contribution Margin %</p>
                   <p className="font-mono text-foreground">
                     ({fmtAUD(s.income)} − {fmtAUD(s.totalVariable)}) ÷ {fmtAUD(s.income)} = {fmtPct(s.grossMargin)}
                   </p>
@@ -243,7 +243,7 @@ export function BreakevenWidget({
                   </p>
                 </div>
                 <div>
-                  <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                  <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-xs text-muted-foreground">
                     <span>Fixed Costs ({s.fixedLines.length})</span>
                     <span>{fmtAUD(s.fixedOpex)}</span>
                   </p>
@@ -256,10 +256,10 @@ export function BreakevenWidget({
                           <span className="truncate">
                             {l.name}
                             {l.section === "cogs" && (
-                              <span className="ml-1.5 text-[10px] text-muted-foreground">(cost of sales)</span>
+                              <span className="ml-1.5 text-xs text-muted-foreground">(cost of sales)</span>
                             )}
                             {l.unclassified && (
-                              <span className="ml-1.5 text-[10px] text-info">(unclassified)</span>
+                              <span className="ml-1.5 text-xs text-info">(unclassified)</span>
                             )}
                           </span>
                           <span className="font-mono tabular-nums text-foreground">{fmtAUD(l.amount)}</span>
@@ -288,7 +288,7 @@ export function BreakevenWidget({
                     <>
                       {varOpex.length > 0 && (
                         <div>
-                          <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                          <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-xs text-muted-foreground">
                             <span>Variable Opex ({varOpex.length})</span>
                             <span>{fmtAUD(s.variableOpex)}</span>
                           </p>
@@ -304,7 +304,7 @@ export function BreakevenWidget({
                       )}
                       {(varCogs.length > 0 || s.variableCogs !== 0) && (
                         <div>
-                          <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-[10px] text-muted-foreground">
+                          <p className="mb-1 flex items-center justify-between font-semibold uppercase tracking-wider text-xs text-muted-foreground">
                             <span>Cost of Sales, variable ({varCogs.length})</span>
                             <span>{fmtAUD(s.variableCogs)}</span>
                           </p>
@@ -382,13 +382,13 @@ export function BreakevenWidget({
             )}
 
             {s.classificationEnabled && s.excludedCount > 0 && (
-              <p className="mt-3 text-[11px] text-muted-foreground">
+              <p className="mt-3 text-xs text-muted-foreground">
                 Excluding {s.excludedCount} account{s.excludedCount === 1 ? "" : "s"} ({fmtAUD(s.excludedOpex)}) from break-even.
               </p>
             )}
 
             {isAdvisor && clientId && (
-              <p className="mt-4 text-[11px] text-muted-foreground">
+              <p className="mt-4 text-xs text-muted-foreground">
                 <Link
                   to="/clients/$clientId/settings"
                   params={{ clientId }}

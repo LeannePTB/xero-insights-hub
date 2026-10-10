@@ -14,7 +14,7 @@ export function BasisSelect({
   return (
     <Select value={value} onValueChange={(v) => onChange(v as ReportBasis)} disabled={disabled}>
       <SelectTrigger
-        className="h-7 w-[110px] text-[11px] font-semibold uppercase tracking-wider"
+        className="h-7 w-[110px] text-xs font-semibold uppercase tracking-wider"
         title="Report basis"
       >
         <SelectValue placeholder="Basis" />

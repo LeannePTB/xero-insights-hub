@@ -29,10 +29,9 @@ import {
   type MonthlyReportPayload,
 } from "./monthly-report";
 
-import logoWhiteUrl from "@/assets/traction-advisory-logo-white.png?inline";
+import bundledLogoUrl from "@/assets/traction-advisory-logo.png?inline";
 
-/** Intrinsic pixel size of the white wordmark, so it keeps its aspect ratio. */
-const LOGO_WHITE = { w: 600, h: 69 };
+import { presentation, printRgb } from "@/lib/presentation-tokens";
 
 const BUCKET = "client-reports";
 const SIGNED_URL_SECONDS = 300;
@@ -57,17 +56,14 @@ function marker(arrow: string) {
   return "";
 }
 
-const INK = { text: [17, 24, 39], muted: [107, 114, 128], line: [226, 232, 240], bad: [185, 28, 28] };
-
-// Fixed Traction Advisory palette. These are the app's own semantic theme
-// colours converted to sRGB. Branding is never read from the organisation record.
+const INK = { text: printRgb(presentation.text), muted: printRgb(presentation.muted), line: printRgb(presentation.border), bad: printRgb(presentation.destructive) };
 const BRAND = {
-  purple: [83, 49, 141], // --primary
-  lavender: [111, 96, 170], // --lavender
-  lavenderFill: [237, 234, 246], // light tint of --lavender, table header fill
-  band: [246, 245, 250], // very light row banding
-  rule: [59, 130, 246], // --info, thin rules only — never text
-  watermark: [203, 200, 214],
+  purple: printRgb(presentation.primary),
+  lavender: printRgb(presentation.mid),
+  lavenderFill: printRgb(presentation.infoSurface),
+  band: printRgb(presentation.background),
+  rule: printRgb(presentation.link),
+  watermark: printRgb(presentation.border),
 };
 
 const SPACING = {
@@ -112,7 +108,7 @@ export type RenderInput = {
 export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   const { payload, status, version } = input;
   const m = payload.meta;
-  const branding = input.branding ?? { productName: "Traction Advisory", primaryLogo: logoWhiteUrl, clientLogo: null };
+  const branding = input.branding ?? { productName: "Traction Advisory", primaryLogo: bundledLogoUrl, clientLogo: null };
   const isDraft = status !== "final" && status !== "sent";
   const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
 
@@ -132,10 +128,16 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     doc.line(0, BAND_H, PAGE.w, BAND_H);
     doc.setLineWidth(0.4);
 
-    const logoW = 132;
-    const logoH = (LOGO_WHITE.h / LOGO_WHITE.w) * logoW;
+    let logoW = 112;
+    let logoH = 36;
     let drewLogo = false;
     try {
+      const image = doc.getImageProperties(branding.primaryLogo);
+      const scale = Math.min(112 / image.width, 36 / image.height);
+      logoW = image.width * scale;
+      logoH = image.height * scale;
+      doc.setFillColor(...printRgb(presentation.surface));
+      doc.roundedRect(M.left - 4, (BAND_H - logoH) / 2 - 4, logoW + 8, logoH + 8, 3, 3, "F");
       doc.addImage(branding.primaryLogo, "PNG", M.left, (BAND_H - logoH) / 2, logoW, logoH);
       drewLogo = true;
     } catch {
@@ -143,7 +145,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     }
     if (!drewLogo) {
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(15);
+      doc.setFontSize(13.5);
       doc.setTextColor(255, 255, 255);
       doc.text(branding.productName, M.left, BAND_H / 2 + 5);
     }
@@ -192,7 +194,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
     // @ts-expect-error GState is provided by jsPDF at runtime.
     doc.setGState(new doc.GState({ opacity: 0.1 }));
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(120);
+    doc.setFontSize(13.5);
     doc.setTextColor(BRAND.watermark[0], BRAND.watermark[1], BRAND.watermark[2]);
     doc.text("DRAFT", PAGE.w / 2, PAGE.h / 2 + 40, { align: "center", angle: 34 });
     doc.restoreGraphicsState();
@@ -292,7 +294,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
       didParseCell: (data: any) => {
         if (data.section === "body" && opts.boldRows?.has(data.row.index)) {
           data.cell.styles.fontStyle = "bold";
-          data.cell.styles.fillColor = [255, 255, 255];
+          data.cell.styles.fillColor = printRgb(presentation.surface);
         }
         if (data.section === "body") {
           const c = opts.cellColours?.[`${data.row.index}:${data.column.index}`];
@@ -321,7 +323,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
 
   // Title block --------------------------------------------------------------
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
+  doc.setFontSize(13.5);
   doc.setTextColor(BRAND.purple[0], BRAND.purple[1], BRAND.purple[2]);
   doc.text("Monthly Management Report", M.left, y);
   y += 20 + SPACING.titleInner;
@@ -335,7 +337,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
   const shownFailures = renderableFailedSections(payload);
   if (!payload.complete && shownFailures.length > 0) {
     need(60);
-    doc.setFillColor(254, 242, 242);
+    doc.setFillColor(...printRgb(presentation.infoSurface));
     doc.setDrawColor(INK.bad[0], INK.bad[1], INK.bad[2]);
     const lines = shownFailures.map(
       (f) => `${SECTION_LABELS[f.section] ?? f.section}: ${f.message}`,
@@ -465,7 +467,7 @@ export function renderMonthlyReportPdf(input: RenderInput): Uint8Array {
         }
 
         doc.setFont("helvetica", "bold");
-        doc.setFontSize(14);
+        doc.setFontSize(12);
         doc.setTextColor(BRAND.purple[0], BRAND.purple[1], BRAND.purple[2]);
         doc.text(f(k, k.month), x + 8, top + 44);
 
@@ -730,7 +732,7 @@ export async function buildAndStoreReportPdf(report: ReportRow, actor?: { userId
   const organisationLogo = await signLogo((firm as any)?.logo_path ?? null);
   const mayUseClientLogo = actor ? await clientBrandingEnabled(actor.supabase, report.client_id) : true;
   const clientLogo = mayUseClientLogo ? await signLogo((client as any)?.logo_path ?? null) : null;
-  const primaryLogo = organisationLogo ?? platform.logoDark ?? platform.logoLight ?? logoWhiteUrl;
+  const primaryLogo = organisationLogo ?? platform.logoDark ?? platform.logoLight ?? bundledLogoUrl;
   const bytes = renderMonthlyReportPdf({
     payload: report.payload,
     status: report.status,

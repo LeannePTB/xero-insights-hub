@@ -1,3 +1,4 @@
+import { presentation, pdfRgb } from "@/lib/presentation-tokens";
 // Server-only builders for Loan Consolidation single-file reconciliation
 // export (PDF + Excel). Renders whatever the client already has, so no extra
 // Xero calls are required.
@@ -33,11 +34,11 @@ export type ReconExportInput = {
 };
 
 
-const PURPLE: [number, number, number] = [0x53 / 255, 0x31 / 255, 0x8d / 255];
-const GOLD: [number, number, number] = [0xc5 / 255, 0xab / 255, 0x71 / 255];
-const INK: [number, number, number] = [0.11, 0.1, 0.16];
-const MUTED: [number, number, number] = [0.42, 0.4, 0.48];
-const RULE: [number, number, number] = [0.85, 0.85, 0.88];
+const PURPLE = pdfRgb(presentation.primary);
+const GOLD = pdfRgb(presentation.link);
+const INK = pdfRgb(presentation.text);
+const MUTED = pdfRgb(presentation.muted);
+const RULE = pdfRgb(presentation.border);
 
 function fmt(n: number | null | undefined): string {
   if (n === null || n === undefined) return "—";
@@ -75,7 +76,7 @@ export async function buildLoanReconciliationPdf(
   const rule = rgb(...RULE);
   const purple = rgb(...PURPLE);
   const gold = rgb(...GOLD);
-  const red = rgb(0.75, 0.15, 0.15);
+  const red = rgb(...pdfRgb(presentation.destructive));
 
   // Landscape A4
   const PAGE_W = 841.89;
@@ -132,7 +133,7 @@ export async function buildLoanReconciliationPdf(
     page.drawText("Loan Consolidation Reconciliation", {
       x: MARGIN_X,
       y,
-      size: 16,
+      size: 12,
       font: bold,
       color: purple,
     });
@@ -355,7 +356,7 @@ export async function buildLoanReconciliationPdf(
     // Status
     const statusColor =
       row.status === "balanced"
-        ? rgb(0.15, 0.55, 0.3)
+        ? rgb(...pdfRgb(presentation.success))
         : row.status === "mismatch"
           ? red
           : row.status === "missing"
@@ -405,7 +406,7 @@ export async function buildLoanReconciliationPdf(
       y: y - 22,
       width: TABLE_W,
       height: 22,
-      color: emphasize ? rgb(0.91, 0.88, 0.96) : rgb(0.96, 0.95, 0.98),
+      color: emphasize ? rgb(...pdfRgb(presentation.infoSurface)) : rgb(...pdfRgb(presentation.background)),
     });
     page.drawText(label, {
       x: MARGIN_X + 6,
@@ -462,9 +463,9 @@ export async function buildLoanReconciliationXlsx(
   wb.creator = (await getPlatformBrandingServer()).productName;
   wb.created = new Date();
 
-  const purpleFill = "FF53318D";
-  const goldFill = "FFC5AB71";
-  const zebra = "FFF6F4FA";
+  const purpleFill = `FF${presentation.primary.slice(1)}`;
+  const goldFill = `FF${presentation.link.slice(1)}`;
+  const zebra = `FF${presentation.background.slice(1)}`;
 
   const multi = input.sections.length > 1;
   const usedNames = new Set<string>();
@@ -485,9 +486,9 @@ export async function buildLoanReconciliationXlsx(
     );
 
     ws.getCell("A1").value = "Loan Consolidation Reconciliation";
-    ws.getCell("A1").font = { bold: true, size: 16, color: { argb: purpleFill } };
+    ws.getCell("A1").font = { bold: true, size: 12, color: { argb: purpleFill } };
     ws.getCell("A2").value = `${input.groupName}  ·  ${section.tenant.crmCompanyName}  ·  As at ${input.asAt}`;
-    ws.getCell("A2").font = { italic: true, color: { argb: "FF6B6873" } };
+    ws.getCell("A2").font = { italic: true, color: { argb: `FF${presentation.muted.slice(1)}` } };
     ws.mergeCells(1, 1, 1, 8);
     ws.mergeCells(2, 1, 2, 8);
 
@@ -505,7 +506,7 @@ export async function buildLoanReconciliationXlsx(
     headers.forEach((h, i) => {
       const cell = ws.getCell(headerRow, i + 1);
       cell.value = h;
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.font = { bold: true, color: { argb: `FF${presentation.surface.slice(1)}` } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: purpleFill } };
       cell.alignment = {
         horizontal: [1, 3, 4, 7].includes(i) ? "left" : "right",
@@ -531,13 +532,13 @@ export async function buildLoanReconciliationXlsx(
       const acctLabel = `${row.account.accountCode ? row.account.accountCode + " · " : ""}${row.account.accountName}`;
       const c1 = ws.getCell(r, 1);
       c1.value = acctLabel;
-      c1.font = { bold: true, color: { argb: "FF1B1826" } };
+      c1.font = { bold: true, color: { argb: `FF${presentation.text.slice(1)}` } };
       c1.alignment = { horizontal: "left", vertical: "middle" };
 
       const c2 = ws.getCell(r, 2);
       if (row.account.error) {
         c2.value = "Account missing in Xero";
-        c2.font = { color: { argb: "FFC02020" } };
+        c2.font = { color: { argb: `FF${presentation.destructive.slice(1)}` } };
       } else if (row.account.balance !== null) {
         c2.value = row.account.balance;
         c2.numFmt = '#,##0.00;(#,##0.00);"—"';
@@ -547,7 +548,7 @@ export async function buildLoanReconciliationXlsx(
       const c3 = ws.getCell(r, 3);
       c3.value = row.account.direction === "receivable" ? "R" : "P";
       c3.alignment = { horizontal: "right" };
-      c3.font = { bold: true, color: { argb: "FF6B6873" } };
+      c3.font = { bold: true, color: { argb: `FF${presentation.muted.slice(1)}` } };
 
       const c4 = ws.getCell(r, 4);
       if (row.counterparty) {
@@ -555,7 +556,7 @@ export async function buildLoanReconciliationXlsx(
         c4.font = { bold: true, color: { argb: goldFill } };
       } else {
         c4.value = "(no counterparty set)";
-        c4.font = { color: { argb: "FF9E9AA8" }, italic: true };
+        c4.font = { color: { argb: `FF${presentation.muted.slice(1)}` }, italic: true };
       }
       c4.alignment = { horizontal: "left", vertical: "middle" };
 
@@ -569,7 +570,7 @@ export async function buildLoanReconciliationXlsx(
       if (row.counterparty) {
         if (row.counterparty.error) {
           c6.value = "Account missing in Xero";
-          c6.font = { color: { argb: "FFC02020" } };
+          c6.font = { color: { argb: `FF${presentation.destructive.slice(1)}` } };
         } else if (row.counterparty.balance !== null) {
           c6.value = row.counterparty.balance;
           c6.numFmt = '#,##0.00;(#,##0.00);"—"';
@@ -582,7 +583,7 @@ export async function buildLoanReconciliationXlsx(
       c7.numFmt = '#,##0.00;(#,##0.00);"—"';
       c7.font = {
         bold: true,
-        color: { argb: row.status === "mismatch" ? "FFC02020" : "FF6B6873" },
+        color: { argb: row.status === "mismatch" ? `FF${presentation.destructive.slice(1)}` : `FF${presentation.muted.slice(1)}` },
       };
       c7.alignment = { horizontal: "right" };
 
@@ -593,9 +594,9 @@ export async function buildLoanReconciliationXlsx(
         color: {
           argb:
             row.status === "balanced"
-              ? "FF267A3B"
+              ? `FF${presentation.success.slice(1)}`
               : row.status === "mismatch" || row.status === "missing"
-                ? "FFC02020"
+                ? `FF${presentation.destructive.slice(1)}`
                 : goldFill,
         },
       };
@@ -625,7 +626,7 @@ export async function buildLoanReconciliationXlsx(
     tn.numFmt = '#,##0.00;(#,##0.00);"—"';
     tn.font = {
       bold: true,
-      color: { argb: Math.abs(totalNet) > 0.005 ? "FFC02020" : purpleFill },
+      color: { argb: Math.abs(totalNet) > 0.005 ? `FF${presentation.destructive.slice(1)}` : purpleFill },
     };
     tn.alignment = { horizontal: "right" };
 
@@ -638,15 +639,15 @@ export async function buildLoanReconciliationXlsx(
     });
     usedNames.add("Summary");
     summary.getCell("A1").value = "Loan Consolidation Reconciliation — All Xero files";
-    summary.getCell("A1").font = { bold: true, size: 16, color: { argb: purpleFill } };
+    summary.getCell("A1").font = { bold: true, size: 12, color: { argb: purpleFill } };
     summary.getCell("A2").value = `${input.groupName}  ·  As at ${input.asAt}`;
-    summary.getCell("A2").font = { italic: true, color: { argb: "FF6B6873" } };
+    summary.getCell("A2").font = { italic: true, color: { argb: `FF${presentation.muted.slice(1)}` } };
     summary.mergeCells(1, 1, 1, 3);
     summary.mergeCells(2, 1, 2, 3);
     ["Xero file", "Accounts", "Net"].forEach((h, i) => {
       const cell = summary.getCell(4, i + 1);
       cell.value = h;
-      cell.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      cell.font = { bold: true, color: { argb: `FF${presentation.surface.slice(1)}` } };
       cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: purpleFill } };
       cell.alignment = { horizontal: i === 0 ? "left" : "right", vertical: "middle" };
     });
@@ -663,7 +664,7 @@ export async function buildLoanReconciliationXlsx(
       const nc = summary.getCell(sr, 3);
       nc.value = net;
       nc.numFmt = '#,##0.00;(#,##0.00);"—"';
-      nc.font = { color: { argb: Math.abs(net) > 0.005 ? "FFC02020" : "FF1B1826" } };
+      nc.font = { color: { argb: Math.abs(net) > 0.005 ? `FF${presentation.destructive.slice(1)}` : `FF${presentation.text.slice(1)}` } };
       nc.alignment = { horizontal: "right" };
       sr += 1;
     }

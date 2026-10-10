@@ -209,7 +209,7 @@ function CashflowScenarioPage() {
       <PageContainer>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="font-display text-2xl font-semibold">Cashflow Scenario</h1>
+            <h1 className="font-display text-lg font-semibold">Cashflow Scenario</h1>
             <p className="text-sm text-muted-foreground">
               {client?.name ?? "Client"} · {tenantName} · live from Xero
             </p>
@@ -271,7 +271,7 @@ function CashflowScenarioPage() {
                   <h2 className="font-display text-lg font-semibold">
                     Profit &amp; Loss · {monthLabelOf(month)}
                   </h2>
-                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <span className="rounded-full border border-border px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Accrual basis
                   </span>
                 </div>
@@ -297,7 +297,7 @@ function CashflowScenarioPage() {
             <section className="mt-8">
               <UnclassifiedNotice clientId={clientId} count={data?.unclassifiedCount ?? 0} />
               <div className="mb-5 border-b border-border/60 pb-4">
-                <h2 className="font-display text-xl font-semibold">Scenario</h2>
+                <h2 className="font-display text-lg font-semibold">Scenario</h2>
                 <p className="text-sm text-muted-foreground">If this, then that</p>
               </div>
               <div className="grid gap-3 sm:grid-cols-3">
@@ -422,7 +422,7 @@ function CashflowScenarioPage() {
                     className={`h-4 w-4 text-muted-foreground transition-transform ${invoicesOpen ? "rotate-90" : ""}`}
                   />
                   Invoices · {monthLabelOf(month)}
-                  <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  <span className="ml-2 rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">
                     {view.monthInvoices.length}
                   </span>
                 </h2>
@@ -541,7 +541,7 @@ function CashflowScenarioPage() {
                         <p className="truncate text-sm font-medium">
                           {inv.customer_id ?? "Unassigned"}
                           {inv.excluded && (
-                            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-[10px] uppercase tracking-wider">
+                            <span className="ml-2 rounded bg-muted px-1.5 py-0.5 text-xs uppercase tracking-wider">
                               Excluded
                             </span>
                           )}
@@ -689,9 +689,9 @@ function Stat({
 }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-xl font-semibold tracking-tight tabular-nums ${tone}`}>{value}</p>
-      {note ? <p className="mt-1 text-[11px] text-muted-foreground tabular-nums">{note}</p> : null}
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-lg font-semibold tracking-normal tabular-nums ${tone}`}>{value}</p>
+      {note ? <p className="mt-1 text-xs text-muted-foreground tabular-nums">{note}</p> : null}
     </div>
   );
 }

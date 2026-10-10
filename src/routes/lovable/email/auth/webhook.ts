@@ -135,6 +135,7 @@ export const Route = createFileRoute("/lovable/email/auth/webhook")({
         // Build template props from payload.data (HookData structure)
         const templateProps = {
           siteName: branding.productName,
+          logoSrc: branding.logoLight ?? undefined,
           siteUrl: `https://${ROOT_DOMAIN}`,
           recipient: payload.data.email,
           confirmationUrl: payload.data.url,

@@ -98,7 +98,7 @@ export function TaxObligationsWidget({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-            <Calculator className="h-4 w-4 text-primary" /> Tax obligations
+            <Calculator className="h-4 w-4 text-emphasis" /> Tax obligations
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">Latest completed periods and the ATO-set instalment</p>
         </div>
@@ -115,17 +115,17 @@ export function TaxObligationsWidget({
         <div className="mt-6 grid gap-5 md:grid-cols-3">
           <div>
             <p className="text-xs text-muted-foreground">GST</p>
-            <p className="mt-1 font-display text-2xl font-semibold tabular-nums">{gst ? money(netGstAmount(gst)) : "Unavailable"}</p>
+            <p className="mt-1 font-display text-lg font-semibold tabular-nums">{gst ? money(netGstAmount(gst)) : "Unavailable"}</p>
             <p className="mt-1 text-xs text-muted-foreground">{gst ? periodLabel(gst.periodFrom, gst.periodTo) : "Latest completed period"}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">PAYG withholding</p>
-            <p className="mt-1 font-display text-2xl font-semibold tabular-nums">{payg ? money(payg.amount) : "Unavailable"}</p>
+            <p className="mt-1 font-display text-lg font-semibold tabular-nums">{payg ? money(payg.amount) : "Unavailable"}</p>
             <p className="mt-1 text-xs text-muted-foreground">{payg ? format(new Date(`${payg.month}T00:00:00`), "MMMM yyyy") : "Latest completed month"}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Income tax instalment</p>
-            <p className="mt-1 font-display text-2xl font-semibold tabular-nums">{latestInstalment ? money(latestInstalment.amount) : "Not entered"}</p>
+            <p className="mt-1 font-display text-lg font-semibold tabular-nums">{latestInstalment ? money(latestInstalment.amount) : "Not entered"}</p>
             <p className="mt-1 text-xs text-muted-foreground">{latestInstalment ? periodLabel(latestInstalment.periodStart, latestInstalment.periodEnd) : "ATO-set amount"}</p>
           </div>
         </div>

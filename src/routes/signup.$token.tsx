@@ -100,16 +100,16 @@ function SignupPage() {
       >
         <BrandMark onDark logoHeightClass="h-9" />
         <div>
-          <h2 className="text-3xl font-bold leading-tight">
+          <h2 className="text-lg font-bold leading-tight">
             Welcome to
             <br />
             <span className="font-serif italic text-accent">{platformBrand.productName}</span>
           </h2>
-          <p className="mt-4 max-w-md text-sm text-primary-foreground/75">
+          <p className="mt-4 max-w-md text-sm text-primary-foreground/85">
             Clean Xero dashboards built around the metrics that matter.
           </p>
         </div>
-        <p className="text-xs text-primary-foreground/55">
+        <p className="text-xs text-primary-foreground/85">
           © {new Date().getFullYear()} {platformBrand.productName}
         </p>
       </div>
@@ -117,7 +117,7 @@ function SignupPage() {
       <div className="flex items-center justify-center p-6">
         <div className="w-full max-w-sm space-y-5">
           <div>
-            <h1 className="font-display text-2xl font-semibold">Set up your account</h1>
+            <h1 className="font-display text-lg font-semibold">Set up your account</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               You've been invited as <span className="font-medium">{invitationRole}</span>.
             </p>

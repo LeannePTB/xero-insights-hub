@@ -1,3 +1,5 @@
+import { EmailLogo } from "./EmailLogo";
+import { presentation as theme } from "@/lib/presentation-tokens";
 import * as React from 'react'
 import {
   Body, Button, Container, Head, Heading, Html, Link, Preview, Text,
@@ -5,6 +7,7 @@ import {
 import type { TemplateEntry } from './registry'
 
 interface ReportReadyProps {
+  logoSrc?: string | null
   reportUrl?: string
   reportTitle?: string
   clientName?: string | null
@@ -14,6 +17,7 @@ interface ReportReadyProps {
 }
 
 const ReportReadyEmail = ({
+  logoSrc,
   reportUrl = 'https://tractionadvisory.com.au',
   reportTitle = 'Monthly management report',
   clientName = null,
@@ -26,6 +30,7 @@ const ReportReadyEmail = ({
     <Preview>{reportTitle} is ready to view</Preview>
     <Body style={main}>
       <Container style={container}>
+        <EmailLogo logoSrc={logoSrc} siteName={siteName} />
         <Heading style={h1}>Your report is ready</Heading>
         <Text style={text}>
           {reportTitle}
@@ -62,20 +67,20 @@ export const template = {
   },
 } satisfies TemplateEntry
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, Helvetica, sans-serif' }
+const main = { backgroundColor: theme.surface, fontFamily: 'Arial, Helvetica, sans-serif' }
 const container = { padding: '32px 28px', maxWidth: '560px' }
-const h1 = { fontSize: '22px', color: '#0F172A', margin: '0 0 16px' }
-const text = { fontSize: '15px', lineHeight: '24px', color: '#334155' }
-const small = { fontSize: '13px', lineHeight: '20px', color: '#64748B', wordBreak: 'break-all' as const }
-const link = { color: '#3B82F6' }
+const h1 = { fontSize: '18px', color: theme.text, margin: '0 0 16px' }
+const text = { fontSize: '12px', lineHeight: '18px', color: theme.text }
+const small = { fontSize: '12px', lineHeight: '20px', color: theme.muted, wordBreak: 'break-all' as const }
+const link = { color: theme.primary }
 const button = {
-  backgroundColor: '#3B82F6',
-  color: '#ffffff',
+  backgroundColor: theme.primary,
+  color: theme.surface,
   borderRadius: '10px',
   padding: '12px 20px',
-  fontSize: '15px',
+  fontSize: '12px',
   textDecoration: 'none',
   display: 'inline-block',
   margin: '8px 0 16px',
 }
-const footer = { fontSize: '12px', color: '#94A3B8', marginTop: '24px' }
+const footer = { fontSize: '12px', color: theme.muted, marginTop: '24px' }

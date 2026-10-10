@@ -30,8 +30,8 @@ function PayablesPage() {
       <PageContainer width="full">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <h1 className="font-display text-2xl font-semibold sm:text-3xl flex items-center gap-2">
-              <Wallet className="h-6 w-6 text-primary" /> All Payables
+            <h1 className="font-display text-lg font-semibold sm:text-lg flex items-center gap-2">
+              <Wallet className="h-6 w-6 text-emphasis" /> All Payables
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Unpaid supplier bills · as of {data?.asOf ?? "—"} · {data?.invoices.length ?? 0} bills
@@ -78,7 +78,7 @@ function PayablesPage() {
                             href={inv.deepLink}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-primary hover:underline"
+                            className="inline-flex items-center gap-1 text-emphasis hover:underline"
                             title="Open in Xero"
                           >
                             {inv.invoiceNumber || "—"}

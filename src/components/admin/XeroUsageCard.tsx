@@ -107,7 +107,7 @@ export function XeroUsageCard() {
                         : ""}
                     </span>
                     {r.rejections > 0 ? (
-                      <Badge variant="info" className="text-[10px]">
+                      <Badge variant="info" className="text-xs">
                         {r.rejections} paused by Xero
                         {r.lastProblem ? ` (${r.lastProblem} limit)` : ""}
                         {r.lastRejectedAt

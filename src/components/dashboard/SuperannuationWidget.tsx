@@ -66,7 +66,7 @@ export function SuperannuationWidget({
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <PiggyBank className="h-4 w-4 text-primary" />
+            <PiggyBank className="h-4 w-4 text-emphasis" />
             Superannuation not yet paid
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -119,7 +119,7 @@ export function SuperannuationWidget({
         <>
           <div className="mt-6">
             <p className="text-xs text-muted-foreground">Super not yet paid</p>
-            <p className="mt-1 font-display text-3xl font-semibold tabular-nums">{fmt(outstanding)}</p>
+            <p className="mt-1 font-display text-lg font-semibold tabular-nums">{fmt(outstanding)}</p>
             <p className="mt-2 text-sm text-muted-foreground">
               {available.matchesPaydays && available.unpaidPaydays && oldest
                 ? `This is the super accrued on the last ${available.unpaidPaydays} ${

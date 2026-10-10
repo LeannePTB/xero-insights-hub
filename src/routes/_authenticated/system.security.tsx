@@ -259,7 +259,7 @@ function SecurityDocsPage() {
 
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-xl font-semibold">Security policies</h2>
+          <h2 className="text-lg font-semibold">Security policies</h2>
           <p className="text-sm text-muted-foreground">
             Written policies supporting Xero Security Standard attestation. Source:{" "}
             <code>docs/security/</code>.

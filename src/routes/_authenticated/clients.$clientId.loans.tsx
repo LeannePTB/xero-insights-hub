@@ -113,7 +113,7 @@ function LoansPage() {
       <PageContainer width="full">
         <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <h1 className="font-display text-2xl font-semibold">Company Loan Consolidation</h1>
+            <h1 className="font-display text-lg font-semibold">Company Loan Consolidation</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Reconciles the loan account in each Xero file against its paired loan account.
             </p>

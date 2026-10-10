@@ -67,7 +67,7 @@ export function ScenarioWidget({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <SlidersHorizontal className="h-4 w-4 text-primary" /> Cashflow Scenario
+            <SlidersHorizontal className="h-4 w-4 text-emphasis" /> Cashflow Scenario
           </h3>
           <p className="text-xs text-muted-foreground">{monthLabelOf(month)}</p>
 
@@ -155,8 +155,8 @@ export function ScenarioWidget({
 function Stat({ label, value, tone = "" }: { label: string; value: string; tone?: string }) {
   return (
     <div className="rounded-lg border border-border/60 bg-background p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={`mt-1 text-lg font-semibold tracking-tight tabular-nums ${tone}`}>{value}</p>
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-lg font-semibold tracking-normal tabular-nums ${tone}`}>{value}</p>
     </div>
   );
 }

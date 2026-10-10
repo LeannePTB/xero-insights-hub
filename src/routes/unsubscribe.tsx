@@ -60,7 +60,7 @@ function UnsubscribePage() {
   return (
     <div className="min-h-screen grid place-items-center p-6">
       <div className="max-w-md w-full rounded-lg border bg-card p-8 space-y-4 text-center">
-        <h1 className="text-xl font-semibold">Email preferences</h1>
+        <h1 className="text-lg font-semibold">Email preferences</h1>
         {state.kind === "loading" && (
           <p className="text-sm text-muted-foreground flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></p>
         )}

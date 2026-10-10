@@ -70,7 +70,7 @@ export function SupportAccessCard({ firmId }: { firmId: string }) {
         <button className="w-full p-4 text-left outline-none">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary">
+              <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-emphasis">
                 <LifeBuoy className="h-4 w-4" />
               </div>
               <div>

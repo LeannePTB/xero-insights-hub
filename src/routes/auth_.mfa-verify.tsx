@@ -97,8 +97,8 @@ function MfaVerifyPage() {
       <div className="w-full max-w-sm">
         <div className="rounded-lg border bg-card p-6 shadow-sm">
           <div className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-            <h1 className="font-display text-xl font-semibold">Two-factor required</h1>
+            <ShieldCheck className="h-5 w-5 text-emphasis" />
+            <h1 className="font-display text-lg font-semibold">Two-factor required</h1>
           </div>
           <p className="mt-1 text-sm text-muted-foreground">
             Enter the 6-digit code from your authenticator app.

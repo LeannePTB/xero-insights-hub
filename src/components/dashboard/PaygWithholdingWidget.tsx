@@ -58,7 +58,7 @@ export function PaygWithholdingWidget({
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-primary" />
+            <Receipt className="h-4 w-4 text-emphasis" />
             PAYG withholding by month
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -116,7 +116,7 @@ export function PaygWithholdingWidget({
           ) : (
             <div className="mt-6">
               <p className="text-xs text-muted-foreground">PAYG withholding still owing</p>
-              <p className="mt-1 font-display text-3xl font-semibold tabular-nums">
+              <p className="mt-1 font-display text-lg font-semibold tabular-nums">
                 {fmt(outstanding)}
               </p>
               <p className="mt-2 text-sm text-muted-foreground">
@@ -196,7 +196,7 @@ export function PaygWithholdingWidget({
                 <span className="min-w-0">
                   <span className="text-sm">{monthLabel(m.month)}</span>
                   {m.incomplete && (
-                    <span className="ml-2 text-[11px] text-muted-foreground">
+                    <span className="ml-2 text-xs text-muted-foreground">
                       still running — this month is not finished
                     </span>
                   )}
@@ -204,7 +204,7 @@ export function PaygWithholdingWidget({
                 <span className="flex shrink-0 items-center gap-3">
                   {!isPaidUp && available.months.some((x) => x.owing) && (
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                         m.owing
                           ? "bg-info/10 text-info bg-info/10 text-info"
                           : "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300"

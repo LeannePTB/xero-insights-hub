@@ -92,7 +92,7 @@ function ConsolidationsPage() {
           {access.firmName ?? "Organisation"}
         </span>
       </div>
-      <h1 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">
+      <h1 className="mt-1 font-display text-lg font-semibold sm:text-lg">
         Company consolidations
       </h1>
       <p className="mt-1 max-w-2xl text-sm text-muted-foreground">

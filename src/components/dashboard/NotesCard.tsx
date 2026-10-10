@@ -87,7 +87,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
   return (
     <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
       <div className="mb-4 flex items-center gap-2">
-        <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent/15 text-accent-foreground">
+        <div className="grid h-8 w-8 place-items-center rounded-lg bg-accent/15 text-emphasis">
           <StickyNote className="h-4 w-4" />
         </div>
         <h2 className="font-display text-lg font-semibold">Notes</h2>
@@ -163,7 +163,7 @@ export function NotesCard({ clientId, canEdit }: { clientId: string; canEdit: bo
                       {n.updated_at !== n.created_at && " (edited)"}
                     </span>
                     {n.include_in_report && (
-                      <span className="rounded-full border border-accent/40 bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent-foreground">
+                      <span className="rounded-full border border-accent/40 bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent-foreground">
                         In report
                       </span>
                     )}

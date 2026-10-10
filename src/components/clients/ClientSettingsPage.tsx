@@ -456,11 +456,11 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{tenantName}</span>
                       {isDisconnected ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-semibold text-destructive">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-semibold text-destructive">
                           <AlertCircle className="h-3 w-3" /> Reconnect required
                         </span>
                       ) : (
-                        <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                        <span className="inline-flex items-center rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400">
                           Connected
                         </span>
                       )}

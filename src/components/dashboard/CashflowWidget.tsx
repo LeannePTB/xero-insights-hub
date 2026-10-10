@@ -60,7 +60,7 @@ export function CashflowWidget({
             {tenantName}
           </p>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><Wallet className="h-4 w-4 text-primary" />Cash Flow</h3>
+            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><Wallet className="h-4 w-4 text-emphasis" />Cash Flow</h3>
             <BasisBadge basis="cash" />
           </div>
           <CardFreshness from={fromDate} to={toDate} source={data?.source} isFetching={isFetching} />
@@ -104,14 +104,14 @@ export function CashflowWidget({
           <div className="mt-6 rounded-lg border border-border/60 bg-background p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                   Current cash position
                 </p>
-                <p className="mt-1 flex items-center gap-2 text-2xl font-semibold tracking-tight tabular-nums">
+                <p className="mt-1 flex items-center gap-2 text-lg font-semibold tracking-normal tabular-nums">
                   <Wallet className="h-5 w-5 text-muted-foreground" />
                   {fmt(data.totalCash)}
                 </p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                <p className="mt-0.5 text-xs text-muted-foreground">
                   as at {data.asOf} · {data.accounts.length} bank{" "}
                   {data.accounts.length === 1 ? "account" : "accounts"}
                 </p>
@@ -250,12 +250,12 @@ export function CashflowWidget({
               </table>
             </div>
             {(data.overdueReceivables > 0 || data.overduePayables > 0) && (
-              <p className="mt-2 text-[11px] text-muted-foreground">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Includes {fmt(data.overdueReceivables)} overdue receivables and{" "}
                 {fmt(data.overduePayables)} overdue payables grouped into the next 30 days.
               </p>
             )}
-            <p className="mt-2 text-[11px] text-muted-foreground">
+            <p className="mt-2 text-xs text-muted-foreground">
               Projection based on AR/AP due dates; excludes recurring expenses and one-off
               items not yet invoiced.
             </p>
@@ -281,10 +281,10 @@ function Tile({
 }) {
   return (
     <div className="rounded-lg border border-border/60 bg-background p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
-      <p className={`mt-1 flex items-center gap-1 text-lg font-semibold tracking-tight tabular-nums ${tone}`}>
+      <p className={`mt-1 flex items-center gap-1 text-lg font-semibold tracking-normal tabular-nums ${tone}`}>
         {icon}
         {formatMoneyExact(value, currency)}
       </p>

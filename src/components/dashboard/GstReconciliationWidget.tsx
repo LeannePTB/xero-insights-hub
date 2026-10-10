@@ -157,7 +157,7 @@ export function GstReconciliationWidget({
             {tenantName}
           </p>
           <h3 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Percent className="h-4 w-4 text-primary" />
+            <Percent className="h-4 w-4 text-emphasis" />
             Activity statement — GST (indicative)
           </h3>
           <p className="text-xs text-muted-foreground">
@@ -240,7 +240,7 @@ export function GstReconciliationWidget({
                       ? "Estimated GST refund for this period"
                       : "Estimated GST payable for this period"}
                   </p>
-                  <p className="font-display text-5xl font-semibold tabular-nums tracking-tight text-foreground">
+                  <p className="font-display text-lg font-semibold tabular-nums tracking-normal text-foreground">
                     {fmt(isRefund ? -net : net)}
                   </p>
                   {isRefund && (
@@ -248,7 +248,7 @@ export function GstReconciliationWidget({
                       GST on purchases exceeded GST on sales
                     </p>
                   )}
-                  <p className="mt-1 text-[11px] text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     Indicative, not a lodgement figure
                   </p>
                 </>
@@ -346,11 +346,11 @@ export function GstReconciliationWidget({
                 <span>Check the figures tie (preparer only)</span>
                 <span className="flex items-center gap-2">
                   {data.ties ? (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-medium text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
                       <CheckCircle2 className="h-3.5 w-3.5" /> Ties
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-[11px] font-medium text-destructive">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-destructive/10 px-2.5 py-1 text-xs font-medium text-destructive">
                       <AlertTriangle className="h-3.5 w-3.5" /> Doesn't tie by {fmt(data.difference)}
                     </span>
                   )}
@@ -388,7 +388,7 @@ export function GstReconciliationWidget({
                       <div className="mt-2 overflow-x-auto">
                         <table className="w-full text-sm">
                           <thead>
-                            <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                            <tr className="border-b border-border text-left text-xs uppercase tracking-wider text-muted-foreground">
                               <th className="py-2 pr-3 font-semibold">Date</th>
                               <th className="py-2 px-3 font-semibold">Source</th>
                               <th className="py-2 px-3 font-semibold">Reference</th>
@@ -428,7 +428,7 @@ export function GstReconciliationWidget({
                     </div>
                   )}
 
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     Xero's API does not expose the Activity Statement, so these figures are rebuilt
                     from transaction tax amounts and the GST account movements. Treat them as
                     indicative.
@@ -443,7 +443,7 @@ export function GstReconciliationWidget({
                   )}
 
                   {data.generatedAt && (
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                       {data.fromSnapshot ? "Snapshot taken" : "Calculated"}{" "}
                       {format(new Date(data.generatedAt), "d MMM yyyy, h:mm a")}
                     </p>

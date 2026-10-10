@@ -84,7 +84,7 @@ function AttestationControl({
 
 function StatusPill({ status }: { status: PostureStatus }) {
   if (status === "ok") {
-    return <Badge className="bg-emerald-600 hover:bg-emerald-600 text-white">All OK</Badge>;
+    return <Badge className="bg-emerald-600 hover:bg-emerald-600 text-brand-surface">All OK</Badge>;
   }
   if (status === "warn") {
     return <Badge variant="info">Warn</Badge>;

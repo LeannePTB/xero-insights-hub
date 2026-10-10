@@ -31,7 +31,7 @@ export function XeroActivityWidget({
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{tenantName}</p>
           <h3 className="flex items-center gap-2 font-display text-lg font-semibold">
-            <UserCheck className="h-4 w-4 text-primary" /> Xero file activity
+            <UserCheck className="h-4 w-4 text-emphasis" /> Xero file activity
           </h3>
           <p className="mt-1 text-xs text-muted-foreground">
             Who last signed in to this Xero file, as reported by Xero. Updated overnight.

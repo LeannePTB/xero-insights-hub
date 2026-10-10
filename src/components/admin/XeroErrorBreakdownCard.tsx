@@ -108,7 +108,7 @@ export function XeroErrorBreakdownCard() {
                         firmId={firmId}
                         organisationName={org}
                         trigger={
-                          <button type="button" className="text-xs text-primary underline underline-offset-4">
+                          <button type="button" className="text-xs text-emphasis underline underline-offset-4">
                             Details
                           </button>
                         }

@@ -10,7 +10,7 @@ const STYLES: Record<PillarStatus, string> = {
 
 export function StatusPill({ status, children }: { status: PillarStatus; children: React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium leading-5 ${STYLES[status]}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium leading-5 ${STYLES[status]}`}>
       {children}
     </span>
   );

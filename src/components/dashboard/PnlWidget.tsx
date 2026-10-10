@@ -81,7 +81,7 @@ export function PnlWidget({
             {tenantName}
           </p>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><LineChart className="h-4 w-4 text-primary" />Profit & Loss</h3>
+            <h3 className="font-display text-lg font-semibold flex items-center gap-2"><LineChart className="h-4 w-4 text-emphasis" />Profit & Loss</h3>
             <BasisBadge basis={basis ?? "accrual"} />
           </div>
           <CardFreshness from={fromDate} to={toDate} source={data?.current.source} isFetching={isFetching} />
@@ -118,7 +118,7 @@ export function PnlWidget({
         <XeroErrorNotice error={error} onRetry={() => refetch()} isRetrying={isFetching} />
       ) : current ? (
         <>
-          <p className="mt-6 text-[11px] text-muted-foreground">
+          <p className="mt-6 text-xs text-muted-foreground">
             Compared with the same length of time immediately before:{" "}
             {format(prior.from, "d MMM yyyy")} to {format(prior.to, "d MMM yyyy")}
           </p>
@@ -160,11 +160,11 @@ function Kpi({
   const tone = flat ? "text-muted-foreground" : good ? "text-emerald-600" : "text-rose-600";
   return (
     <div className="rounded-lg border border-border/60 bg-background p-3">
-      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
-      <p className="mt-1 text-lg font-semibold tracking-tight tabular-nums">{fmt(value)}</p>
-      <div className={`mt-1 flex items-center gap-1 text-[11px] font-medium ${tone}`}>
+      <p className="mt-1 text-lg font-semibold tracking-normal tabular-nums">{fmt(value)}</p>
+      <div className={`mt-1 flex items-center gap-1 text-xs font-medium ${tone}`}>
         <Icon className="h-3 w-3 shrink-0" />
         <span className="tabular-nums">
           {flat ? "No change" : `${up ? "+" : ""}${fmt(delta)}`}
@@ -175,7 +175,7 @@ function Kpi({
           )}
         </span>
       </div>
-      <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+      <p className="mt-0.5 text-xs text-muted-foreground tabular-nums">
         {priorLabel ? `${priorLabel}: ` : "Prior: "}
         {fmt(previous)}
       </p>

@@ -1,3 +1,4 @@
+import { presentation, printRgb } from "@/lib/presentation-tokens";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import type { XeroAssessmentContact } from "@/lib/xero-assessment.functions";
@@ -160,7 +161,7 @@ function renderMarkdown(ctx: Ctx, md: string) {
       flushPara();
       const level = h[1].length;
       const text = stripInlineMd(h[2]);
-      const size = level === 1 ? 14 : level === 2 ? 12 : 11;
+      const size = level === 1 ? 13.5 : level === 2 ? 12 : 11;
       ctx.y += 6;
       writeWrapped(ctx, text, { size, bold: true, lineGap: 3 });
       ctx.y += 2;
@@ -216,7 +217,7 @@ function renderMarkdown(ctx: Ctx, md: string) {
         body: rows,
         theme: "grid",
         margin: { left: ctx.margin, right: ctx.margin },
-        headStyles: { fillColor: [70, 80, 110], textColor: 255, fontStyle: "bold", fontSize: 9 },
+        headStyles: { fillColor: printRgb(presentation.primary), textColor: 255, fontStyle: "bold", fontSize: 9 },
         styles: { fontSize: 9, cellPadding: 4, overflow: "linebreak" },
       });
       // @ts-expect-error autoTable attaches lastAutoTable
@@ -248,7 +249,7 @@ export function buildXeroAssessmentPdf(
   const contentW = pageW - margin * 2;
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(22);
+  doc.setFontSize(13.5);
   doc.text("Xero API Consumer", margin, 110);
   doc.text("Annual Security Assessment", margin, 140);
 
@@ -285,7 +286,7 @@ export function buildXeroAssessmentPdf(
     ],
     theme: "grid",
     margin: { left: margin, right: margin },
-    headStyles: { fillColor: [33, 47, 90], textColor: 255, fontStyle: "bold" },
+    headStyles: { fillColor: printRgb(presentation.primary), textColor: 255, fontStyle: "bold" },
     styles: { fontSize: 10, cellPadding: 6, overflow: "linebreak" },
     columnStyles: { 0: { cellWidth: 180, fontStyle: "bold" } },
   });
@@ -312,7 +313,7 @@ export function buildXeroAssessmentPdf(
     cursorY = margin + 10;
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(16);
+    doc.setFontSize(12);
     doc.text(s.heading, margin, cursorY);
     cursorY += 22;
 
@@ -322,7 +323,7 @@ export function buildXeroAssessmentPdf(
       body: s.rows.map((r) => r.map(stripInlineMd)),
       theme: "grid",
       margin: { left: margin, right: margin, top: margin + 20 },
-      headStyles: { fillColor: [33, 47, 90], textColor: 255, fontStyle: "bold" },
+      headStyles: { fillColor: printRgb(presentation.primary), textColor: 255, fontStyle: "bold" },
       styles: { fontSize: 9, cellPadding: 5, overflow: "linebreak" },
       columnStyles:
         s.headers.length === 4

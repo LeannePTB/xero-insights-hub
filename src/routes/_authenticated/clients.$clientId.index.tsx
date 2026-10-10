@@ -400,7 +400,7 @@ function ClientDashboard() {
         {/* SubscriptionGate disabled until payments re-enabled */}
         <div className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-4">
           <div className="min-w-0">
-            <h1 className="truncate font-display text-2xl font-semibold sm:text-3xl">{client.name}</h1>
+            <h1 className="truncate font-display text-lg font-semibold sm:text-lg">{client.name}</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {cardCount} card{cardCount === 1 ? "" : "s"} enabled · {orgs.length} Xero {orgs.length === 1 ? "org" : "orgs"}
             </p>
@@ -546,7 +546,7 @@ function LatestReportPageOne({ clientId }: { clientId: string }) {
         <Link
           to="/clients/$clientId/reports"
           params={{ clientId }}
-          className="text-sm font-medium text-primary hover:underline"
+          className="text-sm font-medium text-emphasis hover:underline"
         >
           Read the full report
         </Link>
@@ -559,10 +559,10 @@ function LatestReportPageOne({ clientId }: { clientId: string }) {
 function EmptyOrgs({ isAdvisor, clientId }: { isAdvisor: boolean; clientId: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center">
-      <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
+      <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-emphasis">
         <Building2 className="h-6 w-6" />
       </div>
-      <h3 className="mt-4 font-display text-xl font-semibold">No Xero organisations linked yet</h3>
+      <h3 className="mt-4 font-display text-lg font-semibold">No Xero organisations linked yet</h3>
       <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
         {isAdvisor ? "Open settings to link a Xero org to this client." : "Ask your advisor to link a Xero org."}
       </p>

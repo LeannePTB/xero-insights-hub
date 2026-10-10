@@ -89,7 +89,7 @@ function Dashboard() {
       <PageContainer>
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="font-display text-3xl font-semibold">Your dashboards</h1>
+            <h1 className="font-display text-lg font-semibold">Your dashboards</h1>
             <p className="mt-1 text-sm text-muted-foreground">Select a dashboard to view.</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -102,10 +102,10 @@ function Dashboard() {
         <div className="mt-8">
           {viewerClients.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border bg-card p-16 text-center">
-              <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
+              <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-emphasis">
                 <Building2 className="h-6 w-6" />
               </div>
-              <h3 className="mt-4 font-display text-xl font-semibold">No dashboards assigned yet</h3>
+              <h3 className="mt-4 font-display text-lg font-semibold">No dashboards assigned yet</h3>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                 Your advisor hasn't granted you access to any dashboards yet.
               </p>
@@ -120,7 +120,7 @@ function Dashboard() {
                   className="group flex flex-col rounded-2xl border border-border bg-card p-5 shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
                 >
                   <div className="flex items-start justify-between">
-                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <div className="grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-emphasis">
                       <Building2 className="h-5 w-5" />
                     </div>
                     <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-1" />

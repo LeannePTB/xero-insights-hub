@@ -52,7 +52,7 @@ export function CostBasisControls({
           const setting = basis[g];
           return (
             <div key={g} className="rounded-xl border border-border/70 p-3">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 {COST_GROUP_LABELS[g]}
               </p>
               <div className="mt-2 flex rounded-lg border border-border p-0.5">
@@ -61,7 +61,7 @@ export function CostBasisControls({
                     key={m.id}
                     type="button"
                     onClick={() => onChange(g, { ...setting, mode: m.id })}
-                    className={`flex-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors ${
+                    className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
                       setting.mode === m.id
                         ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:bg-muted"
@@ -75,7 +75,7 @@ export function CostBasisControls({
               {setting.mode === "override" ? (
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-[10px] text-muted-foreground">Amount</label>
+                    <label className="text-xs text-muted-foreground">Amount</label>
                     <Input
                       className="h-8 text-xs"
                       inputMode="decimal"
@@ -92,7 +92,7 @@ export function CostBasisControls({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-muted-foreground">or % change</label>
+                    <label className="text-xs text-muted-foreground">or % change</label>
                     <Input
                       className="h-8 text-xs"
                       inputMode="decimal"
@@ -110,7 +110,7 @@ export function CostBasisControls({
                   </div>
                 </div>
               ) : (
-                <p className="mt-2 text-[11px] text-muted-foreground tabular-nums">
+                <p className="mt-2 text-xs text-muted-foreground tabular-nums">
                   Actual {fmt(actuals[g])}
                   {avg ? ` · 3-mo avg ${fmt(avg[g])}` : ""}
                 </p>

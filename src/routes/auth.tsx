@@ -228,13 +228,13 @@ function AuthPage() {
           className="absolute inset-0 z-10 opacity-70 mix-blend-multiply"
           style={{ background: "var(--gradient-hero)" }}
         />
-        <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/50 via-black/30 to-black/60" />
+        <div className="absolute inset-0 z-10 bg-gradient-to-b from-brand-navy/50 via-brand-navy/30 to-brand-navy/60" />
         <div className="relative z-20">
           <BrandMark onDark logoHeightClass="h-9" />
         </div>
 
         <div className="relative z-20">
-          <h2 className="text-3xl font-bold leading-tight">
+          <h2 className="text-lg font-bold leading-tight">
             Built for decisions.
             <br />
             <span className="font-serif italic text-accent">Backed by data.</span>
@@ -259,7 +259,7 @@ function AuthPage() {
             </div>
           ) : hasSession ? (
             <div className="space-y-4 text-center">
-              <h1 className="font-display text-2xl font-semibold">You are signed in</h1>
+              <h1 className="font-display text-lg font-semibold">You are signed in</h1>
               {signedInEmail ? (
                 <p className="text-sm text-muted-foreground">{signedInEmail}</p>
               ) : null}
@@ -272,7 +272,7 @@ function AuthPage() {
             </div>
           ) : signupMode ? (
             <div className="space-y-3">
-              <h1 className="font-display text-2xl font-semibold">Request access</h1>
+              <h1 className="font-display text-lg font-semibold">Request access</h1>
               {reqSent ? (
                 <>
                   <p className="text-sm text-muted-foreground" role="status">
@@ -334,7 +334,7 @@ function AuthPage() {
             </div>
           ) : (
             <>
-              <h1 className="font-display text-2xl font-semibold">Welcome</h1>
+              <h1 className="font-display text-lg font-semibold">Welcome</h1>
               {endedReason ? (
                 <p className="mt-1 text-sm text-muted-foreground" role="status">
                   {endedReason === "idle"

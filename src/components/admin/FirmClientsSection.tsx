@@ -157,7 +157,7 @@ export function FirmClientsSection({
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="font-display text-xl font-semibold">{heading}</h2>
+        <h2 className="font-display text-lg font-semibold">{heading}</h2>
         {showAddActions && (
           <div className="flex items-center gap-3">
             {atLimit && (
@@ -266,7 +266,7 @@ export function FirmClientsSection({
             <div className="mx-auto grid h-12 w-12 place-items-center rounded-xl bg-accent/15 text-accent-foreground">
               <Building2 className="h-6 w-6" />
             </div>
-            <h3 className="mt-4 font-display text-xl font-semibold">Create your first client</h3>
+            <h3 className="mt-4 font-display text-lg font-semibold">Create your first client</h3>
             <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
               A client is a company you track. Each client can hold one or more Xero organisations.
             </p>
@@ -316,11 +316,11 @@ export function FirmClientsSection({
                     .join(", ");
                   const nameBlock = (
                     <>
-                      <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-primary shrink-0">
+                      <div className="grid h-9 w-9 place-items-center rounded-lg bg-primary/10 text-emphasis shrink-0">
                         <Building2 className="h-4 w-4" />
                       </div>
                       <div className="min-w-0">
-                        <div className="font-medium leading-tight group-hover:text-primary transition-colors">
+                        <div className="font-medium leading-tight group-hover:text-emphasis transition-colors">
                           {c.name}
                         </div>
                         <div className="mt-0.5 text-xs text-muted-foreground truncate">
@@ -366,7 +366,7 @@ export function FirmClientsSection({
                               params={{ clientId: c.id }}
                               hash="setup"
                               title={setupTitles.join(" · ")}
-                              className="flex w-fit items-center gap-1.5 rounded-lg border border-info/30 bg-info/10 px-2.5 py-1 text-[11px] font-medium text-info border-info/30 bg-info/10 text-info"
+                              className="flex w-fit items-center gap-1.5 rounded-lg border border-info/30 bg-info/10 px-2.5 py-1 text-xs font-medium text-info border-info/30 bg-info/10 text-info"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <AlertTriangle className="h-3 w-3" /> {missingLabel}

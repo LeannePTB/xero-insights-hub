@@ -79,7 +79,7 @@ export function ConsolidationGroupsSection({ firmId }: { firmId: string }) {
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="font-display text-lg font-semibold flex items-center gap-2">
-            <Layers className="h-4 w-4 text-primary" /> Consolidation groups
+            <Layers className="h-4 w-4 text-emphasis" /> Consolidation groups
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
             Combine selected companies into one consolidated view. Intercompany loan balances are eliminated using the

@@ -33,7 +33,7 @@ export function ConsolidatedReceivablesWidget({
   return (
     <AgeingCard
       label={label}
-      icon={<HandCoins className="h-4 w-4 text-primary" />}
+      icon={<HandCoins className="h-4 w-4 text-emphasis" />}
       data={data}
       isLoading={isLoading}
       error={error}
@@ -64,7 +64,7 @@ export function ConsolidatedPayablesWidget({
   return (
     <AgeingCard
       label={label}
-      icon={<CreditCard className="h-4 w-4 text-primary" />}
+      icon={<CreditCard className="h-4 w-4 text-emphasis" />}
       data={data}
       isLoading={isLoading}
       error={error}
@@ -184,7 +184,7 @@ function AgeingCard({
             <button
               type="button"
               onClick={() => setShowBreakdown((v) => !v)}
-              className="text-sm font-medium text-primary hover:underline"
+              className="text-sm font-medium text-emphasis hover:underline"
             >
               {showBreakdown ? "Hide company breakdown" : "Show company breakdown"}
             </button>
@@ -223,8 +223,8 @@ function Kpi({ title, value, note }: { title: string; value: string; note?: stri
   return (
     <div className="rounded-lg border border-border bg-background p-4">
       <p className="text-xs text-muted-foreground">{title}</p>
-      <p className="mt-1 font-display text-2xl font-semibold">{value}</p>
-      {note && <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>}
+      <p className="mt-1 font-display text-lg font-semibold">{value}</p>
+      {note && <p className="mt-1 text-xs text-muted-foreground">{note}</p>}
     </div>
   );
 }
