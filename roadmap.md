@@ -223,3 +223,8 @@ Separate from the card-model migration; no file or object shared with it.
 - Session-only conversations; usage metadata only, purged after 13 months; abandoned reservations expire after 20 minutes.
 - [ ] Seed the Trixie help library — no articles exist yet, so how-to answers are unsupported until content is written.
 - [ ] Phase 2 (report commentary drafting and suggested next actions) deferred.
+
+## 2026-10-11 — Overview Re-sync
+- [x] Re-sync button + last synced on both Overviews, per-row re-sync, queued progress, estimate above 5 clients, 2-minute cooldown, auto refresh.
+- [x] Manage-only (support, advisers, business owners refused); dashboard Refresh figures tightened to match.
+- [ ] Real signed-in check of a re-sync (blocked by MFA for tooling).

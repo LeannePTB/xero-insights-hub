@@ -35,6 +35,8 @@ export type OverviewRow = {
   debtorsOverduePct: number | null;
   lastReportSentAt: string | null;
   freshAsAt: string | null;
+  /** Presentation only: caller may manage (and so re-sync) this client. Server re-checks. */
+  canResync: boolean;
   /** Date of the newest reconciled bank transaction, from the nightly key figures. */
   bankReconciledTo: string | null;
   /** Most recent Xero sign-in by anyone in the file (Finance API), from the nightly key figures. */

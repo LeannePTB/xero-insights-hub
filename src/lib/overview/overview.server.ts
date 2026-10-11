@@ -286,6 +286,14 @@ export async function buildOverview(
   const ctx = await loadOverviewContext(sb, firmId);
   const { logClientDataRead } = await import("@/lib/audit.server");
   const out: OverviewRow[] = [];
+  // Presentation signal from the caller-scoped manage predicate; never a grant.
+  const manageable = new Set<string>();
+  await Promise.all(
+    ctx.clients.map(async (c) => {
+      const { data } = await sb.rpc("me_can_manage_client", { _client_id: c.client_id });
+      if (data === true) manageable.add(c.client_id);
+    }),
+  );
   for (const c of ctx.clients) {
     // Phase 6 read audit: one read per client (the writer de-duplicates in 5-minute windows).
     logClientDataRead({ actorUserId: userId, clientId: c.client_id, firmId: c.firm_id, readKey: "overview", source: "snapshot" });
@@ -327,6 +335,7 @@ export async function buildOverview(
       debtorsOverduePct,
       lastReportSentAt: ctx.lastSent.get(c.client_id) ?? null,
       freshAsAt,
+      canResync: manageable.has(c.client_id),
       bankReconciledTo,
       lastXeroLoginAt: kfRows.find((k: any) => k.last_xero_login_at != null)?.last_xero_login_at ?? null,
       cashSpark: (ctx.keyFigures.get(c.client_id) ?? [])

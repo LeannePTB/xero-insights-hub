@@ -1692,3 +1692,8 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - Behaviour: an excluded account is dropped by the shared ID-keyed overlay, so it counts in neither cash at bank nor credit-card debt; reset to "Use Xero classification" still deletes the override. No name- or balance-based inference added.
 - Checks run: migration 0029 applied (constraint re-verified live); 8 cash-balances tests pass including new excluded cases; 359 application tests pass; fixture refreshed; full `security:check` passed (194 tests, 18 live access checks). Automated harness build: build OK 2026-10-11T01:38:32Z.
 - OPEN (carried forward): real-user AAL2 save and overview readback unverified; `security_posture()` EXECUTE denied to tooling.
+
+## 2026-10-11 — Overview Re-sync (CLOSED gap)
+- CLOSED: manual Xero refresh (`refreshXeroSnapshots`) was gated by a read check (`assert_widget_access`), so read-only paths could trigger Xero calls. It and the new `resyncClient` now require AAL2 + `me_can_manage_client` (write predicate). Support, external advisers and business owners are refused.
+- No database change. Runs recorded in `xero_snapshot_runs` (trigger `manual`); each re-sync writes `audit_log` action `xero_manual_resync` (client, outcome, file count; no figures).
+- OPEN: no matrix probe row yet proves `resyncClient` refuses each read-only path end-to-end with a real AAL2 session (MFA blocks tooling); predicate itself is covered by existing `me_can_manage_client` rows.
