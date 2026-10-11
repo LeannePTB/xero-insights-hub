@@ -29,7 +29,7 @@ nobody remembers is not a control.
 | 5 | Readable access matrix matches its source | Evidence drifting from the policies it documents |
 | 6 | Converted files decide nothing themselves | An access decision re-implemented in TypeScript |
 | 7 | Client-data reads are audited | A new read path that writes no audit row |
-| 8 | Standing viewer grant is never a write path | An External adviser gaining write capability |
+| 8 | Standing viewer grant is never a write path | An Viewer gaining write capability |
 | 9 | Relationship labels grant no authority | A display label used as an access decision |
 | 11 | Read predicates never authorise a write or payment | `has_client_access` and friends returning to a write or billing path |
 | 12 | No raw-HTML sink | A new `dangerouslySetInnerHTML`, `innerHTML`, `outerHTML`, `insertAdjacentHTML` or `document.write` with no recorded reason; also a `rehype-raw` import, which would make markdown render embedded HTML |

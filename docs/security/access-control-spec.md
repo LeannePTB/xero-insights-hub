@@ -187,7 +187,7 @@ minutes'`, so signing in counts as activity until the first recorded
   `auth.sessions` row is gone, so the token is refused everywhere.
   `public.record_sign_out_other_devices()` audits who and when — never a token or
   device detail.
-- **Sign another person out of every device (super admin, stolen device).**
+- **Sign another person out of every device (System Administrator, stolen device).**
   Mechanism, stated plainly: this platform's authentication service has **no**
   administrative sign-out endpoint (`POST /admin/users/{id}/logout`, `DELETE
 /admin/users/{id}/sessions` and `POST /admin/users/{id}/sessions/logout` all
@@ -200,16 +200,16 @@ minutes'`, so signing in counts as activity until the first recorded
   random password nobody holds and emails a reset link; the person chooses a new
   password before signing in again, and the on-screen confirmation says so.
   Authorisation is in the database: `public.admin_assert_can_sign_out_user(uuid)`
-  (aal2 + super admin, refuses `auth.uid()` as its own subject — use the self
-  control — and refuses the last remaining super admin).
+  (aal2 + System Administrator, refuses `auth.uid()` as its own subject — use the self
+  control — and refuses the last remaining System Administrator).
   `public.record_sign_out_all_devices(uuid, text)` writes the
   `sessions_revoked_all` audit row with actor, subject, time and mechanism, only
   after the revocation succeeded, never a password or token. No `auth`-schema
   write is involved. Control: `Settings → Advisors`, per person.
 - **Lockout assessment.** Revoking sessions never touches enrolled factors, so a
-  super admin who signs their own devices out simply signs back in with password
+  System Administrator who signs their own devices out simply signs back in with password
   plus TOTP. The remote control does change the subject's password, which is why it
-  refuses the last remaining super admin and refuses the caller's own account.
+  refuses the last remaining System Administrator and refuses the caller's own account.
   There is no path by which these controls can lock the platform out of itself, and
   therefore no bypass, break-glass role or exception was added.
 
@@ -223,7 +223,7 @@ minutes'`, so signing in counts as activity until the first recorded
 
 ## 2. Business model — read before designing anything
 
-**Every client of Positive Traction gets their OWN organisation**, because the business owner needs to log in and see their own dashboard. Positive Traction super admins create and set these up as part of ongoing bookkeeping. Free by default (PTB plan); the client pays only to upgrade.
+**Every client of Positive Traction gets their OWN organisation**, because the business owner needs to log in and see their own dashboard. Positive Traction System Administrators create and set these up as part of ongoing bookkeeping. Free by default (PTB plan); the client pays only to upgrade.
 
 **Positive Traction owns a client organisation by default** and hands ownership over when the client is ready. After handover it stays on as `staff` so bookkeeping continues, and the client can remove it.
 
@@ -289,7 +289,7 @@ Invariant 7 is enforced, not just stated. `tests/static-guards.test.ts` (run by 
 
 PK is `id`. `grantee_user_id` and `expires_at` are NOT NULL, with a CHECK capping expiry at 72h. Partial unique index on `(firm_id, grantee_user_id) WHERE granted AND revoked_at IS NULL`. **No unique constraint on `firm_id` alone** — never upsert on `firm_id`, never `.maybeSingle()` filtered only by it.
 
-Staff insert a pending request for themselves only. Only `is_org_owner` may approve. **A super admin can never approve their own access.** Writes go through `context.supabase`, never `supabaseAdmin`.
+Staff insert a pending request for themselves only. Only `is_org_owner` may approve. **A System Administrator can never approve their own access.** Writes go through `context.supabase`, never `supabaseAdmin`.
 
 What a live support grant may do (Phase 3a):
 
@@ -308,7 +308,7 @@ Stripe: the practice's OWN account — `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SEC
 
 **`audit_log` is access and security events ONLY**, append-only: sign-ins, invites, membership and role changes, ownership transfers, support grants, comps, Xero connect/disconnect/token refresh/refusal, Path C administrative writes, and the client-data read events in §9a.
 
-**Who may read `audit_log`: only Positive Traction super admins, at aal2.**
+**Who may read `audit_log`: only Positive Traction System Administrators, at aal2.**
 
 > **Settled owner decision, 12 September 2026 — an organisation may NOT read its own audit log.** This is deliberate, and current behaviour already matches it; earlier wording in this file that implied otherwise was wrong. Reasoning: `audit_log` is a single platform-operations trail spanning every organisation. Its rows describe Positive Traction's own operational actions and reference other organisations' identifiers, so exposing "your organisation's rows" would mean filtering a cross-tenant security trail per request — a new access path, and one more place to get wrong (invariants 3 and 6). Organisations that need assurance are given a report or an extract by the practice instead. Revisiting this needs the owner to amend Project Knowledge first.
 
@@ -323,7 +323,7 @@ Every path that shows a person a client's figures records the read through the s
 - **Each row records:** who read it (or that there was no signed-in person), which client, which Xero file (tenant), a short stable key for the kind of figures (`pnl`, `receivables`, `report:monthly`), the period or date range where one applies, and the access path.
 - **Each row never contains:** a figure, an account or contact name, a token (including the report-link token), an IP address or a device.
 - **Grouping:** one row per `(actor, client, tenant, key, source)` per **five minutes**, in process, so one dashboard view is one row per kind of figures. A different person or a different client always writes its own row.
-- **Failure:** an audit write failure is swallowed and logged — it never breaks a dashboard — which is why coverage is checked rather than assumed: `public.read_audit_posture()` (super admin, aal2) compares the trail against the reads actually served, and the Security card shows it.
+- **Failure:** an audit write failure is swallowed and logged — it never breaks a dashboard — which is why coverage is checked rather than assumed: `public.read_audit_posture()` (System Administrator, aal2) compares the trail against the reads actually served, and the Security card shows it.
 - Retention follows `security_settings.audit_retention_days` (730 days live), purged by the nightly job.
 
 ## 10. Xero rules
@@ -360,7 +360,7 @@ Verified live on 12 September 2026 (Phase 7 batch 1; before/after dump in `grant
 
 The verified security backlog lives in `docs/security-backlog.md`. Read it before planning any access-control work, and update it in the same change that closes an item. Do not track outstanding work in this document — this section only points at it.
 
-Settled decisions there, not tasks: **`FORCE ROW LEVEL SECURITY` is WON'T DO** (all `public` tables are owned by `postgres`, which has `rolbypassrls`, so FORCE changes nothing for any role the app connects as); **token column exposure is CLOSED** (`authenticated` has SELECT on 13 non-token columns of `xero_connections`; `access_token_enc` and `refresh_token_enc` have no grant, and the privilege check precedes RLS); **an organisation may not read its own audit log** (§9); and the remaining super admin without a verified TOTP factor is **left as is** — she is forced to enrol at her next sign-in, server enforcement already blocks her from all data, and the posture card correctly shows one Action item until then.
+Settled decisions there, not tasks: **`FORCE ROW LEVEL SECURITY` is WON'T DO** (all `public` tables are owned by `postgres`, which has `rolbypassrls`, so FORCE changes nothing for any role the app connects as); **token column exposure is CLOSED** (`authenticated` has SELECT on 13 non-token columns of `xero_connections`; `access_token_enc` and `refresh_token_enc` have no grant, and the privilege check precedes RLS); **an organisation may not read its own audit log** (§9); and the remaining System Administrator without a verified TOTP factor is **left as is** — she is forced to enrol at her next sign-in, server enforcement already blocks her from all data, and the posture card correctly shows one Action item until then.
 
 ## 15. Working agreement
 
@@ -368,9 +368,9 @@ One change at a time. After anything touching auth, RLS, membership, grants, ent
 
 **Report only what you verified in this turn.** Never describe the prior state of code or database from memory or from earlier in the conversation — re-read it. Say exactly what you changed, even when it differs from what was asked.
 
-## 14. Path D — External adviser (added 12 Sep 2026, people-and-access Batch 2)
+## 14. Path D — Viewer (added 12 Sep 2026, people-and-access Batch 2)
 
-Storage: `public.firm_viewer_access` — one row per person per organisation (`unique (firm_id, user_id)`), carrying the granted `dashboard_tier`, optional display-only inviter label, who granted it and timestamps. In user-facing copy this is an **External adviser — All clients** grant. RLS on; management is `app_private.can_manage_client_viewers(auth.uid(), firm_id)` = that organisation's **owner** (`is_org_owner`) **or** `app_private.is_practice_member_of` — an **active `firm_members` row for THAT organisation** held by someone in `public.practice_team`. A bare super admin, and a practice-team member of a different organisation, are both refused, so this is not a route back into a handed-over organisation (backlog 30 unaffected). The holder may read their own row.
+Storage: `public.firm_viewer_access` — one row per person per organisation (`unique (firm_id, user_id)`), carrying the granted `dashboard_tier`, optional display-only inviter label, who granted it and timestamps. In user-facing copy this is an **Viewer — All clients** grant. RLS on; management is `app_private.can_manage_client_viewers(auth.uid(), firm_id)` = that organisation's **owner** (`is_org_owner`) **or** `app_private.is_practice_member_of` — an **active `firm_members` row for THAT organisation** held by someone in `public.practice_team`. A bare System Administrator, and a practice-team member of a different organisation, are both refused, so this is not a route back into a handed-over organisation (backlog 30 unaffected). The holder may read their own row.
 
 Read path: `app_private.has_standing_client_access(user, client)` resolves the client's organisation and looks for a grant row; `app_private.has_client_read_access` = specific grant `OR` standing grant. `app_private.user_can_read_client` calls `has_client_read_access` in place of `has_client_access` — the only change to the client read check — and every viewer **SELECT** policy now names `has_client_read_access` (`clients`, `client_notes`, `client_cost_classifications`, `client_statutory_accounts`, `client_true_breakeven_inputs`, `client_xero_orgs`, `client_reports`, `loan_consolidation_accounts`, `reconciliation_snapshots`, `unreconciled_lines`, `unreconciled_uploads`, `tier_widget_config`).
 
@@ -428,7 +428,7 @@ those people; the badge reflects membership, never the `super_admin` role.
 It now reads no role and asks `public.me_can_manage_client_viewers(client)`
 instead, so an organisation **owner** may invite, re-level and revoke client
 viewers for clients **in their own organisation, and nowhere else**. Staff,
-support-grant holders (PK 5), a super admin who is neither a member nor practice
+support-grant holders (PK 5), a System Administrator who is neither a member nor practice
 team (PK 3), another organisation's owner (PK 4) and every aal1 session remain
 denied. Inviting **team members** stays super-admin only.
 
@@ -440,19 +440,19 @@ handed-over restriction are unchanged — joining still requires the
 organisation's owner to hold `super_admin`, so a practice-team person cannot
 join a handed-over organisation.
 
-### 14.3 External adviser and Business owner relationship foundation (13 Sep 2026)
+### 14.3 Viewer and Business owner relationship foundation (13 Sep 2026)
 
-Project Knowledge section 2 now names Path D **External adviser** and adds Path E **Business owner**, with invariant 11 forbidding a read predicate (`has_client_access`, `has_client_read_access`, `has_standing_client_access`) in any write policy, write helper or billing authorisation.
+Project Knowledge section 2 now names Path D **Viewer** and adds Path E **Business owner**, with invariant 11 forbidding a read predicate (`has_client_access`, `has_client_read_access`, `has_standing_client_access`) in any write policy, write helper or billing authorisation.
 
-- User-facing copy says **External adviser**, with **All clients** or the number of selected clients. "Standing grant" / "standing viewer grant" are retired from screens. Internal names — `firm_viewer_access`, `client_access`, `has_standing_client_access`, matrix role keys, audit actions — are unchanged, and must stay unchanged.
+- User-facing copy says **Viewer**, with **All clients** or the number of selected clients. "Standing grant" / "standing viewer grant" are retired from screens. Internal names — `firm_viewer_access`, `client_access`, `has_standing_client_access`, matrix role keys, audit actions — are unchanged, and must stay unchanged.
 - A `client_access` row and selected-client viewer invite now carry a nullable `relationship` (`business_owner` | `external_adviser`); `NULL` displays as **Not set** and is read-only. Existing rows were not inferred or backfilled. Relationship does not yet authorise a write or billing action.
 - **Business owner** is reserved for self-service on one specific client only, never on an All clients grant. A client may have **several** business owners (partners, spouses), so there is no unique constraint on `(client_id)` for that relationship.
 - **Membership governs an overlap.** After handover a person may hold both an active `firm_members` row and a `business_owner` row; membership is the broader path and the self-service capabilities are a subset of it, so the two cannot conflict. If the membership is later removed or suspended the relationship row is untouched, and the person falls back to self-service on that one client.
 - Relationship changes go only through `public.set_client_access_relationship`, an aal2, caller-scoped, audited database function callable by the organisation owner or an active practice-team member of that organisation. Direct `client_access` writes are closed unconditionally: authenticated INSERT/UPDATE/DELETE privileges and policies were removed.
 - Optional inviter labels are trimmed, 1–80 characters, and cannot look like email addresses. They are display-only. The verified sign-in email remains the identity; no label participates in an access decision.
-- The invitation screen asks relationship first, then scope. Business owner is selected-client only. External adviser may be selected-client or All clients. New External adviser grants store the existing `multi_company` pass-through tier, but `client_entitlement` remains the authoritative cap.
+- The invitation screen asks relationship first, then scope. Business owner is selected-client only. Viewer may be selected-client or All clients. New Viewer grants store the existing `multi_company` pass-through tier, but `client_entitlement` remains the authoritative cap.
 
-**Batch 3 closed 13 Sep 2026 — the accidental External adviser writes are gone.** The three permissive `scenario_exclusions` write policies (insert, update, delete) that named `app_private.has_client_access` were dropped; scenario exclusions are written only through the audited server functions, which authorise with `public.user_can_write_client_scenario`, now `app_private.user_can_write_client` alone (aal2 gate unchanged). On `unreconciled_lines` the viewer comment UPDATE policy was replaced by "Members update comments for their client", using `app_private.user_can_write_client`. `enforce_unreconciled_line_viewer_columns` is kept and still restricts a non-advisor writer to `client_comment`; verified live 13 Sep 2026 by reading `pg_trigger` (trigger `unreconciled_lines_viewer_column_guard`, BEFORE UPDATE, enabled) and the function body, which raises unless only `client_comment` changed. Static guard 11 now fails the build if `has_client_access`, `has_client_read_access` or `has_standing_client_access` returns to any write policy, write helper or billing helper. **Regression fixed the same day.** Dropping the three `scenario_exclusions` write policies left the table with no write policy at all, so once user-initiated work runs through the caller's session no member or client owner could exclude or restore an invoice. The fix re-created them per command (`Members manage scenario exclusions (insert|update|delete)`, `to authenticated`, `app_private.user_can_write_client(auth.uid(), client_id)`) and added `Members read scenario exclusions` on the same predicate, because the only SELECT policy named the read predicate `has_client_access`. The three scenario server functions now write through `context.supabase` instead of the admin client, after the same `public.user_can_write_client_scenario` check. External advisers, All-clients advisers, unclassified `client_access` rows and support grants stay denied on all four commands. The matrix now asserts the positive case: member and client-owner read plus insert/update/delete on `scenario_exclusions` (8 rows that previously asserted deny), which is why the capability could disappear with the suite green.
+**Batch 3 closed 13 Sep 2026 — the accidental Viewer writes are gone.** The three permissive `scenario_exclusions` write policies (insert, update, delete) that named `app_private.has_client_access` were dropped; scenario exclusions are written only through the audited server functions, which authorise with `public.user_can_write_client_scenario`, now `app_private.user_can_write_client` alone (aal2 gate unchanged). On `unreconciled_lines` the viewer comment UPDATE policy was replaced by "Members update comments for their client", using `app_private.user_can_write_client`. `enforce_unreconciled_line_viewer_columns` is kept and still restricts a non-advisor writer to `client_comment`; verified live 13 Sep 2026 by reading `pg_trigger` (trigger `unreconciled_lines_viewer_column_guard`, BEFORE UPDATE, enabled) and the function body, which raises unless only `client_comment` changed. Static guard 11 now fails the build if `has_client_access`, `has_client_read_access` or `has_standing_client_access` returns to any write policy, write helper or billing helper. **Regression fixed the same day.** Dropping the three `scenario_exclusions` write policies left the table with no write policy at all, so once user-initiated work runs through the caller's session no member or client owner could exclude or restore an invoice. The fix re-created them per command (`Members manage scenario exclusions (insert|update|delete)`, `to authenticated`, `app_private.user_can_write_client(auth.uid(), client_id)`) and added `Members read scenario exclusions` on the same predicate, because the only SELECT policy named the read predicate `has_client_access`. The three scenario server functions now write through `context.supabase` instead of the admin client, after the same `public.user_can_write_client_scenario` check. Viewers, All-clients advisers, unclassified `client_access` rows and support grants stay denied on all four commands. The matrix now asserts the positive case: member and client-owner read plus insert/update/delete on `scenario_exclusions` (8 rows that previously asserted deny), which is why the capability could disappear with the suite green.
 
 ## 15. Member removal (12 Sep 2026)
 
@@ -531,7 +531,7 @@ aal2, client viewer with a standing grant aal2) plus anonymous, calling
 
 ### Posture and triggering
 
-`public.test_accounts_posture()` (aal2 + super admin) reports **Action** if any
+`public.test_accounts_posture()` (aal2 + System Administrator) reports **Action** if any
 test account can sign in outside a run, holds any membership, grant or role
 outside the test organisation, or has a session outside the run window.
 Two entry points, both authorised: the super-admin "Run access tests" button on
@@ -572,12 +572,12 @@ human confirmation — which is what an assessor expects for such a control.
   `app_private.me_is_super_admin()`; a RESTRICTIVE `mfa_aal2_required` guard;
   **no write policy of any kind**; audited by `public.audit_table_change`.
 - `public.record_security_attestation(_check_key, _note)` — the only writer.
-  aal2 + super admin, `SET search_path`, execute revoked from `PUBLIC`/`anon`.
+  aal2 + System Administrator, `SET search_path`, execute revoked from `PUBLIC`/`anon`.
   It stamps `auth.uid()` and `now()` itself; the caller can supply neither an
   identity nor a time. Writes `audit_log` action
   `security_attestation_recorded` (check key and whether a note was given —
   never the note text).
-- `public.security_attestations_list()` — aal2 + super admin read, joined to
+- `public.security_attestations_list()` — aal2 + System Administrator read, joined to
   `auth.users` for the confirmer's sign-in address (rule 10: identity comes
   from `auth.users`, never `profiles`).
 - The attestable set is a **fixed allow-list in two places** — `attestable` in
@@ -616,7 +616,7 @@ only.
 
 An external adviser's own `client_access.tier` does not narrow cards
 (owner decision, 15 September 2026, matching the removal of the Dashboard level
-from the External adviser invite): an adviser sees what the client sees, capped
+from the Viewer invite): an adviser sees what the client sees, capped
 by the purchase, and read-only — read-only is enforced by the write policies and
 write helpers, never by the card list.
 
@@ -633,3 +633,17 @@ database (`public.card_model_active`, `public.client_visible_cards`,
 
 Proof with the switch on, run inside a transaction that always rolls back:
 `scripts/card-model-v2-proof.sql`.
+
+
+## Who can log in (11 Oct 2026)
+
+| Login type | What it is | Database key (unchanged) |
+|---|---|---|
+| System Administrator | Runs the platform (organisations, plans, sign-ups, security). Gives no organisation or client data by itself. Several allowed; the last one cannot be removed. | `user_roles.role = super_admin` |
+| Traction Advisory team | Traction Advisory's own people. Added as Staff to organisations Traction Advisory looks after (the "Traction Advisory looks after this organisation" tick box). | `practice_team` |
+| Organisation Owner | Runs one organisation. | `firm_members.role = owner` |
+| Staff | Works on every client in one organisation. | `firm_members.role = staff` |
+| Viewer | Always read-only. All clients (includes clients added later) or Selected clients; changeable from People. Client entitlement caps what they see. | `firm_viewer_access` (All) / `client_access.relationship = external_adviser` (Selected) |
+| Business Owner | Self-service for their own client only (Path E). | `client_access.relationship = business_owner` |
+
+Support access is a temporary, read-only pass approved by the Organisation Owner — not a login type. There is no Manager role.

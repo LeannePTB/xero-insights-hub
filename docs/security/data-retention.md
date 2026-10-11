@@ -15,7 +15,7 @@
 
 ## Retention configuration
 
-Retention windows live in `public.security_settings` (`audit_retention_days`, `login_retention_days`, both **730 live, verified 12 September 2026**). Only platform super admins can read them, at aal2; only the service role can run the purge function. Each purge writes an `audit_retention_purge` entry recording how many rows were removed, and those entries are never purged.
+Retention windows live in `public.security_settings` (`audit_retention_days`, `login_retention_days`, both **730 live, verified 12 September 2026**). Only platform System Administrators can read them, at aal2; only the service role can run the purge function. Each purge writes an `audit_retention_purge` entry recording how many rows were removed, and those entries are never purged.
 
 Read-audit volume: reads of a client's figures are grouped per person, client, Xero file, read key and source in five-minute windows, which is what keeps a two-year window practical.
 

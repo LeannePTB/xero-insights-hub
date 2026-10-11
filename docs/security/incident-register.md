@@ -67,4 +67,4 @@ Useful when you run the drill — these are real capabilities, not plan text:
 - An append-only audit trail of every read of a client's figures, showing who, which client, which Xero file, what kind of figures and when — retained two years.
 - Auditor exports on the Security page: security events, client data reads, or everything, over 30 days, 90 days or 12 months.
 - Xero disconnection, which revokes at Xero and verifies the revocation.
-- Super admins can reset a person's MFA factors, and membership can be removed immediately.
+- System Administrators can reset a person's MFA factors, and membership can be removed immediately.

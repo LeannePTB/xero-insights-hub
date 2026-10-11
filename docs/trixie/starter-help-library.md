@@ -87,11 +87,11 @@ Source evidence:
 
 Audience: `staff` · Tags: `starter`, `people`, `invitations`, `business-owner`, `external-adviser`
 
-1. Open the organisation → People & access, then the Business owner or External adviser section. Use the invitation form if your access permits it; otherwise ask the organisation owner.
-2. Enter the person’s name and email. Under Relationship, choose External adviser — read-only access or Business owner — selected clients only; self-service is not enabled yet.
+1. Open the organisation → People & access, then the Business owner or Viewer section. Use the invitation form if your access permits it; otherwise ask the organisation owner.
+2. Enter the person’s name and email. Under Relationship, choose Viewer — read-only access or Business owner — selected clients only; self-service is not enabled yet.
 3. Under Which clients should they see?, choose Only the clients I tick and select the intended clients. Only external advisers can be given Every client in this organisation, including ones added later.
 4. Review the access summary and click Send invitation.
-5. Both relationships are read-only now and do not make the person an organisation team member. Business owners see only their assigned clients and client-safe dashboard/report information. External advisers see only their selected clients unless explicitly granted every client, including future clients.
+5. Both relationships are read-only now and do not make the person an organisation team member. Business owners see only their assigned clients and client-safe dashboard/report information. Viewers see only their selected clients unless explicitly granted every client, including future clients.
 6. Use Client settings → People to review access associated with an individual client. Use People & access to manage invitations and access scope.
 
 Source evidence:
@@ -104,7 +104,7 @@ Source evidence:
 Audience: `staff` · Tags: `starter`, `team`, `ownership`, `support`, `add-me-as-staff`
 
 1. Open the organisation → People & access → Team members to review owners and staff. Team membership gives access to the organisation’s clients; it is different from a read-only client invitation.
-2. Where Invite team member is available, enter the team member’s details and create the invitation. This control is currently restricted to super admins; if it is not available, contact support rather than using a business-owner invitation for staff.
+2. Where Invite team member is available, enter the team member’s details and create the invitation. This control is currently restricted to System Administrators; if it is not available, contact support rather than using a business-owner invitation for staff.
 3. Use Settings → Ownership for ownership changes. Inviting staff does not transfer ownership. Owners can remove staff; non-owner staff can leave their own membership.
 4. For temporary troubleshooting, open Settings → Support access. A named platform staff member requests access; the organisation owner approves it. Support access is read-only, audited and expires within 72 hours. Revoke it when no longer needed.
 5. Add me as staff is a separate control for eligible platform staff on an organisation’s System Admin detail page. It creates organisation staff membership, not a temporary read-only support grant. Use Leave organisation afterwards if that membership is no longer required.
