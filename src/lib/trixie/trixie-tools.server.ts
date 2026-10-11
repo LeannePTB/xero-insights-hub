@@ -14,7 +14,7 @@ import type { WidgetKey } from "@/lib/tiers";
 //  - returns a `sources` list so the panel can show what was used.
 
 type Source = { label: string; asAt: string | null; href?: string };
-type FileResult<T> = { file: string; available: boolean; reason?: string; asAt?: string | null; fetchedAt?: string | null; stale?: boolean } & Partial<T>;
+type FileResult = { file: string; available: boolean; reason?: string; asAt?: string | null; fetchedAt?: string | null; stale?: boolean; [key: string]: unknown };
 
 const UNAVAILABLE = "This card isn't available for this client with your access.";
 
@@ -46,24 +46,24 @@ function freshness(hit: { source: any } | null) {
 
 const money = (n: number) => Math.round(n * 100) / 100;
 
-async function perFile<T>(
+async function perFile(
   ctx: TrixieContext,
   widget: WidgetKey,
   label: string,
-  read: (tenantId: string) => Promise<FileResult<T>>,
+  read: (tenantId: string) => Promise<FileResult>,
 ) {
   const blocked = needClient(ctx);
   if (blocked) return { available: false, reason: blocked, files: [], sources: [] as Source[] };
-  const files: FileResult<T>[] = [];
+  const files: FileResult[] = [];
   for (const t of targetTenants(ctx)) {
     if (!(await cardAllowed(ctx, t.tenantId, widget))) {
-      files.push({ file: t.name, available: false, reason: UNAVAILABLE } as FileResult<T>);
+      files.push({ file: t.name, available: false, reason: UNAVAILABLE } as FileResult);
       continue;
     }
     try {
       files.push({ ...(await read(t.tenantId)), file: t.name });
     } catch {
-      files.push({ file: t.name, available: false, reason: "The saved figures could not be read." } as FileResult<T>);
+      files.push({ file: t.name, available: false, reason: "The saved figures could not be read." } as FileResult);
     }
   }
   const sources: Source[] = files.filter((f) => f.available).map((f) => ({ label: `${label} — ${f.file}`, asAt: f.asAt ?? null, href: ctx.clientId ? `/clients/${ctx.clientId}` : undefined }));
@@ -324,7 +324,7 @@ export async function readKnowledge(ctx: TrixieContext, query: string, limit = 3
 
 export function buildTrixieTools(ctx: TrixieContext) {
   const noInput = z.object({});
-  const clientTools = ctx.mode === "platform" ? {} : {
+  const clientTools: Record<string, ReturnType<typeof tool<any, any>>> = ctx.mode === "platform" ? {} : {
     readCurrentClientFigures: tool({ description: "Saved headline figures for the current client (cash, receivables, payables, protected money, revenue and net profit month to date), limited to visible cards.", inputSchema: noInput, execute: () => readKeyFigures(ctx) }),
     readCashPosition: tool({ description: "Cash at bank by account, credit-card debt and net cash for the current client, from the saved Balance Sheet.", inputSchema: noInput, execute: () => readCash(ctx) }),
     readProfitAndLoss: tool({ description: "Month-to-date and financial-year-to-date Profit & Loss totals for the current client.", inputSchema: noInput, execute: () => readPnl(ctx) }),
