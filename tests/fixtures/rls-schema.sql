@@ -136,6 +136,7 @@ create table public.xero_api_errors (id uuid, firm_id uuid, xero_connection_id u
 create table public.xero_assessment_contact (id text, legal_name text, trading_name text, abn_acn text, address text, website text, app_name text, xero_client_id text, contact_name text, contact_role text, contact_email text, contact_phone text, assessment_date text, api_usage_description text, updated_at timestamp with time zone);
 create table public.xero_connections (id uuid, user_id uuid, tenant_id text, tenant_name text, tenant_type text, expires_at timestamp with time zone, scopes text, created_at timestamp with time zone, updated_at timestamp with time zone, firm_id uuid, access_token_enc bytea, refresh_token_enc bytea, enc_version smallint, status text, disconnected_at timestamp with time zone, base_currency text, disconnected_reason text, authorisation_checked_at timestamp with time zone, payroll_access_status text, payroll_access_checked_at timestamp with time zone, payroll_access_http_status integer);
 create table public.xero_oauth_states (state text, user_id uuid, code_verifier text, created_at timestamp with time zone, return_origin text, expires_at timestamp with time zone, client_id uuid, flow text, known_tenant_ids text[], pending_tenant_ids text[], completed_at timestamp with time zone, firm_id uuid);
+create table public.xero_pending_onboards (id uuid, user_id uuid, access_token_enc bytea, refresh_token_enc bytea, token_expires_at timestamp with time zone, scopes text, tenants jsonb, created_at timestamp with time zone, expires_at timestamp with time zone);
 create table public.xero_rate_limits (tenant_id text, day date, firm_id uuid, xero_connection_id uuid, tenant_name text, day_remaining_low integer, day_low_at timestamp with time zone, min_remaining_low integer, min_low_at timestamp with time zone, app_min_remaining_low integer, app_min_low_at timestamp with time zone, calls_observed integer, rate_limited_count integer, last_problem text, last_retry_after_seconds integer, last_rate_limited_at timestamp with time zone, hour_start timestamp with time zone, hour_calls integer, peak_hour_calls integer, peak_hour_start timestamp with time zone, first_seen timestamp with time zone, last_seen timestamp with time zone);
 create table public.xero_snapshot_runs (id uuid, client_id uuid, firm_id uuid, tenant_id text, trigger text, status text, reports_requested integer, reports_succeeded integer, reports_failed integer, error text, started_at timestamp with time zone, finished_at timestamp with time zone, duration_ms integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.xero_snapshots (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, params_hash text, params jsonb, source_endpoint text, payload jsonb, payload_version integer, as_at timestamp with time zone, fetched_at timestamp with time zone, complete boolean, run_id uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
@@ -2690,6 +2691,180 @@ begin
 end
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.admin_onboard_candidates(_pending_id uuid)
+ RETURNS TABLE(tenant_id text, tenant_name text, already_linked boolean)
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  p public.xero_pending_onboards%ROWTYPE;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  IF auth.uid() IS NULL OR NOT app_private.is_super_admin(auth.uid()) THEN
+    RAISE EXCEPTION 'Not authorised.' USING errcode = 'insufficient_privilege';
+  END IF;
+  SELECT * INTO p FROM public.xero_pending_onboards o
+   WHERE o.id = _pending_id AND o.user_id = auth.uid() AND o.expires_at > now();
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'ONBOARD_EXPIRED' USING errcode = 'no_data_found';
+  END IF;
+  RETURN QUERY
+    SELECT t->>'tenantId',
+           coalesce(nullif(t->>'tenantName',''), 'Untitled organisation'),
+           EXISTS (SELECT 1 FROM public.xero_connections c WHERE c.tenant_id = t->>'tenantId')
+      FROM jsonb_array_elements(p.tenants) t
+     WHERE coalesce(t->>'tenantId','') <> '';
+END;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.admin_onboard_organisation_from_xero(_pending_id uuid, _first_tenant text, _extra_tenants text[], _org_name text, _client_limit integer, _billing_mode text, _advisory boolean, _consolidation boolean, _branding boolean, _white_label boolean, _cards text[])
+ RETURNS TABLE(firm_id uuid, client_ids uuid[], tenant_ids text[])
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  _me uuid := auth.uid();
+  p public.xero_pending_onboards%ROWTYPE;
+  _name text := btrim(coalesce(_org_name, ''));
+  _wanted text[];
+  _tenant text;
+  _t jsonb;
+  _firm uuid;
+  _client uuid;
+  _conn uuid;
+  _clients uuid[] := '{}';
+  _member record;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  IF _me IS NULL OR NOT app_private.is_super_admin(_me) THEN
+    RAISE EXCEPTION 'Not authorised.' USING errcode = 'insufficient_privilege';
+  END IF;
+
+  -- Single use: lock the caller's own unexpired record.
+  SELECT * INTO p FROM public.xero_pending_onboards o
+   WHERE o.id = _pending_id AND o.user_id = _me AND o.expires_at > now()
+   FOR UPDATE;
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'ONBOARD_EXPIRED' USING errcode = 'no_data_found';
+  END IF;
+
+  IF char_length(_name) < 2 OR char_length(_name) > 120 THEN
+    RAISE EXCEPTION 'INVALID_ORGANISATION_NAME' USING errcode = 'check_violation';
+  END IF;
+  IF coalesce(_first_tenant, '') = '' THEN
+    RAISE EXCEPTION 'FIRST_TENANT_REQUIRED' USING errcode = 'check_violation';
+  END IF;
+
+  SELECT array_agg(x ORDER BY ord) INTO _wanted FROM (
+    SELECT DISTINCT ON (x) x, ord FROM unnest(array[_first_tenant] || coalesce(_extra_tenants, '{}')) WITH ORDINALITY AS u(x, ord)
+     WHERE coalesce(x, '') <> '' ORDER BY x, ord
+  ) d;
+
+  IF _client_limit IS NULL OR _client_limit < 1 OR array_length(_wanted, 1) > _client_limit THEN
+    RAISE EXCEPTION 'CLIENT_LIMIT_EXCEEDED' USING errcode = 'check_violation';
+  END IF;
+
+  -- Tenant ids are filters: each must be in this pending authorisation and
+  -- not already in the app (any organisation, any person's connection).
+  FOREACH _tenant IN ARRAY _wanted LOOP
+    IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p.tenants) t WHERE t->>'tenantId' = _tenant) THEN
+      RAISE EXCEPTION 'TENANT_NOT_AUTHORISED' USING errcode = 'insufficient_privilege';
+    END IF;
+    IF EXISTS (SELECT 1 FROM public.xero_connections c WHERE c.tenant_id = _tenant) THEN
+      RAISE EXCEPTION 'TENANT_ALREADY_LINKED' USING errcode = 'unique_violation';
+    END IF;
+  END LOOP;
+
+  -- Organisation, exactly as the manual path: never always-free; the creator
+  -- is the owner until an invited owner takes over.
+  INSERT INTO public.firms (name, is_always_free, owner_user_id) VALUES (_name, false, _me) RETURNING id INTO _firm;
+  INSERT INTO public.subscriptions (firm_id, tier, status) VALUES (_firm, 'starter', 'active');
+  INSERT INTO public.firm_members (firm_id, user_id, role, status) VALUES (_firm, _me, 'owner', 'active');
+
+  -- Practice team auto-add, as the manual path (practice_team is keyed on user_id).
+  FOR _member IN SELECT pt.user_id FROM public.practice_team pt WHERE pt.user_id <> _me LOOP
+    INSERT INTO public.firm_members (firm_id, user_id, role, status)
+      SELECT _firm, _member.user_id, 'staff', 'active'
+       WHERE NOT EXISTS (SELECT 1 FROM public.firm_members m WHERE m.firm_id = _firm AND m.user_id = _member.user_id);
+    INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (_me, _firm, 'practice_team_member_joined_new_organisation', 'firm', _firm::text,
+            jsonb_build_object('firm_id', _firm, 'user_id', _member.user_id, 'role', 'staff'));
+  END LOOP;
+
+  -- The purchase, through the same audited control (re-checks every rule).
+  PERFORM public.set_org_purchase(_firm, _client_limit, coalesce(_advisory, false), coalesce(_consolidation, false),
+                                  coalesce(_branding, false), coalesce(_white_label, false), _billing_mode);
+  IF _cards IS NOT NULL THEN
+    PERFORM public.set_org_card_defaults(_firm, _cards);
+  END IF;
+
+  -- One client per file; plan-limit triggers still apply.
+  FOREACH _tenant IN ARRAY _wanted LOOP
+    SELECT t INTO _t FROM jsonb_array_elements(p.tenants) t WHERE t->>'tenantId' = _tenant LIMIT 1;
+    INSERT INTO public.clients (name, owner_user_id, firm_id)
+    VALUES (left(coalesce(nullif(btrim(_t->>'tenantName'), ''), 'Untitled organisation'), 120), _me, _firm)
+    RETURNING id INTO _client;
+    INSERT INTO public.xero_connections (user_id, tenant_id, tenant_name, tenant_type, access_token_enc, refresh_token_enc,
+                                         expires_at, scopes, status, firm_id)
+    VALUES (_me, _tenant, coalesce(nullif(_t->>'tenantName', ''), 'Untitled organisation'), _t->>'tenantType',
+            p.access_token_enc, p.refresh_token_enc, p.token_expires_at, p.scopes, 'connected', _firm)
+    RETURNING id INTO _conn;
+    INSERT INTO public.client_xero_orgs (client_id, xero_connection_id) VALUES (_client, _conn);
+    _clients := _clients || _client;
+  END LOOP;
+
+  -- Consume: the record and its token ciphertext are gone.
+  DELETE FROM public.xero_pending_onboards WHERE id = p.id;
+
+  INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  VALUES (_me, _firm, 'organisation_created_from_xero', 'firm', _firm::text,
+          jsonb_build_object('firm_id', _firm, 'client_count', array_length(_wanted, 1), 'tenant_ids', to_jsonb(_wanted),
+                             'client_limit', _client_limit, 'advisory_enabled', coalesce(_advisory,false),
+                             'consolidation_enabled', coalesce(_consolidation,false), 'branding_enabled', coalesce(_branding,false),
+                             'white_label_enabled', coalesce(_white_label,false), 'billing_mode', _billing_mode,
+                             'default_cards', to_jsonb(_cards)));
+
+  RETURN QUERY SELECT _firm, _clients, _wanted;
+END;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.tg_xero_oauth_states_validate()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  -- 'reconnect' reauthorises a Xero organisation that is already linked, to
+  -- pick up newly requested scopes. It needs a user like 'connect' does, but
+  -- must never be gated by the plan limit — it is not a new Xero file.
+  -- 'signup' is the pre-session Sign Up with Xero flow: like 'signin' it has
+  -- no user yet, and it never links a firm or client.
+  -- 'admin_onboard' is System Admin "Start from a Xero file": a super admin
+  -- authorises files before any organisation exists. It never links a firm or
+  -- client on the state row; the organisation is created later, atomically.
+  IF NEW.flow NOT IN ('connect','signin','signup','onboard','reconnect','admin_onboard') THEN
+    RAISE EXCEPTION 'xero_oauth_states.flow must be connect, signin, signup, onboard, reconnect or admin_onboard, got %', NEW.flow;
+  END IF;
+  IF NEW.flow IN ('connect','onboard','reconnect','admin_onboard') AND NEW.user_id IS NULL THEN
+    RAISE EXCEPTION 'xero_oauth_states.user_id is required for % flow', NEW.flow;
+  END IF;
+  IF NEW.flow = 'onboard' AND NEW.firm_id IS NULL THEN
+    RAISE EXCEPTION 'xero_oauth_states.firm_id is required for onboard flow';
+  END IF;
+  IF NEW.flow = 'admin_onboard' THEN
+    IF NEW.firm_id IS NOT NULL OR NEW.client_id IS NOT NULL THEN
+      RAISE EXCEPTION 'admin_onboard states never carry an organisation or client';
+    END IF;
+    IF NOT app_private.is_super_admin(NEW.user_id) THEN
+      RAISE EXCEPTION 'Not authorised.' USING errcode = 'insufficient_privilege';
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2753,6 +2928,19 @@ begin
   end if;
   return null;
 end;
+$function$
+;
+CREATE OR REPLACE FUNCTION app_private.tg_xero_pending_onboards_guard()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF NOT app_private.is_super_admin(NEW.user_id) THEN
+    RAISE EXCEPTION 'Not authorised.' USING errcode = 'insufficient_privilege';
+  END IF;
+  RETURN NEW;
+END;
 $function$
 ;
 alter table public.access_invites enable row level security;
@@ -2828,6 +3016,7 @@ alter table public.xero_api_errors enable row level security;
 alter table public.xero_assessment_contact enable row level security;
 alter table public.xero_connections enable row level security;
 alter table public.xero_oauth_states enable row level security;
+alter table public.xero_pending_onboards enable row level security;
 alter table public.xero_rate_limits enable row level security;
 alter table public.xero_snapshot_runs enable row level security;
 alter table public.xero_snapshots enable row level security;
@@ -3486,6 +3675,13 @@ grant SELECT on table public.xero_oauth_states to service_role;
 grant TRIGGER on table public.xero_oauth_states to service_role;
 grant TRUNCATE on table public.xero_oauth_states to service_role;
 grant UPDATE on table public.xero_oauth_states to service_role;
+grant DELETE on table public.xero_pending_onboards to service_role;
+grant INSERT on table public.xero_pending_onboards to service_role;
+grant REFERENCES on table public.xero_pending_onboards to service_role;
+grant SELECT on table public.xero_pending_onboards to service_role;
+grant TRIGGER on table public.xero_pending_onboards to service_role;
+grant TRUNCATE on table public.xero_pending_onboards to service_role;
+grant UPDATE on table public.xero_pending_onboards to service_role;
 grant SELECT on table public.xero_rate_limits to authenticated;
 grant DELETE on table public.xero_rate_limits to service_role;
 grant INSERT on table public.xero_rate_limits to service_role;
@@ -3954,6 +4150,7 @@ create policy "Users manage own oauth states (insert)" on public.xero_oauth_stat
 create policy "Users manage own oauth states (select)" on public.xero_oauth_states as permissive for select to authenticated using ((auth.uid() = user_id));
 create policy "Users manage own oauth states (update)" on public.xero_oauth_states as permissive for update to authenticated using ((auth.uid() = user_id)) with check ((auth.uid() = user_id));
 create policy mfa_aal2_required on public.xero_oauth_states as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.xero_pending_onboards as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.xero_rate_limits as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "read xero rate limits as super admin" on public.xero_rate_limits as permissive for select to authenticated using (app_private.is_super_admin(auth.uid()));
 create policy "entitled users read snapshot runs" on public.xero_snapshot_runs as permissive for select to authenticated using ((user_can_access_client(auth.uid(), client_id) AND app_private.user_can_access_tenant(auth.uid(), tenant_id)));
@@ -3969,5 +4166,7 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.signup_re
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscriptions FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
+CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
+CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: ed33fbe489827cfcdb8b42976b6ec2394bbc1bd55f6f7bbd9ff60db305734cc1
+-- catalogue-fingerprint: e30734e933acfcb02c604b31e46b7dff3452dbbaeec844031739ddbc26beeacd

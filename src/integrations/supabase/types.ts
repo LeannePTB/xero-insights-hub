@@ -3287,6 +3287,42 @@ export type Database = {
           },
         ]
       }
+      xero_pending_onboards: {
+        Row: {
+          access_token_enc: string
+          created_at: string
+          expires_at: string
+          id: string
+          refresh_token_enc: string
+          scopes: string | null
+          tenants: Json
+          token_expires_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token_enc: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token_enc: string
+          scopes?: string | null
+          tenants?: Json
+          token_expires_at: string
+          user_id: string
+        }
+        Update: {
+          access_token_enc?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          refresh_token_enc?: string
+          scopes?: string | null
+          tenants?: Json
+          token_expires_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       xero_rate_limits: {
         Row: {
           app_min_low_at: string | null
@@ -3603,6 +3639,34 @@ export type Database = {
           id: string
           is_super_admin: boolean
           user_id: string
+        }[]
+      }
+      admin_onboard_candidates: {
+        Args: { _pending_id: string }
+        Returns: {
+          already_linked: boolean
+          tenant_id: string
+          tenant_name: string
+        }[]
+      }
+      admin_onboard_organisation_from_xero: {
+        Args: {
+          _advisory: boolean
+          _billing_mode: string
+          _branding: boolean
+          _cards: string[]
+          _client_limit: number
+          _consolidation: boolean
+          _extra_tenants: string[]
+          _first_tenant: string
+          _org_name: string
+          _pending_id: string
+          _white_label: boolean
+        }
+        Returns: {
+          client_ids: string[]
+          firm_id: string
+          tenant_ids: string[]
         }[]
       }
       admin_practice_team: {

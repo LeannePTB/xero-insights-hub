@@ -291,17 +291,8 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         };
       }
 
-      const token = randomBytes(32).toString("hex");
-      const expiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
-      const { error: iErr } = await (supabaseAdmin as any).from("access_invites").insert({
-        firm_id: firm.id,
-        email,
-        role: "owner",
-        token_hash: hashToken(token),
-        expires_at: expiresAt,
-        invited_by: context.userId,
-      });
-      if (iErr) throw new Error(iErr.message);
+      const { issueOwnerInvite } = await import("@/lib/owner-invite.server");
+      const { token, emailStatus } = await issueOwnerInvite({ admin: supabaseAdmin, firm, email, invitedBy: context.userId });
 
       await logAudit("organisation_created", "firm", firm.id, context.userId, {
         firm_id: firm.id,
@@ -316,23 +307,6 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         owner_mode: "invite",
         owner_user_id: context.userId,
       });
-
-      const inviteUrl = siteUrl(`/signup/${token}`);
-      let emailStatus: string = "skipped";
-      try {
-        const { enqueueAppEmail } = await import("@/lib/email/send.server");
-        const res = await enqueueAppEmail({
-          templateName: "firm-invite",
-          firmId: firm.id,
-          recipientEmail: email,
-          idempotencyKey: `firm-invite-${firm.id}-${token.slice(0, 8)}`,
-          templateData: { inviteUrl, role: "owner", firmName: firm.name, inviterName: null },
-        });
-        emailStatus = res.status;
-      } catch (e) {
-        console.error("Failed to enqueue invite email", e);
-        emailStatus = "failed";
-      }
 
       return { ok: true, firmId: firm.id, email, mode: "invite" as const, token, emailStatus };
     } catch (e) {

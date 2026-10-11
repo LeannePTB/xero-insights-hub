@@ -45,7 +45,8 @@ fns as (
          'set_overview_alert_state','user_can_write_firm',
          'can_manage_client_income_tax_instalments','save_client_income_tax_instalment',
          'set_client_overview_hidden','set_firm_overview_hidden','overview_hidden_items',
-         'save_client_bank_account_classification','delete_all_my_trixie_threads'))
+         'save_client_bank_account_classification','delete_all_my_trixie_threads',
+         'admin_onboard_candidates','admin_onboard_organisation_from_xero'))
     )
 ),
 stmts as (
@@ -97,6 +98,21 @@ stmts as (
     from tabs join pg_trigger tg on tg.tgrelid = tabs.oid and not tg.tgisinternal
     join pg_proc p on p.oid = tg.tgfoid
    where p.proname = 'seed_client_cards_from_org_default'
+
+  -- the admin_onboard guards: who may start "Start from a Xero file" and
+  -- who may own a pending onboard record (11 Oct 2026)
+  union all
+  select 3, 'trgfn:' || p.oid::text, pg_get_functiondef(p.oid) || ';'
+    from pg_proc p
+   where p.prorettype = 'trigger'::regtype
+     and ((p.pronamespace = 'public'::regnamespace and p.proname = 'tg_xero_oauth_states_validate')
+       or (p.pronamespace = 'app_private'::regnamespace and p.proname = 'tg_xero_pending_onboards_guard'))
+
+  union all
+  select 8, tabs.t || '/' || tg.tgname, pg_get_triggerdef(tg.oid) || ';'
+    from tabs join pg_trigger tg on tg.tgrelid = tabs.oid and not tg.tgisinternal
+    join pg_proc p on p.oid = tg.tgfoid
+   where p.proname in ('tg_xero_oauth_states_validate', 'tg_xero_pending_onboards_guard')
 
   union all
   select 4, tabs.t, 'alter table public.' || quote_ident(tabs.t) || ' enable row level security;'

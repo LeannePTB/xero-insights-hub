@@ -1,10 +1,7 @@
-import { useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { adminCreateOrganisation } from "@/lib/invites.functions";
-import { listCardGroups } from "@/lib/card-model.functions";
-import { cardLabel, CARD_GROUP_LABEL } from "@/lib/card-labels";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +9,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Loader2, UserPlus, Copy, Check, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { AddClientFromXeroButton } from "@/components/admin/AddClientFromXeroButton";
+import { PackageFields, packagePayload, useOrganisationPackage } from "@/components/admin/OrganisationPackageFields";
+import { AddOrganisationFromXero, restorePackage } from "@/components/admin/AddOrganisationFromXero";
+import { FileSpreadsheet, PencilLine } from "lucide-react";
 
 /** Super-admin dialog that creates an organisation and optionally its owner login. */
 export function AddOrganisationDialog({
@@ -26,7 +26,6 @@ export function AddOrganisationDialog({
   label?: string;
 }) {
   const create = useServerFn(adminCreateOrganisation);
-  const listGroups = useServerFn(listCardGroups);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
@@ -34,49 +33,35 @@ export function AddOrganisationDialog({
   const [email, setEmail] = useState("");
   const [ownerName, setOwnerName] = useState("");
   const [password, setPassword] = useState("");
-  // What they are buying.
-  const [clientLimit, setClientLimit] = useState("1");
-  const [billingMode, setBillingMode] = useState<"bookkeeping" | "external">("bookkeeping");
-  const [advisory, setAdvisory] = useState(false);
-  const [consolidation, setConsolidation] = useState(false);
-  const [branding, setBranding] = useState(false);
-  const [whiteLabel, setWhiteLabel] = useState(false);
-  // How they want it set up — a starting point for clients added later, never a purchase.
-  const [unticked, setUnticked] = useState<string[]>([]);
+  const pkg = useOrganisationPackage(open);
+  const [mode, setMode] = useState<null | "manual" | "xero">(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+
+  // Back from Xero: /system?onboard=<opaque id>. The id is only a handle — the
+  // database returns its files to the person who started the sign-in, and only
+  // while it is unexpired and unused.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get("onboard");
+    const xeroError = params.get("xero_error");
+    if (!id && !xeroError) return;
+    params.delete("onboard");
+    params.delete("xero_error");
+    const qs = params.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+    if (xeroError) { toast.error(xeroError); return; }
+    if (id && /^[0-9a-f-]{36}$/i.test(id)) {
+      restorePackage(pkg);
+      setPendingId(id);
+      setMode("xero");
+      setOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const { limitNum } = pkg;
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [done, setDone] = useState<null | { mode: "password" | "invite" | "none"; email?: string | null; password?: string; inviteUrl?: string; emailStatus?: string | null; firmId?: string }>(null);
   const [copied, setCopied] = useState(false);
-
-  const groupsQ = useQuery({
-    queryKey: ["card-groups"],
-    queryFn: () => (listGroups as any)({ data: {} }),
-    enabled: open,
-    staleTime: 5 * 60_000,
-  });
-  const groups: { group: string; cards: string[] }[] = (groupsQ.data as any)?.groups ?? [];
-  const limitNum = Math.max(0, Math.trunc(Number(clientLimit) || 0));
-
-  /** The groups this purchase pays for. Consolidation only bites above one client. */
-  const includedGroups = useMemo(
-    () =>
-      groups.filter(
-        (g) =>
-          g.group === "standard" ||
-          (g.group === "advisory" && advisory) ||
-          (g.group === "consolidation" && advisory && consolidation && limitNum > 1),
-      ),
-    [groups, advisory, consolidation, limitNum],
-  );
-  const availableCards = useMemo(
-    () => includedGroups.flatMap((g) => g.cards),
-    [includedGroups],
-  );
-  const cardsPayload = useMemo(() => {
-    const chosen = availableCards.filter((c) => !unticked.includes(c));
-    // No template unless something was actually unticked: absent means "every
-    // card the purchase allows", exactly as before.
-    return chosen.length === availableCards.length ? null : chosen;
-  }, [availableCards, unticked]);
 
   const mut = useMutation({
     mutationFn: () =>
@@ -87,13 +72,7 @@ export function AddOrganisationDialog({
           ownerMode,
           ownerPassword: ownerMode === "password" ? password : null,
           ownerName: ownerName || null,
-          clientLimit: limitNum,
-          billingMode,
-          advisory,
-          consolidation: advisory && consolidation,
-          branding: advisory && branding,
-          whiteLabel,
-          cards: cardsPayload,
+          ...packagePayload(pkg),
         },
       }),
     onMutate: () => setErrorMsg(null),
@@ -125,8 +104,8 @@ export function AddOrganisationDialog({
     setName("");
     setOwnerMode("none"); setEmail(""); setOwnerName("");
     setPassword(""); setDone(null); setCopied(false); setErrorMsg(null);
-    setClientLimit("1"); setBillingMode("bookkeeping");
-    setAdvisory(false); setConsolidation(false); setBranding(false); setWhiteLabel(false); setUnticked([]);
+    pkg.reset();
+    setMode(null); setPendingId(null);
   }
 
   function generatePassword() {
@@ -162,6 +141,29 @@ export function AddOrganisationDialog({
           </DialogDescription>
         </DialogHeader>
 
+        {mode === null && !done ? (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => setMode("manual")} className="rounded-lg border border-border p-4 text-left hover:bg-muted/50">
+              <PencilLine className="mb-2 h-5 w-5 text-primary" />
+              <p className="text-sm font-medium">Set up manually</p>
+              <p className="text-xs text-muted-foreground">Type the name and package, then connect Xero files later.</p>
+            </button>
+            <button type="button" onClick={() => setMode("xero")} className="rounded-lg border border-border p-4 text-left hover:bg-muted/50">
+              <FileSpreadsheet className="mb-2 h-5 w-5 text-primary" />
+              <p className="text-sm font-medium">Start from a Xero file</p>
+              <p className="text-xs text-muted-foreground">Pick the package, sign in to Xero, and the files you tick become the organisation and its clients.</p>
+            </button>
+          </div>
+        ) : mode === "xero" ? (
+          <AddOrganisationFromXero
+            pkg={pkg}
+            pendingId={pendingId}
+            onBack={() => { setPendingId(null); setMode(null); }}
+            onFinished={() => { onCreated?.(); setOpen(false); reset(); }}
+          />
+        ) : (
+        <>
+
         {!done ? (
           <div className="space-y-5">
             {errorMsg && (
@@ -175,125 +177,7 @@ export function AddOrganisationDialog({
               <Input id="o-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Acme Accounting" />
             </div>
 
-            <div className="space-y-3 rounded-lg border border-border p-3">
-              <p className="text-sm font-medium">What they are buying</p>
-              <p className="text-xs text-muted-foreground">
-                This is what they pay for. It decides what exists for every client in the organisation.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <Label htmlFor="o-clients">Clients</Label>
-                  <Input
-                    id="o-clients"
-                    inputMode="numeric"
-                    value={clientLimit}
-                    onChange={(e) => setClientLimit(e.target.value.replace(/[^0-9]/g, ""))}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Billing</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button type="button" size="sm" variant={billingMode === "bookkeeping" ? "default" : "outline"} onClick={() => setBillingMode("bookkeeping")}>
-                      Bookkeeping
-                    </Button>
-                    <Button type="button" size="sm" variant={billingMode === "external" ? "default" : "outline"} onClick={() => setBillingMode("external")}>
-                      External
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="flex items-start gap-2 text-sm">
-                  <Checkbox
-                    checked={advisory}
-                    onCheckedChange={(v) => {
-                      const on = !!v;
-                      setAdvisory(on);
-                      if (!on) { setConsolidation(false); setBranding(false); }
-                    }}
-                  />
-                  <span>Advisory</span>
-                </label>
-                <label className="flex items-start gap-2 text-sm">
-                  <Checkbox checked={whiteLabel} onCheckedChange={(v) => setWhiteLabel(!!v)} />
-                  <span>
-                    White label
-                    <span className="block text-xs text-muted-foreground">
-                      Uses the organisation's name and logo in its app, organisation emails and new reports. Independent of Advisory and Branding.
-                    </span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-2 text-sm">
-                  <Checkbox
-                    checked={consolidation}
-                    disabled={!advisory}
-                    onCheckedChange={(v) => setConsolidation(!!v)}
-                  />
-                  <span>
-                    Consolidation
-                    <span className="block text-xs text-muted-foreground">
-                      {!advisory
-                        ? "Needs Advisory."
-                        : limitNum > 1
-                        ? "Groups this organisation's clients together."
-                        : "Only does anything with more than one client."}
-                    </span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-2 text-sm">
-                  <Checkbox
-                    checked={branding}
-                    disabled={!advisory}
-                    onCheckedChange={(v) => setBranding(!!v)}
-                  />
-                  <span>
-                    Report branding
-                    <span className="block text-xs text-muted-foreground">
-                      {advisory ? "Client logos on reports." : "Needs Advisory."}
-                    </span>
-                  </span>
-                </label>
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-lg border border-border p-3">
-              <p className="text-sm font-medium">How they want it set up</p>
-              <p className="text-xs text-muted-foreground">
-                These ticks are not part of what they pay for. They are the starting point for clients
-                added from now on — unticking a card here does not reduce what they have bought, and you
-                can turn it back on for any client at any time.
-              </p>
-              {groupsQ.isLoading ? (
-                <p className="text-xs text-muted-foreground">Loading cards…</p>
-              ) : includedGroups.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No cards to show yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {includedGroups.map((g) => (
-                    <div key={g.group} className="space-y-1.5">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        {CARD_GROUP_LABEL[g.group] ?? g.group}
-                      </p>
-                      <div className="grid gap-1.5 sm:grid-cols-2">
-                        {g.cards.map((c) => (
-                          <label key={c} className="flex items-center gap-2 text-sm">
-                            <Checkbox
-                              checked={!unticked.includes(c)}
-                              onCheckedChange={(v) =>
-                                setUnticked((prev) =>
-                                  v ? prev.filter((x) => x !== c) : [...prev, c],
-                                )
-                              }
-                            />
-                            <span>{cardLabel(c)}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            <PackageFields pkg={pkg} />
 
             <div className="space-y-3 rounded-lg border border-border p-3">
               <p className="text-sm font-medium">Owner access</p>
@@ -388,6 +272,8 @@ export function AddOrganisationDialog({
             </>
           )}
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

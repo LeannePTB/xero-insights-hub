@@ -51,8 +51,10 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           }
         }
 
-        const flow: "connect" | "signin" | "signup" | "onboard" | "reconnect" =
-          stateRow?.flow === "signin"
+        const flow: "connect" | "signin" | "signup" | "onboard" | "reconnect" | "admin_onboard" =
+          stateRow?.flow === "admin_onboard"
+            ? "admin_onboard"
+            : stateRow?.flow === "signin"
             ? "signin"
             : stateRow?.flow === "signup"
               ? "signup"
@@ -82,6 +84,8 @@ export const Route = createFileRoute("/api/public/xero/callback")({
               ? `/auth?xero_error=${encodeURIComponent(message)}`
               : flow === "onboard"
                 ? `${onboardReturnPath}?xero_error=${encodeURIComponent(message)}`
+                : flow === "admin_onboard"
+                  ? `/system?xero_error=${encodeURIComponent(message)}`
                 : `${stateRow?.client_id ? `/clients/${stateRow.client_id}/settings` : "/dashboard"}?xero_error=${encodeURIComponent(message)}`;
           return redirectTo(`${returnOrigin}${errorPath}`);
         }
@@ -304,6 +308,43 @@ export const Route = createFileRoute("/api/public/xero/callback")({
           console.error("Xero token encryption failed", storageErr);
           return redirectTo(`${returnOrigin}/dashboard?xero_error=token_storage`);
         }
+        // ─────────────────────────────────────────────────────────────────────
+        // System Admin "Start from a Xero file" — handled BEFORE any connection
+        // row is written. No organisation exists yet, so nothing is stored in
+        // xero_connections here: the tokens and tenant list are held in a
+        // 30-minute, single-use pending record owned by the state's user (a
+        // database trigger refuses the row unless that user is a super admin).
+        // Only the opaque pending id reaches the browser.
+        // ─────────────────────────────────────────────────────────────────────
+        if (flow === "admin_onboard") {
+          await supabaseAdmin.from("xero_oauth_states").delete().eq("state", state);
+          const fail = (message: string) =>
+            redirectTo(`${returnOrigin}/system?xero_error=${encodeURIComponent(message)}`);
+          if (!stateRow.user_id || stateRow.firm_id || stateRow.client_id) {
+            return fail("This Xero sign-in could not be matched to your session. Please start again.");
+          }
+          if (tenants.length === 0) {
+            return fail("Xero didn't return any organisations for that login. Try again and tick the files you want on Xero's consent screen.");
+          }
+          const { data: pending, error: pendingErr } = await (supabaseAdmin as any)
+            .from("xero_pending_onboards")
+            .insert({
+              user_id: stateRow.user_id,
+              access_token_enc: accessEnc,
+              refresh_token_enc: refreshEnc,
+              token_expires_at: expiresAt,
+              scopes: tokens.scope,
+              tenants: tenants.slice(0, 200).map((t) => ({ tenantId: t.tenantId, tenantName: t.tenantName, tenantType: t.tenantType })),
+            })
+            .select("id")
+            .single();
+          if (pendingErr || !pending?.id) {
+            console.error("admin onboard pending insert refused", pendingErr?.code);
+            return fail("This Xero sign-in could not be saved. Please start again.");
+          }
+          return redirectTo(`${returnOrigin}/system?onboard=${encodeURIComponent(pending.id)}`);
+        }
+
         // ─────────────────────────────────────────────────────────────────────
         // Reconnect flow — handled BEFORE any connection row is written.
         //
