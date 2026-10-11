@@ -33,6 +33,7 @@ import {
 import { Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
+import { LOGIN_TYPE_DESCRIPTION, LOGIN_TYPE_LABEL } from "@/lib/access-labels";
 import { siteUrl } from "@/lib/site-origin";
 import { PageContainer } from "@/components/PageContainer";
 
@@ -240,6 +241,9 @@ function AdvisorSettings() {
       <PageContainer width="readable" className="space-y-6">
 
         <FirmPageHeader title="Platform staff" />
+        <p className="text-sm text-muted-foreground">
+          {LOGIN_TYPE_LABEL.super_admin}: {LOGIN_TYPE_DESCRIPTION.super_admin} You can have more than one; the last one cannot be removed.
+        </p>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
           <h2 className="mb-3 font-display text-lg font-semibold">Add an advisor</h2>
