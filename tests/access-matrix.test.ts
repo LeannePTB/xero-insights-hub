@@ -549,6 +549,7 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     const me = CONTEXT[row.role].uid;
     const tenants = `'[{"tenantId":"new-1","tenantName":"New One"},{"tenantId":"new-2","tenantName":"New Two"},{"tenantId":"new-3","tenantName":"New Three"},{"tenantId":"${TENANT_A}","tenantName":"File A"}]'::jsonb`;
     await seedThenActAs(row.role, `
+      select set_config('request.jwt.claims', '{}', true);
       alter table public.firms alter column id set default gen_random_uuid();
       alter table public.subscriptions alter column id set default gen_random_uuid();
       alter table public.firm_members alter column id set default gen_random_uuid();
