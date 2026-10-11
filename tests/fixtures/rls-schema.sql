@@ -3873,7 +3873,7 @@ create policy "Owner creates own Trixie threads" on public.trixie_threads as per
 create policy "Owner deletes own Trixie threads" on public.trixie_threads as permissive for delete to authenticated using ((user_id = auth.uid()));
 create policy "Owner reads own Trixie threads while access remains" on public.trixie_threads as permissive for select to authenticated using (((user_id = auth.uid()) AND
 CASE workspace
-    WHEN 'client'::text THEN app_private.has_client_read_access(auth.uid(), client_id)
+    WHEN 'client'::text THEN app_private.user_can_read_client(auth.uid(), client_id)
     WHEN 'organisation'::text THEN app_private.has_firm_access(auth.uid(), firm_id)
     ELSE true
 END));
@@ -3954,4 +3954,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 9677a70f9acc27aa7a1a249a78c367289582bd8b0776d87bdbe645675d33c92d
+-- catalogue-fingerprint: ed33fbe489827cfcdb8b42976b6ec2394bbc1bd55f6f7bbd9ff60db305734cc1
