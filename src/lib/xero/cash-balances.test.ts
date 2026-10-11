@@ -30,6 +30,17 @@ describe("cash at bank and net cash", () => {
     assert.equal(Math.round(analyseBalanceSheet(report, accounts).cashAtBank.total * 100), 89053);
     assert.equal(balanceSheetBankBalances(report).get('card'), -3554.32);
   });
+  it('excluded accounts are left out of both cash at bank and credit-card debt', () => {
+    const accounts = { Accounts: ['astro', 'gst', 'card'].map(AccountID => ({ AccountID, Type: 'BANK', BankAccountType: 'BANK', Class: 'ASSET', Status: 'ACTIVE' })) };
+    const report = { Rows: [{ RowType: 'Section', Rows: [
+      ...[['astro', '2444.85'], ['gst', '2000'], ['card', '-3554.32']].map(([id, value]) => ({ RowType: 'Row', Cells: [{ Value: 'Same name', Attributes: [{ Id: 'account', Value: id }] }, { Value: value }] })),
+    ] }] };
+    const result = analyseBalanceSheet(report, accounts, undefined, [{ account_id: 'gst', classification: 'excluded' }]);
+    assert.equal(result.cashAtBank.total, 2444.85);
+    assert.equal(result.creditCardDebt.total, 0);
+    const overlay = applyBankClassifications(accounts.Accounts, [{ account_id: 'GST', classification: 'excluded' }]);
+    assert.equal(overlay.some(account => account.AccountID === 'gst'), false);
+  });
   it('does not guess from names, negative balances or unknown IDs; reset restores Xero', () => {
     const accounts = [{ AccountID: 'bank', Name: 'Credit Card', Type: 'BANK', BankAccountType: 'BANK', Class: 'ASSET', Status: 'ACTIVE' }];
     assert.equal(applyBankClassifications(accounts, [ { account_id: 'unknown', classification: 'credit_card' } ])[0].BankAccountType, 'BANK');
