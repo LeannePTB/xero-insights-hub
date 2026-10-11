@@ -232,6 +232,13 @@
       "when": 1791687582874,
       "tag": "0032_trixie_threads_read_recheck",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791688578461,
+      "tag": "0033_admin_onboard_organisation_from_xero",
+      "breakpoints": true
     }
   ]
 }
