@@ -20,7 +20,19 @@ export const DEFINER_PURPOSES: Record<string, string> = {
   "public.admin_trixie_limits": "Lists organisation Trixie overrides for an aal2 super admin.",
   "public.save_trixie_org_limit": "Sets one organisation's Trixie allowance after aal2 and super-admin checks and audits the change.",
   "public.admin_trixie_usage": "Aggregates metadata-only Trixie usage for an aal2 super admin.",
-  "public.purge_trixie_usage": "Deletes Trixie usage metadata older than thirteen months after aal2 and super-admin checks.",
+  "public.purge_trixie_usage": "Deletes Trixie usage metadata older than thirteen months; a signed-in caller must be an aal2 super admin, the nightly system job has no caller.",
+  "public.expire_trixie_reservations": "Cancels Trixie reservations abandoned for twenty minutes so they stop consuming an organisation's allowance.",
+  "public.trixie_cost_guard": "Returns the per-question Trixie cost guard in US dollars for an aal2 caller.",
+  "public.admin_trixie_spend_overview": "Daily Trixie spend and question counts for an aal2 super admin.",
+  "public.admin_trixie_alerts": "Lists Trixie usage alerts for an aal2 super admin.",
+  "public.acknowledge_trixie_alert": "Dismisses one Trixie usage alert after aal2 and super-admin checks.",
+  "public.evaluate_trixie_alerts": "System job: raises Trixie spend, allowance and spike alerts from usage metadata only.",
+  "public.mark_trixie_alert_emailed": "System job: records that a Trixie alert email has been queued, so it is sent once.",
+  "public.trixie_monthly_summary": "System job: Trixie question counts and spend per organisation and per model for one month.",
+  "public.admin_trixie_summary_preview": "Monthly Trixie usage summary for an aal2 super admin.",
+  "public.admin_trixie_alert_settings": "Lists Trixie spend-alert thresholds for an aal2 super admin.",
+  "public.save_trixie_alert_settings": "Changes Trixie spend-alert thresholds after aal2 and super-admin checks and audits the change.",
+  "app_private.assert_trixie_maintenance": "Guard for Trixie system jobs: a signed-in caller must be an aal2 super admin; a caller-less system context passes.",
   // ── app_private: the access rules themselves (invariant 6). Never called from
   //    TypeScript; called by RLS policies and by the public wrappers.
   "app_private.assert_xero_connection_firm_match":
