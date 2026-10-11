@@ -15,6 +15,7 @@ import {
   setClientXeroAllowance,
 } from "@/lib/clients.functions";
 import { StatutoryAccountsSection } from "@/components/clients/StatutoryAccountsSection";
+import { BankAccountsSection } from "@/components/clients/BankAccountsSection";
 import { ClientSetupSection } from "@/components/clients/ClientSetupSection";
 import { BasisSelect, type ReportBasis } from "@/components/dashboard/BasisSelect";
 import { basisLabel } from "@/lib/report-basis";
@@ -392,6 +393,15 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
           />
         </Section>
 
+        <Section title="Bank accounts & credit cards" id="bank-accounts" collapsible>
+          {linkedOrgs.map((org: any) => org.xero_connections?.tenant_id ? (
+            <div key={org.id} className="space-y-3">
+              <h3 className="text-sm font-medium">{org.xero_connections.tenant_name}</h3>
+              <BankAccountsSection clientId={clientId} tenantId={org.xero_connections.tenant_id} />
+            </div>
+          ) : null)}
+        </Section>
+
         {/* Xero orgs */}
         <Section
           title="Xero organisations"
@@ -763,6 +773,7 @@ const SETTINGS_SECTION_BY_TITLE: Record<string, ClientSettingsSection> = {
   "Profit & Loss basis": "tax-reporting",
   "How often this client lodges": "tax-reporting",
   "How this client codes GST, PAYG and super": "tax-reporting",
+  "Bank accounts & credit cards": "tax-reporting",
   "What you really need to bring in": "costs",
   "Danger zone": "danger",
 };

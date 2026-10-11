@@ -367,6 +367,41 @@ export type Database = {
           },
         ]
       }
+      client_bank_account_classifications: {
+        Row: {
+          account_id: string
+          classification: string
+          client_id: string
+          tenant_id: string
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          account_id: string
+          classification: string
+          client_id: string
+          tenant_id: string
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          account_id?: string
+          classification?: string
+          client_id?: string
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_bank_account_classifications_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_cards: {
         Row: {
           cards: string[]
@@ -4130,6 +4165,15 @@ export type Database = {
       revoke_firm_member_invite: { Args: { _id: string }; Returns: undefined }
       revoke_firm_viewer_access: { Args: { _id: string }; Returns: undefined }
       revoke_viewer_invite: { Args: { _id: string }; Returns: undefined }
+      save_client_bank_account_classification: {
+        Args: {
+          _account_id: string
+          _classification: string
+          _client_id: string
+          _tenant_id: string
+        }
+        Returns: undefined
+      }
       save_client_income_tax_instalment: {
         Args: {
           _amount: number

@@ -44,7 +44,8 @@ fns as (
         'my_firm_memberships','me_is_practice_member','overview_clients',
          'set_overview_alert_state','user_can_write_firm',
          'can_manage_client_income_tax_instalments','save_client_income_tax_instalment',
-         'set_client_overview_hidden','set_firm_overview_hidden','overview_hidden_items'))
+         'set_client_overview_hidden','set_firm_overview_hidden','overview_hidden_items',
+         'save_client_bank_account_classification'))
     )
 ),
 stmts as (

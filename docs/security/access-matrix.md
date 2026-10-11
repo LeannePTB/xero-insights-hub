@@ -3,7 +3,7 @@
 > GENERATED FILE — do not edit. Source of truth: `docs/security/access-matrix.ts`.
 > Regenerate with `bun run scripts/render-access-matrix.ts`.
 
-Rows: **1925**. Known failures: **0**.
+Rows: **2057**. Known failures: **0**.
 
 `ALLOW`/`DENY` is the EXPECTED result. A row marked KNOWN FAILURE describes behaviour that is wrong today:
 the suites report it every run with its backlog number and never count it as a pass.
@@ -16,6 +16,10 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -60,6 +64,10 @@ None.
 | client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -160,6 +168,10 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
 | firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -204,6 +216,10 @@ None.
 | client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
 | client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
@@ -318,945 +334,55 @@ None.
 | server fn: getClientOrgTrial | execute | DENY | live | PK 2 — MFA is enforced on the server | app_private.assert_aal2() runs before anything is read, so an aal1 session is refused with MFA_REQUIRED even when the person would otherwise qualify. |
 | Trixie | execute | DENY | live | PK 2 — MFA is enforced on the server | The route validates the aal claim and every database function directly calls app_private.assert_aal2(). |
 
-## Active member of a DIFFERENT organisation
+## Active member on aal2, signed in today, with no recorded activity for more than 30 minutes
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
-| firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
-| xero_connections (non-token columns) | read | DENY | pglite, live | PK 3, PK 4 |  |
-| plan_levels | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| plan_levels | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| plan_levels | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| tier_settings | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| tier_settings | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
-| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
-| public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
-| workspace_branding_for_firm(another organisation) | execute | DENY | live | PK 2 — caller-supplied organisation id is a filter, never a grant |  |
-| set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
-| apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
-| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
-| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
-| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| audit trail row for reading another organisation's client figures | insert | DENY | live | PK 1 / PK 4 — the read is impossible, so nothing is recorded | Access is refused before any read path runs; no audit row is written because no read happened. |
-| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
-| practice_team | read | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
-| practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
-| practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
-| practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
-| manage the practice team (admin_add/remove_practice_member) | execute | DENY | pglite, live | Batch 5 — super-admin-only, unchanged by the advisors-page control |  |
-| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
-| record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
-| security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
-| security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
-| security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
-| security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
-| user_can_write_client_scenario() for a client outside their organisation | execute | DENY | pglite | PK 1 / PK 4 — membership in another organisation writes nothing here |  |
-
-## Organisation A's owner, reading organisation B
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
-| Trixie: reserve for organisation B client | execute | DENY | live | PK 4 (ids are filters, never grants) | trixie_access_context refuses when user_can_read_client does not admit the exact client. |
-
-## Member with status = suspended
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
-| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
-| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
-
-## Member with status = removed
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firms | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| firm_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| clients | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_xero_orgs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_notes | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_access | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_cost_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_subscriptions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_reports | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| reconciliation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_uploads | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| unreconciled_lines | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_groups | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| consolidation_group_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| tier_widget_config | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| xero_snapshot_runs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| client_key_figures | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| overview_alert_states | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| report_cache | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
-| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
-| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
-| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
-| the organisation's clients after removal | read | DENY | pglite, live | PK 2 path A — membership must be ACTIVE |  |
-
-## Super admin with NO membership
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| clients | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
-| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
-| firms | update | DENY | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row) |  |
-| firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| firm_members | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (billing metadata, not Xero financial data) |  |
-| client_subscriptions | insert | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
-| client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
-| client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
-| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
-| xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
-| xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
-| audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| audit_log | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| audit_log | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| login_events | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| login_events | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| login_events | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_rate_limits | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| admin_firm_overview | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| plan_levels | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| tier_settings | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| signup_requests | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| access_invites | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| user_roles | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| audit_log | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| xero_api_errors | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| xero_rate_limits | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| billing_events | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
-| xero_snapshots | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
-| client_reports | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
-| report_cache | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
-| reconciliation_snapshots | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
-| user_roles | insert | ALLOW | pglite, live | PK 2 path C; Spec §9 (audited by audit_user_roles_change) |  |
-| user_roles | delete | ALLOW | pglite, live | PK 2 path C; Spec §9 (audited by audit_user_roles_change) |  |
-| user_roles | update | ALLOW | pglite, live | PK 2 path C; Spec §9 (role changes are audited) | Phase 3b closed backlog 29 for this table: the generic AFTER trigger audit_change on user_roles records insert, update and delete with the actor and the changed columns, replacing audit_user_roles_change. |
-| plan_levels | insert | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
-| plan_levels | update | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
-| plan_levels | delete | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
-| xero_assessment_contact | insert | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
-| xero_assessment_contact | update | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
-| xero_assessment_contact | delete | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
-| signup_requests | update | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform metadata changes leave an audit row) | Phase 3b closed backlog 29: trigger audit_change on signup_requests records the actor and the changed columns. |
-| public.online_users() | execute | ALLOW | pglite, live | PK 2 path C metadata |  |
-| public.set_all_client_tiers() | execute | DENY | live | PK 3 — needs the organisation's data, super admin alone is not access | Backlog 19 records that this now gates on is_super_admin; revisit when the shared gate rule is decided. |
-| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
-| public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
-| record_view_as(an organisation they are not a member of) | execute | DENY | pglite | PK 3 — super_admin alone grants no organisation access, so it cannot preview one either | Added 16 Sep 2026 with the audited View as action on the Organisations table. Before this, view-as was a URL parameter with no audit row and no database check. |
-| xero_error_breakdown() | execute | ALLOW | pglite | PK 2 path C — Xero telemetry is platform metadata: status codes and endpoints, never client data |  |
-| set_org_trial(any organisation) | execute | ALLOW | pglite | PK 2 path C — plan and billing metadata is platform operations; no client data is read or returned | Added 16 Sep 2026 when trials moved from the client to the organisation. |
-| starting a trial over purchased Advisory converts the purchase and keeps ticks | execute | ALLOW | pglite | The audited trial change is atomic: selected purchased options become trialled while client card selections remain untouched | Added 16 Sep 2026 after a purchase-plus-trial overlap could create a cosmetic trial that granted nothing. |
-| workspace_branding_for_firm(any organisation) | execute | DENY | live | PK 3 — super admin grants zero organisation data access on its own |  |
-| toggling Consolidation off and on preserves all consolidation working data | execute | ALLOW | pglite | Availability is an entitlement filter, never a data operation — switching an option off hides cards and deletes nothing | Added 16 Sep 2026 at the owner's direction — her single biggest concern about this model. Proves, on every check, that set_org_purchase with Consolidation false leaves consolidation_groups, consolidation_group_members, loan_consolidation_accounts and loan_consolidation_snapshots row-for-row unchanged, that the loan_consolidation card stops being available while it is off, and that switching it back on restores the card with the working data and the per-client ticks intact. No foreign key or trigger on those four tables references the option: their only cascades are from deleting a firm, client or group. |
-| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
-| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
-| server fn: set a report's personal video | execute | DENY | live | PK 3 (super admin alone grants ZERO client data) + PK 5 | setReportVideo runs assert_super_admin AND canWriteFirm (public.user_can_write_firm) on the report's own firm_id, read server-side from the stored row. A super admin who is not an active member of that organisation is refused. Finalised or sent reports are refused outright; the video never enters the payload, so it cannot reach the rendered PDF. |
-| server fn: invite an owner to an existing organisation | execute | DENY | live | Spec §4 — ownership only moves through transfer_organisation_ownership | adminInviteFirmMember accepts role 'staff' only; an owner invitation to an existing organisation is refused with a pointer to ownership transfer. |
-| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
-| practice_team | read | ALLOW | pglite, live | PK 2 path C — platform metadata, no client data |  |
-| practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
-| practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
-| practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
-| manage the practice team (admin_add/remove_practice_member) | execute | ALLOW | pglite, live | PK 2 path C — platform metadata; aal2 + super admin asserted in the definer function |  |
-| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
-| record a security attestation | execute | ALLOW | pglite, live | Spec §17 — attestations are platform metadata, super admin only |  |
-| a security attestation's confirmed_by and confirmed_at are set by the server | execute | ALLOW | pglite, live | Spec §17 — the function stamps auth.uid() and now(); no caller-supplied identity or time |  |
-| security_attestations | read | ALLOW | pglite, live | PK 2 path C — platform metadata, no client data |  |
-| security_attestations | insert | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
-| security_attestations | update | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
-| security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
-| admin_assert_can_sign_out_user(another person) | execute | ALLOW | pglite | Path C — platform operations; aal2 + super admin, audited, no client data |  |
-| admin_assert_can_sign_out_user(their own account) | execute | DENY | pglite | PK 1 — the caller uses Sign out my other devices for themselves |  |
-| Trixie: client figures | execute | DENY | live | PK 3 / Path C | System Admin receives platform how-to scope only; super admin alone is never passed to user_can_read_client as a financial-data grant. |
-| Trixie: platform how-to and administration | execute | ALLOW | live | Path C / PK 2 | The separate platform allowance applies; admin writers each assert aal2 and me_is_super_admin and expose metadata only. |
-| Trixie: spend overview, usage alerts and alert thresholds | execute | ALLOW | live | Path C / PK 2 | admin_trixie_spend_overview, admin_trixie_alerts, acknowledge_trixie_alert and the alert settings functions assert aal2 and me_is_super_admin; they return Trixie spend and question counts only, never prompts, answers or client figures. |
+| client_notes | read | DENY | pglite | PK 2 — the aal2 gate requires activity inside the 30 minute window |  |
+| assert_aal2() with an idle session | execute | DENY | pglite | PK 2 — raises SESSION_IDLE before any MFA answer |  |
+| touch_session_activity() | execute | DENY | pglite | PK 2 — an idle session cannot revive itself: the aal2 assertion fails first |  |
+| assert_aal2() with no session_id claim | execute | DENY | pglite | PK 2 — an unverifiable session id fails closed |  |
+| session_activity | update | DENY | pglite | PK 1 — activity timestamps are server-written only; no client write path |  |
 
-## Support-grant holder, grant expired
+## Active member who has just completed MFA: an aal2 session seconds old with no activity row written yet
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
-| clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| clients | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
-| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
-| firms | update | DENY | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row) |  |
-| firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| firm_members | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (billing metadata, not Xero financial data) |  |
-| client_subscriptions | insert | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
-| client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
-| client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
-| firm_support_access (expired grant used for a read) | read | DENY | pglite, live | Spec §7 (max 72h, expires_at enforced) |  |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_notes | read | ALLOW | pglite | PK 2 — a brand-new session with no activity row is active from its start time |  |
+| assert_aal2() immediately after MFA (no activity row yet) | execute | ALLOW | pglite | PK 2 — completing MFA is never refused as idle |  |
+| touch_session_activity() | execute | ALLOW | pglite | PK 2 — the first activity write of a new session succeeds |  |
 
-## Support-grant holder, grant revoked
+## Active member being ACTIVELY USED: an aal2 session that began 90 minutes ago whose last recorded activity is 2 minutes ago
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
-| clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| clients | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_xero_orgs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_notes | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_access | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_cost_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_income_tax_instalments | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_rental_properties | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_statutory_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_reports | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| reconciliation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_uploads | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| unreconciled_lines | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_groups | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| consolidation_group_members | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| tier_widget_config | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| xero_snapshot_runs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| client_key_figures | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| overview_alert_states | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| report_cache | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
-| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
-| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
-| firms | update | DENY | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row) |  |
-| firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| firm_members | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
-| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (billing metadata, not Xero financial data) |  |
-| client_subscriptions | insert | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
-| client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
-| client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
-| firm_support_access (revoked grant used for a read) | read | DENY | pglite, live | Spec §7 (revoked_at) |  |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_notes | read | ALLOW | pglite | PK 2 — recent recorded activity keeps a long-lived session active, whatever its age |  |
+| assert_aal2() after 90 minutes of continuous use | execute | ALLOW | pglite | PK 2 — an actively used session is never refused as idle |  |
+| touch_session_activity() | execute | ALLOW | pglite | PK 2 — an actively used session keeps recording its own activity, caller-scoped |  |
 
 ## Organisation owner (own organisation)
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | ALLOW | pglite | Existing user_can_write_client predicate; account and tenant validated against exact-client snapshots. |  |
+| save_client_bank_account_classification() for another client | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| save_client_bank_account_classification() with another tenant | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| save_client_bank_account_classification() with unknown account | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| save_client_bank_account_classification() with invalid classification | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -1269,6 +395,7 @@ None.
 | client_income_tax_instalments | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_rental_properties | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_bank_account_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -1444,6 +571,14 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | ALLOW | pglite | Existing user_can_write_client predicate; account and tenant validated against exact-client snapshots. |  |
+| save_client_bank_account_classification() for another client | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| save_client_bank_account_classification() with another tenant | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| save_client_bank_account_classification() with unknown account | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| save_client_bank_account_classification() with invalid classification | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | firms | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | firm_members | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -1456,6 +591,7 @@ None.
 | client_income_tax_instalments | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_rental_properties | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
+| client_bank_account_classifications | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_subscriptions | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | client_reports | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
 | reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path A; Spec §3 — including scenario_exclusions, which the member SELECT policy added by the Batch 3 regression fix admits |  |
@@ -1619,10 +755,298 @@ None.
 | server fn: getClientOrgTrial for a client in their organisation | execute | ALLOW | live | Path A — members see their own organisation's billing state | app_private.has_firm_access (active membership) admits the caller; the same row a super admin sees on the purchase card is what the banner renders. |
 | Trixie: reserve and read figures for a client in their organisation | execute | ALLOW | live | Path A / PK 2 / PK 4 | reserve_trixie_usage asserts aal2 and resolves the organisation from the exact readable client; figure reads remain caller-RLS and card-scoped. |
 
+## Active member of a DIFFERENT organisation
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
+| xero_connections (non-token columns) | read | DENY | pglite, live | PK 3, PK 4 |  |
+| plan_levels | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| plan_levels | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| plan_levels | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| tier_settings | insert | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| tier_settings | update | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| tier_settings | delete | DENY | pglite | Spec §5 (plan catalogue is platform-owned) |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
+| workspace_branding_for_firm(another organisation) | execute | DENY | live | PK 2 — caller-supplied organisation id is a filter, never a grant |  |
+| set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
+| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
+| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| audit trail row for reading another organisation's client figures | insert | DENY | live | PK 1 / PK 4 — the read is impossible, so nothing is recorded | Access is refused before any read path runs; no audit row is written because no read happened. |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — practice team readable by super admins only |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | DENY | pglite, live | Batch 5 — super-admin-only, unchanged by the advisors-page control |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| record a security attestation | execute | DENY | pglite, live | Spec §17 — super admin only; PK 2 requires aal2 and PK 1 admits nothing without it |  |
+| security_attestations | read | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — readable by super admins only |  |
+| user_can_write_client_scenario() for a client outside their organisation | execute | DENY | pglite | PK 1 / PK 4 — membership in another organisation writes nothing here |  |
+
+## Organisation A's owner, reading organisation B
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| Trixie: reserve for organisation B client | execute | DENY | live | PK 4 (ids are filters, never grants) | trixie_access_context refuses when user_can_read_client does not admit the exact client. |
+
 ## External adviser — selected clients (client_access on one client; user-facing name only, the key is unchanged)
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | firms | update | DENY | pglite, live | Spec §4; no UPDATE grant for authenticated — organisation name, logo and default cards are changed by server code, never by a direct REST write |  |
 | clients | read | ALLOW | pglite, live | Spec §3 client viewer |  |
 | client_notes | read | ALLOW | pglite, live | Spec §3 client viewer |  |
@@ -1703,169 +1127,19 @@ None.
 | server fn: getClientOrgTrial | execute | DENY | live | Path D — an external adviser never sees billing, plan or organisation-level data | A client_access row with relationship = 'external_adviser' (or NULL) does not match the business_owner predicate and the caller is not a member, so no rows are returned. |
 | Trixie: reserve and read figures for their exact client | execute | ALLOW | live | Path D / PK 2 / PK 4 | The client id is re-checked by user_can_read_client; the response is read-only, viewer-worded, and limited to visible client cards. |
 
-## Support-grant holder, active, non-member organisation
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| firms | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| firm_members | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| clients | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_xero_orgs | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_notes | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_access | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_cost_classifications | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_true_breakeven_inputs | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_income_tax_instalments | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_rental_properties | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_subscriptions | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_reports | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| unreconciled_uploads | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| unreconciled_lines | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| loan_consolidation_accounts | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| loan_consolidation_snapshots | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| consolidation_groups | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| consolidation_group_members | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| tier_widget_config | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| xero_snapshots | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| xero_snapshot_runs | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| client_key_figures | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| overview_alert_states | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
-| report_cache | read | DENY | pglite, live | Backlog 25 (remainder) — the read policy does not name the support path; fails closed |  |
-| scenario_exclusions | read | DENY | pglite, live | Backlog 25 (remainder) — the read policy does not name the support path; fails closed |  |
-| clients | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| clients | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| clients | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_xero_orgs | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_xero_orgs | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_xero_orgs | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_notes | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_notes | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_notes | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_access | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_access | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_access | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_cost_classifications | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_cost_classifications | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_cost_classifications | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_true_breakeven_inputs | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_income_tax_instalments | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_income_tax_instalments | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_income_tax_instalments | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_rental_properties | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_rental_properties | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_rental_properties | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_statutory_accounts | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_statutory_accounts | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_statutory_accounts | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_reports | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_reports | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_reports | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| reconciliation_snapshots | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| reconciliation_snapshots | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| reconciliation_snapshots | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| unreconciled_uploads | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| unreconciled_uploads | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| unreconciled_uploads | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| unreconciled_lines | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| unreconciled_lines | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| unreconciled_lines | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| loan_consolidation_accounts | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| loan_consolidation_accounts | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| loan_consolidation_accounts | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| loan_consolidation_snapshots | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| consolidation_groups | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| consolidation_groups | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| consolidation_groups | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| consolidation_group_members | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| consolidation_group_members | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| consolidation_group_members | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| tier_widget_config | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| tier_widget_config | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| tier_widget_config | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| xero_snapshots | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| xero_snapshots | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| xero_snapshots | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| xero_snapshot_runs | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| xero_snapshot_runs | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| xero_snapshot_runs | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_key_figures | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_key_figures | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_key_figures | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| overview_alert_states | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| overview_alert_states | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| overview_alert_states | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| report_cache | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| report_cache | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| report_cache | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| scenario_exclusions | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| scenario_exclusions | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| scenario_exclusions | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
-| client_subscriptions | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write. |
-| client_subscriptions | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write. |
-| client_subscriptions | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write. |
-| client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
-| client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
-| client_income_tax_instalments | delete | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
-| client_rental_properties | insert | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
-| client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
-| client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
-| save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
-| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
-| xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
-| xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
-| audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| audit_log | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| audit_log | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| login_events | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| login_events | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| login_events | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_rate_limits | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
-| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
-| set_org_trial(the organisation they support) | execute | ALLOW | pglite | PK 2 path C — this person is a platform super admin, so the change is plan metadata; the support grant contributes nothing to it | Support grants are only ever held by a Positive Traction super admin, so this row cannot separate the two paths. What it does prove is that the trial function reads and returns no client data, so invariant 5 (support grants are read-only over CLIENT data) is untouched: org_owner and client_viewer above are refused outright. |
-| set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
-| apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
-| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
-| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
-| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
-| server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
-| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
-| server fn: change organisation or client branding | execute | DENY | live | PK 5 (support grants are READ-ONLY) | branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. The Branding entitlement gate added on top narrows further and never widens: assertClientWriter still runs first. |
-| audit trail row for reading a client's figures | insert | ALLOW | live | PK section 2 path B — support reads are read-only AND recorded | meta.access_path comes from public.firm_access_path, so a support read is distinguishable from a member read. |
-| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
-| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
-| practice_team | read | ALLOW | pglite, live | PK 2 path C — reads as a platform admin; no organisation or client data on this table |  |
-| practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
-| practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
-| practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
-| manage the practice team (admin_add/remove_practice_member) | execute | ALLOW | pglite, live | PK 2 path C — platform metadata; aal2 + super admin asserted in the definer function |  |
-| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
-| record a security attestation | execute | ALLOW | pglite, live | Spec §17 — acts as a platform admin (this fixture identity also holds super_admin); PK 5 is untouched, no organisation or client data is reachable here | The support-grant subject in the fixture also holds the super_admin role, so this row proves the Path C rule, not a support-grant widening. |
-| security_attestations | read | ALLOW | pglite, live | PK 2 path C — reads as a platform admin; no organisation or client data on this table |  |
-| security_attestations | insert | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
-| security_attestations | update | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
-| security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
-| server fn: acknowledgeSetupItem (record a setup decision) | execute | DENY | live | PK 5 (support grants are READ-ONLY) | The acknowledgement is an UPDATE on public.clients through context.supabase, so the clients write policies (app_private.user_can_manage_client) decide. A support grant is read-only, so the update matches no row and the function raises 'You cannot change this client.' Reading the checklist stays allowed, like other client reads under a grant. |
-| server fn: getClientOrgTrial | execute | DENY | live | PK 5 / Path B — a support grant is read-only client data, never billing state | app_private.has_firm_access counts active firm_members rows only, so a support grant does not satisfy it; without a business_owner row the function returns nothing. |
-
 ## Business owner — one specific client (client_access with relationship = 'business_owner', self-service)
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| save_client_bank_account_classification() for another client | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| save_client_bank_account_classification() with another tenant | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| save_client_bank_account_classification() with unknown account | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| save_client_bank_account_classification() with invalid classification | execute | DENY | pglite | IDs are filters, never grants; strict account validation. |  |
+| client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | client_income_tax_instalments | read | ALLOW | pglite, live | Path A / Path E — authorised readers can see exact-client tax instalments; aal2 required |  |
 | client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
 | client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
@@ -1890,6 +1164,11 @@ None.
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| client_bank_account_classifications | read | ALLOW | pglite | Existing exact-client read predicate only; relationship and standing access remain read-only. |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
 | set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
 | set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
@@ -1996,43 +1275,896 @@ None.
 | unreconciled_lines | delete | DENY | pglite, live | PK rule 11; PK section 2 path D — an External adviser grant is read-only, including scenario exclusions and reconciliation comments |  |
 | server fn: getClientOrgTrial | execute | DENY | live | Path D — an external adviser never sees billing, plan or organisation-level data | firm_viewer_access is not consulted by the function; without membership or a business_owner row the result is empty. |
 
-## Active member on aal2, signed in today, with no recorded activity for more than 30 minutes
+## Support-grant holder, active, non-member organisation
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| firms | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| firm_members | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| clients | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_xero_orgs | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_notes | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_access | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_cost_classifications | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_true_breakeven_inputs | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_income_tax_instalments | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_rental_properties | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_statutory_accounts | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_bank_account_classifications | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_subscriptions | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_reports | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| reconciliation_snapshots | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| unreconciled_uploads | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| unreconciled_lines | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| loan_consolidation_accounts | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| loan_consolidation_snapshots | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| consolidation_groups | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| consolidation_group_members | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| tier_widget_config | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| xero_snapshots | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| xero_snapshot_runs | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| client_key_figures | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| overview_alert_states | read | ALLOW | pglite, live | PK 2 path B; Spec §3, §7 |  |
+| report_cache | read | DENY | pglite, live | Backlog 25 (remainder) — the read policy does not name the support path; fails closed |  |
+| scenario_exclusions | read | DENY | pglite, live | Backlog 25 (remainder) — the read policy does not name the support path; fails closed |  |
+| clients | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| clients | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| clients | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_xero_orgs | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_xero_orgs | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_xero_orgs | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_notes | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_notes | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_notes | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_access | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_access | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_access | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_cost_classifications | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_cost_classifications | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_cost_classifications | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_true_breakeven_inputs | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_income_tax_instalments | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_income_tax_instalments | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_income_tax_instalments | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_rental_properties | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_rental_properties | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_rental_properties | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_statutory_accounts | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_statutory_accounts | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_statutory_accounts | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_reports | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_reports | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_reports | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| reconciliation_snapshots | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| reconciliation_snapshots | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| reconciliation_snapshots | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| unreconciled_uploads | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| unreconciled_uploads | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| unreconciled_uploads | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| unreconciled_lines | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| unreconciled_lines | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| unreconciled_lines | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| loan_consolidation_accounts | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| loan_consolidation_accounts | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| loan_consolidation_accounts | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| loan_consolidation_snapshots | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| consolidation_groups | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| consolidation_groups | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| consolidation_groups | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| consolidation_group_members | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| consolidation_group_members | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| consolidation_group_members | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| tier_widget_config | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| tier_widget_config | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| tier_widget_config | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| xero_snapshots | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| xero_snapshots | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| xero_snapshots | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| xero_snapshot_runs | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| xero_snapshot_runs | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| xero_snapshot_runs | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_key_figures | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_key_figures | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_key_figures | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| overview_alert_states | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| overview_alert_states | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| overview_alert_states | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| report_cache | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| report_cache | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| report_cache | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| scenario_exclusions | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| scenario_exclusions | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| scenario_exclusions | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY) | Proved at the RLS layer: the nine former FOR ALL policies are per-command with membership-only EXISTS checks. Phase 3a closed the rest of backlog 18: app_private.user_can_write_client (membership or client ownership, never a support grant) is now the write helper, app_private.move_xero_file_to_client uses it, and every server-function write path calls public.user_can_write_firm / user_can_write_client. |
+| client_subscriptions | insert | DENY | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write. |
+| client_subscriptions | update | DENY | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write. |
+| client_subscriptions | delete | DENY | pglite, live | PK 5 (support grants are READ-ONLY); Spec §8 (a comp needs a reason and an audit row) | Phase 3b closed backlog 28: no write policy or write grant remains for authenticated on client_subscriptions, so a support grantee (super admin or not) cannot write. |
+| client_income_tax_instalments | insert | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
+| client_income_tax_instalments | update | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
+| client_income_tax_instalments | delete | DENY | pglite, live | Direct writes are closed; the audited save_client_income_tax_instalment function is the only write path |  |
+| client_rental_properties | insert | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | update | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
+| client_rental_properties | delete | DENY | pglite, live | Direct writes are closed; the audited save/delete_client_rental_property functions are the only write path |  |
 | save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
-| client_notes | read | DENY | pglite | PK 2 — the aal2 gate requires activity inside the 30 minute window |  |
-| assert_aal2() with an idle session | execute | DENY | pglite | PK 2 — raises SESSION_IDLE before any MFA answer |  |
-| touch_session_activity() | execute | DENY | pglite | PK 2 — an idle session cannot revive itself: the aal2 assertion fails first |  |
-| assert_aal2() with no session_id claim | execute | DENY | pglite | PK 2 — an unverifiable session id fails closed |  |
-| session_activity | update | DENY | pglite | PK 1 — activity timestamps are server-written only; no client write path |  |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
+| xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
+| xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
+| audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| audit_log | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| audit_log | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| login_events | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| login_events | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| login_events | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| set_org_trial(the organisation they support) | execute | ALLOW | pglite | PK 2 path C — this person is a platform super admin, so the change is plan metadata; the support grant contributes nothing to it | Support grants are only ever held by a Positive Traction super admin, so this row cannot separate the two paths. What it does prove is that the trial function reads and returns no client data, so invariant 5 (support grants are read-only over CLIENT data) is untouched: org_owner and client_viewer above are refused outright. |
+| set_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| apply_org_card_defaults(an organisation) | execute | DENY | pglite | app_private.assert_firm_member_write: active membership of this organisation only, deliberately not has_firm_access (which admits read-only support grants) |  |
+| rename_my_organisation(an organisation) | execute | DENY | pglite | Owner-only: firms.owner_user_id = auth.uid() after aal2; staff, support grants, viewers and other organisations refused |  |
+| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
+| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| server fn: write client data | execute | DENY | live | PK 5 (support grants are READ-ONLY) | Phase 3a: every server-function write path (branding, report finalise/send/revoke/delete, draft save, Xero audit runs and finding snoozes, organisation reconnect-all, loan-consolidation account setup, note report-flagging, Xero file link/unlink/move) authorises through public.user_can_write_firm / public.user_can_write_client, which never admit a support grant. |
+| server fn: set a report's personal video | execute | DENY | live | PK 2 (requireAal2) + platform super admin only (assert_super_admin) |  |
+| server fn: change organisation or client branding | execute | DENY | live | PK 5 (support grants are READ-ONLY) | branding.server.ts write gates call public.user_can_write_firm / user_can_write_client; reads still allow a grant. The Branding entitlement gate added on top narrows further and never widens: assertClientWriter still runs first. |
+| audit trail row for reading a client's figures | insert | ALLOW | live | PK section 2 path B — support reads are read-only AND recorded | meta.access_path comes from public.firm_access_path, so a support read is distinguishable from a member read. |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | ALLOW | pglite, live | PK 2 path C — reads as a platform admin; no organisation or client data on this table |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | ALLOW | pglite, live | PK 2 path C — platform metadata; aal2 + super admin asserted in the definer function |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| record a security attestation | execute | ALLOW | pglite, live | Spec §17 — acts as a platform admin (this fixture identity also holds super_admin); PK 5 is untouched, no organisation or client data is reachable here | The support-grant subject in the fixture also holds the super_admin role, so this row proves the Path C rule, not a support-grant widening. |
+| security_attestations | read | ALLOW | pglite, live | PK 2 path C — reads as a platform admin; no organisation or client data on this table |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| server fn: acknowledgeSetupItem (record a setup decision) | execute | DENY | live | PK 5 (support grants are READ-ONLY) | The acknowledgement is an UPDATE on public.clients through context.supabase, so the clients write policies (app_private.user_can_manage_client) decide. A support grant is read-only, so the update matches no row and the function raises 'You cannot change this client.' Reading the checklist stays allowed, like other client reads under a grant. |
+| server fn: getClientOrgTrial | execute | DENY | live | PK 5 / Path B — a support grant is read-only client data, never billing state | app_private.has_firm_access counts active firm_members rows only, so a support grant does not satisfy it; without a business_owner row the function returns nothing. |
+
+## Support-grant holder, grant expired
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| clients | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
+| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
+| firms | update | DENY | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row) |  |
+| firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| firm_members | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (billing metadata, not Xero financial data) |  |
+| client_subscriptions | insert | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| firm_support_access (expired grant used for a read) | read | DENY | pglite, live | Spec §7 (max 72h, expires_at enforced) |  |
+
+## Support-grant holder, grant revoked
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| clients | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
+| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
+| firms | update | DENY | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row) |  |
+| firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| firm_members | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (billing metadata, not Xero financial data) |  |
+| client_subscriptions | insert | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| firm_support_access (revoked grant used for a read) | read | DENY | pglite, live | Spec §7 (revoked_at) |  |
+
+## Super admin with NO membership
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| clients | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| clients | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| clients | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| clients | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_xero_orgs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_notes | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_access | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_cost_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_income_tax_instalments | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_statutory_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_reports | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| reconciliation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_uploads | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_accounts | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_groups | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| consolidation_group_members | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| tier_widget_config | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshots | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| xero_snapshot_runs | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| client_key_figures | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| overview_alert_states | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| report_cache | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | read | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | update | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK 3 (super_admin alone is not access to client data) |  |
+| firms | read | ALLOW | pglite, live | PK 2 path C; Spec §3 (organisation list) |  |
+| firm_members | read | ALLOW | pglite, live | PK 2 path C; Spec §3 | Owner-approved Path C item (11 Sep 2026): the membership list is platform metadata, no financial data. |
+| firms | update | DENY | pglite, live | PK 3; Spec §4 (ownership only via transfer_organisation_ownership; is_always_free only on the practice organisation, with a reason and an audit row) |  |
+| firms | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| firms | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| firm_members | insert | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| firm_members | delete | DENY | pglite, live | Spec §4 (creation and membership go through their own functions) |  |
+| client_subscriptions | read | ALLOW | pglite, live | PK 2 path C; Spec §8 (billing metadata, not Xero financial data) |  |
+| client_subscriptions | insert | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| client_subscriptions | update | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| client_subscriptions | delete | DENY | pglite, live | Spec §8 (a comp needs a reason and an audit row; a direct REST write carries neither) | Phase 3b closed backlog 28: the FOR ALL super-admin policy is dropped, authenticated holds SELECT only, and comps/trials/tier changes go through the audited aal2 functions set_client_comp, set_client_trial and set_client_dashboard_tier. Trigger audit_change records every row change. |
+| save_client_income_tax_instalment() | execute | DENY | pglite, live | Only active organisation members at aal2 may save; client viewers remain read-only |  |
+| set_client_access_relationship() for own organisation | execute | DENY | pglite, live | PK 1, 3, 4, 5 and paths D/E — no self-classification or status-only bypass |  |
+| xero_connections.access_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
+| xero_connections.refresh_token_enc | read | DENY | pglite, live | PK 8; Spec §10 (no column grant; privilege check precedes RLS) |  |
+| audit_log | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| audit_log | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| audit_log | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| login_events | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| login_events | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| login_events | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_api_errors | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_api_errors | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_api_errors | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | insert | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | update | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| xero_rate_limits | delete | DENY | pglite, live | PK 10; Spec §9 (append-only) |  |
+| admin_firm_overview | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| plan_levels | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| tier_settings | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| signup_requests | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| access_invites | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| user_roles | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| audit_log | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| xero_api_errors | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| xero_rate_limits | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| billing_events | read | ALLOW | pglite, live | PK 2 path C (metadata only, never Xero financial data) |  |
+| xero_snapshots | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
+| client_reports | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
+| report_cache | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
+| reconciliation_snapshots | read | DENY | pglite, live | PK 3 (super_admin grants ZERO client data on its own) |  |
+| user_roles | insert | ALLOW | pglite, live | PK 2 path C; Spec §9 (audited by audit_user_roles_change) |  |
+| user_roles | delete | ALLOW | pglite, live | PK 2 path C; Spec §9 (audited by audit_user_roles_change) |  |
+| user_roles | update | ALLOW | pglite, live | PK 2 path C; Spec §9 (role changes are audited) | Phase 3b closed backlog 29 for this table: the generic AFTER trigger audit_change on user_roles records insert, update and delete with the actor and the changed columns, replacing audit_user_roles_change. |
+| plan_levels | insert | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
+| plan_levels | update | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
+| plan_levels | delete | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
+| xero_assessment_contact | insert | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
+| xero_assessment_contact | update | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
+| xero_assessment_contact | delete | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform configuration changes leave an audit row) | Phase 3b closed backlog 29: the generic AFTER trigger audit_change records every row change on these tables with the actor and the changed columns. |
+| signup_requests | update | ALLOW | pglite, live | PK 2 path C; Spec §9 (platform metadata changes leave an audit row) | Phase 3b closed backlog 29: trigger audit_change on signup_requests records the actor and the changed columns. |
+| public.online_users() | execute | ALLOW | pglite, live | PK 2 path C metadata |  |
+| public.set_all_client_tiers() | execute | DENY | live | PK 3 — needs the organisation's data, super admin alone is not access | Backlog 19 records that this now gates on is_super_admin; revisit when the shared gate rule is decided. |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| public.client_xero_files_used() | execute | DENY | live | PK 2 (aal2), PK 3, PK 4 |  |
+| record_view_as(an organisation they are not a member of) | execute | DENY | pglite | PK 3 — super_admin alone grants no organisation access, so it cannot preview one either | Added 16 Sep 2026 with the audited View as action on the Organisations table. Before this, view-as was a URL parameter with no audit row and no database check. |
+| xero_error_breakdown() | execute | ALLOW | pglite | PK 2 path C — Xero telemetry is platform metadata: status codes and endpoints, never client data |  |
+| set_org_trial(any organisation) | execute | ALLOW | pglite | PK 2 path C — plan and billing metadata is platform operations; no client data is read or returned | Added 16 Sep 2026 when trials moved from the client to the organisation. |
+| starting a trial over purchased Advisory converts the purchase and keeps ticks | execute | ALLOW | pglite | The audited trial change is atomic: selected purchased options become trialled while client card selections remain untouched | Added 16 Sep 2026 after a purchase-plus-trial overlap could create a cosmetic trial that granted nothing. |
+| workspace_branding_for_firm(any organisation) | execute | DENY | live | PK 3 — super admin grants zero organisation data access on its own |  |
+| toggling Consolidation off and on preserves all consolidation working data | execute | ALLOW | pglite | Availability is an entitlement filter, never a data operation — switching an option off hides cards and deletes nothing | Added 16 Sep 2026 at the owner's direction — her single biggest concern about this model. Proves, on every check, that set_org_purchase with Consolidation false leaves consolidation_groups, consolidation_group_members, loan_consolidation_accounts and loan_consolidation_snapshots row-for-row unchanged, that the loan_consolidation card stops being available while it is off, and that switching it back on restores the card with the working data and the per-client ticks intact. No foreign key or trigger on those four tables references the option: their only cascades are from deleting a firm, client or group. |
+| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
+| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: set a report's personal video | execute | DENY | live | PK 3 (super admin alone grants ZERO client data) + PK 5 | setReportVideo runs assert_super_admin AND canWriteFirm (public.user_can_write_firm) on the report's own firm_id, read server-side from the stored row. A super admin who is not an active member of that organisation is refused. Finalised or sent reports are refused outright; the video never enters the payload, so it cannot reach the rendered PDF. |
+| server fn: invite an owner to an existing organisation | execute | DENY | live | Spec §4 — ownership only moves through transfer_organisation_ownership | adminInviteFirmMember accepts role 'staff' only; an owner invitation to an existing organisation is refused with a pointer to ownership transfer. |
+| firm_viewer_access | read | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | insert | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | update | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| firm_viewer_access | delete | DENY | pglite, live | PK section 2 path D — owner or an active practice-team member of THAT organisation only |  |
+| viewer management for a client in the caller's own organisation | execute | DENY | pglite, live | Batch 5 — staff read the viewer list only; PK 3, PK 5 admit nothing here |  |
+| practice_team | read | ALLOW | pglite, live | PK 2 path C — platform metadata, no client data |  |
+| practice_team | insert | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| practice_team | update | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| practice_team | delete | DENY | pglite, live | Batch 5 — writes only through the audited admin_add/remove_practice_member definer functions |  |
+| manage the practice team (admin_add/remove_practice_member) | execute | ALLOW | pglite, live | PK 2 path C — platform metadata; aal2 + super admin asserted in the definer function |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| record a security attestation | execute | ALLOW | pglite, live | Spec §17 — attestations are platform metadata, super admin only |  |
+| a security attestation's confirmed_by and confirmed_at are set by the server | execute | ALLOW | pglite, live | Spec §17 — the function stamps auth.uid() and now(); no caller-supplied identity or time |  |
+| security_attestations | read | ALLOW | pglite, live | PK 2 path C — platform metadata, no client data |  |
+| security_attestations | insert | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| security_attestations | update | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| security_attestations | delete | DENY | pglite, live | Spec §17 — writes only through public.record_security_attestation; no write policy exists at all |  |
+| admin_assert_can_sign_out_user(another person) | execute | ALLOW | pglite | Path C — platform operations; aal2 + super admin, audited, no client data |  |
+| admin_assert_can_sign_out_user(their own account) | execute | DENY | pglite | PK 1 — the caller uses Sign out my other devices for themselves |  |
+| Trixie: client figures | execute | DENY | live | PK 3 / Path C | System Admin receives platform how-to scope only; super admin alone is never passed to user_can_read_client as a financial-data grant. |
+| Trixie: platform how-to and administration | execute | ALLOW | live | Path C / PK 2 | The separate platform allowance applies; admin writers each assert aal2 and me_is_super_admin and expose metadata only. |
+| Trixie: spend overview, usage alerts and alert thresholds | execute | ALLOW | live | Path C / PK 2 | admin_trixie_spend_overview, admin_trixie_alerts, acknowledge_trixie_alert and the alert settings functions assert aal2 and me_is_super_admin; they return Trixie spend and question counts only, never prompts, answers or client figures. |
 
 ## Super admin approving their own support grant
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | server fn: approveSupportAccess (own request) | update | DENY | pglite, live | PK 2 path B; Spec §7 (a super admin never approves their own access) |  |
+
+## Member with status = suspended
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
+| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+
+## Member with status = removed
+
+| Resource | Operation | Expected | Layers | Rule | Notes |
+| --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| save_client_bank_account_classification() | execute | DENY | pglite | AAL2 and the unchanged client write predicate; no platform, viewer or support write grant. |  |
+| firms | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firms | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| firm_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| clients | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_xero_orgs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_notes | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_access | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_cost_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_true_breakeven_inputs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_income_tax_instalments | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_rental_properties | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_statutory_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_bank_account_classifications | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_subscriptions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_reports | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| reconciliation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_uploads | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| unreconciled_lines | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_accounts | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| loan_consolidation_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_groups | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| consolidation_group_members | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| tier_widget_config | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshots | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| xero_snapshot_runs | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| client_key_figures | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| overview_alert_states | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| report_cache | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | read | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | insert | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | update | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| scenario_exclusions | delete | DENY | pglite, live | PK 1, PK 2, PK 3, PK 4; Spec §0.3 |  |
+| public.user_can_disconnect_xero_connection() | execute | DENY | live | PK 2 (aal2), PK 5 (support grants are read-only), PK 3, PK 4 | Phase 5: disconnecting a Xero file is a write. Membership or client-write only; the connection's firm and client are resolved server-side from the connection id. |
+| set_overview_alert_state(own organisation's client) | execute | DENY | pglite | PK 1.11 — write predicate only; viewers, business owners and support grants are read-only here (PK 2 B/D/E); super admin alone grants nothing (PK 1.3); aal2 first |  |
+| overview_clients() — own organisation's clients | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| me_is_practice_member() | execute | DENY | pglite | Overview needs active membership of that organisation (PK 2 path A); super admin alone grants nothing (PK 1.3); viewers, business owners and support grants never reach it (PK 2 B/D/E); aal2 first (PK 1.2) |  |
+| server fn: list clients for an organisation | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: read Xero data for a client | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: write client data | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: invite a member | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| server fn: transfer ownership | execute | DENY | live | PK 4 (caller-supplied id is a filter, never a grant); PK 3 |  |
+| remove a staff member of the caller's own organisation | execute | DENY | pglite, live | Spec §15 — owner only; PK 5 admits no write from a support grant and PK 3 none from the role alone |  |
+| the organisation's clients after removal | read | DENY | pglite, live | PK 2 path A — membership must be ACTIVE |  |
 
 ## Live smoke-suite test account (confined to ZZ Security Test Org, banned outside a run)
 
 | Resource | Operation | Expected | Layers | Rule | Notes |
 | --- | --- | --- | --- | --- | --- |
+| client_bank_account_classifications | insert | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | update | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
+| client_bank_account_classifications | delete | DENY | pglite | Direct writes are closed; only the audited AAL2 save RPC may change an explicit account classification. |  |
 | membership of a real organisation | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
 | a platform role (user_roles) | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
 | practice_team membership | insert | DENY | live | Live suite containment — app_private.confine_security_test_accounts() refuses even service_role |  |
-
-## Active member who has just completed MFA: an aal2 session seconds old with no activity row written yet
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| client_notes | read | ALLOW | pglite | PK 2 — a brand-new session with no activity row is active from its start time |  |
-| assert_aal2() immediately after MFA (no activity row yet) | execute | ALLOW | pglite | PK 2 — completing MFA is never refused as idle |  |
-| touch_session_activity() | execute | ALLOW | pglite | PK 2 — the first activity write of a new session succeeds |  |
-
-## Active member being ACTIVELY USED: an aal2 session that began 90 minutes ago whose last recorded activity is 2 minutes ago
-
-| Resource | Operation | Expected | Layers | Rule | Notes |
-| --- | --- | --- | --- | --- | --- |
-| client_notes | read | ALLOW | pglite | PK 2 — recent recorded activity keeps a long-lived session active, whatever its age |  |
-| assert_aal2() after 90 minutes of continuous use | execute | ALLOW | pglite | PK 2 — an actively used session is never refused as idle |  |
-| touch_session_activity() | execute | ALLOW | pglite | PK 2 — an actively used session keeps recording its own activity, caller-scoped |  |

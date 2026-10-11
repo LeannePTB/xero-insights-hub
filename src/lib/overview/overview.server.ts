@@ -98,6 +98,10 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
   };
   if (!ids.length) return ctx;
 
+  const { data: classifications, error: classificationError } = await sb.from('client_bank_account_classifications').select('client_id, tenant_id, account_id, classification').in('client_id', ids);
+  if (classificationError) throw new Error('Bank account classifications could not be read.');
+  const { applyBankClassifications } = await import('@/lib/xero/bank-classifications');
+
   const dates = comparisonDates(today);
   const cols =
     "client_id, tenant_id, report_key, params, payload, payload_version, as_at, fetched_at, complete";
@@ -118,7 +122,12 @@ export async function loadOverviewContext(sb: Sb, firmId: string | null = null):
       sb.from("client_key_figures").select("client_id, as_at, cash, debtors_total, debtors_overdue, creditors, bank_reconciled_to, last_xero_login_at").in("client_id", part).gte("as_at", addDays(today, -40)),
     ]);
     for (const r of [undated, bs, pnl, ytd]) if (r.error) throw new Error(r.error.message);
-    for (const row of (undated.data ?? []) as Row[]) push(ctx.rowsByClient, row.client_id, row);
+    for (const row of (undated.data ?? []) as Row[]) {
+      if (row.report_key === 'accounts' && Array.isArray(row.payload?.Accounts)) {
+        row.payload = { ...row.payload, Accounts: applyBankClassifications(row.payload.Accounts, (classifications ?? []).filter((r: any) => r.client_id === row.client_id && r.tenant_id === row.tenant_id)) };
+      }
+      push(ctx.rowsByClient, row.client_id, row);
+    }
     for (const row of [...(bs.data ?? []), ...(pnl.data ?? []), ...(ytd.data ?? [])] as Row[])
       push(ctx.datedByClient, row.client_id, row);
     for (const link of (links.data ?? []) as any[]) {

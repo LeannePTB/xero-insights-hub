@@ -211,7 +211,8 @@ export async function buildReportVerdict(opts: BuildVerdictOptions): Promise<Rep
       xeroGet<any>(opts.conn, "Accounts"),
     ]);
     rows.push(liveRow("balance_sheet", opts.periodEnd, bs, true));
-    rows.push(liveRow("accounts", opts.periodEnd, accounts, true));
+    const { classifiedAccounts } = await import('@/lib/xero/bank-classifications.server');
+    rows.push(liveRow("accounts", opts.periodEnd, await classifiedAccounts(opts.supabase, opts.tenantId, accounts, opts.clientId), true));
   } catch {
     // Left out entirely: the engine reports the missing check as a coverage
     // gap, which is what page one must say.

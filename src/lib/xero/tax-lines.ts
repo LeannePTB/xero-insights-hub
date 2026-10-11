@@ -6,6 +6,8 @@
 // (`@/lib/health/rules.server`), and the rules engine must never pull the
 // Xero API client into its import graph.
 
+import { applyBankClassifications, type BankClassificationRow } from './bank-classifications';
+
 /** "ato-combined" is one account carrying GST and PAYG withholding together:
  *  a single amount owed to the ATO that must never be split between them. */
 export type TaxLineCategory = "gst" | "payg" | "super" | "other-tax" | "ato-combined";
@@ -488,7 +490,10 @@ export function analyseBalanceSheet(
   balanceSheetInput: any,
   accountsInput?: any,
   overrides?: StatutoryOverrides,
+  bankClassifications: BankClassificationRow[] = [],
 ): BalanceSheetAnalysis {
+  if (Array.isArray(accountsInput?.Accounts)) accountsInput = { ...accountsInput, Accounts: applyBankClassifications(accountsInput.Accounts, bankClassifications) };
+  else if (Array.isArray(accountsInput)) accountsInput = applyBankClassifications(accountsInput, bankClassifications);
   const reportResult = normaliseBalanceSheetReport(balanceSheetInput);
   if (reportResult.status === "input_invalid") {
     const reason = reportResult.reason;

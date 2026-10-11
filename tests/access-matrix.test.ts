@@ -264,6 +264,11 @@ const TARGET: Record<string, Record<string, string>> = {
     created_by: q(U.ownerA),
     updated_by: q(U.ownerA),
   },
+  client_bank_account_classifications: {
+    client_id: q(CLIENT_A), tenant_id: q(TENANT_A),
+    account_id: q('a0000001-1111-4111-8111-111111111111'),
+    classification: q('bank'), updated_by: q(U.ownerA), updated_at: 'now()',
+  },
   xero_snapshots: {
     id: q("c0000016-1111-4111-8111-111111111111"),
     client_id: q(CLIENT_A),
@@ -407,6 +412,7 @@ const TARGET: Record<string, Record<string, string>> = {
 
 /** Primary key column used for the row-scoped read/update/delete probe. */
 const PK: Record<string, string> = {
+  client_bank_account_classifications: 'client_id',
   tier_settings: "tier",
   security_attestations: "check_key",
   // Keyed by (tenant_id, day); the probe scopes on the tenant, which is unique
@@ -532,6 +538,26 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
 
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
+
+  if (r.startsWith('save_client_bank_account_classification()')) {
+    await seedThenActAs(row.role, `insert into public.xero_snapshots (id,client_id,firm_id,tenant_id,report_key,params_hash,params,source_endpoint,payload,complete) values (gen_random_uuid(),'${CLIENT_A}','${ORG_A}','${TENANT_A}','accounts','bank-test','{}','Accounts','{"Accounts":[{"AccountID":"a0000001-1111-4111-8111-111111111111","Type":"BANK","Status":"ACTIVE"}]}',true)`);
+    const client = r.includes('another client') ? CLIENT_B : CLIENT_A;
+    const tenant = r.includes('another tenant') ? 'tenant-b' : TENANT_A;
+    const account = r.includes('unknown account') ? 'a0000002-1111-4111-8111-111111111111' : 'a0000001-1111-4111-8111-111111111111';
+    const classification = r.includes('invalid classification') ? 'invalid' : 'credit_card';
+    const saved = await probe(`select public.save_client_bank_account_classification('${client}','${tenant}','${account}','${classification}')`);
+    if (!saved.ok) return 'deny';
+    const checked = await db.query<{ classification: string }>(`select classification from public.client_bank_account_classifications where client_id='${CLIENT_A}' and tenant_id='${TENANT_A}' and account_id='${account}'`);
+    if (checked.rows[0]?.classification !== 'credit_card') return 'deny';
+    await db.exec('set local role postgres');
+    const audit = await db.query(`select 1 from public.audit_log where actor_user_id='${CONTEXT[row.role].uid}' and action='client_bank_account_classification_changed' and target_id='${CLIENT_A}' and meta->>'account_id'='${account}' and meta->>'classification'='credit_card'`);
+    if (audit.rows.length === 0) return 'deny';
+    await db.exec(`set local role ${CONTEXT[row.role].dbRole}`);
+    const reset = await probe(`select public.save_client_bank_account_classification('${client}','${tenant}','${account}',null)`);
+    if (!reset.ok) return 'deny';
+    const remaining = await db.query(`select 1 from public.client_bank_account_classifications where client_id='${CLIENT_A}' and tenant_id='${TENANT_A}' and account_id='${account}'`);
+    return remaining.rows.length === 0 ? 'allow' : 'deny';
+  }
 
   if (r.startsWith("save_client_income_tax_instalment()")) {
     const targetClient = r.includes("another client") ? CLIENT_B : CLIENT_A;
@@ -1425,6 +1451,7 @@ beforeAll(async () => {
   // period; its audited save function relies on that key for the upsert.
   await db.exec(`create unique index client_income_tax_instalments_period_key
                    on public.client_income_tax_instalments (client_id, tenant_id, period_start, period_end);`);
+  await db.exec(`alter table public.client_bank_account_classifications add primary key (client_id, tenant_id, account_id);`);
   // clients/firms.overview_hidden are `not null default false` live (8 Oct 2026); the
   // dump drops defaults, so rows seeded below would be NULL and overview_clients()
   // would filter everything out. Test-copy fidelity only — no application object changes.

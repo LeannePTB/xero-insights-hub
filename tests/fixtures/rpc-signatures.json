@@ -918,6 +918,16 @@
         "args": [
             "_client_id",
             "_tenant_id",
+            "_account_id",
+            "_classification"
+        ],
+        "name": "save_client_bank_account_classification",
+        "required": 4
+    },
+    {
+        "args": [
+            "_client_id",
+            "_tenant_id",
             "_period_start",
             "_period_end",
             "_amount"
