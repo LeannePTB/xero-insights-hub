@@ -38,13 +38,14 @@ export function estimateTrixieCostUsd(
 }
 
 /**
- * The cost guard caps what a single question may spend. Most of a question's
- * cost is its answer, so the guard becomes a hard output-token ceiling; the
- * remaining fifth covers the prompt and the help articles read.
+ * The cost guard caps what a single question's answer may spend, reasoning
+ * included (the gateway counts reasoning as output). The whole guard is given
+ * to the answer so reasoning cannot crowd out the visible reply; tool steps
+ * are capped separately in the route.
  */
 export function maxOutputTokensForGuard(model: string, guardUsd: number | null | undefined): number | undefined {
   if (guardUsd == null || !Number.isFinite(guardUsd) || guardUsd <= 0) return undefined;
   const r = rates(model);
-  const tokens = Math.floor((guardUsd * 0.8) / r.outputPerToken);
-  return Math.max(256, Math.min(tokens, 32_000));
+  const tokens = Math.floor(guardUsd / r.outputPerToken);
+  return Math.max(1_000, Math.min(tokens, 32_000));
 }
