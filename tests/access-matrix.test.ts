@@ -551,6 +551,9 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       alter table public.user_roles alter column id set default gen_random_uuid();
       alter table public.audit_log alter column id set default gen_random_uuid();
       alter table public.audit_log alter column at set default now();
+      create unique index if not exists matrix_ca_client_user on public.client_access (client_id, user_id);
+      create unique index if not exists matrix_fva_firm_user on public.firm_viewer_access (firm_id, user_id);
+      create unique index if not exists matrix_ur_user_role on public.user_roles (user_id, role);
     `);
     const v = U.standingViewer;
     const toSelected = () => probe(`select public.set_viewer_scope('${ORG_A}'::uuid, '${v}'::uuid, 'selected', array['${CLIENT_A}']::uuid[])`);
@@ -568,9 +571,8 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     }
     if (r === "viewer_scope: switch All clients to Selected removes the rest immediately") {
       const p = await toSelected();
-      if (!p.ok) { console.log("VSDEBUG", p.error); return "deny"; }
+      if (!p.ok) return "deny";
       const st = await state();
-      console.log("VSDEBUG state", JSON.stringify(st));
       if (!(st?.fva === 0 && st.ca === 1)) return "deny";
       // The rest of the organisation is no longer readable.
       const other = await db.query<{ a: boolean; b: boolean }>(`
@@ -581,7 +583,6 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     }
     if (r === "viewer_scope: switch Selected to All clients") {
       if (!(await toSelected()).ok) return "deny";
-      await actAs(CONTEXT[row.role].uid!);
       const p = await probe(`select public.set_viewer_scope('${ORG_A}'::uuid, '${v}'::uuid, 'all_clients', null)`);
       if (!p.ok) return "deny";
       const st = await state();
