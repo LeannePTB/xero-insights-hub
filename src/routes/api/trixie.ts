@@ -10,8 +10,17 @@ type Payload = { messages?: UIMessage[]; pathname?: string };
 
 function errorResponse(error: unknown) {
   const status = typeof error === "object" && error && "status" in error ? Number(error.status) : 500;
-  const message = error instanceof Error ? error.message : "Trixie could not answer that question.";
-  return Response.json({ error: message }, { status: Number.isFinite(status) ? status : 500 });
+  const raw = error instanceof Error ? error.message : "";
+  // Only known, user-safe messages are passed through; everything else is generic.
+  const message = /TRIXIE_LIMIT_REACHED/.test(raw)
+    ? "Your organisation has used this month’s Trixie questions."
+    : /switched off/.test(raw)
+      ? "Trixie is currently switched off."
+      : /MFA_REQUIRED|SESSION_IDLE/.test(raw)
+        ? "Please confirm your sign-in again to use Trixie."
+        : status === 503 ? "Trixie is not available right now." : "Trixie could not answer that question.";
+  const code = /TRIXIE_LIMIT_REACHED/.test(raw) ? 429 : /MFA_REQUIRED|SESSION_IDLE|Forbidden/.test(raw) ? 403 : status;
+  return Response.json({ error: message }, { status: Number.isFinite(code) && code >= 400 ? code : 500 });
 }
 
 export const Route = createFileRoute("/api/trixie")({
