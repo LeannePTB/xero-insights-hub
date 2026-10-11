@@ -143,7 +143,7 @@ Audience: `staff` · Tags: `starter`, `overview`, `health`, `protected-money`, `
 2. Read the status buckets: In trouble needs urgent review; Needs attention indicates concerns; Watch means monitor; All clear means no flagged issue from the available data. Can’t assess means the app cannot make a reliable assessment. A green status is not a guarantee.
 3. Cash at bank shows bank cash. Net cash is cash at bank less credit card debt. Check account classification if the two seem wrong; do not assume every negative bank account is a credit card.
 4. Check the seven-day cash change and What changed — last 7 days. Missing comparisons show a dash, not zero. The feed highlights recorded changes, not every transaction.
-5. Protected money is money needed for tax and super obligations, not spare cash. Its percentage compares these obligations with net cash; more than 100% means net cash does not cover them.
+5. Protected money is money needed for tax and super obligations, not spare cash. Its percentage compares these obligations with cash at bank; more than 100% means cash at bank does not cover them.
 6. Hover over bank warnings. Bank not reconciled since a date means the figures may not reflect the real position. Ask the team to reconcile in Xero and check refreshed data. Missing or old figures must not be treated as current balances.
 7. Open the client for detail. The Overview no longer has Unreconciled since or Last Xero login columns.
 
