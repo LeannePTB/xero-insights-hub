@@ -212,3 +212,12 @@ Separate from the card-model migration; no file or object shared with it.
 - Pure client viewers keep a compact Dashboard/Reports header. Staff-only scenario, loan, audit and settings controls use the existing caller-scoped management signal for presentation only.
 - Platform branding now drives browser favicon/title replacement, report PDF primary branding, app-email sender/product copy and spreadsheet creator metadata, with bundled assets as fallback.
 - Single-organisation users with no clients land on Clients; All organisations appears in the workspace switcher for multi-organisation members.
+
+## 2026-10-11 — Trixie phase 1 complete, with usage alerts
+- Trixie is free for every organisation; no plan, subscription or organisation-list indicator.
+- Fair use: default 100 questions per organisation per month, warning at 80%, finite or Unlimited globally and per organisation; System Admin has its own platform allowance. Cost guard US$0.25 per question, editable.
+- Alerts (super admins only, in app and by email): month-to-date platform spend crossing US$25/$50/$100 (editable), an organisation reaching 80% and 100% of its allowance, and a day costing more than 3x the trailing seven-day daily average. Monthly usage summary emailed on the 1st.
+- System Admin → Trixie shows live month-to-date spend and a 30-day daily spend chart, and carries the global switch, model, knowledge editor (add, edit, archive), allowances and usage.
+- Session-only conversations; usage metadata only, purged after 13 months; abandoned reservations expire after 20 minutes.
+- [ ] Seed the Trixie help library — no articles exist yet, so how-to answers are unsupported until content is written.
+- [ ] Phase 2 (report commentary drafting and suggested next actions) deferred.
