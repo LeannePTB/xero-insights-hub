@@ -26,7 +26,7 @@ import { ViewerScopeDialog } from "@/components/people/ViewerScopeDialog";
 /**
  * Viewers with the "All clients" scope, badged, with a one-click
  * revoke. Internal names (firm_viewer_access, listStandingViewers) are
- * deliberately unchanged — only the wording people read is "External adviser".
+ * deliberately unchanged — only the wording people read is "Viewer".
  */
 export function StandingViewers({
   firmId,

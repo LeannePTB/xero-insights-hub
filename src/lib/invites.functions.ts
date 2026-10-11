@@ -47,7 +47,7 @@ function validateEmail(email: string) {
  * wants its cards set up, and its owner, in a single all-or-nothing step.
  *
  * The purchase is written through the SAME audited control the organisation
- * page uses, public.set_org_purchase (aal2 + super admin, one audit row), and
+ * page uses, public.set_org_purchase (aal2 + System Administrator, one audit row), and
  * the card preferences through public.set_org_card_defaults. Both run inside
  * the existing rollback block: if anything fails, the organisation itself is
  * removed rather than left stranded with no owner or no options.
@@ -156,7 +156,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       }
 
       // What they have bought, through the same audited control the
-      // organisation page uses. It runs as the signed-in super admin (aal2 +
+      // organisation page uses. It runs as the signed-in System Administrator (aal2 +
       // assert_super_admin inside the function), never as the admin client, and
       // writes its own org_purchase_set audit row.
       const { error: pErr } = await (context.supabase as any).rpc("set_org_purchase", {
@@ -182,7 +182,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         if (dErr) throw new Error(dErr.message);
       }
 
-      // Batch 5 — practice team auto-add. Traction Advisory's own people are
+      // Batch 5 — Traction Advisory team auto-add. Traction Advisory's own people are
       // added as staff members here, inside the same all-or-nothing block, with
       // one audit row each, so nobody has to add themselves later. The list is
       // read from `practice_team` (super-admin managed); an empty list is normal
@@ -730,7 +730,7 @@ export type PendingFirmInvite = {
 };
 
 /**
- * Pending member invitations for one organisation. Super admin only — the rule
+ * Pending member invitations for one organisation. System Administrator only — the rule
  * and the audience check live in public.firm_member_invites, not here.
  */
 export const listFirmMemberInvites = createServerFn({ method: "POST" })
@@ -756,7 +756,7 @@ export const listFirmMemberInvites = createServerFn({ method: "POST" })
     };
   });
 
-/** Cancel a pending member invitation. Super admin only, audited in the database. */
+/** Cancel a pending member invitation. System Administrator only, audited in the database. */
 export const revokeFirmMemberInvite = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { id: string }) => i)

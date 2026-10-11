@@ -30,7 +30,7 @@ export const getSubscriptionState = createServerFn({ method: "POST" })
 /**
  * Trial state of the organisation behind a client dashboard, for the people
  * allowed to see billing: active members of that organisation and the client's
- * business owner. An external adviser, standing viewer or support grant gets
+ * Business Owner. An Viewer, standing viewer or support grant gets
  * null — public.client_org_trial returns them no rows by design.
  */
 export const getClientOrgTrial = createServerFn({ method: "POST" })

@@ -3,7 +3,7 @@
  *
  * A Xero authorisation can leave behind a connection row that belongs to no
  * organisation (older flows stored every tenant Xero returned). These are
- * invisible everywhere else, so a super admin needs a place to see them and
+ * invisible everywhere else, so a System Administrator needs a place to see them and
  * either place them or disconnect them.
  *
  * Strictly metadata: organisation name, status, who authorised it and when.

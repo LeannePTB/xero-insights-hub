@@ -1,5 +1,5 @@
 /**
- * Xero API usage against Xero's own limits (super admin only).
+ * Xero API usage against Xero's own limits (System Administrator only).
  *
  * Path C platform metadata: our own request volume and the quota Xero reports
  * back. Nothing from any client's financial data, and no tokens. Authorisation

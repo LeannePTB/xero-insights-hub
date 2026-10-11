@@ -204,7 +204,7 @@ async function serverConfigChecks(attestations: Attestation[]): Promise<PostureC
     const days = att.expires_after_days;
     const ageDays = Math.floor((Date.now() - new Date(att.confirmed_at).getTime()) / 86_400_000);
     const expired = ageDays > days;
-    const who = att.confirmed_by_email ?? "an unnamed super admin";
+    const who = att.confirmed_by_email ?? "an unnamed System Administrator";
     const when = new Date(att.confirmed_at).toISOString().slice(0, 10);
     out.push({
       id: "leaked_password",
@@ -305,7 +305,7 @@ export const recordPresence = createServerFn({ method: "POST" })
 
 /**
  * Records a human confirmation for a control no system can read. Authorisation
- * (aal2 + super admin), the attestable key list, the identity and the timestamp
+ * (aal2 + System Administrator), the attestable key list, the identity and the timestamp
  * all live in `public.record_security_attestation` — this function passes only
  * the check key and the optional note, through context.supabase.
  */

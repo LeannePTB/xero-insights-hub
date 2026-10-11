@@ -2,7 +2,7 @@
 //
 // Access: AAL2, then the caller-scoped database manage predicate
 // (public.me_can_manage_client → app_private.user_can_write_client). Read-only
-// paths — support grants, external advisers, business owners — are refused.
+// paths — support grants, Viewers, business owners — are refused.
 // A tenantId or clientId in the request is a FILTER, never a GRANT (invariant 4).
 
 import { createServerFn } from "@tanstack/react-start";

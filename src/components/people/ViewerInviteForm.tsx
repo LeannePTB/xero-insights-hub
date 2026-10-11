@@ -74,7 +74,7 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
       ? `${name.trim() || email || "This person"} will see every client in this organisation, including ones added later. They will never be able to change anything.`
       : picked.length === 0
         ? "Select at least one client to continue."
-        : `${name.trim() || email || "This person"} will see ${picked.length} selected client${picked.length === 1 ? "" : "s"}. ${relationship === "external_adviser" ? "They will never be able to change anything." : "As Business Owner they can run that client's own account."}`;
+        : `${name.trim() || email || "This person"} will see ${picked.length} selected client${picked.length === 1 ? "" : "s"}. ${relationship === "external_adviser" ? "They will never be able to change anything." : "As Business Owner their access is limited to those clients."}`;
 
   return (
     <div className="space-y-4">

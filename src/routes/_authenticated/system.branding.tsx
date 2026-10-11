@@ -72,7 +72,7 @@ function BrandingPage() {
       toast.success("Branding saved");
       qc.invalidateQueries({ queryKey: PLATFORM_BRANDING_KEY });
     },
-    onError: (e: Error) => toast.error(e.message === "Forbidden" ? "Only super admins can change branding." : "Branding could not be saved."),
+    onError: (e: Error) => toast.error(e.message === "Forbidden" ? "Only System Administrators can change branding." : "Branding could not be saved."),
   });
 
   const fileField = (label: string, value: string | null, set: (v: string | null) => void, fallback: string | null, max = MAX_LOGO) => (

@@ -55,7 +55,7 @@ export const getClientBilling = createServerFn({ method: "POST" })
 
 /**
  * Comp a client onto free Standard, or remove the comp.
- * Super admin only (also enforced by RLS) and always audited — comping is a
+ * System Administrator only (also enforced by RLS) and always audited — comping is a
  * revenue decision.
  */
 export const setClientComp = createServerFn({ method: "POST" })
@@ -66,7 +66,7 @@ export const setClientComp = createServerFn({ method: "POST" })
     reason: z.string().trim().min(3).max(500).parse(i.reason),
   }))
   .handler(async ({ data, context }) => {
-    // Super admin, reason and audit row are all enforced by the database
+    // System Administrator, reason and audit row are all enforced by the database
     // (public.set_client_comp). Nothing is decided here.
     const { error } = await (context.supabase as any).rpc("set_client_comp", {
       _client_id: data.clientId,
@@ -77,7 +77,7 @@ export const setClientComp = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-/** Start or end a trial of a higher dashboard. Super admin only, audited. */
+/** Start or end a trial of a higher dashboard. System Administrator only, audited. */
 export const setClientTrial = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { clientId: string; tier: DashboardTier | null; days?: number; reason: string }) => ({
@@ -101,7 +101,7 @@ export const setClientTrial = createServerFn({ method: "POST" })
  * Set a client's dashboard tier (Standard / Advisory / Multi company).
  *
  * The rule lives in public.set_client_dashboard_tier: organisation members with
- * write access to the client, or a super admin, aal2, audited. Support grants
+ * write access to the client, or a System Administrator, aal2, audited. Support grants
  * are read-only and never admitted. Absence of a row correctly means Standard,
  * so no row is created just to store `basic`.
  */

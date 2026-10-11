@@ -63,7 +63,7 @@ export const recordSignOutOtherDevices = createServerFn({ method: "POST" })
   });
 
 /**
- * Super admin signs ANOTHER person out of every device (the stolen-device case,
+ * System Administrator signs ANOTHER person out of every device (the stolen-device case,
  * where that person cannot use the self-service control).
  *
  * Mechanism, stated plainly because it has a real consequence: the
@@ -77,8 +77,8 @@ export const recordSignOutOtherDevices = createServerFn({ method: "POST" })
  * reset link, meaning they choose a new password on their next sign-in.
  *
  * Authorisation lives in the database: `admin_assert_can_sign_out_user` re-checks
- * aal2 and super admin, refuses the caller's own account (use the self control)
- * and refuses the last remaining super admin. The audit row is written only after
+ * aal2 and System Administrator, refuses the caller's own account (use the self control)
+ * and refuses the last remaining System Administrator. The audit row is written only after
  * the revocation actually succeeded, and never carries a password or token.
  */
 export const adminSignOutAllDevices = createServerFn({ method: "POST" })

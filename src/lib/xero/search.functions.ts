@@ -51,12 +51,12 @@ const BATCH_SIZE = 3;
  * public.user_can_access_firm(_user_id, _firm_id) — the single database
  * implementation of the rule. It is:
  *     app_private.has_firm_access            (active firm_members row)
- *  OR app_private.platform_staff_can_access_firm  (super admin WITH an
+ *  OR app_private.platform_staff_can_access_firm  (System Administrator WITH an
  *                                            approved, unexpired support grant)
  *
  * An invited client viewer reaches a client through public.client_access only,
  * which that function does not consider, so a viewer is refused here even
- * though they can open the client dashboard. Being a super admin on its own
+ * though they can open the client dashboard. Being a System Administrator on its own
  * grants nothing.
  */
 async function assertOrganisationStaff(userId: string, firmId: string) {

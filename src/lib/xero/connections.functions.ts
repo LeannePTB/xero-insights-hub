@@ -411,7 +411,7 @@ export const linkClientXeroOptions = createServerFn({ method: "POST" })
 
 /**
  * Move a Xero file from the subscription that currently holds it onto this
- * client subscription. Requires manage rights on both sides (super admins have
+ * client subscription. Requires manage rights on both sides (System Administrators have
  * them everywhere) and a free slot in the target's file allowance.
  */
 export const moveXeroFileToClient = createServerFn({ method: "POST" })

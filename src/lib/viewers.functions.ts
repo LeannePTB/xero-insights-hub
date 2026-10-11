@@ -11,12 +11,12 @@ import { optionalInviterLabelSchema, type ClientAccessRelationship } from "@/lib
  *
  * Every authorisation decision here is a database call:
  * `public.me_can_manage_firm_viewers` / `me_can_manage_client_viewers` wrap
- * `app_private.can_manage_client_viewers` (organisation owner, or a practice
+ * `app_private.can_manage_client_viewers` (Organisation Owner, or a practice
  * team member with an active membership of THAT organisation). This file never
  * reads `firm_members`, `user_roles`, `client_access` or `firm_viewer_access`
  * to decide who may do what.
  *
- * An External adviser with All clients is read-only by construction: it lives in
+ * An Viewer with All clients is read-only by construction: it lives in
  * `firm_viewer_access`, which is referenced only by read predicates
  * (`app_private.has_standing_client_access` → `has_client_read_access`).
  */
@@ -45,7 +45,7 @@ export type StandingViewer = {
   createdAt: string;
 };
 
-/** External advisers with All clients access for one organisation. */
+/** Viewers with All clients access for one organisation. */
 export const listStandingViewers = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string }) => i)

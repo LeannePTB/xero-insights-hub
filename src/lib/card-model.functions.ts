@@ -11,7 +11,7 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
  *   public.card_model_active()          is the new model live?
  *   public.card_group_list()            Standard / Advisory / Consolidation
  *   public.org_purchase(firm)           one organisation's purchase options
- *   public.set_org_purchase(...)        super admin only, audited
+ *   public.set_org_purchase(...)        System Administrator only, audited
  *   public.client_available_cards(c)    what the purchase allows
  *   public.client_visible_cards(c)      purchase ∩ ticked
  *   public.set_client_card_enabled(...)  write access to that client, audited
@@ -292,7 +292,7 @@ export const listOrgPurchases = createServerFn({ method: "POST" })
 
 /**
  * Start, extend or end an organisation trial. Commercial change: the database
- * function re-checks aal2 and super admin, insists on a reason, refuses
+ * function re-checks aal2 and System Administrator, insists on a reason, refuses
  * Consolidation without Advisory, caps the trial at 120 days, and audits every
  * accepted change. When a selected option is already purchased, the database
  * atomically moves it to trialled; it never touches any client's ticked cards.

@@ -118,7 +118,7 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
     if (!firm) throw new Error("Organisation not found");
 
     // Membership is Path C metadata and the list comes from the database
-    // (`public.admin_firm_members` re-checks aal2 + super admin and returns the
+    // (`public.admin_firm_members` re-checks aal2 + System Administrator and returns the
     // verified auth.users email), never from a membership read decided here.
     const { data: memberRows, error: mErr } = await (context.supabase as any).rpc(
       "admin_firm_members",
@@ -277,7 +277,7 @@ export const adminUpdateBillingLifecycle = createServerFn({ method: "POST" })
 
     if (data.is_always_free !== undefined && data.is_always_free !== null) {
       // Only public.set_firm_always_free may change this flag: it re-checks aal2
-      // and super admin, refuses TRUE on anything but the practice organisation,
+      // and System Administrator, refuses TRUE on anything but the practice organisation,
       // and writes its own audit row (Spec §4).
       if (!data.always_free_reason) throw new Error("A reason is required to change always free.");
       const { error } = await (context.supabase as any).rpc("set_firm_always_free", {
@@ -296,7 +296,7 @@ export const adminUpdateBillingLifecycle = createServerFn({ method: "POST" })
   });
 
 /**
- * Super admin joins/leaves an organisation as staff.
+ * System Administrator joins/leaves an organisation as staff.
  * Membership grants client-data access automatically (see support-access.server.ts).
  */
 export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
@@ -305,7 +305,7 @@ export const adminSetSelfFirmMembership = createServerFn({ method: "POST" })
     z.object({ firmId: z.string().uuid(), join: z.boolean() }).parse(i),
   )
   .handler(async ({ data, context }) => {
-    // The rule lives in the database (backlog 30): aal2 + super admin, joining
+    // The rule lives in the database (backlog 30): aal2 + System Administrator, joining
     // only while the organisation is still owned by Positive Traction, the row
     // reactivated to 'active', and the audit row written there. Runs as the
     // caller so nothing is decided here.

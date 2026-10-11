@@ -25,7 +25,7 @@ export type CashCommitments = {
 
 /**
  * The fields, in the order they are entered and displayed. Wording is for a
- * business owner: each line says what the money is, not which ledger it sits in.
+ * Business Owner: each line says what the money is, not which ledger it sits in.
  */
 export const COMMITMENT_FIELDS = [
   {

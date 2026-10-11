@@ -65,7 +65,7 @@ export const listOrganisationMembers = createServerFn({ method: "POST" })
 
 function explainTransferError(message: string): string {
   if (/NOT_ORG_OWNER/i.test(message)) {
-    return "Only the current organisation owner can hand ownership over.";
+    return "Only the current Organisation Owner can hand ownership over.";
   }
   if (/NOT_A_MEMBER/i.test(message)) {
     return "That person isn't an active member of this organisation yet. Invite them and have them accept the invitation first, then transfer ownership.";

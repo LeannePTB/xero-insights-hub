@@ -8,9 +8,9 @@ export const Route = createFileRoute("/_authenticated/firms/$firmId/people")({
   head: () => ({
     meta: [
       { title: "People & access — Organisation" },
-      { name: "description", content: "Team members, business owners and external advisers for this organisation." },
+      { name: "description", content: "Team members, business owners and Viewers for this organisation." },
       { property: "og:title", content: "People & access — Organisation" },
-      { property: "og:description", content: "Team members, business owners and external advisers." },
+      { property: "og:description", content: "Team members, business owners and Viewers." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -25,7 +25,7 @@ function PeoplePage() {
     <PageContainer className="space-y-6">
       <FirmPageHeader
         title="People & access"
-        description="Manage Team members, Business owners and External advisers. Access is shown separately by relationship and scope."
+        description="Manage Team members, Business Owners and Viewers. Access is shown separately by relationship and scope."
       />
       {q.isLoading ? null : q.data?.isMember ? (
         <PeopleSection firmId={firmId} />

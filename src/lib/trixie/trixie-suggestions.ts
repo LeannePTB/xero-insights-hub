@@ -14,7 +14,7 @@ export function trixieSuggestions(pathname: string): string[] {
   if (/^\/firms\/[^/]+\/settings/.test(p))
     return ["What are card defaults?", "How do I change our report logo?", "How does support access work?"];
   if (/^\/firms\/[^/]+\/people/.test(p))
-    return ["How do I invite a business owner?", "What can an external adviser see?"];
+    return ["How do I invite a Business Owner?", "What can an Viewer see?"];
   if (/^\/firms\/[^/]+\/(consolidations|loans)/.test(p))
     return ["How do consolidation groups work?", "How do I set up loan accounts?"];
   if (/^\/firms\/[^/]+/.test(p)) return ["How do I add a client?", "How do I connect a Xero file?", "What does unlinked mean?"];

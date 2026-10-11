@@ -164,7 +164,7 @@ export const getAuditAnomalies = createServerFn({ method: "GET" })
       {
         id: "role-changes",
         title: "Permission changes (7d)",
-        detail: "Grants and revocations of advisor / super admin access.",
+        detail: "Grants and revocations of advisor / System Administrator access.",
         count: roleChanges,
         status: roleChanges >= 10 ? "warn" : "ok",
       },

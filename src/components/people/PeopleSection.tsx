@@ -65,7 +65,7 @@ function Panel({
 /**
  * One place for the three relationship labels in an organisation. It calls exactly the
  * same server functions as the existing screens — no second implementation of
- * who may invite (super admin only) or of what anyone may see.
+ * who may invite (System Administrator only) or of what anyone may see.
  */
 export function PeopleSection({ firmId }: { firmId: string }) {
   const qc = useQueryClient();
@@ -144,7 +144,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   const clients = (clientsQ.data?.clients ?? []) as Array<{ id: string; name: string }>;
 
   // Who may manage client viewers is decided in the database
-  // (app_private.can_manage_client_viewers): the organisation owner, or one of
+  // (app_private.can_manage_client_viewers): the Organisation Owner, or one of
   // Positive Traction's own people with an active membership of this
   // organisation. Staff see the lists and nothing more.
   const standingQ = useQuery({

@@ -137,7 +137,7 @@ export const savePlatformTierWidgets = createServerFn({ method: "POST" })
     const excluded = await exclusionsFor(context.supabase, data.tier, data.widgets);
 
     // Gate also lives in the database: public.set_platform_tier_widgets refuses
-    // anyone who is not a super admin.
+    // anyone who is not a System Administrator.
     const { error } = await (context.supabase as any).rpc("set_platform_tier_widgets", {
       _tier: data.tier,
       _excluded: excluded,
@@ -404,7 +404,7 @@ export const setTierEnabled = createServerFn({ method: "POST" })
   .inputValidator((i: { tier: DashboardTier; enabled: boolean }) => i)
   .handler(async ({ data, context }) => {
     // Gate lives in the database: public.set_tier_enabled refuses anyone who
-    // is not a super admin. No local role check, no supabaseAdmin.
+    // is not a System Administrator. No local role check, no supabaseAdmin.
     const { error } = await (context.supabase as any).rpc("set_tier_enabled", {
       _tier: data.tier,
       _enabled: data.enabled,

@@ -1,5 +1,5 @@
 /**
- * Unassigned Xero connections (super admin only).
+ * Unassigned Xero connections (System Administrator only).
  *
  * Path C platform metadata: Xero organisation name, status, who authorised it.
  * Nothing from any client's financial data, and no tokens.
@@ -76,7 +76,7 @@ export function OrphanXeroConnectionsCard({ firms }: { firms: FirmOption[] }) {
   const rows = orphansQ.data ?? [];
 
   // Nothing to do — render nothing at all (also while loading, so an empty
-  // state never flashes). Visibility is gated by the caller (super admin only).
+  // state never flashes). Visibility is gated by the caller (System Administrator only).
   if (orphansQ.isLoading || rows.length === 0) return null;
 
   return (

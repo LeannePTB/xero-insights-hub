@@ -17,7 +17,7 @@ import {
 
 /**
  * Super-admin-only editor for the optional personal video on a DRAFT report.
- * Presentation only — the server re-checks super admin, organisation write
+ * Presentation only — the server re-checks System Administrator, organisation write
  * access and draft status on every save.
  */
 export function ReportVideoEditor({
@@ -123,7 +123,7 @@ export function ReportVideoEditor({
             )}
             Save video
           </Button>
-          <span className="text-xs text-muted-foreground">Super admin</span>
+          <span className="text-xs text-muted-foreground">System Administrator</span>
           {hasVideo && (
             <Button
               variant="ghost"

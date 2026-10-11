@@ -51,7 +51,7 @@ export function OnlineChip({
           <div className={hasName ? "font-medium" : "font-medium text-muted-foreground"}>{label}</div>
           <div className="text-muted-foreground">{email ?? "Verified email unavailable"}</div>
           <div className="text-muted-foreground">
-            {isSuperAdmin ? "Super admin" : "Member"}
+            {isSuperAdmin ? "System Administrator" : "Member"}
           </div>
           <div className="text-muted-foreground">
             {hasMfa ? "Second factor verified" : "No second factor"}
@@ -90,7 +90,7 @@ export function SecurityStatusCard() {
     enabled: !posture.isError,
   });
 
-  // Not a super admin (or not permitted): show nothing at all.
+  // Not a System Administrator (or not permitted): show nothing at all.
   if (posture.isError) return null;
 
   const data = posture.data;

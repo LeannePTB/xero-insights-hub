@@ -8,7 +8,7 @@ import { xeroCallbackUrl, assertAppOrigin } from "@/lib/site-origin";
 // System Admin → "Add organisation" → "Start from a Xero file" (Stage 1).
 // Every step re-checks the caller in the database: the state row trigger, the
 // pending-record trigger and both definer functions refuse anyone who is not
-// an aal2 super admin, whatever the UI shows.
+// an aal2 System Administrator, whatever the UI shows.
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const base64url = (buf: Buffer) => buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");

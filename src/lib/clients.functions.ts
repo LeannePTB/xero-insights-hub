@@ -398,7 +398,7 @@ export const createClient = createServerFn({ method: "POST" })
       );
     }
 
-    // Super admins manage organisations they don't belong to; RLS scopes inserts to firm owners.
+    // System Administrators manage organisations they don't belong to; RLS scopes inserts to firm owners.
     const writer: any = supabaseAdmin;
 
     const { friendlyPlanError } = await import("@/lib/plan-errors");
@@ -432,7 +432,7 @@ export const deleteClient = createServerFn({ method: "POST" })
   .inputValidator((i: { clientId: string; disconnectXeroFiles?: boolean }) => i)
   .handler(async ({ data, context }) => {
     // Authorisation for the removal itself lives in the database routine
-    // called below (owner, active organisation member, or super admin).
+    // called below (owner, active organisation member, or System Administrator).
 
     // Optional, opt-in: detach this client's Xero files first. Read through the
     // caller's own permissions, so someone who cannot see the client's links

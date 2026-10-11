@@ -16,8 +16,8 @@ export async function getClientOrgAllowance(clientId: string): Promise<ClientOrg
     { data: levels },
   ] = await Promise.all([
     // The Xero file allowance follows the CLIENT'S OWN paid entitlement only.
-    // It must never be read from access grants: a viewer grant (Business owner
-    // or External adviser) carries a pass-through dashboard level for reading
+    // It must never be read from access grants: a viewer grant (Business Owner
+    // or Viewer) carries a pass-through dashboard level for reading
     // cards, and treating that as an entitlement silently raised the file limit
     // just because someone was invited.
     (supabaseAdmin as any)
@@ -220,7 +220,7 @@ export type SelectableConnection = {
  *
  * Scoped to the tenants authorised in this OAuth session, then strictly to
  * files that belong to this client's organisation (or no organisation yet).
- * This applies to everyone, including super admins — files stamped to another
+ * This applies to everyone, including System Administrators — files stamped to another
  * organisation are never listed.
  *
  * Files already linked inside this organisation come back with

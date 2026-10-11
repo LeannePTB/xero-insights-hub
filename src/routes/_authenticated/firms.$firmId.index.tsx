@@ -63,7 +63,7 @@ function FirmPage() {
   const ctxQ = useQuery({ queryKey: ["my-context"], queryFn: () => fetchCtx() });
   // Previewing is for platform admins and advisors only.
   const previewing = requestedPreview && (ctxQ.data?.canViewAs ?? false);
-  // While previewing as the organisation owner, hide platform-admin-only controls.
+  // While previewing as the Organisation Owner, hide platform-admin-only controls.
 
   useEffect(() => {
     if (!xeroOnboarded && !xeroError) return;
@@ -100,7 +100,7 @@ function FirmPage() {
     <div className="min-h-screen bg-background">
       {previewing && (
         <ViewAsBanner
-          label={`${firm.name} — as the organisation owner`}
+          label={`${firm.name} — as the Organisation Owner`}
           note="Layout and controls only; data access is unchanged"
         />
       )}

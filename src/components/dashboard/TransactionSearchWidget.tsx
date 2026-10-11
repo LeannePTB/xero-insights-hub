@@ -187,7 +187,7 @@ export function TransactionSearchWidget({ clientId }: { clientId: string; orgCou
         </h3>
         <p className="text-xs text-muted-foreground">
           Invoices, bills, credit notes, prepayments and overpayments across every Xero
-          organisation in this organisation. Organisation staff only.
+          organisation in this organisation. Staff only.
         </p>
 
       </div>
