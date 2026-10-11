@@ -43,7 +43,7 @@ export async function computeClientVerdicts(supabase: any, clientIdsIn: string[]
     if (bankError) throw new Error('Bank account classifications could not be read.');
     const { applyBankClassifications } = await import('@/lib/xero/bank-classifications');
     for (const row of (rows ?? []) as any[]) {
-      if (row.report_key === 'accounts' && Array.isArray(row.payload?.Accounts)) row.payload = { ...row.payload, Accounts: applyBankClassifications(row.payload.Accounts, (bankChoices ?? []).filter(r => r.client_id === row.client_id && r.tenant_id === row.tenant_id) as import('@/lib/xero/bank-classifications').BankClassificationRow[]) };
+      if (row.report_key === 'accounts' && Array.isArray(row.payload?.Accounts)) row.payload = { ...row.payload, Accounts: applyBankClassifications(row.payload.Accounts, (bankChoices ?? []).filter((r: any) => r.client_id === row.client_id && r.tenant_id === row.tenant_id) as import('@/lib/xero/bank-classifications').BankClassificationRow[]) };
       const list = snapshots.get(row.client_id) ?? [];
       list.push(row);
       snapshots.set(row.client_id, list);

@@ -1,4 +1,4 @@
-import { tool } from "ai";
+import { tool, type ToolSet } from "ai";
 import { z } from "zod";
 import type { TrixieContext } from "./trixie-context.server";
 import { rankTrixieArticles, type TrixieArticle } from "./trixie-knowledge";
@@ -324,7 +324,7 @@ export async function readKnowledge(ctx: TrixieContext, query: string, limit = 3
 
 export function buildTrixieTools(ctx: TrixieContext) {
   const noInput = z.object({});
-  const clientTools: Record<string, ReturnType<typeof tool<any, any>>> = ctx.mode === "platform" ? {} : {
+  const clientTools: ToolSet = ctx.mode === "platform" ? {} : {
     readCurrentClientFigures: tool({ description: "Saved headline figures for the current client (cash, receivables, payables, protected money, revenue and net profit month to date), limited to visible cards.", inputSchema: noInput, execute: () => readKeyFigures(ctx) }),
     readCashPosition: tool({ description: "Cash at bank by account, credit-card debt and net cash for the current client, from the saved Balance Sheet.", inputSchema: noInput, execute: () => readCash(ctx) }),
     readProfitAndLoss: tool({ description: "Month-to-date and financial-year-to-date Profit & Loss totals for the current client.", inputSchema: noInput, execute: () => readPnl(ctx) }),
