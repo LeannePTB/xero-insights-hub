@@ -18,6 +18,6 @@
 - App typography is governed by the shared Tailwind size tokens and PageHeader; only explicitly marked dashboard KPI figures use the separate KPI utility, so density changes remain centralised.
 - Print and email rendering use server-safe presentation tokens mirroring the global semantic palette, because CSS variables are unavailable in PDFs and email clients.
 - Official web colours are represented by OKLCH semantic tokens; approved logo crops are bundled circular TA marks, because artwork must retain its proportions and the colour sheet's printed conversions are not authoritative.
-- Trixie conversations are session-only: store allowance and token metadata for 13 months, never prompts or answers, so financial conversations cannot become a second client-data repository.
+- Trixie chats are saved per person in `trixie_threads`/`trixie_messages` (owner-only RLS that re-checks client/organisation read access on every read; visible text and source labels only, never tool payloads), written by the Trixie route as the caller, because history must never outlive or widen the person's current access.
 - Trixie alerting runs as one scheduled public route calling service-role-only database functions, because alert evaluation needs every organisation's usage and no signed-in caller exists.
 - Trixie spend is priced in TypeScript from recorded token counts (`src/lib/trixie/trixie-cost.ts`), so the per-question cost guard and the spend reports use one rate table.
