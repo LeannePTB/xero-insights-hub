@@ -1,14 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createOpenAI } from "@ai-sdk/openai";
 import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, stepCountIs, streamText, type UIMessage } from "ai";
-import { resolveTrixieContext } from "@/lib/trixie/trixie-context.server";
+import { callerSupabaseFor, resolveTrixieContext } from "@/lib/trixie/trixie-context.server";
+import { autoTitle, threadPathname, threadScopeFor, visibleReply } from "@/lib/trixie/trixie-history";
 import { buildTrixieTools, readKnowledge, trixieInstructions } from "@/lib/trixie/trixie-tools.server";
 import { createTrixieRunIdFetch, incomingTrixieRunId, withTrixieRunId } from "@/lib/trixie/trixie-run-id.server";
 import { estimateTrixieCostUsd, maxOutputTokensForGuard } from "@/lib/trixie/trixie-cost";
 import { trixieGuide } from "@/lib/trixie/trixie-guide";
 import { pageMapText, trixiePageMap } from "@/lib/trixie/trixie-pagemap";
 
-type Payload = { messages?: UIMessage[]; pathname?: string };
+type Payload = { messages?: UIMessage[]; pathname?: string; threadId?: string | null };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export const TRIXIE_EMPTY_REPLY =
   "Sorry, I couldn't put an answer together for that one. Could you try asking it a slightly different way, or a bit more specifically?";
@@ -46,8 +48,41 @@ export const Route = createFileRoute("/api/trixie")({
           const body = await request.json() as Payload;
           if (!Array.isArray(body.messages) || body.messages.length < 1 || body.messages.length > 60) return Response.json({ error: "The conversation is not valid." }, { status: 400 });
           // Only real conversation turns reach the model; the greeting is UI-only.
-          const messages = body.messages.filter((m) => m && (m.role === "user" || m.role === "assistant"));
-          ctx = await resolveTrixieContext(request, body.pathname);
+          let messages = body.messages.filter((m) => m && (m.role === "user" || m.role === "assistant"));
+          // A saved thread is continued in its own scope, read as the caller:
+          // RLS returns it only to its owner while they can still read its client.
+          let thread: { id: string; workspace: string; firm_id: string | null; client_id: string | null } | null = null;
+          if (body.threadId) {
+            if (typeof body.threadId !== "string" || !UUID.test(body.threadId)) return Response.json({ error: "That chat is no longer available." }, { status: 404 });
+            const { data: found } = await (callerSupabaseFor(request) as any).from("trixie_threads").select("id, workspace, firm_id, client_id").eq("id", body.threadId).maybeSingle();
+            if (!found) return Response.json({ error: "That chat is no longer available." }, { status: 404 });
+            thread = found;
+          }
+          ctx = await resolveTrixieContext(request, thread ? threadPathname(thread) : body.pathname);
+          const scope = threadScopeFor(ctx);
+          if (thread && (thread.workspace !== scope.workspace || (thread.client_id ?? null) !== scope.clientId || (thread.workspace === "organisation" && thread.firm_id !== scope.firmId))) {
+            throw Object.assign(new Error("Forbidden"), { status: 403 });
+          }
+          const sbc = ctx.supabase as any;
+          const newQuestion = lastUserText(messages);
+          if (!newQuestion.trim()) return Response.json({ error: "The conversation is not valid." }, { status: 400 });
+          if (thread) {
+            // History comes from the saved thread, never from the browser.
+            const { data: saved } = await sbc.from("trixie_messages").select("id, role, content").eq("thread_id", thread.id).order("created_at", { ascending: true }).limit(40);
+            messages = [
+              ...(saved ?? []).map((m: any): UIMessage => ({ id: m.id, role: m.role, parts: [{ type: "text", text: m.content }] })),
+              { id: crypto.randomUUID(), role: "user", parts: [{ type: "text", text: newQuestion }] },
+            ];
+          } else {
+            const { data: created, error: createError } = await sbc.from("trixie_threads")
+              .insert({ user_id: ctx.userId, workspace: scope.workspace, firm_id: scope.firmId, client_id: scope.clientId, title: autoTitle(newQuestion) })
+              .select("id, workspace, firm_id, client_id").single();
+            if (createError || !created) throw new Error("Trixie could not save this chat.");
+            thread = created;
+          }
+          const threadId = thread!.id;
+          const { error: saveError } = await sbc.from("trixie_messages").insert({ thread_id: threadId, user_id: ctx.userId, role: "user", content: newQuestion });
+          if (saveError) throw new Error("Trixie could not save this chat.");
           const apiKey = process.env["LOVABLE_API_KEY"];
           if (!apiKey) throw Object.assign(new Error("Trixie’s AI connection is not configured."), { status: 503 });
           const runIdFetch = createTrixieRunIdFetch(incomingTrixieRunId(request));
@@ -113,8 +148,14 @@ export const Route = createFileRoute("/api/trixie")({
               writer.write({ type: "finish" });
             },
             onError: () => "Trixie could not answer that question.",
+            onFinish: async ({ responseMessage }) => {
+              const reply = visibleReply((responseMessage?.parts ?? []) as any);
+              if (reply.text) await sbc.from("trixie_messages").insert({ thread_id: threadId, user_id: c.userId, role: "assistant", content: reply.text, sources: reply.sources });
+              await sbc.from("trixie_threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
+            },
           });
-          return await withTrixieRunId(createUIMessageStreamResponse({ stream }), runIdFetch);
+          const response = createUIMessageStreamResponse({ stream, headers: { "X-Trixie-Thread-Id": threadId } });
+          return await withTrixieRunId(response, runIdFetch);
         } catch (error) {
           if (ctx) await (ctx.supabase as any).rpc("finalise_trixie_usage", { _reservation_id: ctx.reservationId, _status: "failed", _error_code: "request_error" });
           return errorResponse(error);

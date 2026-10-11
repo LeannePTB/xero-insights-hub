@@ -46,6 +46,13 @@ function callerClient(token: string) {
   });
 }
 
+/** The caller's own RLS-scoped client, for reading their saved threads before a reservation. */
+export function callerSupabaseFor(request: Request) {
+  const token = (request.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) throw Object.assign(new Error("Sign in to use Trixie."), { status: 401 });
+  return callerClient(token);
+}
+
 export async function resolveTrixieContext(request: Request, pathname: unknown): Promise<TrixieContext> {
   const authorization = request.headers.get("authorization") ?? "";
   const token = authorization.replace(/^Bearer\s+/i, "").trim();
