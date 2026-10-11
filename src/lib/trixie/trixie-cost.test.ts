@@ -14,8 +14,8 @@ describe("Trixie spend accounting", () => {
   });
 
   it("caps one question's answer at the US$0.25 cost guard", () => {
-    // 80% of $0.25 at $0.00005 per output token.
-    expect(maxOutputTokensForGuard(MODEL, 0.25)).toBe(4_000);
+    // All of $0.25 at $0.00005 per output token, reasoning included.
+    expect(maxOutputTokensForGuard(MODEL, 0.25)).toBe(5_000);
   });
 
   it("leaves the answer uncapped when no guard is set", () => {

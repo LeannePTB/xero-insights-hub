@@ -1697,3 +1697,8 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 - CLOSED: manual Xero refresh (`refreshXeroSnapshots`) was gated by a read check (`assert_widget_access`), so read-only paths could trigger Xero calls. It and the new `resyncClient` now require AAL2 + `me_can_manage_client` (write predicate). Support, external advisers and business owners are refused.
 - No database change. Runs recorded in `xero_snapshot_runs` (trigger `manual`); each re-sync writes `audit_log` action `xero_manual_resync` (client, outcome, file count; no figures).
 - OPEN: no matrix probe row yet proves `resyncClient` refuses each read-only path end-to-end with a real AAL2 session (MFA blocks tooling); predicate itself is covered by existing `me_can_manage_client` rows.
+
+## Trixie CoCo-parity update (11 Oct 2026)
+- Added read-only Trixie card tools (cash, P&L, tax obligations, receivables, payables, break-even, health). Each checks `assert_widget_access` per Xero file, reads only stored snapshots through the caller's session, takes no IDs from the model; health verdict is staff-only. Break-even additionally uses the existing `assertClientDataAccessForClient` (registered admin use).
+- `search_trixie_knowledge` now returns audience-filtered candidates (cap 50); ranking is in `trixie-knowledge.ts`. Access filter unchanged.
+- OPEN: real AAL2 end-to-end Trixie test as staff, business owner and platform user (MFA-blocked for tooling).

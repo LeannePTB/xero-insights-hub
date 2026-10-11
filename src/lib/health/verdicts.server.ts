@@ -1,0 +1,108 @@
+// Shared, caller-scoped business health verdicts. Reads go through the
+// caller's own client (RLS applies); never the service role. Staff-only signal.
+import type { Verdict } from "./rules.server";
+
+export async function computeClientVerdicts(supabase: any, clientIdsIn: string[], firmId?: string): Promise<{ verdicts: Record<string, Verdict> }> {
+    const clientIds = Array.from(new Set(clientIdsIn ?? [])).slice(0, 500);
+    if (!clientIds.length) return { verdicts: {} };
+
+    const { VERDICT_REPORT_KEYS } = await import("./rule-thresholds");
+    const { evaluateClient } = await import("./rules.server");
+
+    // One query. With `firmId` supplied this uses xero_snapshots_firm_report_idx
+    // on (firm_id, report_key).
+    let q = supabase
+      .from("xero_snapshots")
+      .select(
+        "client_id, tenant_id, report_key, payload, payload_version, as_at, fetched_at, complete",
+      )
+      .in("report_key", VERDICT_REPORT_KEYS as unknown as string[])
+      .in("client_id", clientIds);
+    if (firmId) q = q.eq("firm_id", firmId);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+
+    // Connection status per client, so a disconnected Xero file never renders
+    // as a green verdict.
+    const { data: linkRows } = await supabase
+      .from("client_xero_orgs")
+      .select("client_id, xero_connections(tenant_id, status)")
+      .in("client_id", clientIds);
+
+    const connections = new Map<string, { tenantId: string; status: string }[]>();
+    for (const link of (linkRows ?? []) as any[]) {
+      const conn = link.xero_connections;
+      if (!conn) continue;
+      const list = connections.get(link.client_id) ?? [];
+      list.push({ tenantId: conn.tenant_id, status: conn.status });
+      connections.set(link.client_id, list);
+    }
+
+    const snapshots = new Map<string, any[]>();
+    const { data: bankChoices, error: bankError } = await supabase.from('client_bank_account_classifications').select('client_id, tenant_id, account_id, classification').in('client_id', clientIds);
+    if (bankError) throw new Error('Bank account classifications could not be read.');
+    const { applyBankClassifications } = await import('@/lib/xero/bank-classifications');
+    for (const row of (rows ?? []) as any[]) {
+      if (row.report_key === 'accounts' && Array.isArray(row.payload?.Accounts)) row.payload = { ...row.payload, Accounts: applyBankClassifications(row.payload.Accounts, (bankChoices ?? []).filter((r: any) => r.client_id === row.client_id && r.tenant_id === row.tenant_id) as import('@/lib/xero/bank-classifications').BankClassificationRow[]) };
+      const list = snapshots.get(row.client_id) ?? [];
+      list.push(row);
+      snapshots.set(row.client_id, list);
+    }
+
+    // Statutory overrides for every client in the list, in one query, so the
+    // badge classifies accounts exactly as the monthly report does.
+    const { statutoryOverrideMap } = await import("@/lib/xero/tax-lines");
+    const { data: overrideRows } = await supabase
+      .from("client_statutory_accounts")
+      .select("client_id, account_name, category")
+      .in("client_id", clientIds);
+    const overridesByClient = new Map<string, any[]>();
+    for (const row of (overrideRows ?? []) as any[]) {
+      const list = overridesByClient.get(row.client_id) ?? [];
+      list.push(row);
+      overridesByClient.set(row.client_id, list);
+    }
+
+    // Registration settings per client: a client registered for neither GST
+    // nor PAYG withholding is expected to show no statutory balance, so its
+    // absence is not a gap (same rule as the monthly report verdict).
+    const { data: clientRows } = await supabase
+      .from("clients")
+      .select("id, gst_cycle, payg_withholding_cycle")
+      .in("id", clientIds);
+    const cyclesByClient = new Map<string, { gst: string | null; payg: string | null }>();
+    for (const row of (clientRows ?? []) as any[]) {
+      cyclesByClient.set(row.id, { gst: row.gst_cycle, payg: row.payg_withholding_cycle });
+    }
+
+    const now = new Date();
+    const verdicts: Record<string, Verdict> = {};
+    for (const clientId of clientIds) {
+      // A client the caller can list but whose snapshots RLS withholds is
+      // rendered as unavailable, never silently omitted and never green.
+      if (!connections.has(clientId) && !snapshots.has(clientId)) {
+        verdicts[clientId] = {
+          state: "unavailable",
+          label: "Unavailable",
+          detail: "No snapshot data is readable for this client with your access.",
+          findings: [],
+        };
+        continue;
+      }
+      verdicts[clientId] = evaluateClient(
+        {
+          clientId,
+          connections: connections.get(clientId) ?? [],
+          snapshots: snapshots.get(clientId) ?? [],
+          now,
+        },
+        {
+          statutoryOverrides: statutoryOverrideMap(overridesByClient.get(clientId) ?? []),
+          gstRegistered: cyclesByClient.get(clientId)?.gst !== "not_registered",
+          withholdsPayg: cyclesByClient.get(clientId)?.payg !== "not_registered",
+        },
+      );
+    }
+
+    return { verdicts };
+}
