@@ -1,4 +1,4 @@
-import { describe, test } from "bun:test";
+import { describe, test } from "node:test";
 import assert from "node:assert";
 import { bankReconWarning, computeBankReconciliation, oldestReconciledTo } from "./bank-reconciliation";
 
