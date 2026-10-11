@@ -74,7 +74,7 @@ create table public.client_bank_account_classifications (client_id uuid, tenant_
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
 create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
-create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric, last_xero_login_at timestamp with time zone);
+create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric, last_xero_login_at timestamp with time zone, bank_reconciliation jsonb);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_rental_properties (id uuid, client_id uuid, tenant_id text, name text, match_type text, match_ids text[], expected_amount numeric(14,2), frequency text, lease_start date, created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
@@ -93,7 +93,7 @@ create table public.email_unsubscribe_tokens (id uuid, email text, created_at ti
 create table public.firm_members (id uuid, firm_id uuid, user_id uuid, role firm_member_role, created_at timestamp with time zone, updated_at timestamp with time zone, status text);
 create table public.firm_support_access (firm_id uuid, granted boolean, granted_by uuid, granted_at timestamp with time zone, revoked_at timestamp with time zone, note text, created_at timestamp with time zone, updated_at timestamp with time zone, id uuid, grantee_user_id uuid, expires_at timestamp with time zone, requested_by uuid, reason text);
 create table public.firm_viewer_access (id uuid, firm_id uuid, user_id uuid, tier dashboard_tier, granted_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone, inviter_label text);
-create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean, overview_hidden boolean);
+create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean, overview_hidden boolean, managed_by_traction boolean);
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
@@ -2718,7 +2718,7 @@ BEGIN
 END;
 $function$
 ;
-CREATE OR REPLACE FUNCTION public.admin_onboard_organisation_from_xero(_pending_id uuid, _first_tenant text, _extra_tenants text[], _org_name text, _client_limit integer, _billing_mode text, _advisory boolean, _consolidation boolean, _branding boolean, _white_label boolean, _cards text[])
+CREATE OR REPLACE FUNCTION public.admin_onboard_organisation_from_xero(_pending_id uuid, _first_tenant text, _extra_tenants text[], _org_name text, _client_limit integer, _billing_mode text, _advisory boolean, _consolidation boolean, _branding boolean, _white_label boolean, _cards text[], _add_practice_team boolean DEFAULT true)
  RETURNS TABLE(firm_id uuid, client_ids uuid[], tenant_ids text[])
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -2742,7 +2742,6 @@ BEGIN
     RAISE EXCEPTION 'Not authorised.' USING errcode = 'insufficient_privilege';
   END IF;
 
-  -- Single use: lock the caller's own unexpired record.
   SELECT * INTO p FROM public.xero_pending_onboards o
    WHERE o.id = _pending_id AND o.user_id = _me AND o.expires_at > now()
    FOR UPDATE;
@@ -2766,8 +2765,6 @@ BEGIN
     RAISE EXCEPTION 'CLIENT_LIMIT_EXCEEDED' USING errcode = 'check_violation';
   END IF;
 
-  -- Tenant ids are filters: each must be in this pending authorisation and
-  -- not already in the app (any organisation, any person's connection).
   FOREACH _tenant IN ARRAY _wanted LOOP
     IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p.tenants) t WHERE t->>'tenantId' = _tenant) THEN
       RAISE EXCEPTION 'TENANT_NOT_AUTHORISED' USING errcode = 'insufficient_privilege';
@@ -2777,30 +2774,28 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Organisation, exactly as the manual path: never always-free; the creator
-  -- is the owner until an invited owner takes over.
-  INSERT INTO public.firms (name, is_always_free, owner_user_id) VALUES (_name, false, _me) RETURNING id INTO _firm;
+  INSERT INTO public.firms (name, is_always_free, owner_user_id, managed_by_traction) VALUES (_name, false, _me, coalesce(_add_practice_team, true)) RETURNING id INTO _firm;
   INSERT INTO public.subscriptions (firm_id, tier, status) VALUES (_firm, 'starter', 'active');
   INSERT INTO public.firm_members (firm_id, user_id, role, status) VALUES (_firm, _me, 'owner', 'active');
 
-  -- Practice team auto-add, as the manual path (practice_team is keyed on user_id).
-  FOR _member IN SELECT pt.user_id FROM public.practice_team pt WHERE pt.user_id <> _me LOOP
-    INSERT INTO public.firm_members (firm_id, user_id, role, status)
-      SELECT _firm, _member.user_id, 'staff', 'active'
-       WHERE NOT EXISTS (SELECT 1 FROM public.firm_members m WHERE m.firm_id = _firm AND m.user_id = _member.user_id);
-    INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
-    VALUES (_me, _firm, 'practice_team_member_joined_new_organisation', 'firm', _firm::text,
-            jsonb_build_object('firm_id', _firm, 'user_id', _member.user_id, 'role', 'staff'));
-  END LOOP;
+  -- Traction Advisory team auto-add only when "Traction Advisory looks after this organisation" is ticked.
+  IF coalesce(_add_practice_team, true) THEN
+    FOR _member IN SELECT pt.user_id FROM public.practice_team pt WHERE pt.user_id <> _me LOOP
+      INSERT INTO public.firm_members (firm_id, user_id, role, status)
+        SELECT _firm, _member.user_id, 'staff', 'active'
+         WHERE NOT EXISTS (SELECT 1 FROM public.firm_members m WHERE m.firm_id = _firm AND m.user_id = _member.user_id);
+      INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+      VALUES (_me, _firm, 'practice_team_member_joined_new_organisation', 'firm', _firm::text,
+              jsonb_build_object('firm_id', _firm, 'user_id', _member.user_id, 'role', 'staff'));
+    END LOOP;
+  END IF;
 
-  -- The purchase, through the same audited control (re-checks every rule).
   PERFORM public.set_org_purchase(_firm, _client_limit, coalesce(_advisory, false), coalesce(_consolidation, false),
                                   coalesce(_branding, false), coalesce(_white_label, false), _billing_mode);
   IF _cards IS NOT NULL THEN
     PERFORM public.set_org_card_defaults(_firm, _cards);
   END IF;
 
-  -- One client per file; plan-limit triggers still apply.
   FOREACH _tenant IN ARRAY _wanted LOOP
     SELECT t INTO _t FROM jsonb_array_elements(p.tenants) t WHERE t->>'tenantId' = _tenant LIMIT 1;
     INSERT INTO public.clients (name, owner_user_id, firm_id)
@@ -2815,7 +2810,6 @@ BEGIN
     _clients := _clients || _client;
   END LOOP;
 
-  -- Consume: the record and its token ciphertext are gone.
   DELETE FROM public.xero_pending_onboards WHERE id = p.id;
 
   INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
@@ -2824,7 +2818,8 @@ BEGIN
                              'client_limit', _client_limit, 'advisory_enabled', coalesce(_advisory,false),
                              'consolidation_enabled', coalesce(_consolidation,false), 'branding_enabled', coalesce(_branding,false),
                              'white_label_enabled', coalesce(_white_label,false), 'billing_mode', _billing_mode,
-                             'default_cards', to_jsonb(_cards)));
+                             'default_cards', to_jsonb(_cards),
+                             'traction_team_added', coalesce(_add_practice_team, true)));
 
   RETURN QUERY SELECT _firm, _clients, _wanted;
 END;
@@ -4169,4 +4164,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: e30734e933acfcb02c604b31e46b7dff3452dbbaeec844031739ddbc26beeacd
+-- catalogue-fingerprint: a87dcd4a4454478c019cc86e66b306628a080c3134198c1f97b8dcc1f401848b
