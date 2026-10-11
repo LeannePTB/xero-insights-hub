@@ -73,6 +73,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       branding?: boolean | null;
       whiteLabel?: boolean | null;
       cards?: string[] | null;
+      addTractionTeam?: boolean | null;
     }) => i,
   )
   .handler(async ({ data, context }) => {
@@ -94,6 +95,8 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     const consolidation = !!data.consolidation && advisory;
     const branding = !!data.branding && advisory;
     const whiteLabel = !!data.whiteLabel;
+    // "Traction Advisory looks after this organisation" — default ticked.
+    const addTractionTeam = data.addTractionTeam !== false;
     // Card preferences: a template for clients added later, never a purchase.
     const cards = Array.isArray(data.cards)
       ? Array.from(new Set(data.cards.filter((c) => typeof c === "string" && c))).slice(0, 100)
@@ -106,7 +109,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     // dashboard tier instead of Standard.
     const { data: firm, error: fErr } = await (supabaseAdmin as any)
       .from("firms")
-      .insert({ name, is_always_free: false })
+      .insert({ name, is_always_free: false, managed_by_traction: addTractionTeam })
       .select("id, name")
       .single();
     if (fErr) throw new Error(fErr.message);
@@ -186,9 +189,9 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       // and simply means the creator is the only member. This never touches
       // `admin_set_self_firm_membership` or its handed-over restriction, and it
       // only ever runs for an organisation being created in this call.
-      const { data: practice } = await (supabaseAdmin as any)
-        .from("practice_team")
-        .select("user_id");
+      const { data: practice } = addTractionTeam
+        ? await (supabaseAdmin as any).from("practice_team").select("user_id")
+        : { data: [] as any[] };
       for (const row of (practice ?? []) as any[]) {
         const memberId = String(row.user_id);
         if (memberId === context.userId) continue;
@@ -221,6 +224,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
           branding_enabled: branding,
           billing_mode: billingMode,
           default_cards: cards,
+          traction_team_added: addTractionTeam,
           owner_mode: "none",
           owner_user_id: context.userId,
         });
@@ -277,6 +281,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
           branding_enabled: branding,
           billing_mode: billingMode,
           default_cards: cards,
+          traction_team_added: addTractionTeam,
           owner_mode: "password",
           owner_user_id: ownerId,
         });

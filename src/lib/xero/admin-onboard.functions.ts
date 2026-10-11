@@ -89,6 +89,7 @@ const createInput = z.object({
   consolidation: z.boolean(),
   branding: z.boolean(),
   whiteLabel: z.boolean(),
+  addTractionTeam: z.boolean().default(true),
   cards: z.array(z.string().min(1).max(100)).max(100).nullable(),
   ownerEmail: z.string().trim().max(254).email().nullable(),
 });
@@ -111,6 +112,7 @@ export const createOrganisationFromXero = createServerFn({ method: "POST" })
       _branding: data.advisory && data.branding,
       _white_label: data.whiteLabel,
       _cards: data.cards,
+      _add_practice_team: data.addTractionTeam,
     });
     if (error) throw new Error(friendly(error.message));
     const row = Array.isArray(rows) ? rows[0] : rows;

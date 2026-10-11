@@ -22,6 +22,8 @@ export function useOrganisationPackage(open: boolean) {
   const [consolidation, setConsolidation] = useState(false);
   const [branding, setBranding] = useState(false);
   const [whiteLabel, setWhiteLabel] = useState(false);
+  // Whether the Traction Advisory team is added as members. Default ticked.
+  const [addTractionTeam, setAddTractionTeam] = useState(true);
   // How they want it set up — a starting point for clients added later, never a purchase.
   const [unticked, setUnticked] = useState<string[]>([]);
   const groupsQ = useQuery({
@@ -57,9 +59,9 @@ export function useOrganisationPackage(open: boolean) {
 
   const reset = () => {
     setClientLimit("1"); setBillingMode("bookkeeping");
-    setAdvisory(false); setConsolidation(false); setBranding(false); setWhiteLabel(false); setUnticked([]);
+    setAdvisory(false); setConsolidation(false); setBranding(false); setWhiteLabel(false); setUnticked([]); setAddTractionTeam(true);
   };
-  return { clientLimit,setClientLimit,billingMode,setBillingMode,advisory,setAdvisory,consolidation,setConsolidation,branding,setBranding,whiteLabel,setWhiteLabel,unticked,setUnticked,groupsQ,groups,limitNum,includedGroups,availableCards,cardsPayload, reset };
+  return { clientLimit,setClientLimit,billingMode,setBillingMode,advisory,setAdvisory,consolidation,setConsolidation,branding,setBranding,whiteLabel,setWhiteLabel,addTractionTeam,setAddTractionTeam,unticked,setUnticked,groupsQ,groups,limitNum,includedGroups,availableCards,cardsPayload, reset };
 }
 
 export type OrganisationPackage = ReturnType<typeof useOrganisationPackage>;
@@ -74,6 +76,7 @@ export function packagePayload(pkg: OrganisationPackage) {
     branding: pkg.advisory && pkg.branding,
     whiteLabel: pkg.whiteLabel,
     cards: pkg.cardsPayload,
+    addTractionTeam: pkg.addTractionTeam,
   };
 }
 
@@ -202,6 +205,17 @@ export function PackageFields({ pkg }: { pkg: OrganisationPackage }) {
       )}
     </div>
 
+    <label className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm">
+      <Checkbox checked={pkg.addTractionTeam} onCheckedChange={(v) => pkg.setAddTractionTeam(!!v)} />
+      <span>
+        Traction Advisory looks after this organisation
+        <span className="block text-xs text-muted-foreground">
+          {pkg.addTractionTeam
+            ? "The Traction Advisory team are added as Staff, so they can work on every client."
+            : "The Traction Advisory team are not added. Only you and the Organisation Owner you invite will be members."}
+        </span>
+      </span>
+    </label>
     </>
   );
 }
