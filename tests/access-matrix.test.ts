@@ -568,8 +568,9 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     }
     if (r === "viewer_scope: switch All clients to Selected removes the rest immediately") {
       const p = await toSelected();
-      if (!p.ok) return "deny";
+      if (!p.ok) { console.log("VSDEBUG", p.error); return "deny"; }
       const st = await state();
+      console.log("VSDEBUG state", JSON.stringify(st));
       if (!(st?.fva === 0 && st.ca === 1)) return "deny";
       // The rest of the organisation is no longer readable.
       const other = await db.query<{ a: boolean; b: boolean }>(`
