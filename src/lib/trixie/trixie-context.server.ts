@@ -13,6 +13,9 @@ export type TrixieContext = {
   clientId: string | null;
   tenantId: string | null;
   tenantIds: string[];
+  /** Xero files linked to the route client, resolved through the caller's own session. */
+  tenants: Array<{ tenantId: string; name: string }>;
+  userId: string;
   model: string;
   allowance: number | null;
   warningThreshold: number;
@@ -68,16 +71,19 @@ export async function resolveTrixieContext(request: Request, pathname: unknown):
     const { data: resolved, error: tenantError } = await (supabase as any).rpc("client_for_tenant", { _tenant_id: tenantId });
     if (tenantError || resolved !== route.clientId) tenantId = null;
   }
-  let tenantIds: string[] = [];
-  if (route.clientId) {
+  let tenants: Array<{ tenantId: string; name: string }> = [];
+  // Only the client the reservation verified; never a client named elsewhere.
+  if (route.clientId && row.client_id === route.clientId) {
     const { data: links } = await (supabase as any)
       .from("client_xero_orgs")
-      .select("xero_connections!inner(tenant_id)")
+      .select("xero_connections!inner(tenant_id, tenant_name)")
       .eq("client_id", route.clientId);
-    tenantIds = (links ?? [])
-      .map((link: any) => link.xero_connections?.tenant_id)
-      .filter((id: unknown): id is string => typeof id === "string" && id.length > 0 && id.length <= 255);
+    tenants = (links ?? [])
+      .map((link: any) => ({ tenantId: link.xero_connections?.tenant_id, name: link.xero_connections?.tenant_name || "Xero file" }))
+      .filter((t: any): t is { tenantId: string; name: string } => typeof t.tenantId === "string" && t.tenantId.length > 0 && t.tenantId.length <= 255);
   }
+  const tenantIds = tenants.map((t) => t.tenantId);
+  if (tenantId && !tenantIds.includes(tenantId)) tenantId = null;
   return {
     supabase,
     reservationId: row.reservation_id,
@@ -87,6 +93,8 @@ export async function resolveTrixieContext(request: Request, pathname: unknown):
     clientId: row.client_id ?? null,
     tenantId,
     tenantIds,
+    tenants,
+    userId: String(claims.claims.sub ?? ""),
     model: row.model,
     allowance: row.monthly_allowance ?? null,
     warningThreshold: row.warning_threshold,
