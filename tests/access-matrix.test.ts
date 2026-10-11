@@ -549,6 +549,10 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
     if (!saved.ok) return 'deny';
     const checked = await db.query<{ classification: string }>(`select classification from public.client_bank_account_classifications where client_id='${CLIENT_A}' and tenant_id='${TENANT_A}' and account_id='${account}'`);
     if (checked.rows[0]?.classification !== 'credit_card') return 'deny';
+    await db.exec('set local role postgres');
+    const audit = await db.query(`select 1 from public.audit_log where actor_user_id='${CONTEXT[row.role].uid}' and action='client_bank_account_classification_changed' and target_id='${CLIENT_A}' and meta->>'account_id'='${account}' and meta->>'classification'='credit_card'`);
+    if (audit.rows.length === 0) return 'deny';
+    await db.exec(`set local role ${CONTEXT[row.role].dbRole}`);
     const reset = await probe(`select public.save_client_bank_account_classification('${client}','${tenant}','${account}',null)`);
     if (!reset.ok) return 'deny';
     const remaining = await db.query(`select 1 from public.client_bank_account_classifications where client_id='${CLIENT_A}' and tenant_id='${TENANT_A}' and account_id='${account}'`);
