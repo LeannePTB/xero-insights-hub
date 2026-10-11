@@ -57,6 +57,7 @@ import { Route as AuthenticatedFirmsFirmIdXeroFilesRouteImport } from './routes/
 import { Route as AuthenticatedSystemOrganisationsFirmIdRouteImport } from './routes/_authenticated/system.organisations.$firmId'
 import { Route as ApiPublicSecurityRunAccessTestsRouteImport } from './routes/api/public/security/run-access-tests'
 import { Route as ApiPublicStripeWebhookRouteImport } from './routes/api/public/stripe/webhook'
+import { Route as ApiPublicTrixieAlertsRouteImport } from './routes/api/public/trixie/alerts'
 import { Route as ApiPublicXeroCallbackRouteImport } from './routes/api/public/xero/callback'
 import { Route as ApiPublicXeroConnectionCleanupRouteImport } from './routes/api/public/xero/connection-cleanup'
 import { Route as ApiPublicXeroSignupRouteImport } from './routes/api/public/xero/signup'
@@ -353,6 +354,11 @@ const ApiPublicStripeWebhookRoute = ApiPublicStripeWebhookRouteImport.update({
   path: '/api/public/stripe/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTrixieAlertsRoute = ApiPublicTrixieAlertsRouteImport.update({
+  id: '/api/public/trixie/alerts',
+  path: '/api/public/trixie/alerts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicXeroCallbackRoute = ApiPublicXeroCallbackRouteImport.update({
   id: '/api/public/xero/callback',
   path: '/api/public/xero/callback',
@@ -570,6 +576,7 @@ export interface FileRoutesByFullPath {
   '/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
+  '/api/public/trixie/alerts': typeof ApiPublicTrixieAlertsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/api/public/xero/connection-cleanup': typeof ApiPublicXeroConnectionCleanupRoute
   '/api/public/xero/signup': typeof ApiPublicXeroSignupRoute
@@ -643,6 +650,7 @@ export interface FileRoutesByTo {
   '/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
+  '/api/public/trixie/alerts': typeof ApiPublicTrixieAlertsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/api/public/xero/connection-cleanup': typeof ApiPublicXeroConnectionCleanupRoute
   '/api/public/xero/signup': typeof ApiPublicXeroSignupRoute
@@ -723,6 +731,7 @@ export interface FileRoutesById {
   '/_authenticated/system/organisations/$firmId': typeof AuthenticatedSystemOrganisationsFirmIdRoute
   '/api/public/security/run-access-tests': typeof ApiPublicSecurityRunAccessTestsRoute
   '/api/public/stripe/webhook': typeof ApiPublicStripeWebhookRoute
+  '/api/public/trixie/alerts': typeof ApiPublicTrixieAlertsRoute
   '/api/public/xero/callback': typeof ApiPublicXeroCallbackRoute
   '/api/public/xero/connection-cleanup': typeof ApiPublicXeroConnectionCleanupRoute
   '/api/public/xero/signup': typeof ApiPublicXeroSignupRoute
@@ -803,6 +812,7 @@ export interface FileRouteTypes {
     | '/system/organisations/$firmId'
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
+    | '/api/public/trixie/alerts'
     | '/api/public/xero/callback'
     | '/api/public/xero/connection-cleanup'
     | '/api/public/xero/signup'
@@ -876,6 +886,7 @@ export interface FileRouteTypes {
     | '/system/organisations/$firmId'
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
+    | '/api/public/trixie/alerts'
     | '/api/public/xero/callback'
     | '/api/public/xero/connection-cleanup'
     | '/api/public/xero/signup'
@@ -955,6 +966,7 @@ export interface FileRouteTypes {
     | '/_authenticated/system/organisations/$firmId'
     | '/api/public/security/run-access-tests'
     | '/api/public/stripe/webhook'
+    | '/api/public/trixie/alerts'
     | '/api/public/xero/callback'
     | '/api/public/xero/connection-cleanup'
     | '/api/public/xero/signup'
@@ -1004,6 +1016,7 @@ export interface RootRouteChildren {
   LovableEmailSuppressionRoute: typeof LovableEmailSuppressionRoute
   ApiPublicSecurityRunAccessTestsRoute: typeof ApiPublicSecurityRunAccessTestsRoute
   ApiPublicStripeWebhookRoute: typeof ApiPublicStripeWebhookRoute
+  ApiPublicTrixieAlertsRoute: typeof ApiPublicTrixieAlertsRoute
   ApiPublicXeroCallbackRoute: typeof ApiPublicXeroCallbackRoute
   ApiPublicXeroConnectionCleanupRoute: typeof ApiPublicXeroConnectionCleanupRoute
   ApiPublicXeroSignupRoute: typeof ApiPublicXeroSignupRoute
@@ -1351,6 +1364,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/stripe/webhook'
       fullPath: '/api/public/stripe/webhook'
       preLoaderRoute: typeof ApiPublicStripeWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/trixie/alerts': {
+      id: '/api/public/trixie/alerts'
+      path: '/api/public/trixie/alerts'
+      fullPath: '/api/public/trixie/alerts'
+      preLoaderRoute: typeof ApiPublicTrixieAlertsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/xero/callback': {
@@ -1789,6 +1809,7 @@ const rootRouteChildren: RootRouteChildren = {
   LovableEmailSuppressionRoute: LovableEmailSuppressionRoute,
   ApiPublicSecurityRunAccessTestsRoute: ApiPublicSecurityRunAccessTestsRoute,
   ApiPublicStripeWebhookRoute: ApiPublicStripeWebhookRoute,
+  ApiPublicTrixieAlertsRoute: ApiPublicTrixieAlertsRoute,
   ApiPublicXeroCallbackRoute: ApiPublicXeroCallbackRoute,
   ApiPublicXeroConnectionCleanupRoute: ApiPublicXeroConnectionCleanupRoute,
   ApiPublicXeroSignupRoute: ApiPublicXeroSignupRoute,

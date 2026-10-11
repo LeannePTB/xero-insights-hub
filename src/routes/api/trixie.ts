@@ -4,6 +4,7 @@ import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from 
 import { resolveTrixieContext } from "@/lib/trixie/trixie-context.server";
 import { buildTrixieTools, trixieInstructions } from "@/lib/trixie/trixie-tools.server";
 import { createTrixieRunIdFetch, incomingTrixieRunId, withTrixieRunId } from "@/lib/trixie/trixie-run-id.server";
+import { estimateTrixieCostUsd, maxOutputTokensForGuard } from "@/lib/trixie/trixie-cost";
 
 type Payload = { messages?: UIMessage[]; pathname?: string };
 
@@ -39,10 +40,12 @@ export const Route = createFileRoute("/api/trixie")({
               _input_tokens: usage?.inputTokens ?? null,
               _output_tokens: usage?.outputTokens ?? null,
               _reasoning_tokens: usage?.reasoningTokens ?? null,
-              _estimated_cost_usd: null,
+              _estimated_cost_usd: usage ? estimateTrixieCostUsd(ctx?.model ?? "openai/gpt-6-astra", usage) : null,
               _error_code: code ?? null,
             });
           };
+          // Per-question cost guard, set in System Admin → Trixie.
+          const { data: guard } = await (ctx.supabase as any).rpc("trixie_cost_guard");
           const result = streamText({
             model: provider.responses(ctx.model),
             instructions: trixieInstructions(ctx),
@@ -51,6 +54,7 @@ export const Route = createFileRoute("/api/trixie")({
             stopWhen: stepCountIs(50),
             abortSignal: request.signal,
             maxRetries: 1,
+            maxOutputTokens: maxOutputTokensForGuard(ctx.model, guard == null ? null : Number(guard)),
             providerOptions: { openai: { forceReasoning: true, reasoningEffort: "low", reasoningSummary: "auto", store: false, include: ["reasoning.encrypted_content"] } },
             onFinish: async ({ usage }) => finalise("completed", { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, reasoningTokens: usage.outputTokenDetails.reasoningTokens }),
             onAbort: async () => finalise("cancelled", undefined, "cancelled"),
@@ -59,7 +63,7 @@ export const Route = createFileRoute("/api/trixie")({
               await finalise(/403|denied|refusal/i.test(text) ? "denied" : "failed", undefined, /402/.test(text) ? "credits" : "gateway_error");
             },
           });
-          return await withTrixieRunId(result.toUIMessageStreamResponse({ sendReasoning: true, onError: (error) => error instanceof Error ? error.message : "Trixie could not answer that question." }), runIdFetch);
+          return await withTrixieRunId(result.toUIMessageStreamResponse({ sendReasoning: false, onError: (error) => error instanceof Error ? error.message : "Trixie could not answer that question." }), runIdFetch);
         } catch (error) {
           if (ctx) await (ctx.supabase as any).rpc("finalise_trixie_usage", { _reservation_id: ctx.reservationId, _status: "failed", _error_code: "request_error" });
           return errorResponse(error);
