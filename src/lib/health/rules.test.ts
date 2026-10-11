@@ -179,16 +179,14 @@ describe("R01 protected money vs cash", () => {
     return accountRow(a);
   }
 
-  it("compares protected money against cash less credit card debt", () => {
-    // $500k in the bank but $490k owed on the card leaves $10k available —
-    // $65k of protected money is well over that, so this is critical.
+  it("compares protected money against cash at bank, not net cash", () => {
+    // $500k in the bank, $490k owed on the card: $65k of protected money is
+    // 13% of cash at bank, so the rule stays quiet (owner decision 11 Oct 2026).
     const r = ruleProtectedMoneyVsCash(
       row({ report_key: "balance_sheet", payload: balanceSheetWithCard(500_000, -490_000, FULL_TAX) }),
       accountRowWithCard(),
     );
-    assert.ok(r.finding);
-    assert.strictEqual(r.finding!.severity, "critical");
-    assert.match(r.finding!.detail, /credit card debt/);
+    assert.strictEqual(r.finding, null);
   });
 
   it("is critical when credit card debt absorbs the cash entirely", () => {
