@@ -38,9 +38,9 @@ export type SupportAccessState = {
   viewerHasClientData: boolean;
   /** True when the caller is an active member of this organisation. */
   viewerIsMember: boolean;
-  /** True when the caller is platform staff (super admin / advisor). */
+  /** True when the caller is platform staff (System Administrator / advisor). */
   viewerIsPlatformStaff: boolean;
-  /** True when the caller is a Traction Advisory super admin. */
+  /** True when the caller is a Traction Advisory System Administrator. */
   viewerIsSuperAdmin: boolean;
 };
 
@@ -58,7 +58,7 @@ function statusOf(row: any): SupportGrantStatus {
  * Both reads are caller-scoped database functions:
  *   public.firm_support_grants(firm)        — the grant rows, visible to the
  *       organisation's owner, its active members, the named person, or a
- *       super admin (request metadata only, never client data).
+ *       System Administrator (request metadata only, never client data).
  *   public.firm_support_viewer_state(firm)  — the caller's own relationship to
  *       the organisation, including public.user_can_access_firm.
  * Names are display names; the verified sign-in email comes from auth.users
@@ -109,7 +109,7 @@ export const getSupportAccess = createServerFn({ method: "POST" })
       grantedByName: activeGrant?.grantedByName ?? null,
       note: activeGrant?.note ?? null,
       grants,
-      // A super admin must never be able to approve their own access.
+      // A System Administrator must never be able to approve their own access.
       canManage: isOwner,
       canRequest: isSuperAdmin && !isOwner && !isMember && !myGrant,
       myGrant,
@@ -121,7 +121,7 @@ export const getSupportAccess = createServerFn({ method: "POST" })
   });
 
 /**
- * A super admin asks an organisation for time-boxed, read-only support access.
+ * A System Administrator asks an organisation for time-boxed, read-only support access.
  * This is a REQUEST only — it never grants anything. Written through the
  * caller's session so row-level security decides whether it's allowed.
  */
@@ -180,8 +180,8 @@ export const decideSupportAccess = createServerFn({ method: "POST" })
     if (error || !row)
       throw new Error(
         data.approve
-          ? "Only the organisation owner can approve support access."
-          : "Only the organisation owner or the named staff member can revoke this access.",
+          ? "Only the Organisation Owner can approve support access."
+          : "Only the Organisation Owner or the named staff member can revoke this access.",
       );
     return { ok: true, granted: !!row.granted };
   });

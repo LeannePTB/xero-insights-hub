@@ -14,7 +14,7 @@ export type TrixiePageScope = {
   clientId: string | null;
 };
 
-/** Client pages a business owner or external adviser can open. */
+/** Client pages a Business Owner or Viewer can open. */
 const VIEWER_CLIENT_ITEMS = new Set(["dashboard", "reports"]);
 
 const ACCOUNT_PAGES: Array<{ label: string; to: string }> = [

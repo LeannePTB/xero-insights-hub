@@ -31,6 +31,8 @@ import {
 } from "@/lib/viewers.functions";
 import { ViewerInviteForm } from "@/components/people/ViewerInviteForm";
 import { StandingViewers } from "@/components/people/StandingViewers";
+import { ViewerScopeDialog } from "@/components/people/ViewerScopeDialog";
+import { LOGIN_TYPE_DESCRIPTION, LOGIN_TYPE_LABEL } from "@/lib/access-labels";
 import { getMyContext } from "@/lib/roles.functions";
 import type { DashboardTier } from "@/lib/tiers";
 import { relationshipLabel } from "@/lib/access-labels";
@@ -63,7 +65,7 @@ function Panel({
 /**
  * One place for the three relationship labels in an organisation. It calls exactly the
  * same server functions as the existing screens — no second implementation of
- * who may invite (super admin only) or of what anyone may see.
+ * who may invite (System Administrator only) or of what anyone may see.
  */
 export function PeopleSection({ firmId }: { firmId: string }) {
   const qc = useQueryClient();
@@ -142,7 +144,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
   const clients = (clientsQ.data?.clients ?? []) as Array<{ id: string; name: string }>;
 
   // Who may manage client viewers is decided in the database
-  // (app_private.can_manage_client_viewers): the organisation owner, or one of
+  // (app_private.can_manage_client_viewers): the Organisation Owner, or one of
   // Positive Traction's own people with an active membership of this
   // organisation. Staff see the lists and nothing more.
   const standingQ = useQuery({
@@ -156,7 +158,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
     <div className="space-y-6">
       <Panel
         title="Team member"
-        blurb="Someone from the advisory or bookkeeping team. A team member sees every client in this organisation, and their Xero data. They can be the owner or staff."
+        blurb="Someone who works in this organisation: the Organisation Owner or Staff. Both see every client in this organisation, and their Xero data."
         icon={<Users className="h-5 w-5" />}
       >
         {canInvite ? (
@@ -214,7 +216,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
           </div>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Only Positive Traction can add team members. Ask us and we'll send the invitation.
+            Only Traction Advisory can add team members. Ask us and we'll send the invitation.
           </p>
         )}
 
@@ -239,8 +241,8 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                       <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      {m.isPractice && <Badge>Positive Traction</Badge>}
-                      <Badge variant="outline">{m.role === "owner" ? "Owner" : "Staff"}</Badge>
+                      {m.isPractice && <Badge>{LOGIN_TYPE_LABEL.practice_team}</Badge>}
+                      <Badge variant="outline">{m.role === "owner" ? LOGIN_TYPE_LABEL.owner : LOGIN_TYPE_LABEL.staff}</Badge>
                       {m.status !== "active" && <Badge variant="secondary">{m.status}</Badge>}
                       {canRemove && (
                         <Button
@@ -278,7 +280,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                       <p className="truncate text-xs text-muted-foreground">{i.email}</p>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      {i.role === "owner" ? "Owner" : "Staff"} · expires{" "}
+                      {i.role === "owner" ? LOGIN_TYPE_LABEL.owner : LOGIN_TYPE_LABEL.staff} · expires{" "}
                       {new Date(i.expiresAt).toLocaleDateString()}
                     </p>
                   </div>
@@ -298,15 +300,15 @@ export function PeopleSection({ firmId }: { firmId: string }) {
       </Panel>
 
       <Panel
-        title="Business owner or External adviser"
-        blurb="A Business owner is linked to selected clients and is read-only until self-service is enabled. An External adviser is always read-only and may see selected clients or All clients. Neither relationship grants organisation membership."
+        title="Viewer or Business Owner"
+        blurb={`Viewer: ${LOGIN_TYPE_DESCRIPTION.viewer} Business Owner: ${LOGIN_TYPE_DESCRIPTION.business_owner} Neither is a member of this organisation.`}
         icon={<Building2 className="h-5 w-5" />}
       >
         {canManageViewers ? (
           <ViewerInviteForm firmId={firmId} clients={clients} />
         ) : (
           <p className="text-sm text-muted-foreground">
-            Only the organisation owner can give a Business owner or External adviser access. You
+            Only the Organisation Owner can give a Viewer or Business Owner access. You
             can still see who has access below.
           </p>
         )}
@@ -316,11 +318,12 @@ export function PeopleSection({ firmId }: { firmId: string }) {
           firmName={firmName}
           clientCount={clients.length}
           canManage={canManageViewers}
+          clients={clients}
         />
 
         <div className="space-y-3">
           <h3 className="text-sm font-medium">
-            Business owners and External advisers — selected clients
+            Viewers and Business Owners — selected clients
           </h3>
           {clients.map((c) => (
             <ClientViewerList
@@ -361,7 +364,7 @@ export function PeopleSection({ firmId }: { firmId: string }) {
                   can restore it.
                 </p>
                 <p>
-                  This does not change any external adviser's access, whether All clients or
+                  This does not change any Viewer's access, whether All clients or
                   selected clients, does not disconnect any Xero file, and does not delete any saved
                   figures, history or {removing?.isMe ? "your" : "their"} sign-in account.
                 </p>
@@ -416,6 +419,7 @@ function ClientViewerList({
     userId: string;
     who: string;
   } | null>(null);
+  const [changing, setChanging] = useState<{ userId: string; who: string } | null>(null);
 
   const revokeMut = useMutation({
     mutationFn: (id: string) => revoke({ data: { id } }),
@@ -491,14 +495,28 @@ function ClientViewerList({
                   <option value="not_set" disabled>
                     Not set
                   </option>
-                  <option value="business_owner">Business owner</option>
-                  <option value="external_adviser">External adviser</option>
+                  <option value="business_owner">Business Owner</option>
+                  <option value="external_adviser">Viewer</option>
                 </select>
               ) : (
                 <Badge variant="outline">{relationshipLabel(a.relationship)}</Badge>
               )}
               {standing.some((s) => s.userId === a.user_id) && (
                 <Badge variant="secondary">Also All clients</Badge>
+              )}
+              {canManage && a.relationship === "external_adviser" && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setChanging({
+                      userId: a.user_id,
+                      who: a.display_name ?? a.inviter_label ?? a.email ?? "This person",
+                    })
+                  }
+                >
+                  Change access
+                </Button>
               )}
               {canManage && (
                 <Button
@@ -519,6 +537,18 @@ function ClientViewerList({
           </li>
         ))}
       </ul>
+
+      {changing && (
+        <ViewerScopeDialog
+          open
+          onOpenChange={(o) => !o && setChanging(null)}
+          firmId={firmId}
+          userId={changing.userId}
+          who={changing.who}
+          clients={clients}
+          currentScope={standing.some((s) => s.userId === changing.userId) ? "all_clients" : "selected"}
+        />
+      )}
 
       <AlertDialog open={pending !== null} onOpenChange={(o) => !o && setPending(null)}>
         <AlertDialogContent>

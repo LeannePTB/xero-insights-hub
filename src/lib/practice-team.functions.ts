@@ -3,7 +3,7 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
 
 
 /**
- * The Traction Advisory practice team (people-and-access Batch 5).
+ * The Traction Advisory Traction Advisory team (people-and-access Batch 5).
  *
  * Membership of `practice_team` is metadata about our own staff (Path C): it
  * confers NO access on its own. It only means two things elsewhere, both of
@@ -15,11 +15,11 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
  *
  * Every function here defers to the database for authorisation: the
  * `admin_practice_team` / `admin_add_practice_member` /
- * `admin_remove_practice_member` definer functions assert aal2 and super admin
+ * `admin_remove_practice_member` definer functions assert aal2 and System Administrator
  * first and write the audit row themselves. The service role is never used here.
  *
  * Membership is shown and changed on the advisors page (`/settings/advisors`), so
- * the practice team and the advisors list cannot drift apart. Holding `advisor`
+ * the Traction Advisory team and the advisors list cannot drift apart. Holding `advisor`
  * or `super_admin` never implies practice-team membership: it stays an explicit
  * per-person choice.
  */
@@ -40,7 +40,7 @@ export const listPracticeTeam = createServerFn({ method: "GET" })
 
 /**
  * Add or remove one person, by user id, from the advisors page. Both branches go
- * to the audited definer function on the CALLER's session (aal2 + super admin
+ * to the audited definer function on the CALLER's session (aal2 + System Administrator
  * asserted in the database); the service role is never involved.
  */
 export const setPracticeMembership = createServerFn({ method: "POST" })

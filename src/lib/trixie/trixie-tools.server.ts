@@ -353,7 +353,7 @@ export function buildTrixieTools(ctx: TrixieContext) {
 
 export function trixieInstructions(ctx: TrixieContext, preload: { guide: string; pages: string; articles: Array<{ title: string; body: string }> }) {
   const wording = ctx.audience === "viewer"
-    ? "The person is a business owner or external adviser. Use plain, brief, friendly language. Never mention staff-only configuration, team, billing or administration."
+    ? "The person is a Business Owner or Viewer. Use plain, brief, friendly language. Never mention staff-only configuration, team, billing or administration."
     : "Use concise, friendly Australian English.";
   const scope = ctx.mode === "platform"
     ? "You are in System Admin. Provide how-to help only. Never request or discuss client financial figures."

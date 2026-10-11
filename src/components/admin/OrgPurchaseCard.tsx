@@ -35,7 +35,7 @@ import {
  * every client in the organisation.
  *
  * Writing goes through public.set_org_purchase, which re-checks the second
- * factor and super admin itself and writes an audit row. Nothing is decided
+ * factor and System Administrator itself and writes an audit row. Nothing is decided
  * here.
  */
 export function OrgPurchaseCard({ firmId }: { firmId: string }) {
@@ -291,7 +291,7 @@ export function OrgPurchaseCard({ firmId }: { firmId: string }) {
             {mut.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             Save purchase
           </Button>
-          {showAdminLabel && <span className="text-xs text-muted-foreground">Super admin</span>}
+          {showAdminLabel && <span className="text-xs text-muted-foreground">System Administrator</span>}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground">
@@ -402,7 +402,7 @@ function OrgTrialBlock({
             <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
               {status.kind === "active" ? "Change trial" : "Start a trial"}
             </Button>
-            {showAdminLabel && <span className="text-xs text-muted-foreground">Super admin</span>}
+            {showAdminLabel && <span className="text-xs text-muted-foreground">System Administrator</span>}
           </div>
         )}
       </div>

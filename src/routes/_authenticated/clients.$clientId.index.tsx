@@ -421,7 +421,7 @@ function ClientDashboard() {
         </div>
 
         {isAdvisor && <OrganisationLapsedNotice clientId={clientId} />}
-        {/* Not gated on isAdvisor: the business owner must see the trial too.
+        {/* Not gated on isAdvisor: the Business Owner must see the trial too.
             The server returns null to anyone who may not see billing state. */}
         <ClientTrialNotice clientId={clientId} />
 

@@ -5,7 +5,7 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
  * Drill-down for Xero API call failures recorded in audit_log.
  *
  * Read through the caller's own session so RLS decides what is visible:
- * organisation members see their own organisation's rows, super admins see
+ * organisation members see their own organisation's rows, System Administrators see
  * everything including rows logged before firm_id was populated. No admin
  * client, no policy changes, no writes.
  */

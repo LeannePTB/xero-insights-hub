@@ -43,7 +43,7 @@ See [vulnerability-management.md](./vulnerability-management.md).
 | # | Question | Answer | Evidence |
 | --- | --- | --- | --- |
 | 7.1 | Audit logging implemented & maintained | Yes — `audit_log`, including **every read of a client's financial figures** (`xero_data_read`, `client_report_read`; sources live/snapshot/cache/report/report_link) with no figures, names, tokens, IPs or devices, grouped per person and client in five-minute windows | `access-control-spec.md` §9a, `src/lib/audit.server.ts`, `public.read_audit_posture()` |
-| 7.1a | Who may read the log | Practice super admins at aal2 only. An organisation may not read its own audit log — a deliberate decision, with reasoning | `access-control-spec.md` §9 |
+| 7.1a | Who may read the log | Practice System Administrators at aal2 only. An organisation may not read its own audit log — a deliberate decision, with reasoning | `access-control-spec.md` §9 |
 | 7.2 | Append-only logs | Yes — `UPDATE`/`DELETE` revoked from app roles | Migration |
 | 7.3 | Retention | 2 years — `security_settings.audit_retention_days` = 730 (verified live), nightly pg_cron purge | `data-retention.md` |
 

@@ -21,18 +21,21 @@ import {
   cancelViewerInvite,
   listViewerInvites,
 } from "@/lib/viewers.functions";
+import { ViewerScopeDialog } from "@/components/people/ViewerScopeDialog";
 
 /**
- * External advisers with the "All clients" scope, badged, with a one-click
+ * Viewers with the "All clients" scope, badged, with a one-click
  * revoke. Internal names (firm_viewer_access, listStandingViewers) are
- * deliberately unchanged — only the wording people read is "External adviser".
+ * deliberately unchanged — only the wording people read is "Viewer".
  */
 export function StandingViewers({
   firmId,
   firmName,
   clientCount,
   canManage,
+  clients = [],
 }: {
+  clients?: Array<{ id: string; name: string }>;
   firmId: string;
   firmName: string;
   clientCount: number;
@@ -57,6 +60,7 @@ export function StandingViewers({
     id: string;
     who: string;
   } | null>(null);
+  const [changing, setChanging] = useState<{ userId: string; who: string } | null>(null);
 
   const revokeMut = useMutation({
     mutationFn: (id: string) => revoke({ data: { id } }),
@@ -84,7 +88,7 @@ export function StandingViewers({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-sm font-medium">External advisers — All clients</h3>
+        <h3 className="text-sm font-medium">Viewers — All clients</h3>
         {q.isLoading ? (
           <Loader2 className="mt-3 h-4 w-4 animate-spin text-muted-foreground" />
         ) : rows.length === 0 ? (
@@ -100,7 +104,21 @@ export function StandingViewers({
                   <p className="truncate text-xs text-muted-foreground">{v.email}</p>
                 </div>
                 <div className="flex shrink-0 items-center gap-2">
-                  <Badge variant="secondary">All clients</Badge>
+                  <Badge variant="secondary">Viewer · All clients</Badge>
+                  {canManage && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() =>
+                        setChanging({
+                          userId: v.userId,
+                          who: v.displayName ?? v.inviterLabel ?? v.email ?? "This person",
+                        })
+                      }
+                    >
+                      Change access
+                    </Button>
+                  )}
                   {canManage && (
                     <Button
                       size="sm"
@@ -125,7 +143,7 @@ export function StandingViewers({
       {invites.length > 0 && (
         <div>
           <h3 className="text-sm font-medium">
-            External adviser invitations waiting to be accepted
+            Viewer and Business Owner invitations waiting to be accepted
           </h3>
           <ul className="mt-2 divide-y divide-border rounded-lg border border-border">
             {invites.map((i) => (
@@ -139,7 +157,7 @@ export function StandingViewers({
                     {i.scope === "all_clients"
                       ? "All clients"
                       : `${i.clientIds.length} selected client${i.clientIds.length === 1 ? "" : "s"}`}{" "}
-                    · {i.relationship === "business_owner" ? "Business owner" : "External adviser"}{" "}
+                    · {i.relationship === "business_owner" ? "Business Owner" : "Viewer"}{" "}
                     · expires {new Date(i.expiresAt).toLocaleDateString()}
                   </p>
                 </div>
@@ -157,6 +175,18 @@ export function StandingViewers({
             ))}
           </ul>
         </div>
+      )}
+
+      {changing && (
+        <ViewerScopeDialog
+          open
+          onOpenChange={(o) => !o && setChanging(null)}
+          firmId={firmId}
+          userId={changing.userId}
+          who={changing.who}
+          clients={clients}
+          currentScope="all_clients"
+        />
       )}
 
       <AlertDialog open={pendingRevoke !== null} onOpenChange={(o) => !o && setPendingRevoke(null)}>

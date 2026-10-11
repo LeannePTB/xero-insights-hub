@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 
 /**
- * Sticky banner shown while an admin previews the app as an organisation owner
+ * Sticky banner shown while an admin previews the app as an Organisation Owner
  * or as a client viewer. Presentation only — no permissions are changed, and
  * the preview can never show data the person could not already read. Deliberately
  * loud: nobody should mistake someone else's dashboard for their own.

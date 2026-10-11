@@ -153,7 +153,7 @@ async function refreshAccessToken(conn: Connection): Promise<Connection> {
     const lower = body.toLowerCase();
     // Only a DEFINITIVE revocation may change a row's status. `invalid_grant`
     // is Xero's answer when the refresh token has been revoked or replaced —
-    // typically because the business owner removed us in Xero. A bare 400/401,
+    // typically because the Business Owner removed us in Xero. A bare 400/401,
     // a 429 or a 5xx can be transient, so those leave every row exactly as it
     // is (fail closed on the data, never on the status).
     if (lower.includes("invalid_grant")) {

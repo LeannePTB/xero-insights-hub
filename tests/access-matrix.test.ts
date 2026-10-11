@@ -539,6 +539,60 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
   if (r.startsWith("server fn:")) return "unsupported";
   if (r === "admin_firm_overview") return "unsupported"; // a view; not dumped into the fixture
 
+  if (r.startsWith("viewer_scope:")) {
+    // One Viewer type (11 Oct 2026): set_viewer_scope switches between the
+    // standing grant (All clients) and per-client Viewer rows (Selected).
+    await seedThenActAs(row.role, `
+      select set_config('request.jwt.claims', '{}', true);
+      alter table public.client_access alter column id set default gen_random_uuid();
+      alter table public.firm_viewer_access alter column id set default gen_random_uuid();
+      alter table public.firm_viewer_access alter column created_at set default now();
+      alter table public.firm_viewer_access alter column updated_at set default now();
+      alter table public.user_roles alter column id set default gen_random_uuid();
+      alter table public.audit_log alter column id set default gen_random_uuid();
+      alter table public.audit_log alter column at set default now();
+      create unique index if not exists matrix_ca_client_user on public.client_access (client_id, user_id);
+      create unique index if not exists matrix_fva_firm_user on public.firm_viewer_access (firm_id, user_id);
+      delete from public.user_roles a using public.user_roles b
+       where a.ctid < b.ctid and a.user_id = b.user_id and a.role = b.role;
+      create unique index if not exists matrix_ur_user_role on public.user_roles (user_id, role);
+    `);
+    const v = U.standingViewer;
+    const toSelected = () => probe(`select public.set_viewer_scope('${ORG_A}'::uuid, '${v}'::uuid, 'selected', array['${CLIENT_A}']::uuid[])`);
+    const state = async () => {
+      await db.exec("set local role postgres");
+      const q = await db.query<{ fva: number; ca: number }>(`
+        select (select count(*)::int from public.firm_viewer_access where firm_id = '${ORG_A}' and user_id = '${v}') as fva,
+               (select count(*)::int from public.client_access ca join public.clients c on c.id = ca.client_id
+                 where c.firm_id = '${ORG_A}' and ca.user_id = '${v}' and ca.relationship = 'external_adviser') as ca`);
+      return q.rows[0];
+    };
+    if (r === "viewer_scope: change a Viewer's clients") {
+      const p = await toSelected();
+      return p.ok ? "allow" : "deny";
+    }
+    if (r === "viewer_scope: switch All clients to Selected removes the rest immediately") {
+      const p = await toSelected();
+      if (!p.ok) return "deny";
+      const st = await state();
+      if (!(st?.fva === 0 && st.ca === 1)) return "deny";
+      // The rest of the organisation is no longer readable.
+      const other = await db.query<{ a: boolean; b: boolean }>(`
+        select app_private.has_standing_client_access('${v}', '${CLIENT_A}') as a,
+               exists(select 1 from public.clients c where c.firm_id = '${ORG_A}' and c.id <> '${CLIENT_A}'
+                      and app_private.has_client_read_access('${v}', c.id)) as b`);
+      return other.rows[0]?.a === false && other.rows[0]?.b === false ? "allow" : "deny";
+    }
+    if (r === "viewer_scope: switch Selected to All clients") {
+      if (!(await toSelected()).ok) return "deny";
+      const p = await probe(`select public.set_viewer_scope('${ORG_A}'::uuid, '${v}'::uuid, 'all_clients', null)`);
+      if (!p.ok) return "deny";
+      const st = await state();
+      return st?.fva === 1 && st.ca === 0 ? "allow" : "deny";
+    }
+    return "unsupported";
+  }
+
   if (r.startsWith("admin_onboard")) {
     // System Admin "Start from a Xero file" (11 Oct 2026). The fixture drops
     // column defaults and constraints, so the ones the definer relies on are
@@ -593,6 +647,15 @@ async function specialOutcome(row: MatrixRow): Promise<Outcome> {
       const c = check.rows[0];
       // Two clients, two links, the record consumed, the practice team added.
       return c?.clients === 2 && c.links === 2 && c.pending === 0 && c.members === 1 ? "allow" : "deny";
+    }
+    if (r === "admin_onboard: unticked Traction Advisory team adds no team member") {
+      const p = await probe(`select * from public.admin_onboard_organisation_from_xero('${P_MINE}'::uuid, 'new-1', array[]::text[], 'Matrix Org', 2, 'bookkeeping', false, false, false, false, null, false)`);
+      if (!p.ok) return "deny";
+      await db.exec("set local role postgres");
+      const q = await db.query<{ members: number; flag: boolean }>(`
+        select (select count(*)::int from public.firm_members m join public.firms f on f.id = m.firm_id where f.name = 'Matrix Org' and m.user_id <> '${me}') as members,
+               (select managed_by_traction from public.firms where name = 'Matrix Org') as flag`);
+      return q.rows[0]?.members === 0 && q.rows[0]?.flag === false ? "allow" : "deny";
     }
     if (r === "admin_onboard: create from another person's pending record") return ok(await call(P_OTHER, "new-1", []));
     if (r === "admin_onboard: create from an expired pending record") return ok(await call(P_EXPIRED, "new-1", []));

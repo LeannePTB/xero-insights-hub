@@ -88,8 +88,8 @@ function SignupPage() {
   const invitationRole =
     invite.kind === "viewer"
       ? invite.relationship === "business_owner"
-        ? "Business owner"
-        : "External adviser"
+        ? "Business Owner"
+        : "Viewer"
       : invite.role;
 
   return (

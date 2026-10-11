@@ -1727,3 +1727,13 @@ Two new SECURITY DEFINER functions (`public.set_org_card_defaults`, `public.appl
 ## 2026-10-11 — Protected money measured against cash at bank (owner decision 11 Oct, 11:12)
 - Not security-relevant: presentation and health-rule arithmetic only; no policy, grant, function or access path changed. One shared rule `src/lib/health/protected-money-share.ts` used by R01 (badges, verdicts, monthly report findings), the Overview and Trixie. No cash at bank → no percentage ("No cash at bank to compare"); R01 still treats owing money with no cash at bank as critical.
 - OPEN: live Trixie article "Reading the Overview and seven-day changes" still says net cash; needs a super admin to save the corrected wording through the audited editor.
+
+## 2026-10-11 — Clearer login types (owner approved 11 Oct, 12:18)
+- SECURITY-RELEVANT. One user-facing "Viewer" type (always read-only) with scope All clients (`firm_viewer_access`) or Selected clients (`client_access`, relationship `external_adviser`). Storage and predicates unchanged; no data migration; nobody gained or lost a client.
+- Read alignment: verified live that all seven per-client tables (client_cost_classifications, client_statutory_accounts, client_true_breakeven_inputs, client_income_tax_instalments, client_xero_orgs, unreconciled_lines, unreconciled_uploads) already let a Selected Viewer read their granted client through `has_client_read_access`. No policy changed; 7 matrix rows now prove it.
+- New definer `public.set_viewer_scope` (aal2, `can_manage_client_viewers` first, ids filtered to the organisation, refuses Business Owner rows, reuses audited grant/revoke definers, audited `viewer_scope_changed`; EXECUTE revoked from PUBLIC/anon). `switchStandingToSelected` now uses it, so the switch is atomic.
+- `admin_onboard_organisation_from_xero` gained `_add_practice_team` (default true); manual `adminCreateOrganisation` gained `addTractionTeam`. Unticked → no Traction Advisory team memberships. Recorded in audit (`traction_team_added`) and in `firms.managed_by_traction` (display only, never an access input).
+- Labels only: System Administrator, Traction Advisory team, Organisation Owner, Staff, Business Owner. Database keys unchanged.
+- OPEN: unticked organisation created with no owner email has only its creator as a member until an owner is invited. The manual path's creator still becomes a member (unchanged behaviour).
+- OPEN: `public.security_posture()` must be read by a System Administrator at aal2; not run this turn. Linter: no new finding.
+- OPEN: saved Trixie help articles (trixie_knowledge) may still use old role names; only a System Administrator can save them through the audited editor.

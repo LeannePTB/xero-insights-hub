@@ -19,7 +19,7 @@ export function savePackage(pkg: OrganisationPackage) {
   try {
     window.sessionStorage.setItem(
       ONBOARD_PACKAGE_KEY,
-      JSON.stringify({ clientLimit: pkg.clientLimit, billingMode: pkg.billingMode, advisory: pkg.advisory, consolidation: pkg.consolidation, branding: pkg.branding, whiteLabel: pkg.whiteLabel, unticked: pkg.unticked }),
+      JSON.stringify({ clientLimit: pkg.clientLimit, billingMode: pkg.billingMode, advisory: pkg.advisory, consolidation: pkg.consolidation, branding: pkg.branding, whiteLabel: pkg.whiteLabel, addTractionTeam: pkg.addTractionTeam, unticked: pkg.unticked }),
     );
   } catch {
     /* storage unavailable */
@@ -37,6 +37,7 @@ export function restorePackage(pkg: OrganisationPackage) {
     pkg.setConsolidation(!!v.consolidation);
     pkg.setBranding(!!v.branding);
     pkg.setWhiteLabel(!!v.whiteLabel);
+    pkg.setAddTractionTeam(v.addTractionTeam !== false);
     if (Array.isArray(v.unticked)) pkg.setUnticked(v.unticked.filter((x: unknown) => typeof x === "string"));
   } catch {
     /* ignore */

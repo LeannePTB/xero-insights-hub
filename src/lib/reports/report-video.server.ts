@@ -3,7 +3,7 @@
 // Invariants this file must hold (Access Control Spec §0):
 //  - The report id from the request is a FILTER, never a GRANT. The firm is
 //    read from the stored report row and authorised server-side.
-//  - Super admin on its own grants ZERO client data (invariant 3). Setting a
+//  - System Administrator on its own grants ZERO client data (invariant 3). Setting a
 //    video therefore needs BOTH the super-admin check AND the same organisation
 //    write check every other report mutation uses. Neither substitutes for the
 //    other.
@@ -35,7 +35,7 @@ export async function setReportVideoServer(opts: {
 }) {
   const { supabase, userId, input } = opts;
 
-  // Gate 1 — platform super admin, decided in the database.
+  // Gate 1 — platform System Administrator, decided in the database.
   const { assertSuperAdminDb } = await import("@/lib/auth/super-admin.server");
   await assertSuperAdminDb(supabase);
 
@@ -48,7 +48,7 @@ export async function setReportVideoServer(opts: {
   if (!report) throw new Error("Report not found.");
 
   // Gate 2 — the same organisation write authorisation as every other report
-  // mutation. Super admin does not stand in for this.
+  // mutation. System Administrator does not stand in for this.
   const { canWriteFirm } = await import("@/lib/support-access.server");
   if (!(await canWriteFirm(userId, (report as any).firm_id))) {
     throw new Error(

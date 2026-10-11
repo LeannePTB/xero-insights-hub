@@ -191,7 +191,7 @@ export const getFirmSubscription = createServerFn({ method: "POST" })
     };
   });
 
-/** Super admin switches the organisation onto another plan level. */
+/** System Administrator switches the organisation onto another plan level. */
 export const changeFirmPlan = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string; planKey: string }) => i)
@@ -212,14 +212,14 @@ export const changeFirmPlan = createServerFn({ method: "POST" })
     return { ok: true, tier: data.planKey };
   });
 
-/** Owner (or super admin) cancels at period end, or resumes a pending cancellation. */
+/** Owner (or System Administrator) cancels at period end, or resumes a pending cancellation. */
 export const setFirmCancellation = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { firmId: string; cancel: boolean }) => i)
   .handler(async ({ data, context }): Promise<{ ok: true; endsAt: string | null }> => {
     const access = await resolveAccess(context.supabase, data.firmId);
     if (!access.isOwner && !access.isSuperAdmin) {
-      throw new Error("Only the organisation owner can cancel the subscription.");
+      throw new Error("Only the Organisation Owner can cancel the subscription.");
     }
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");

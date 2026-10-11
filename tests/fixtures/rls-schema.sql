@@ -74,7 +74,7 @@ create table public.client_bank_account_classifications (client_id uuid, tenant_
 create table public.client_cards (client_id uuid, cards text[], created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_cost_classifications (id uuid, client_id uuid, tenant_id text, account_name text, classification text, created_at timestamp with time zone, updated_at timestamp with time zone, is_wages boolean);
 create table public.client_income_tax_instalments (id uuid, client_id uuid, tenant_id text, period_start date, period_end date, amount numeric(14,2), created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
-create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric, last_xero_login_at timestamp with time zone);
+create table public.client_key_figures (id uuid, client_id uuid, firm_id uuid, tenant_id text, as_at date, cash numeric, debtors_total numeric, debtors_overdue numeric, creditors numeric, protected_money numeric, revenue_mtd numeric, net_profit_mtd numeric, created_at timestamp with time zone, updated_at timestamp with time zone, bank_reconciled_to date, credit_card_debt numeric, last_xero_login_at timestamp with time zone, bank_reconciliation jsonb);
 create table public.client_notes (id uuid, client_id uuid, author_id uuid, body text, created_at timestamp with time zone, updated_at timestamp with time zone, include_in_report boolean);
 create table public.client_rental_properties (id uuid, client_id uuid, tenant_id text, name text, match_type text, match_ids text[], expected_amount numeric(14,2), frequency text, lease_start date, created_by uuid, updated_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.client_reports (id uuid, client_id uuid, firm_id uuid, tenant_id text, report_key text, period_end date, title text, payload jsonb, payload_version integer, pdf_path text, status text, version integer, complete boolean, generated_by uuid, generated_at timestamp with time zone, finalised_at timestamp with time zone, sent_at timestamp with time zone, sent_to text[], video_url text, video_heading text, video_message text, video_set_by uuid, video_set_at timestamp with time zone);
@@ -93,7 +93,7 @@ create table public.email_unsubscribe_tokens (id uuid, email text, created_at ti
 create table public.firm_members (id uuid, firm_id uuid, user_id uuid, role firm_member_role, created_at timestamp with time zone, updated_at timestamp with time zone, status text);
 create table public.firm_support_access (firm_id uuid, granted boolean, granted_by uuid, granted_at timestamp with time zone, revoked_at timestamp with time zone, note text, created_at timestamp with time zone, updated_at timestamp with time zone, id uuid, grantee_user_id uuid, expires_at timestamp with time zone, requested_by uuid, reason text);
 create table public.firm_viewer_access (id uuid, firm_id uuid, user_id uuid, tier dashboard_tier, granted_by uuid, created_at timestamp with time zone, updated_at timestamp with time zone, inviter_label text);
-create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean, overview_hidden boolean);
+create table public.firms (id uuid, name text, owner_user_id uuid, is_always_free boolean, created_at timestamp with time zone, updated_at timestamp with time zone, default_widgets text[], logo_path text, is_test boolean, overview_hidden boolean, managed_by_traction boolean);
 create table public.loan_consolidation_accounts (id uuid, client_id uuid, tenant_id text, account_id text, account_code text, account_name text, account_type text, direction text, counterparty_account_id uuid, sort_order integer, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.loan_consolidation_snapshots (id uuid, group_id uuid, as_at date, label text, payload jsonb, generated_by uuid, generated_at timestamp with time zone, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.login_events (id uuid, user_id uuid, email text, ip text, user_agent text, occurred_at timestamp with time zone);
@@ -1274,6 +1274,28 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.revoke_client_access(_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _client uuid; _firm uuid; _user uuid;
+begin
+  perform app_private.assert_aal2();
+  select client_id, user_id into _client, _user from public.client_access where id = _id;
+  if _client is null then return; end if;
+  if not app_private.can_manage_viewers_for_client(auth.uid(), _client) then
+    raise exception 'You cannot manage access for this client.';
+  end if;
+  delete from public.client_access where id = _id;
+  select firm_id into _firm from public.clients where id = _client;
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'client_viewer_revoked', 'client', _client::text,
+          jsonb_build_object('user_id', _user, 'scope', 'client'));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.assert_super_admin()
  RETURNS void
  LANGUAGE plpgsql
@@ -1424,6 +1446,27 @@ AS $function$
         )
     )
   ) end
+$function$
+;
+CREATE OR REPLACE FUNCTION public.revoke_firm_viewer_access(_id uuid)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _firm uuid; _user uuid;
+begin
+  perform app_private.assert_aal2();
+  select firm_id, user_id into _firm, _user from public.firm_viewer_access where id = _id;
+  if _firm is null then return; end if;
+  if not app_private.can_manage_client_viewers(auth.uid(), _firm) then
+    raise exception 'You cannot manage viewers for this organisation.';
+  end if;
+  delete from public.firm_viewer_access where id = _id;
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'standing_viewer_revoked', 'firm', _firm::text,
+          jsonb_build_object('user_id', _user, 'scope', 'all_clients'));
+end;
 $function$
 ;
 CREATE OR REPLACE FUNCTION public.admin_add_practice_member(_user_id uuid)
@@ -1620,6 +1663,40 @@ begin
 end;
 $function$
 ;
+CREATE OR REPLACE FUNCTION public.grant_client_access(_client_id uuid, _user_id uuid, _tier text, _relationship client_access_relationship DEFAULT NULL::client_access_relationship, _inviter_label text DEFAULT NULL::text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _firm uuid; _label text;
+begin
+  perform app_private.assert_aal2();
+  if not app_private.can_manage_viewers_for_client(auth.uid(), _client_id) then
+    raise exception 'You cannot manage access for this client.';
+  end if;
+  _label := nullif(btrim(_inviter_label), '');
+  if _label is not null and (char_length(_label) > 80 or _label ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$') then
+    raise exception 'INVALID_INVITER_LABEL' using errcode = '22023';
+  end if;
+  select firm_id into _firm from public.clients where id = _client_id;
+
+  insert into public.user_roles (user_id, role) values (_user_id, 'client_viewer')
+  on conflict (user_id, role) do nothing;
+  insert into public.client_access (client_id, user_id, tier, relationship, inviter_label)
+  values (_client_id, _user_id, _tier, _relationship, _label)
+  on conflict (client_id, user_id) do update
+    set tier = excluded.tier,
+        relationship = excluded.relationship,
+        inviter_label = coalesce(excluded.inviter_label, public.client_access.inviter_label);
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm, 'client_viewer_granted', 'client', _client_id::text,
+          jsonb_build_object('user_id', _user_id, 'tier', _tier, 'scope', 'client',
+                             'relationship', _relationship, 'inviter_label', _label));
+end;
+$function$
+;
 CREATE OR REPLACE FUNCTION public.set_client_access_relationship(_id uuid, _relationship client_access_relationship)
  RETURNS void
  LANGUAGE plpgsql
@@ -1641,6 +1718,40 @@ begin
   values (auth.uid(), _firm, 'client_viewer_relationship_changed', 'client', _client::text,
           jsonb_build_object('user_id', _user, 'previous_relationship', _previous,
                              'relationship', _relationship));
+end;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.grant_firm_viewer_access(_firm_id uuid, _user_id uuid, _tier dashboard_tier, _inviter_label text DEFAULT NULL::text)
+ RETURNS uuid
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+declare _id uuid; _label text;
+begin
+  perform app_private.assert_aal2();
+  if not app_private.can_manage_client_viewers(auth.uid(), _firm_id) then
+    raise exception 'You cannot manage viewers for this organisation.';
+  end if;
+  _label := nullif(btrim(_inviter_label), '');
+  if _label is not null and (char_length(_label) > 80 or _label ~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$') then
+    raise exception 'INVALID_INVITER_LABEL' using errcode = '22023';
+  end if;
+  insert into public.user_roles (user_id, role) values (_user_id, 'client_viewer')
+  on conflict (user_id, role) do nothing;
+  insert into public.firm_viewer_access (firm_id, user_id, tier, granted_by, inviter_label)
+  values (_firm_id, _user_id, _tier, auth.uid(), _label)
+  on conflict (firm_id, user_id) do update
+    set tier = excluded.tier,
+        inviter_label = coalesce(excluded.inviter_label, public.firm_viewer_access.inviter_label),
+        updated_at = now()
+  returning id into _id;
+
+  insert into public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  values (auth.uid(), _firm_id, 'standing_viewer_granted', 'firm', _firm_id::text,
+          jsonb_build_object('user_id', _user_id, 'tier', _tier, 'scope', 'all_clients',
+                             'relationship', 'external_adviser', 'inviter_label', _label));
+  return _id;
 end;
 $function$
 ;
@@ -2718,7 +2829,7 @@ BEGIN
 END;
 $function$
 ;
-CREATE OR REPLACE FUNCTION public.admin_onboard_organisation_from_xero(_pending_id uuid, _first_tenant text, _extra_tenants text[], _org_name text, _client_limit integer, _billing_mode text, _advisory boolean, _consolidation boolean, _branding boolean, _white_label boolean, _cards text[])
+CREATE OR REPLACE FUNCTION public.admin_onboard_organisation_from_xero(_pending_id uuid, _first_tenant text, _extra_tenants text[], _org_name text, _client_limit integer, _billing_mode text, _advisory boolean, _consolidation boolean, _branding boolean, _white_label boolean, _cards text[], _add_practice_team boolean DEFAULT true)
  RETURNS TABLE(firm_id uuid, client_ids uuid[], tenant_ids text[])
  LANGUAGE plpgsql
  SECURITY DEFINER
@@ -2742,7 +2853,6 @@ BEGIN
     RAISE EXCEPTION 'Not authorised.' USING errcode = 'insufficient_privilege';
   END IF;
 
-  -- Single use: lock the caller's own unexpired record.
   SELECT * INTO p FROM public.xero_pending_onboards o
    WHERE o.id = _pending_id AND o.user_id = _me AND o.expires_at > now()
    FOR UPDATE;
@@ -2766,8 +2876,6 @@ BEGIN
     RAISE EXCEPTION 'CLIENT_LIMIT_EXCEEDED' USING errcode = 'check_violation';
   END IF;
 
-  -- Tenant ids are filters: each must be in this pending authorisation and
-  -- not already in the app (any organisation, any person's connection).
   FOREACH _tenant IN ARRAY _wanted LOOP
     IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(p.tenants) t WHERE t->>'tenantId' = _tenant) THEN
       RAISE EXCEPTION 'TENANT_NOT_AUTHORISED' USING errcode = 'insufficient_privilege';
@@ -2777,30 +2885,28 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Organisation, exactly as the manual path: never always-free; the creator
-  -- is the owner until an invited owner takes over.
-  INSERT INTO public.firms (name, is_always_free, owner_user_id) VALUES (_name, false, _me) RETURNING id INTO _firm;
+  INSERT INTO public.firms (name, is_always_free, owner_user_id, managed_by_traction) VALUES (_name, false, _me, coalesce(_add_practice_team, true)) RETURNING id INTO _firm;
   INSERT INTO public.subscriptions (firm_id, tier, status) VALUES (_firm, 'starter', 'active');
   INSERT INTO public.firm_members (firm_id, user_id, role, status) VALUES (_firm, _me, 'owner', 'active');
 
-  -- Practice team auto-add, as the manual path (practice_team is keyed on user_id).
-  FOR _member IN SELECT pt.user_id FROM public.practice_team pt WHERE pt.user_id <> _me LOOP
-    INSERT INTO public.firm_members (firm_id, user_id, role, status)
-      SELECT _firm, _member.user_id, 'staff', 'active'
-       WHERE NOT EXISTS (SELECT 1 FROM public.firm_members m WHERE m.firm_id = _firm AND m.user_id = _member.user_id);
-    INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
-    VALUES (_me, _firm, 'practice_team_member_joined_new_organisation', 'firm', _firm::text,
-            jsonb_build_object('firm_id', _firm, 'user_id', _member.user_id, 'role', 'staff'));
-  END LOOP;
+  -- Traction Advisory team auto-add only when "Traction Advisory looks after this organisation" is ticked.
+  IF coalesce(_add_practice_team, true) THEN
+    FOR _member IN SELECT pt.user_id FROM public.practice_team pt WHERE pt.user_id <> _me LOOP
+      INSERT INTO public.firm_members (firm_id, user_id, role, status)
+        SELECT _firm, _member.user_id, 'staff', 'active'
+         WHERE NOT EXISTS (SELECT 1 FROM public.firm_members m WHERE m.firm_id = _firm AND m.user_id = _member.user_id);
+      INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+      VALUES (_me, _firm, 'practice_team_member_joined_new_organisation', 'firm', _firm::text,
+              jsonb_build_object('firm_id', _firm, 'user_id', _member.user_id, 'role', 'staff'));
+    END LOOP;
+  END IF;
 
-  -- The purchase, through the same audited control (re-checks every rule).
   PERFORM public.set_org_purchase(_firm, _client_limit, coalesce(_advisory, false), coalesce(_consolidation, false),
                                   coalesce(_branding, false), coalesce(_white_label, false), _billing_mode);
   IF _cards IS NOT NULL THEN
     PERFORM public.set_org_card_defaults(_firm, _cards);
   END IF;
 
-  -- One client per file; plan-limit triggers still apply.
   FOREACH _tenant IN ARRAY _wanted LOOP
     SELECT t INTO _t FROM jsonb_array_elements(p.tenants) t WHERE t->>'tenantId' = _tenant LIMIT 1;
     INSERT INTO public.clients (name, owner_user_id, firm_id)
@@ -2815,7 +2921,6 @@ BEGIN
     _clients := _clients || _client;
   END LOOP;
 
-  -- Consume: the record and its token ciphertext are gone.
   DELETE FROM public.xero_pending_onboards WHERE id = p.id;
 
   INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
@@ -2824,9 +2929,76 @@ BEGIN
                              'client_limit', _client_limit, 'advisory_enabled', coalesce(_advisory,false),
                              'consolidation_enabled', coalesce(_consolidation,false), 'branding_enabled', coalesce(_branding,false),
                              'white_label_enabled', coalesce(_white_label,false), 'billing_mode', _billing_mode,
-                             'default_cards', to_jsonb(_cards)));
+                             'default_cards', to_jsonb(_cards),
+                             'traction_team_added', coalesce(_add_practice_team, true)));
 
   RETURN QUERY SELECT _firm, _clients, _wanted;
+END;
+$function$
+;
+CREATE OR REPLACE FUNCTION public.set_viewer_scope(_firm_id uuid, _user_id uuid, _scope text, _client_ids uuid[])
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  _valid uuid[];
+  _row record;
+  _standing uuid;
+BEGIN
+  PERFORM app_private.assert_aal2();
+  IF auth.uid() IS NULL OR NOT app_private.can_manage_client_viewers(auth.uid(), _firm_id) THEN
+    RAISE EXCEPTION 'NOT_PERMITTED' USING errcode = 'insufficient_privilege';
+  END IF;
+  IF _scope NOT IN ('all_clients', 'selected') THEN
+    RAISE EXCEPTION 'INVALID_SCOPE' USING errcode = '22023';
+  END IF;
+  SELECT id INTO _standing FROM public.firm_viewer_access WHERE firm_id = _firm_id AND user_id = _user_id;
+  IF _standing IS NULL AND NOT EXISTS (
+      SELECT 1 FROM public.client_access ca JOIN public.clients c ON c.id = ca.client_id
+       WHERE c.firm_id = _firm_id AND ca.user_id = _user_id AND ca.relationship = 'external_adviser') THEN
+    RAISE EXCEPTION 'NOT_A_VIEWER' USING errcode = 'no_data_found';
+  END IF;
+
+  IF _scope = 'all_clients' THEN
+    IF _standing IS NULL THEN
+      PERFORM public.grant_firm_viewer_access(_firm_id, _user_id, 'multi_company'::public.dashboard_tier, NULL);
+    END IF;
+    FOR _row IN SELECT ca.id FROM public.client_access ca JOIN public.clients c ON c.id = ca.client_id
+                 WHERE c.firm_id = _firm_id AND ca.user_id = _user_id AND ca.relationship = 'external_adviser' LOOP
+      PERFORM public.revoke_client_access(_row.id);
+    END LOOP;
+    INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+    VALUES (auth.uid(), _firm_id, 'viewer_scope_changed', 'firm', _firm_id::text,
+            jsonb_build_object('user_id', _user_id, 'scope', 'all_clients'));
+    RETURN 0;
+  END IF;
+
+  SELECT coalesce(array_agg(c.id), '{}') INTO _valid FROM public.clients c
+   WHERE c.firm_id = _firm_id AND c.id = ANY(coalesce(_client_ids, '{}'));
+  IF array_length(_valid, 1) IS NULL THEN
+    RAISE EXCEPTION 'NO_CLIENTS' USING errcode = '22023';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.client_access ca WHERE ca.user_id = _user_id AND ca.client_id = ANY(_valid)
+              AND ca.relationship IS DISTINCT FROM 'external_adviser') THEN
+    RAISE EXCEPTION 'OTHER_RELATIONSHIP' USING errcode = '22023';
+  END IF;
+  FOR _row IN SELECT unnest(_valid) AS cid LOOP
+    PERFORM public.grant_client_access(_row.cid, _user_id, 'multi_company', 'external_adviser'::public.client_access_relationship, NULL);
+  END LOOP;
+  FOR _row IN SELECT ca.id FROM public.client_access ca JOIN public.clients c ON c.id = ca.client_id
+               WHERE c.firm_id = _firm_id AND ca.user_id = _user_id AND ca.relationship = 'external_adviser'
+                 AND NOT (ca.client_id = ANY(_valid)) LOOP
+    PERFORM public.revoke_client_access(_row.id);
+  END LOOP;
+  IF _standing IS NOT NULL THEN
+    PERFORM public.revoke_firm_viewer_access(_standing);
+  END IF;
+  INSERT INTO public.audit_log (actor_user_id, firm_id, action, target_type, target_id, meta)
+  VALUES (auth.uid(), _firm_id, 'viewer_scope_changed', 'firm', _firm_id::text,
+          jsonb_build_object('user_id', _user_id, 'scope', 'selected', 'client_count', array_length(_valid, 1)));
+  RETURN array_length(_valid, 1);
 END;
 $function$
 ;
@@ -4169,4 +4341,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_asse
 CREATE TRIGGER xero_oauth_states_validate BEFORE INSERT OR UPDATE ON public.xero_oauth_states FOR EACH ROW EXECUTE FUNCTION tg_xero_oauth_states_validate();
 CREATE TRIGGER xero_pending_onboards_guard BEFORE INSERT OR UPDATE ON public.xero_pending_onboards FOR EACH ROW EXECUTE FUNCTION app_private.tg_xero_pending_onboards_guard();
 
--- catalogue-fingerprint: e30734e933acfcb02c604b31e46b7dff3452dbbaeec844031739ddbc26beeacd
+-- catalogue-fingerprint: a87dcd4a4454478c019cc86e66b306628a080c3134198c1f97b8dcc1f401848b

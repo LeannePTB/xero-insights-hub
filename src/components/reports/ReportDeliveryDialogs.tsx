@@ -243,13 +243,13 @@ export function DeleteReportDialog({
             This report has been sent. Deleting it stops{" "}
             {recipientsQ.isLoading ? "every" : `${liveLinks}`} recipient link
             {liveLinks === 1 ? "" : "s"} working immediately — anyone who opens their email link
-            will see only that it is no longer valid. Only a super admin can delete a finalised or
+            will see only that it is no longer valid. Only a System Administrator can delete a finalised or
             sent report.
           </p>
         )}
         {report?.status === "final" && (
           <p className="text-sm text-muted-foreground">
-            This report is finalised, so only a super admin can delete it.
+            This report is finalised, so only a System Administrator can delete it.
           </p>
         )}
         <div>

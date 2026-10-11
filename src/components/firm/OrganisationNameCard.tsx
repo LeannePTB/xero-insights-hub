@@ -25,7 +25,7 @@ export function OrganisationNameCard({ firmId }: { firmId: string }) {
       qc.invalidateQueries();
     },
     onError: (e: Error) =>
-      toast.error(e.message === "Forbidden" ? "Only the organisation owner can rename it." : e.message),
+      toast.error(e.message === "Forbidden" ? "Only the Organisation Owner can rename it." : e.message),
   });
 
   if (!q.data) return null;
@@ -45,7 +45,7 @@ export function OrganisationNameCard({ firmId }: { firmId: string }) {
           </Button>
         )}
       </div>
-      {!canEdit && <p className="mt-2 text-xs text-muted-foreground">Only the organisation owner can change the name.</p>}
+      {!canEdit && <p className="mt-2 text-xs text-muted-foreground">Only the Organisation Owner can change the name.</p>}
     </section>
   );
 }

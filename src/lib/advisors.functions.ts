@@ -47,8 +47,8 @@ export const setAdvisorSuperAdmin = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { userId: string; makeSuperAdmin: boolean }) => i)
   .handler(async ({ data, context }) => {
-    // The database decides: caller must be a super admin, cannot remove their
-    // own access, and the last super admin cannot be removed.
+    // The database decides: caller must be a System Administrator, cannot remove their
+    // own access, and the last System Administrator cannot be removed.
     const { data: isSuper, error } = await (context.supabase as any).rpc("admin_set_super_admin", {
       _user_id: data.userId,
       _make: data.makeSuperAdmin,
@@ -203,7 +203,7 @@ export const revokeAdvisor = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     // The database removes the roles and access grants, and enforces
-    // "at least one advisor and one super admin must remain" itself.
+    // "at least one advisor and one System Administrator must remain" itself.
     const { error: roleErr } = await (context.supabase as any).rpc("admin_remove_advisor", {
       _user_id: data.userId,
     });

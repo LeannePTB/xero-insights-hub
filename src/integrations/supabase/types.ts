@@ -1471,6 +1471,7 @@ export type Database = {
           is_always_free: boolean
           is_test: boolean
           logo_path: string | null
+          managed_by_traction: boolean
           name: string
           overview_hidden: boolean
           owner_user_id: string | null
@@ -1483,6 +1484,7 @@ export type Database = {
           is_always_free?: boolean
           is_test?: boolean
           logo_path?: string | null
+          managed_by_traction?: boolean
           name: string
           overview_hidden?: boolean
           owner_user_id?: string | null
@@ -1495,6 +1497,7 @@ export type Database = {
           is_always_free?: boolean
           is_test?: boolean
           logo_path?: string | null
+          managed_by_traction?: boolean
           name?: string
           overview_hidden?: boolean
           owner_user_id?: string | null
@@ -3654,6 +3657,7 @@ export type Database = {
       }
       admin_onboard_organisation_from_xero: {
         Args: {
+          _add_practice_team?: boolean
           _advisory: boolean
           _billing_mode: string
           _branding: boolean
@@ -4644,6 +4648,15 @@ export type Database = {
       set_tier_enabled: {
         Args: { _enabled: boolean; _tier: string }
         Returns: undefined
+      }
+      set_viewer_scope: {
+        Args: {
+          _client_ids: string[]
+          _firm_id: string
+          _scope: string
+          _user_id: string
+        }
+        Returns: number
       }
       test_accounts_posture: { Args: never; Returns: Json }
       touch_session_activity: { Args: never; Returns: undefined }

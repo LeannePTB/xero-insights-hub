@@ -47,7 +47,7 @@ function validateEmail(email: string) {
  * wants its cards set up, and its owner, in a single all-or-nothing step.
  *
  * The purchase is written through the SAME audited control the organisation
- * page uses, public.set_org_purchase (aal2 + super admin, one audit row), and
+ * page uses, public.set_org_purchase (aal2 + System Administrator, one audit row), and
  * the card preferences through public.set_org_card_defaults. Both run inside
  * the existing rollback block: if anything fails, the organisation itself is
  * removed rather than left stranded with no owner or no options.
@@ -73,6 +73,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       branding?: boolean | null;
       whiteLabel?: boolean | null;
       cards?: string[] | null;
+      addTractionTeam?: boolean | null;
     }) => i,
   )
   .handler(async ({ data, context }) => {
@@ -94,6 +95,8 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     const consolidation = !!data.consolidation && advisory;
     const branding = !!data.branding && advisory;
     const whiteLabel = !!data.whiteLabel;
+    // "Traction Advisory looks after this organisation" — default ticked.
+    const addTractionTeam = data.addTractionTeam !== false;
     // Card preferences: a template for clients added later, never a purchase.
     const cards = Array.isArray(data.cards)
       ? Array.from(new Set(data.cards.filter((c) => typeof c === "string" && c))).slice(0, 100)
@@ -106,7 +109,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
     // dashboard tier instead of Standard.
     const { data: firm, error: fErr } = await (supabaseAdmin as any)
       .from("firms")
-      .insert({ name, is_always_free: false })
+      .insert({ name, is_always_free: false, managed_by_traction: addTractionTeam })
       .select("id, name")
       .single();
     if (fErr) throw new Error(fErr.message);
@@ -153,7 +156,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
       }
 
       // What they have bought, through the same audited control the
-      // organisation page uses. It runs as the signed-in super admin (aal2 +
+      // organisation page uses. It runs as the signed-in System Administrator (aal2 +
       // assert_super_admin inside the function), never as the admin client, and
       // writes its own org_purchase_set audit row.
       const { error: pErr } = await (context.supabase as any).rpc("set_org_purchase", {
@@ -179,16 +182,16 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         if (dErr) throw new Error(dErr.message);
       }
 
-      // Batch 5 — practice team auto-add. Traction Advisory's own people are
+      // Batch 5 — Traction Advisory team auto-add. Traction Advisory's own people are
       // added as staff members here, inside the same all-or-nothing block, with
       // one audit row each, so nobody has to add themselves later. The list is
       // read from `practice_team` (super-admin managed); an empty list is normal
       // and simply means the creator is the only member. This never touches
       // `admin_set_self_firm_membership` or its handed-over restriction, and it
       // only ever runs for an organisation being created in this call.
-      const { data: practice } = await (supabaseAdmin as any)
-        .from("practice_team")
-        .select("user_id");
+      const { data: practice } = addTractionTeam
+        ? await (supabaseAdmin as any).from("practice_team").select("user_id")
+        : { data: [] as any[] };
       for (const row of (practice ?? []) as any[]) {
         const memberId = String(row.user_id);
         if (memberId === context.userId) continue;
@@ -221,6 +224,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
           branding_enabled: branding,
           billing_mode: billingMode,
           default_cards: cards,
+          traction_team_added: addTractionTeam,
           owner_mode: "none",
           owner_user_id: context.userId,
         });
@@ -277,6 +281,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
           branding_enabled: branding,
           billing_mode: billingMode,
           default_cards: cards,
+          traction_team_added: addTractionTeam,
           owner_mode: "password",
           owner_user_id: ownerId,
         });
@@ -304,6 +309,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         white_label_enabled: whiteLabel,
         billing_mode: billingMode,
         default_cards: cards,
+        traction_team_added: addTractionTeam,
         owner_mode: "invite",
         owner_user_id: context.userId,
       });
@@ -724,7 +730,7 @@ export type PendingFirmInvite = {
 };
 
 /**
- * Pending member invitations for one organisation. Super admin only — the rule
+ * Pending member invitations for one organisation. System Administrator only — the rule
  * and the audience check live in public.firm_member_invites, not here.
  */
 export const listFirmMemberInvites = createServerFn({ method: "POST" })
@@ -750,7 +756,7 @@ export const listFirmMemberInvites = createServerFn({ method: "POST" })
     };
   });
 
-/** Cancel a pending member invitation. Super admin only, audited in the database. */
+/** Cancel a pending member invitation. System Administrator only, audited in the database. */
 export const revokeFirmMemberInvite = createServerFn({ method: "POST" })
   .middleware([requireAal2])
   .inputValidator((i: { id: string }) => i)

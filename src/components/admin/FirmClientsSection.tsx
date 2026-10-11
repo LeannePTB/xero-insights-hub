@@ -101,7 +101,7 @@ export function FirmClientsSection({
   const isSuperAdmin = !!meQ.data?.isSuperAdmin;
 
   // Previewing a client's dashboard is recorded before it opens. The database
-  // function is the control (aal2 + platform super admin + an access path this
+  // function is the control (aal2 + platform System Administrator + an access path this
   // person already holds); if it refuses, no preview opens.
   const navigate = useNavigate();
   const recordPreview = useServerFn(recordViewAs);

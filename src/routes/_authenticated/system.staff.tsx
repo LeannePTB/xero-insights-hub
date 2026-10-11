@@ -33,6 +33,7 @@ import {
 import { Loader2, UserPlus, Trash2, ShieldCheck, Send, Link2, KeyRound, Eye, EyeOff, Copy, Mail, Crown, Pencil, Users, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { FirmPageHeader } from "@/components/firm/FirmPageHeader";
+import { LOGIN_TYPE_DESCRIPTION, LOGIN_TYPE_LABEL } from "@/lib/access-labels";
 import { siteUrl } from "@/lib/site-origin";
 import { PageContainer } from "@/components/PageContainer";
 
@@ -40,9 +41,9 @@ import { PageContainer } from "@/components/PageContainer";
 export const Route = createFileRoute("/_authenticated/system/staff")({
   head: () => ({ meta: [
     { title: "Platform staff — Traction Advisory" },
-    { name: "description", content: "Manage Traction Advisory platform staff and practice team membership." },
+    { name: "description", content: "Manage Traction Advisory platform staff and Traction Advisory team membership." },
     { property: "og:title", content: "Platform staff — Traction Advisory" },
-    { property: "og:description", content: "Manage platform staff and practice team membership." },
+    { property: "og:description", content: "Manage platform staff and Traction Advisory team membership." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary" },
   ] }),
@@ -81,7 +82,7 @@ function AdvisorSettings() {
     queryFn: () => fetchPending(),
     enabled: ctxQ.data?.isPlatformStaff ?? false,
   });
-  // The practice team list is platform metadata: readable by super admins only,
+  // The Traction Advisory team list is platform metadata: readable by System Administrators only,
   // so only they see the indicator and the control.
   const practiceQ = useQuery({
     queryKey: ["practice-team"],
@@ -161,7 +162,7 @@ function AdvisorSettings() {
     mutationFn: ({ userId, makeSuperAdmin }: { userId: string; makeSuperAdmin: boolean }) =>
       setSuperFn({ data: { userId, makeSuperAdmin } }),
     onSuccess: (r) => {
-      toast.success(r.isSuperAdmin ? "Super admin access granted" : "Super admin access removed");
+      toast.success(r.isSuperAdmin ? "System Administrator access granted" : "System Administrator access removed");
       qc.invalidateQueries({ queryKey: ["advisors"] });
       qc.invalidateQueries({ queryKey: ["my-context"] });
     },
@@ -171,7 +172,7 @@ function AdvisorSettings() {
     mutationFn: ({ userId, onTeam }: { userId: string; onTeam: boolean }) =>
       setPracticeFn({ data: { userId, onTeam } }),
     onSuccess: (r) => {
-      toast.success(r.onTeam ? "Added to the practice team" : "Removed from the practice team");
+      toast.success(r.onTeam ? "Added to the Traction Advisory team" : "Removed from the Traction Advisory team");
       qc.invalidateQueries({ queryKey: ["practice-team"] });
     },
     onError: (e: any) => toast.error(e.message),
@@ -240,6 +241,9 @@ function AdvisorSettings() {
       <PageContainer width="readable" className="space-y-6">
 
         <FirmPageHeader title="Platform staff" />
+        <p className="text-sm text-muted-foreground">
+          {LOGIN_TYPE_LABEL.super_admin}: {LOGIN_TYPE_DESCRIPTION.super_admin} You can have more than one; the last one cannot be removed.
+        </p>
 
         <section className="rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-soft)]">
           <h2 className="mb-3 font-display text-lg font-semibold">Add an advisor</h2>
@@ -362,7 +366,7 @@ function AdvisorSettings() {
           </div>
           {viewerIsSuperAdmin && (
             <p className="mb-3 text-xs text-muted-foreground">
-              People on the practice team are added as members automatically whenever Positive
+              People on the Traction Advisory team are added as members automatically whenever Positive
               Traction creates a new client organisation, so nobody has to add themselves
               afterwards. Being on the list grants nothing by itself. Use the
               <Users className="mx-1 inline h-3 w-3" /> button on a person's row to put them on or
@@ -391,13 +395,13 @@ function AdvisorSettings() {
                           
                           {a.is_super_admin && (
                             <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">
-                              <Crown className="h-3 w-3" /> Super admin
+                              <Crown className="h-3 w-3" /> System Administrator
                             </span>
                           )}
                           {isPending && <span className="ml-2 rounded-full bg-info/10 px-2 py-0.5 text-xs font-medium text-info">Pending invite</span>}
                           {viewerIsSuperAdmin && onPracticeTeam && (
                             <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-emphasis">
-                              <Users className="h-3 w-3" /> Practice team
+                              <Users className="h-3 w-3" /> Traction Advisory team
                             </span>
                           )}
                         </p>
@@ -434,13 +438,13 @@ function AdvisorSettings() {
                           onClick={() => {
                             const label = a.email ?? a.display_name ?? a.user_id;
                             const msg = onPracticeTeam
-                              ? `Take ${label} off the practice team? They'll stop being added to new client organisations. Memberships they already have are untouched.`
-                              : `Put ${label} on the practice team? They'll be added as a member whenever we create a new client organisation. This grants nothing on its own.`;
+                              ? `Take ${label} off the Traction Advisory team? They'll stop being added to new client organisations. Memberships they already have are untouched.`
+                              : `Put ${label} on the Traction Advisory team? They'll be added as a member whenever we create a new client organisation. This grants nothing on its own.`;
                             if (confirm(msg))
                               practiceMut.mutate({ userId: a.user_id, onTeam: !onPracticeTeam });
                           }}
                           disabled={practiceMut.isPending}
-                          title={onPracticeTeam ? "Remove from the practice team" : "Add to the practice team"}
+                          title={onPracticeTeam ? "Remove from the Traction Advisory team" : "Add to the Traction Advisory team"}
                           className={onPracticeTeam ? "text-emphasis" : undefined}
                         >
                           <Users className="h-3.5 w-3.5" />
@@ -466,12 +470,12 @@ function AdvisorSettings() {
                           onClick={() => {
                             const label = a.email ?? a.display_name ?? a.user_id;
                             const msg = a.is_super_admin
-                              ? `Remove super admin access for ${label}?`
-                              : `Make ${label} a super admin? They'll get full platform access.`;
+                              ? `Remove System Administrator access for ${label}?`
+                              : `Make ${label} a System Administrator? They'll get full platform access.`;
                             if (confirm(msg)) superMut.mutate({ userId: a.user_id, makeSuperAdmin: !a.is_super_admin });
                           }}
                           disabled={superMut.isPending || (a.is_super_admin && a.is_self)}
-                          title={a.is_super_admin ? (a.is_self ? "You can't remove your own super admin access" : "Remove super admin") : "Make super admin"}
+                          title={a.is_super_admin ? (a.is_self ? "You can't remove your own System Administrator access" : "Remove System Administrator") : "Make System Administrator"}
                           className={a.is_super_admin ? "text-info" : undefined}
                         >
                           <Crown className="h-3.5 w-3.5" />

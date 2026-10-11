@@ -155,7 +155,7 @@ export async function finaliseReport(supabase: any, userId: string, reportId: st
 
 /**
  * Delete via public.delete_client_report. The function authorises the caller
- * itself, permits drafts freely, requires a super admin for final/sent, revokes
+ * itself, permits drafts freely, requires a System Administrator for final/sent, revokes
  * every recipient link and writes its own audit row.
  */
 export async function deleteReport(
@@ -172,7 +172,7 @@ export async function deleteReport(
     const msg = error.message ?? "Could not delete this report.";
     if (/REPORT_IS_(FINAL|SENT)/i.test(msg)) {
       throw new Error(
-        "This report has been finalised or sent, so only a super admin can delete it.",
+        "This report has been finalised or sent, so only a System Administrator can delete it.",
       );
     }
     if (/NO_ACCESS/i.test(msg)) throw new Error("You cannot delete this report.");

@@ -5,7 +5,7 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
  * Per-file Xero quota usage, today and yesterday.
  *
  * Read through the caller's own session: authorisation is
- * public.xero_rate_limit_usage(), which asserts aal2 and super admin itself
+ * public.xero_rate_limit_usage(), which asserts aal2 and System Administrator itself
  * (Path C platform metadata — our own API usage, not an organisation's data).
  * No admin client, no writes.
  */

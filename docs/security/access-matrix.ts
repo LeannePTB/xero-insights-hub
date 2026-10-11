@@ -2342,6 +2342,35 @@ export const MATRIX: MatrixRow[] = [
     "admin_onboard: a file not in this authorisation",
   ], ["execute"], "deny", "PK 4 — pending id and tenant ids are filters: own, unexpired, single use, within the cap, not already linked", ["pglite"]),
 
+  ...rows(["super_admin_no_membership"], [
+    "admin_onboard: unticked Traction Advisory team adds no team member",
+  ], ["execute"], "allow", "Owner decision 11 Oct 2026 — the Traction Advisory team is added only when ticked; enforced in the definer", ["pglite"]),
+
+  // ---- One Viewer type (11 Oct 2026): Selected clients reads what All clients reads, per client ----
+  ...rows(
+    ["client_viewer"],
+    [
+      "client_cost_classifications",
+      "client_statutory_accounts",
+      "client_true_breakeven_inputs",
+      "client_income_tax_instalments",
+      "client_xero_orgs",
+      "unreconciled_lines",
+      "unreconciled_uploads",
+    ],
+    ["read"],
+    "allow",
+    "PK section 2 path D — a Selected-clients Viewer reads the same per-client data as an All-clients Viewer, through has_client_read_access",
+    ["pglite"],
+  ),
+  ...rows(["org_owner"], [
+    "viewer_scope: switch All clients to Selected removes the rest immediately",
+    "viewer_scope: switch Selected to All clients",
+  ], ["execute"], "allow", "PK section 2 path D — the Organisation Owner changes a Viewer's scope in one audited step", ["pglite"]),
+  ...rows(["org_staff", "other_org_member", "client_viewer", "standing_viewer", "business_owner", "super_admin_no_membership", "support_grant_active", "aal1_member", "anonymous"], [
+    "viewer_scope: change a Viewer's clients",
+  ], ["execute"], "deny", "PK section 2 path D / PK 3 / PK 5 — only can_manage_client_viewers, at aal2", ["pglite"]),
+
   // ---- Saved Trixie chats (11 Oct 2026): owner only; hidden once access goes ----
   ...rows(["org_staff"], ["trixie_threads: own client thread", "trixie_messages: own client thread"], ["read"], "allow", "Owner decision 11 Oct 2026 — a person reads only their own Trixie chats", ["pglite"]),
   ...rows(["org_staff"], ["trixie_threads: create own thread"], ["insert"], "allow", "Owner decision 11 Oct 2026", ["pglite"]),

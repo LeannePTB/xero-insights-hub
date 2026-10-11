@@ -74,7 +74,7 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
       ? `${name.trim() || email || "This person"} will see every client in this organisation, including ones added later. They will never be able to change anything.`
       : picked.length === 0
         ? "Select at least one client to continue."
-        : `${name.trim() || email || "This person"} will see ${picked.length} selected client${picked.length === 1 ? "" : "s"}. ${relationship === "external_adviser" ? "They will never be able to change anything." : "Business owner self-service is not enabled yet; this invitation is read-only for now."}`;
+        : `${name.trim() || email || "This person"} will see ${picked.length} selected client${picked.length === 1 ? "" : "s"}. ${relationship === "external_adviser" ? "They will never be able to change anything." : "As Business Owner their access is limited to those clients."}`;
 
   return (
     <div className="space-y-4">
@@ -105,7 +105,7 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
       </div>
 
       <div className="space-y-2">
-        <Label>Relationship</Label>
+        <Label>Login type</Label>
         <RadioGroup
           value={relationship}
           onValueChange={(v) => {
@@ -117,13 +117,13 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
           <div className="flex items-start gap-2">
             <RadioGroupItem value="external_adviser" id="relationship-adviser" className="mt-1" />
             <Label htmlFor="relationship-adviser" className="font-normal">
-              External adviser — read-only access
+              Viewer — read-only (accountant, business partner, bank manager…)
             </Label>
           </div>
           <div className="flex items-start gap-2">
             <RadioGroupItem value="business_owner" id="relationship-owner" className="mt-1" />
             <Label htmlFor="relationship-owner" className="font-normal">
-              Business owner — selected clients only; self-service is not enabled yet
+              Business Owner — runs their own business's account; selected clients only
             </Label>
           </div>
         </RadioGroup>
@@ -135,14 +135,14 @@ export function ViewerInviteForm({ firmId, clients }: { firmId: string; clients:
           <div className="flex items-start gap-2">
             <RadioGroupItem value="selected" id="scope-selected" className="mt-1" />
             <Label htmlFor="scope-selected" className="font-normal">
-              Only the clients I tick
+              Selected clients
             </Label>
           </div>
           {relationship === "external_adviser" && (
             <div className="flex items-start gap-2">
               <RadioGroupItem value="all_clients" id="scope-all" className="mt-1" />
               <Label htmlFor="scope-all" className="font-normal">
-                Every client in this organisation, including ones added later
+                All clients (includes clients added later)
               </Label>
             </div>
           )}

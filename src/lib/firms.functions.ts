@@ -152,7 +152,7 @@ export const getMyFirm = createServerFn({ method: "POST" })
     if (mErr) throw new Error(mErr.message);
     let db: any = context.supabase;
     if (isMember !== true) {
-      // Path C: a super admin who is not a member may still open an
+      // Path C: a System Administrator who is not a member may still open an
       // organisation's billing page. This reads the client COUNT for that
       // organisation, which is metadata, not client or Xero data.
       // Flagged in the batch 3 report; behaviour deliberately unchanged.

@@ -16,7 +16,7 @@ async function admin() {
   return supabaseAdmin as any;
 }
 
-/** Email addresses of every platform super admin. */
+/** Email addresses of every platform System Administrator. */
 async function superAdminEmails(): Promise<string[]> {
   const supabase = await admin();
   const { data: roles, error } = await supabase.from("user_roles").select("user_id").eq("role", "super_admin");

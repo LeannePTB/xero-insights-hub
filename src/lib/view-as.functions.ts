@@ -8,7 +8,7 @@ import { requireAal2 } from "@/lib/auth/require-aal2";
  * another party's dashboards is exactly the kind of act an audit trail exists
  * for.
  *
- * Every rule is in public.record_view_as: aal2, platform super admin, and an
+ * Every rule is in public.record_view_as: aal2, platform System Administrator, and an
  * access path the caller already holds to that organisation (membership or an
  * approved support grant). Invariant 3 holds — super_admin on its own is
  * refused here too. Nothing is decided in this file.

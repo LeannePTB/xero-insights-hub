@@ -22,7 +22,7 @@ const STATUS_LABEL: Record<SupportGrant["status"], string> = {
 
 /**
  * Support access is granted to ONE named staff member, is read-only, and
- * expires automatically within 72 hours. Only the organisation owner can
+ * expires automatically within 72 hours. Only the Organisation Owner can
  * approve a request; platform staff can only ask.
  */
 export function SupportAccessCard({ firmId }: { firmId: string }) {
@@ -44,7 +44,7 @@ export function SupportAccessCard({ firmId }: { firmId: string }) {
   const requestMut = useMutation({
     mutationFn: () => request({ data: { firmId } }),
     onSuccess: () => {
-      toast.success("Support access requested — the organisation owner must approve it");
+      toast.success("Support access requested — the Organisation Owner must approve it");
       invalidate();
     },
     onError: (e: any) => toast.error(e?.message ?? "Could not request support access"),

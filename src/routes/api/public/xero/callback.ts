@@ -313,7 +313,7 @@ export const Route = createFileRoute("/api/public/xero/callback")({
         // row is written. No organisation exists yet, so nothing is stored in
         // xero_connections here: the tokens and tenant list are held in a
         // 30-minute, single-use pending record owned by the state's user (a
-        // database trigger refuses the row unless that user is a super admin).
+        // database trigger refuses the row unless that user is a System Administrator).
         // Only the opaque pending id reaches the browser.
         // ─────────────────────────────────────────────────────────────────────
         if (flow === "admin_onboard") {

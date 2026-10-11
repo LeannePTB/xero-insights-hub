@@ -4,7 +4,7 @@ import { siteUrl } from "@/lib/site-origin";
 /**
  * The normal organisation-owner invite: one hashed, 14-day access_invites row
  * plus the firm-invite email. Shared by both ways of adding an organisation in
- * System Admin. Called only after the caller was verified as a super admin;
+ * System Admin. Called only after the caller was verified as a System Administrator;
  * `admin` is the service client because access_invites has no browser write path.
  */
 export async function issueOwnerInvite(params: {

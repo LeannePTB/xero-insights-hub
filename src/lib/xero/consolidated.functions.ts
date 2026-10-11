@@ -32,7 +32,7 @@ export type ConsolidatedPayables = {
   byTenant: { tenantId: string; tenantName: string; totalOutstanding: number; totalOverdue: number }[];
 };
 
-// Only the platform super admin crosses organisation boundaries.
+// Only the platform System Administrator crosses organisation boundaries.
 
 /** A consolidation group resolved to its firm, member clients and Xero tenants. */
 type ResolvedGroup = {

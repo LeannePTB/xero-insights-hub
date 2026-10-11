@@ -49,13 +49,13 @@ There are exactly three access paths, and they are never collapsed:
 - **Path A — membership.** An active `firm_members` row: read and write within that organisation.
 - **Path B — support grant.** Only for an organisation Positive Traction is not a member of.
   **Read-only everywhere**, one named person, maximum 72 hours, approved by that organisation's
-  owner, and a super admin may never approve their own. A support grant reads the client list and
+  owner, and a System Administrator may never approve their own. A support grant reads the client list and
   statutory accounts as well as the dashboards; it writes nothing at all, including branding.
 - **Path C — platform operations.** Metadata only: organisation list, plans, billing events, signup
   requests, invites, audit log, roles, `xero_api_errors`, security posture. Never Xero financial data.
 
 **Being `super_admin` grants zero access to organisation or client data on its own.** Bounded and
-audited: a super admin may join or leave only organisations Positive Traction still owns
+audited: a System Administrator may join or leave only organisations Positive Traction still owns
 (`admin_set_self_firm_membership`); ownership changes only through
 `public.transfer_organisation_ownership`; `is_always_free` can be set only on Positive Traction's own
 organisation, fails closed if that organisation cannot be identified, and requires a 3–500 character
@@ -111,11 +111,11 @@ the 13 non-token columns do.
 
 **An organisation may NOT read its own audit log.** This is a deliberate decision (see
 `access-control-spec.md` §9), not an oversight: `audit_log` is a single platform-operations trail
-across all organisations, so only Positive Traction super admins may read it.
+across all organisations, so only Positive Traction System Administrators may read it.
 
 ## Account lifecycle
 
 - Invites are email-bound, single-use and expiring, and store a token hash only. Team member and
   client viewer invitations are issued from the People section in organisation settings.
 - Password resets go through Supabase Auth with the HIBP check.
-- Super admins can reset a person's MFA factors from Admin → Security; the action is audited.
+- System Administrators can reset a person's MFA factors from Admin → Security; the action is audited.

@@ -22,7 +22,7 @@ export type LiveRunResult = {
 /**
  * Runs the slim live access-test suite from the admin screen.
  *
- * Super admin only, and the check is the database's own
+ * System Administrator only, and the check is the database's own
  * (assertSuperAdminDb → public.me_is_super_admin), never a role read here. The
  * runner itself is loaded inside the handler so nothing server-only reaches a
  * client bundle. Returns counts and failed expectations only.

@@ -65,7 +65,8 @@
             "_consolidation",
             "_branding",
             "_white_label",
-            "_cards"
+            "_cards",
+            "_add_practice_team"
         ],
         "name": "admin_onboard_organisation_from_xero",
         "required": 11
@@ -1289,6 +1290,16 @@
         ],
         "name": "set_tier_enabled",
         "required": 2
+    },
+    {
+        "args": [
+            "_firm_id",
+            "_user_id",
+            "_scope",
+            "_client_ids"
+        ],
+        "name": "set_viewer_scope",
+        "required": 4
     },
     {
         "args": [

@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireAal2 } from "@/lib/auth/require-aal2";
 
-// Only the platform super admin crosses organisation boundaries.
+// Only the platform System Administrator crosses organisation boundaries.
 
 export type GroupClient = {
   clientId: string;

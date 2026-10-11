@@ -7,7 +7,7 @@
  * raises otherwise. This wrapper holds no rule — it only forwards the caller's
  * session, so a typo here can widen nothing.
  *
- * Super admin on its own still grants ZERO organisation or client data
+ * System Administrator on its own still grants ZERO organisation or client data
  * (invariant 3): it authorises Path C platform metadata only.
  */
 export async function assertSuperAdminDb(supabase: any) {

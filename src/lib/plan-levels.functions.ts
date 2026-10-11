@@ -113,7 +113,7 @@ export const deletePlanLevel = createServerFn({ method: "POST" })
     if (!level) throw new Error("Level not found.");
 
     // "Is this level still in use?" is counted by the database, which
-    // re-checks super admin itself and never exposes the rows.
+    // re-checks System Administrator itself and never exposes the rows.
     const { data: inUse, error: useErr } = await (context.supabase as any).rpc("plan_level_usage_count", {
       _id: data.id,
     });

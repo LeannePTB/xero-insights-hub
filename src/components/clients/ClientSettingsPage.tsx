@@ -673,7 +673,7 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
         {/* People access stays in organisation settings so relationship and scope are explicit. */}
         <Section title="People access">
           <p className="text-sm text-muted-foreground">
-            Invite and manage Business owners and External advisers from the organisation settings.
+            Invite and manage Business Owners and Viewers from the organisation settings.
             Relationship is selected before scope, and every change uses the audited access
             functions.
           </p>
@@ -710,9 +710,9 @@ export function ClientSettingsPage({ clientId, section }: { clientId: string; se
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground">
                         {a.relationship === "business_owner"
-                          ? "Business owner"
+                          ? "Business Owner"
                           : a.relationship === "external_adviser"
-                            ? "External adviser"
+                            ? "Viewer"
                             : "Not set"}
                       </span>
                       <Button variant="ghost" size="sm" onClick={() => revokeMut.mutate(a.id)}>

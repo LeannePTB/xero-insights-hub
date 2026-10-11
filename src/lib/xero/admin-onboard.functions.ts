@@ -8,7 +8,7 @@ import { xeroCallbackUrl, assertAppOrigin } from "@/lib/site-origin";
 // System Admin → "Add organisation" → "Start from a Xero file" (Stage 1).
 // Every step re-checks the caller in the database: the state row trigger, the
 // pending-record trigger and both definer functions refuse anyone who is not
-// an aal2 super admin, whatever the UI shows.
+// an aal2 System Administrator, whatever the UI shows.
 
 const XERO_AUTHORIZE_URL = "https://login.xero.com/identity/connect/authorize";
 const base64url = (buf: Buffer) => buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -89,6 +89,7 @@ const createInput = z.object({
   consolidation: z.boolean(),
   branding: z.boolean(),
   whiteLabel: z.boolean(),
+  addTractionTeam: z.boolean().default(true),
   cards: z.array(z.string().min(1).max(100)).max(100).nullable(),
   ownerEmail: z.string().trim().max(254).email().nullable(),
 });
@@ -111,6 +112,7 @@ export const createOrganisationFromXero = createServerFn({ method: "POST" })
       _branding: data.advisory && data.branding,
       _white_label: data.whiteLabel,
       _cards: data.cards,
+      _add_practice_team: data.addTractionTeam,
     });
     if (error) throw new Error(friendly(error.message));
     const row = Array.isArray(rows) ? rows[0] : rows;
