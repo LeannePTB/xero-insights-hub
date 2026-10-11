@@ -303,7 +303,7 @@ async function readKeyFigures(ctx: TrixieContext) {
     asAt,
     figures: rows.filter((r) => r[2]).map(([label, value]) => ({ label, value: value == null ? null : Number(value), missing: value == null })),
     // Per-account reconciled-to dates (in-scope accounts only); dates, not figures.
-    bankReconciliation: cards.has("cashflow") ? (parseStored(row?.bank_reconciliation)?.accounts.map((a) => ({ account: a.name, notReconciledSince: a.reconciledTo })) ?? null) : null,
+    bankReconciliation: cards.has("cashflow") ? (parseStored(row?.bank_reconciliation)?.accounts.map((a) => ({ account: a.name, reconciledTo: a.reconciledTo })) ?? null) : null,
     sources: row ? ([{ label: "Client key figures (overview)", asAt, href: `/clients/${ctx.clientId}` }] as Source[]) : [],
   };
 }
