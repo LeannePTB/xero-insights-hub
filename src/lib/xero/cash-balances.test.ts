@@ -35,7 +35,7 @@ describe("cash at bank and net cash", () => {
     const report = { Rows: [{ RowType: 'Section', Rows: [
       ...[['astro', '2444.85'], ['gst', '2000'], ['card', '-3554.32']].map(([id, value]) => ({ RowType: 'Row', Cells: [{ Value: 'Same name', Attributes: [{ Id: 'account', Value: id }] }, { Value: value }] })),
     ] }] };
-    const result = analyseBalanceSheet(report, accounts, undefined, [{ account_id: 'gst', classification: 'excluded' }]);
+    const result = analyseBalanceSheet(report, accounts, undefined, [{ account_id: 'gst', classification: 'excluded' }, { account_id: 'CARD', classification: 'credit_card' }]);
     assert.equal(result.cashAtBank.total, 2444.85);
     assert.equal(result.creditCardDebt.total, 0);
     const overlay = applyBankClassifications(accounts.Accounts, [{ account_id: 'GST', classification: 'excluded' }]);
