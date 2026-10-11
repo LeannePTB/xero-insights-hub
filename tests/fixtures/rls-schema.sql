@@ -120,9 +120,10 @@ create table public.subscriptions (id uuid, firm_id uuid, stripe_customer_id tex
 create table public.suppressed_emails (id uuid, email text, reason text, metadata jsonb, created_at timestamp with time zone);
 create table public.tier_settings (tier text, enabled boolean, updated_at timestamp with time zone);
 create table public.tier_widget_config (id uuid, client_id uuid, tier text, widgets text[], created_at timestamp with time zone, updated_at timestamp with time zone, excluded_widgets text[], firm_id uuid);
+create table public.trixie_alerts (id uuid, created_at timestamp with time zone, kind text, severity text, firm_id uuid, title text, detail text, dedupe_key text, emailed_at timestamp with time zone, acknowledged_at timestamp with time zone, acknowledged_by uuid);
 create table public.trixie_knowledge (id uuid, title text, body text, tags text[], audience text, active boolean, created_at timestamp with time zone, updated_at timestamp with time zone, created_by uuid, updated_by uuid);
 create table public.trixie_org_limits (firm_id uuid, monthly_allowance integer, updated_at timestamp with time zone, updated_by uuid);
-create table public.trixie_settings (singleton boolean, enabled boolean, model text, default_monthly_allowance integer, warning_threshold integer, platform_monthly_allowance integer, token_cost_guard_usd numeric(10,2), updated_at timestamp with time zone, updated_by uuid);
+create table public.trixie_settings (singleton boolean, enabled boolean, model text, default_monthly_allowance integer, warning_threshold integer, platform_monthly_allowance integer, token_cost_guard_usd numeric(10,2), updated_at timestamp with time zone, updated_by uuid, spend_alert_thresholds_usd numeric(10,2)[], daily_spike_multiplier numeric(5,2), daily_spike_floor_usd numeric(10,2));
 create table public.trixie_usage (id uuid, user_id uuid, firm_id uuid, client_id uuid, requested_at timestamp with time zone, completed_at timestamp with time zone, model text, gateway_run_id text, status text, input_tokens integer, output_tokens integer, reasoning_tokens integer, estimated_cost_usd numeric(12,6), error_code text);
 create table public.unreconciled_lines (id uuid, upload_id uuid, client_id uuid, account_name text, account_number text, row_index integer, txn_date date, payee text, reference text, spent numeric(14,2), received numeric(14,2), tax text, source_comment text, client_comment text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.unreconciled_uploads (id uuid, client_id uuid, uploaded_by uuid, filename text, line_count integer, created_at timestamp with time zone);
@@ -2634,6 +2635,18 @@ CREATE OR REPLACE FUNCTION public.set_org_trial(_firm_id uuid, _advisory boolean
  SET search_path TO 'public'
 AS $function$ DECLARE _ending boolean; BEGIN PERFORM app_private.assert_aal2(); PERFORM public.assert_super_admin(); _ending:=NOT coalesce(_advisory,false) AND NOT coalesce(_consolidation,false) AND NOT coalesce(_branding,false) AND NOT coalesce(_white_label,false); IF NOT _ending THEN IF _ends_at IS NULL OR _ends_at<=now() OR _ends_at>now()+interval '120 days' THEN RAISE EXCEPTION 'INVALID_TRIAL_END' USING errcode='check_violation'; END IF; IF coalesce(_consolidation,false) AND NOT coalesce(_advisory,false) THEN RAISE EXCEPTION 'CONSOLIDATION_REQUIRES_ADVISORY' USING errcode='check_violation'; END IF; IF coalesce(_branding,false) AND NOT coalesce(_advisory,false) THEN RAISE EXCEPTION 'BRANDING_REQUIRES_ADVISORY' USING errcode='check_violation'; END IF; IF nullif(btrim(_reason),'') IS NULL THEN RAISE EXCEPTION 'REASON_REQUIRED' USING errcode='check_violation'; END IF; END IF; INSERT INTO public.org_subscription_options(firm_id,trial_advisory_enabled,trial_consolidation_enabled,trial_branding_enabled,trial_white_label_enabled,trial_ends_at) VALUES(_firm_id,coalesce(_advisory,false),coalesce(_consolidation,false),coalesce(_branding,false),coalesce(_white_label,false),CASE WHEN _ending THEN NULL ELSE _ends_at END) ON CONFLICT(firm_id) DO UPDATE SET trial_advisory_enabled=excluded.trial_advisory_enabled,trial_consolidation_enabled=excluded.trial_consolidation_enabled,trial_branding_enabled=excluded.trial_branding_enabled,trial_white_label_enabled=excluded.trial_white_label_enabled,trial_ends_at=excluded.trial_ends_at,advisory_enabled=CASE WHEN coalesce(_advisory,false) THEN false ELSE org_subscription_options.advisory_enabled END,consolidation_enabled=CASE WHEN coalesce(_consolidation,false) THEN false ELSE org_subscription_options.consolidation_enabled END,branding_enabled=CASE WHEN coalesce(_branding,false) THEN false ELSE org_subscription_options.branding_enabled END,white_label_enabled=CASE WHEN coalesce(_white_label,false) THEN false ELSE org_subscription_options.white_label_enabled END,updated_at=now(); INSERT INTO public.audit_log(actor_user_id,firm_id,action,target_type,target_id,meta) VALUES(auth.uid(),_firm_id,CASE WHEN _ending THEN 'org_trial_ended' ELSE 'org_trial_set' END,'firm',_firm_id::text,jsonb_build_object('advisory',coalesce(_advisory,false),'consolidation',coalesce(_consolidation,false),'branding',coalesce(_branding,false),'white_label',coalesce(_white_label,false),'ends_at',CASE WHEN _ending THEN NULL ELSE _ends_at END,'reason',nullif(btrim(_reason),''))); END $function$
 ;
+CREATE OR REPLACE FUNCTION app_private.assert_trixie_maintenance()
+ RETURNS void
+ LANGUAGE plpgsql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF auth.uid() IS NULL THEN RETURN; END IF;
+  PERFORM app_private.assert_aal2();
+  IF NOT app_private.me_is_super_admin() THEN RAISE EXCEPTION 'Forbidden'; END IF;
+END; $function$
+;
 CREATE OR REPLACE FUNCTION public.audit_table_change()
  RETURNS trigger
  LANGUAGE plpgsql
@@ -2756,6 +2769,7 @@ alter table public.subscriptions enable row level security;
 alter table public.suppressed_emails enable row level security;
 alter table public.tier_settings enable row level security;
 alter table public.tier_widget_config enable row level security;
+alter table public.trixie_alerts enable row level security;
 alter table public.trixie_knowledge enable row level security;
 alter table public.trixie_org_limits enable row level security;
 alter table public.trixie_settings enable row level security;
@@ -3284,6 +3298,13 @@ grant SELECT on table public.tier_widget_config to service_role;
 grant TRIGGER on table public.tier_widget_config to service_role;
 grant TRUNCATE on table public.tier_widget_config to service_role;
 grant UPDATE on table public.tier_widget_config to service_role;
+grant DELETE on table public.trixie_alerts to service_role;
+grant INSERT on table public.trixie_alerts to service_role;
+grant REFERENCES on table public.trixie_alerts to service_role;
+grant SELECT on table public.trixie_alerts to service_role;
+grant TRIGGER on table public.trixie_alerts to service_role;
+grant TRUNCATE on table public.trixie_alerts to service_role;
+grant UPDATE on table public.trixie_alerts to service_role;
 grant DELETE on table public.trixie_knowledge to service_role;
 grant INSERT on table public.trixie_knowledge to service_role;
 grant REFERENCES on table public.trixie_knowledge to service_role;
@@ -3773,6 +3794,7 @@ create policy "manage tier widget config by firm or super admin (update)" on pub
    FROM clients c
   WHERE ((c.id = tier_widget_config.client_id) AND ((c.owner_user_id = auth.uid()) OR ((c.firm_id IS NOT NULL) AND app_private.has_firm_access(auth.uid(), c.firm_id)))))))));
 create policy mfa_aal2_required on public.tier_widget_config as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
+create policy mfa_aal2_required on public.trixie_alerts as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.trixie_knowledge as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "trixie_knowledge service insert" on public.trixie_knowledge as permissive for insert to service_role with check (true);
 create policy mfa_aal2_required on public.trixie_org_limits as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
@@ -3854,4 +3876,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: 29710e31a824938de47d101adcd9089df24bd20ed2549d9d253da0af3e9f09a6
+-- catalogue-fingerprint: 7bca757f92cb1a57e3f9e0c87b5015d8f8f0c4955d887677365ae54da9ece93c

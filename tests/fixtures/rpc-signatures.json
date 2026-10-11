@@ -1,6 +1,13 @@
 [
     {
         "args": [
+            "_id"
+        ],
+        "name": "acknowledge_trixie_alert",
+        "required": 1
+    },
+    {
+        "args": [
             "_user_id"
         ],
         "name": "admin_add_practice_member",
@@ -78,6 +85,19 @@
     {
         "args": [
         ],
+        "name": "admin_trixie_alert_settings",
+        "required": 0
+    },
+    {
+        "args": [
+            "_limit"
+        ],
+        "name": "admin_trixie_alerts",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
         "name": "admin_trixie_knowledge",
         "required": 0
     },
@@ -91,6 +111,20 @@
         "args": [
         ],
         "name": "admin_trixie_settings",
+        "required": 0
+    },
+    {
+        "args": [
+            "_days"
+        ],
+        "name": "admin_trixie_spend_overview",
+        "required": 0
+    },
+    {
+        "args": [
+            "_month"
+        ],
+        "name": "admin_trixie_summary_preview",
         "required": 0
     },
     {
@@ -406,6 +440,18 @@
     },
     {
         "args": [
+        ],
+        "name": "evaluate_trixie_alerts",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "expire_trixie_reservations",
+        "required": 0
+    },
+    {
+        "args": [
             "_reservation_id",
             "_status",
             "_gateway_run_id",
@@ -577,6 +623,13 @@
         ],
         "name": "log_xero_rate_limit",
         "required": 10
+    },
+    {
+        "args": [
+            "_id"
+        ],
+        "name": "mark_trixie_alert_emailed",
+        "required": 1
     },
     {
         "args": [
@@ -897,6 +950,14 @@
         ],
         "name": "save_platform_branding",
         "required": 5
+    },
+    {
+        "args": [
+            "_thresholds",
+            "_multiplier"
+        ],
+        "name": "save_trixie_alert_settings",
+        "required": 2
     },
     {
         "args": [
@@ -1229,6 +1290,19 @@
             "_system"
         ],
         "name": "trixie_access_context",
+        "required": 0
+    },
+    {
+        "args": [
+        ],
+        "name": "trixie_cost_guard",
+        "required": 0
+    },
+    {
+        "args": [
+            "_month"
+        ],
+        "name": "trixie_monthly_summary",
         "required": 0
     },
     {
