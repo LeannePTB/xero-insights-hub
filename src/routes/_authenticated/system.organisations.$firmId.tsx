@@ -209,7 +209,7 @@ function OverviewFacts({ firm, members, usage, purchase, subscription }: { firm:
   const status = firm.is_always_free ? "Always free" : subscription?.status === "past_due" ? "Past due" : subscription?.status === "canceled" ? "Cancelled" : subscription?.status === "paused" ? "Suspended" : subscription?.status === "trialing" ? "Trial" : "Active";
   const limit = usage?.clientLimit >= 9999 ? "∞" : usage?.clientLimit ?? "—";
   return <section className="rounded-lg border p-6"><h2 className="text-lg font-semibold">Quick facts</h2><dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-    <Fact label="Status">{status}</Fact><Fact label="Clients">{usage?.clientsUsed ?? "—"} / {limit}</Fact><Fact label="Created">{new Date(firm.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}</Fact>
+    <Fact label="Status">{status}</Fact><Fact label="Clients">{usage?.clientsUsed ?? "—"} / {limit}</Fact><Fact label="Looked after by Traction Advisory">{(firm as any).managed_by_traction === false ? "No" : "Yes"}</Fact><Fact label="Created">{new Date(firm.created_at).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}</Fact>
     <Fact label="Owner"><span>{owner?.display_name || owner?.email || "Not assigned"}</span>{owner?.display_name && owner?.email && <span className="block text-xs text-muted-foreground">{owner.email}</span>}</Fact>
     <Fact label="Billing">{purchase?.billingMode === "external" ? "External" : purchase ? "Bookkeeping" : "—"}</Fact><Fact label="Options">{options.length ? options.join(" · ") : "Standard only"}</Fact>
   </dl></section>;

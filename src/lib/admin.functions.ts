@@ -111,7 +111,7 @@ export const getFirmDetailAdmin = createServerFn({ method: "GET" })
 
     const { data: firm, error: fErr } = await supabaseAdmin
       .from("firms")
-      .select("id, name, owner_user_id, is_always_free, created_at")
+      .select("id, name, owner_user_id, is_always_free, managed_by_traction, created_at")
       .eq("id", data.firmId)
       .maybeSingle();
     if (fErr) throw new Error(fErr.message);
