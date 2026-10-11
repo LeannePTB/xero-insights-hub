@@ -6,6 +6,7 @@
 
 import { createHash } from "crypto";
 import { addDays, addMonths, endOfMonth, startOfFinancialYear, startOfMonth, sydneyDate } from "@/lib/sydney-time";
+import { RECON_WINDOW_DAYS } from "@/lib/overview/bank-reconciliation";
 
 /** Bump when a payload's shape changes. Older rows are treated as absent. */
 export const SNAPSHOT_PAYLOAD_VERSION = 1;
