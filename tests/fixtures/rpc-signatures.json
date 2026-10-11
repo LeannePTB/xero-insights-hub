@@ -48,6 +48,30 @@
     },
     {
         "args": [
+            "_pending_id"
+        ],
+        "name": "admin_onboard_candidates",
+        "required": 1
+    },
+    {
+        "args": [
+            "_pending_id",
+            "_first_tenant",
+            "_extra_tenants",
+            "_org_name",
+            "_client_limit",
+            "_billing_mode",
+            "_advisory",
+            "_consolidation",
+            "_branding",
+            "_white_label",
+            "_cards"
+        ],
+        "name": "admin_onboard_organisation_from_xero",
+        "required": 11
+    },
+    {
+        "args": [
         ],
         "name": "admin_practice_team",
         "required": 0

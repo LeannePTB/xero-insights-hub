@@ -4,7 +4,7 @@ Classification: SECURITY-RELEVANT (organisation creation, Xero OAuth, plan limit
 
 ## What you'll get
 
-**Stage 1 — our team (build now)**
+**Stage 1 — our team — BUILT 11 Oct 2026** (owner approval 11 Oct, 10:39). Pending authorisations are held in `xero_pending_onboards` (30 min, single use, no browser grants), created by `admin_onboard_organisation_from_xero`; guard is super admin at aal2 in every database step.
 1. The "Add organisation" dialog gets a second option: **"Start from a Xero file"**, next to the current manual form.
 2. You pick the package (number of clients, Advisory, Consolidation, Branding) as you do now, then press **Connect to Xero**. The customer (or you, with their login) signs in to Xero and grants access.
 3. Back in the app, a list shows every Xero file that login has access to. You tick the **first file**. The organisation and its first client are created and named from that file, and the file is linked to that client.
