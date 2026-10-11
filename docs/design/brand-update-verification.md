@@ -43,7 +43,7 @@ Unlisted tokens retain the same rendered colours. CSS was normalised to OKLCH; t
 | .dark | `ring` | #0091D5 | #4EB4EB |
 | .dark | `link` | #85CFF5 | #4EB4EB |
 
-Inherited/aliased colours in both modes also change: chart-1 #00B5EE → #4EB4EB; chart-2 #0091D5 → #1E90D1; chart-3 #1D6CB5 → #426CB2; chart-4 #054492 → #28468E; chart-5 #002A5F → #082E5E; chart-6 #005CAB → #1E90D1. Gradient hero inherits Navy/Royal changes. Tailwind aliases inherit their matching semantic token changes. presentation-tokens.ts mirrors Navy, primary, link, mid, sky, cyan, body text and info surface; Trixie's SVG uses the matching updated blues.
+Inherited/aliased colours in both modes also change: chart-1 #00B5EE → #4EB4EB; chart-2 #0091D5 → #1E90D1; chart-3 #1D6CB5 → #426CB2; chart-4 #054492 → #28468E; chart-5 #002A5F → #082E5E. Chart-6 remains wordmark grey #939598. Gradient hero inherits Navy/Royal changes. Tailwind aliases inherit their matching semantic token changes. presentation-tokens.ts mirrors Navy, primary, link, mid, sky, cyan, body text and info surface; Trixie's SVG uses the matching updated blues.
 
 ## Contrast fixes
 
