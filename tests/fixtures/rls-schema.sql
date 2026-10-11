@@ -123,8 +123,10 @@ create table public.tier_settings (tier text, enabled boolean, updated_at timest
 create table public.tier_widget_config (id uuid, client_id uuid, tier text, widgets text[], created_at timestamp with time zone, updated_at timestamp with time zone, excluded_widgets text[], firm_id uuid);
 create table public.trixie_alerts (id uuid, created_at timestamp with time zone, kind text, severity text, firm_id uuid, title text, detail text, dedupe_key text, emailed_at timestamp with time zone, acknowledged_at timestamp with time zone, acknowledged_by uuid);
 create table public.trixie_knowledge (id uuid, title text, body text, tags text[], audience text, active boolean, created_at timestamp with time zone, updated_at timestamp with time zone, created_by uuid, updated_by uuid);
+create table public.trixie_messages (id uuid, thread_id uuid, user_id uuid, role text, content text, sources jsonb, created_at timestamp with time zone);
 create table public.trixie_org_limits (firm_id uuid, monthly_allowance integer, updated_at timestamp with time zone, updated_by uuid);
 create table public.trixie_settings (singleton boolean, enabled boolean, model text, default_monthly_allowance integer, warning_threshold integer, platform_monthly_allowance integer, token_cost_guard_usd numeric(10,2), updated_at timestamp with time zone, updated_by uuid, spend_alert_thresholds_usd numeric(10,2)[], daily_spike_multiplier numeric(5,2), daily_spike_floor_usd numeric(10,2));
+create table public.trixie_threads (id uuid, user_id uuid, firm_id uuid, client_id uuid, workspace text, title text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.trixie_usage (id uuid, user_id uuid, firm_id uuid, client_id uuid, requested_at timestamp with time zone, completed_at timestamp with time zone, model text, gateway_run_id text, status text, input_tokens integer, output_tokens integer, reasoning_tokens integer, estimated_cost_usd numeric(12,6), error_code text);
 create table public.unreconciled_lines (id uuid, upload_id uuid, client_id uuid, account_name text, account_number text, row_index integer, txn_date date, payee text, reference text, spent numeric(14,2), received numeric(14,2), tax text, source_comment text, client_comment text, created_at timestamp with time zone, updated_at timestamp with time zone);
 create table public.unreconciled_uploads (id uuid, client_id uuid, uploaded_by uuid, filename text, line_count integer, created_at timestamp with time zone);
@@ -2797,8 +2799,10 @@ alter table public.tier_settings enable row level security;
 alter table public.tier_widget_config enable row level security;
 alter table public.trixie_alerts enable row level security;
 alter table public.trixie_knowledge enable row level security;
+alter table public.trixie_messages enable row level security;
 alter table public.trixie_org_limits enable row level security;
 alter table public.trixie_settings enable row level security;
+alter table public.trixie_threads enable row level security;
 alter table public.trixie_usage enable row level security;
 alter table public.unreconciled_lines enable row level security;
 alter table public.unreconciled_uploads enable row level security;
@@ -3346,6 +3350,15 @@ grant SELECT on table public.trixie_knowledge to service_role;
 grant TRIGGER on table public.trixie_knowledge to service_role;
 grant TRUNCATE on table public.trixie_knowledge to service_role;
 grant UPDATE on table public.trixie_knowledge to service_role;
+grant INSERT on table public.trixie_messages to authenticated;
+grant SELECT on table public.trixie_messages to authenticated;
+grant DELETE on table public.trixie_messages to service_role;
+grant INSERT on table public.trixie_messages to service_role;
+grant REFERENCES on table public.trixie_messages to service_role;
+grant SELECT on table public.trixie_messages to service_role;
+grant TRIGGER on table public.trixie_messages to service_role;
+grant TRUNCATE on table public.trixie_messages to service_role;
+grant UPDATE on table public.trixie_messages to service_role;
 grant DELETE on table public.trixie_org_limits to service_role;
 grant INSERT on table public.trixie_org_limits to service_role;
 grant REFERENCES on table public.trixie_org_limits to service_role;
@@ -3360,6 +3373,16 @@ grant SELECT on table public.trixie_settings to service_role;
 grant TRIGGER on table public.trixie_settings to service_role;
 grant TRUNCATE on table public.trixie_settings to service_role;
 grant UPDATE on table public.trixie_settings to service_role;
+grant DELETE on table public.trixie_threads to authenticated;
+grant INSERT on table public.trixie_threads to authenticated;
+grant SELECT on table public.trixie_threads to authenticated;
+grant DELETE on table public.trixie_threads to service_role;
+grant INSERT on table public.trixie_threads to service_role;
+grant REFERENCES on table public.trixie_threads to service_role;
+grant SELECT on table public.trixie_threads to service_role;
+grant TRIGGER on table public.trixie_threads to service_role;
+grant TRUNCATE on table public.trixie_threads to service_role;
+grant UPDATE on table public.trixie_threads to service_role;
 grant DELETE on table public.trixie_usage to service_role;
 grant INSERT on table public.trixie_usage to service_role;
 grant REFERENCES on table public.trixie_usage to service_role;
@@ -3480,6 +3503,8 @@ grant SELECT (id) on table public.access_invites to authenticated;
 grant SELECT (invited_by) on table public.access_invites to authenticated;
 grant SELECT (role) on table public.access_invites to authenticated;
 grant UPDATE (display_name) on table public.profiles to authenticated;
+grant UPDATE (title) on table public.trixie_threads to authenticated;
+grant UPDATE (updated_at) on table public.trixie_threads to authenticated;
 grant UPDATE (client_comment) on table public.unreconciled_lines to authenticated;
 grant SELECT (base_currency) on table public.xero_connections to authenticated;
 grant SELECT (created_at) on table public.xero_connections to authenticated;
@@ -3833,10 +3858,27 @@ create policy mfa_aal2_required on public.tier_widget_config as restrictive for 
 create policy mfa_aal2_required on public.trixie_alerts as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.trixie_knowledge as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "trixie_knowledge service insert" on public.trixie_knowledge as permissive for insert to service_role with check (true);
+create policy "Owner appends to own visible threads" on public.trixie_messages as permissive for insert to authenticated with check (((user_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM trixie_threads t
+  WHERE ((t.id = trixie_messages.thread_id) AND (t.user_id = auth.uid()))))));
+create policy "Owner reads messages of own visible threads" on public.trixie_messages as permissive for select to authenticated using (((user_id = auth.uid()) AND (EXISTS ( SELECT 1
+   FROM trixie_threads t
+  WHERE (t.id = trixie_messages.thread_id)))));
+create policy mfa_aal2_required on public.trixie_messages as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.trixie_org_limits as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "trixie_org_limits service insert" on public.trixie_org_limits as permissive for insert to service_role with check (true);
 create policy mfa_aal2_required on public.trixie_settings as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "trixie_settings service insert" on public.trixie_settings as permissive for insert to service_role with check (true);
+create policy "Owner creates own Trixie threads" on public.trixie_threads as permissive for insert to authenticated with check ((user_id = auth.uid()));
+create policy "Owner deletes own Trixie threads" on public.trixie_threads as permissive for delete to authenticated using ((user_id = auth.uid()));
+create policy "Owner reads own Trixie threads while access remains" on public.trixie_threads as permissive for select to authenticated using (((user_id = auth.uid()) AND
+CASE workspace
+    WHEN 'client'::text THEN app_private.has_client_read_access(auth.uid(), client_id)
+    WHEN 'organisation'::text THEN app_private.has_firm_access(auth.uid(), firm_id)
+    ELSE true
+END));
+create policy "Owner renames own Trixie threads" on public.trixie_threads as permissive for update to authenticated using ((user_id = auth.uid())) with check ((user_id = auth.uid()));
+create policy mfa_aal2_required on public.trixie_threads as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy mfa_aal2_required on public.trixie_usage as restrictive for all to authenticated using (app_private.is_aal2()) with check (app_private.is_aal2());
 create policy "trixie_usage service insert" on public.trixie_usage as permissive for insert to service_role with check (true);
 create policy "Members update comments for their client" on public.unreconciled_lines as permissive for update to authenticated using (app_private.user_can_write_client(auth.uid(), client_id)) with check (app_private.user_can_write_client(auth.uid(), client_id));
@@ -3912,4 +3954,4 @@ CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.subscript
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.user_roles FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 CREATE TRIGGER audit_change AFTER INSERT OR DELETE OR UPDATE ON public.xero_assessment_contact FOR EACH ROW EXECUTE FUNCTION audit_table_change();
 
--- catalogue-fingerprint: f03c50e93c0d2b0ac16a5eaa6eab6fc9f03c8986b78350a72506e0741fb9681c
+-- catalogue-fingerprint: 9677a70f9acc27aa7a1a249a78c367289582bd8b0776d87bdbe645675d33c92d
