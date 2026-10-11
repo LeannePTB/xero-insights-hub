@@ -37,7 +37,10 @@ describe("cash at bank and net cash", () => {
     ] }] };
     const result = analyseBalanceSheet(report, accounts, undefined, [{ account_id: 'gst', classification: 'excluded' }, { account_id: 'CARD', classification: 'credit_card' }]);
     assert.equal(result.cashAtBank.total, 2444.85);
-    assert.equal(result.creditCardDebt.total, 0);
+    assert.equal(result.creditCardDebt.total, 3554.32);
+    const allExcluded = analyseBalanceSheet(report, accounts, undefined, [{ account_id: 'gst', classification: 'excluded' }, { account_id: 'CARD', classification: 'excluded' }]);
+    assert.equal(allExcluded.cashAtBank.total, 2444.85);
+    assert.equal(allExcluded.creditCardDebt.total, 0);
     const overlay = applyBankClassifications(accounts.Accounts, [{ account_id: 'GST', classification: 'excluded' }]);
     assert.equal(overlay.some(account => account.AccountID === 'gst'), false);
   });
