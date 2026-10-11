@@ -309,6 +309,7 @@ export const adminCreateOrganisation = createServerFn({ method: "POST" })
         white_label_enabled: whiteLabel,
         billing_mode: billingMode,
         default_cards: cards,
+        traction_team_added: addTractionTeam,
         owner_mode: "invite",
         owner_user_id: context.userId,
       });
